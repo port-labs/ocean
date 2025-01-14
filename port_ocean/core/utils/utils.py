@@ -107,7 +107,7 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
     return EntityPortDiff(created=created, modified=modified, deleted=deleted)
 
 
-def are_entities_equal(first_entity: Entity, second_entity: Entity) -> bool:
+def are_entities_properties_equal(first_entity: Entity, second_entity: Entity) -> bool:
     """
     Compare two entities by their identifier, blueprint, and properties using DeepDiff.
 
@@ -123,6 +123,28 @@ def are_entities_equal(first_entity: Entity, second_entity: Entity) -> bool:
         first_entity.properties, second_entity.properties, ignore_order=True
     )
     return not diff
+
+
+def are_entities_relations_equal(first_entity: Entity, second_entity: Entity) -> bool:
+    """
+    Compare two entities by their relations using DeepDiff.
+
+    Args:
+        first_entity: First entity to compare
+        second_entity: Second entity to compare
+
+    Returns:
+        bool: True if entities have same relations
+    """
+    # Compare relations using DeepDiff
+    diff = DeepDiff(first_entity.relations, second_entity.relations, ignore_order=True)
+    return not diff
+
+
+def are_entities_different(first_entity: Entity, second_entity: Entity) -> bool:
+    return not are_entities_properties_equal(
+        first_entity, second_entity
+    ) or not are_entities_relations_equal(first_entity, second_entity)
 
 
 def map_entities(
@@ -144,18 +166,21 @@ def map_entities(
     unique_entities = []
     unrelevant_entities = []
 
-    # Create dictionaries for before and after lists
     for entity in port_entities:
         key = (entity.identifier, entity.blueprint)
         port_entities_dict[key] = entity
 
     for entity in third_party_entities:
+        if entity.is_using_search_identifier or entity.is_using_search_relation:
+            unique_entities.append(entity)
+            continue
         key = (entity.identifier, entity.blueprint)
         third_party_entities_dict[key] = entity
+
         entity_at_port = port_entities_dict.get(key, None)
         if entity_at_port is None:
             unique_entities.append(entity)
-        elif not are_entities_equal(entity, port_entities_dict[key]):
+        elif are_entities_different(entity, port_entities_dict[key]):
             unique_entities.append(entity)
 
     for entity in port_entities:
