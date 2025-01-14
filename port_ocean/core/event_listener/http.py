@@ -27,9 +27,17 @@ class HttpEventListenerSettings(EventListenerSettings):
     type: Literal["WEBHOOK"]
     app_host: AnyHttpUrl = Field(..., sensitive=True)
 
-    def to_request(self) -> dict[str, Any]:
+    def get_changelog_destination_details(self) -> dict[str, Any]:
+        """
+        Returns the changelog destination configuration for the webhook event listener.
+        For webhook event listeners, this specifies the URL where changelog events should be sent.
+
+        Returns:
+            dict[str, Any]: A dictionary with the webhook URL where changelog events should be sent,
+                           constructed by appending "/resync" to the app_host.
+        """
         return {
-            **super().to_request(),
+            "type": self.type,
             "url": self.app_host + "/resync",
         }
 
