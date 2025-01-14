@@ -328,7 +328,8 @@ async def feed_event_to_resource(
 ) -> RAW_ITEM:
     resource = None
     live_event_projects_rate_limiter, _ = await resolve_request_controllers(
-        AssetTypesWithSpecialHandling.PROJECT, method="get"
+        AssetTypesWithSpecialHandling.PROJECT,
+        quota_id="ProjectV3GetRequestsPerMinutePerProject",
     )
     if asset_data.get("deleted") is True:
         resource = asset_data["priorAsset"]["resource"]["data"]

@@ -63,7 +63,7 @@ async def _resolve_resync_method_for_resource(
             return search_all_organizations()
         case AssetTypesWithSpecialHandling.PROJECT:
             project_rate_limiter, _ = await resolve_request_controllers(
-                kind, method="search"
+                kind, quota_id="ProjectV3SearchRequestsPerMinutePerProject"
             )
             return search_all_projects(rate_limiter=project_rate_limiter)
         case _:
@@ -110,7 +110,7 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     resync_projects_rate_limiter, _ = await resolve_request_controllers(
-        kind, method="search"
+        kind, quota_id="ProjectV3SearchRequestsPerMinutePerProject"
     )
     async for batch in search_all_projects(rate_limiter=resync_projects_rate_limiter):
         yield batch

@@ -187,13 +187,12 @@ def get_service_account_project_id() -> str:
 
 
 async def get_quotas_for_project(
-    project_id: str, kind: str, **kwargs: Any
+    project_id: str, kind: str, quota_id: Optional[str] = None
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
     try:
         match kind:
             case AssetTypesWithSpecialHandling.PROJECT:
-                method = kwargs.get("method")
-                if method == "search":
+                if quota_id == "ProjectV3SearchRequestsPerMinutePerProject":
                     project_rate_limiter = (
                         await project_search_requests_per_minute_per_project.limiter(
                             project_id
@@ -257,4 +256,6 @@ async def resolve_request_controllers(
     kind: str, **kwargs: Any
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
     service_account_project_id = get_service_account_project_id()
-    return await get_quotas_for_project(service_account_project_id, kind, **kwargs)
+    return await get_quotas_for_project(
+        service_account_project_id, kind, quota_id=kwargs.get("quota_id")
+    )
