@@ -6,11 +6,12 @@ resources:
       entity:
         mappings:
           identifier: .email
+          title: .displayName
           blueprint: '"HiBobUser"'
           properties:
             name: .displayName
-            tenure: .tenureDuration.humanize
-            is_manager: .isManager
+            tenure: .work.tenureDuration.humanize
+            is_manager: .work.isManager
           relations:
-            teams: .department
-            reportsTo: .reportsTo.email
+            teams: .work.department
+            reportsTo: .work.reportsTo.email
