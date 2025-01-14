@@ -46,6 +46,19 @@ class KafkaEventListenerSettings(EventListenerSettings):
     kafka_security_enabled: bool = True
     consumer_poll_timeout: int = 1
 
+    def get_changelog_destination_details(self) -> dict[str, Any]:
+        """
+        Returns the changelog destination configuration for the Kafka event listener.
+        For Kafka event listeners, this specifies that changelog events should be sent via Kafka.
+
+        Returns:
+            dict[str, Any]: A dictionary with type "KAFKA" to indicate that changelog events
+                           should be sent through the Kafka message bus.
+        """
+        return {
+            "type": self.type,
+        }
+
 
 class KafkaEventListener(BaseEventListener):
     """

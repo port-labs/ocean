@@ -4,7 +4,7 @@ icon: Dynatrace
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/dynatrace
 features:
   - type: exporter
-    section: Incident Management
+    section: APM & Alerting
     resources:
       - kind: problem
       - kind: slo

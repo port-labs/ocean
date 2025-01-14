@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.2.20 (2025-1-13)
+
+
+### Improvements
+
+- Added support to sync Jira teams to Port
+
+## 0.2.19 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
 
 ## 0.2.18 (2025-01-08)
 
