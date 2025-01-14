@@ -107,6 +107,7 @@ async def list_resources(
     """
     # override the default version in the client to the version that we want to query
     resources_client.resources._config.api_version = api_version
+    resources_client.resources._api_version = api_version
     if resource_type and resource_url:
         raise ValueError("Only one of resource_type and resource_url can be passed")
 
