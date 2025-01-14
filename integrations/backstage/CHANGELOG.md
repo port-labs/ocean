@@ -1,3 +1,11 @@
+## 0.1.29-beta (2025-01-14)
+
+
+### Improvements
+
+- Bumped jinja version to ^
+
+
 ## 0.1.28-beta (2025-01-12)
 
 
