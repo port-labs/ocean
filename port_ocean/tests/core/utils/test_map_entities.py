@@ -6,10 +6,14 @@ from port_ocean.core.utils.utils import (
     map_entities,
     are_entities_properties_equal,
 )
+from typing import Any
 
 
 def create_test_entity(
-    identifier: str, blueprint: str, properties: dict, relations: dict
+    identifier: str,
+    blueprint: str,
+    properties: dict[str, Any],
+    relations: dict[str, Any],
 ) -> Entity:
     return Entity(
         identifier=identifier,
@@ -19,7 +23,7 @@ def create_test_entity(
     )
 
 
-def test_are_entities_properties_equal_identical_properties_should_be_true():
+def test_are_entities_properties_equal_identical_properties_should_be_true() -> None:
     entity1 = create_test_entity(
         "",
         "",
@@ -35,7 +39,9 @@ def test_are_entities_properties_equal_identical_properties_should_be_true():
     assert are_entities_properties_equal(entity1, entity2) is True
 
 
-def test_are_entities_properties_equal_different_number_properties_should_be_false():
+def test_are_entities_properties_equal_different_number_properties_should_be_false() -> (
+    None
+):
     entity1 = create_test_entity(
         "",
         "",
@@ -51,7 +57,9 @@ def test_are_entities_properties_equal_different_number_properties_should_be_fal
     assert are_entities_properties_equal(entity1, entity2) is False
 
 
-def test_are_entities_properties_equal_different_date_properties_should_be_false():
+def test_are_entities_properties_equal_different_date_properties_should_be_false() -> (
+    None
+):
     entity1 = create_test_entity(
         "",
         "",
@@ -67,7 +75,9 @@ def test_are_entities_properties_equal_different_date_properties_should_be_false
     assert are_entities_properties_equal(entity1, entity2) is False
 
 
-def test_are_entities_properties_equal_identical_properties_different_order_should_be_true():
+def test_are_entities_properties_equal_identical_properties_different_order_should_be_true() -> (
+    None
+):
     entity1 = create_test_entity(
         "",
         "",
@@ -83,7 +93,7 @@ def test_are_entities_properties_equal_identical_properties_different_order_shou
     assert are_entities_properties_equal(entity1, entity2) is True
 
 
-def test_are_entities_relations_equal_identical_relations_should_be_true():
+def test_are_entities_relations_equal_identical_relations_should_be_true() -> None:
     entity1 = create_test_entity(
         "",
         "",
@@ -99,7 +109,7 @@ def test_are_entities_relations_equal_identical_relations_should_be_true():
     assert are_entities_relations_equal(entity1, entity2) is True
 
 
-def test_are_entities_relations_equal_different_relations_should_be_false():
+def test_are_entities_relations_equal_different_relations_should_be_false() -> None:
     entity1 = create_test_entity(
         "",
         "",
@@ -115,7 +125,7 @@ def test_are_entities_relations_equal_different_relations_should_be_false():
     assert are_entities_relations_equal(entity1, entity2) is False
 
 
-def test_are_entities_relations_equal_different_relation_keys_should_be_false():
+def test_are_entities_relations_equal_different_relation_keys_should_be_false() -> None:
     entity1 = create_test_entity(
         "",
         "",
@@ -131,7 +141,9 @@ def test_are_entities_relations_equal_different_relation_keys_should_be_false():
     assert are_entities_relations_equal(entity1, entity2) is False
 
 
-def test_are_entities_relations_equal_identical_relations_different_order_should_be_true():
+def test_are_entities_relations_equal_identical_relations_different_order_should_be_true() -> (
+    None
+):
     entity1 = create_test_entity(
         "",
         "",
@@ -147,7 +159,7 @@ def test_are_entities_relations_equal_identical_relations_different_order_should
     assert are_entities_relations_equal(entity1, entity2) is True
 
 
-def test_are_entities_different_identical_entities_should_be_false():
+def test_are_entities_different_identical_entities_should_be_false() -> None:
     entity1 = create_test_entity(
         "",
         "",
@@ -163,7 +175,9 @@ def test_are_entities_different_identical_entities_should_be_false():
     assert are_entities_different(entity1, entity2) is False
 
 
-def test_are_entities_different_entities_with_different_properties_should_be_true():
+def test_are_entities_different_entities_with_different_properties_should_be_true() -> (
+    None
+):
     entity1 = create_test_entity(
         "",
         "",
@@ -179,7 +193,7 @@ def test_are_entities_different_entities_with_different_properties_should_be_tru
     assert are_entities_different(entity1, entity2) is True
 
 
-def test_are_entities_different_with_different_relations_should_be_true():
+def test_are_entities_different_with_different_relations_should_be_true() -> None:
     entity1 = create_test_entity(
         "",
         "",
@@ -226,10 +240,14 @@ entity3 = create_test_entity(
     {"reporter": "id3", "project": "project_id3"},
 )
 entity_with_search_identifier = create_test_entity(
-    {
-        "combinator": "and",
-        "rules": [{"property": "github_username", "operator": "=", "value": "name"}],
-    },
+    str(
+        {
+            "combinator": "and",
+            "rules": [
+                {"property": "github_username", "operator": "=", "value": "name"}
+            ],
+        }
+    ),
     "bp3",
     {"totalIssues": 234, "url": "https://test.atlassian.net/browse/test-23451"},
     {"reporter": "id2", "project": "project_id2"},
@@ -250,14 +268,14 @@ entity_with_search_relation = create_test_entity(
 )
 
 
-def test_map_entities_empty_lists():
+def test_map_entities_empty_lists() -> None:
     """Test when both input lists are empty"""
     changed, unrelevant = map_entities([], [])
     assert len(changed) == 0
     assert len(unrelevant) == 0
 
 
-def test_map_entities_new_entities():
+def test_map_entities_new_entities() -> None:
     """Test when there are simple third party entities that are not in Port"""
     changed, unrelevant = map_entities([entity1, entity2], [])
     assert len(changed) == 2
@@ -266,7 +284,7 @@ def test_map_entities_new_entities():
     assert len(unrelevant) == 0
 
 
-def test_map_entities_deleted_entities():
+def test_map_entities_deleted_entities() -> None:
     """Test when entities exist in Port but not in third party"""
     changed, unrelevant = map_entities([], [entity1, entity2])
     assert len(changed) == 0
@@ -275,14 +293,14 @@ def test_map_entities_deleted_entities():
     assert unrelevant[1] == entity2
 
 
-def test_map_entities_identical_entities():
+def test_map_entities_identical_entities() -> None:
     """Test when entities are identical in both sources"""
     changed, unrelevant = map_entities([entity1], [entity1])
     assert len(changed) == 0
     assert len(unrelevant) == 0
 
 
-def test_map_entities_modified_properties():
+def test_map_entities_modified_properties() -> None:
     """Test when entities exist but have different properties"""
     changed, unrelevant = map_entities([entity1_modified_properties], [entity1])
     assert len(changed) == 1
@@ -290,7 +308,7 @@ def test_map_entities_modified_properties():
     assert len(unrelevant) == 0
 
 
-def test_map_entities_modified_relations():
+def test_map_entities_modified_relations() -> None:
     """Test when entities exist but have different relations"""
     changed, unrelevant = map_entities([entity1_modified_relations], [entity1])
     assert len(changed) == 1
@@ -298,7 +316,7 @@ def test_map_entities_modified_relations():
     assert len(unrelevant) == 0
 
 
-def test_map_entities_search_identifier_entity():
+def test_map_entities_search_identifier_entity() -> None:
     """Test when entity uses search identifier"""
     with patch(
         "port_ocean.core.utils.utils.are_entities_different", return_value=False
@@ -310,7 +328,7 @@ def test_map_entities_search_identifier_entity():
         mock_are_different.assert_not_called()
 
 
-def test_map_entities_search_relation_entity():
+def test_map_entities_search_relation_entity() -> None:
     """Test when entity uses search relation"""
     with patch(
         "port_ocean.core.utils.utils.are_entities_different", return_value=False
@@ -322,7 +340,7 @@ def test_map_entities_search_relation_entity():
         mock_are_different.assert_not_called()
 
 
-def test_map_entities_multiple_entities():
+def test_map_entities_multiple_entities() -> None:
     """Test with multiple entities in both sources"""
     changed, unrelevant = map_entities(
         [entity1_modified_properties, entity2, entity_with_search_identifier],
