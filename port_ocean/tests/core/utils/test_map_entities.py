@@ -1,6 +1,7 @@
 from unittest.mock import patch
 from port_ocean.core.models import Entity
 from port_ocean.core.utils.utils import (
+    are_entities_different,
     are_entities_relations_equal,
     map_entities,
     are_entities_properties_equal,
@@ -128,6 +129,54 @@ def test_are_entities_relations_equal_identical_relations_different_order_should
         {"reporter": "id1", "project": "project_id"},
     )
     assert are_entities_relations_equal(entity1, entity2) is True
+
+
+def test_are_entities_different_identical_entities_should_be_false():
+    entity1 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+    )
+    entity2 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+    )
+    assert are_entities_different(entity1, entity2) is False
+
+
+def test_are_entities_different_entities_with_different_properties_should_be_true():
+    entity1 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 10},
+        {"reporter": "id1", "project": "project_id"},
+    )
+    entity2 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+    )
+    assert are_entities_different(entity1, entity2) is True
+
+
+def test_are_entities_different_with_different_relations_should_be_true():
+    entity1 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+    )
+    entity2 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id2", "project": "project_id"},
+    )
+    assert are_entities_different(entity1, entity2) is True
 
 
 entity1 = create_test_entity(
