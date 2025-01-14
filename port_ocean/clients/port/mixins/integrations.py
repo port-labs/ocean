@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS = 5
 INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR = 1.5
 INTEGRATION_POLLING_RETRY_LIMIT = 30
+CREATE_RESOURCES_PARAM_NAME = "integration_modes"
+CREATE_RESOURCES_PARAM_VALUE = ["create_resources"]
 
 
 class LogAttributes(TypedDict):
@@ -104,7 +106,7 @@ class IntegrationClientMixin:
         query_params = {}
 
         if use_provisioned_defaults:
-            query_params["provision_enabled"] = use_provisioned_defaults
+            query_params[CREATE_RESOURCES_PARAM_NAME] = CREATE_RESOURCES_PARAM_VALUE
 
         if port_app_config and not use_provisioned_defaults:
             json["config"] = port_app_config.to_request()
