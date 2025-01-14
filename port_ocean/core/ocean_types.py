@@ -1,5 +1,13 @@
-from typing import TypedDict, Any, AsyncIterator, Callable, Awaitable, NamedTuple
+from typing import (
+    TypedDict,
+    Any,
+    AsyncIterator,
+    Callable,
+    Awaitable,
+    NamedTuple,
+)
 
+from dataclasses import field
 from port_ocean.core.models import Entity
 
 RAW_ITEM = dict[Any, Any]
@@ -30,6 +38,7 @@ class EntitySelectorDiff(NamedTuple):
 class CalculationResult(NamedTuple):
     entity_selector_diff: EntitySelectorDiff
     errors: list[Exception]
+    misonfigured_entity_keys: dict[str, str] = field(default_factory=dict)
 
 
 class IntegrationEventsCallbacks(TypedDict):

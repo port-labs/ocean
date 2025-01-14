@@ -134,7 +134,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         """
         try:
             transport: httpx.BaseTransport = self._wrapped_transport  # type: ignore
-            if request.method in self._retryable_methods:
+            if self._is_retryable_method(request):
                 send_method = partial(transport.handle_request)
                 response = self._retry_operation(request, send_method)
             else:

@@ -1,5 +1,101 @@
 [
   {
+    "identifier": "datadogUser",
+    "description": "This blueprint represents a Datadog user account. Users can be assigned to teams, granted specific permissions, and can interact with various Datadog features based on their access levels.",
+    "title": "Datadog User",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "title": "Email",
+          "description": "The email address associated with the user account"
+        },
+        "handle": {
+          "type": "string",
+          "title": "Handle",
+          "description": "The unique handle identifier for the user within Datadog"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the user account (e.g., active, pending, disabled)"
+        },
+        "disabled": {
+          "type": "boolean",
+          "title": "Disabled",
+          "description": "Indicates whether the user account is currently disabled"
+        },
+        "verified": {
+          "type": "boolean",
+          "title": "Verified",
+          "description": "Indicates whether the user's email address has been verified"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "The timestamp when the user account was created"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "datadogTeam",
+    "description": "This blueprint represents a Datadog team",
+    "title": "Datadog Team",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "A description of the team's purpose and responsibilities"
+        },
+        "handle": {
+          "type": "string",
+          "title": "Handle",
+          "description": "The unique handle identifier for the team within Datadog"
+        },
+        "userCount": {
+          "type": "number",
+          "title": "User Count",
+          "description": "The total number of users that are members of this team"
+        },
+        "summary": {
+          "type": "string",
+          "title": "Summary",
+          "description": "A brief summary of the team's purpose or main responsibilities"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "The timestamp when the team was created"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "members": {
+        "target": "datadogUser",
+        "title": "Members",
+        "description": "Users who are members of this team",
+        "many": true,
+        "required": false
+      }
+    }
+  },
+  {
     "identifier": "datadogHost",
     "description": "This blueprint represents a datadog host",
     "title": "Datadog Host",
@@ -202,7 +298,14 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "team": {
+        "target": "datadogTeam",
+        "title": "Team",
+        "many": false,
+        "required": false
+      }
+    }
   },
   {
     "identifier": "datadogSlo",
@@ -252,20 +355,7 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "aggregationProperties": {
-      "sli_average": {
-        "title": "SLI Average",
-        "type": "number",
-        "target": "datadogSloHistory",
-        "calculationSpec": {
-          "func": "average",
-          "averageOf": "total",
-          "property": "sliValue",
-          "measureTimeBy": "$createdAt",
-          "calculationBy": "property"
-        }
-      }
-    },
+    "aggregationProperties": {},
     "relations": {
       "monitors": {
         "title": "SLO Monitors",

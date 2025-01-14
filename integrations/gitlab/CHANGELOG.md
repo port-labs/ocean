@@ -7,6 +7,159 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.17 (2025-01-12)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+0.2.16 (2025-01-08)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+0.2.15 (2025-01-07)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+0.2.14 (2025-01-02)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+0.2.13 (2025-01-02)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+0.2.12 (2024-12-31)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.11 (2025-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+0.2.10 (2024-12-26)
+==================
+
+### Improvements
+
+- Add support for GitLab OAuth2.0 installation specification for Port
+
+0.2.9 (2024-12-26)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+0.2.8 (2024-12-24)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+0.2.7 (2024-12-22)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
+0.2.6 (2024-12-19)
+==================
+
+### Improvements
+
+- Added mechanism to make the enrichment of project labels optional
+
+
+0.2.5 (2024-12-16)
+==================
+
+### Improvements
+
+- Added labels as an extra property to the project kind response
+
+
+0.2.4 (2024-12-15)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.2
+
+
+0.2.3 (2024-12-15)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.1
+
+
+0.2.2 (2024-12-12)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.0
+
+
+0.2.1 (2024-12-12)
+====================
+
+### Bug Fixes
+
+- Updated integration to process hook events sequentially to temporarily resolve race condition issues experienced when multiple processes attempts to update the same entity
+
+
+
+0.2.0 (2024-12-11)
+====================
+
+### Improvements
+
+- Added support for OAuth2.0 token
+- Added OAuth installation specification for Port
+
+
+0.1.147 (2024-12-10)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
 0.1.146 (2024-12-04)
 ====================
 

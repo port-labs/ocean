@@ -18,7 +18,7 @@ class TokenResponse(BaseModel):
 
     @property
     def expired(self) -> bool:
-        return self._retrieved_time + self.expires_in < get_time()
+        return self._retrieved_time + self.expires_in <= get_time()
 
     @property
     def full_token(self) -> str:

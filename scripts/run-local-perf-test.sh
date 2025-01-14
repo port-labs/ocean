@@ -23,6 +23,12 @@ export OCEAN__INTEGRATION__CONFIG__ENTITY_KB_SIZE=${ENTITY_KB_SIZE:--1}
 export OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_BATCH_SIZE=${THIRD_PARTY_BATCH_SIZE:--1}
 export OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS=${THIRD_PARTY_LATENCY_MS:--1}
 export OCEAN__INTEGRATION__CONFIG__SINGLE_DEPARTMENT_RUN=1
+export APPLICATION__LOG_LEVEL=${OCEAN_LOG_LEVEL:-'INFO'}
+
+if [[ "${MOCK_PORT_API:-0}" = "1" ]]; then
+    export PORT_BASE_URL=http://localhost:5555
+    make smoke/start-mock-api
+fi
 
 LOG_FILE_MD="${SCRIPT_BASE}/../perf-test-results-${SMOKE_TEST_SUFFIX}.log.md"
 
@@ -58,6 +64,8 @@ RUN_LOG_FILE="./perf-sync.log"
 END_NS=$(date +%s%N)
 ELAPSED_MS=$(((END_NS - START_NS) / 1000000))
 _log "Duration $((ELAPSED_MS / 1000)) seconds"
+
+
 UPSERTED=$(ruby -ne 'puts "#{$1}" if /Upserting (\d*) entities/' <"${RUN_LOG_FILE}" | xargs)
 if [[ -n "${UPSERTED}" ]]; then
     TOTAL_UPSERTED=0
@@ -73,6 +81,11 @@ if [[ -n "${DELETED}" ]]; then
         TOTAL_DELETED=$((DELETE + TOTAL_DELETED))
     done
     _log "Deleted: ${TOTAL_DELETED} entities"
+fi
+
+
+if [[ "${MOCK_PORT_API:-0}" = "1" ]]; then
+    make smoke/stop-mock-api
 fi
 
 _log "Perf test complete"

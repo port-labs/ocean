@@ -7,6 +7,142 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.6 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+## 0.2.5 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.2.4 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+## 0.2.3 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.2.2 (2025-01-02)
+
+
+### Bugfixes
+
+- Fixed the OAuth2 integration mapping for plain text values
+
+
+## 0.2.1 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.2.0 (2025-01-01)
+
+
+### Features
+
+- Added Datadog support for OAuth2 authentication
+
+
+## 0.1.72 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.1.71 (2024-12-30)
+
+
+### Improvements
+
+- Added Datadog Users and Teams
+
+
+## 0.1.70 (2024-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+## 0.1.69 (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.1.68 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+## 0.1.67 (2024-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
+## 0.1.66 (2024-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.2
+
+
+## 0.1.65 (2024-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.1
+
+
+## 0.1.64 (2024-12-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.0
+
+
+## 0.1.63 (2024-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
 ## 0.1.62 (2024-12-04)
 
 

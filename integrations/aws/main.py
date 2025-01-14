@@ -365,6 +365,9 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                     f"Failed to retrieve '{resource_type}' resource with ID '{identifier}' in region '{region}' for account '{account_id}'. "
                     f"Verify that the resource exists and that the necessary permissions are granted."
                 )
+                logger.debug(
+                    f"Failed to describe resource {resource_type} with ID {identifier} in {region} for account {account_id}: {e}"
+                )
 
                 resource = None
 

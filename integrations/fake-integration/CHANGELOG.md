@@ -5,6 +5,126 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.37-dev (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+## 0.1.36-dev (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.1.35-dev (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+## 0.1.34-dev (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.1.33-dev (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.1.32-dev (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.1.31-dev (2025-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+## 0.1.30-dev (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.1.29-dev (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+## 0.1.28-dev (2024-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
+## 0.1.27-dev (2024-12-18)
+
+
+### Improvements
+
+- Added webhook route to the fake integration
+
+
+## 0.1.26-dev (2024-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.2
+
+
+## 0.1.25-dev (2024-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.1
+
+
+## 0.1.24-dev (2024-12-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.0
+
+
+## 0.1.23-dev (2024-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
 ## 0.1.22-dev (2024-12-04)
 
 
