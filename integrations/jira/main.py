@@ -13,6 +13,7 @@ from jira.overrides import (
     JiraIssueSelector,
     JiraPortAppConfig,
     JiraProjectResourceConfig,
+    TeamResourceConfig,
 )
 
 
@@ -20,6 +21,7 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
     USER = "user"
+    TEAM = "team"
 
 
 def create_jira_client() -> JiraClient:
@@ -41,11 +43,8 @@ async def setup_application() -> None:
         )
         return
 
-    jira_client = create_jira_client()
-
-    await jira_client.create_events_webhook(
-        logic_settings["app_host"],
-    )
+    client = create_jira_client()
+    await client.create_events_webhook(app_host)
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -81,13 +80,32 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
+    org_id = ocean.integration_config.get("atlassian_organization_id")
+
+    if not org_id:
+        logger.warning(
+            "Atlassian organization ID wasn't specified, unable to sync teams, skipping"
+        )
+        return
+
+    selector = cast(TeamResourceConfig, event.resource_config).selector
+    async for teams in client.get_paginated_teams(org_id):
+        logger.info(f"Received team batch with {len(teams)} teams")
+        if selector.include_members:
+            teams = await client.enrich_teams_with_members(teams, org_id)
+        yield teams
+
+
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
-    async for users in client.get_paginated_users():
-        logger.info(f"Received users batch with {len(users)} users")
-        yield users
+    async for users_batch in client.get_paginated_users():
+        logger.info(f"Received users batch with {len(users_batch)} users")
+        yield users_batch
 
 
 @ocean.router.post("/webhook")
@@ -155,15 +173,16 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 
                 return {"ok": True}
         case _:
-            logger.error(f"Unknown webhook event type: {webhook_event}")
+            logger.warning(f"Unknown webhook event type: {webhook_event}")
             return {
                 "ok": False,
                 "error": f"Unknown webhook event type: {webhook_event}",
             }
 
     if not item:
-        logger.error("Failed to retrieve item")
-        return {"ok": False, "error": "Failed to retrieve item"}
+        error_msg = f"Failed to retrieve {kind}"
+        logger.warning(error_msg)
+        return {"ok": False, "error": error_msg}
 
     logger.debug(f"Retrieved {kind} item: {item}")
 

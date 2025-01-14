@@ -78,8 +78,16 @@ class EventListenerSettings(BaseOceanModel, extra=Extra.allow):
     type: str
     should_resync: bool = True
 
-    def to_request(self) -> dict[str, Any]:
+    def get_changelog_destination_details(self) -> dict[str, Any]:
         """
-        Converts the Settings object to a dictionary representation (request format).
+        Returns the changelog destination configuration for the event listener.
+        By default, returns an empty dict. Only KAFKA and WEBHOOK event listeners need to override this
+        to provide their specific changelog destination details.
+
+        Returns:
+            dict[str, Any]: The changelog destination configuration. For example:
+                - KAFKA returns {"type": "KAFKA"}
+                - WEBHOOK returns {"type": "WEBHOOK", "url": "https://example.com/resync"}
+                - Other event listeners return {}
         """
-        return {"type": self.type}
+        return {}

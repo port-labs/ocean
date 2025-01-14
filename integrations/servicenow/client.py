@@ -32,12 +32,23 @@ class ServicenowClient:
         }
 
     async def get_paginated_resource(
-        self, resource_kind: str
+        self, resource_kind: str, api_query_params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+
+        user_query = api_query_params.pop("sysparm_query", "")
+        default_ordering = "ORDERBYDESCsys_created_on"
+        enhanced_query = (
+            f"{user_query}^{default_ordering}" if user_query else default_ordering
+        )
+
         params: dict[str, Any] = {
             "sysparm_limit": PAGE_SIZE,
-            "sysparm_query": "ORDERBYsys_created_on",
+            "sysparm_query": enhanced_query,
+            **api_query_params,
         }
+        logger.info(
+            f"Fetching Servicenow data for resource: {resource_kind} with request params: {params}"
+        )
         url = f"{self.servicenow_url}/api/now/table/{resource_kind}"
 
         while url:
