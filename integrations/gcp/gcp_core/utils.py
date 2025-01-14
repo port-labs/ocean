@@ -3,14 +3,14 @@ import base64
 import os
 import typing
 from collections.abc import MutableSequence
-from typing import Any, TypedDict, Tuple
-
+from typing import Any, TypedDict, Tuple, Optional
+from gcp_core.errors import ResourceNotFoundError
 from loguru import logger
 import proto  # type: ignore
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-from gcp_core.overrides import GCPCloudResourceConfig
+from gcp_core.overrides import GCPCloudResourceConfig, ProtoConfig
 from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path
@@ -42,14 +42,65 @@ class AssetData(TypedDict):
 
 
 def parse_latest_resource_from_asset(asset_data: AssetData) -> dict[Any, Any]:
-    max_versioned_resource_data = max(
-        asset_data["versioned_resources"], key=lambda x: x["version"]
+    """
+    Parse the latest version of a resource from asset data.
+
+    Attempts to find the versioned resources using either snake_case or camelCase key,
+    as the input format depends on how the asset data was originally serialized.
+
+    Args:
+        asset_data: Asset data containing versioned resources
+
+    Returns:
+        dict: The most recent version of the resource
+
+    Raises:
+        ResourceNotFoundError: If neither versioned_resources nor versionedResources is found
+    """
+    # Try both key formats since we don't control the input format
+    versioned_resources = asset_data.get("versioned_resources") or asset_data.get(
+        "versionedResources"
     )
+    if not isinstance(versioned_resources, list):
+        raise ResourceNotFoundError(
+            "Could not find versioned resources under either 'versioned_resources' or 'versionedResources'. "
+            "Please ensure the asset data contains a list of versioned resources in the expected format."
+        )
+
+    # Ensure each item in the list is a VersionedResource
+    versioned_resources = typing.cast(list[VersionedResource], versioned_resources)
+
+    max_versioned_resource_data = max(versioned_resources, key=lambda x: x["version"])
     return max_versioned_resource_data["resource"]
 
 
-def parse_protobuf_message(message: proto.Message) -> dict[str, Any]:
-    return proto.Message.to_dict(message)
+def should_use_snake_case() -> bool:
+    """
+    Determines whether to use snake_case for field names based on preserve_api_response_case_style config.
+
+    Returns:
+        bool: True to use snake_case, False to preserve API's original case style
+    """
+
+    selector = get_current_resource_config().selector
+    preserve_api_case = getattr(selector, "preserve_api_response_case_style", False)
+    return not preserve_api_case
+
+
+def parse_protobuf_message(
+    message: proto.Message,
+    config: Optional[ProtoConfig] = None,
+) -> dict[str, Any]:
+    """
+    Parse protobuf message to dict, controlling field name case style.
+    """
+    if config and config.preserving_proto_field_name is not None:
+        use_snake_case = not config.preserving_proto_field_name
+        return proto.Message.to_dict(
+            message, preserving_proto_field_name=use_snake_case
+        )
+    use_snake_case = should_use_snake_case()
+    return proto.Message.to_dict(message, preserving_proto_field_name=use_snake_case)
 
 
 def parse_protobuf_messages(

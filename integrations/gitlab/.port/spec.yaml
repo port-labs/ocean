@@ -1,4 +1,5 @@
-description: Gitlab integration for Port Ocean
+title: GitLab
+description: GitLab integration for Port Ocean
 icon: GitLab
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab
 features:
@@ -42,5 +43,17 @@ configurations:
         \"subgroup_events\",
         \"confidential_issues_events\"]"
     sensitive: true
+saas:
+  enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: tokenMapping
+        value: '{(.oauthData.accessToken): ["**"]} | @json'
+        description: '"Token mapping for Gitlab OAuth2 integration"'
+    valuesOverride:
+      integrationSpec:
+        gitlabHost: '"https://gitlab.com"'
+      appSpec:
+        minimumScheduledResyncInterval: '2h'
 deploymentMethodOverride:
   - type: helm

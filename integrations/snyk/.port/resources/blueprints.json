@@ -311,7 +311,7 @@
       }
     },
     "relations": {
-      "synk_organization": {
+      "snyk_organization": {
         "title": "Snyk Organization",
         "target": "snykOrganization",
         "required": false,

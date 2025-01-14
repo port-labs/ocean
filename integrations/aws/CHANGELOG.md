@@ -7,6 +7,143 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.83 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+## 0.2.82 (2025-01-10)
+
+
+### Improvements
+
+- Added rate limiting and concurrency management in resync_cloudcontrol function to handle AWS throttling more effectively.
+- Improved memory issues by reducing calls to create new boto3 clients.
+
+
+## 0.2.81 (2025-01-08)
+
+
+### Bug Fixes
+
+- Updated the serialized response to include valid custom property json key by accessing the StrEnum value properly. 
+
+
+## 0.2.80 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.2.79 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+## 0.2.78 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.2.77 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.2.76 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.75 (2024-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+## 0.2.74 (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.2.73 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+## 0.2.72 (2024-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
+## 0.2.71 (2024-12-16)
+
+
+### Improvements
+
+- Updated the aiohttp dependency to version 3.11.10, resolving known vulnerability issues with medium severity
+
+
+## 0.2.70 (2024-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.2
+
+
+## 0.2.69 (2024-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.1
+
+
+## 0.2.68 (2024-12-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.0
+
+
+## 0.2.67 (2024-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
 ## 0.2.66 (2024-12-04)
 
 

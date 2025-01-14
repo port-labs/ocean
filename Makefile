@@ -25,7 +25,7 @@ endef
 define install_poetry
 	if ! command -v poetry &> /dev/null; then \
     	pip install --upgrade pip; \
-		pip install poetry; \
+		pip install 'poetry>=1.0.0,<2.0.0'; \
 	else \
     	echo "Poetry is already installed."; \
 	fi
@@ -48,7 +48,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all test/all test/smoke clean/smoke lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all
+.SILENT: install install/all test/all smoke/test smoke/clean lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all smoke/start-mock-api smoke/stop-mock-api
 
 
 # Install dependencies
@@ -122,10 +122,10 @@ new:
 test:
 	$(ACTIVATE) && pytest -m 'not smoke'
 
-test/smoke:
+smoke/test:
 	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} pytest -m smoke
 
-clean/smoke:
+smoke/clean:
 	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./scripts/clean-smoke-test.py
 
 test/watch:
@@ -156,3 +156,10 @@ bump/integrations:
 # make bump/single-integration INTEGRATION=aws
 bump/single-integration:
 	./scripts/bump-single-integration.sh -i $(INTEGRATION)
+
+# run a mock port api server for perf / smoke tests
+smoke/start-mock-api:
+	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./port_ocean/tests/helpers/fake_port_api.py &
+
+smoke/stop-mock-api:
+	ps aux | grep fake_port_api | egrep -v grep | awk '{print $$2};' | xargs kill -9
