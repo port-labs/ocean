@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.113 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to ^
+
+
 ## 0.1.112 (2025-01-12)
 
 
