@@ -3,7 +3,8 @@ from typing import Iterable, Any, TypeVar, Callable, Awaitable
 
 from loguru import logger
 from pydantic import parse_obj_as, ValidationError
-from deepdiff import DeepDiff
+
+import deepdiff
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.models import Entity, Runtime
@@ -119,7 +120,7 @@ def are_entities_properties_equal(first_entity: Entity, second_entity: Entity) -
         bool: True if entities have same identifier, blueprint and properties
     """
     # Compare properties using DeepDiff
-    diff = DeepDiff(
+    diff = deepdiff.DeepDiff(
         first_entity.properties, second_entity.properties, ignore_order=True
     )
     return not diff
@@ -137,7 +138,9 @@ def are_entities_relations_equal(first_entity: Entity, second_entity: Entity) ->
         bool: True if entities have same relations
     """
     # Compare relations using DeepDiff
-    diff = DeepDiff(first_entity.relations, second_entity.relations, ignore_order=True)
+    diff = deepdiff.DeepDiff(
+        first_entity.relations, second_entity.relations, ignore_order=True
+    )
     return not diff
 
 
