@@ -260,10 +260,12 @@ def test_map_entities_search_relation_entity():
 def test_map_entities_multiple_entities():
     """Test with multiple entities in both sources"""
     unique, unrelevant = map_entities(
-        [entity1_modified_properties, entity2], [entity1, entity3]
+        [entity1_modified_properties, entity2, entity_with_search_identifier],
+        [entity1, entity3],
     )
-    assert len(unique) == 2
+    assert len(unique) == 3
     assert len(unrelevant) == 1
     assert unique[0] == entity1_modified_properties
     assert unique[1] == entity2
+    assert unique[2] == entity_with_search_identifier
     assert unrelevant[0] == entity3
