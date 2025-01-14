@@ -202,7 +202,9 @@ async def test_sync_raw_mixin_self_dependency(
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
+        return_value=calc_result_mock
+    )  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -214,8 +216,12 @@ async def test_sync_raw_mixin_self_dependency(
             )
         )
         event.port_app_config = app_config
-        event.entity_topological_sorter.register_entity = MagicMock(side_effect=event.entity_topological_sorter.register_entity)  # type: ignore
-        event.entity_topological_sorter.get_entities = MagicMock(side_effect=event.entity_topological_sorter.get_entities)  # type: ignore
+        event.entity_topological_sorter.register_entity = MagicMock(
+            side_effect=event.entity_topological_sorter.register_entity
+        )  # type: ignore
+        event.entity_topological_sorter.get_entities = MagicMock(
+            side_effect=event.entity_topological_sorter.get_entities
+        )  # type: ignore
 
         with patch(
             "port_ocean.core.integrations.mixins.sync_raw.event_context",
@@ -225,7 +231,6 @@ async def test_sync_raw_mixin_self_dependency(
                 "port_ocean.core.utils.entity_topological_sorter.EntityTopologicalSorter.order_by_entities_dependencies",
                 mock_order_by_entities_dependencies,
             ):
-
                 await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
@@ -257,7 +262,9 @@ async def test_sync_raw_mixin_circular_dependency(
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
+        return_value=calc_result_mock
+    )  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -276,7 +283,9 @@ async def test_sync_raw_mixin_circular_dependency(
             entity.properties["mock_is_to_fail"] = False
             return org(*args, **kwargs)
 
-        event.entity_topological_sorter.register_entity = MagicMock(side_effect=mock_register_entity)  # type: ignore
+        event.entity_topological_sorter.register_entity = MagicMock(
+            side_effect=mock_register_entity
+        )  # type: ignore
         raiesed_error_handle_failed = []
         org_get_entities = event.entity_topological_sorter.get_entities
 
@@ -287,7 +296,9 @@ async def test_sync_raw_mixin_circular_dependency(
                 raiesed_error_handle_failed.append(e)
                 raise e
 
-        event.entity_topological_sorter.get_entities = MagicMock(side_effect=lambda *args, **kwargs: handle_failed_wrapper(*args, **kwargs))  # type: ignore
+        event.entity_topological_sorter.get_entities = MagicMock(
+            side_effect=lambda *args, **kwargs: handle_failed_wrapper(*args, **kwargs)
+        )  # type: ignore
 
         with patch(
             "port_ocean.core.integrations.mixins.sync_raw.event_context",
@@ -297,7 +308,6 @@ async def test_sync_raw_mixin_circular_dependency(
                 "port_ocean.core.utils.entity_topological_sorter.EntityTopologicalSorter.order_by_entities_dependencies",
                 mock_order_by_entities_dependencies,
             ):
-
                 await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
@@ -338,7 +348,9 @@ async def test_sync_raw_mixin_dependency(
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
+        return_value=calc_result_mock
+    )  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -357,7 +369,9 @@ async def test_sync_raw_mixin_dependency(
             entity.properties["mock_is_to_fail"] = False
             return org(*args, **kwargs)
 
-        event.entity_topological_sorter.register_entity = MagicMock(side_effect=mock_register_entity)  # type: ignore
+        event.entity_topological_sorter.register_entity = MagicMock(
+            side_effect=mock_register_entity
+        )  # type: ignore
         raiesed_error_handle_failed = []
         org_event_get_entities = event.entity_topological_sorter.get_entities
 
@@ -368,7 +382,9 @@ async def test_sync_raw_mixin_dependency(
                 raiesed_error_handle_failed.append(e)
                 raise e
 
-        event.entity_topological_sorter.get_entities = MagicMock(side_effect=lambda *args, **kwargs: get_entities_wrapper(*args, **kwargs))  # type: ignore
+        event.entity_topological_sorter.get_entities = MagicMock(
+            side_effect=lambda *args, **kwargs: get_entities_wrapper(*args, **kwargs)
+        )  # type: ignore
 
         with patch(
             "port_ocean.core.integrations.mixins.sync_raw.event_context",
@@ -378,7 +394,6 @@ async def test_sync_raw_mixin_dependency(
                 "port_ocean.core.utils.entity_topological_sorter.EntityTopologicalSorter.order_by_entities_dependencies",
                 mock_order_by_entities_dependencies,
             ):
-
                 await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
