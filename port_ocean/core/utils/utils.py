@@ -163,7 +163,7 @@ def map_entities(
     """
     port_entities_dict = {}
     third_party_entities_dict = {}
-    unique_entities = []
+    changed_entities = []
     unrelevant_entities = []
 
     for entity in port_entities:
@@ -172,16 +172,16 @@ def map_entities(
 
     for entity in third_party_entities:
         if entity.is_using_search_identifier or entity.is_using_search_relation:
-            unique_entities.append(entity)
+            changed_entities.append(entity)
             continue
         key = (entity.identifier, entity.blueprint)
         third_party_entities_dict[key] = entity
 
         entity_at_port = port_entities_dict.get(key, None)
         if entity_at_port is None:
-            unique_entities.append(entity)
+            changed_entities.append(entity)
         elif are_entities_different(entity, port_entities_dict[key]):
-            unique_entities.append(entity)
+            changed_entities.append(entity)
 
     for entity in port_entities:
         key = (entity.identifier, entity.blueprint)
@@ -189,4 +189,4 @@ def map_entities(
         if entity_at_third_party is None:
             unrelevant_entities.append(entity)
 
-    return unique_entities, unrelevant_entities
+    return changed_entities, unrelevant_entities

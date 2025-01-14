@@ -130,6 +130,32 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
 
+    def _create_entities_identifier_query(self, entities: list[Entity]) -> dict:
+        """Create a query to search for entities by their identifiers.
+
+        Args:
+            entities (list[Entity]): List of entities to search for.
+
+        Returns:
+            dict: Query structure for searching entities by identifier.
+        """
+        return {
+            "combinator": "and",
+            "rules": [
+                {
+                    "combinator": "or",
+                    "rules": [
+                        {
+                            "property": "$identifier",
+                            "operator": "=",
+                            "value": entity.identifier,
+                        }
+                        for entity in entities
+                    ]
+                }
+            ]
+        }
+
     async def _register_resource_raw(
         self,
         resource: ResourceConfig,
@@ -141,30 +167,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         objects_diff = await self._calculate_raw(
             [(resource, results)], parse_all, send_raw_data_examples_amount
         )
-        query = {
-            "combinator": "and",
-            "rules": [
-                {
-                    "combinator": "or",
-                    "rules": [
-                        {
-                            "property": "$identifier",
-                            "operator": "=",
-                            "value": entity.identifier,
-                        }
-                        for entity in objects_diff[0].entity_selector_diff.passed
-                    ]
-                }
-            ]
-        }
+        query = self._create_entities_identifier_query(objects_diff[0].entity_selector_diff.passed)
         entities_at_port_with_properties = await ocean.port_client.search_entities(
             user_agent_type,
             include_params=["blueprint", "identifier"] + [
                 f"properties.{prop}" for prop in resource.port.entity.mappings.properties
+            ] + [
+                f"relations.{relation}" for relation in resource.port.entity.mappings.relations
             ],
             query=query
         )
         logger.bind(port_entities = len(entities_at_port_with_properties)).info(f"getting Entities from port with properties")
+
         if len(entities_at_port_with_properties) > 0:
             unique_entities, unrelevant_entities = map_entities(objects_diff[0].entity_selector_diff.passed, entities_at_port_with_properties)
         else:
@@ -177,14 +191,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             logger.bind(
                 changed_entities=len(unique_entities),
                 total_entities=len(objects_diff[0].entity_selector_diff.passed),
-            ).info("Upserting changed entities test")
+            ).info("Upserting changed entities")
             modified_objects = await self.entities_state_applier.upsert( #hit here without the inner function, weird
                 unique_entities, user_agent_type
             )
         else:
             logger.bind(
                 total_entities=len(objects_diff[0].entity_selector_diff.passed),
-            ).info("no changed entities, not upserting test")
+            ).info("no changed entities, not upserting")
 
         return CalculationResult(
             objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
