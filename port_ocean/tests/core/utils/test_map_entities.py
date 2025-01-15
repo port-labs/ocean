@@ -2,9 +2,8 @@ from unittest.mock import patch
 from port_ocean.core.models import Entity
 from port_ocean.core.utils.utils import (
     are_entities_different,
-    are_entities_relations_equal,
     map_entities,
-    are_entities_properties_equal,
+    are_entities_fields_equal,
 )
 from typing import Any
 
@@ -23,140 +22,96 @@ def create_test_entity(
     )
 
 
-def test_are_entities_properties_equal_identical_properties_should_be_true() -> None:
-    entity1 = create_test_entity(
-        "",
-        "",
-        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
-        {},
+def test_are_entities_fields_equal_identical_properties_should_be_true() -> None:
+    assert (
+        are_entities_fields_equal(
+            {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+            {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        )
+        is True
     )
-    entity2 = create_test_entity(
-        "",
-        "",
-        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
-        {},
-    )
-    assert are_entities_properties_equal(entity1, entity2) is True
 
 
-def test_are_entities_properties_equal_different_number_properties_should_be_false() -> (
+def test_are_entities_fields_equal_different_number_properties_should_be_false() -> (
     None
 ):
-    entity1 = create_test_entity(
-        "",
-        "",
-        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
-        {},
+    assert (
+        are_entities_fields_equal(
+            {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+            {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 456},
+        )
+        is False
     )
-    entity2 = create_test_entity(
-        "",
-        "",
-        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 456},
-        {},
-    )
-    assert are_entities_properties_equal(entity1, entity2) is False
 
 
-def test_are_entities_properties_equal_different_date_properties_should_be_false() -> (
+def test_are_entities_fields_equal_different_date_properties_should_be_false() -> None:
+    assert (
+        are_entities_fields_equal(
+            {
+                "created_at": "2024-03-20T10:00:00Z",
+                "updated_at": "2024-03-21T15:30:00Z",
+            },
+            {
+                "created_at": "2024-03-20T10:00:00Z",
+                "updated_at": "2024-03-22T09:45:00Z",
+            },
+        )
+        is False
+    )
+
+
+def test_are_entities_fields_equal_identical_properties_different_order_should_be_true() -> (
     None
 ):
-    entity1 = create_test_entity(
-        "",
-        "",
-        {"created_at": "2024-03-20T10:00:00Z", "updated_at": "2024-03-21T15:30:00Z"},
-        {},
+    assert (
+        are_entities_fields_equal(
+            {"totalIssues": 123, "url": "https://test.atlassian.net/browse/test-29081"},
+            {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        )
+        is True
     )
-    entity2 = create_test_entity(
-        "",
-        "",
-        {"created_at": "2024-03-20T10:00:00Z", "updated_at": "2024-03-22T09:45:00Z"},
-        {},
-    )
-    assert are_entities_properties_equal(entity1, entity2) is False
 
 
-def test_are_entities_properties_equal_identical_properties_different_order_should_be_true() -> (
+def test_are_entities_fields_equal_identical_relations_should_be_true() -> None:
+    assert (
+        are_entities_fields_equal(
+            {"reporter": "id1", "project": "project_id"},
+            {"reporter": "id1", "project": "project_id"},
+        )
+        is True
+    )
+
+
+def test_are_entities_fields_equal_different_relations_should_be_false() -> None:
+    assert (
+        are_entities_fields_equal(
+            {"reporter": "id1", "project": "project_id"},
+            {"reporter": "id2", "project": "project_id"},
+        )
+        is False
+    )
+
+
+def test_are_entities_fields_equal_different_relation_keys_should_be_false() -> None:
+    assert (
+        are_entities_fields_equal(
+            {"reporter": "id1", "project": "project_id"},
+            {"assignee": "id1", "project": "project_id"},
+        )
+        is False
+    )
+
+
+def test_are_entities_fields_equal_identical_relations_different_order_should_be_true() -> (
     None
 ):
-    entity1 = create_test_entity(
-        "",
-        "",
-        {"totalIssues": 123, "url": "https://test.atlassian.net/browse/test-29081"},
-        {},
+    assert (
+        are_entities_fields_equal(
+            {"project": "project_id", "reporter": "id1"},
+            {"reporter": "id1", "project": "project_id"},
+        )
+        is True
     )
-    entity2 = create_test_entity(
-        "",
-        "",
-        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
-        {},
-    )
-    assert are_entities_properties_equal(entity1, entity2) is True
-
-
-def test_are_entities_relations_equal_identical_relations_should_be_true() -> None:
-    entity1 = create_test_entity(
-        "",
-        "",
-        {},
-        {"reporter": "id1", "project": "project_id"},
-    )
-    entity2 = create_test_entity(
-        "",
-        "",
-        {},
-        {"reporter": "id1", "project": "project_id"},
-    )
-    assert are_entities_relations_equal(entity1, entity2) is True
-
-
-def test_are_entities_relations_equal_different_relations_should_be_false() -> None:
-    entity1 = create_test_entity(
-        "",
-        "",
-        {},
-        {"reporter": "id1", "project": "project_id"},
-    )
-    entity2 = create_test_entity(
-        "",
-        "",
-        {},
-        {"reporter": "id2", "project": "project_id"},
-    )
-    assert are_entities_relations_equal(entity1, entity2) is False
-
-
-def test_are_entities_relations_equal_different_relation_keys_should_be_false() -> None:
-    entity1 = create_test_entity(
-        "",
-        "",
-        {},
-        {"reporter": "id1", "project": "project_id"},
-    )
-    entity2 = create_test_entity(
-        "",
-        "",
-        {},
-        {"assignee": "id1", "project": "project_id"},
-    )
-    assert are_entities_relations_equal(entity1, entity2) is False
-
-
-def test_are_entities_relations_equal_identical_relations_different_order_should_be_true() -> (
-    None
-):
-    entity1 = create_test_entity(
-        "",
-        "",
-        {},
-        {"project": "project_id", "reporter": "id1"},
-    )
-    entity2 = create_test_entity(
-        "",
-        "",
-        {},
-        {"reporter": "id1", "project": "project_id"},
-    )
-    assert are_entities_relations_equal(entity1, entity2) is True
 
 
 def test_are_entities_different_identical_entities_should_be_false() -> None:

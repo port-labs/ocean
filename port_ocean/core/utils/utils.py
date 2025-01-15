@@ -1,10 +1,11 @@
 import asyncio
+import hashlib
+import json
 from typing import Iterable, Any, TypeVar, Callable, Awaitable
 
 from loguru import logger
 from pydantic import parse_obj_as, ValidationError
 
-import deepdiff
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.models import Entity, Runtime
@@ -108,7 +109,9 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
     return EntityPortDiff(created=created, modified=modified, deleted=deleted)
 
 
-def are_entities_properties_equal(first_entity: Entity, second_entity: Entity) -> bool:
+def are_entities_fields_equal(
+    first_entity_field: dict[str, Any], second_entity_field: dict[str, Any]
+) -> bool:
     """
     Compare two entities by their identifier, blueprint, and properties using DeepDiff.
 
@@ -117,37 +120,19 @@ def are_entities_properties_equal(first_entity: Entity, second_entity: Entity) -
         second_entity: Second entity to compare
 
     Returns:
-        bool: True if entities have same identifier, blueprint and properties
+        bool: True if entities have same fields
     """
-    # Compare properties using DeepDiff
-    diff = deepdiff.DeepDiff(
-        first_entity.properties, second_entity.properties, ignore_order=True
-    )
-    return not diff
-
-
-def are_entities_relations_equal(first_entity: Entity, second_entity: Entity) -> bool:
-    """
-    Compare two entities by their relations using DeepDiff.
-
-    Args:
-        first_entity: First entity to compare
-        second_entity: Second entity to compare
-
-    Returns:
-        bool: True if entities have same relations
-    """
-    # Compare relations using DeepDiff
-    diff = deepdiff.DeepDiff(
-        first_entity.relations, second_entity.relations, ignore_order=True
-    )
-    return not diff
+    first_props = json.dumps(first_entity_field, sort_keys=True)
+    second_props = json.dumps(second_entity_field, sort_keys=True)
+    first_hash = hashlib.sha256(first_props.encode()).hexdigest()
+    second_hash = hashlib.sha256(second_props.encode()).hexdigest()
+    return first_hash == second_hash
 
 
 def are_entities_different(first_entity: Entity, second_entity: Entity) -> bool:
-    return not are_entities_properties_equal(
-        first_entity, second_entity
-    ) or not are_entities_relations_equal(first_entity, second_entity)
+    return not are_entities_fields_equal(
+        first_entity.properties, second_entity.properties
+    ) or not are_entities_fields_equal(first_entity.relations, second_entity.relations)
 
 
 def map_entities(
