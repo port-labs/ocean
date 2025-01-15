@@ -138,7 +138,7 @@ class GroupHandler(HookHandler):
             logger.info(f"Finished handling {event} for group {group_path}")
         except asyncio.TimeoutError:
             logger.error(f"Timeout while handling hook {event} for group {group_path}")
-
+            raise
     @abstractmethod
     async def _on_hook(
         self, body: dict[str, Any], gitlab_group: Optional[Group]
