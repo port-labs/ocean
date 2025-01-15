@@ -113,14 +113,14 @@ def are_entities_fields_equal(
     first_entity_field: dict[str, Any], second_entity_field: dict[str, Any]
 ) -> bool:
     """
-    Compare two entities by their identifier, blueprint, and properties using DeepDiff.
+    Compare two entity fields by serializing them to JSON and comparing their SHA-256 hashes.
 
     Args:
-        first_entity: First entity to compare
-        second_entity: Second entity to compare
+        first_entity_field: First entity field dictionary to compare
+        second_entity_field: Second entity field dictionary to compare
 
     Returns:
-        bool: True if entities have same fields
+        bool: True if the entity fields have identical content
     """
     first_props = json.dumps(first_entity_field, sort_keys=True)
     second_props = json.dumps(second_entity_field, sort_keys=True)
@@ -141,7 +141,7 @@ def map_entities(
     """
     Maps the entities into two lists:
     - Filtered list of third party entities, excluding matches found in port_entities that needs to be upserted
-    - List of entities that are not relevant that should be deleted
+    - List of entities that are not relevant that should be deleted from Port
     Args:
         third_party_entities: List of entities from third party source
         port_entities: List of existing Port entities
