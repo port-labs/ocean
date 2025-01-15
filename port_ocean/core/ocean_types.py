@@ -38,7 +38,6 @@ class EntitySelectorDiff(NamedTuple):
 class CalculationResult(NamedTuple):
     entity_selector_diff: EntitySelectorDiff
     errors: list[Exception]
-    unrelevant_entities: list[Entity] = field(default_factory=list)
     misonfigured_entity_keys: dict[str, str] = field(default_factory=dict)
 
 

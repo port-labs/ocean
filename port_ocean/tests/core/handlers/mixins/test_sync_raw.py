@@ -412,7 +412,10 @@ async def test_sync_raw_mixin_dependency(
 
 @pytest.mark.asyncio
 async def test_register_raw(
-    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin, mock_ocean: Ocean
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     kind = "service"
     user_agent_type = UserAgentType.exporter
@@ -427,6 +430,9 @@ async def test_register_raw(
             "properties": {"url": "https://example.com"},
         },
     ]
+
+    # Set is_saas to False
+    monkeypatch.setattr(mock_context.app, "is_saas", lambda: False)
 
     async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
         # Use patch to mock the method instead of direct assignment
@@ -490,7 +496,10 @@ async def test_register_raw(
 
 @pytest.mark.asyncio
 async def test_unregister_raw(
-    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin, mock_ocean: Ocean
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     kind = "service"
     user_agent_type = UserAgentType.exporter
@@ -505,6 +514,9 @@ async def test_unregister_raw(
             "properties": {"url": "https://example.com"},
         },
     ]
+
+    # Set is_saas to False
+    monkeypatch.setattr(mock_context.app, "is_saas", lambda: False)
 
     async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
         # Use patch to mock the method instead of direct assignment
@@ -584,15 +596,12 @@ async def test_map_entities_compared_with_port_no_port_entities(
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
 
     # Execute test
-    changed_entities, irelevant_entities = (
-        await mock_sync_raw_mixin._map_entities_compared_with_port(
-            entities, resource, UserAgentType.exporter
-        )
+    changed_entities = await mock_sync_raw_mixin._map_entities_compared_with_port(
+        entities, resource, UserAgentType.exporter
     )
 
     # Verify results
     assert len(changed_entities) == 2
-    assert len(irelevant_entities) == 0
     assert [e.identifier for e in changed_entities] == ["entity_1", "entity_2"]
 
 
@@ -674,7 +683,6 @@ class CalculationResult:
     errors: List[Any]
     misconfigurations: List[Any]
     misonfigured_entity_keys: Optional[List[Any]] = None
-    unrelevant_entities: Optional[List[Entity]] = None
 
 
 @pytest.mark.asyncio
@@ -689,8 +697,8 @@ async def test_register_resource_raw_saas_no_changes(
 
     # Mock dependencies
     entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[], unrelevant_entities=[])])  # type: ignore
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([], [entity]))  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
@@ -704,8 +712,7 @@ async def test_register_resource_raw_saas_no_changes(
         )
 
         # Assertions
-        assert len(result.entity_selector_diff.passed) == 0
-        assert len(result.unrelevant_entities or []) == 1
+        assert len(result.entity_selector_diff.passed) == 1
         mock_sync_raw_mixin._calculate_raw.assert_called_once()
         mock_sync_raw_mixin.entities_state_applier.upsert.assert_not_called()
         mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
@@ -723,8 +730,8 @@ async def test_register_resource_raw_saas_with_changes(
 
     # Mock dependencies
     entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[], unrelevant_entities=[])])  # type: ignore
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity], []))  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
@@ -739,7 +746,6 @@ async def test_register_resource_raw_saas_with_changes(
 
         # Assertions
         assert len(result.entity_selector_diff.passed) == 1
-        assert len(result.unrelevant_entities or []) == 0
         mock_sync_raw_mixin._calculate_raw.assert_called_once()
         mock_sync_raw_mixin.entities_state_applier.upsert.assert_called_once()
         mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
@@ -762,7 +768,6 @@ async def test_register_resource_raw_non_saas(
         errors=[],
         misconfigurations=[],
         misonfigured_entity_keys=[],
-        unrelevant_entities=[],
     )
     mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[calculation_result])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock()  # type: ignore
@@ -780,7 +785,6 @@ async def test_register_resource_raw_non_saas(
 
         # Assertions
         assert len(result.entity_selector_diff.passed) == 1
-        assert result.unrelevant_entities == calculation_result.unrelevant_entities
         mock_sync_raw_mixin._calculate_raw.assert_called_once()
         mock_sync_raw_mixin._map_entities_compared_with_port.assert_not_called()
         mock_sync_raw_mixin.entities_state_applier.upsert.assert_called_once()
@@ -799,8 +803,8 @@ async def test_register_resource_raw_saas_with_errors(
     # Mock dependencies
     failed_entity = Entity(identifier="1", blueprint="service")
     error = Exception("Test error")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misonfigured_entity_keys=[], unrelevant_entities=[])])  # type: ignore
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([], []))  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:

@@ -161,7 +161,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         entities: list[Entity],
         resource: ResourceConfig,
         user_agent_type: UserAgentType,
-    ) -> tuple[list[Entity], list[Entity]]:
+    ) -> list[Entity]:
         query = self._create_entities_identifier_query(entities)
         entities_at_port_with_properties = await ocean.port_client.search_entities(
             user_agent_type,
@@ -176,7 +176,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         if len(entities_at_port_with_properties) > 0:
             return map_entities(entities, entities_at_port_with_properties)
-        return entities, []
+        return entities
 
     async def _register_resource_raw(
         self,
@@ -190,11 +190,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             [(resource, results)], parse_all, send_raw_data_examples_amount
         )
         modified_objects = []
-        unrelevant_entities = []
 
         if ocean.app.is_saas():
             try:
-                changed_entities, unrelevant_entities = await self._map_entities_compared_with_port(
+                changed_entities = await self._map_entities_compared_with_port(
                     objects_diff[0].entity_selector_diff.passed,
                     resource,
                     user_agent_type
@@ -203,11 +202,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 if changed_entities:
                     logger.info("Upserting changed entities", changed_entities=len(changed_entities),
                         total_entities=len(objects_diff[0].entity_selector_diff.passed))
-                    modified_objects = await self.entities_state_applier.upsert(
+                    await self.entities_state_applier.upsert(
                         changed_entities, user_agent_type
                     )
                 else:
                     logger.info("no changed entities, not upserting", total_entities=len(objects_diff[0].entity_selector_diff.passed))
+
+                modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
+
             except Exception as e:
                 logger.warning(f"Failed to map entities with Port, falling back to upserting all entities: {str(e)}")
                 modified_objects = await self.entities_state_applier.upsert(
@@ -215,13 +217,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
         else:
             modified_objects = await self.entities_state_applier.upsert(
-            objects_diff[0].entity_selector_diff.passed, user_agent_type
+                objects_diff[0].entity_selector_diff.passed, user_agent_type
         )
         return CalculationResult(
             objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
             errors=objects_diff[0].errors,
-            misonfigured_entity_keys=objects_diff[0].misonfigured_entity_keys,
-            unrelevant_entities=unrelevant_entities
+            misonfigured_entity_keys=objects_diff[0].misonfigured_entity_keys
         )
 
     async def _unregister_resource_raw(
@@ -237,7 +238,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             return [], []
 
         objects_diff = await self._calculate_raw([(resource, results)])
-        entities_selector_diff, errors, _, _ = objects_diff[0]
+        entities_selector_diff, errors, _ = objects_diff[0]
 
         await self.entities_state_applier.delete(
             entities_selector_diff.passed, user_agent_type
@@ -247,7 +248,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     async def _register_in_batches(
         self, resource_config: ResourceConfig, user_agent_type: UserAgentType
-    ) -> tuple[list[Entity], list[Exception], list[Entity]]:
+    ) -> tuple[list[Entity], list[Exception]]:
         results, errors = await self._get_resource_raw_results(resource_config)
         async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
         raw_results: RAW_RESULT = []
@@ -262,7 +263,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         passed_entities = []
-        unrelevant_entities = []
         if raw_results:
             calculation_result = await self._register_resource_raw(
                 resource_config,
@@ -272,7 +272,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             errors.extend(calculation_result.errors)
             passed_entities = list(calculation_result.entity_selector_diff.passed)
-            unrelevant_entities = list(calculation_result.unrelevant_entities)
 
         for generator in async_generators:
             try:
@@ -290,14 +289,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
                     errors.extend(calculation_result.errors)
                     passed_entities.extend(calculation_result.entity_selector_diff.passed)
-                    unrelevant_entities.extend(calculation_result.unrelevant_entities)
             except* OceanAbortException as error:
                 errors.append(error)
 
         logger.info(
             f"Finished registering change for {len(results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
         )
-        return passed_entities, errors, unrelevant_entities
+        return passed_entities, errors
 
     async def register_raw(
         self,
@@ -326,7 +324,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if not resource_mappings:
             return []
 
-        diffs, errors, _, misconfigured_entity_keys = zip(
+        diffs, errors, misconfigured_entity_keys = zip(
             *await asyncio.gather(
                 *(
                     self._register_resource_raw(
@@ -564,8 +562,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     return
 
                 logger.info("Starting resync diff calculation")
-                flat_created_entities, errors, unrelevant_entities = zip_and_sum(creation_results) or [
-                    [],
+                flat_created_entities, errors = zip_and_sum(creation_results) or [
                     [],
                     [],
                 ]
@@ -584,15 +581,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.info(
                         f"Running resync diff calculation, number of entities created during sync: {len(flat_created_entities)}"
                     )
-                    if ocean.app.is_saas() and unrelevant_entities:
-                        await self.entities_state_applier._safe_delete(unrelevant_entities, flat_created_entities, user_agent_type)
-                    else:
-                        entities_at_port = await ocean.port_client.search_entities(
-                            user_agent_type
-                        )
-                        await self.entities_state_applier.delete_diff(
-                            {"before": entities_at_port, "after": flat_created_entities},
-                            user_agent_type,
-                        )
+                    entities_at_port = await ocean.port_client.search_entities(
+                        user_agent_type
+                    )
+                    await self.entities_state_applier.delete_diff(
+                        {"before": entities_at_port, "after": flat_created_entities},
+                        user_agent_type,
+                    )
 
                     logger.info("Resync finished successfully")

@@ -98,10 +98,22 @@ class EntityClientMixin:
         if result_entity.is_using_search_identifier:
             return None
 
-        # In order to save memory we'll keep only the identifier, blueprint and relations of the
-        # upserted entity result for later calculations
+        return self._reduce_entity(result_entity)
+
+    @staticmethod
+    def _reduce_entity(entity: Entity) -> Entity:
+        """
+        Reduces an entity to only keep identifier, blueprint and processed relations.
+        This helps save memory by removing unnecessary data.
+
+        Args:
+            entity: The entity to reduce
+
+        Returns:
+            Entity: A new entity with only the essential data
+        """
         reduced_entity = Entity(
-            identifier=result_entity.identifier, blueprint=result_entity.blueprint
+            identifier=entity.identifier, blueprint=entity.blueprint
         )
 
         # Turning dict typed relations (raw search relations) is required
@@ -109,7 +121,7 @@ class EntityClientMixin:
         # and ignore the ones that don't as they weren't upserted
         reduced_entity.relations = {
             key: None if isinstance(relation, dict) else relation
-            for key, relation in result_entity.relations.items()
+            for key, relation in entity.relations.items()
         }
 
         return reduced_entity

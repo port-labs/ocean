@@ -137,22 +137,19 @@ def are_entities_different(first_entity: Entity, second_entity: Entity) -> bool:
 
 def map_entities(
     third_party_entities: list[Entity], port_entities: list[Entity]
-) -> tuple[list[Entity], list[Entity]]:
+) -> list[Entity]:
     """
-    Maps the entities into two lists:
-    - Filtered list of third party entities, excluding matches found in port_entities that needs to be upserted
-    - List of entities that are not relevant that should be deleted from Port
+    Maps the entities into filtered list of third party entities, excluding matches found in port_entities that needs to be upserted
     Args:
         third_party_entities: List of entities from third party source
         port_entities: List of existing Port entities
 
     Returns:
-        tuple[list[Entity], list[Entity]]: Filtered list of third party entities, excluding matches found in port_entities and list of entities that are not relevant
+        list[Entity]: Filtered list of third party entities, excluding matches found in port_entities
     """
     port_entities_dict = {}
     third_party_entities_dict = {}
     changed_entities = []
-    unrelevant_entities = []
 
     for entity in port_entities:
         key = (entity.identifier, entity.blueprint)
@@ -171,10 +168,4 @@ def map_entities(
         elif are_entities_different(entity, port_entities_dict[key]):
             changed_entities.append(entity)
 
-    for entity in port_entities:
-        key = (entity.identifier, entity.blueprint)
-        entity_at_third_party = third_party_entities_dict.get(key, None)
-        if entity_at_third_party is None:
-            unrelevant_entities.append(entity)
-
-    return changed_entities, unrelevant_entities
+    return changed_entities

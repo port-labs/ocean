@@ -353,50 +353,42 @@ entity_with_search_relation = create_test_entity(
 
 def test_map_entities_empty_lists() -> None:
     """Test when both input lists are empty"""
-    changed, unrelevant = map_entities([], [])
+    changed = map_entities([], [])
     assert len(changed) == 0
-    assert len(unrelevant) == 0
 
 
 def test_map_entities_new_entities() -> None:
     """Test when there are simple third party entities that are not in Port"""
-    changed, unrelevant = map_entities([entity1, entity2], [])
+    changed = map_entities([entity1, entity2], [])
     assert len(changed) == 2
     assert changed[0] == entity1
     assert changed[1] == entity2
-    assert len(unrelevant) == 0
 
 
 def test_map_entities_deleted_entities() -> None:
     """Test when entities exist in Port but not in third party"""
-    changed, unrelevant = map_entities([], [entity1, entity2])
+    changed = map_entities([], [entity1, entity2])
     assert len(changed) == 0
-    assert len(unrelevant) == 2
-    assert unrelevant[0] == entity1
-    assert unrelevant[1] == entity2
 
 
 def test_map_entities_identical_entities() -> None:
     """Test when entities are identical in both sources"""
-    changed, unrelevant = map_entities([entity1], [entity1])
+    changed = map_entities([entity1], [entity1])
     assert len(changed) == 0
-    assert len(unrelevant) == 0
 
 
 def test_map_entities_modified_properties() -> None:
     """Test when entities exist but have different properties"""
-    changed, unrelevant = map_entities([entity1_modified_properties], [entity1])
+    changed = map_entities([entity1_modified_properties], [entity1])
     assert len(changed) == 1
     assert changed[0] == entity1_modified_properties
-    assert len(unrelevant) == 0
 
 
 def test_map_entities_modified_relations() -> None:
     """Test when entities exist but have different relations"""
-    changed, unrelevant = map_entities([entity1_modified_relations], [entity1])
+    changed = map_entities([entity1_modified_relations], [entity1])
     assert len(changed) == 1
     assert changed[0] == entity1_modified_relations
-    assert len(unrelevant) == 0
 
 
 def test_map_entities_search_identifier_entity() -> None:
@@ -404,10 +396,9 @@ def test_map_entities_search_identifier_entity() -> None:
     with patch(
         "port_ocean.core.utils.utils.are_entities_different", return_value=False
     ) as mock_are_different:
-        changed, unrelevant = map_entities([entity_with_search_identifier], [])
+        changed = map_entities([entity_with_search_identifier], [])
         assert len(changed) == 1
         assert changed[0] == entity_with_search_identifier
-        assert len(unrelevant) == 0
         mock_are_different.assert_not_called()
 
 
@@ -416,22 +407,19 @@ def test_map_entities_search_relation_entity() -> None:
     with patch(
         "port_ocean.core.utils.utils.are_entities_different", return_value=False
     ) as mock_are_different:
-        changed, unrelevant = map_entities([entity_with_search_relation], [])
+        changed = map_entities([entity_with_search_relation], [])
         assert len(changed) == 1
         assert changed[0] == entity_with_search_relation
-        assert len(unrelevant) == 0
         mock_are_different.assert_not_called()
 
 
 def test_map_entities_multiple_entities() -> None:
     """Test with multiple entities in both sources"""
-    changed, unrelevant = map_entities(
+    changed = map_entities(
         [entity1_modified_properties, entity2, entity_with_search_identifier],
         [entity1, entity3],
     )
     assert len(changed) == 3
-    assert len(unrelevant) == 1
     assert changed[0] == entity1_modified_properties
     assert changed[1] == entity2
     assert changed[2] == entity_with_search_identifier
-    assert unrelevant[0] == entity3
