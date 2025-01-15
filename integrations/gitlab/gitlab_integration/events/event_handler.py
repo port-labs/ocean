@@ -15,7 +15,7 @@ from port_ocean.context.event import (
     event_context,
     EventContext,
 )
-
+import time
 Observer = Callable[[str, dict[str, Any]], Awaitable[Any]]
 
 
@@ -85,21 +85,31 @@ class EventHandler(BaseEventHandler):
             )
             return
         for observer in observers_list:
-            try:
-                if asyncio.iscoroutinefunction(observer):
-                    if inspect.ismethod(observer):
-                        handler = observer.__self__.__class__.__name__
-                        logger.debug(
-                            f"Notifying observer: {handler}, for event: {event_id}",
-                            event_id=event_id,
-                            handler=handler,
-                        )
-                    await observer(event_id, body)  # Sequentially call each observer
-            except Exception as e:
-                logger.error(
-                    f"Error processing event {event_id} with observer {observer}: {str(e)}"
-                )
-
+            retries_left = 3
+            timeout = 90
+            observer_time = time.time()
+            while retries_left > 0:
+                try:
+                    if asyncio.iscoroutinefunction(observer):
+                        if inspect.ismethod(observer):
+                            handler = observer.__self__.__class__.__name__
+                            logger.debug(
+                                f"Notifying observer: {handler}, for event: {event_id} at {observer_time}",
+                                event_id=event_id,
+                                handler=handler,
+                            )
+                        await asyncio.wait_for(observer(event_id, body), timeout)  # Sequentially call each observer
+                        break
+                except asyncio.TimeoutError:
+                    logger.error(
+                        f"{handler} started work at {observer_time}, did not complete handling event {event_id} within {timeout} seconds, retrying"
+                    )
+                    retries_left -= 1
+                except Exception as e:
+                    logger.error(
+                        f"Error processing event {event_id} with observer {observer}: {e}",exc_info=True,
+                    )
+                    break
 
 class SystemEventHandler(BaseEventHandler):
     def __init__(self) -> None:
