@@ -9,6 +9,8 @@ features:
       - kind: problem
       - kind: slo
       - kind: entity
+      - kind: user
+      - kind: group
 configurations:
   - name: dynatraceApiKey
     required: true
@@ -19,3 +21,17 @@ configurations:
     type: url
     required: true
     description: "Dynatrace environment URL in the format https://<environment-id>.live.dynatrace.com e.g https://abc123.live.dynatrace.com. You can get this from the URL when you are logged into your Dynatrace environment."
+  - name: dynatraceAccountId
+    type: string
+    required: false
+    description: "Dynatrace account ID. You can get this from the URL when you are logged into your Dynatrace environment."
+  - name: dynatraceOauthClientId
+    required: false
+    type: string
+    sensitive: true
+    description: Dynatrace OAuth Client ID. Read <a target="_blank" href="https://www.dynatrace.com/support/help/shortlink/api-authentication#generate-a-client-id-and-client-secret">Dynatrace authentication documentation</a> on how to create one.
+  - name: dynatraceOauthClientSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Dynatrace OAuth Client Secret. Read <a target="_blank" href="https://www.dynatrace.com/support/help/shortlink/api-authentication#generate-a-client-id-and-client-secret">Dynatrace authentication documentation</a> on how to create one.
