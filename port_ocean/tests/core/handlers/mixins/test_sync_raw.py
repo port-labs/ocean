@@ -689,21 +689,9 @@ async def test_register_resource_raw_saas_no_changes(
 
     # Mock dependencies
     entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(
-        return_value=[
-            CalculationResult(
-                entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
-                errors=[],
-                misconfigurations=[],
-                misonfigured_entity_keys=[],
-                unrelevant_entities=[],
-            )
-        ]
-    )
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(
-        return_value=([], [entity])
-    )
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[], unrelevant_entities=[])])  # type: ignore
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([], [entity]))  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
@@ -735,21 +723,9 @@ async def test_register_resource_raw_saas_with_changes(
 
     # Mock dependencies
     entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(
-        return_value=[
-            CalculationResult(
-                entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
-                errors=[],
-                misconfigurations=[],
-                misonfigured_entity_keys=[],
-                unrelevant_entities=[],
-            )
-        ]
-    )
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(
-        return_value=([entity], [])  # Return entity as changed
-    )
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[], unrelevant_entities=[])])  # type: ignore
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity], []))  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
@@ -788,11 +764,9 @@ async def test_register_resource_raw_non_saas(
         misonfigured_entity_keys=[],
         unrelevant_entities=[],
     )
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[calculation_result])
-    mock_sync_raw_mixin._map_entities_compared_with_port = (
-        AsyncMock()
-    )  # Should not be called
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[calculation_result])  # type: ignore
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock()  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
@@ -825,26 +799,9 @@ async def test_register_resource_raw_saas_with_errors(
     # Mock dependencies
     failed_entity = Entity(identifier="1", blueprint="service")
     error = Exception("Test error")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(
-        return_value=[
-            CalculationResult(
-                entity_selector_diff=EntitySelectorDiff(
-                    passed=[], failed=[failed_entity]
-                ),
-                errors=[error],
-                misconfigurations=[],
-                misonfigured_entity_keys=[],
-                unrelevant_entities=[],
-            )
-        ]
-    )
-    # Configure the mock to return an empty tuple of (changed_entities, unrelevant_entities)
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(
-        return_value=([], [])
-    )
-    mock_sync_raw_mixin.entities_state_applier.upsert = (
-        AsyncMock()
-    )  # Should not be called
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misonfigured_entity_keys=[], unrelevant_entities=[])])  # type: ignore
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([], []))  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
