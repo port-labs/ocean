@@ -25,12 +25,11 @@ for FOLDER in "${ROOT_DIR}"/integrations/*; do
     echo "Enter the Python virtual environment in the .venv folder"
     source .venv/bin/activate
 
-#    echo "Bump the version ocean version using Poetry"
-#    poetry add "port-ocean@${VERSION}" -E cli --no-cache
-    poetry update jinja2
+    echo "Bump the version ocean version using Poetry"
+    poetry add "port-ocean@${VERSION}" -E cli --no-cache
 
     echo "Run towncrier create"
-    towncrier create --content "Bumped jinja version to ${VERSION}" +random.improvement.md
+    towncrier create --content "Bumped ocean version to ${VERSION}" +random.improvement.md
 
     echo "Run towncrier build"
     CURRENT_VERSION=$(poetry version --short)
