@@ -16,6 +16,7 @@ from port_ocean.context.event import (
     EventContext,
 )
 import time
+
 Observer = Callable[[str, dict[str, Any]], Awaitable[Any]]
 
 
@@ -29,7 +30,10 @@ class BaseEventHandler(ABC):
         logger.info(f"Started {self.__class__.__name__} worker")
         while True:
             event_ctx, event_id, body = await self.webhook_tasks_queue.get()
-            logger.debug(f"Retrieved event: {event_id} from Queue, notifying observers")
+            logger.debug(
+                f"Retrieved event: {event_id} from Queue, notifying observers",
+                queue_size=self.webhook_tasks_queue.qsize(),
+            )
             try:
                 async with event_context(
                     "gitlab_http_event_async_worker", parent_override=event_ctx
@@ -98,7 +102,9 @@ class EventHandler(BaseEventHandler):
                                 event_id=event_id,
                                 handler=handler,
                             )
-                        await asyncio.wait_for(observer(event_id, body), timeout)  # Sequentially call each observer
+                        await asyncio.wait_for(
+                            observer(event_id, body), timeout
+                        )  # Sequentially call each observer
                         break
                 except asyncio.TimeoutError:
                     logger.error(
@@ -107,9 +113,11 @@ class EventHandler(BaseEventHandler):
                     retries_left -= 1
                 except Exception as e:
                     logger.error(
-                        f"Error processing event {event_id} with observer {observer}: {e}",exc_info=True,
+                        f"Error processing event {event_id} with observer {observer}: {e}",
+                        exc_info=True,
                     )
                     break
+
 
 class SystemEventHandler(BaseEventHandler):
     def __init__(self) -> None:
