@@ -12,7 +12,7 @@ from gitlab_integration.git_integration import (
     GitlabMemberSelector,
 )
 import asyncio
-from tenacity import retry, stop_after_attempt, wait_fixed, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_fixed, wait_exponential, retry_if_exception_type
 
 
 class HookConfig:
@@ -80,6 +80,7 @@ class ProjectHandler(HookHandler):
             min=HookConfig.BACKOFF_MIN_TIME,
             max=HookConfig.BACKOFF_MAX_TIME,
         ),
+        retry = retry_if_exception_type(asyncio.TimeoutError),
         stop=stop_after_attempt(HookConfig.BACKOFF_MAX_ATTEMPTS),
     )
     async def on_hook(self, event: str, body: dict[str, Any]) -> None:
@@ -120,6 +121,7 @@ class ProjectHandler(HookHandler):
 
 class GroupHandler(HookHandler):
     @retry(
+        retry=retry_if_exception_type(asyncio.TimeoutError),
         wait=wait_exponential(
             multiplier=HookConfig.BACKOFF_EXPONENTIAL,
             min=HookConfig.BACKOFF_MIN_TIME,
@@ -139,6 +141,7 @@ class GroupHandler(HookHandler):
         except asyncio.TimeoutError:
             logger.error(f"Timeout while handling hook {event} for group {group_path}")
             raise
+
     @abstractmethod
     async def _on_hook(
         self, body: dict[str, Any], gitlab_group: Optional[Group]
