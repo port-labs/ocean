@@ -73,6 +73,9 @@ class BaseEventHandler(ABC):
 
 
 class EventHandler(BaseEventHandler):
+    MAXIMUM_RETRIES = 3
+    TIMEOUT = 90
+
     def __init__(self) -> None:
         super().__init__()
         self._observers: dict[str, list[Observer]] = defaultdict(list)
@@ -89,8 +92,7 @@ class EventHandler(BaseEventHandler):
             )
             return
         for observer in observers_list:
-            retries_left = 3
-            timeout = 90
+            retries_left = self.MAXIMUM_RETRIES
             observer_time = time.time()
             while retries_left > 0:
                 try:
@@ -103,12 +105,17 @@ class EventHandler(BaseEventHandler):
                                 handler=handler,
                             )
                         await asyncio.wait_for(
-                            observer(event_id, body), timeout
+                            observer(event_id, body), self.TIMEOUT
                         )  # Sequentially call each observer
+                        logger.debug(
+                            f"Observer {handler} completed work at {time.time() - observer_time}",
+                            event_id=event_id,
+                            handler=handler,
+                        )
                         break
                 except asyncio.TimeoutError:
                     logger.error(
-                        f"{handler} started work at {observer_time}, did not complete handling event {event_id} within {timeout} seconds, retrying"
+                        f"{handler} started work at {observer_time}, did not complete handling event {event_id} within {self.TIMEOUT} seconds, retrying"
                     )
                     retries_left -= 1
                 except Exception as e:
