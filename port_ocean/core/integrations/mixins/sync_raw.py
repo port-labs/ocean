@@ -190,6 +190,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             [(resource, results)], parse_all, send_raw_data_examples_amount
         )
         modified_objects = []
+        unrelevant_entities = []
 
         if ocean.app.is_saas():
             changed_entities, unrelevant_entities = await self._map_entities_compared_with_port(
