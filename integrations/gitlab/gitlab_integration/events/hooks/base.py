@@ -12,6 +12,15 @@ from gitlab_integration.git_integration import (
     GitlabMemberSelector,
 )
 import asyncio
+from tenacity import retry, stop_after_attempt, wait_fixed, wait_exponential
+
+
+class HookConfig:
+    TIMEOUT = 120  # seconds
+    BACKOFF_EXPONENTIAL = 2
+    BACKOFF_MAX_ATTEMPTS = 5
+    BACKOFF_MAX_TIME = 60  # seconds
+    BACKOFF_MIN_TIME = 1  # seconds
 
 
 class HookHandler(ABC):
@@ -65,6 +74,14 @@ class HookHandler(ABC):
 
 
 class ProjectHandler(HookHandler):
+    @retry(
+        wait=wait_exponential(
+            multiplier=HookConfig.BACKOFF_EXPONENTIAL,
+            min=HookConfig.BACKOFF_MIN_TIME,
+            max=HookConfig.BACKOFF_MAX_TIME,
+        ),
+        stop=stop_after_attempt(HookConfig.BACKOFF_MAX_ATTEMPTS),
+    )
     async def on_hook(self, event: str, body: dict[str, Any]) -> None:
         logger.info(f"Handling {event}")
 
@@ -78,12 +95,15 @@ class ProjectHandler(HookHandler):
                 f"Handling hook {event} for project {project.path_with_namespace}"
             )
             try:
-                asyncio.wait_for(self._on_hook(body, project), timeout=10)
+                asyncio.wait_for(
+                    self._on_hook(body, project), timeout=HookConfig.TIMEOUT
+                )
                 logger.info(f"Finished handling {event}")
             except asyncio.TimeoutError:
                 logger.error(
                     f"Timeout while handling hook {event} for project {project.path_with_namespace}"
                 )
+                raise
             except Exception as e:
                 logger.error(
                     f"Error handling hook {event} for project {project.path_with_namespace}. Error: {e}"
@@ -99,13 +119,21 @@ class ProjectHandler(HookHandler):
 
 
 class GroupHandler(HookHandler):
+    @retry(
+        wait=wait_exponential(
+            multiplier=HookConfig.BACKOFF_EXPONENTIAL,
+            min=HookConfig.BACKOFF_MIN_TIME,
+            max=HookConfig.BACKOFF_MAX_TIME,
+        ),
+        stop=stop_after_attempt(HookConfig.BACKOFF_MAX_ATTEMPTS),
+    )
     async def on_hook(self, event: str, body: dict[str, Any]) -> None:
         logger.info(f"Handling {event}")
 
         try:
             group_id = body.get("group_id", body.get("group", {}).get("id"))
             group = await self.gitlab_service.get_group(group_id)
-            asyncio.wait_for(self._on_hook(body, group), timeout=10)
+            asyncio.wait_for(self._on_hook(body, group), timeout=HookConfig.TIMEOUT)
             group_path = body.get("full_path", body.get("group_path"))
             logger.info(f"Finished handling {event} for group {group_path}")
         except asyncio.TimeoutError:
