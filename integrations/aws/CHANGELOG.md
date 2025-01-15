@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.84 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
 ## 0.2.83 (2025-01-12)
 
 
@@ -29,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Updated the serialized response to include valid custom property json key by accessing the StrEnum value properly. 
+- Updated the serialized response to include valid custom property json key by accessing the StrEnum value properly.
 
 
 ## 0.2.80 (2025-01-08)
