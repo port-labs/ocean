@@ -11,6 +11,7 @@ from gitlab_integration.git_integration import (
     GitlabPortAppConfig,
     GitlabMemberSelector,
 )
+import asyncio
 
 
 class HookHandler(ABC):
@@ -77,8 +78,12 @@ class ProjectHandler(HookHandler):
                 f"Handling hook {event} for project {project.path_with_namespace}"
             )
             try:
-                await self._on_hook(body, project)
+                asyncio.wait_for(self._on_hook(body, project), timeout=10)
                 logger.info(f"Finished handling {event}")
+            except asyncio.TimeoutError:
+                logger.error(
+                    f"Timeout while handling hook {event} for project {project.path_with_namespace}"
+                )
             except Exception as e:
                 logger.error(
                     f"Error handling hook {event} for project {project.path_with_namespace}. Error: {e}"
@@ -97,11 +102,14 @@ class GroupHandler(HookHandler):
     async def on_hook(self, event: str, body: dict[str, Any]) -> None:
         logger.info(f"Handling {event}")
 
-        group_id = body.get("group_id", body.get("group", {}).get("id"))
-        group = await self.gitlab_service.get_group(group_id)
-        await self._on_hook(body, group)
-        group_path = body.get("full_path", body.get("group_path"))
-        logger.info(f"Finished handling {event} for group {group_path}")
+        try:
+            group_id = body.get("group_id", body.get("group", {}).get("id"))
+            group = await self.gitlab_service.get_group(group_id)
+            asyncio.wait_for(self._on_hook(body, group), timeout=10)
+            group_path = body.get("full_path", body.get("group_path"))
+            logger.info(f"Finished handling {event} for group {group_path}")
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout while handling hook {event} for group {group_path}")
 
     @abstractmethod
     async def _on_hook(
