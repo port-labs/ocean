@@ -550,3 +550,103 @@ async def test_unregister_raw(
                 assert entity.identifier == result["identifier"]
                 assert entity.blueprint == result["blueprint"]
                 assert entity.properties == result["properties"]
+
+
+@pytest.mark.asyncio
+async def test_map_entities_compared_with_port_no_port_entities(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_ocean: Ocean,
+) -> None:
+    # Setup test data
+    entities = [
+        create_entity("entity_1", "service", {}, False),
+        create_entity("entity_2", "service", {}, False),
+    ]
+    resource = ResourceConfig(
+        kind="service",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={"url": ".web_url"},
+                    relations={},
+                )
+            )
+        ),
+    )
+
+    # Mock port client to return empty list
+    mock_ocean.port_client.search_entities.return_value = []  # type: ignore
+
+    # Execute test
+    changed_entities, irelevant_entities = (
+        await mock_sync_raw_mixin._map_entities_compared_with_port(
+            entities, resource, UserAgentType.exporter
+        )
+    )
+
+    # Verify results
+    assert len(changed_entities) == 2
+    assert len(irelevant_entities) == 0
+    assert [e.identifier for e in changed_entities] == ["entity_1", "entity_2"]
+
+
+@pytest.mark.asyncio
+async def test_map_entities_compared_with_port_with_existing_entities(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_ocean: Ocean,
+) -> None:
+    # Setup test data
+    third_party_entities = [
+        create_entity(
+            "entity_1", "service", {}, False
+        ),  # Should be in changed (modified)
+        create_entity("entity_2", "service", {}, False),  # Should be in changed (new)
+    ]
+    port_entities = [
+        create_entity("entity_1", "service", {}, False),  # Existing but different props
+        create_entity("entity_3", "service", {}, False),  # Should be in irrelevant
+    ]
+    resource = ResourceConfig(
+        kind="service",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={"url": ".web_url"},
+                    relations={},
+                )
+            )
+        ),
+    )
+
+    # Mock port client to return our port entities
+    mock_ocean.port_client.search_entities.return_value = port_entities  # type: ignore
+
+    # Mock map_entities to return expected results
+    expected_changed = [third_party_entities[0], third_party_entities[1]]
+    expected_irrelevant = [port_entities[1]]
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.map_entities",
+        return_value=(expected_changed, expected_irrelevant),
+    ) as mock_map_entities:
+        # Execute test
+        changed_entities, irrelevant_entities = (
+            await mock_sync_raw_mixin._map_entities_compared_with_port(
+                third_party_entities, resource, UserAgentType.exporter
+            )
+        )
+
+        # Verify results
+        assert len(changed_entities) == 2
+        assert len(irrelevant_entities) == 1
+        assert [e.identifier for e in changed_entities] == ["entity_1", "entity_2"]
+        assert [e.identifier for e in irrelevant_entities] == ["entity_3"]
+        assert mock_map_entities.call_count == 1  # Verify map_entities was called once
