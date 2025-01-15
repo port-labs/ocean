@@ -659,7 +659,7 @@ class EntitySelectorDiff:
     passed: List[Entity]
     failed: List[Entity]
 
-    def _replace(self, **kwargs):
+    def _replace(self, **kwargs: Any) -> "EntitySelectorDiff":
         return EntitySelectorDiff(
             **{
                 "passed": kwargs.get("passed", self.passed),
@@ -673,7 +673,7 @@ class CalculationResult:
     entity_selector_diff: EntitySelectorDiff
     errors: List[Any]
     misconfigurations: List[Any]
-    misonfigured_entity_keys: List[Any] = None
+    misonfigured_entity_keys: Optional[List[Any]] = None
     unrelevant_entities: Optional[List[Entity]] = None
 
 
