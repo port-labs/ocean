@@ -193,24 +193,26 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         unrelevant_entities = []
 
         if ocean.app.is_saas():
-            changed_entities, unrelevant_entities = await self._map_entities_compared_with_port(
-                objects_diff[0].entity_selector_diff.passed,
-                resource,
-                user_agent_type
-            )
+            try:
+                changed_entities, unrelevant_entities = await self._map_entities_compared_with_port(
+                    objects_diff[0].entity_selector_diff.passed,
+                    resource,
+                    user_agent_type
+                )
 
-            if changed_entities:
-                logger.bind(
-                    changed_entities=len(changed_entities),
-                    total_entities=len(objects_diff[0].entity_selector_diff.passed),
-                ).info("Upserting changed entities")
+                if changed_entities:
+                    logger.info("Upserting changed entities", changed_entities=len(changed_entities),
+                        total_entities=len(objects_diff[0].entity_selector_diff.passed))
+                    modified_objects = await self.entities_state_applier.upsert(
+                        changed_entities, user_agent_type
+                    )
+                else:
+                    logger.info("no changed entities, not upserting", total_entities=len(objects_diff[0].entity_selector_diff.passed))
+            except Exception as e:
+                logger.warning(f"Failed to map entities with Port, falling back to upserting all entities: {str(e)}")
                 modified_objects = await self.entities_state_applier.upsert(
-                    changed_entities, user_agent_type
-            )
-            else:
-                logger.bind(
-                    total_entities=len(objects_diff[0].entity_selector_diff.passed),
-                ).info("no changed entities, not upserting")
+                    objects_diff[0].entity_selector_diff.passed, user_agent_type
+                )
         else:
             modified_objects = await self.entities_state_applier.upsert(
             objects_diff[0].entity_selector_diff.passed, user_agent_type
@@ -582,6 +584,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.info(
                         f"Running resync diff calculation, number of entities created during sync: {len(flat_created_entities)}"
                     )
-                    if unrelevant_entities:
+                    if ocean.app.is_saas() and unrelevant_entities:
                         await self.entities_state_applier._safe_delete(unrelevant_entities, flat_created_entities, user_agent_type)
+                    else:
+                        entities_at_port = await ocean.port_client.search_entities(
+                            user_agent_type
+                        )
+                        await self.entities_state_applier.delete_diff(
+                            {"before": entities_at_port, "after": flat_created_entities},
+                            user_agent_type,
+                        )
+
                     logger.info("Resync finished successfully")
