@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "linear"
-version = "0.1.70"
+version = "0.1.71"
 description = "Integration to bring information from Linear into Port"
 authors = ["Mor Paz <mor@getport.io>"]
 
