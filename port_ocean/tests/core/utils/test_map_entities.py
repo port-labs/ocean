@@ -114,6 +114,134 @@ def test_are_entities_fields_equal_identical_relations_different_order_should_be
     )
 
 
+def test_are_entities_fields_equal_identical_nested_properties_should_be_true() -> None:
+    assert (
+        are_entities_fields_equal(
+            {
+                "metadata": {
+                    "labels": {"env": "prod", "team": "devops"},
+                    "annotations": {"description": "test"},
+                },
+                "spec": {"replicas": 3},
+            },
+            {
+                "metadata": {
+                    "labels": {"env": "prod", "team": "devops"},
+                    "annotations": {"description": "test"},
+                },
+                "spec": {"replicas": 3},
+            },
+        )
+        is True
+    )
+
+
+def test_are_entities_fields_equal_different_nested_properties_should_be_false() -> (
+    None
+):
+    assert (
+        are_entities_fields_equal(
+            {
+                "metadata": {
+                    "labels": {"env": "prod", "team": "devops"},
+                    "annotations": {"description": "test"},
+                },
+            },
+            {
+                "metadata": {
+                    "labels": {"env": "staging", "team": "devops"},
+                    "annotations": {"description": "test"},
+                },
+            },
+        )
+        is False
+    )
+
+
+def test_are_entities_fields_equal_identical_nested_arrays_should_be_true() -> None:
+    assert (
+        are_entities_fields_equal(
+            {
+                "containers": [
+                    {"name": "app", "image": "nginx:1.14"},
+                    {"name": "sidecar", "image": "proxy:2.1"},
+                ],
+            },
+            {
+                "containers": [
+                    {"name": "app", "image": "nginx:1.14"},
+                    {"name": "sidecar", "image": "proxy:2.1"},
+                ],
+            },
+        )
+        is True
+    )
+
+
+def test_are_entities_fields_equal_different_nested_arrays_should_be_false() -> None:
+    assert (
+        are_entities_fields_equal(
+            {
+                "containers": [
+                    {"name": "app", "image": "nginx:1.14"},
+                    {"name": "sidecar", "image": "proxy:2.1"},
+                ],
+            },
+            {
+                "containers": [
+                    {"name": "app", "image": "nginx:1.15"},  # Different version
+                    {"name": "sidecar", "image": "proxy:2.1"},
+                ],
+            },
+        )
+        is False
+    )
+
+
+def test_are_entities_fields_equal_nested_relations_should_be_true() -> None:
+    assert (
+        are_entities_fields_equal(
+            {
+                "owner": {
+                    "team": "team_id1",
+                    "members": ["user1", "user2"],
+                    "metadata": {"role": "admin"},
+                },
+            },
+            {
+                "owner": {
+                    "team": "team_id1",
+                    "members": ["user1", "user2"],
+                    "metadata": {"role": "admin"},
+                },
+            },
+        )
+        is True
+    )
+
+
+def test_are_entities_fields_equal_different_nested_relations_should_be_false() -> None:
+    assert (
+        are_entities_fields_equal(
+            {
+                "owner": {
+                    "team": "team_id1",
+                    "members": ["user1", "user2"],
+                    "metadata": {"role": "admin"},
+                },
+            },
+            {
+                "owner": {
+                    "team": "team_id1",
+                    "members": ["user1", "user3"],  # Different member
+                    "metadata": {"role": "admin"},
+                },
+            },
+        )
+        is False
+    )
+
+
 def test_are_entities_different_identical_entities_should_be_false() -> None:
     entity1 = create_test_entity(
         "",
