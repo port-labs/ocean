@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.22 (2025-01-15)
+
+
+### Improvements
+
+- Added rate limit support to avoid failures due to 429 errors
+
+
+
 ## 0.2.21 (2025-01-15)
 
 
