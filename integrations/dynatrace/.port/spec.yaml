@@ -11,6 +11,7 @@ features:
       - kind: entity
       - kind: user
       - kind: group
+      - kind: team
 configurations:
   - name: dynatraceApiKey
     required: true
@@ -29,9 +30,9 @@ configurations:
     required: false
     type: string
     sensitive: true
-    description: Dynatrace OAuth Client ID. Read <a target="_blank" href="https://www.dynatrace.com/support/help/shortlink/api-authentication#generate-a-client-id-and-client-secret">Dynatrace authentication documentation</a> on how to create one.
+    description: Dynatrace OAuth Client ID. Read <a target="_blank" href="https://docs.dynatrace.com/docs/manage/identity-access-management/access-tokens-and-oauth-clients/oauth-clients">Dynatrace authentication documentation</a> on how to create one.
   - name: dynatraceOauthClientSecret
     required: false
     type: string
     sensitive: true
-    description: Dynatrace OAuth Client Secret. Read <a target="_blank" href="https://www.dynatrace.com/support/help/shortlink/api-authentication#generate-a-client-id-and-client-secret">Dynatrace authentication documentation</a> on how to create one.
+    description: Dynatrace OAuth Client Secret. Read <a target="_blank" href="https://docs.dynatrace.com/docs/manage/identity-access-management/access-tokens-and-oauth-clients/oauth-clients">Dynatrace authentication documentation</a> on how to create one.
