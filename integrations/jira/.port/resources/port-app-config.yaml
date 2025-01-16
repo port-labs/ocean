@@ -63,15 +63,15 @@ resources:
             status: .fields.status.name
             issueType: .fields.issuetype.name
             components: .fields.components
-            creator: .fields.creator.emailAddress // ""
+            creator: .fields.creator.emailAddress // empty
             priority: .fields.priority.name
             labels: .fields.labels
             created: .fields.created
             updated: .fields.updated
-            resolutionDate: .fields.resolutiondate // ""
+            resolutionDate: .fields.resolutiondate // empty
           relations:
             project: .fields.project.key
-            parentIssue: .fields.parent.key // ""
+            parentIssue: .fields.parent.key // empty
             subtasks: .fields.subtasks | map(.key)
-            assignee: .fields.assignee.accountId // ""
+            assignee: .fields.assignee.accountId // empty
             reporter: .fields.reporter.accountId
