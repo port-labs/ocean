@@ -165,8 +165,33 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if entities[0].is_using_search_identifier or entities[0].is_using_search_relation:
             return entities
 
-        query = self._construct_search_query_for_entities(entities)
-        entities_at_port_with_properties = await ocean.port_client.search_entities(
+        BATCH_SIZE = 50
+        entities_at_port_with_properties = []
+
+        # Process entities in batches of 50
+        for i in range(0, len(entities), BATCH_SIZE):
+            entities_batch = entities[i:i + BATCH_SIZE]
+            batch_results = await self._fetch_entities_batch_from_port(
+                entities_batch,
+                resource,
+                user_agent_type
+            )
+            entities_at_port_with_properties.extend(batch_results)
+
+        logger.info("getting Entities from port with properties", port_entities=len(entities_at_port_with_properties))
+
+        if len(entities_at_port_with_properties) > 0:
+            return resolve_entities_diff(entities, entities_at_port_with_properties)
+        return entities
+
+    async def _fetch_entities_batch_from_port(
+        self,
+        entities_batch: list[Entity],
+        resource: ResourceConfig,
+        user_agent_type: UserAgentType,
+    ) -> list[dict]:
+        query = self._construct_search_query_for_entities(entities_batch)
+        return await ocean.port_client.search_entities(
             user_agent_type,
             parameters_to_include=["blueprint", "identifier"] + [
                 f"properties.{prop}" for prop in resource.port.entity.mappings.properties
@@ -175,11 +200,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ],
             query=query
         )
-        logger.info("getting Entities from port with properties", port_entities=len(entities_at_port_with_properties))
-
-        if len(entities_at_port_with_properties) > 0:
-            return resolve_entities_diff(entities, entities_at_port_with_properties)
-        return entities
 
     async def _register_resource_raw(
         self,
@@ -212,12 +232,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.info("Entities in batch didn't changed since last sync, skipping", total_entities=len(objects_diff[0].entity_selector_diff.passed))
 
                 modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
-
             except Exception as e:
                 logger.warning(f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}")
                 modified_objects = await self.entities_state_applier.upsert(
                     objects_diff[0].entity_selector_diff.passed, user_agent_type
-                )
+                    )
         else:
             modified_objects = await self.entities_state_applier.upsert(
                 objects_diff[0].entity_selector_diff.passed, user_agent_type
