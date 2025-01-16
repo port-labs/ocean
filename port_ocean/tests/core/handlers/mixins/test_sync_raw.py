@@ -660,6 +660,69 @@ async def test_map_entities_compared_with_port_with_existing_entities(
         )  # Verify map_entities was called once
 
 
+@pytest.mark.asyncio
+async def test_map_entities_compared_with_port_with_multiple_batches(
+    mock_sync_raw_mixin: SyncRawMixin, mock_ocean: Ocean
+) -> None:
+    # Setup test data with 75 entities (should create 2 batches)
+    third_party_entities = [
+        create_entity(f"entity_{i}", "service", {}, False) for i in range(75)
+    ]
+    port_entities_batch1 = [
+        create_entity(f"entity_{i}", "service", {}, False) for i in range(50)
+    ]
+    port_entities_batch2 = [
+        create_entity(f"entity_{i}", "service", {}, False) for i in range(50, 75)
+    ]
+
+    resource = ResourceConfig(
+        kind="service",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={"url": ".web_url"},
+                    relations={},
+                )
+            )
+        ),
+    )
+
+    # Mock port client to return our port entities in batches
+    with patch.object(
+        mock_ocean.port_client,
+        "search_entities",
+        new_callable=AsyncMock,
+        side_effect=[port_entities_batch1, port_entities_batch2],
+    ) as mock_search_entities:
+        # Mock resolve_entities_diff to return all entities
+        with patch(
+            "port_ocean.core.integrations.mixins.sync_raw.resolve_entities_diff",
+            return_value=third_party_entities,
+        ) as mock_resolve_entities_diff:
+            # Execute test
+            changed_entities = (
+                await mock_sync_raw_mixin._map_entities_compared_with_port(
+                    third_party_entities, resource, UserAgentType.exporter
+                )
+            )
+
+            # Verify results
+            assert len(changed_entities) == 75
+            assert [e.identifier for e in changed_entities] == [
+                f"entity_{i}" for i in range(75)
+            ]
+            assert (
+                mock_search_entities.call_count == 2
+            )  # Verify two batch calls were made
+            assert (
+                mock_resolve_entities_diff.call_count == 1
+            )  # Verify final diff was calculated once
+
+
 @dataclass
 class EntitySelectorDiff:
     passed: List[Entity]
