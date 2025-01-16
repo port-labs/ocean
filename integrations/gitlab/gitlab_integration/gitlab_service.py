@@ -20,6 +20,7 @@ from gitlab.v4.objects import (
     ProjectFile,
     ProjectPipeline,
     ProjectPipelineJob,
+    ProjectLabel,
     Hook,
 )
 from gitlab_integration.core.async_fetcher import AsyncFetcher
@@ -550,9 +551,15 @@ class GitlabService:
     @classmethod
     async def async_project_labels_wrapper(cls, project: Project) -> dict[str, Any]:
         try:
-            labels = await anyio.to_thread.run_sync(project.labels.list)
-            serialized_labels = [label.attributes for label in labels]
-            return {"__labels": serialized_labels}
+            all_labels = [
+                label.attributes
+                async for labels_batch in AsyncFetcher.fetch_batch(
+                    fetch_func=project.labels.list
+                )
+                for label in typing.cast(List[ProjectLabel], labels_batch)
+            ]
+
+            return {"__labels": all_labels}
         except Exception as e:
             logger.warning(
                 f"Failed to get labels for project={project.path_with_namespace}. error={e}"
