@@ -562,7 +562,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     return
 
                 logger.info("Starting resync diff calculation")
-                flat_created_entities, errors = zip_and_sum(creation_results) or [
+                generated_entities, errors = zip_and_sum(creation_results) or [
                     [],
                     [],
                 ]
@@ -579,13 +579,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.error(message, exc_info=error_group)
                 else:
                     logger.info(
-                        f"Running resync diff calculation, number of entities created during sync: {len(flat_created_entities)}"
+                        f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
                     )
                     entities_at_port = await ocean.port_client.search_entities(
                         user_agent_type
                     )
                     await self.entities_state_applier.delete_diff(
-                        {"before": entities_at_port, "after": flat_created_entities},
+                        {"before": entities_at_port, "after": generated_entities},
                         user_agent_type,
                     )
 

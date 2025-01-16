@@ -136,35 +136,35 @@ def are_entities_different(first_entity: Entity, second_entity: Entity) -> bool:
 
 
 def resolve_entities_diff(
-    third_party_entities: list[Entity], port_entities: list[Entity]
+    source_entities: list[Entity], target_entities: list[Entity]
 ) -> list[Entity]:
     """
-    Maps the entities into filtered list of third party entities, excluding matches found in port_entities that needs to be upserted
+    Maps the entities into filtered list of source entities, excluding matches found in target that needs to be upserted
     Args:
-        third_party_entities: List of entities from third party source
-        port_entities: List of existing Port entities
+        source_entities: List of entities from third party source
+        target_entities: List of existing Port entities
 
     Returns:
-        list[Entity]: Filtered list of third party entities, excluding matches found in port_entities
+        list[Entity]: Filtered list of source entities, excluding matches found in target
     """
-    port_entities_dict = {}
-    third_party_entities_dict = {}
+    target_entities_dict = {}
+    source_entities_dict = {}
     changed_entities = []
 
-    for entity in port_entities:
+    for entity in target_entities:
         key = (entity.identifier, entity.blueprint)
-        port_entities_dict[key] = entity
+        target_entities_dict[key] = entity
 
-    for entity in third_party_entities:
+    for entity in source_entities:
         if entity.is_using_search_identifier or entity.is_using_search_relation:
-            return third_party_entities
+            return source_entities
         key = (entity.identifier, entity.blueprint)
-        third_party_entities_dict[key] = entity
+        source_entities_dict[key] = entity
 
-        entity_at_port = port_entities_dict.get(key, None)
-        if entity_at_port is None:
+        entity_at_target = target_entities_dict.get(key, None)
+        if entity_at_target is None:
             changed_entities.append(entity)
-        elif are_entities_different(entity, port_entities_dict[key]):
+        elif are_entities_different(entity, target_entities_dict[key]):
             changed_entities.append(entity)
 
     return changed_entities
