@@ -27,9 +27,6 @@ class PollingEventListenerSettings(EventListenerSettings):
     resync_on_start: bool = True
     interval: int = 60
 
-    def to_request(self) -> dict[str, Any]:
-        return {}
-
 
 class PollingEventListener(BaseEventListener):
     """

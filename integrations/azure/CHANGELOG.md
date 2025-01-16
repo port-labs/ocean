@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.128 (2025-01-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+0.1.127 (2025-01-15)
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
+0.1.126 (2025-01-14)
+
+### Bug Fixes
+
+- Fixed the listing of azure subscription resource to use the latest API version `(2023-07-01)` when building url for the next page during paginated response iterations
+
+
+0.1.125 (2025-01-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
 0.1.124 (2025-01-08)
 
 ### Improvements

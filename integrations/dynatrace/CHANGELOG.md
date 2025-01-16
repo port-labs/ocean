@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.89 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.1.88 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
+## 0.1.87 (2025-01-13)
+
+
+### Improvements
+
+- Changed section to APM & Alerting
+
+
+## 0.1.86 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
 ## 0.1.85 (2025-01-08)
 
 

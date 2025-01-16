@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.23 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.2.22 (2025-01-15)
+
+
+### Improvements
+
+- Added rate limit support to avoid failures due to 429 errors
+
+
+
+## 0.2.21 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
+## 0.2.20 (2025-1-13)
+
+
+### Improvements
+
+- Added support to sync Jira teams to Port
+
+## 0.2.19 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+## 0.2.18 (2025-01-08)
+
+
+### Bug Fixes
+
+- Fixed a bug where webhook processes issues that are not allowed in a user's integration due to JQL filters
+
+
 ## 0.2.17 (2025-01-08)
 
 
