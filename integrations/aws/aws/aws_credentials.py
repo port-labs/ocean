@@ -1,13 +1,10 @@
 from typing import AsyncIterator, Optional, Iterable, Dict, Any, Callable, Awaitable
-import typing
 import aioboto3
 from aiobotocore.credentials import (
     AioRefreshableCredentials,
 )
 from aiobotocore.session import get_session
 from loguru import logger
-
-from types_aiobotocore_sts import STSClient
 
 from datetime import datetime, timezone, timedelta
 
@@ -30,7 +27,7 @@ class AwsCredentials:
         self.role_arn = role_arn
         self.session_name = session_name
         self.duration = duration or 3600
-        self.default_credentials = {
+        self.default_credentials: Dict[str, Any] = {
             "aws_access_key_id": access_key_id,
             "aws_secret_access_key": secret_access_key,
         }  # non-dynamic default credentials
@@ -56,9 +53,7 @@ class AwsCredentials:
                 if region["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
             ]
 
-    def _create_refresh_function(
-        self, region
-    ) -> Callable[[], Awaitable[Dict[str, Any]]]:
+    def _create_refresh_function(self) -> Callable[[], Awaitable[Dict[str, Any]]]:
         """
         Returns a callable that fetches new credentials when the current credentials are close to expiry.
         """
@@ -69,7 +64,6 @@ class AwsCredentials:
 
             :return: A dictionary containing the new credentials and their expiration time.
             """
-            self.default_credentials["region_name"] = region
             default_session = aioboto3.Session(**self.default_credentials)
 
             if self.is_role():
@@ -84,23 +78,27 @@ class AwsCredentials:
                     )
                     credentials = response["Credentials"]
                     self.access_key_id = credentials["AccessKeyId"]
-                    credentials = {
+                    refreshable_credentials = {
                         "access_key": self.access_key_id,
                         "secret_key": credentials["SecretAccessKey"],
                         "token": credentials["SessionToken"],
                         "expiry_time": credentials["Expiration"].isoformat(),
                     }
             else:
+                logger.debug(
+                    f"Refreshing AWS credentials for default account {self.account_id}"
+                )
                 default_credentials = await default_session.get_credentials()  # type: ignore
                 frozen_credentials = await default_credentials.get_frozen_credentials()
 
-                credentials = {
+                self.access_key_id = frozen_credentials.access_key
+                refreshable_credentials = {
                     "access_key": frozen_credentials.access_key,
                     "secret_key": frozen_credentials.secret_key,
                     "token": frozen_credentials.token,
                     "expiry_time": self.expiry_time(),
                 }
-            return credentials
+            return refreshable_credentials
 
         return refresh
 
@@ -112,7 +110,7 @@ class AwsCredentials:
             f"Creating a refreshable session for role {self.role_arn} in account {self.account_id} for region {region}"
         )
 
-        refresh_func = self._create_refresh_function(region)
+        refresh_func = self._create_refresh_function()
 
         credentials = AioRefreshableCredentials.create_from_metadata(
             metadata=await refresh_func(),
