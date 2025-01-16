@@ -146,18 +146,12 @@ class DynatraceClient:
 
     async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch paginated users from the account management API."""
-        if not self.oauth_client:
-            raise ValueError("OAuth client is required to fetch users.")
-
         url = f"{self.account_management_url}/accounts/{self.oauth_client.account_id}/users"
         async for users in self._get_paginated_resources_with_oauth(url, "items"):
             yield users
 
     async def get_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch paginated teams from the account management API."""
-        if not self.oauth_client:
-            raise ValueError("OAuth client is required to fetch teams.")
-
         url = f"{self.account_management_url}/accounts/{self.oauth_client.account_id}/groups"
         async for teams in self._get_paginated_resources_with_oauth(url, "items"):
             yield teams
