@@ -726,14 +726,14 @@ colors = ["colorama (>=0.4.6)"]
 
 [[package]]
 name = "jinja2"
-version = "3.1.4"
+version = "3.1.5"
 description = "A very fast and expressive template engine."
 optional = false
 python-versions = ">=3.7"
 groups = ["main", "dev"]
 files = [
-    {file = "jinja2-3.1.4-py3-none-any.whl", hash = "sha256:bc5dd2abb727a5319567b7a813e6a2e7318c39f4f487cfe6c89c6f9c7d25197d"},
-    {file = "jinja2-3.1.4.tar.gz", hash = "sha256:4a3aee7acbbe7303aede8e9648d13b8bf88a429282aa6122a993f0ac800cb369"},
+    {file = "jinja2-3.1.5-py3-none-any.whl", hash = "sha256:aba0f4dc9ed8013c424088f68a5c226f7d6097ed89b246d7749c2ec4175c6adb"},
+    {file = "jinja2-3.1.5.tar.gz", hash = "sha256:8fefff8dc3034e27bb80d67c671eb8a9bc424c0ef4c0826edbff304cceff43bb"},
 ]
 
 [package.dependencies]
@@ -1175,14 +1175,14 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.17.7"
+version = "0.17.8"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "port_ocean-0.17.7-py3-none-any.whl", hash = "sha256:95132ccf895b708076b5f0980c44592c12f35fa197b25a8c6008f4b2920f64d2"},
-    {file = "port_ocean-0.17.7.tar.gz", hash = "sha256:d364df7d7a964f87fe91118d57eee1da9891b1c46dca0349a4a3d301da32203b"},
+    {file = "port_ocean-0.17.8-py3-none-any.whl", hash = "sha256:d587b6becc86604994855459f4aadffe6f62f3b491b109f62736cc5fb5bbb96d"},
+    {file = "port_ocean-0.17.8.tar.gz", hash = "sha256:36a58e02f4eba0323b440b40b9acd0ce510aad235ac79d5b746de4941673e328"},
 ]
 
 [package.dependencies]
@@ -1991,4 +1991,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "bc2d4adba2665084e5d1740507b47f9beb4eaf09cd9ad28709719eac7180d847"
+content-hash = "dcff9550f9203241c71d6a99679707edffbc293ea112fcb96349dea8eb5d85ac"

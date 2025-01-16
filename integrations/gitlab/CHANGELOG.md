@@ -7,6 +7,29 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.20 (2025-01-16)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+0.2.19 (2025-01-15)
+===================
+
+### Improvements
+
+- Event handler now retries handling events if it takes too long to complete
+
+0.2.18 (2025-01-15)
+===================
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
 0.2.17 (2025-01-12)
 ===================
 
