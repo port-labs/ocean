@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Updated default mapping for Jira Issue to use `empty` instead of `""` to prevent `parentIssue` error spam
+- Updated default mapping for Jira Issue to use by removing `""` to prevent `parentIssue` error spam
 
 
 ## 0.2.23 (2025-01-16)
