@@ -15,6 +15,7 @@ class ObjectKind(StrEnum):
     ENTITY = "entity"
     USER = "user"
     GROUP = "group"
+    TEAM = "team"
 
 
 oauth_client: Optional[OAuthClient] = None
@@ -81,6 +82,14 @@ async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for groups in dynatrace_client.get_groups():
         yield groups
+
+
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dynatrace_client = initialize_client()
+
+    async for teams in dynatrace_client.get_teams():
+        yield teams
 
 
 @ocean.router.post("/webhook/problem")

@@ -136,6 +136,14 @@ class DynatraceClient:
             logger.error(f"HTTP error on {url}: {e}")
             raise
 
+    async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for teams in self._get_paginated_resources(
+            f"{self.host_url}/settings/objects",
+            "items",
+            {"schemaIds": "builtin:ownership.teams"},
+        ):
+            yield teams
+
     async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch paginated users from the account management API."""
         if not self.oauth_client:
