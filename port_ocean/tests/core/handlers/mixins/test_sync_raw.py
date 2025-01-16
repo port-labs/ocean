@@ -642,24 +642,19 @@ async def test_map_entities_compared_with_port_with_existing_entities(
 
     # Mock map_entities to return expected results
     expected_changed = [third_party_entities[0], third_party_entities[1]]
-    expected_irrelevant = [port_entities[1]]
 
     with patch(
         "port_ocean.core.integrations.mixins.sync_raw.map_entities",
-        return_value=(expected_changed, expected_irrelevant),
+        return_value=(expected_changed),
     ) as mock_map_entities:
         # Execute test
-        changed_entities, irrelevant_entities = (
-            await mock_sync_raw_mixin._map_entities_compared_with_port(
-                third_party_entities, resource, UserAgentType.exporter
-            )
+        changed_entities = await mock_sync_raw_mixin._map_entities_compared_with_port(
+            third_party_entities, resource, UserAgentType.exporter
         )
 
         # Verify results
         assert len(changed_entities) == 2
-        assert len(irrelevant_entities) == 1
         assert [e.identifier for e in changed_entities] == ["entity_1", "entity_2"]
-        assert [e.identifier for e in irrelevant_entities] == ["entity_3"]
         assert mock_map_entities.call_count == 1  # Verify map_entities was called once
 
 
