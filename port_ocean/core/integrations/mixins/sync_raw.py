@@ -162,6 +162,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         resource: ResourceConfig,
         user_agent_type: UserAgentType,
     ) -> list[Entity]:
+        if entities[0].is_using_search_identifier or entities[0].is_using_search_relation:
+            return entities
+
         query = self._construct_search_query_for_entities(entities)
         entities_at_port_with_properties = await ocean.port_client.search_entities(
             user_agent_type,
