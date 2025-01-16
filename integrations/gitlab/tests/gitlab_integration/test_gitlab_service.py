@@ -31,16 +31,25 @@ async def test_search_files_in_folders_in_project(
 ) -> None:
     # Arrange
     search_pattern = "**/my/file.yaml"
+
+    def mock_search(page: int, *args: Any, **kwargs: Any) -> Any:
+        if page == 1:
+            # GitLab would only return files matching the pattern
+            return [{"path": "hello/my/file.yaml"}]
+        return None
+
     mock_project = MagicMock()
     monkeypatch.setattr(mock_project, "search", mock_search)
+    mock_project.path_with_namespace = "test/project"
 
     expected_files = ["hello/my/file.yaml"]
+
     # Act
     actual_files = []
-    async for file in mocked_gitlab_service.search_files_in_project(
+    async for files in mocked_gitlab_service.search_files_in_project(
         mock_project, search_pattern
     ):
-        actual_files.extend(file)
+        actual_files.extend(files)
 
     # Assert
     assert len(actual_files) == 1
@@ -55,19 +64,27 @@ async def test_search_files_in_project(
     # Arrange
     search_pattern = "**/file.yaml"
 
+    def mock_search(page: int, *args: Any, **kwargs: Any) -> Any:
+        if page == 1:
+            # GitLab returns all files matching the pattern
+            return [{"path": "hello/aaa/file.yaml"}, {"path": "hello/my/file.yaml"}]
+        return None
+
     mock_project = MagicMock()
     monkeypatch.setattr(mock_project, "search", mock_search)
+    mock_project.path_with_namespace = "test/project"
+
     expected_files = ["hello/aaa/file.yaml", "hello/my/file.yaml"]
+
     # Act
     actual_files = []
-    async for file in mocked_gitlab_service.search_files_in_project(
+    async for files in mocked_gitlab_service.search_files_in_project(
         mock_project, search_pattern
     ):
-        actual_files.extend(file)
+        actual_files.extend(files)
 
     # Assert
-    assert len(actual_files) == 2
-    assert actual_files == expected_files
+    assert sorted(actual_files) == sorted(expected_files)
 
 
 async def test_search_files_invalid_glob_in_project(
@@ -78,19 +95,23 @@ async def test_search_files_invalid_glob_in_project(
     # Arrange
     search_pattern = "**/file.{yaml,yml,json}"
 
+    def mock_search(page: int, *args: Any, **kwargs: Any) -> Any:
+        # GitLab would return no results for unsupported patterns
+        return []
+
     mock_project = MagicMock()
     monkeypatch.setattr(mock_project, "search", mock_search)
-    expected_files: list[Any] = []
+    mock_project.path_with_namespace = "test/project"
+
     # Act
     actual_files = []
-    async for file in mocked_gitlab_service.search_files_in_project(
+    async for files in mocked_gitlab_service.search_files_in_project(
         mock_project, search_pattern
     ):
-        actual_files.extend(file)
+        actual_files.extend(files)
 
     # Assert
-    assert len(actual_files) == 0
-    assert actual_files == expected_files
+    assert len(actual_files) == 0, "Should not find any files for unsupported pattern"
 
 
 async def test_search_generic_files_inside_folder_inside_folder_in_project(
@@ -101,8 +122,26 @@ async def test_search_generic_files_inside_folder_inside_folder_in_project(
     # Arrange
     search_pattern = "hello/**/file*"
 
+    def mock_search(page: int, *args: Any, **kwargs: Any) -> Any:
+        if page == 1:
+            return [
+                {"path": "hello/aaa/file.yaml"},
+                {"path": "hello/my/file.yaml"},
+            ]
+        elif page == 2:
+            return [{"path": "hello/my/file2.yaml"}, {"path": "hello/my/file3.yaml"}]
+        elif page == 3:
+            return [
+                {"path": "hello/my/file.yml"},
+                {"path": "hello/my/file.json"},
+                {"path": "hello/my/file.md"},
+            ]
+        return None
+
     mock_project = MagicMock()
     monkeypatch.setattr(mock_project, "search", mock_search)
+    mock_project.path_with_namespace = "test/project"
+
     expected_files = [
         "hello/aaa/file.yaml",
         "hello/my/file.yaml",
@@ -112,12 +151,13 @@ async def test_search_generic_files_inside_folder_inside_folder_in_project(
         "hello/my/file.json",
         "hello/my/file.md",
     ]
+
     # Act
     actual_files = []
-    async for file in mocked_gitlab_service.search_files_in_project(
+    async for files in mocked_gitlab_service.search_files_in_project(
         mock_project, search_pattern
     ):
-        actual_files.extend(file)
+        actual_files.extend(files)
 
     # Assert
     assert len(actual_files) == 7
