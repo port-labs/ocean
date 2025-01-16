@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 import typing
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, AsyncIterator, List, Optional, Tuple, Union
@@ -24,7 +23,10 @@ from gitlab.v4.objects import (
 )
 from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
-from gitlab_integration.core.utils import does_pattern_apply
+from gitlab_integration.core.utils import (
+    does_pattern_apply,
+    convert_glob_to_gitlab_patterns,
+)
 from loguru import logger
 from yaml.parser import ParserError
 
@@ -174,13 +176,15 @@ class GitlabService:
         logger.info(
             f"Searching project {project.path_with_namespace} for files with path pattern {path}"
         )
-        paths = [path] if not isinstance(path, list) else path
-        for path in paths:
+        # Convert complex glob patterns into GitLab-compatible ones
+        gitlab_patterns = convert_glob_to_gitlab_patterns(path)
+
+        for pattern in gitlab_patterns:
             async with self._search_rate_limiter:
                 async for files in AsyncFetcher.fetch_batch(
                     project.search,
                     scope="blobs",
-                    search=f"path:{path}",
+                    search=f"path:{pattern}",
                     search_type="advanced",
                     retry_transient_errors=True,
                 ):
@@ -203,7 +207,7 @@ class GitlabService:
                         yield files_with_content
                     else:
                         logger.info(
-                            f"No files with content found for project {project.path_with_namespace} for path {path}"
+                            f"No files with content found for project {project.path_with_namespace} for path {pattern}"
                         )
 
     async def _get_entities_from_git(
