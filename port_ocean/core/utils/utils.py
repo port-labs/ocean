@@ -135,7 +135,7 @@ def are_entities_different(first_entity: Entity, second_entity: Entity) -> bool:
     ) or not are_entities_fields_equal(first_entity.relations, second_entity.relations)
 
 
-def map_entities(
+def resolve_entities_diff(
     third_party_entities: list[Entity], port_entities: list[Entity]
 ) -> list[Entity]:
     """

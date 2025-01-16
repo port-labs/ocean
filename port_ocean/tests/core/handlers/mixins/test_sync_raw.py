@@ -644,9 +644,9 @@ async def test_map_entities_compared_with_port_with_existing_entities(
     expected_changed = [third_party_entities[0], third_party_entities[1]]
 
     with patch(
-        "port_ocean.core.integrations.mixins.sync_raw.map_entities",
+        "port_ocean.core.integrations.mixins.sync_raw.resolve_entities_diff",
         return_value=(expected_changed),
-    ) as mock_map_entities:
+    ) as mock_resolve_entities_diff:
         # Execute test
         changed_entities = await mock_sync_raw_mixin._map_entities_compared_with_port(
             third_party_entities, resource, UserAgentType.exporter
@@ -655,7 +655,9 @@ async def test_map_entities_compared_with_port_with_existing_entities(
         # Verify results
         assert len(changed_entities) == 2
         assert [e.identifier for e in changed_entities] == ["entity_1", "entity_2"]
-        assert mock_map_entities.call_count == 1  # Verify map_entities was called once
+        assert (
+            mock_resolve_entities_diff.call_count == 1
+        )  # Verify map_entities was called once
 
 
 @dataclass

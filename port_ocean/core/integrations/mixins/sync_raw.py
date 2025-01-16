@@ -28,7 +28,7 @@ from port_ocean.core.ocean_types import (
     RAW_ITEM,
     CalculationResult,
 )
-from port_ocean.core.utils.utils import map_entities, zip_and_sum, gather_and_split_errors_from_results
+from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -175,7 +175,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info("getting Entities from port with properties", port_entities=len(entities_at_port_with_properties))
 
         if len(entities_at_port_with_properties) > 0:
-            return map_entities(entities, entities_at_port_with_properties)
+            return resolve_entities_diff(entities, entities_at_port_with_properties)
         return entities
 
     async def _register_resource_raw(

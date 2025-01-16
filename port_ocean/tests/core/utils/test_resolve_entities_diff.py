@@ -2,7 +2,7 @@ from unittest.mock import patch
 from port_ocean.core.models import Entity
 from port_ocean.core.utils.utils import (
     are_entities_different,
-    map_entities,
+    resolve_entities_diff,
     are_entities_fields_equal,
 )
 from typing import Any
@@ -351,71 +351,71 @@ entity_with_search_relation = create_test_entity(
 )
 
 
-def test_map_entities_empty_lists() -> None:
+def test_resolve_entities_diff_empty_lists() -> None:
     """Test when both input lists are empty"""
-    changed = map_entities([], [])
+    changed = resolve_entities_diff([], [])
     assert len(changed) == 0
 
 
-def test_map_entities_new_entities() -> None:
+def test_resolve_entities_diff_new_entities() -> None:
     """Test when there are simple third party entities that are not in Port"""
-    changed = map_entities([entity1, entity2], [])
+    changed = resolve_entities_diff([entity1, entity2], [])
     assert len(changed) == 2
     assert changed[0] == entity1
     assert changed[1] == entity2
 
 
-def test_map_entities_deleted_entities() -> None:
+def test_resolve_entities_diff_deleted_entities() -> None:
     """Test when entities exist in Port but not in third party"""
-    changed = map_entities([], [entity1, entity2])
+    changed = resolve_entities_diff([], [entity1, entity2])
     assert len(changed) == 0
 
 
-def test_map_entities_identical_entities() -> None:
+def test_resolve_entities_diff_identical_entities() -> None:
     """Test when entities are identical in both sources"""
-    changed = map_entities([entity1], [entity1])
+    changed = resolve_entities_diff([entity1], [entity1])
     assert len(changed) == 0
 
 
-def test_map_entities_modified_properties() -> None:
+def test_resolve_entities_diff_modified_properties() -> None:
     """Test when entities exist but have different properties"""
-    changed = map_entities([entity1_modified_properties], [entity1])
+    changed = resolve_entities_diff([entity1_modified_properties], [entity1])
     assert len(changed) == 1
     assert changed[0] == entity1_modified_properties
 
 
-def test_map_entities_modified_relations() -> None:
+def test_resolve_entities_diff_modified_relations() -> None:
     """Test when entities exist but have different relations"""
-    changed = map_entities([entity1_modified_relations], [entity1])
+    changed = resolve_entities_diff([entity1_modified_relations], [entity1])
     assert len(changed) == 1
     assert changed[0] == entity1_modified_relations
 
 
-def test_map_entities_search_identifier_entity() -> None:
+def test_resolve_entities_diff_search_identifier_entity() -> None:
     """Test when entity uses search identifier"""
     with patch(
         "port_ocean.core.utils.utils.are_entities_different", return_value=False
     ) as mock_are_different:
-        changed = map_entities([entity_with_search_identifier], [])
+        changed = resolve_entities_diff([entity_with_search_identifier], [])
         assert len(changed) == 1
         assert changed[0] == entity_with_search_identifier
         mock_are_different.assert_not_called()
 
 
-def test_map_entities_search_relation_entity() -> None:
+def test_resolve_entities_diff_search_relation_entity() -> None:
     """Test when entity uses search relation"""
     with patch(
         "port_ocean.core.utils.utils.are_entities_different", return_value=False
     ) as mock_are_different:
-        changed = map_entities([entity_with_search_relation], [])
+        changed = resolve_entities_diff([entity_with_search_relation], [])
         assert len(changed) == 1
         assert changed[0] == entity_with_search_relation
         mock_are_different.assert_not_called()
 
 
-def test_map_entities_multiple_entities() -> None:
+def test_resolve_entities_diff_multiple_entities() -> None:
     """Test with multiple entities in both sources"""
-    changed = map_entities(
+    changed = resolve_entities_diff(
         [entity1_modified_properties, entity2, entity_with_search_identifier],
         [entity1, entity3],
     )
