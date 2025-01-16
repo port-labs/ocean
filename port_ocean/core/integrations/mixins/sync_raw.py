@@ -130,7 +130,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
 
-    def _create_entities_identifier_query(self, entities: list[Entity]) -> dict:
+    def _construct_search_query_for_entities(self, entities: list[Entity]) -> dict:
         """Create a query to search for entities by their identifiers.
 
         Args:
@@ -162,7 +162,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         resource: ResourceConfig,
         user_agent_type: UserAgentType,
     ) -> list[Entity]:
-        query = self._create_entities_identifier_query(entities)
+        query = self._construct_search_query_for_entities(entities)
         entities_at_port_with_properties = await ocean.port_client.search_entities(
             user_agent_type,
             parameters_to_include=["blueprint", "identifier"] + [
