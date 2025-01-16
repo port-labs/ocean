@@ -165,7 +165,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         query = self._create_entities_identifier_query(entities)
         entities_at_port_with_properties = await ocean.port_client.search_entities(
             user_agent_type,
-            include_params=["blueprint", "identifier"] + [
+            parameters_to_include=["blueprint", "identifier"] + [
                 f"properties.{prop}" for prop in resource.port.entity.mappings.properties
             ] + [
                 f"relations.{relation}" for relation in resource.port.entity.mappings.relations

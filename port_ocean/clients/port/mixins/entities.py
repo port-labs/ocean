@@ -217,7 +217,7 @@ class EntityClientMixin:
         self,
         user_agent_type: UserAgentType,
         query: dict[Any, Any] | None = None,
-        include_params: list[str] | None = None,
+        parameters_to_include: list[str] | None = None,
     ) -> list[Entity]:
         default_query = {
             "combinator": "and",
@@ -247,7 +247,7 @@ class EntityClientMixin:
             headers=await self.auth.headers(user_agent_type),
             params={
                 "exclude_calculated_properties": "true",
-                "include": include_params or ["blueprint", "identifier"],
+                "include": parameters_to_include or ["blueprint", "identifier"],
             },
             extensions={"retryable": True},
         )
