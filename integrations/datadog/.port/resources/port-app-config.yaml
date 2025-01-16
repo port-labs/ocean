@@ -1,6 +1,25 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
+enableMergeEntity: true
 resources:
+  - kind: sloHistory
+    selector:
+      query: 'true'
+      timeframe: 7
+      periodOfTimeInMonths: 6
+    port:
+      entity:
+        mappings:
+          identifier: .slo.id | tostring
+          title: .slo.name
+          blueprint: '"datadogSloHistory"'
+          properties:
+            monitory_type: .type
+            sampling_start_date: .from_ts | todate
+            sampling_end_date: .to_ts | todate
+            sliValue: .overall.sli_value
+          relations:
+            slo: .slo.id
   - kind: user
     selector:
       query: 'true'
@@ -20,7 +39,7 @@ resources:
   - kind: team
     selector:
       query: 'true'
-      includeMembers: 'true'
+      includeMembers: true
     port:
       entity:
         mappings:
@@ -35,16 +54,15 @@ resources:
             createdAt: .attributes.created_at | todate
           relations:
             members: if .__members then .__members[].id else [] end
-
   - kind: host
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"datadogHost"'
           identifier: .id | tostring
           title: .aws_name // .host_name
+          blueprint: '"datadogHost"'
           properties:
             up: .up
             host_name: .host_name
@@ -58,7 +76,7 @@ resources:
             tags: .tags_by_source
   - kind: monitor
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -76,7 +94,7 @@ resources:
             updatedAt: .modified
   - kind: service
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -102,7 +120,7 @@ resources:
                   value: .attributes.schema.team
   - kind: slo
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -131,9 +149,9 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"datadogCloudResource"'
           identifier: .id | tostring
           title: .aws_name // .host_name
+          blueprint: '"datadogCloudResource"'
           properties:
             up: .up
             host_name: .host_name
@@ -145,3 +163,57 @@ resources:
             cpu_cores: .meta.cpuCores
             agent_version: .meta.agent_version
             tags: .tags_by_source
+  - kind: serviceMetric
+    selector:
+      query: 'true'
+      datadogSelector:
+        metric: avg:system.mem.used
+        env:
+          tag: env
+          value: '*'
+        service:
+          tag: servicename
+          value: '*'
+        timeframe: 10
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogServiceMetric"'
+          identifier: .__query_id
+          title: .query
+          properties:
+            query: .__query
+            series: .series
+            res_type: .res_type
+            from_date: .from_date / 1000 | todate
+            to_date: .to_date / 1000 | todate
+            env: .__env
+          relations:
+            service: .__service
+  - kind: serviceMetric
+    selector:
+      query: 'true'
+      datadogSelector:
+        metric: avg:system.disk.used
+        env:
+          tag: env
+          value: prod
+        service:
+          tag: servicename
+          value: '*'
+        timeframe: 5
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogServiceMetric"'
+          identifier: .__query_id
+          title: .query
+          properties:
+            query: .__query
+            series: .series
+            res_type: .res_type
+            from_date: .from_date / 1000 | todate
+            to_date: .to_date / 1000 | todate
+            env: .__env
+          relations:
+            service: .__service
