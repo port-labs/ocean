@@ -172,7 +172,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ],
             query=query
         )
-        logger.bind(port_entities=len(entities_at_port_with_properties)).info("getting Entities from port with properties")
+        logger.info("getting Entities from port with properties", port_entities=len(entities_at_port_with_properties))
 
         if len(entities_at_port_with_properties) > 0:
             return map_entities(entities, entities_at_port_with_properties)
