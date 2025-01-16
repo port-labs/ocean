@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.21 (2025-01-16)
+===================
+
+### Improvements
+
+- Fixed UserWarning log caused by not setting the `get_all` parameter for `project.label.list` request
+
+
 0.2.20 (2025-01-16)
 ===================
 
