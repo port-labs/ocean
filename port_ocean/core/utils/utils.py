@@ -157,8 +157,7 @@ def resolve_entities_diff(
 
     for entity in third_party_entities:
         if entity.is_using_search_identifier or entity.is_using_search_relation:
-            changed_entities.append(entity)
-            continue
+            return third_party_entities
         key = (entity.identifier, entity.blueprint)
         third_party_entities_dict[key] = entity
 
