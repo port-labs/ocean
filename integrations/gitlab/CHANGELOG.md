@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 0.2.21 (2025-01-16)
 ===================
 
-### BugFix
+### Bug Fixes
 
 - Fixed UserWarning log caused by not setting the `get_all` parameter for `project.label.list` request
 
