@@ -153,8 +153,8 @@ class DynatraceClient:
     async def get_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch paginated teams from the account management API."""
         url = f"{self.account_management_url}/accounts/{self.oauth_client.account_id}/groups"
-        async for teams in self._get_paginated_resources_with_oauth(url, "items"):
-            yield teams
+        async for groups in self._get_paginated_resources_with_oauth(url, "items"):
+            yield groups
 
     async def healthcheck(self) -> None:
         try:
