@@ -12,6 +12,7 @@ python-gitlab = "^3.14.0"
 pathlib = "^1.0.1"
 jsonschema = "^4.17.3"
 port_ocean = {version = "^0.17.8", extras = ["cli"]}
+glob2 = "^0.7"
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
