@@ -13,6 +13,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Fixed glob pattern matching  by utilizing GitLab's glob path search capabilities instead of pattern matching.
 
+0.2.21 (2025-01-16)
+===================
+
+### Bug Fixes
+
+- Fixed UserWarning log caused by not setting the `get_all` parameter for `project.label.list` request
+
+
 0.2.20 (2025-01-16)
 ===================
 
