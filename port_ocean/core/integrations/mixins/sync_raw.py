@@ -206,12 +206,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         changed_entities, user_agent_type
                     )
                 else:
-                    logger.info("no changed entities, not upserting", total_entities=len(objects_diff[0].entity_selector_diff.passed))
+                    logger.info("Entities in batch didn't changed since last sync, skipping", total_entities=len(objects_diff[0].entity_selector_diff.passed))
 
                 modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
 
             except Exception as e:
-                logger.warning(f"Failed to map entities with Port, falling back to upserting all entities: {str(e)}")
+                logger.warning(f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}")
                 modified_objects = await self.entities_state_applier.upsert(
                     objects_diff[0].entity_selector_diff.passed, user_agent_type
                 )
