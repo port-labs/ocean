@@ -17,10 +17,16 @@ from pathlib import Path
 from gcp_core.helpers.ratelimiter.overrides import (
     SearchAllResourcesQpmPerProject,
     PubSubAdministratorPerMinutePerProject,
+    ProjectGetRequestsPerMinutePerProject,
+    ProjectSearchRequestsPerMinutePerProject,
 )
 
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
 pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
+project_get_requests_per_minute_per_project = ProjectGetRequestsPerMinutePerProject()
+project_search_requests_per_minute_per_project = (
+    ProjectSearchRequestsPerMinutePerProject()
+)
 
 EXTRA_PROJECT_FIELD = "__project"
 DEFAULT_CREDENTIALS_FILE_PATH = (
@@ -181,10 +187,35 @@ def get_service_account_project_id() -> str:
 
 
 async def get_quotas_for_project(
-    project_id: str, kind: str
+    project_id: str, kind: str, quota_id: Optional[str] = None
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
     try:
         match kind:
+            case AssetTypesWithSpecialHandling.PROJECT:
+                if quota_id == "ProjectV3SearchRequestsPerMinutePerProject":
+                    project_rate_limiter = (
+                        await project_search_requests_per_minute_per_project.limiter(
+                            project_id
+                        )
+                    )
+                    project_semaphore = (
+                        await project_search_requests_per_minute_per_project.semaphore(
+                            project_id
+                        )
+                    )
+                    return project_rate_limiter, project_semaphore
+                else:
+                    project_rate_limiter = (
+                        await project_get_requests_per_minute_per_project.limiter(
+                            project_id
+                        )
+                    )
+                    project_semaphore = (
+                        await project_get_requests_per_minute_per_project.semaphore(
+                            project_id
+                        )
+                    )
+                    return project_rate_limiter, project_semaphore
             case (
                 AssetTypesWithSpecialHandling.TOPIC
                 | AssetTypesWithSpecialHandling.SUBSCRIPTION
@@ -222,7 +253,9 @@ async def get_quotas_for_project(
 
 
 async def resolve_request_controllers(
-    kind: str,
+    kind: str, **kwargs: Dict[str, Any]
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
     service_account_project_id = get_service_account_project_id()
-    return await get_quotas_for_project(service_account_project_id, kind)
+    return await get_quotas_for_project(
+        service_account_project_id, kind, quota_id=kwargs.get("quota_id")
+    )
