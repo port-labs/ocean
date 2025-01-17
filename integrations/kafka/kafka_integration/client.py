@@ -86,3 +86,51 @@ class KafkaClient:
                 logger.error(f"Failed to describe topic {topic_name}: {e}")
                 raise e
         return result_topics
+
+    def describe_consumer_groups(self) -> list[dict[str, Any]]:
+        """Describe all consumer groups in the cluster."""
+        result_groups = []
+        
+        # List all consumer groups and wait for the future to complete
+        groups_metadata = self.kafka_admin_client.list_consumer_groups()
+        groups_result = groups_metadata.result()
+        group_ids = [group.group_id for group in groups_result.valid]
+
+        logger.info(f"Found {len(group_ids)} consumer groups")
+        if not group_ids:
+            return result_groups
+
+        # Describe the consumer groups
+        groups_description = self.kafka_admin_client.describe_consumer_groups(group_ids)
+        
+        for group_id, future in groups_description.items():
+            try:
+                group_info = future.result()
+                members = [{
+                    'id': member.member_id,
+                    'client_id': member.client_id,
+                    'host': member.host,
+                    'assignment': {
+                        'topic_partitions': [
+                            {'topic': tp.topic, 'partition': tp.partition}
+                            for tp in member.assignment.topic_partitions
+                        ]
+                    }
+                } for member in group_info.members]
+
+                result_groups.append({
+                    'group_id': group_id,
+                    'state': group_info.state.name,
+                    'members': members,
+                    'cluster_name': self.cluster_name,
+                    'coordinator': group_info.coordinator.id,
+                    'partition_assignor': group_info.partition_assignor,
+                    'is_simple_consumer_group': group_info.is_simple_consumer_group,
+                    'authorized_operations': group_info.authorized_operations
+                })
+            except Exception as e:
+                logger.error(f"Failed to describe consumer group {group_id}: {e}")
+                raise e
+            
+        return result_groups
+
