@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable
 from unittest.mock import MagicMock, Mock
 from gitlab_integration.gitlab_service import GitlabService
 from gitlab.base import RESTObject
@@ -71,7 +71,7 @@ async def test_search_files_in_project(
     mocked_gitlab_service: GitlabService,
     mock_get_and_parse_single_file: Any,
     search_pattern: str,
-    mock_responses: callable,
+    mock_responses: Callable,
     expected_files: list,
 ) -> None:
     # Arrange
@@ -92,7 +92,7 @@ async def test_search_files_in_project(
         actual_files.extend(files)
 
     # Assert
-    assert sorted(actual_files) == sorted(expected_files)
+    assert actual_files == expected_files
 
 
 async def test_get_and_parse_single_file(

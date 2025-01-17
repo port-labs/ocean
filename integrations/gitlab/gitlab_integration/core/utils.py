@@ -1,4 +1,4 @@
-from glob2 import fnmatch
+from glob2 import fnmatch  # type: ignore
 from typing import Union, List
 from braceexpand import braceexpand
 

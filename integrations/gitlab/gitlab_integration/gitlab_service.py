@@ -189,11 +189,12 @@ class GitlabService:
                     search_type="advanced",
                     retry_transient_errors=True,
                 ):
+                    files_list = typing.cast(List[dict[str, Any]], files)
                     logger.info(
-                        f"Found {len(files)} files in project {project.path_with_namespace}"
+                        f"Found {len(files_list)} files in project {project.path_with_namespace}"
                     )
                     tasks = []
-                    for file in files:
+                    for file in files_list:
                         tasks.append(
                             self.get_and_parse_single_file(
                                 project, file["path"], project.default_branch
@@ -205,6 +206,9 @@ class GitlabService:
                     parsed_files = await asyncio.gather(*tasks)
                     files_with_content = [file for file in parsed_files if file]
                     if files_with_content:
+                        logger.info(
+                            f"Found {len(files_with_content)} files with content for project {project.path_with_namespace} for path {path}"
+                        )
                         yield files_with_content
                     else:
                         logger.info(
