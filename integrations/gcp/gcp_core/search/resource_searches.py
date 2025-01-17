@@ -179,7 +179,7 @@ async def list_all_subscriptions_per_project(
 
 
 @cache_iterator_result()
-async def search_all_projects(**kwargs: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def search_all_projects(**kwargs: Dict[str, Any]) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Searching projects")
     async with ProjectsAsyncClient() as projects_client:
         async for projects in paginated_query(
