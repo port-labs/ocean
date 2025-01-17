@@ -207,7 +207,7 @@ class GitlabService:
                     files_with_content = [file for file in parsed_files if file]
                     if files_with_content:
                         logger.info(
-                            f"Found {len(files_with_content)} files with content for project {project.path_with_namespace} for path {path}"
+                            f"Found {len(files_with_content)} files with content for project {project.path_with_namespace} for path {pattern}"
                         )
                         yield files_with_content
                     else:
