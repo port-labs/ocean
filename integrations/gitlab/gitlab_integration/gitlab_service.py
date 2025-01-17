@@ -1,9 +1,8 @@
 import asyncio
 import json
-import os
 import typing
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, List, Optional, Tuple, Union
 
 import aiolimiter
 import anyio.to_thread
@@ -25,7 +24,10 @@ from gitlab.v4.objects import (
 )
 from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
-from gitlab_integration.core.utils import does_pattern_apply
+from gitlab_integration.core.utils import (
+    does_pattern_apply,
+    convert_glob_to_gitlab_patterns,
+)
 from loguru import logger
 from yaml.parser import ParserError
 
@@ -175,49 +177,42 @@ class GitlabService:
         logger.info(
             f"Searching project {project.path_with_namespace} for files with path pattern {path}"
         )
-        paths = [path] if not isinstance(path, list) else path
-        for path in paths:
-            file_pattern = os.path.basename(path)
+        # Convert complex glob patterns into GitLab-compatible ones
+        gitlab_patterns = convert_glob_to_gitlab_patterns(path)
+
+        for pattern in gitlab_patterns:
             async with self._search_rate_limiter:
-                logger.info(
-                    f"Searching project {project.path_with_namespace} for file pattern {file_pattern}"
-                )
                 async for files in AsyncFetcher.fetch_batch(
                     project.search,
                     scope="blobs",
-                    search=f"filename:{file_pattern}",
+                    search=f"path:{pattern}",
                     search_type="advanced",
                     retry_transient_errors=True,
                 ):
+                    files_list = typing.cast(List[dict[str, Any]], files)
                     logger.info(
-                        f"Found {len(files)} files in project {project.path_with_namespace} with file pattern {file_pattern}, filtering all that don't match path pattern {path}"
+                        f"Found {len(files_list)} files in project {project.path_with_namespace}"
                     )
-                    files = typing.cast(Union[GitlabList, List[Dict[str, Any]]], files)
                     tasks = []
-                    for file in files:
-                        if does_pattern_apply(path, file["path"]):
-                            tasks.append(
-                                self.get_and_parse_single_file(
-                                    project, file["path"], project.default_branch
-                                )
+                    for file in files_list:
+                        tasks.append(
+                            self.get_and_parse_single_file(
+                                project, file["path"], project.default_branch
                             )
-                        else:
-                            logger.debug(
-                                f"Skipping file {file['path']} as it doesn't match path pattern {path} for project {project.path_with_namespace}"
-                            )
+                        )
                     logger.info(
-                        f"Found {len(tasks)} files in project {project.path_with_namespace} that match path pattern {path}"
+                        f"Found {len(tasks)} files in project {project.path_with_namespace}"
                     )
                     parsed_files = await asyncio.gather(*tasks)
                     files_with_content = [file for file in parsed_files if file]
                     if files_with_content:
                         logger.info(
-                            f"Found {len(files_with_content)} files with content for project {project.path_with_namespace} for path {path}"
+                            f"Found {len(files_with_content)} files with content for project {project.path_with_namespace} for path {pattern}"
                         )
                         yield files_with_content
                     else:
                         logger.info(
-                            f"No files with content found for project {project.path_with_namespace} for path {path}"
+                            f"No files with content found for project {project.path_with_namespace} for path {pattern}"
                         )
 
     async def _get_entities_from_git(
