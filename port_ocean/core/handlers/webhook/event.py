@@ -17,18 +17,20 @@ class WebhookEventTimestamp(StrEnum):
 
 
 class WebhookEvent:
+    """Represents a webhook event."""
+
     def __init__(
         self,
         trace_id: str,
-        payload: EventPayload = {},
-        headers: Dict[str, str] = {},
-        timestamps: Dict[str, datetime.datetime] = {},
-        original_request: Request | None = None,
+        payload: EventPayload,
+        headers: Dict[str, str],
+        original_request: Request,
+        timestamps: Dict[str, datetime.datetime] | None = None,
     ) -> None:
         self.trace_id = trace_id
         self.payload = payload
         self.headers = headers
-        self._timestamps = timestamps
+        self._timestamps = timestamps or {}
         self._original_request = original_request
 
     @staticmethod
