@@ -50,7 +50,7 @@ class AbstractWebhookHandler(ABC):
                 raise ValueError("Invalid payload")
 
             # Handle Event
-            self.handle_event(payload)
+            await self.handle_event(payload)
 
             # Metrics Collection
             self.collect_metrics(success=True)
@@ -90,6 +90,6 @@ class AbstractWebhookHandler(ABC):
         pass
 
     @abstractmethod
-    def handle_event(self, payload: EventPayload) -> None:
+    async def handle_event(self, payload: EventPayload) -> None:
         """Process the event."""
         pass
