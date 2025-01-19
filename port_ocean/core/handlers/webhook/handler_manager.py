@@ -14,6 +14,7 @@ from port_ocean.core.handlers.queue import AbstractQueue, LocalQueue
 
 
 MAX_HANDLER_PROCESSING_SECONDS = 90.0
+MAX_WAIT_SECONDS_BEFORE_SHUTDOWN = 5.0
 
 
 @dataclass
@@ -153,7 +154,7 @@ class WebhookHandlerManager:
                         for queue in self._event_queues.values()
                     )
                 ),
-                timeout=5.0,
+                timeout=MAX_WAIT_SECONDS_BEFORE_SHUTDOWN,
             )
         except asyncio.TimeoutError:
             logger.warning("Shutdown timed out waiting for queues to empty")
