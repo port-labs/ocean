@@ -1,10 +1,11 @@
 import datetime
-from typing import Dict, Type, Set
+from typing import Dict, Type, Set, Callable
 from fastapi import APIRouter, Request
 from loguru import logger
 import asyncio
+from dataclasses import dataclass
 
-from .event import WebhookEvent, WebhookEventTimestamp
+from .webhook_event import WebhookEvent, WebhookEventTimestamp
 
 
 from .abstract_webhook_handler import AbstractWebhookHandler
@@ -12,12 +13,20 @@ from port_ocean.utils.signal import signal_handler
 from port_ocean.core.handlers.queue import AbstractQueue, LocalQueue
 
 
+@dataclass
+class HandlerRegistration:
+    """Represents a registered handler with its filter."""
+
+    handler: Type[AbstractWebhookHandler]
+    filter: Callable[[WebhookEvent], bool]
+
+
 class WebhookHandlerManager:
     """Manages webhook handlers and their routes."""
 
     def __init__(self, router: APIRouter) -> None:
         self._router = router
-        self._handlers: Dict[str, Type[AbstractWebhookHandler]] = {}
+        self._handlers: Dict[str, list[HandlerRegistration]] = {}
         self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
         self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
         signal_handler.register(self.shutdown)
@@ -40,10 +49,23 @@ class WebhookHandlerManager:
                 event = await self._event_queues[path].get()
                 with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
                     try:
-                        logger.debug("start Processing queued webhook")
+                        logger.debug("Start processing queued webhook")
                         event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
-                        handler = self._handlers[path](event)
+
+                        # Find and execute all matching handlers
+                        matching_handlers = [
+                            reg.handler
+                            for reg in self._handlers[path]
+                            if reg.filter(event)
+                        ]
+
+                        if not matching_handlers:
+                            raise ValueError("No matching handlers found")
+
+                        handler_class = matching_handlers[0]
+                        handler = handler_class(event)
                         await handler.process_request()
+
                     except Exception as e:
                         logger.exception(
                             f"Error processing queued webhook for {path}: {str(e)}"
@@ -72,10 +94,20 @@ class WebhookHandlerManager:
         self,
         path: str,
         handler: Type[AbstractWebhookHandler],
+        event_filter: Callable[[WebhookEvent], bool] = lambda _: True,
     ) -> None:
-        """Register a webhook handler for a specific path."""
-        self._handlers[path] = handler
-        self._event_queues[path] = LocalQueue()
+        """Register a webhook handler for a specific path with optional filter."""
+        if path not in self._handlers:
+            self._handlers[path] = []
+            self._event_queues[path] = LocalQueue()
+            self._register_route(path)
+
+        self._handlers[path].append(
+            HandlerRegistration(handler=handler, filter=event_filter)
+        )
+
+    def _register_route(self, path: str) -> None:
+        """Register a route for a specific path."""
 
         async def handle_webhook(request: Request) -> Dict[str, str]:
             """Handle incoming webhook requests for a specific path."""

@@ -153,6 +153,7 @@ class PortOceanContext:
         self,
         path: str,
         handler: type,
+        filter: Callable[[Any], bool] = lambda _: True,
     ) -> None:
         """
         Registers a webhook handler for a specific path.
@@ -164,7 +165,7 @@ class PortOceanContext:
         if not issubclass(handler, AbstractWebhookHandler):
             raise ValueError("Handler must extend AbstractWebhookHandler")
 
-        self.app.webhook_manager.register_handler(path, handler)
+        self.app.webhook_manager.register_handler(path, handler, filter)
 
 
 _port_ocean: PortOceanContext = PortOceanContext(None)
