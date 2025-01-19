@@ -169,8 +169,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         entities_at_port_with_properties = []
 
         # Process entities in batches of 50
-        for i in range(0, len(entities), BATCH_SIZE):
-            entities_batch = entities[i:i + BATCH_SIZE]
+        for start_index in range(0, len(entities), BATCH_SIZE):
+            entities_batch = entities[start_index:start_index + BATCH_SIZE]
             batch_results = await self._fetch_entities_batch_from_port(
                 entities_batch,
                 resource,
