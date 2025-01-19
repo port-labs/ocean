@@ -9,6 +9,7 @@ from .event import WebhookEvent, WebhookEventTimestamp
 
 from .abstract_webhook_handler import AbstractWebhookHandler
 from port_ocean.utils.signal import signal_handler
+from port_ocean.core.handlers.queue import AbstractQueue, LocalQueue
 
 
 class WebhookHandlerManager:
@@ -17,7 +18,7 @@ class WebhookHandlerManager:
     def __init__(self, router: APIRouter) -> None:
         self._router = router
         self._handlers: Dict[str, Type[AbstractWebhookHandler]] = {}
-        self._event_queues: Dict[str, asyncio.Queue[WebhookEvent]] = {}
+        self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
         self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
         signal_handler.register(self.shutdown)
 
@@ -58,7 +59,7 @@ class WebhookHandlerManager:
                             ),
                             done_processing=datetime.datetime.now(),
                         )
-                        self._event_queues[path].task_done()
+                        await self._event_queues[path].commit()
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
                 break
@@ -74,7 +75,7 @@ class WebhookHandlerManager:
     ) -> None:
         """Register a webhook handler for a specific path."""
         self._handlers[path] = handler
-        self._event_queues[path] = asyncio.Queue()
+        self._event_queues[path] = LocalQueue()
 
         async def handle_webhook(request: Request) -> Dict[str, str]:
             """Handle incoming webhook requests for a specific path."""
@@ -101,7 +102,10 @@ class WebhookHandlerManager:
             # Wait for all queues to be empty with a timeout
             await asyncio.wait_for(
                 asyncio.gather(
-                    *(queue.join() for queue in self._event_queues.values())
+                    *(
+                        queue.wait_for_all_items_to_be_complete()
+                        for queue in self._event_queues.values()
+                    )
                 ),
                 timeout=5.0,
             )
@@ -120,6 +124,6 @@ class WebhookHandlerManager:
 # check of asyncio maintains order - Done
 # Wrap event to add metadata - add timestamp when event arrived to to each queue - Done
 # add ttl to event processing
-# facade away the queue handling
+# facade away the queue handling - Done
 # separate event handling per kind as well as per route
 # add on_cancel method to handler
