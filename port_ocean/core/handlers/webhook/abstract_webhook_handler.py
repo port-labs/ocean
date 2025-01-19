@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict
 
-from .event import WebhookEvent, EventPayload
+from .webhook_event import WebhookEvent, EventPayload
 
 
 class AbstractWebhookHandler(ABC):
