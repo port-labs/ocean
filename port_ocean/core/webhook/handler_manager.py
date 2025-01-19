@@ -37,10 +37,9 @@ class WebhookHandlerManager:
         while True:
             try:
                 event = await self._event_queues[path].get()
-                start = datetime.datetime.now()
                 with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
                     try:
-                        logger.info("start Processing queued webhook")
+                        logger.debug("start Processing queued webhook")
                         event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
                         handler = self._handlers[path](event)
                         await handler.process_request()
@@ -49,9 +48,15 @@ class WebhookHandlerManager:
                             f"Error processing queued webhook for {path}: {str(e)}"
                         )
                     finally:
-                        logger.info(
+                        logger.debug(
                             "Finished processing queued webhook",
-                            duration=datetime.datetime.now() - start,
+                            arrived_at_queue=event.get_timestamp(
+                                WebhookEventTimestamp.AddedToQueue
+                            ),
+                            started_processing=event.get_timestamp(
+                                WebhookEventTimestamp.StartedProcessing
+                            ),
+                            done_processing=datetime.datetime.now(),
                         )
                         self._event_queues[path].task_done()
             except asyncio.CancelledError:
@@ -113,7 +118,7 @@ class WebhookHandlerManager:
 
 
 # check of asyncio maintains order
-# Wrap event to add metadata - add timestamp when event arrived to to each queue
+# Wrap event to add metadata - add timestamp when event arrived to to each queue - Done
 # add ttl to event processing
 # facade away the queue handling
 # separate event handling per kind as well as per route

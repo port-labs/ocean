@@ -48,3 +48,8 @@ class WebhookEvent:
             raise ValueError(f"Timestamp {timestamp.value} already set")
 
         self._timestamps[timestamp.value] = datetime.datetime.now()
+
+    def get_timestamp(
+        self, timestamp: WebhookEventTimestamp
+    ) -> datetime.datetime | None:
+        return self._timestamps.get(timestamp.value, None)
