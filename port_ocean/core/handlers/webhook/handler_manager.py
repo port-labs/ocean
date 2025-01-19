@@ -13,6 +13,9 @@ from port_ocean.utils.signal import signal_handler
 from port_ocean.core.handlers.queue import AbstractQueue, LocalQueue
 
 
+MAX_HANDLER_PROCESSING_SECONDS = 90.0
+
+
 @dataclass
 class HandlerRegistration:
     """Represents a registered handler with its filter."""
@@ -65,13 +68,22 @@ class WebhookHandlerManager:
 
                         handler_class = matching_handlers[0]
                         handler = handler_class(event)
-                        await handler.process_request()
+                        try:
+                            await asyncio.wait_for(
+                                handler.process_request(),
+                                timeout=MAX_HANDLER_PROCESSING_SECONDS,
+                            )
+                        except asyncio.TimeoutError:
+                            raise TimeoutError(
+                                f"Handler processing timed out after {MAX_HANDLER_PROCESSING_SECONDS} seconds"
+                            )
 
                     except Exception as e:
                         logger.exception(
                             f"Error processing queued webhook for {path}: {str(e)}"
                         )
                     finally:
+                        await self._event_queues[path].commit()
                         logger.debug(
                             "Finished processing queued webhook",
                             arrived_at_queue=event.get_timestamp(
@@ -82,7 +94,6 @@ class WebhookHandlerManager:
                             ),
                             done_processing=datetime.datetime.now(),
                         )
-                        await self._event_queues[path].commit()
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
                 if handler:
@@ -158,7 +169,7 @@ class WebhookHandlerManager:
 
 # check of asyncio maintains order - Done
 # Wrap event to add metadata - add timestamp when event arrived to to each queue - Done
-# add ttl to event processing
+# add ttl to event processing - Done
 # facade away the queue handling - Done
 # separate event handling per kind as well as per route - Done
 # add on_cancel method to handler - Done
