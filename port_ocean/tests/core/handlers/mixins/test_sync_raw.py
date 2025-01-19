@@ -567,7 +567,7 @@ async def test_unregister_raw(
 
 
 @pytest.mark.asyncio
-async def test_map_entities_compared_with_port_no_port_entities(
+async def test_map_entities_compared_with_port_no_port_entities_all_entities_are_mapped(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_ocean: Ocean,
 ) -> None:
@@ -602,18 +602,19 @@ async def test_map_entities_compared_with_port_no_port_entities(
 
     # Verify results
     assert len(changed_entities) == 2
-    assert [e.identifier for e in changed_entities] == ["entity_1", "entity_2"]
+    assert "entity_1" in [e.identifier for e in changed_entities]
+    assert "entity_2" in [e.identifier for e in changed_entities]
 
 
 @pytest.mark.asyncio
-async def test_map_entities_compared_with_port_with_existing_entities(
+async def test_map_entities_compared_with_port_with_existing_entities_only_changed_third_party_entities_are_mapped(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_ocean: Ocean,
 ) -> None:
     # Setup test data
     third_party_entities = [
         create_entity(
-            "entity_1", "service", {}, False
+            "entity_1", "service", {"service": "entity_2"}, False
         ),  # Should be in changed (modified)
         create_entity("entity_2", "service", {}, False),  # Should be in changed (new)
     ]
@@ -640,33 +641,26 @@ async def test_map_entities_compared_with_port_with_existing_entities(
     # Mock port client to return our port entities
     mock_ocean.port_client.search_entities.return_value = port_entities  # type: ignore
 
-    # Mock map_entities to return expected results
-    expected_changed = [third_party_entities[0], third_party_entities[1]]
+    changed_entities = await mock_sync_raw_mixin._map_entities_compared_with_port(
+        third_party_entities, resource, UserAgentType.exporter
+    )
 
-    with patch(
-        "port_ocean.core.integrations.mixins.sync_raw.resolve_entities_diff",
-        return_value=(expected_changed),
-    ) as mock_resolve_entities_diff:
-        # Execute test
-        changed_entities = await mock_sync_raw_mixin._map_entities_compared_with_port(
-            third_party_entities, resource, UserAgentType.exporter
-        )
-
-        # Verify results
-        assert len(changed_entities) == 2
-        assert [e.identifier for e in changed_entities] == ["entity_1", "entity_2"]
-        assert (
-            mock_resolve_entities_diff.call_count == 1
-        )  # Verify map_entities was called once
+    # Verify results
+    assert len(changed_entities) == 2
+    assert "entity_1" in [e.identifier for e in changed_entities]
+    assert "entity_2" in [e.identifier for e in changed_entities]
 
 
 @pytest.mark.asyncio
-async def test_map_entities_compared_with_port_with_multiple_batches(
+async def test_map_entities_compared_with_port_with_multiple_batches_all_batches_are_being_proccessed_to_map(
     mock_sync_raw_mixin: SyncRawMixin, mock_ocean: Ocean
 ) -> None:
     # Setup test data with 75 entities (should create 2 batches)
     third_party_entities = [
-        create_entity(f"entity_{i}", "service", {}, False) for i in range(75)
+        create_entity(
+            f"entity_{i}", "service", {"service_relation": f"service_{i}"}, False
+        )
+        for i in range(75)
     ]
     port_entities_batch1 = [
         create_entity(f"entity_{i}", "service", {}, False) for i in range(50)
@@ -746,7 +740,7 @@ class CalculationResult:
 
 
 @pytest.mark.asyncio
-async def test_register_resource_raw_saas_no_changes(
+async def test_register_resource_raw_saas_no_changes_upsert_not_called_entitiy_is_returned(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,
     mock_context: PortOceanContext,
@@ -779,7 +773,7 @@ async def test_register_resource_raw_saas_no_changes(
 
 
 @pytest.mark.asyncio
-async def test_register_resource_raw_saas_with_changes(
+async def test_register_resource_raw_saas_with_changes_upsert_called_and_entities_are_mapped(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,
     mock_context: PortOceanContext,
@@ -812,7 +806,7 @@ async def test_register_resource_raw_saas_with_changes(
 
 
 @pytest.mark.asyncio
-async def test_register_resource_raw_non_saas(
+async def test_register_resource_raw_non_saas_upsert_called_and_no_entitites_diff_calculation(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,
     mock_context: PortOceanContext,
