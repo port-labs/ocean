@@ -348,6 +348,28 @@ def test_are_entities_different_with_identical_titles_should_be_false() -> None:
     assert are_entities_different(entity1, entity2) is False
 
 
+def test_are_entities_different_with_identical_titles_with_emoji_should_be_false() -> (
+    None
+):
+    entity1 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+        "🚀 Issue 123",
+        "",
+    )
+    entity2 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+        "🚀 Issue 123",
+        "",
+    )
+    assert are_entities_different(entity1, entity2) is False
+
+
 def test_are_entities_different_with_different_teams_should_be_true() -> None:
     entity1 = create_test_entity(
         "",
