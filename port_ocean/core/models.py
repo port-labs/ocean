@@ -43,6 +43,10 @@ class Entity(BaseModel):
     def is_using_search_identifier(self) -> bool:
         return isinstance(self.identifier, dict)
 
+    @property
+    def is_using_search_relation(self) -> bool:
+        return any(isinstance(relation, dict) for relation in self.relations.values())
+
 
 class BlueprintRelation(BaseModel):
     many: bool
