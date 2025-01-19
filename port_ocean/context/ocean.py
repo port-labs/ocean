@@ -5,6 +5,8 @@ from pydantic.main import BaseModel
 from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
+
+from port_ocean.core.webhook.abstract_webhook_handler import AbstractWebhookHandler
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
@@ -144,6 +146,23 @@ class PortOceanContext:
 
     async def sync_raw_all(self) -> None:
         await self.integration.sync_raw_all(trigger_type="manual")
+
+    def add_handler(
+        self,
+        path: str,
+        handler: type,
+    ) -> None:
+        """
+        Registers a webhook handler for a specific path.
+
+        Args:
+            path: The path to register the webhook handler for.
+            handler: The handler to register.
+        """
+        if not issubclass(handler, AbstractWebhookHandler):
+            raise ValueError("Handler must extend AbstractWebhookHandler")
+
+        self.app.webhook_manager.register_handler(path, handler)
 
 
 _port_ocean: PortOceanContext = PortOceanContext(None)
