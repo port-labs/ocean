@@ -109,6 +109,14 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
     return EntityPortDiff(created=created, modified=modified, deleted=deleted)
 
 
+def are_teams_different(
+    first_team: str | None | list[Any], second_team: str | None | list[Any]
+) -> bool:
+    if isinstance(first_team, list) and isinstance(second_team, list):
+        return sorted(first_team) != sorted(second_team)
+    return first_team != second_team
+
+
 def are_entities_fields_equal(
     first_entity_field: dict[str, Any], second_entity_field: dict[str, Any]
 ) -> bool:
@@ -130,9 +138,16 @@ def are_entities_fields_equal(
 
 
 def are_entities_different(first_entity: Entity, second_entity: Entity) -> bool:
-    return not are_entities_fields_equal(
-        first_entity.properties, second_entity.properties
-    ) or not are_entities_fields_equal(first_entity.relations, second_entity.relations)
+    if first_entity.title != second_entity.title:
+        return True
+    if are_teams_different(first_entity.team, second_entity.team):
+        return True
+    if not are_entities_fields_equal(first_entity.properties, second_entity.properties):
+        return True
+    if not are_entities_fields_equal(first_entity.relations, second_entity.relations):
+        return True
+
+    return False
 
 
 def resolve_entities_diff(

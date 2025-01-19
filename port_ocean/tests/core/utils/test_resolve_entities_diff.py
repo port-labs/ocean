@@ -13,12 +13,16 @@ def create_test_entity(
     blueprint: str,
     properties: dict[str, Any],
     relations: dict[str, Any],
+    title: Any,
+    team: str | None | list[Any] = [],
 ) -> Entity:
     return Entity(
         identifier=identifier,
         blueprint=blueprint,
         properties=properties,
         relations=relations,
+        title=title,
+        team=team,
     )
 
 
@@ -248,12 +252,16 @@ def test_are_entities_different_identical_entities_should_be_false() -> None:
         "",
         {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
         {"reporter": "id1", "project": "project_id"},
+        "",
+        "",
     )
     entity2 = create_test_entity(
         "",
         "",
         {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
         {"reporter": "id1", "project": "project_id"},
+        "",
+        "",
     )
     assert are_entities_different(entity1, entity2) is False
 
@@ -266,12 +274,16 @@ def test_are_entities_different_entities_with_different_properties_should_be_tru
         "",
         {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 10},
         {"reporter": "id1", "project": "project_id"},
+        "",
+        "",
     )
     entity2 = create_test_entity(
         "",
         "",
         {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
         {"reporter": "id1", "project": "project_id"},
+        "",
+        "",
     )
     assert are_entities_different(entity1, entity2) is True
 
@@ -282,14 +294,100 @@ def test_are_entities_different_with_different_relations_should_be_true() -> Non
         "",
         {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
         {"reporter": "id1", "project": "project_id"},
+        "",
+        "",
     )
     entity2 = create_test_entity(
         "",
         "",
         {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
         {"reporter": "id2", "project": "project_id"},
+        "",
+        "",
     )
     assert are_entities_different(entity1, entity2) is True
+
+
+def test_are_entities_different_with_different_titles_should_be_true() -> None:
+    entity1 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+        "Issue 123",
+        "",
+    )
+    entity2 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+        "Issue 456",
+        "",
+    )
+    assert are_entities_different(entity1, entity2) is True
+
+
+def test_are_entities_different_with_identical_titles_should_be_false() -> None:
+    entity1 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+        "Issue 123",
+        "",
+    )
+    entity2 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+        "Issue 123",
+        "",
+    )
+    assert are_entities_different(entity1, entity2) is False
+
+
+def test_are_entities_different_with_different_teams_should_be_true() -> None:
+    entity1 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+        "Issue 123",
+        ["team1", "team2"],
+    )
+    entity2 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+        "Issue 123",
+        ["team2", "team3"],
+    )
+    assert are_entities_different(entity1, entity2) is True
+
+
+def test_are_entities_different_with_identical_teams_different_order_should_be_false() -> (
+    None
+):
+    entity1 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+        "Issue 123",
+        ["team1", "team2"],
+    )
+    entity2 = create_test_entity(
+        "",
+        "",
+        {"url": "https://test.atlassian.net/browse/test-29081", "totalIssues": 123},
+        {"reporter": "id1", "project": "project_id"},
+        "Issue 123",
+        ["team2", "team1"],
+    )
+    assert are_entities_different(entity1, entity2) is False
 
 
 entity1 = create_test_entity(
@@ -297,30 +395,40 @@ entity1 = create_test_entity(
     "bp1",
     {"totalIssues": 123, "url": "https://test.atlassian.net/browse/test-29081"},
     {"reporter": "id1", "project": "project_id"},
+    "",
+    "",
 )
 entity1_modified_properties = create_test_entity(
     "id1",
     "bp1",
     {"totalIssues": 5, "url": "https://test.atlassian.net/browse/test-29081"},
     {"reporter": "id1", "project": "project_id"},
+    "",
+    "",
 )
 entity1_modified_relations = create_test_entity(
     "id1",
     "bp1",
     {"totalIssues": 123, "url": "https://test.atlassian.net/browse/test-29081"},
     {"reporter": "id1", "project": "project_id2"},
+    "",
+    "",
 )
 entity2 = create_test_entity(
     "id2",
     "bp2",
     {"totalIssues": 234, "url": "https://test.atlassian.net/browse/test-23451"},
     {"reporter": "id2", "project": "project_id2"},
+    "",
+    "",
 )
 entity3 = create_test_entity(
     "id3",
     "bp3",
     {"totalIssues": 20, "url": "https://test.atlassian.net/browse/test-542"},
     {"reporter": "id3", "project": "project_id3"},
+    "",
+    "",
 )
 entity_with_search_identifier = create_test_entity(
     str(
@@ -334,6 +442,8 @@ entity_with_search_identifier = create_test_entity(
     "bp3",
     {"totalIssues": 234, "url": "https://test.atlassian.net/browse/test-23451"},
     {"reporter": "id2", "project": "project_id2"},
+    "",
+    "",
 )
 entity_with_search_relation = create_test_entity(
     "id4",
@@ -348,6 +458,8 @@ entity_with_search_relation = create_test_entity(
             ],
         },
     },
+    "",
+    "",
 )
 
 
