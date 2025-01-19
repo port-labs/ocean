@@ -14,3 +14,13 @@ class AbortDefaultCreationError(BaseOceanException):
 
 class UnsupportedDefaultFileType(BaseOceanException):
     pass
+
+
+class DefaultsProvisionFailed(BaseOceanException):
+    def __init__(
+        self,
+        retries: int,
+    ):
+        super().__init__(
+            f"Failed to retrieve integration config after {retries} attempts"
+        )

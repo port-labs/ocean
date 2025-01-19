@@ -19,6 +19,8 @@ from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
 
+ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG = "USE_PROVISIONED_DEFAULTS"
+
 
 def deconstruct_blueprints_to_creation_steps(
     raw_blueprints: list[dict[str, Any]],
@@ -54,8 +56,8 @@ def deconstruct_blueprints_to_creation_steps(
 
 async def _initialize_required_integration_settings(
     port_client: PortClient,
-    default_mapping: PortAppConfig,
     integration_config: IntegrationConfiguration,
+    default_mapping: PortAppConfig | None = None,
 ) -> None:
     try:
         logger.info("Initializing integration at port")
@@ -70,6 +72,7 @@ async def _initialize_required_integration_settings(
                 integration_config.integration.type,
                 integration_config.event_listener.get_changelog_destination_details(),
                 port_app_config=default_mapping,
+                use_provisioned_defaults=integration_config.use_provisioned_defaults,
             )
         elif not integration.get("config"):
             logger.info(
@@ -102,8 +105,10 @@ async def _initialize_required_integration_settings(
 
 async def _create_resources(
     port_client: PortClient,
-    defaults: Defaults,
+    defaults: Defaults | None = None,
 ) -> None:
+    if not defaults:
+        return
     creation_stage, *blueprint_patches = deconstruct_blueprints_to_creation_steps(
         defaults.blueprints
     )
@@ -203,18 +208,39 @@ async def _initialize_defaults(
     defaults = get_port_integration_defaults(
         config_class, integration_config.resources_path
     )
-    if not defaults:
+
+    if integration_config.use_provisioned_defaults:
+        logger.info("`use_provisioned_defaults` set, verifying org feature toggle")
+        org_feature_flags = await port_client.get_organization_feature_flags()
+        if ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG not in org_feature_flags:
+            logger.info(
+                "Although `use_provisioned_defaults` was set, it was not enabled in the organizations feature flags, disabling"
+            )
+            integration_config.use_provisioned_defaults = False
+
+    if not integration_config.use_provisioned_defaults and not defaults:
         logger.warning("No defaults found. Skipping initialization...")
         return None
 
-    if defaults.port_app_config:
+    if (
+        defaults
+        and defaults.port_app_config
+        or integration_config.use_provisioned_defaults
+    ):
         await _initialize_required_integration_settings(
-            port_client, defaults.port_app_config, integration_config
+            port_client,
+            integration_config,
+            defaults.port_app_config if defaults else None,
         )
 
     if not integration_config.initialize_port_resources:
         return
 
+    if integration_config.use_provisioned_defaults:
+        logger.info(
+            "Skipping creating defaults resources due to `use_provisioned_defaults`"
+        )
+        return
     try:
         logger.info("Found default resources, starting creation process")
         await _create_resources(port_client, defaults)
