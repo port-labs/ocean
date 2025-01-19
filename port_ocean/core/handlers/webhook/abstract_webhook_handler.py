@@ -23,8 +23,8 @@ class AbstractWebhookHandler(ABC):
         """Validate third-party webhook configurations."""
         pass
 
-    def teardown(self) -> None:
-        """Clean up resources when no longer needed."""
+    async def cancel(self) -> None:
+        """Handle cancellation of the request."""
         pass
 
     async def process_request(self) -> None:

@@ -46,6 +46,7 @@ class WebhookHandlerManager:
         """Process events for a specific path in order."""
         while True:
             try:
+                handler: AbstractWebhookHandler | None = None
                 event = await self._event_queues[path].get()
                 with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
                     try:
@@ -84,6 +85,8 @@ class WebhookHandlerManager:
                         await self._event_queues[path].commit()
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
+                if handler:
+                    await handler.cancel()
                 break
             except Exception as e:
                 logger.exception(
@@ -157,5 +160,5 @@ class WebhookHandlerManager:
 # Wrap event to add metadata - add timestamp when event arrived to to each queue - Done
 # add ttl to event processing
 # facade away the queue handling - Done
-# separate event handling per kind as well as per route
-# add on_cancel method to handler
+# separate event handling per kind as well as per route - Done
+# add on_cancel method to handler - Done
