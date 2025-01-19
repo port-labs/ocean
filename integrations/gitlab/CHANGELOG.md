@@ -7,6 +7,29 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.21 (2025-01-16)
+===================
+
+### Bug Fixes
+
+- Fixed UserWarning log caused by not setting the `get_all` parameter for `project.label.list` request
+
+
+0.2.20 (2025-01-16)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+0.2.19 (2025-01-15)
+===================
+
+### Improvements
+
+- Event handler now retries handling events if it takes too long to complete
+
 0.2.18 (2025-01-15)
 ===================
 

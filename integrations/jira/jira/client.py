@@ -7,7 +7,6 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
-
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 MAX_CONCURRENT_REQUESTS = 10
@@ -60,7 +59,14 @@ class JiraClient:
         self.client = http_async_client
         self.client.auth = self.jira_api_auth
         self.client.timeout = Timeout(30)
-        self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+
+    async def _handle_rate_limit(self, response: Response) -> None:
+        if response.status_code == 429:
+            logger.warning(
+                f"Jira API rate limit reached. Waiting for {response.headers['Retry-After']} seconds."
+            )
+            await asyncio.sleep(int(response.headers["Retry-After"]))
 
     async def _send_api_request(
         self,
@@ -71,13 +77,14 @@ class JiraClient:
         headers: dict[str, str] | None = None,
     ) -> Any:
         try:
-            async with self.semaphore:
+            async with self._semaphore:
                 response = await self.client.request(
                     method=method, url=url, params=params, json=json, headers=headers
                 )
                 response.raise_for_status()
                 return response.json()
         except httpx.HTTPStatusError as e:
+            await self._handle_rate_limit(e.response)
             logger.error(
                 f"Jira API request failed with status {e.response.status_code}: {method} {url}"
             )
@@ -117,7 +124,6 @@ class JiraClient:
         method: str,
         extract_key: str,
         initial_params: dict[str, Any] | None = None,
-        page_size: int = PAGE_SIZE,
         cursor_param: str = "cursor",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = initial_params or {}

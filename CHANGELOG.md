@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.17.8 (2025-01-15)
+
+### Bug Fixes
+
+- Fixed vulnerability in the jinja package that is resolved by updating to 3.1.5
+
+
 ## 0.17.7 (2025-01-08)
 
 ### Bug Fixes
