@@ -103,7 +103,7 @@ class WebhookHandlerManager:
                 asyncio.gather(
                     *(queue.join() for queue in self._event_queues.values())
                 ),
-                timeout=5.0,  # 10 seconds timeout
+                timeout=5.0,
             )
         except asyncio.TimeoutError:
             logger.warning("Shutdown timed out waiting for queues to empty")
@@ -117,7 +117,7 @@ class WebhookHandlerManager:
             await asyncio.gather(*self._webhook_processor_tasks, return_exceptions=True)
 
 
-# check of asyncio maintains order
+# check of asyncio maintains order - Done
 # Wrap event to add metadata - add timestamp when event arrived to to each queue - Done
 # add ttl to event processing
 # facade away the queue handling

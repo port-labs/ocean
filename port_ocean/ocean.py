@@ -26,7 +26,7 @@ from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
 from port_ocean.utils.misc import IntegrationStateStatus
-from port_ocean.core.webhook.handler_manager import WebhookHandlerManager
+from port_ocean.core.handlers.webhook.handler_manager import WebhookHandlerManager
 
 
 class Ocean:
