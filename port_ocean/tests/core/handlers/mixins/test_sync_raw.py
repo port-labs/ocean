@@ -144,6 +144,26 @@ def mock_entity_processor(mock_context: PortOceanContext) -> JQEntityProcessor:
 
 
 @pytest.fixture
+def mock_resource_config() -> ResourceConfig:
+    resource = ResourceConfig(
+        kind="service",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={"url": ".web_url"},
+                    relations={},
+                )
+            )
+        ),
+    )
+    return resource
+
+
+@pytest.fixture
 def mock_entities_state_applier(
     mock_context: PortOceanContext,
 ) -> HttpEntitiesStateApplier:
@@ -570,34 +590,20 @@ async def test_unregister_raw(
 async def test_map_entities_compared_with_port_no_port_entities_all_entities_are_mapped(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_ocean: Ocean,
+    mock_resource_config: ResourceConfig,
 ) -> None:
     # Setup test data
     entities = [
         create_entity("entity_1", "service", {}, False),
         create_entity("entity_2", "service", {}, False),
     ]
-    resource = ResourceConfig(
-        kind="service",
-        selector=Selector(query="true"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".id",
-                    title=".name",
-                    blueprint='"service"',
-                    properties={"url": ".web_url"},
-                    relations={},
-                )
-            )
-        ),
-    )
 
     # Mock port client to return empty list
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
 
     # Execute test
     changed_entities = await mock_sync_raw_mixin._map_entities_compared_with_port(
-        entities, resource, UserAgentType.exporter
+        entities, mock_resource_config, UserAgentType.exporter
     )
 
     # Verify results
@@ -610,6 +616,7 @@ async def test_map_entities_compared_with_port_no_port_entities_all_entities_are
 async def test_map_entities_compared_with_port_with_existing_entities_only_changed_third_party_entities_are_mapped(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_ocean: Ocean,
+    mock_resource_config: ResourceConfig,
 ) -> None:
     # Setup test data
     third_party_entities = [
@@ -622,27 +629,12 @@ async def test_map_entities_compared_with_port_with_existing_entities_only_chang
         create_entity("entity_1", "service", {}, False),  # Existing but different props
         create_entity("entity_3", "service", {}, False),  # Should be in irrelevant
     ]
-    resource = ResourceConfig(
-        kind="service",
-        selector=Selector(query="true"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".id",
-                    title=".name",
-                    blueprint='"service"',
-                    properties={"url": ".web_url"},
-                    relations={},
-                )
-            )
-        ),
-    )
 
     # Mock port client to return our port entities
     mock_ocean.port_client.search_entities.return_value = port_entities  # type: ignore
 
     changed_entities = await mock_sync_raw_mixin._map_entities_compared_with_port(
-        third_party_entities, resource, UserAgentType.exporter
+        third_party_entities, mock_resource_config, UserAgentType.exporter
     )
 
     # Verify results
@@ -653,7 +645,9 @@ async def test_map_entities_compared_with_port_with_existing_entities_only_chang
 
 @pytest.mark.asyncio
 async def test_map_entities_compared_with_port_with_multiple_batches_all_batches_are_being_proccessed_to_map(
-    mock_sync_raw_mixin: SyncRawMixin, mock_ocean: Ocean
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_ocean: Ocean,
+    mock_resource_config: ResourceConfig,
 ) -> None:
     # Setup test data with 75 entities (should create 2 batches)
     third_party_entities = [
@@ -668,22 +662,6 @@ async def test_map_entities_compared_with_port_with_multiple_batches_all_batches
     port_entities_batch2 = [
         create_entity(f"entity_{i}", "service", {}, False) for i in range(50, 75)
     ]
-
-    resource = ResourceConfig(
-        kind="service",
-        selector=Selector(query="true"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".id",
-                    title=".name",
-                    blueprint='"service"',
-                    properties={"url": ".web_url"},
-                    relations={},
-                )
-            )
-        ),
-    )
 
     # Mock port client to return our port entities in batches
     with patch.object(
@@ -700,7 +678,7 @@ async def test_map_entities_compared_with_port_with_multiple_batches_all_batches
             # Execute test
             changed_entities = (
                 await mock_sync_raw_mixin._map_entities_compared_with_port(
-                    third_party_entities, resource, UserAgentType.exporter
+                    third_party_entities, mock_resource_config, UserAgentType.exporter
                 )
             )
 
