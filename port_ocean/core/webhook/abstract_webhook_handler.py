@@ -1,19 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, TypeAlias
-from fastapi import Request
+from typing import Dict
 
-# Use TypeAlias instead of 'type' for Python <3.12 compatibility
-EventPayload: TypeAlias = Dict[str, Any]
+from .event import WebhookEvent, EventPayload
 
 
 class AbstractWebhookHandler(ABC):
     """Abstract base class for webhook handlers."""
 
-    def __init__(self) -> None:
+    def __init__(self, event: WebhookEvent) -> None:
         self.retry_count = 3
         self.circuit_breaker_failure_threshold = 5
         self.failure_count = 0
         self.circuit_open = False
+        self.event = event
         self.initialize()
 
     def initialize(self) -> None:
@@ -28,22 +27,17 @@ class AbstractWebhookHandler(ABC):
         """Clean up resources when no longer needed."""
         pass
 
-    async def process_request(self, request: Request) -> None:
+    async def process_request(self) -> None:
         """Main method to process a webhook request."""
         if self.circuit_open:
             raise ValueError("Circuit is open. Rejecting requests temporarily.")
 
         try:
+            payload = self.event.payload
+            headers = self.event.headers
             # Authentication
-            if not self.authenticate(request):
+            if not self.authenticate(payload, headers):
                 raise ValueError("Authentication failed")
-
-            # Rate Limiting
-            if not self.rate_limit(request):
-                raise ValueError("Rate limit exceeded")
-
-            # Parse Payload
-            payload = await request.json()
 
             # Payload Validation
             if not self.validate_payload(payload):
@@ -61,11 +55,11 @@ class AbstractWebhookHandler(ABC):
             self.failure_count += 1
             if self.failure_count >= self.circuit_breaker_failure_threshold:
                 self.circuit_open = True
-            if not self.retry_logic(request):
+            if not self.retry_logic():
                 raise e
 
     @abstractmethod
-    def authenticate(self, request: Request) -> bool:
+    def authenticate(self, payload: EventPayload, headers: Dict[str, str]) -> bool:
         """Authenticate the request."""
         pass
 
@@ -75,17 +69,12 @@ class AbstractWebhookHandler(ABC):
         pass
 
     @abstractmethod
-    def rate_limit(self, request: Request) -> bool:
-        """Apply rate limiting."""
-        pass
-
-    @abstractmethod
     def collect_metrics(self, success: bool) -> None:
         """Collect metrics for the request."""
         pass
 
     @abstractmethod
-    def retry_logic(self, request: Request) -> bool:
+    def retry_logic(self) -> bool:
         """Implement retry mechanisms."""
         pass
 
