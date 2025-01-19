@@ -178,7 +178,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             entities_at_port_with_properties.extend(batch_results)
 
-        logger.info("getting Entities from port with properties", port_entities=len(entities_at_port_with_properties))
+        logger.info("Got entities from port with properties and relations", port_entities=len(entities_at_port_with_properties))
 
         if len(entities_at_port_with_properties) > 0:
             return resolve_entities_diff(entities, entities_at_port_with_properties)
