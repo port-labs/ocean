@@ -1,193 +1,151 @@
 [
   {
-    "identifier": "kafkaCluster",
-    "title": "Cluster",
-    "icon": "Kafka",
-    "schema": {
-      "properties": {
-        "controllerId": {
-          "title": "Controller ID",
-          "type": "string"
+     "identifier":"kafkaCluster",
+     "title":"Cluster",
+     "icon":"Kafka",
+     "schema":{
+        "properties":{
+           "controllerId":{
+              "title":"Controller ID",
+              "type":"string"
+           }
         }
-      }
-    }
+     }
   },
   {
-    "identifier": "kafkaBroker",
-    "title": "Broker",
-    "icon": "Kafka",
-    "schema": {
-      "properties": {
-        "address": {
-          "title": "Address",
-          "type": "string"
-        },
-        "region": {
-          "title": "Region",
-          "type": "string"
-        },
-        "version": {
-          "title": "Version",
-          "type": "string"
-        },
-        "config": {
-          "title": "Config",
-          "type": "object"
+     "identifier":"kafkaBroker",
+     "title":"Broker",
+     "icon":"Kafka",
+     "schema":{
+        "properties":{
+           "address":{
+              "title":"Address",
+              "type":"string"
+           },
+           "region":{
+              "title":"Region",
+              "type":"string"
+           },
+           "version":{
+              "title":"Version",
+              "type":"string"
+           },
+           "config":{
+              "title":"Config",
+              "type":"object"
+           }
         }
-      }
-    },
-    "relations": {
-      "cluster": {
-        "target": "kafkaCluster",
-        "required": true,
-        "many": false
-      }
-    }
+     },
+     "relations":{
+        "cluster":{
+           "target":"kafkaCluster",
+           "required":true,
+           "many":false
+        }
+     }
   },
   {
-    "identifier": "kafkaTopic",
-    "title": "Topic",
-    "icon": "Kafka",
-    "schema": {
-      "properties": {
-        "replicas": {
-          "title": "Replicas",
-          "type": "number"
-        },
-        "partitions": {
-          "title": "Partitions",
-          "type": "number"
-        },
-        "compaction": {
-          "title": "Compaction",
-          "type": "boolean"
-        },
-        "retention": {
-          "title": "Retention",
-          "type": "boolean"
-        },
-        "deleteRetentionTime": {
-          "title": "Delete Retention Time",
-          "type": "number"
-        },
-        "partitionsMetadata": {
-          "title": "Partitions Metadata",
-          "type": "array"
-        },
-        "config": {
-          "title": "Config",
-          "type": "object"
+     "identifier":"kafkaTopic",
+     "title":"Topic",
+     "icon":"Kafka",
+     "schema":{
+        "properties":{
+           "replicas":{
+              "title":"Replicas",
+              "type":"number"
+           },
+           "partitions":{
+              "title":"Partitions",
+              "type":"number"
+           },
+           "compaction":{
+              "title":"Compaction",
+              "type":"boolean"
+           },
+           "retention":{
+              "title":"Retention",
+              "type":"boolean"
+           },
+           "deleteRetentionTime":{
+              "title":"Delete Retention Time",
+              "type":"number"
+           },
+           "partitionsMetadata":{
+              "title":"Partitions Metadata",
+              "type":"array"
+           },
+           "config":{
+              "title":"Config",
+              "type":"object"
+           }
         }
-      }
-    },
-    "relations": {
-      "cluster": {
-        "target": "kafkaCluster",
-        "required": true,
-        "many": false
-      },
-      "brokers": {
-        "target": "kafkaBroker",
-        "required": false,
-        "many": true
-      }
-    }
+     },
+     "relations":{
+        "cluster":{
+           "target":"kafkaCluster",
+           "required":true,
+           "many":false
+        },
+        "brokers":{
+           "target":"kafkaBroker",
+           "required":false,
+           "many":true
+        }
+     }
   },
   {
-    "identifier": "kafkaConsumerGroup",
-    "title": "Consumer Group",
-    "icon": "Kafka",
-    "schema": {
-      "properties": {
-        "state": {
-          "title": "State",
-          "type": "string",
-          "description": "The current state of the consumer group."
-        },
-        "members": {
-          "title": "Members",
-          "type": "array",
-          "description": "List of members in the consumer group.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "title": "Member ID",
-                "type": "string",
-                "description": "Unique identifier for the consumer member."
-              },
-              "client_id": {
-                "title": "Client ID",
-                "type": "string",
-                "description": "Client ID of the consumer member."
-              },
-              "host": {
-                "title": "Host",
-                "type": "string",
-                "description": "Host address of the consumer member."
-              },
-              "assignment": {
-                "title": "Assignment",
-                "type": "object",
-                "description": "Details of the topic partitions assigned to the member.",
-                "properties": {
-                  "topic_partitions": {
-                    "title": "Topic Partitions",
-                    "type": "array",
-                    "description": "List of topic-partition pairs assigned to the member.",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "topic": {
-                          "title": "Topic",
-                          "type": "string",
-                          "description": "Name of the topic."
-                        },
-                        "partition": {
-                          "title": "Partition",
-                          "type": "number",
-                          "description": "Partition number within the topic."
-                        }
-                      }
-                    }
-                  }
-                }
+     "identifier":"kafkaConsumerGroup",
+     "title":"Consumer Group",
+     "icon":"Kafka",
+     "schema":{
+        "properties":{
+           "state":{
+              "title":"State",
+              "type":"string",
+              "description":"The current state of the consumer group."
+           },
+           "members":{
+              "title":"Members",
+              "type":"array",
+              "description":"List of members in the consumer group.",
+              "items":{
+                 "type":"object"
               }
-            }
-          }
-        },
-        "coordinator": {
-          "title": "Coordinator",
-          "type": "number",
-          "description": "Broker ID of the coordinator for the consumer group."
-        },
-        "partition_assignor": {
-          "title": "Partition Assignor",
-          "type": "string",
-          "description": "Strategy used to assign partitions to consumers."
-        },
-        "is_simple_consumer_group": {
-          "title": "Is Simple Consumer Group",
-          "type": "boolean",
-          "description": "Indicates if the group is a simple consumer group."
-        },
-        "authorized_operations": {
-          "title": "Authorized Operations",
-          "type": "array",
-          "description": "List of operations authorized for the consumer group.",
-          "items": {
-            "type": "string"
-          }
+           },
+           "coordinator":{
+              "title":"Coordinator",
+              "type":"number",
+              "description":"Broker ID of the coordinator for the consumer group."
+           },
+           "partition_assignor":{
+              "title":"Partition Assignor",
+              "type":"string",
+              "description":"Strategy used to assign partitions to consumers."
+           },
+           "is_simple_consumer_group":{
+              "title":"Is Simple Consumer Group",
+              "type":"boolean",
+              "description":"Indicates if the group is a simple consumer group."
+           },
+           "authorized_operations":{
+              "title":"Authorized Operations",
+              "type":"array",
+              "description":"List of operations authorized for the consumer group.",
+              "items":{
+                 "type":"string"
+              }
+           }
         }
-      }
-    },
-    "calculationProperties": {},
-    "relations": {
-      "cluster": {
-        "target": "kafkaCluster",
-        "required": true,
-        "many": false
-      }
-    }
+     },
+     "calculationProperties":{
+        
+     },
+     "relations":{
+        "cluster":{
+           "target":"kafkaCluster",
+           "required":true,
+           "many":false
+        }
+     }
   }
 ]
