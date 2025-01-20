@@ -433,9 +433,6 @@ async def test_sync_raw_mixin_dependency(
 @pytest.mark.asyncio
 async def test_register_raw(
     mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
-    mock_ocean: Ocean,
-    mock_context: PortOceanContext,
-    monkeypatch: pytest.MonkeyPatch,
     mock_resource_config: ResourceConfig,
 ) -> None:
     kind = "service"
@@ -451,9 +448,6 @@ async def test_register_raw(
             "properties": {"url": "https://example.com"},
         },
     ]
-
-    # Set is_saas to False
-    monkeypatch.setattr(mock_context.app, "is_saas", lambda: False)
 
     async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
         # Use patch to mock the method instead of direct assignment
