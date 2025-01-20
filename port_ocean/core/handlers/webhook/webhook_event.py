@@ -14,6 +14,8 @@ class WebhookEventTimestamp(StrEnum):
 
     AddedToQueue = "AddedToQueue"
     StartedProcessing = "StartedProcessing"
+    FinishedProcessingSuccessfully = "FinishedProcessingSuccessfully"
+    FinishedProcessingWithError = "FinishedProcessingWithError"
 
 
 class WebhookEvent:
