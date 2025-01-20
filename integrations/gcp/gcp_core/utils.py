@@ -253,7 +253,7 @@ async def get_quotas_for_project(
 
 
 async def resolve_request_controllers(
-    kind: str, **kwargs: Dict[str, Any]
+    kind: str, **kwargs: dict[str, Any]
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
     service_account_project_id = get_service_account_project_id()
     return await get_quotas_for_project(
