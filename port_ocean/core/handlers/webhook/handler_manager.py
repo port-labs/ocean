@@ -1,4 +1,3 @@
-import datetime
 from typing import Dict, Type, Set, Callable
 from fastapi import APIRouter, Request
 from loguru import logger
@@ -49,52 +48,11 @@ class WebhookHandlerManager:
     async def process_queue(self, path: str) -> None:
         """Process events for a specific path in order."""
         while True:
+            handler: AbstractWebhookHandler | None = None
             try:
-                handler: AbstractWebhookHandler | None = None
                 event = await self._event_queues[path].get()
                 with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
-                    try:
-                        logger.debug("Start processing queued webhook")
-                        event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
-
-                        # Find and execute all matching handlers
-                        matching_handlers = [
-                            reg.handler
-                            for reg in self._handlers[path]
-                            if reg.filter(event)
-                        ]
-
-                        if not matching_handlers:
-                            raise ValueError("No matching handlers found")
-
-                        handler_class = matching_handlers[0]
-                        handler = handler_class(event)
-                        try:
-                            await asyncio.wait_for(
-                                handler.process_request(),
-                                timeout=MAX_HANDLER_PROCESSING_SECONDS,
-                            )
-                        except asyncio.TimeoutError:
-                            raise TimeoutError(
-                                f"Handler processing timed out after {MAX_HANDLER_PROCESSING_SECONDS} seconds"
-                            )
-
-                    except Exception as e:
-                        logger.exception(
-                            f"Error processing queued webhook for {path}: {str(e)}"
-                        )
-                    finally:
-                        await self._event_queues[path].commit()
-                        logger.debug(
-                            "Finished processing queued webhook",
-                            arrived_at_queue=event.get_timestamp(
-                                WebhookEventTimestamp.AddedToQueue
-                            ),
-                            started_processing=event.get_timestamp(
-                                WebhookEventTimestamp.StartedProcessing
-                            ),
-                            done_processing=datetime.datetime.now(),
-                        )
+                    handler = await self._process_single_event(path, event)
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
                 if handler:
@@ -104,6 +62,60 @@ class WebhookHandlerManager:
                 logger.exception(
                     f"Unexpected error in queue processor for {path}: {str(e)}"
                 )
+
+    async def _process_single_event(
+        self, path: str, event: WebhookEvent
+    ) -> AbstractWebhookHandler | None:
+        """Process a single webhook event and return the handler if one was created."""
+        handler: AbstractWebhookHandler | None = None
+        try:
+            logger.debug("Start processing queued webhook")
+            event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
+
+            handler = await self._execute_matching_handler(event, path)
+            event.set_timestamp(WebhookEventTimestamp.FinishedProcessingSuccessfully)
+        except Exception as e:
+            logger.exception(f"Error processing queued webhook for {path}: {str(e)}")
+            event.set_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
+        finally:
+            await self._event_queues[path].commit()
+            self._log_processing_completion(event)
+
+        return handler
+
+    async def _execute_matching_handler(
+        self, event: WebhookEvent, path: str
+    ) -> AbstractWebhookHandler:
+        """Find and execute the matching handler for an event."""
+        matching_handlers = [
+            reg.handler for reg in self._handlers[path] if reg.filter(event)
+        ]
+
+        if not matching_handlers:
+            raise ValueError("No matching handlers found")
+
+        handler = matching_handlers[0](event)
+        try:
+            await asyncio.wait_for(
+                handler.process_request(),
+                timeout=MAX_HANDLER_PROCESSING_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            raise TimeoutError(
+                f"Handler processing timed out after {MAX_HANDLER_PROCESSING_SECONDS} seconds"
+            )
+        return handler
+
+    def _log_processing_completion(self, event: WebhookEvent) -> None:
+        """Log the completion of event processing with timing information."""
+
+        logger.debug(
+            "Finished processing queued webhook",
+            timestamps={
+                timestamp: event.get_timestamp(timestamp)
+                for timestamp in WebhookEventTimestamp
+            },
+        )
 
     def register_handler(
         self,
@@ -174,3 +186,5 @@ class WebhookHandlerManager:
 # facade away the queue handling - Done
 # separate event handling per kind as well as per route - Done
 # add on_cancel method to handler - Done
+# APP_HOSTS
+# use util for uuid
