@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.18.0 (2025-01-15)
+
+### Improvements
+
+- Introduced a new entity diff resolver to reduce port system load by comparing entities and upserting changed entities only
+
+## 0.17.8 (2025-01-15)
+
+### Bug Fixes
+
+- Fixed vulnerability in the jinja package that is resolved by updating to 3.1.5
+
 
 ## 0.17.7 (2025-01-08)
 
