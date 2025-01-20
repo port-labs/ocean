@@ -16,10 +16,10 @@ class ObjectKind(StrEnum):
 
 
 def initialize_client() -> DynatraceClient:
-    host_url = ocean.integration_config["dynatrace_host_url"]
-    api_key = ocean.integration_config["dynatrace_api_key"]
-
-    return DynatraceClient(host_url=host_url, api_key=api_key)
+    return DynatraceClient(
+        ocean.integration_config["dynatrace_host_url"],
+        ocean.integration_config["dynatrace_api_key"],
+    )
 
 
 @ocean.on_resync(ObjectKind.PROBLEM)
