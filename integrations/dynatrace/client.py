@@ -5,7 +5,6 @@ import httpx
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
-from oauth_client import OAuthClient
 
 from integration import DynatraceResourceConfig, EntityFieldsType
 
@@ -25,37 +24,13 @@ class ResourceKey(StrEnum):
 
 class DynatraceClient:
     def __init__(
-        self, host_url: str, api_key: str, oauth_client: Optional[OAuthClient] = None
+        self, host_url: str, api_key: str
     ) -> None:
         self.host = host_url.rstrip("/")
         self.host_url = f"{host_url.rstrip('/')}/api/v2"
         self.client = http_async_client
         self.client.headers.update({"Authorization": f"Api-Token {api_key}"})
-        self.oauth_client = oauth_client
-        self.account_management_url = "https://api.dynatrace.com/iam/v1"
 
-    async def _get_paginated_resources_with_oauth(
-        self, base_url: str, resource_key: str, params: dict[str, Any] = {}
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Fetch paginated resources with OAuth."""
-        logger.info(f"Fetching {resource_key} from {base_url} with params {params}")
-        if self.oauth_client is None:
-            raise ValueError("OAuth client is not initialized")
-        try:
-            while True:
-                response = await self.oauth_client.send_request(
-                    "GET", base_url, params=params
-                )
-                resources = response.get(resource_key, [])
-                yield resources
-
-                next_page_key = response.get("nextPageKey")
-                if not next_page_key:
-                    break
-                params = {"nextPageKey": next_page_key}
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error on {base_url}: {e}")
-            raise
 
     async def _get_paginated_resources(
         self, url: str, resource_key: str, params: dict[str, Any] = {}
@@ -143,18 +118,6 @@ class DynatraceClient:
             {"schemaIds": "builtin:ownership.teams"},
         ):
             yield teams
-
-    async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Fetch paginated users from the account management API."""
-        url = f"{self.account_management_url}/accounts/{self.oauth_client.account_id}/users"
-        async for users in self._get_paginated_resources_with_oauth(url, "items"):
-            yield users
-
-    async def get_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Fetch paginated teams from the account management API."""
-        url = f"{self.account_management_url}/accounts/{self.oauth_client.account_id}/groups"
-        async for groups in self._get_paginated_resources_with_oauth(url, "items"):
-            yield groups
 
     async def healthcheck(self) -> None:
         try:
