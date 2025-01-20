@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -15,15 +15,11 @@ class ObjectKind(StrEnum):
     TEAM = "team"
 
 
-
-
 def initialize_client() -> DynatraceClient:
     host_url = ocean.integration_config["dynatrace_host_url"]
     api_key = ocean.integration_config["dynatrace_api_key"]
 
-    return DynatraceClient(
-        host_url=host_url, api_key=api_key
-    )
+    return DynatraceClient(host_url=host_url, api_key=api_key)
 
 
 @ocean.on_resync(ObjectKind.PROBLEM)

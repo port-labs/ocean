@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, AsyncGenerator, Optional, cast
+from typing import Any, AsyncGenerator, cast
 
 import httpx
 from loguru import logger
@@ -23,14 +23,11 @@ class ResourceKey(StrEnum):
 
 
 class DynatraceClient:
-    def __init__(
-        self, host_url: str, api_key: str
-    ) -> None:
+    def __init__(self, host_url: str, api_key: str) -> None:
         self.host = host_url.rstrip("/")
         self.host_url = f"{host_url.rstrip('/')}/api/v2"
         self.client = http_async_client
         self.client.headers.update({"Authorization": f"Api-Token {api_key}"})
-
 
     async def _get_paginated_resources(
         self, url: str, resource_key: str, params: dict[str, Any] = {}

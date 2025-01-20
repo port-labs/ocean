@@ -61,6 +61,23 @@ resources:
             evaluationType: .evaluationType
             filter: .filter
 
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .value.identifier
+          title: .value.name
+          blueprint: '"dynatraceTeam"'
+          properties:
+            description: .value.descriptions
+            links: '[.value.links[] | .url]'
+            emailContact: .value.contactDetails[] | select(.integrationType == "EMAIL") | .email
+            productivityToolsContact: '[.value.contactDetails[] | select(.integrationType != "EMAIL") | .url]'
+            responsibilities: .value.responsibilities
+            additionalDetails: .value.additionalInformation
+
   - kind: entity
     selector:
       query: 'true'
