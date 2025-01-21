@@ -211,7 +211,14 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "entities": {
+        "title": "Related Entities",
+        "target": "dynatraceEntity",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "dynatraceEntityCloudResource",

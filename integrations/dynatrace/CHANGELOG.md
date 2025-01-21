@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.89 (2025-01-21)
+
+
+### Improvements
+
+- Added team kind
+- Added a relation between slo and monitored entities using the `attachRelatedEntities` flag
+
+
 ## 0.1.88 (2025-01-15)
 
 

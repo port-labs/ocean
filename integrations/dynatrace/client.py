@@ -7,7 +7,7 @@ from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
 from integration import DynatraceResourceConfig, EntityFieldsType
-
+import asyncio
 # SLOs by default are not evaluated and the initial state
 # at creation is being returned in the SLO list API.
 # To force evaluation, we must pass the `evaluate` query parameter,
@@ -68,11 +68,11 @@ class DynatraceClient:
         ):
             yield slos
 
-    async def _get_entities_from_type(
-        self, type_: str, entity_fields: EntityFieldsType | None
+    async def _get_entities_from_selector_query(
+        self, query: str, entity_fields: EntityFieldsType | None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {
-            "entitySelector": f'type("{type_}")',
+            "entitySelector": query,
             "pageSize": 100,
         }
         if entity_fields:
@@ -88,8 +88,8 @@ class DynatraceClient:
         selector = cast(DynatraceResourceConfig, event.resource_config).selector
 
         for entity_type in selector.entity_types:
-            async for entities in self._get_entities_from_type(
-                entity_type, selector.entity_fields
+            async for entities in self._get_entities_from_selector_query(
+                f'type("{entity_type}")', selector.entity_fields
             ):
                 yield entities
 
@@ -107,6 +107,30 @@ class DynatraceClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP error on {url}: {e}")
             raise
+
+    async def _get_slo_related_entities(self, query: str) -> list[dict[str, Any]]:
+        related_entities = []
+        try:
+            async for entities_batch in self._get_entities_from_selector_query(query, None):
+                related_entities.extend(entities_batch)
+            return related_entities
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error on fetching related entities: {e.response.text}")
+            raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error on fetching related entities: {e}")
+            raise
+    
+    async def enrich_slos_with_related_entities(self, slos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        logger.debug(f"Fetching related entities for {len(slos)} slos")
+
+        related_slo_tasks = [self._get_slo_related_entities(slo["filter"]) for slo in slos]
+        results = await asyncio.gather(*related_slo_tasks)
+
+        for slo, entities in zip(slos, results):
+            slo["__entities"] = entities
+        return slos
+
 
     async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for teams in self._get_paginated_resources(

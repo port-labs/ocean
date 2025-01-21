@@ -44,6 +44,7 @@ resources:
   - kind: slo
     selector:
       query: "true"
+      attachRelatedEntities: true
     port:
       entity:
         mappings:
@@ -60,6 +61,8 @@ resources:
             evaluatedPercentage: .evaluatedPercentage
             evaluationType: .evaluationType
             filter: .filter
+          relations:
+            entities: if .__entities != null then .__entities | map(.entityId) else [] end
 
   - kind: team
     selector:

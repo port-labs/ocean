@@ -41,14 +41,20 @@ class DynatraceEntitySelector(Selector):
         description="List of fields to include in each entity", alias="entityFields"
     )
 
+class SLOSelector(Selector):
+    attach_related_entities: bool = Field(description="Whether to attach related entities to SLO. Th default is false", alias="attachRelatedEntities", default=False)
+
 
 class DynatraceResourceConfig(ResourceConfig):
     selector: DynatraceEntitySelector
     kind: Literal["entity"]
 
+class DynatraceSLOConfig(ResourceConfig):
+    selector: SLOSelector
+    kind: Literal["slo"]
 
 class DynatracePortAppConfig(PortAppConfig):
-    resources: list[DynatraceResourceConfig | ResourceConfig] = Field(
+    resources: list[DynatraceResourceConfig | DynatraceSLOConfig | ResourceConfig] = Field(
         default_factory=list
     )
 
