@@ -30,6 +30,10 @@ class AbstractWebhookHandler(ABC):
         """Initialize resources (e.g., API clients). Override if needed."""
         pass
 
+    def teardown(self) -> None:
+        """Clean up resources. Override if needed."""
+        pass
+
     async def cancel(self) -> None:
         """Handle cancellation of the request. Override if needed."""
         pass
