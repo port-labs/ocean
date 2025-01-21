@@ -109,7 +109,7 @@
               "type":"array",
               "description":"List of members in the consumer group.",
               "items":{
-                 "type":"object"
+                 "type":"string"
               }
            },
            "coordinator":{
