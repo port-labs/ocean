@@ -6,12 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-0.2.22 (2025-01-17)
+0.2.24 (2025-01-17)
 ===================
 
 ### Improvements
 
 - Fixed glob pattern matching  by utilizing GitLab's glob path search capabilities instead of pattern matching.
+
+0.2.23 (2025-01-19)
+===================
+
+### Bug Fixes
+
+- Deleted `description` from the default mapping
+
+0.2.22 (2025-01-19)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
 
 
 0.2.21 (2025-01-16)

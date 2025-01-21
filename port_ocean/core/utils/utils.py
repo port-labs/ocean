@@ -1,8 +1,11 @@
 import asyncio
+import hashlib
+import json
 from typing import Iterable, Any, TypeVar, Callable, Awaitable
 
 from loguru import logger
 from pydantic import parse_obj_as, ValidationError
+
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.models import Entity, Runtime
@@ -76,10 +79,7 @@ async def gather_and_split_errors_from_results(
     return valid_items, errors
 
 
-def get_port_diff(
-    before: Iterable[Entity],
-    after: Iterable[Entity],
-) -> EntityPortDiff:
+def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPortDiff:
     before_dict = {}
     after_dict = {}
     created = []
@@ -107,3 +107,79 @@ def get_port_diff(
             deleted.append(obj)
 
     return EntityPortDiff(created=created, modified=modified, deleted=deleted)
+
+
+def are_teams_different(
+    first_team: str | None | list[Any], second_team: str | None | list[Any]
+) -> bool:
+    if isinstance(first_team, list) and isinstance(second_team, list):
+        return sorted(first_team) != sorted(second_team)
+    return first_team != second_team
+
+
+def are_entities_fields_equal(
+    first_entity_field: dict[str, Any], second_entity_field: dict[str, Any]
+) -> bool:
+    """
+    Compare two entity fields by serializing them to JSON and comparing their SHA-256 hashes.
+
+    Args:
+        first_entity_field: First entity field dictionary to compare
+        second_entity_field: Second entity field dictionary to compare
+
+    Returns:
+        bool: True if the entity fields have identical content
+    """
+    first_props = json.dumps(first_entity_field, sort_keys=True)
+    second_props = json.dumps(second_entity_field, sort_keys=True)
+    first_hash = hashlib.sha256(first_props.encode()).hexdigest()
+    second_hash = hashlib.sha256(second_props.encode()).hexdigest()
+    return first_hash == second_hash
+
+
+def are_entities_different(first_entity: Entity, second_entity: Entity) -> bool:
+    if first_entity.title != second_entity.title:
+        return True
+    if are_teams_different(first_entity.team, second_entity.team):
+        return True
+    if not are_entities_fields_equal(first_entity.properties, second_entity.properties):
+        return True
+    if not are_entities_fields_equal(first_entity.relations, second_entity.relations):
+        return True
+
+    return False
+
+
+def resolve_entities_diff(
+    source_entities: list[Entity], target_entities: list[Entity]
+) -> list[Entity]:
+    """
+    Maps the entities into filtered list of source entities, excluding matches found in target that needs to be upserted
+    Args:
+        source_entities: List of entities from third party source
+        target_entities: List of existing Port entities
+
+    Returns:
+        list[Entity]: Filtered list of source entities, excluding matches found in target
+    """
+    target_entities_dict = {}
+    source_entities_dict = {}
+    changed_entities = []
+
+    for entity in target_entities:
+        key = (entity.identifier, entity.blueprint)
+        target_entities_dict[key] = entity
+
+    for entity in source_entities:
+        if entity.is_using_search_identifier or entity.is_using_search_relation:
+            return source_entities
+        key = (entity.identifier, entity.blueprint)
+        source_entities_dict[key] = entity
+
+        entity_at_target = target_entities_dict.get(key, None)
+        if entity_at_target is None:
+            changed_entities.append(entity)
+        elif are_entities_different(entity, target_entities_dict[key]):
+            changed_entities.append(entity)
+
+    return changed_entities
