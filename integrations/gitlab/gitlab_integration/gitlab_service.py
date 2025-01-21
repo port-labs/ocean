@@ -214,7 +214,7 @@ class GitlabService:
                 yield files_with_content
             else:
                 logger.info(
-                    f"No files with content found for project {project.path_with_namespace} for path {pattern}"
+                    f"No files with content found for project {project.path_with_namespace} for path {gitlab_patterns}"
                 )
 
     async def _get_entities_from_git(
