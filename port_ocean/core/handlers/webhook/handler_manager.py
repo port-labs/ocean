@@ -79,6 +79,8 @@ class WebhookHandlerManager:
             event.set_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
         finally:
             await self._event_queues[path].commit()
+            if handler:
+                handler.teardown()
             self._log_processing_completion(event)
 
         return handler
