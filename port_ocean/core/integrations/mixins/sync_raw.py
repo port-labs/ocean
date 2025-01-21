@@ -137,7 +137,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             entities (list[Entity]): List of entities to search for.
 
         Returns:
-            dict: Query structure for searching entities by identifier.
+            dict: Query structure for searching entities by identifier and blueprint.
         """
         return {
             "combinator": "and",
@@ -147,10 +147,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     "rules": [
                         {
                             "property": "$identifier",
+                            "operator": "in",
+                            "value": [entity.identifier for entity in entities],
+                        },
+                        {
+                            "property": "$blueprint",
                             "operator": "=",
-                            "value": entity.identifier,
+                            "value": entities[0].blueprint,
                         }
-                        for entity in entities
                     ]
                 }
             ]
@@ -221,7 +225,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
         modified_objects = []
 
-        if ocean.app.is_saas():
+        if not ocean.app.is_saas():
             try:
                 changed_entities = await self._map_entities_compared_with_port(
                     objects_diff[0].entity_selector_diff.passed,
