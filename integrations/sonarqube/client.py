@@ -69,7 +69,6 @@ class SonarQubeClient:
         self.app_host = app_host
         self.is_onpremise = is_onpremise
         self.http_client = http_async_client
-        self.http_client.headers.update(self.api_auth_params["headers"])
         self.metrics: list[str] = []
         self.webhook_invoke_url = f"{self.app_host}/integration/webhook"
 
@@ -105,6 +104,7 @@ class SonarQubeClient:
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
         try:
+            self.http_client.headers.update(self.api_auth_params["headers"])
             response = await self.http_client.request(
                 method=method,
                 url=f"{self.base_url}/api/{endpoint}",
