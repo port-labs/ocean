@@ -201,10 +201,10 @@ class GitlabService:
                         )
                         for file in files_list
                     ]
-                    
+
                     parsed_files = await asyncio.gather(*content_tasks)
                     all_parsed_files.extend([file for file in parsed_files if file])
-            
+
             return all_parsed_files
 
         # Search and process all patterns concurrently
