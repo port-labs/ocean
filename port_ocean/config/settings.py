@@ -46,6 +46,7 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     identifier: str
     type: str
     config: Any = Field(default_factory=dict)
+    skip_check_diff: bool = False
 
     @root_validator(pre=True)
     def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:
