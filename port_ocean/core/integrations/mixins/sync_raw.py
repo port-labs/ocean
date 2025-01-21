@@ -225,7 +225,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
         modified_objects = []
 
-        if not ocean.app.is_saas():
+        if ocean.app.is_saas():
             try:
                 changed_entities = await self._map_entities_compared_with_port(
                     objects_diff[0].entity_selector_diff.passed,
