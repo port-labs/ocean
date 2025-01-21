@@ -180,7 +180,8 @@ class GitlabService:
         # Convert complex glob patterns into GitLab-compatible ones
         gitlab_patterns = convert_glob_to_gitlab_patterns(path)
 
-        for pattern in gitlab_patterns:
+        async def search_and_process_pattern(pattern: str) -> list[dict[str, Any]]:
+            all_parsed_files = []
             async with self._search_rate_limiter:
                 async for files in AsyncFetcher.fetch_batch(
                     project.search,
@@ -191,29 +192,30 @@ class GitlabService:
                 ):
                     files_list = typing.cast(List[dict[str, Any]], files)
                     logger.info(
-                        f"Found {len(files_list)} files in project {project.path_with_namespace}"
+                        f"Found {len(files_list)} files in project {project.path_with_namespace} for pattern {pattern}"
                     )
-                    tasks = []
-                    for file in files_list:
-                        tasks.append(
-                            self.get_and_parse_single_file(
-                                project, file["path"], project.default_branch
-                            )
+
+                    content_tasks = [
+                        self.get_and_parse_single_file(
+                            project, file["path"], project.default_branch
                         )
-                    logger.info(
-                        f"Found {len(tasks)} files in project {project.path_with_namespace}"
-                    )
-                    parsed_files = await asyncio.gather(*tasks)
-                    files_with_content = [file for file in parsed_files if file]
-                    if files_with_content:
-                        logger.info(
-                            f"Found {len(files_with_content)} files with content for project {project.path_with_namespace} for path {pattern}"
-                        )
-                        yield files_with_content
-                    else:
-                        logger.info(
-                            f"No files with content found for project {project.path_with_namespace} for path {pattern}"
-                        )
+                        for file in files_list
+                    ]
+                    
+                    parsed_files = await asyncio.gather(*content_tasks)
+                    all_parsed_files.extend([file for file in parsed_files if file])
+            
+            return all_parsed_files
+
+        # Search and process all patterns concurrently
+        tasks = [search_and_process_pattern(pattern) for pattern in gitlab_patterns]
+        for files_with_content in await asyncio.gather(*tasks):
+            if files_with_content:
+                yield files_with_content
+            else:
+                logger.info(
+                    f"No files with content found for project {project.path_with_namespace} for path {pattern}"
+                )
 
     async def _get_entities_from_git(
         self, project: Project, file_path: str | List[str], sha: str, ref: str
