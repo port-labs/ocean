@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, Optional
 import asyncio
 from loguru import logger
 
@@ -25,6 +25,20 @@ class AbstractWebhookHandler(ABC):
         self.event = event
         self.retry_count = 0
         self.initialize()
+
+    @property
+    def event_kind(self) -> Optional[str]:
+        """Extract event type from the webhook payload. Override if needed."""
+        return None
+
+    @property
+    def resource_id(self) -> Optional[str]:
+        """Extract resource identifier from the webhook payload. Override if needed."""
+        return None
+
+    async def on_error(self, error: Exception) -> None:
+        """Hook to handle errors during processing. Override if needed."""
+        logger.error(f"Error processing webhook: {error}")
 
     def initialize(self) -> None:
         """Initialize resources (e.g., API clients). Override if needed."""
@@ -62,7 +76,6 @@ class AbstractWebhookHandler(ABC):
 
     async def process_request(self) -> None:
         """Main method to process a webhook request with retry logic."""
-        # One-time validations
         if not self.validate_webhook_setup():
             raise ValueError("Invalid webhook setup")
 
@@ -75,7 +88,6 @@ class AbstractWebhookHandler(ABC):
         if not await self.validate_payload(payload):
             raise ValueError("Invalid payload")
 
-        # Retry loop only for event handling
         while True:
             try:
                 await self.handle_event(payload)
@@ -94,10 +106,7 @@ class AbstractWebhookHandler(ABC):
                     await asyncio.sleep(delay)
                     continue
 
-                logger.error(
-                    f"Failed after {self.retry_count} retries. "
-                    f"Final error: {str(e)}"
-                )
+                await self.on_error(e)
                 raise
 
     @abstractmethod
