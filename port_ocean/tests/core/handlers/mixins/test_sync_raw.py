@@ -445,7 +445,7 @@ async def test_register_raw(
             "identifier": "entity_1",
             "blueprint": "service",
             "name": "entity_1",
-            "properties": {"url": "https://example.com"},
+            "properties": {},
         },
     ]
 
