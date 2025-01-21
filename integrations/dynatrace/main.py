@@ -9,6 +9,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from client import DynatraceClient
 from integration import DynatraceSLOConfig
 
+
 class ObjectKind(StrEnum):
     PROBLEM = "problem"
     SLO = "slo"
@@ -37,7 +38,9 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(DynatraceSLOConfig, event.resource_config).selector
     async for slos in dynatrace_client.get_slos():
         if selector.attach_related_entities:
-            enriched_slos = await dynatrace_client.enrich_slos_with_related_entities(slos)
+            enriched_slos = await dynatrace_client.enrich_slos_with_related_entities(
+                slos
+            )
             yield enriched_slos
         else:
             yield slos

@@ -8,6 +8,7 @@ from port_ocean.utils import http_async_client
 
 from integration import DynatraceResourceConfig, EntityFieldsType
 import asyncio
+
 # SLOs by default are not evaluated and the initial state
 # at creation is being returned in the SLO list API.
 # To force evaluation, we must pass the `evaluate` query parameter,
@@ -111,7 +112,9 @@ class DynatraceClient:
     async def _get_slo_related_entities(self, query: str) -> list[dict[str, Any]]:
         related_entities = []
         try:
-            async for entities_batch in self._get_entities_from_selector_query(query, None):
+            async for entities_batch in self._get_entities_from_selector_query(
+                query, None
+            ):
                 related_entities.extend(entities_batch)
             return related_entities
         except httpx.HTTPStatusError as e:
@@ -120,17 +123,20 @@ class DynatraceClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP error on fetching related entities: {e}")
             raise
-    
-    async def enrich_slos_with_related_entities(self, slos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+
+    async def enrich_slos_with_related_entities(
+        self, slos: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching related entities for {len(slos)} slos")
 
-        related_slo_tasks = [self._get_slo_related_entities(slo["filter"]) for slo in slos]
+        related_slo_tasks = [
+            self._get_slo_related_entities(slo["filter"]) for slo in slos
+        ]
         results = await asyncio.gather(*related_slo_tasks)
 
         for slo, entities in zip(slos, results):
             slo["__entities"] = entities
         return slos
-
 
     async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for teams in self._get_paginated_resources(
