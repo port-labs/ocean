@@ -15,11 +15,10 @@ class RetryableError(Exception):
 class AbstractWebhookHandler(ABC):
     """Abstract base class for webhook handlers."""
 
-    # Default retry configuration
     max_retries: int = 3
-    initial_retry_delay: float = 1.0  # seconds
-    max_retry_delay: float = 30.0  # seconds
-    exponential_base: float = 2.0
+    initial_retry_delay_seconds: float = 1.0
+    max_retry_delay_seconds: float = 30.0
+    exponential_base_seconds: float = 2.0
 
     def __init__(self, event: WebhookEvent) -> None:
         self.event = event
@@ -38,7 +37,12 @@ class AbstractWebhookHandler(ABC):
 
     async def on_error(self, error: Exception) -> None:
         """Hook to handle errors during processing. Override if needed."""
-        logger.error(f"Error processing webhook: {error}")
+        delay = self.calculate_retry_delay()
+
+        logger.error(
+            f"Attempt {self.retry_count}/{self.max_retries} failed. "
+            f"Retrying in {delay:.2f} seconds. Error: {str(error)}"
+        )
 
     def initialize(self) -> None:
         """Initialize resources (e.g., API clients). Override if needed."""
@@ -69,8 +73,9 @@ class AbstractWebhookHandler(ABC):
         Override to customize backoff strategy.
         """
         delay = min(
-            self.initial_retry_delay * (self.exponential_base**self.retry_count),
-            self.max_retry_delay,
+            self.initial_retry_delay_seconds
+            * (self.exponential_base_seconds**self.retry_count),
+            self.max_retry_delay_seconds,
         )
         return delay
 
@@ -91,18 +96,12 @@ class AbstractWebhookHandler(ABC):
         while True:
             try:
                 await self.handle_event(payload)
-                break  # Success, exit retry loop
+                break
 
             except Exception as e:
                 if self.should_retry(e) and self.retry_count < self.max_retries:
                     self.retry_count += 1
                     delay = self.calculate_retry_delay()
-
-                    logger.warning(
-                        f"Attempt {self.retry_count}/{self.max_retries} failed. "
-                        f"Retrying in {delay:.2f} seconds. Error: {str(e)}"
-                    )
-
                     await asyncio.sleep(delay)
                     continue
 

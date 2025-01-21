@@ -160,7 +160,6 @@ class WebhookHandlerManager:
         logger.warning("Shutting down webhook handler manager")
 
         try:
-            # Wait for all queues to be empty with a timeout
             await asyncio.wait_for(
                 asyncio.gather(
                     *(
@@ -173,20 +172,8 @@ class WebhookHandlerManager:
         except asyncio.TimeoutError:
             logger.warning("Shutdown timed out waiting for queues to empty")
 
-        # Cancel all queue processors
         for task in self._webhook_processor_tasks:
             task.cancel()
 
-        # Wait for all tasks to be cancelled
         if self._webhook_processor_tasks:
             await asyncio.gather(*self._webhook_processor_tasks, return_exceptions=True)
-
-
-# check of asyncio maintains order - Done
-# Wrap event to add metadata - add timestamp when event arrived to to each queue - Done
-# add ttl to event processing - Done
-# facade away the queue handling - Done
-# separate event handling per kind as well as per route - Done
-# add on_cancel method to handler - Done
-# APP_HOSTS
-# use util for uuid

@@ -5,7 +5,6 @@ from uuid import uuid4
 from fastapi import Request
 
 
-# Use TypeAlias instead of 'type' for Python <3.12 compatibility
 EventPayload: TypeAlias = Dict[str, Any]
 
 
