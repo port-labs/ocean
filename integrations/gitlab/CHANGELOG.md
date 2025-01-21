@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+0.2.23 (2025-01-19)
+===================
+
+### Bug Fixes
+
+- Deleted `description` from the default mapping
 
 0.2.22 (2025-01-19)
 ===================
