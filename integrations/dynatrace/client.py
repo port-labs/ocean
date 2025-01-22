@@ -116,7 +116,7 @@ class DynatraceClient:
     async def enrich_slos_with_related_entities(
         self, slos: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        logger.debug(f"Fetching related entities for {len(slos)} slos")
+        logger.info(f"Fetching related entities for {len(slos)} slos")
 
         related_slo_tasks = [
             self._get_slo_related_entities(slo["filter"]) for slo in slos
