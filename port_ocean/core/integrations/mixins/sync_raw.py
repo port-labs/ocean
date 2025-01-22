@@ -143,19 +143,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             "combinator": "and",
             "rules": [
                 {
-                    "combinator": "or",
-                    "rules": [
-                        {
-                            "property": "$identifier",
-                            "operator": "in",
-                            "value": [entity.identifier for entity in entities],
-                        },
-                        {
-                            "property": "$blueprint",
-                            "operator": "=",
-                            "value": entities[0].blueprint,
-                        }
-                    ]
+                    "property": "$identifier",
+                    "operator": "in",
+                    "value": [entity.identifier for entity in entities]
+                },
+                {
+                    "property": "$blueprint",
+                    "operator": "=",
+                    "value": entities[0].blueprint
                 }
             ]
         }
