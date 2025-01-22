@@ -17,21 +17,26 @@ OAUTH_TOKEN_RETRY_ATTEMPTS = 3
 OAUTH_TOKEN_REFRESH_BACKOFF_INTERVAL = 10
 
 class PagerDutyClient:
+    def base_retry_async_handler(self, response: httpx.Response) -> bool:
+        return response.status_code in self.http_client._transport._retry_status_codes
 
     async def _should_retry_async_handler(self, response: httpx.Response) -> bool:
         logger.debug("PagerDutyClient - validate token invalidity")
-        is_invalid_token = check_token_invalidity(response)
+        if self.config_file_path is None:
+            return self.base_retry_async_handler(response)
+        else:
+            is_invalid_token = check_token_invalidity(response)
 
-        if not is_invalid_token:
-            logger.debug("Unable to identify token as invalid")
-            return response.status_code in self.http_client._transport._retry_status_codes
+            if not is_invalid_token:
+                logger.debug("Unable to identify token as invalid")
+                return self.base_retry_async_handler(response)
 
-        try:
-            logger.debug("Attempting to refresh invalid token")
-            return attempt_token_refresh(self, response, OAUTH_TOKEN_RETRY_ATTEMPTS, OAUTH_TOKEN_REFRESH_BACKOFF_INTERVAL, self.config_file_path)
-        except Exception as e:
-            logger.error(f"Failed to refresh token: {e}")
-            pass
+            try:
+                logger.debug("Attempting to refresh invalid token")
+                return attempt_token_refresh(self, response, OAUTH_TOKEN_RETRY_ATTEMPTS, OAUTH_TOKEN_REFRESH_BACKOFF_INTERVAL, self.config_file_path)
+            except Exception as e:
+                logger.error(f"Failed to refresh token: {e}")
+                pass
         return False
 
     def __init__(self, token: str, api_url: str, app_host: str | None, config_file_path: str | None):

@@ -306,3 +306,19 @@ class TestPagerDutyClient:
 
         assert should_retry is True
         assert client.token == "new-mock-token"
+
+
+    async def test_token_refresh_without_file(self, client: PagerDutyClient) -> None:
+        client.config_file_path = None
+
+        mock_401_response = MagicMock()
+        mock_401_response.status_code = 401
+        mock_401_response.json.return_value = {"error": {"message": "Token expired"}}
+        mock_401_response.extensions = {"token_retry_count": 0}
+        mock_401_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Unauthorized", request=MagicMock(), response=mock_401_response
+        )
+
+        should_retry = await client._should_retry_async_handler(mock_401_response)
+
+        assert should_retry is False
