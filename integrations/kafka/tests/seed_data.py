@@ -10,7 +10,7 @@ Setup:
        pip install confluent-kafka
 
 Usage:
-    python integrations/kafka/tests/seed_kafka_load.py
+    python integrations/kafka/tests/seed_data.py
 
 Configuration (modify constants at top of file):
     - NUM_TOPICS: Number of topics to create (default: 50)
@@ -33,7 +33,7 @@ Example:
     # - 50 topics with 3 partitions each
     # - 20 consumer groups with 3 consumers each (60 total consumers)
     # - 1 producer sending messages to random topics
-    python integrations/kafka/tests/seed_kafka_load.py
+    python integrations/kafka/tests/seed_data.py
 """
 
 import random
