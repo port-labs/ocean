@@ -179,11 +179,17 @@ class GitlabService:
             f"Searching project {project.path_with_namespace} for files with path pattern {path}"
         )
         gitlab_patterns = convert_glob_to_gitlab_patterns(path)
-        async for matched_files in self._process_search_patterns(project, gitlab_patterns):
+        async for matched_files in self._process_search_patterns(
+            project, gitlab_patterns
+        ):
+            logger.info(
+                f"Found {len(matched_files)} files with content in "
+                f"{project.path_with_namespace} matching {path}"
+            )
             yield matched_files
         else:
             logger.info(
-                f"No files with content found for project {project.path_with_namespace} for path {gitlab_patterns}"
+                f"No files with content found for project {project.path_with_namespace} for path {path}"
             )
 
     async def _process_search_patterns(
@@ -215,14 +221,10 @@ class GitlabService:
                     ]
 
                     parsed_files = await asyncio.gather(*content_tasks)
-                    valid_files = [file for file in parsed_files if file]
+                    files_with_content = [file for file in parsed_files if file]
 
-                    if valid_files:
-                        logger.info(
-                            f"Found {len(valid_files)} files with content in "
-                            f"{project.path_with_namespace} matching {pattern}"
-                        )
-                        yield valid_files
+                    if files_with_content:
+                        yield files_with_content
 
     async def _get_entities_from_git(
         self, project: Project, file_path: str | List[str], sha: str, ref: str
