@@ -5,12 +5,13 @@ import httpx
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from clients.pagerduty import PagerDutyClient
-
+import yaml
 
 TEST_CONFIG: Dict[str, str] = {
     "token": "mock-token",
     "api_url": "https://api.pagerduty.com",
     "app_host": "https://app.example.com",
+    "config_file_path": "",
 }
 
 TEST_DATA: Dict[str, List[Dict[str, Any]]] = {
@@ -130,7 +131,7 @@ class TestPagerDutyClient:
 
         # Scenario 3: No app host
         client_no_host = PagerDutyClient(
-            token=TEST_CONFIG["token"], api_url=TEST_CONFIG["api_url"], app_host=None
+            token=TEST_CONFIG["token"], api_url=TEST_CONFIG["api_url"], app_host=None, config_file_path=None
         )
         await client_no_host.create_webhooks_if_not_exists()
 
@@ -227,6 +228,21 @@ class TestPagerDutyClient:
             result = await client.send_api_request("nonexistent/endpoint")
             assert result == {}
 
+        # mock_401_response = MagicMock()
+        # mock_401_response.status_code = 401
+        # mock_401_response.json.return_value = {}
+        # mock_401_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        #     "Unauthorized", request=MagicMock(), response=mock_401_response
+        # )
+
+        # with patch(
+        #     "port_ocean.utils.http_async_client.request",
+        #     side_effect=[mock_401_response, mock_response],
+        # ) as mock_request:
+        #     result = await client.send_api_request("test/needs-retry")
+        #     assert mock_request.call_count == 2
+        #     assert result == {"result": "success"}
+
     async def test_transform_user_ids_to_emails(self, client: PagerDutyClient) -> None:
         # Mock the fetch_and_cache_users method to populate user cache
         async def mock_fetch_and_cache_users() -> None:
@@ -261,3 +277,32 @@ class TestPagerDutyClient:
         assert set(client.incident_upsert_events).issubset(set(all_events))
         assert set(client.service_upsert_events).issubset(set(all_events))
         assert set(client.service_delete_events).issubset(set(all_events))
+
+    async def test_token_refresh_from_file(self, client: PagerDutyClient, tmp_path) -> None:
+        # Create a temporary config file
+        config_file = tmp_path / "config.yaml"
+        initial_config = {"token": "new-mock-token"}
+        with open(config_file, "w") as f:
+            yaml.dump(initial_config, f)
+
+        # Set up client with config file path
+        client.config_file_path = str(config_file)
+
+        # Create mock responses
+        mock_401_response = MagicMock()
+        mock_401_response.status_code = 401
+        mock_401_response.json.return_value = {"error": {"message": "Token expired"}}
+        mock_401_response.extensions = {"token_retry_count": 0}
+        mock_401_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Unauthorized", request=MagicMock(), response=mock_401_response
+        )
+
+        mock_success_response = MagicMock()
+        mock_success_response.status_code = 200
+        mock_success_response.json.return_value = {"result": "success"}
+
+        # Test the retry handler
+        should_retry = await client._should_retry_async_handler(mock_401_response)
+
+        assert should_retry is True
+        assert client.token == "new-mock-token"

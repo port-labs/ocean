@@ -24,6 +24,7 @@ def initialize_client() -> PagerDutyClient:
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
+        ocean.integration_config.get("config_file_path")
     )
 
 

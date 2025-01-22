@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from functools import partial
 from http import HTTPStatus
-from typing import Any, Callable, Coroutine, Iterable, Mapping, Union
+from typing import Any, Callable, Coroutine, Iterable, Mapping, Union, Awaitable
 
 import httpx
 from dateutil.parser import isoparse
@@ -67,6 +67,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         respect_retry_after_header: bool = True,
         retryable_methods: Iterable[str] | None = None,
         retry_status_codes: Iterable[int] | None = None,
+        custom_retry_method: Callable[[httpx.Response], Awaitable[bool]] | None = None,
         logger: Any | None = None,
     ) -> None:
         """
@@ -97,6 +98,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 The HTTP status codes that can be retried.
                 Defaults to [429, 502, 503, 504].
             logger (Any): The logger to use for logging retries.
+            custom_retry_method (Callable[[httpx.Response], bool], optional):
+                Custome method passed by the integration for determining if a request should be retried.
         """
         self._wrapped_transport = wrapped_transport
         if jitter_ratio < 0 or jitter_ratio > 0.5:
@@ -120,6 +123,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         self._jitter_ratio = jitter_ratio
         self._max_backoff_wait = max_backoff_wait
         self._logger = logger
+        self._custom_retry_method = custom_retry_method
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         """
@@ -237,6 +241,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             )
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
+        if self._custom_retry_method:
+            should_retry = await self._custom_retry_method(response)
+            return should_retry
         return response.status_code in self._retry_status_codes
 
     def _calculate_sleep(

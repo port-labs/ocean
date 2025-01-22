@@ -6,23 +6,45 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
-from .utils import get_date_range_for_last_n_months
+from .utils import get_date_range_for_last_n_months, check_token_invalidity, attempt_token_refresh
 
 USER_KEY = "users"
 
 MAX_CONCURRENT_REQUESTS = 10
 PAGE_SIZE = 100
 OAUTH_TOKEN_PREFIX = "pd"
-
+OAUTH_TOKEN_RETRY_ATTEMPTS = 3
+OAUTH_TOKEN_REFRESH_BACKOFF_INTERVAL = 10
 
 class PagerDutyClient:
-    def __init__(self, token: str, api_url: str, app_host: str | None):
+
+    async def _should_retry_async_handler(self, response: httpx.Response) -> bool:
+        logger.debug("PagerDutyClient - validate token invalidity")
+        is_invalid_token = check_token_invalidity(response)
+
+        if not is_invalid_token:
+            logger.debug("Unable to identify token as invalid")
+            return response.status_code in self.http_client._transport._retry_status_codes
+
+        try:
+            logger.debug("Attempting to refresh invalid token")
+            return attempt_token_refresh(self, response, OAUTH_TOKEN_RETRY_ATTEMPTS, OAUTH_TOKEN_REFRESH_BACKOFF_INTERVAL, self.config_file_path)
+        except Exception as e:
+            logger.error(f"Failed to refresh token: {e}")
+            pass
+        return False
+
+    def __init__(self, token: str, api_url: str, app_host: str | None, config_file_path: str | None):
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
         self.http_client = http_async_client
         self.http_client.headers.update(self.headers)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+        #conditional retry logic
+        if (config_file_path is not None):
+            self.config_file_path = config_file_path
+            self.http_client._transport._custom_retry_method = self._should_retry_async_handler
 
     @property
     def incident_upsert_events(self) -> list[str]:
