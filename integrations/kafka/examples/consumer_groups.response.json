@@ -1,0 +1,24 @@
+{
+    "group_id": "_confluent-ksql-default_query_CTAS_PURCHASE_PER_PRODUCT_0",
+    "state": "EMPTY",
+    "members": [
+        {
+            "assignment": {
+                "topic_partitions": [
+                    {
+                        "partition": 0,
+                        "topic": "_conduktor_gateway_license"
+                    }
+                ]
+            },
+            "host": "172.23.0.6",
+            "id": "conduktor-gateway_6969-707254dd-d7d6-4e34-9ac9-d868d5fd5f56",
+            "client_id": "conduktor-gateway_6969"
+        }
+    ],
+    "cluster_name": "local-cluster",
+    "coordinator": 0,
+    "partition_assignor": "range",
+    "is_simple_consumer_group": false,
+    "authorized_operations": null
+}
