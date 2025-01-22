@@ -83,10 +83,10 @@ async def _resolve_resync_method_for_resource(
 
 @ocean.on_start()
 async def setup_real_time_request_controllers() -> None:
-    global GET_PROJECT_LIMITER
+    global PROJECT_V3_GET_REQUESTS_RATE_LIMITER
     if not ocean.event_listener_type == "ONCE":
         get_project_quota_id = "ProjectV3GetRequestsPerMinutePerProject"
-        GET_PROJECT_LIMITER, _ = await resolve_request_controllers(
+        PROJECT_V3_GET_REQUESTS_RATE_LIMITER, _ = await resolve_request_controllers(
             AssetTypesWithSpecialHandling.PROJECT, quota_id=get_project_quota_id
         )
 
@@ -195,7 +195,7 @@ async def process_realtime_event(
             asset_name,
             asset_project,
             asset_data,
-            GET_PROJECT_LIMITER,
+            PROJECT_V3_GET_REQUESTS_RATE_LIMITER,
             config,
         )
         if asset_data.get("deleted") is True:
