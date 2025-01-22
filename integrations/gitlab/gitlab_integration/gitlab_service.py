@@ -182,10 +182,6 @@ class GitlabService:
         async for matched_files in self._process_search_patterns(
             project, gitlab_patterns
         ):
-            logger.info(
-                f"Found {len(matched_files)} files with content in "
-                f"{project.path_with_namespace} matching {path}"
-            )
             yield matched_files
         else:
             logger.info(
@@ -224,6 +220,10 @@ class GitlabService:
                     files_with_content = [file for file in parsed_files if file]
 
                     if files_with_content:
+                        logger.info(
+                            f"Found {len(files_with_content)} files with content in "
+                            f"{project.path_with_namespace} matching {pattern}"
+                        )
                         yield files_with_content
 
     async def _get_entities_from_git(
