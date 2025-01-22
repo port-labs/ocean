@@ -1,9 +1,14 @@
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 from pydantic import BaseModel
 from pydantic.fields import Field
+
+
+class CreatePortResourcesOrigin(StrEnum):
+    Ocean = "Ocean"
+    Port = "Port"
 
 
 class Runtime(Enum):
