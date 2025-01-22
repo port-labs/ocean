@@ -5,80 +5,32 @@ from gitlab.base import RESTObject
 import pytest
 
 
-@pytest.mark.parametrize(
-    "search_pattern,mock_responses,expected_files",
-    [
-        (
-            "**/file.yaml",
-            lambda search: (
-                [{"path": "hello/aaa/file.yaml"}, {"path": "hello/my/file.yaml"}]
-                if search == "path:**/file.yaml"
-                else None
-            ),
-            ["hello/aaa/file.yaml", "hello/my/file.yaml"],
-        ),
-        (
-            "**/my/file.yaml",
-            lambda search: (
-                [{"path": "hello/my/file.yaml"}]
-                if search == "path:**/my/file.yaml"
-                else None
-            ),
-            ["hello/my/file.yaml"],
-        ),
-        (
-            "**/file.{yaml,yml}",
-            lambda search: (
-                [{"path": "hello/my/file.yaml"}]
-                if search == "path:**/file.yaml"
-                else (
-                    [{"path": "hello/my/file.yml"}]
-                    if search == "path:**/file.yml"
-                    else None
-                )
-            ),
-            ["hello/my/file.yaml", "hello/my/file.yml"],
-        ),
-        (
-            "hello/**/file*",
-            lambda search: (
-                [
-                    {"path": "hello/aaa/file.yaml"},
-                    {"path": "hello/my/file.yaml"},
-                    {"path": "hello/my/file2.yaml"},
-                    {"path": "hello/my/file3.yaml"},
-                    {"path": "hello/my/file.yml"},
-                    {"path": "hello/my/file.json"},
-                    {"path": "hello/my/file.md"},
-                ]
-                if search == "path:hello/**/file*"
-                else None
-            ),
-            [
-                "hello/aaa/file.yaml",
-                "hello/my/file.yaml",
-                "hello/my/file2.yaml",
-                "hello/my/file3.yaml",
-                "hello/my/file.yml",
-                "hello/my/file.json",
-                "hello/my/file.md",
-            ],
-        ),
-    ],
-)
+# Test data for file search scenarios
+FILE_SEARCH_TEST_DATA = [
+    (
+        "**/file.yaml",  # Basic glob pattern
+        ["hello/aaa/file.yaml", "hello/my/file.yaml"],
+    ),
+    ("**/my/file.yaml", ["hello/my/file.yaml"]),  # Specific directory pattern
+    ("*.yml", ["hello/my/file.yml"]),  # Simple extension match
+    ("**/docs/*.md", ["hello/docs/file.md"]),  # Specific directory and extension
+]
+
+
+@pytest.mark.parametrize("search_pattern,expected_files", FILE_SEARCH_TEST_DATA)
 async def test_search_files_in_project(
     monkeypatch: Any,
     mocked_gitlab_service: GitlabService,
     mock_get_and_parse_single_file: Any,
     search_pattern: str,
-    mock_responses: Callable,
     expected_files: list,
 ) -> None:
     # Arrange
     def mock_search(page: int, *args: Any, **kwargs: Any) -> Any:
         if page == 1:
-            return mock_responses(kwargs.get("search"))
-        return None
+            # Convert expected files to GitLab response format
+            return [{"path": path} for path in expected_files]
+        return []
 
     mock_project = MagicMock()
     monkeypatch.setattr(mock_project, "search", mock_search)

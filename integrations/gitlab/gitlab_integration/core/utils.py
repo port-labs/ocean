@@ -12,7 +12,12 @@ def does_pattern_apply(pattern: Union[str, List[str]], string: str) -> bool:
 def convert_glob_to_gitlab_patterns(pattern: Union[str, List[str]]) -> List[str]:
     """Converts glob patterns into GitLab-compatible patterns."""
     if isinstance(pattern, list):
-        return [p for pat in pattern for p in braceexpand(pat)]
+        expanded_patterns: list[str] = []
+        for glob_pattern in pattern:
+            expanded_patterns.extend(braceexpand(glob_pattern))
+        return expanded_patterns
+
+    # Handle case where the input is a single pattern
     return list(braceexpand(pattern))
 
 

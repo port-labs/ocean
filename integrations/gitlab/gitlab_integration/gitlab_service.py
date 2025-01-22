@@ -174,25 +174,37 @@ class GitlabService:
     async def search_files_in_project(
         self, project: Project, path: str | List[str]
     ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Search for files in a GitLab project matching the given path pattern(s)."""
         logger.info(
             f"Searching project {project.path_with_namespace} for files with path pattern {path}"
         )
-        # Convert complex glob patterns into GitLab-compatible ones
         gitlab_patterns = convert_glob_to_gitlab_patterns(path)
+        async for matched_files in self._process_search_patterns(project, gitlab_patterns):
+            yield matched_files
+        else:
+            logger.info(
+                f"No files with content found for project {project.path_with_namespace} for path {gitlab_patterns}"
+            )
 
-        async def search_and_process_pattern(pattern: str) -> list[dict[str, Any]]:
-            all_parsed_files = []
+    async def _process_search_patterns(
+        self, project: Project, gitlab_patterns: List[str]
+    ) -> AsyncIterator[list[dict]]:
+        for pattern in gitlab_patterns:
             async with self._search_rate_limiter:
-                async for files in AsyncFetcher.fetch_batch(
+                async for search_results in AsyncFetcher.fetch_batch(
                     project.search,
                     scope="blobs",
                     search=f"path:{pattern}",
                     search_type="advanced",
                     retry_transient_errors=True,
                 ):
-                    files_list = typing.cast(List[dict[str, Any]], files)
+                    if not search_results:
+                        continue
+
+                    files_list = typing.cast(List[dict[str, Any]], search_results)
                     logger.info(
-                        f"Found {len(files_list)} files in project {project.path_with_namespace} for pattern {pattern}"
+                        f"Found {len(files_list)} files in project {project.path_with_namespace} "
+                        f"for pattern {pattern}"
                     )
 
                     content_tasks = [
@@ -203,19 +215,14 @@ class GitlabService:
                     ]
 
                     parsed_files = await asyncio.gather(*content_tasks)
-                    all_parsed_files.extend([file for file in parsed_files if file])
+                    valid_files = [file for file in parsed_files if file]
 
-            return all_parsed_files
-
-        # Search and process all patterns concurrently
-        tasks = [search_and_process_pattern(pattern) for pattern in gitlab_patterns]
-        for files_with_content in await asyncio.gather(*tasks):
-            if files_with_content:
-                yield files_with_content
-            else:
-                logger.info(
-                    f"No files with content found for project {project.path_with_namespace} for path {gitlab_patterns}"
-                )
+                    if valid_files:
+                        logger.info(
+                            f"Found {len(valid_files)} files with content in "
+                            f"{project.path_with_namespace} matching {pattern}"
+                        )
+                        yield valid_files
 
     async def _get_entities_from_git(
         self, project: Project, file_path: str | List[str], sha: str, ref: str
