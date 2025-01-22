@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.18.2 (2025-01-21)
+
+### Improvements
+
+- Updated the search entitites query sent to port with one rule of identifier instead of many
+
+## 0.18.1 (2025-01-21)
+
+### Improvements
+
+- Updated the search entitites query sent to port with blueprint
+
+## 0.18.0 (2025-01-15)
+
+### Improvements
+
+- Introduced a new entity diff resolver to reduce port system load by comparing entities and upserting changed entities only
 
 ## 0.17.8 (2025-01-15)
 
