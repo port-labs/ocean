@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any
 from unittest.mock import MagicMock, Mock
 from gitlab_integration.gitlab_service import GitlabService
 from gitlab.base import RESTObject
