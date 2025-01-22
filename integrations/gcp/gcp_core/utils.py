@@ -263,7 +263,7 @@ async def resolve_request_controllers(
 
 
 @ocean.on_start()
-async def set_project_limiter() -> None:
+async def set_get_project_limiter() -> None:
     global GET_PROJECT_LIMITER
     get_project_quota_id = "ProjectV3GetRequestsPerMinutePerProject"
     GET_PROJECT_LIMITER, _ = await resolve_request_controllers(

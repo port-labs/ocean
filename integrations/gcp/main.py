@@ -170,7 +170,11 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 async def process_realtime_event(
-    asset_type, asset_name, asset_project, asset_data, config
+    asset_type: str,
+    asset_name: str,
+    asset_project: str,
+    asset_data: dict[str, typing.Any],
+    config: typing.Optional[ProtoConfig] = None,
 ):
     try:
         asset_resource_data = await feed_event_to_resource(

@@ -219,6 +219,8 @@ async def get_single_project(
     project_name: str, config: Optional[ProtoConfig] = None
 ) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
+        if GET_PROJECT_LIMITER is None:
+            raise ValueError("GET_PROJECT_LIMITER is not initialized.")
         async with GET_PROJECT_LIMITER:
             logger.info(
                 f"Executing get_single_project. Current rate limit: {GET_PROJECT_LIMITER.max_rate} requests per {GET_PROJECT_LIMITER.time_period} seconds."
