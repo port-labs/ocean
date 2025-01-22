@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Fixed glob pattern matching  by utilizing GitLab's glob path search capabilities instead of pattern matching.
+- Fixed glob pattern matching by utilizing GitLab's glob path search capabilities instead of pattern matching.
 
 
 0.2.25 (2025-01-22)
