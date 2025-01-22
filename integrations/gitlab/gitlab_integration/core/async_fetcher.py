@@ -15,6 +15,7 @@ from gitlab.v4.objects import (
     User,
     GroupMember,
     ProjectFile,
+    ProjectLabel,
 )
 from loguru import logger
 
@@ -45,13 +46,13 @@ class AsyncFetcher:
         *args,
     ) -> Union[
         RESTObject,
-        RESTObject,
         ProjectPipelineJob,
         ProjectPipeline,
         Issue,
         Project,
         Group,
         ProjectFile,
+        ProjectLabel,
     ]:
         with ThreadPoolExecutor() as executor:
             return await get_event_loop().run_in_executor(executor, fetch_func, *args)
@@ -92,6 +93,7 @@ class AsyncFetcher:
             List[RESTObject],
             List[Dict[str, Any]],
             GitlabList,
+            List[ProjectLabel],
         ]
     ]:
         def fetch_page(

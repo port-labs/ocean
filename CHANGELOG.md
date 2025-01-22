@@ -6,6 +6,103 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.18.2 (2025-01-21)
+
+### Improvements
+
+- Updated the search entitites query sent to port with one rule of identifier instead of many
+
+## 0.18.1 (2025-01-21)
+
+### Improvements
+
+- Updated the search entitites query sent to port with blueprint
+
+## 0.18.0 (2025-01-15)
+
+### Improvements
+
+- Introduced a new entity diff resolver to reduce port system load by comparing entities and upserting changed entities only
+
+## 0.17.8 (2025-01-15)
+
+### Bug Fixes
+
+- Fixed vulnerability in the jinja package that is resolved by updating to 3.1.5
+
+
+## 0.17.7 (2025-01-08)
+
+### Bug Fixes
+
+- Fixed a bug where creating an integration with WEBHOOKS_ONLY event listener failed.
+
+### Improvements
+
+- Added jira integration running config to vscode.
+
+## 0.17.6 (2025-01-08)
+
+### Bug Fixes
+
+- Fixed a bug where the `unregister_raw` and `register_raw` were not handling right the errors and misconfigured entity keys
+
+
+## 0.17.5 (2025-01-07)
+
+
+### Bug Fixes
+
+- Explicit poetry version due to major version (2.0.0) breaking the CI
+
+
+## 0.17.4 (2024-12-31)
+
+
+### Bug Fixes
+
+- Adjusted log terminology
+- Failed transformations counter now increments for all cases (None (null / missing), empty)
+
+## 0.17.3 (2024-12-31)
+
+
+### Bug Fixes
+
+- Added support for empty values for JQ mapping logs
+- Added tests to assert for proper response when JQ is missmapped or values are empty
+
+## 0.17.2 (2024-12-31)
+
+
+### Bug Fixes
+
+- Fixed lint failures
+
+
+## 0.17.1 (2024-12-31)
+
+
+### Bug Fixes
+
+- Fixed lint failure for resources that have two `on_resync` decorators
+
+
+## 0.17.0 (2024-12-31)
+
+
+### Features
+
+- Added new webhooks only event listener mode. This event listener handles only webhook invocations and raises error once used for resync.
+
+
+## 0.16.1 (2024-12-25)
+
+### Bug Fixes
+
+- Added new info log for JQ mapping per batch to notify of misconfigured JQ mappings between a property and the JQ target
+
+
 ## 0.16.0 (2024-12-24)
 
 

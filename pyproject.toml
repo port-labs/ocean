@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.16.0"
+version = "0.18.2"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -35,7 +35,7 @@ classifiers = [
 ocean = "port_ocean.cli.cli:cli_start"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.0.0,<2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]

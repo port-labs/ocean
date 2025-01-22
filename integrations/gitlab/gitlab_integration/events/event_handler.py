@@ -15,6 +15,7 @@ from port_ocean.context.event import (
     event_context,
     EventContext,
 )
+import time
 
 Observer = Callable[[str, dict[str, Any]], Awaitable[Any]]
 
@@ -29,7 +30,10 @@ class BaseEventHandler(ABC):
         logger.info(f"Started {self.__class__.__name__} worker")
         while True:
             event_ctx, event_id, body = await self.webhook_tasks_queue.get()
-            logger.debug(f"Retrieved event: {event_id} from Queue, notifying observers")
+            logger.debug(
+                f"Retrieved event: {event_id} from Queue, notifying observers",
+                queue_size=self.webhook_tasks_queue.qsize(),
+            )
             try:
                 async with event_context(
                     "gitlab_http_event_async_worker", parent_override=event_ctx
@@ -69,6 +73,9 @@ class BaseEventHandler(ABC):
 
 
 class EventHandler(BaseEventHandler):
+    MAXIMUM_RETRIES = 3
+    TIMEOUT = 90
+
     def __init__(self) -> None:
         super().__init__()
         self._observers: dict[str, list[Observer]] = defaultdict(list)
@@ -85,20 +92,38 @@ class EventHandler(BaseEventHandler):
             )
             return
         for observer in observers_list:
-            try:
-                if asyncio.iscoroutinefunction(observer):
-                    if inspect.ismethod(observer):
-                        handler = observer.__self__.__class__.__name__
+            retries_left = self.MAXIMUM_RETRIES
+            observer_time = time.time()
+            while retries_left > 0:
+                try:
+                    if asyncio.iscoroutinefunction(observer):
+                        if inspect.ismethod(observer):
+                            handler = observer.__self__.__class__.__name__
+                            logger.debug(
+                                f"Notifying observer: {handler}, for event: {event_id} at {observer_time}",
+                                event_id=event_id,
+                                handler=handler,
+                            )
+                        await asyncio.wait_for(
+                            observer(event_id, body), self.TIMEOUT
+                        )  # Sequentially call each observer
                         logger.debug(
-                            f"Notifying observer: {handler}, for event: {event_id}",
+                            f"Observer {handler} completed work at {time.time() - observer_time}",
                             event_id=event_id,
                             handler=handler,
                         )
-                    await observer(event_id, body)  # Sequentially call each observer
-            except Exception as e:
-                logger.error(
-                    f"Error processing event {event_id} with observer {observer}: {str(e)}"
-                )
+                        break
+                except asyncio.TimeoutError:
+                    logger.error(
+                        f"{handler} started work at {observer_time}, did not complete handling event {event_id} within {self.TIMEOUT} seconds, retrying"
+                    )
+                    retries_left -= 1
+                except Exception as e:
+                    logger.error(
+                        f"Error processing event {event_id} with observer {observer}: {e}",
+                        exc_info=True,
+                    )
+                    break
 
 
 class SystemEventHandler(BaseEventHandler):

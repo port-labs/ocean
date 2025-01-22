@@ -36,8 +36,7 @@ poetry add "port-ocean[cli]"
 2. Run
 
    ```bash
-   ocean sail ./path/to/
-   integration
+   ocean sail ./path/to/integration
    ```
 
 # Export Architecture

@@ -7,6 +7,131 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.24 (2025-01-21)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+0.2.23 (2025-01-19)
+===================
+
+### Bug Fixes
+
+- Deleted `description` from the default mapping
+
+0.2.22 (2025-01-19)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+0.2.21 (2025-01-16)
+===================
+
+### Bug Fixes
+
+- Fixed UserWarning log caused by not setting the `get_all` parameter for `project.label.list` request
+
+
+0.2.20 (2025-01-16)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+0.2.19 (2025-01-15)
+===================
+
+### Improvements
+
+- Event handler now retries handling events if it takes too long to complete
+
+0.2.18 (2025-01-15)
+===================
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
+0.2.17 (2025-01-12)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+0.2.16 (2025-01-08)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+0.2.15 (2025-01-07)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+0.2.14 (2025-01-02)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+0.2.13 (2025-01-02)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+0.2.12 (2024-12-31)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.11 (2025-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+0.2.10 (2024-12-26)
+==================
+
+### Improvements
+
+- Add support for GitLab OAuth2.0 installation specification for Port
+
+0.2.9 (2024-12-26)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
 0.2.8 (2024-12-24)
 ==================
 
