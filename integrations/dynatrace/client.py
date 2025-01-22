@@ -1,12 +1,11 @@
 from enum import StrEnum
-from typing import Any, AsyncGenerator, cast
+from typing import Any, AsyncGenerator
 
 import httpx
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
-from integration import DynatraceResourceConfig, EntityFieldsType
+from integration import EntityFieldsType
 import asyncio
 
 # SLOs by default are not evaluated and the initial state
@@ -69,30 +68,22 @@ class DynatraceClient:
         ):
             yield slos
 
-    async def _get_entities_from_selector_query(
-        self, query: str, entity_fields: EntityFieldsType | None
+    async def get_entities(
+        self, selectory_query: str, entity_fields: EntityFieldsType | None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {
-            "entitySelector": query,
+            "entitySelector": selectory_query,
             "pageSize": 100,
         }
         if entity_fields:
             params["fields"] = entity_fields
+
         async for entities in self._get_paginated_resources(
             f"{self.host_url}/entities",
             "entities",
             params=params,
         ):
             yield entities
-
-    async def get_entities(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        selector = cast(DynatraceResourceConfig, event.resource_config).selector
-
-        for entity_type in selector.entity_types:
-            async for entities in self._get_entities_from_selector_query(
-                f'type("{entity_type}")', selector.entity_fields
-            ):
-                yield entities
 
     async def get_single_problem(self, problem_id: str) -> dict[str, Any]:
         url = f"{self.host_url}/problems/{problem_id}"
@@ -112,9 +103,7 @@ class DynatraceClient:
     async def _get_slo_related_entities(self, query: str) -> list[dict[str, Any]]:
         related_entities = []
         try:
-            async for entities_batch in self._get_entities_from_selector_query(
-                query, None
-            ):
+            async for entities_batch in self.get_entities(query, None):
                 related_entities.extend(entities_batch)
             return related_entities
         except httpx.HTTPStatusError as e:

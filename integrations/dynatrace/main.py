@@ -7,7 +7,7 @@ from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import DynatraceClient
-from integration import DynatraceSLOConfig
+from integration import DynatraceSLOConfig, DynatraceResourceConfig
 
 
 class ObjectKind(StrEnum):
@@ -50,8 +50,13 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dynatrace_client = initialize_client()
 
-    async for entities in dynatrace_client.get_entities():
-        yield entities
+    selector = cast(DynatraceResourceConfig, event.resource_config).selector
+
+    for entity_type in selector.entity_types:
+        async for entities in dynatrace_client.get_entities(
+            f'type("{entity_type}")', selector.entity_fields
+        ):
+            yield entities
 
 
 @ocean.on_resync(ObjectKind.TEAM)
