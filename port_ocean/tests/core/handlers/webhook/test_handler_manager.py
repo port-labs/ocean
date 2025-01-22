@@ -56,212 +56,226 @@ class RetryableHandler(MockWebhookHandler):
         self.processed = True
 
 
-@pytest.fixture
-def router() -> APIRouter:
-    return APIRouter()
+class TestWebhookHandlerManager:
+    @pytest.fixture
+    def router(self) -> APIRouter:
+        return APIRouter()
 
+    @pytest.fixture
+    def signal_handler(self) -> SignalHandler:
+        return SignalHandler()
 
-@pytest.fixture
-def signal_handler() -> SignalHandler:
-    return SignalHandler()
+    @pytest.fixture
+    def handler_manager(
+        self, router: APIRouter, signal_handler: SignalHandler
+    ) -> WebhookHandlerManager:
+        return WebhookHandlerManager(router, signal_handler)
 
+    @pytest.fixture
+    def mock_event(self) -> WebhookEvent:
+        return WebhookEvent.from_dict(
+            {
+                "payload": {"test": "data"},
+                "headers": {"content-type": "application/json"},
+                "trace_id": "test-trace",
+            }
+        )
 
-@pytest.fixture
-def handler_manager(
-    router: APIRouter, signal_handler: SignalHandler
-) -> WebhookHandlerManager:
-    return WebhookHandlerManager(router, signal_handler)
+    async def test_register_handler(
+        self, handler_manager: WebhookHandlerManager
+    ) -> None:
+        """Test registering a handler for a path."""
+        handler_manager.register_handler("/test", MockWebhookHandler)
+        assert "/test" in handler_manager._handlers
+        assert len(handler_manager._handlers["/test"]) == 1
+        assert isinstance(handler_manager._event_queues["/test"], LocalQueue)
 
+    async def test_register_multiple_handlers_with_filters(
+        self, handler_manager: WebhookHandlerManager
+    ) -> None:
+        """Test registering multiple handlers with different filters."""
 
-@pytest.fixture
-def mock_event() -> WebhookEvent:
-    return WebhookEvent.from_dict(
-        {
-            "payload": {"test": "data"},
-            "headers": {"content-type": "application/json"},
-            "trace_id": "test-trace",
-        }
-    )
+        def filter1(e: WebhookEvent) -> bool:
+            return e.payload.get("type") == "type1"
 
+        def filter2(e: WebhookEvent) -> bool:
+            return e.payload.get("type") == "type2"
 
-async def test_register_handler(handler_manager: WebhookHandlerManager) -> None:
-    """Test registering a handler for a path."""
-    handler_manager.register_handler("/test", MockWebhookHandler)
-    assert "/test" in handler_manager._handlers
-    assert len(handler_manager._handlers["/test"]) == 1
-    assert isinstance(handler_manager._event_queues["/test"], LocalQueue)
+        handler_manager.register_handler("/test", MockWebhookHandler, filter1)
+        handler_manager.register_handler("/test", MockWebhookHandler, filter2)
 
+        assert len(handler_manager._handlers["/test"]) == 2
 
-async def test_register_multiple_handlers_with_filters(
-    handler_manager: WebhookHandlerManager,
-) -> None:
-    """Test registering multiple handlers with different filters."""
+    async def test_successful_event_processing(
+        self, handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
+    ) -> None:
+        """Test successful processing of an event."""
+        handler_manager.register_handler("/test", MockWebhookHandler)
 
-    def filter1(e: WebhookEvent) -> bool:
-        return e.payload.get("type") == "type1"
+        # Start the processor
+        await handler_manager.start_processing_event_messages()
 
-    def filter2(e: WebhookEvent) -> bool:
-        return e.payload.get("type") == "type2"
+        # Put event in queue
+        await handler_manager._event_queues["/test"].put(mock_event)
 
-    handler_manager.register_handler("/test", MockWebhookHandler, filter1)
-    handler_manager.register_handler("/test", MockWebhookHandler, filter2)
+        # Allow time for processing
+        await asyncio.sleep(0.1)
 
-    assert len(handler_manager._handlers["/test"]) == 2
+        # Verify timestamps
+        assert (
+            mock_event.get_timestamp(WebhookEventTimestamp.StartedProcessing)
+            is not None
+        )
+        assert (
+            mock_event.get_timestamp(
+                WebhookEventTimestamp.FinishedProcessingSuccessfully
+            )
+            is not None
+        )
 
+    async def test_graceful_shutdown(
+        self, handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
+    ) -> None:
+        """Test graceful shutdown with in-flight requests."""
+        handler_manager.register_handler("/test", MockWebhookHandler)
 
-async def test_successful_event_processing(
-    handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
-) -> None:
-    """Test successful processing of an event."""
-    handler_manager.register_handler("/test", MockWebhookHandler)
+        await handler_manager.start_processing_event_messages()
+        await handler_manager._event_queues["/test"].put(mock_event)
 
-    # Start the processor
-    await handler_manager.start_processing_event_messages()
+        # Start shutdown
+        await handler_manager.shutdown()
 
-    # Put event in queue
-    await handler_manager._event_queues["/test"].put(mock_event)
+        # Verify all tasks are cleaned up
+        assert len(handler_manager._webhook_processor_tasks) == 0
+        assert (
+            mock_event.get_timestamp(
+                WebhookEventTimestamp.FinishedProcessingSuccessfully
+            )
+            is not None
+        )
 
-    # Allow time for processing
-    await asyncio.sleep(0.1)
+    async def test_handler_filter_matching(
+        self, handler_manager: WebhookHandlerManager
+    ) -> None:
+        """Test that handlers are selected based on their filters."""
+        type1_event = WebhookEvent.from_dict(
+            {"payload": {"type": "type1"}, "headers": {}, "trace_id": "test-trace-1"}
+        )
 
-    # Verify timestamps
-    assert mock_event.get_timestamp(WebhookEventTimestamp.StartedProcessing) is not None
-    assert (
-        mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingSuccessfully)
-        is not None
-    )
+        type2_event = WebhookEvent.from_dict(
+            {"payload": {"type": "type2"}, "headers": {}, "trace_id": "test-trace-2"}
+        )
 
+        def filter1(e: WebhookEvent) -> bool:
+            return e.payload.get("type") == "type1"
 
-async def test_graceful_shutdown(
-    handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
-) -> None:
-    """Test graceful shutdown with in-flight requests."""
-    handler_manager.register_handler("/test", MockWebhookHandler)
+        def filter2(e: WebhookEvent) -> bool:
+            return e.payload.get("type") == "type2"
 
-    await handler_manager.start_processing_event_messages()
-    await handler_manager._event_queues["/test"].put(mock_event)
+        handler_manager.register_handler("/test", MockWebhookHandler, filter1)
+        handler_manager.register_handler("/test", MockWebhookHandler, filter2)
 
-    # Start shutdown
-    await handler_manager.shutdown()
+        await handler_manager.start_processing_event_messages()
 
-    # Verify all tasks are cleaned up
-    assert len(handler_manager._webhook_processor_tasks) == 0
-    assert (
-        mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingSuccessfully)
-        is not None
-    )
+        # Process both events
+        await handler_manager._event_queues["/test"].put(type1_event)
+        await handler_manager._event_queues["/test"].put(type2_event)
 
+        await asyncio.sleep(0.1)
 
-async def test_handler_filter_matching(handler_manager: WebhookHandlerManager) -> None:
-    """Test that handlers are selected based on their filters."""
-    type1_event = WebhookEvent.from_dict(
-        {"payload": {"type": "type1"}, "headers": {}, "trace_id": "test-trace-1"}
-    )
+        # Verify both events were processed
+        assert (
+            type1_event.get_timestamp(
+                WebhookEventTimestamp.FinishedProcessingSuccessfully
+            )
+            is not None
+        )
+        assert (
+            type2_event.get_timestamp(
+                WebhookEventTimestamp.FinishedProcessingSuccessfully
+            )
+            is not None
+        )
 
-    type2_event = WebhookEvent.from_dict(
-        {"payload": {"type": "type2"}, "headers": {}, "trace_id": "test-trace-2"}
-    )
+    async def test_handler_timeout(
+        self, handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
+    ) -> None:
+        """Test handler timeout behavior."""
+        # Set a short timeout for testing
+        handler_manager._max_event_processing_seconds = 0.1
 
-    def filter1(e: WebhookEvent) -> bool:
-        return e.payload.get("type") == "type1"
+        class TimeoutHandler(MockWebhookHandler):
+            async def handle_event(self, payload: Dict[str, Any]) -> None:
+                await asyncio.sleep(2)  # Longer than max_handler_processing_seconds
 
-    def filter2(e: WebhookEvent) -> bool:
-        return e.payload.get("type") == "type2"
+        handler_manager.register_handler("/test", TimeoutHandler)
+        await handler_manager.start_processing_event_messages()
+        await handler_manager._event_queues["/test"].put(mock_event)
 
-    handler_manager.register_handler("/test", MockWebhookHandler, filter1)
-    handler_manager.register_handler("/test", MockWebhookHandler, filter2)
+        # Wait long enough for the timeout to occur
+        await asyncio.sleep(0.2)
 
-    await handler_manager.start_processing_event_messages()
+        assert (
+            mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
+            is not None
+        )
 
-    # Process both events
-    await handler_manager._event_queues["/test"].put(type1_event)
-    await handler_manager._event_queues["/test"].put(type2_event)
+    async def test_handler_cancellation(
+        self, handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
+    ) -> None:
+        """Test handler cancellation during shutdown."""
 
-    await asyncio.sleep(0.1)
+        class CanceledHandler(MockWebhookHandler):
+            async def handle_event(self, payload: Dict[str, Any]) -> None:
+                await asyncio.sleep(0.2)
 
-    # Verify both events were processed
-    assert (
-        type1_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingSuccessfully)
-        is not None
-    )
-    assert (
-        type2_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingSuccessfully)
-        is not None
-    )
+            async def cancel(self) -> None:
+                self.event.set_timestamp(
+                    WebhookEventTimestamp.FinishedProcessingWithError
+                )
 
+        handler_manager.register_handler("/test", CanceledHandler)
+        await handler_manager.start_processing_event_messages()
+        await handler_manager._event_queues["/test"].put(mock_event)
 
-async def test_handler_timeout(
-    handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
-) -> None:
-    """Test handler timeout behavior."""
-    # Set a short timeout for testing
-    handler_manager._max_event_processing_seconds = 0.1
+        await asyncio.sleep(0.1)
 
-    class TimeoutHandler(MockWebhookHandler):
-        async def handle_event(self, payload: Dict[str, Any]) -> None:
-            await asyncio.sleep(2)  # Longer than max_handler_processing_seconds
+        # Wait for the event to be processed
+        await handler_manager._cancel_all_tasks()
 
-    handler_manager.register_handler("/test", TimeoutHandler)
-    await handler_manager.start_processing_event_messages()
-    await handler_manager._event_queues["/test"].put(mock_event)
+        # Verify the event was processed successfully
+        assert (
+            mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
+            is not None
+        )
 
-    # Wait long enough for the timeout to occur
-    await asyncio.sleep(0.2)
+    async def test_invalid_handler_registration(self) -> None:
+        """Test registration of invalid handler type."""
+        handler_manager = WebhookHandlerManager(APIRouter(), SignalHandler())
 
-    assert (
-        mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
-        is not None
-    )
+        with pytest.raises(ValueError):
+            handler_manager.register_handler("/test", object)  # type: ignore
 
+    async def test_no_matching_handlers(
+        self, handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
+    ) -> None:
+        """Test behavior when no handlers match the event."""
+        handler_manager.register_handler("/test", MockWebhookHandler, lambda e: False)
 
-async def test_handler_cancellation(
-    handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
-) -> None:
-    """Test handler cancellation during shutdown."""
+        await handler_manager.start_processing_event_messages()
+        await handler_manager._event_queues["/test"].put(mock_event)
 
-    class CanceledHandler(MockWebhookHandler):
-        async def handle_event(self, payload: Dict[str, Any]) -> None:
-            await asyncio.sleep(0.2)
+        await asyncio.sleep(0.1)
 
-        async def cancel(self) -> None:
-            self.event.set_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
+        assert (
+            mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
+            is not None
+        )
 
-    handler_manager.register_handler("/test", CanceledHandler)
-    await handler_manager.start_processing_event_messages()
-    await handler_manager._event_queues["/test"].put(mock_event)
-
-    await asyncio.sleep(0.1)
-
-    # Wait for the event to be processed
-    await handler_manager._cancel_all_tasks()
-
-    # Verify the event was processed successfully
-    assert (
-        mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
-        is not None
-    )
-
-
-async def test_invalid_handler_registration() -> None:
-    """Test registration of invalid handler type."""
-    handler_manager = WebhookHandlerManager(APIRouter(), SignalHandler())
-
-    with pytest.raises(ValueError):
-        handler_manager.register_handler("/test", object)  # type: ignore
-
-
-async def test_no_matching_handlers(
-    handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
-) -> None:
-    """Test behavior when no handlers match the event."""
-    handler_manager.register_handler("/test", MockWebhookHandler, lambda e: False)
-
-    await handler_manager.start_processing_event_messages()
-    await handler_manager._event_queues["/test"].put(mock_event)
-
-    await asyncio.sleep(0.1)
-
-    assert (
-        mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
-        is not None
-    )
+    async def test_multiple_handlers(
+        self, handler_manager: WebhookHandlerManager
+    ) -> None:
+        # Test multiple handlers for same path
+        handler_manager.register_handler("/test", MockWebhookHandler)
+        handler_manager.register_handler("/test", MockWebhookHandler)
+        assert len(handler_manager._handlers["/test"]) == 2
