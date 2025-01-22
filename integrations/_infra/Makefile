@@ -87,4 +87,9 @@ clean:
 	rm -rf dist/
 
 seed:
-	$(ACTIVATE) && python tests/seed_kafka_load.py
+	@if [ -f "tests/seed_data.py" ]; then \
+		$(ACTIVATE) && python tests/seed_data.py; \
+	else \
+		echo "No seeding script found. Create tests/seed_data.py for this integration if needed."; \
+		exit 0; \
+	fi
