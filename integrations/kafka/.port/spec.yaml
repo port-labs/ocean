@@ -9,6 +9,7 @@ features:
       - kind: cluster
       - kind: broker
       - kind: topic
+      - kind: consumer_group
 saas:
   enabled: false
 configurations:
