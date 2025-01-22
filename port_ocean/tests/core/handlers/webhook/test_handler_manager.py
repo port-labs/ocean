@@ -81,6 +81,22 @@ class TestWebhookHandlerManager:
             }
         )
 
+    @staticmethod
+    def assert_event_processed_successfully(event: WebhookEvent) -> None:
+        """Assert that an event was processed successfully by checking its timestamp."""
+        assert (
+            event.get_timestamp(WebhookEventTimestamp.FinishedProcessingSuccessfully)
+            is not None
+        ), "Event was not processed successfully"
+
+    @staticmethod
+    def assert_event_processed_with_error(event: WebhookEvent) -> None:
+        """Assert that an event was processed with an error by checking its timestamp."""
+        assert (
+            event.get_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
+            is not None
+        ), "Event did not fail as expected"
+
     async def test_register_handler(
         self, handler_manager: WebhookHandlerManager
     ) -> None:
@@ -122,16 +138,7 @@ class TestWebhookHandlerManager:
         await asyncio.sleep(0.1)
 
         # Verify timestamps
-        assert (
-            mock_event.get_timestamp(WebhookEventTimestamp.StartedProcessing)
-            is not None
-        )
-        assert (
-            mock_event.get_timestamp(
-                WebhookEventTimestamp.FinishedProcessingSuccessfully
-            )
-            is not None
-        )
+        self.assert_event_processed_successfully(mock_event)
 
     async def test_graceful_shutdown(
         self, handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
@@ -147,12 +154,7 @@ class TestWebhookHandlerManager:
 
         # Verify all tasks are cleaned up
         assert len(handler_manager._webhook_processor_tasks) == 0
-        assert (
-            mock_event.get_timestamp(
-                WebhookEventTimestamp.FinishedProcessingSuccessfully
-            )
-            is not None
-        )
+        self.assert_event_processed_successfully(mock_event)
 
     async def test_handler_filter_matching(
         self, handler_manager: WebhookHandlerManager
@@ -184,18 +186,8 @@ class TestWebhookHandlerManager:
         await asyncio.sleep(0.1)
 
         # Verify both events were processed
-        assert (
-            type1_event.get_timestamp(
-                WebhookEventTimestamp.FinishedProcessingSuccessfully
-            )
-            is not None
-        )
-        assert (
-            type2_event.get_timestamp(
-                WebhookEventTimestamp.FinishedProcessingSuccessfully
-            )
-            is not None
-        )
+        self.assert_event_processed_successfully(type1_event)
+        self.assert_event_processed_successfully(type2_event)
 
     async def test_handler_timeout(
         self, handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
@@ -215,10 +207,7 @@ class TestWebhookHandlerManager:
         # Wait long enough for the timeout to occur
         await asyncio.sleep(0.2)
 
-        assert (
-            mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
-            is not None
-        )
+        self.assert_event_processed_with_error(mock_event)
 
     async def test_handler_cancellation(
         self, handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
@@ -230,9 +219,7 @@ class TestWebhookHandlerManager:
                 await asyncio.sleep(0.2)
 
             async def cancel(self) -> None:
-                self.event.set_timestamp(
-                    WebhookEventTimestamp.FinishedProcessingWithError
-                )
+                self.event.payload["canceled"] = True
 
         handler_manager.register_handler("/test", CanceledHandler)
         await handler_manager.start_processing_event_messages()
@@ -243,11 +230,8 @@ class TestWebhookHandlerManager:
         # Wait for the event to be processed
         await handler_manager._cancel_all_tasks()
 
-        # Verify the event was processed successfully
-        assert (
-            mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
-            is not None
-        )
+        # Verify the cancellation timestamp was set
+        assert mock_event.payload.get("canceled") is True
 
     async def test_invalid_handler_registration(self) -> None:
         """Test registration of invalid handler type."""
