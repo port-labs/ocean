@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.94 (2025-01-20)
+## 0.1.96 (2025-01-22)
 
 
 ### Improvements
 
 - Added rate limiting support for `ProjectsV3GetRequestsPerMinutePerProject` and `ProjectV3SearchRequestsPerMinutePerProject` to handle GCP project quota limits during resyncs and real-time event processing
+
+
+## 0.1.95 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+## 0.1.94 (2025-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
 
 
 ## 0.1.93 (2025-01-19)
