@@ -335,8 +335,8 @@
           "items": {
             "type": "object",
             "properties": {
-              "question": { "type": "string" },
-              "answer": { "type": "string" }
+              "question": {"type": "string"},
+              "answer": {"type": "string"}
             }
           },
           "icon": "DefaultProperty"
