@@ -45,43 +45,46 @@
      }
   },
   {
-     "identifier":"kafkaTopic",
-     "title":"Topic",
-     "icon":"Kafka",
-     "schema":{
-        "properties":{
-           "replicas":{
-              "title":"Replicas",
-              "type":"number"
-           },
-           "partitions":{
-              "title":"Partitions",
-              "type":"number"
-           },
-           "compaction":{
-              "title":"Compaction",
-              "type":"boolean"
-           },
-           "retention":{
-              "title":"Retention",
-              "type":"boolean"
-           },
-           "deleteRetentionTime":{
-              "title":"Delete Retention Time",
-              "type":"number"
-           },
-           "partitionsMetadata":{
-              "title":"Partitions Metadata",
-              "type":"array"
-           },
-           "config":{
-              "title":"Config",
-              "type":"object"
-           }
+    "identifier": "kafkaTopic",
+    "title": "Topic",
+    "icon": "Kafka",
+    "schema": {
+      "properties": {
+        "replicas": {
+          "title": "Replicas",
+          "type": "number"
+        },
+        "partitions": {
+          "title": "Partitions",
+          "type": "number"
+        },
+        "compaction": {
+          "title": "Compaction",
+          "type": "boolean"
+        },
+        "retention": {
+          "title": "Retention",
+          "type": "boolean"
+        },
+        "deleteRetentionTime": {
+          "title": "Delete Retention Time",
+          "type": "number"
+        },
+        "partitionsMetadata": {
+          "title": "Partitions Metadata",
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "config": {
+          "title": "Config",
+          "type": "object"
         }
-     },
-     "relations":{
-        "cluster":{
+      }
+    },
+    "relations": {
+      "cluster": {
            "target":"kafkaCluster",
            "required":true,
            "many":false
