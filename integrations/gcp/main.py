@@ -81,7 +81,7 @@ async def _resolve_resync_method_for_resource(
 
 
 @ocean.on_start()
-async def on_start() -> None:
+async def setup_real_time_request_controllers() -> None:
     global GET_PROJECT_LIMITER
     if not ocean.event_listener_type == "ONCE":
         get_project_quota_id = "ProjectV3GetRequestsPerMinutePerProject"
