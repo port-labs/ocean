@@ -1,4 +1,5 @@
 from typing import Any
+from anyio import to_thread
 
 import confluent_kafka  # type: ignore
 
@@ -87,13 +88,15 @@ class KafkaClient:
                 raise e
         return result_topics
 
-    def describe_consumer_groups(self) -> list[dict[str, Any]]:
+    async def describe_consumer_groups(self) -> list[dict[str, Any]]:
         """Describe all consumer groups in the cluster."""
         result_groups: list[dict[str, Any]] = []
 
         # List all consumer groups and wait for the future to complete
-        groups_metadata = self.kafka_admin_client.list_consumer_groups()
-        groups_result = groups_metadata.result()
+        groups_metadata = await to_thread.run_sync(
+            self.kafka_admin_client.list_consumer_groups
+        )
+        groups_result = await to_thread.run_sync(groups_metadata.result)
         group_ids = [group.group_id for group in groups_result.valid]
 
         logger.info(f"Found {len(group_ids)} consumer groups")
@@ -101,11 +104,13 @@ class KafkaClient:
             return result_groups
 
         # Describe the consumer groups
-        groups_description = self.kafka_admin_client.describe_consumer_groups(group_ids)
+        groups_description = await to_thread.run_sync(
+            self.kafka_admin_client.describe_consumer_groups, group_ids
+        )
 
         for group_id, future in groups_description.items():
             try:
-                group_info = future.result()
+                group_info = await to_thread.run_sync(future.result)
                 members = [
                     {
                         "id": member.member_id,
