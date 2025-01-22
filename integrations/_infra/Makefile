@@ -41,7 +41,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/prod install/local-core lint lint/fix run test clean
+.SILENT: install install/prod install/local-core lint lint/fix run test clean seed
 
 install:
 	$(call deactivate_virtualenv) && \
@@ -85,3 +85,6 @@ clean:
 	rm -rf .tox/
 	rm -rf docs/_build
 	rm -rf dist/
+
+seed:
+	$(ACTIVATE) && python tests/seed_kafka_load.py
