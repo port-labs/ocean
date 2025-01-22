@@ -23,8 +23,8 @@ from gcp_core.utils import (
     parse_protobuf_message,
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
-    GET_PROJECT_LIMITER,
 )
+from aiolimiter import AsyncLimiter
 from gcp_core.search.paginated_query import paginated_query, DEFAULT_REQUEST_TIMEOUT
 from gcp_core.helpers.ratelimiter.base import MAXIMUM_CONCURRENT_REQUESTS
 from asyncio import BoundedSemaphore
@@ -216,14 +216,14 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 async def get_single_project(
-    project_name: str, config: Optional[ProtoConfig] = None
+    project_name: str,
+    rate_limiter: AsyncLimiter,
+    config: Optional[ProtoConfig] = None,
 ) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
-        if GET_PROJECT_LIMITER is None:
-            raise ValueError("GET_PROJECT_LIMITER is not initialized.")
-        async with GET_PROJECT_LIMITER:
+        async with rate_limiter:
             logger.info(
-                f"Executing get_single_project. Current rate limit: {GET_PROJECT_LIMITER.max_rate} requests per {GET_PROJECT_LIMITER.time_period} seconds."
+                f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
             )
             return parse_protobuf_message(
                 await projects_client.get_project(
@@ -316,25 +316,28 @@ async def feed_event_to_resource(
     asset_name: str,
     project_id: str,
     asset_data: dict[str, Any],
+    rate_limiter: AsyncLimiter,
     config: Optional[ProtoConfig] = None,
 ) -> RAW_ITEM:
     resource = None
     if asset_data.get("deleted") is True:
         resource = asset_data["priorAsset"]["resource"]["data"]
-        resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id, config)
+        resource[EXTRA_PROJECT_FIELD] = await get_single_project(
+            project_id, rate_limiter, config
+        )
     else:
         match asset_type:
             case AssetTypesWithSpecialHandling.TOPIC:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
                 resource = await get_single_topic(topic_name, config)
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, config
+                    project_id, rate_limiter, config
                 )
             case AssetTypesWithSpecialHandling.SUBSCRIPTION:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
                 resource = await get_single_subscription(topic_name, config)
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, config
+                    project_id, rate_limiter, config
                 )
             case AssetTypesWithSpecialHandling.FOLDER:
                 folder_id = asset_name.replace(
@@ -347,10 +350,10 @@ async def feed_event_to_resource(
                 )
                 resource = await get_single_organization(organization_id, config)
             case AssetTypesWithSpecialHandling.PROJECT:
-                resource = await get_single_project(project_id, config)
+                resource = await get_single_project(project_id, rate_limiter, config)
             case _:
                 resource = asset_data["asset"]["resource"]["data"]
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, config
+                    project_id, rate_limiter, config
                 )
     return resource

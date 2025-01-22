@@ -28,7 +28,6 @@ project_search_requests_per_minute_per_project = (
     ProjectSearchRequestsPerMinutePerProject()
 )
 
-GET_PROJECT_LIMITER = None
 EXTRA_PROJECT_FIELD = "__project"
 DEFAULT_CREDENTIALS_FILE_PATH = (
     f"{Path.home()}/.config/gcloud/application_default_credentials.json"
@@ -260,13 +259,3 @@ async def resolve_request_controllers(
     return await get_quotas_for_project(
         service_account_project_id, kind, quota_id=kwargs.get("quota_id")
     )
-
-
-@ocean.on_start()
-async def set_get_project_limiter() -> None:
-    global GET_PROJECT_LIMITER
-    if not ocean.event_listener_type == "ONCE":
-        get_project_quota_id = "ProjectV3GetRequestsPerMinutePerProject"
-        GET_PROJECT_LIMITER, _ = await resolve_request_controllers(
-            AssetTypesWithSpecialHandling.PROJECT, quota_id=get_project_quota_id
-        )

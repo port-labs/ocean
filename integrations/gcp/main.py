@@ -38,6 +38,8 @@ from gcp_core.utils import (
     resolve_request_controllers,
 )
 
+GET_PROJECT_LIMITER = None
+
 
 async def _resolve_resync_method_for_resource(
     kind: str,
@@ -76,6 +78,16 @@ async def _resolve_resync_method_for_resource(
                 rate_limiter=asset_rate_limiter,
                 semaphore=asset_semaphore,
             )
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    global GET_PROJECT_LIMITER
+    if not ocean.event_listener_type == "ONCE":
+        get_project_quota_id = "ProjectV3GetRequestsPerMinutePerProject"
+        GET_PROJECT_LIMITER, _ = await resolve_request_controllers(
+            AssetTypesWithSpecialHandling.PROJECT, quota_id=get_project_quota_id
+        )
 
 
 @ocean.on_start()
@@ -177,11 +189,14 @@ async def process_realtime_event(
     config: typing.Optional[ProtoConfig] = None,
 ) -> None:
     try:
+        if GET_PROJECT_LIMITER is None:
+            raise ValueError("GET_PROJECT_LIMITER is not initialized.")
         asset_resource_data = await feed_event_to_resource(
             asset_type,
             asset_name,
             asset_project,
             asset_data,
+            GET_PROJECT_LIMITER,
             config,
         )
         if asset_data.get("deleted") is True:
