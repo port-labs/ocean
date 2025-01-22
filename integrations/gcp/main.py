@@ -3,6 +3,7 @@ import os
 import tempfile
 import typing
 
+from aiolimiter import AsyncLimiter
 from fastapi import Request, Response, BackgroundTasks
 from loguru import logger
 
@@ -38,7 +39,7 @@ from gcp_core.utils import (
     resolve_request_controllers,
 )
 
-PROJECT_V3_GET_REQUESTS_RATE_LIMITER: Optional[AsyncLimiter] = None
+PROJECT_V3_GET_REQUESTS_RATE_LIMITER: AsyncLimiter
 
 
 async def _resolve_resync_method_for_resource(
@@ -189,8 +190,6 @@ async def process_realtime_event(
     config: typing.Optional[ProtoConfig] = None,
 ) -> None:
     try:
-        if GET_PROJECT_LIMITER is None:
-            raise ValueError("GET_PROJECT_LIMITER is not initialized.")
         asset_resource_data = await feed_event_to_resource(
             asset_type,
             asset_name,
