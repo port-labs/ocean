@@ -175,7 +175,7 @@ async def process_realtime_event(
     asset_project: str,
     asset_data: dict[str, typing.Any],
     config: typing.Optional[ProtoConfig] = None,
-):
+) -> None:
     try:
         asset_resource_data = await feed_event_to_resource(
             asset_type,
@@ -198,8 +198,6 @@ async def process_realtime_event(
         logger.exception(
             f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
         )
-    except GotFeedCreatedSuccessfullyMessageError:
-        logger.info("Assets Feed created successfully")
     except Exception as e:
         logger.exception(f"Got error {e} while processing a real time event")
 
@@ -260,6 +258,8 @@ async def feed_events_callback(
         logger.exception(
             f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
         )
+    except GotFeedCreatedSuccessfullyMessageError:
+        logger.info("Assets Feed created successfully")
     except Exception as e:
         logger.exception(f"Got error {e} while handling a real time event")
         return Response(status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR)
