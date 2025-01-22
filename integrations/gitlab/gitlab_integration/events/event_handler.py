@@ -15,7 +15,6 @@ from port_ocean.context.event import (
     event_context,
     EventContext,
 )
-import time
 
 Observer = Callable[[str, dict[str, Any]], Awaitable[Any]]
 
@@ -73,9 +72,6 @@ class BaseEventHandler(ABC):
 
 
 class EventHandler(BaseEventHandler):
-    MAXIMUM_RETRIES = 3
-    TIMEOUT = 90
-
     def __init__(self) -> None:
         super().__init__()
         self._observers: dict[str, list[Observer]] = defaultdict(list)
@@ -92,38 +88,15 @@ class EventHandler(BaseEventHandler):
             )
             return
         for observer in observers_list:
-            retries_left = self.MAXIMUM_RETRIES
-            observer_time = time.time()
-            while retries_left > 0:
-                try:
-                    if asyncio.iscoroutinefunction(observer):
-                        if inspect.ismethod(observer):
-                            handler = observer.__self__.__class__.__name__
-                            logger.debug(
-                                f"Notifying observer: {handler}, for event: {event_id} at {observer_time}",
-                                event_id=event_id,
-                                handler=handler,
-                            )
-                        await asyncio.wait_for(
-                            observer(event_id, body), self.TIMEOUT
-                        )  # Sequentially call each observer
-                        logger.debug(
-                            f"Observer {handler} completed work at {time.time() - observer_time}",
-                            event_id=event_id,
-                            handler=handler,
-                        )
-                        break
-                except asyncio.TimeoutError:
-                    logger.error(
-                        f"{handler} started work at {observer_time}, did not complete handling event {event_id} within {self.TIMEOUT} seconds, retrying"
+            if asyncio.iscoroutinefunction(observer):
+                if inspect.ismethod(observer):
+                    handler = observer.__self__.__class__.__name__
+                    logger.debug(
+                        f"Notifying observer: {handler}, for event: {event_id}",
+                        event_id=event_id,
+                        handler=handler,
                     )
-                    retries_left -= 1
-                except Exception as e:
-                    logger.error(
-                        f"Error processing event {event_id} with observer {observer}: {e}",
-                        exc_info=True,
-                    )
-                    break
+                asyncio.create_task(observer(event_id, body))  # type: ignore
 
 
 class SystemEventHandler(BaseEventHandler):
@@ -142,14 +115,17 @@ class SystemEventHandler(BaseEventHandler):
     async def _notify(self, event_id: str, body: dict[str, Any]) -> None:
         # best effort to notify using all clients, as we don't know which one of the clients have the permission to
         # access the project
-        for client in self._clients:
-            for hook_handler_class in self._hook_handlers.get(event_id, []):
-                try:
-                    hook_handler_instance = hook_handler_class(client)
-                    await hook_handler_instance.on_hook(
-                        event_id, body
-                    )  # Sequentially process handlers
-                except Exception as e:
-                    logger.error(
-                        f"Error processing event {event_id} with handler {hook_handler_class.__name__} for client {client}: {str(e)}"
-                    )
+        results = await asyncio.gather(
+            *(
+                hook_handler(client).on_hook(event_id, body)
+                for client in self._clients
+                for hook_handler in self._hook_handlers.get(event_id, [])
+            ),
+            return_exceptions=True,
+        )
+
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(
+                    f"Error notifying observers for event: {event_id}, error: {result}"
+                )
