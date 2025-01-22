@@ -3,7 +3,7 @@ import os
 import tempfile
 import typing
 
-from fastapi import Request, Response
+from fastapi import Request, Response, BackgroundTasks
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -169,8 +169,41 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield resources_batch
 
 
+async def process_realtime_event(
+    asset_type, asset_name, asset_project, asset_data, config
+):
+    try:
+        asset_resource_data = await feed_event_to_resource(
+            asset_type,
+            asset_name,
+            asset_project,
+            asset_data,
+            config,
+        )
+        if asset_data.get("deleted") is True:
+            logger.info(
+                f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
+            )
+            await ocean.unregister_raw(asset_type, [asset_resource_data])
+        else:
+            logger.info(
+                f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
+            )
+            await ocean.register_raw(asset_type, [asset_resource_data])
+    except AssetHasNoProjectAncestorError:
+        logger.exception(
+            f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
+        )
+    except GotFeedCreatedSuccessfullyMessageError:
+        logger.info("Assets Feed created successfully")
+    except Exception as e:
+        logger.exception(f"Got error {e} while processing a real time event")
+
+
 @ocean.router.post("/events")
-async def feed_events_callback(request: Request) -> Response:
+async def feed_events_callback(
+    request: Request, background_tasks: BackgroundTasks
+) -> Response:
     """
     This is the real-time events handler. The subscription which is connected to the Feeds Topic will send events here once
     the events are inserted into the Assets Inventory.
@@ -211,30 +244,19 @@ async def feed_events_callback(request: Request) -> Response:
                     getattr(selector, "preserve_api_response_case_style", False)
                 )
             )
-            asset_resource_data = await feed_event_to_resource(
+            background_tasks.add_task(
+                process_realtime_event,
                 asset_type,
                 asset_name,
                 asset_project,
                 asset_data,
                 config,
             )
-            if asset_data.get("deleted") is True:
-                logger.info(
-                    f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
-                )
-                await ocean.unregister_raw(asset_type, [asset_resource_data])
-            else:
-                logger.info(
-                    f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
-                )
-                await ocean.register_raw(asset_type, [asset_resource_data])
     except AssetHasNoProjectAncestorError:
         logger.exception(
             f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
         )
-    except GotFeedCreatedSuccessfullyMessageError:
-        logger.info("Assets Feed created successfully")
-    except Exception:
-        logger.exception("Got error while handling a real time event")
+    except Exception as e:
+        logger.exception(f"Got error {e} while handling a real time event")
         return Response(status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR)
     return Response(status_code=200)

@@ -104,11 +104,11 @@ async def test_get_single_subscription(
 
 
 @pytest.mark.asyncio
-@patch("gcp_core.utils.resolve_request_controllers")
+@patch("gcp_core.utils.GET_PROJECT_LIMITER")
 @patch("gcp_core.utils.get_current_resource_config")
 async def test_feed_to_resource(
     get_current_resource_config_mock: MagicMock,
-    resolve_request_controllers_mock: AsyncMock,
+    GET_PROJECT_LIMITER: AsyncMock,
     monkeypatch: Any,
 ) -> None:
     # Arrange
@@ -141,7 +141,7 @@ async def test_feed_to_resource(
 
     # Mock resolve_request_controllers
     mock_rate_limiter = AsyncMock()
-    resolve_request_controllers_mock.return_value = (mock_rate_limiter, None)
+    GET_PROJECT_LIMITER.return_value = (mock_rate_limiter, None)
 
     mock_asset_name = "projects/project_name/topics/topic_name"
     mock_asset_type = "pubsub.googleapis.com/Topic"

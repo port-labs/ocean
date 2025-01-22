@@ -13,8 +13,6 @@ from google.cloud.resourcemanager_v3 import (
 from google.pubsub_v1.services.publisher import PublisherAsyncClient
 from google.pubsub_v1.services.subscriber import SubscriberAsyncClient
 from loguru import logger
-
-from gcp_core.utils import resolve_request_controllers
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from gcp_core.errors import ResourceNotFoundError
@@ -25,6 +23,7 @@ from gcp_core.utils import (
     parse_protobuf_message,
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
+    GET_PROJECT_LIMITER,
 )
 from gcp_core.search.paginated_query import paginated_query, DEFAULT_REQUEST_TIMEOUT
 from gcp_core.helpers.ratelimiter.base import MAXIMUM_CONCURRENT_REQUESTS
@@ -217,22 +216,13 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 async def get_single_project(
-    project_name: str, config: Optional[ProtoConfig] = None, **kwargs: Any
+    project_name: str, config: Optional[ProtoConfig] = None
 ) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
-        rate_limiter = kwargs.get("rate_limiter")
-        if rate_limiter:
-            async with rate_limiter:
-                logger.info(
-                    f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
-                )
-                return parse_protobuf_message(
-                    await projects_client.get_project(
-                        name=project_name, timeout=DEFAULT_REQUEST_TIMEOUT
-                    ),
-                    config,
-                )
-        else:
+        async with GET_PROJECT_LIMITER:
+            logger.info(
+                f"Executing get_single_project. Current rate limit: {GET_PROJECT_LIMITER.max_rate} requests per {GET_PROJECT_LIMITER.time_period} seconds."
+            )
             return parse_protobuf_message(
                 await projects_client.get_project(
                     name=project_name, timeout=DEFAULT_REQUEST_TIMEOUT
@@ -327,28 +317,22 @@ async def feed_event_to_resource(
     config: Optional[ProtoConfig] = None,
 ) -> RAW_ITEM:
     resource = None
-    live_event_projects_rate_limiter, _ = await resolve_request_controllers(
-        AssetTypesWithSpecialHandling.PROJECT,
-        quota_id="ProjectV3GetRequestsPerMinutePerProject",
-    )
     if asset_data.get("deleted") is True:
         resource = asset_data["priorAsset"]["resource"]["data"]
-        resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-            project_id, config, rate_limiter=live_event_projects_rate_limiter
-        )
+        resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id, config)
     else:
         match asset_type:
             case AssetTypesWithSpecialHandling.TOPIC:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
                 resource = await get_single_topic(topic_name, config)
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, config, rate_limiter=live_event_projects_rate_limiter
+                    project_id, config
                 )
             case AssetTypesWithSpecialHandling.SUBSCRIPTION:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
                 resource = await get_single_subscription(topic_name, config)
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, config, rate_limiter=live_event_projects_rate_limiter
+                    project_id, config
                 )
             case AssetTypesWithSpecialHandling.FOLDER:
                 folder_id = asset_name.replace(
@@ -361,12 +345,10 @@ async def feed_event_to_resource(
                 )
                 resource = await get_single_organization(organization_id, config)
             case AssetTypesWithSpecialHandling.PROJECT:
-                resource = await get_single_project(
-                    project_id, config, rate_limiter=live_event_projects_rate_limiter
-                )
+                resource = await get_single_project(project_id, config)
             case _:
                 resource = asset_data["asset"]["resource"]["data"]
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, config, rate_limiter=live_event_projects_rate_limiter
+                    project_id, config
                 )
     return resource
