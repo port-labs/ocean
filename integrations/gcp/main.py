@@ -38,7 +38,7 @@ from gcp_core.utils import (
     resolve_request_controllers,
 )
 
-GET_PROJECT_LIMITER = None
+PROJECT_V3_GET_REQUESTS_RATE_LIMITER: Optional[AsyncLimiter] = None
 
 
 async def _resolve_resync_method_for_resource(
