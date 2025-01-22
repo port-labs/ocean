@@ -25,7 +25,7 @@ class WebhookEvent:
         trace_id: str,
         payload: EventPayload,
         headers: Dict[str, str],
-        original_request: Request,
+        original_request: Request | None = None,
         timestamps: Dict[str, datetime.datetime] | None = None,
     ) -> None:
         self.trace_id = trace_id
@@ -44,6 +44,16 @@ class WebhookEvent:
             payload=payload,
             headers=dict(request.headers),
             original_request=request,
+        )
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> "WebhookEvent":
+        return WebhookEvent(
+            trace_id=data["trace_id"],
+            payload=data["payload"],
+            headers=data["headers"],
+            original_request=None,
+            timestamps=None,
         )
 
     def set_timestamp(self, timestamp: WebhookEventTimestamp) -> None:

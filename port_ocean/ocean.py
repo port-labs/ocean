@@ -54,7 +54,9 @@ class Ocean:
         )
         self.integration_router = integration_router or APIRouter()
 
-        self.webhook_manager = WebhookHandlerManager(self.integration_router)
+        self.webhook_manager = WebhookHandlerManager(
+            self.integration_router, signal_handler
+        )
 
         self.port_client = PortClient(
             base_url=self.config.port.base_url,

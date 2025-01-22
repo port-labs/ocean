@@ -8,12 +8,8 @@ from .webhook_event import WebhookEvent, WebhookEventTimestamp
 
 
 from .abstract_webhook_handler import AbstractWebhookHandler
-from port_ocean.utils.signal import signal_handler
+from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import AbstractQueue, LocalQueue
-
-
-MAX_HANDLER_PROCESSING_SECONDS = 90.0
-MAX_WAIT_SECONDS_BEFORE_SHUTDOWN = 5.0
 
 
 @dataclass
@@ -27,11 +23,19 @@ class HandlerRegistration:
 class WebhookHandlerManager:
     """Manages webhook handlers and their routes."""
 
-    def __init__(self, router: APIRouter) -> None:
+    def __init__(
+        self,
+        router: APIRouter,
+        signal_handler: SignalHandler,
+        max_event_processing_seconds: float = 90.0,
+        max_wait_seconds_before_shutdown: float = 5.0,
+    ) -> None:
         self._router = router
         self._handlers: Dict[str, list[HandlerRegistration]] = {}
         self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
         self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
+        self._max_event_processing_seconds = max_event_processing_seconds
+        self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
         signal_handler.register(self.shutdown)
 
     async def start_processing_event_messages(self) -> None:
@@ -45,50 +49,10 @@ class WebhookHandlerManager:
             except Exception as e:
                 logger.exception(f"Error starting queue processor for {path}: {str(e)}")
 
-    async def process_queue(self, path: str) -> None:
-        """Process events for a specific path in order."""
-        while True:
-            handler: AbstractWebhookHandler | None = None
-            try:
-                event = await self._event_queues[path].get()
-                with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
-                    handler = await self._process_single_event(path, event)
-            except asyncio.CancelledError:
-                logger.info(f"Queue processor for {path} is shutting down")
-                if handler:
-                    await handler.cancel()
-                break
-            except Exception as e:
-                logger.exception(
-                    f"Unexpected error in queue processor for {path}: {str(e)}"
-                )
-
-    async def _process_single_event(
-        self, path: str, event: WebhookEvent
-    ) -> AbstractWebhookHandler | None:
-        """Process a single webhook event and return the handler if one was created."""
-        handler: AbstractWebhookHandler | None = None
-        try:
-            logger.debug("Start processing queued webhook")
-            event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
-
-            handler = await self._execute_matching_handler(event, path)
-            event.set_timestamp(WebhookEventTimestamp.FinishedProcessingSuccessfully)
-        except Exception as e:
-            logger.exception(f"Error processing queued webhook for {path}: {str(e)}")
-            event.set_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
-        finally:
-            await self._event_queues[path].commit()
-            if handler:
-                handler.teardown()
-            self._log_processing_completion(event)
-
-        return handler
-
-    async def _execute_matching_handler(
+    def _extract_matching_handler(
         self, event: WebhookEvent, path: str
     ) -> AbstractWebhookHandler:
-        """Find and execute the matching handler for an event."""
+        """Find and extract the matching handler for an event."""
         matching_handlers = [
             reg.handler for reg in self._handlers[path] if reg.filter(event)
         ]
@@ -97,16 +61,67 @@ class WebhookHandlerManager:
             raise ValueError("No matching handlers found")
 
         handler = matching_handlers[0](event)
+        return handler
+
+    async def process_queue(self, path: str) -> None:
+        """Process events for a specific path in order."""
+        while True:
+            handler: AbstractWebhookHandler | None = None
+            event: WebhookEvent | None = None
+            try:
+                event = await self._event_queues[path].get()
+                with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
+                    handler = self._extract_matching_handler(event, path)
+                    await self._process_single_event(handler, path)
+            except asyncio.CancelledError:
+                logger.info(f"Queue processor for {path} is shutting down")
+                self._timestamp_event_error(event)
+                if handler:
+                    await handler.cancel()
+                break
+            except Exception as e:
+                logger.exception(
+                    f"Unexpected error in queue processor for {path}: {str(e)}"
+                )
+                self._timestamp_event_error(event)
+
+    def _timestamp_event_error(self, event: WebhookEvent | None) -> None:
+        """Timestamp an event as having an error."""
+        if event:
+            event.set_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
+
+    async def _process_single_event(
+        self, handler: AbstractWebhookHandler, path: str
+    ) -> None:
+        """Process a single event with a specific handler."""
+        try:
+            logger.debug("Start processing queued webhook")
+            handler.event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
+
+            await self._execute_handler(handler)
+            handler.event.set_timestamp(
+                WebhookEventTimestamp.FinishedProcessingSuccessfully
+            )
+        except Exception as e:
+            logger.exception(f"Error processing queued webhook for {path}: {str(e)}")
+            self._timestamp_event_error(handler.event)
+        finally:
+            await self._event_queues[path].commit()
+            if handler:
+                handler.teardown()
+            self._log_processing_completion(handler.event)
+
+    async def _execute_handler(self, handler: AbstractWebhookHandler) -> None:
+        """Execute a single handler within a max processing time."""
         try:
             await asyncio.wait_for(
                 handler.process_request(),
-                timeout=MAX_HANDLER_PROCESSING_SECONDS,
+                timeout=self._max_event_processing_seconds,
             )
         except asyncio.TimeoutError:
             raise TimeoutError(
-                f"Handler processing timed out after {MAX_HANDLER_PROCESSING_SECONDS} seconds"
+                f"Handler processing timed out after {self._max_event_processing_seconds} seconds"
             )
-        return handler
 
     def _log_processing_completion(self, event: WebhookEvent) -> None:
         """Log the completion of event processing with timing information."""
@@ -126,6 +141,10 @@ class WebhookHandlerManager:
         event_filter: Callable[[WebhookEvent], bool] = lambda _: True,
     ) -> None:
         """Register a webhook handler for a specific path with optional filter."""
+
+        if not issubclass(handler, AbstractWebhookHandler):
+            raise ValueError("Handler must extend AbstractWebhookHandler")
+
         if path not in self._handlers:
             self._handlers[path] = []
             self._event_queues[path] = LocalQueue()
@@ -155,6 +174,13 @@ class WebhookHandlerManager:
             methods=["POST"],
         )
 
+    async def _cancel_all_tasks(self) -> None:
+        """Cancel all webhook processor tasks."""
+        for task in self._webhook_processor_tasks:
+            task.cancel()
+
+        await asyncio.gather(*self._webhook_processor_tasks, return_exceptions=True)
+
     async def shutdown(self) -> None:
         """Gracefully shutdown all queue processors."""
         logger.warning("Shutting down webhook handler manager")
@@ -167,13 +193,9 @@ class WebhookHandlerManager:
                         for queue in self._event_queues.values()
                     )
                 ),
-                timeout=MAX_WAIT_SECONDS_BEFORE_SHUTDOWN,
+                timeout=self._max_wait_seconds_before_shutdown,
             )
         except asyncio.TimeoutError:
             logger.warning("Shutdown timed out waiting for queues to empty")
 
-        for task in self._webhook_processor_tasks:
-            task.cancel()
-
-        if self._webhook_processor_tasks:
-            await asyncio.gather(*self._webhook_processor_tasks, return_exceptions=True)
+        await self._cancel_all_tasks()

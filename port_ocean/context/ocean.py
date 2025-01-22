@@ -6,9 +6,6 @@ from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
 
-from port_ocean.core.handlers.webhook.abstract_webhook_handler import (
-    AbstractWebhookHandler,
-)
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
@@ -162,9 +159,6 @@ class PortOceanContext:
             path: The path to register the webhook handler for.
             handler: The handler to register.
         """
-        if not issubclass(handler, AbstractWebhookHandler):
-            raise ValueError("Handler must extend AbstractWebhookHandler")
-
         self.app.webhook_manager.register_handler(path, handler, filter)
 
 
