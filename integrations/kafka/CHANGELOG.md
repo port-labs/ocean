@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.115 (2025-01-23)
+
+
+### Improvements
+
+- Converted client methods to async to prevent blocking operations
+
+
 ## 0.1.114 (2025-01-22)
 
 
