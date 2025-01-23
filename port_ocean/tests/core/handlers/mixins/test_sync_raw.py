@@ -433,93 +433,76 @@ async def test_sync_raw_mixin_dependency(
 @pytest.mark.asyncio
 async def test_register_raw(
     mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
-    mock_ocean: Ocean,
-    mock_context: PortOceanContext,
-    monkeypatch: pytest.MonkeyPatch,
+    mock_resource_config: ResourceConfig,
 ) -> None:
-    kind = "service"
-    user_agent_type = UserAgentType.exporter
-    raw_entity = [
-        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
-    ]
-    expected_result = [
-        {
-            "identifier": "entity_1",
-            "blueprint": "service",
-            "name": "entity_1",
-            "properties": {"url": "https://example.com"},
-        },
-    ]
+    # Mock the integration settings with skip_check_diff
+    with patch.object(ocean.config.integration, "skip_check_diff", False):
+        kind = "service"
+        user_agent_type = UserAgentType.exporter
+        raw_entity = [
+            {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+        ]
+        expected_result = [
+            {
+                "identifier": "entity_1",
+                "blueprint": "service",
+                "name": "entity_1",
+                "properties": {},
+            },
+        ]
 
-    # Set is_saas to False
-    monkeypatch.setattr(mock_context.app, "is_saas", lambda: False)
-
-    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
-        # Use patch to mock the method instead of direct assignment
-        with patch.object(
-            mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
-            "get_port_app_config",
-            return_value=PortAppConfig(
-                enable_merge_entity=True,
-                delete_dependent_entities=True,
-                create_missing_related_entities=False,
-                resources=[
-                    ResourceConfig(
-                        kind=kind,
-                        selector=Selector(query="true"),
-                        port=PortResourceConfig(
-                            entity=MappingsConfig(
-                                mappings=EntityMapping(
-                                    identifier=".id | tostring",
-                                    title=".name",
-                                    blueprint='"service"',
-                                    properties={"url": ".web_url"},
-                                    relations={},
-                                )
-                            )
-                        ),
-                    )
-                ],
-            ),
-        ):
-            # Ensure the event.port_app_config is set correctly
-            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
-                use_cache=False
-            )
-
-            def upsert_side_effect(
-                entities: list[Entity], user_agent_type: UserAgentType
-            ) -> list[Entity]:
-                # Simulate returning the passed entities
-                return entities
-
-            # Patch the upsert method with the side effect
+        async with event_context(
+            EventType.HTTP_REQUEST, trigger_type="machine"
+        ) as event:
+            # Use patch to mock the method instead of direct assignment
             with patch.object(
-                mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
-                "upsert",
-                side_effect=upsert_side_effect,
+                mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
+                "get_port_app_config",
+                return_value=PortAppConfig(
+                    enable_merge_entity=True,
+                    delete_dependent_entities=True,
+                    create_missing_related_entities=False,
+                    resources=[mock_resource_config],
+                ),
             ):
-                # Call the register_raw method
-                registered_entities = (
-                    await mock_sync_raw_mixin_with_jq_processor.register_raw(
-                        kind, raw_entity, user_agent_type
-                    )
+                # Ensure the event.port_app_config is set correctly
+                event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                    use_cache=False
                 )
 
-                # Assert that the registered entities match the expected results
-                assert len(registered_entities) == len(expected_result)
-                for entity, result in zip(registered_entities, expected_result):
-                    assert entity.identifier == result["identifier"]
-                    assert entity.blueprint == result["blueprint"]
-                    assert entity.properties == result["properties"]
+                def upsert_side_effect(
+                    entities: list[Entity], user_agent_type: UserAgentType
+                ) -> list[Entity]:
+                    # Simulate returning the passed entities
+                    return entities
+
+                # Patch the upsert method with the side effect
+                with patch.object(
+                    mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
+                    "upsert",
+                    side_effect=upsert_side_effect,
+                ):
+                    # Call the register_raw method
+                    registered_entities = (
+                        await mock_sync_raw_mixin_with_jq_processor.register_raw(
+                            kind, raw_entity, user_agent_type
+                        )
+                    )
+
+                    # Assert that the registered entities match the expected results
+                    assert len(registered_entities) == len(expected_result)
+                    for entity, result in zip(registered_entities, expected_result):
+                        assert entity.identifier == result["identifier"]
+                        assert entity.blueprint == result["blueprint"]
+                        assert entity.properties == result["properties"]
 
 
 @pytest.mark.asyncio
 async def test_unregister_raw(
     mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
-    mock_ocean: Ocean,
     mock_context: PortOceanContext,
     monkeypatch: pytest.MonkeyPatch,
+    mock_resource_config: ResourceConfig,
 ) -> None:
     kind = "service"
     user_agent_type = UserAgentType.exporter
@@ -547,23 +530,7 @@ async def test_unregister_raw(
                 enable_merge_entity=True,
                 delete_dependent_entities=True,
                 create_missing_related_entities=False,
-                resources=[
-                    ResourceConfig(
-                        kind=kind,
-                        selector=Selector(query="true"),
-                        port=PortResourceConfig(
-                            entity=MappingsConfig(
-                                mappings=EntityMapping(
-                                    identifier=".id | tostring",
-                                    title=".name",
-                                    blueprint='"service"',
-                                    properties={"url": ".web_url"},
-                                    relations={},
-                                )
-                            )
-                        ),
-                    )
-                ],
+                resources=[mock_resource_config],
             ),
         ):
             # Ensure the event.port_app_config is set correctly
@@ -718,142 +685,92 @@ class CalculationResult:
 
 
 @pytest.mark.asyncio
-async def test_register_resource_raw_saas_no_changes_upsert_not_called_entitiy_is_returned(
+async def test_register_resource_raw_no_changes_upsert_not_called_entitiy_is_returned(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,
-    mock_context: PortOceanContext,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Mock ocean.app.is_saas()
-    monkeypatch.setattr(mock_context.app, "is_saas", lambda: True)
+    # Mock the integration settings with skip_check_diff
+    with patch.object(ocean.config.integration, "skip_check_diff", False):
+        entity = Entity(identifier="1", blueprint="service")
+        mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+        mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
+        mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
-    # Mock dependencies
-    entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
-        event.port_app_config = mock_port_app_config
+            # Test execution
+            result = await mock_sync_raw_mixin._register_resource_raw(
+                mock_port_app_config.resources[
+                    0
+                ],  # Use the first resource from the config
+                [{"some": "data"}],
+                UserAgentType.exporter,
+            )
 
-        # Test execution
-        result = await mock_sync_raw_mixin._register_resource_raw(
-            mock_port_app_config.resources[0],  # Use the first resource from the config
-            [{"some": "data"}],
-            UserAgentType.exporter,
-        )
-
-        # Assertions
-        assert len(result.entity_selector_diff.passed) == 1
-        mock_sync_raw_mixin._calculate_raw.assert_called_once()
-        mock_sync_raw_mixin.entities_state_applier.upsert.assert_not_called()
-        mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
+            # Assertions
+            assert len(result.entity_selector_diff.passed) == 1
+            mock_sync_raw_mixin._calculate_raw.assert_called_once()
+            mock_sync_raw_mixin.entities_state_applier.upsert.assert_not_called()
+            mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_register_resource_raw_saas_with_changes_upsert_called_and_entities_are_mapped(
+async def test_register_resource_raw_with_changes_upsert_called_and_entities_are_mapped(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,
-    mock_context: PortOceanContext,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Mock ocean.app.is_saas()
-    monkeypatch.setattr(mock_context.app, "is_saas", lambda: True)
+    # Mock the integration settings with skip_check_diff
+    with patch.object(ocean.config.integration, "skip_check_diff", False):
+        entity = Entity(identifier="1", blueprint="service")
+        mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+        mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity]))  # type: ignore
+        mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
-    # Mock dependencies
-    entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity]))  # type: ignore
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
-        event.port_app_config = mock_port_app_config
+            # Test execution
+            result = await mock_sync_raw_mixin._register_resource_raw(
+                mock_port_app_config.resources[0],
+                [{"some": "data"}],
+                UserAgentType.exporter,
+            )
 
-        # Test execution
-        result = await mock_sync_raw_mixin._register_resource_raw(
-            mock_port_app_config.resources[0],
-            [{"some": "data"}],
-            UserAgentType.exporter,
-        )
-
-        # Assertions
-        assert len(result.entity_selector_diff.passed) == 1
-        mock_sync_raw_mixin._calculate_raw.assert_called_once()
-        mock_sync_raw_mixin.entities_state_applier.upsert.assert_called_once()
-        mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
+            # Assertions
+            assert len(result.entity_selector_diff.passed) == 1
+            mock_sync_raw_mixin._calculate_raw.assert_called_once()
+            mock_sync_raw_mixin.entities_state_applier.upsert.assert_called_once()
+            mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_register_resource_raw_non_saas_upsert_called_and_no_entitites_diff_calculation(
-    mock_sync_raw_mixin: SyncRawMixin,
-    mock_port_app_config: PortAppConfig,
-    mock_context: PortOceanContext,
-    monkeypatch: pytest.MonkeyPatch,
+async def test_register_resource_raw_with_errors(
+    mock_sync_raw_mixin: SyncRawMixin, mock_port_app_config: PortAppConfig
 ) -> None:
-    # Mock ocean.app.is_saas()
-    monkeypatch.setattr(mock_context.app, "is_saas", lambda: False)
+    # Mock the integration settings with skip_check_diff
+    with patch.object(ocean.config.integration, "skip_check_diff", False):
+        failed_entity = Entity(identifier="1", blueprint="service")
+        error = Exception("Test error")
+        mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+        mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
+        mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
-    # Mock dependencies
-    entity = Entity(identifier="1", blueprint="service")
-    calculation_result = CalculationResult(
-        entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
-        errors=[],
-        misconfigurations=[],
-        misonfigured_entity_keys=[],
-    )
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[calculation_result])  # type: ignore
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock()  # type: ignore
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
-        event.port_app_config = mock_port_app_config
+            # Test execution
+            result = await mock_sync_raw_mixin._register_resource_raw(
+                mock_port_app_config.resources[0],
+                [{"some": "data"}],
+                UserAgentType.exporter,
+            )
 
-        # Test execution
-        result = await mock_sync_raw_mixin._register_resource_raw(
-            mock_port_app_config.resources[0],
-            [{"some": "data"}],
-            UserAgentType.exporter,
-        )
-
-        # Assertions
-        assert len(result.entity_selector_diff.passed) == 1
-        mock_sync_raw_mixin._calculate_raw.assert_called_once()
-        mock_sync_raw_mixin._map_entities_compared_with_port.assert_not_called()
-        mock_sync_raw_mixin.entities_state_applier.upsert.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_register_resource_raw_saas_with_errors(
-    mock_sync_raw_mixin: SyncRawMixin,
-    mock_port_app_config: PortAppConfig,
-    mock_context: PortOceanContext,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Mock ocean.app.is_saas()
-    monkeypatch.setattr(mock_context.app, "is_saas", lambda: True)
-
-    # Mock dependencies
-    failed_entity = Entity(identifier="1", blueprint="service")
-    error = Exception("Test error")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
-
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
-        event.port_app_config = mock_port_app_config
-
-        # Test execution
-        result = await mock_sync_raw_mixin._register_resource_raw(
-            mock_port_app_config.resources[0],
-            [{"some": "data"}],
-            UserAgentType.exporter,
-        )
-
-        # Assertions
-        assert len(result.entity_selector_diff.passed) == 0
-        assert len(result.entity_selector_diff.failed) == 1
-        assert len(result.errors) == 1
-        assert result.errors[0] == error
-        mock_sync_raw_mixin._calculate_raw.assert_called_once()
-        mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
-        mock_sync_raw_mixin.entities_state_applier.upsert.assert_not_called()
+            # Assertions
+            assert len(result.entity_selector_diff.passed) == 0
+            assert len(result.entity_selector_diff.failed) == 1
+            assert len(result.errors) == 1
+            assert result.errors[0] == error
+            mock_sync_raw_mixin._calculate_raw.assert_called_once()
+            mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
+            mock_sync_raw_mixin.entities_state_applier.upsert.assert_not_called()
