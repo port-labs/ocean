@@ -22,7 +22,9 @@ class EntityClientMixin:
         # Semaphore is used to limit the number of concurrent requests to port, to avoid overloading it.
         # The number of concurrent requests is set to 90% of the max connections limit, to leave some room for other
         # requests that are not related to entities.
-        self.semaphore = asyncio.Semaphore(round(0.5 * PORT_HTTP_MAX_CONNECTIONS_LIMIT))
+        self.semaphore = asyncio.Semaphore(
+            round(0.5 * PORT_HTTP_MAX_CONNECTIONS_LIMIT)
+        )  # 50% of the max connections limit in order to avoid overloading port
 
     async def upsert_entity(
         self,
