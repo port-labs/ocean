@@ -18,21 +18,21 @@ def init_clients() -> list[KafkaClient]:
 async def resync_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     kafka_clients = init_clients()
     for kafka_client in kafka_clients:
-        yield [kafka_client.describe_cluster()]
+        yield [await kafka_client.describe_cluster()]
 
 
 @ocean.on_resync("broker")
 async def resync_brokers(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     kafka_clients = init_clients()
     for kafka_client in kafka_clients:
-        yield kafka_client.describe_brokers()
+        yield await kafka_client.describe_brokers()
 
 
 @ocean.on_resync("topic")
 async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     kafka_clients = init_clients()
     for kafka_client in kafka_clients:
-        yield kafka_client.describe_topics()
+        yield await kafka_client.describe_topics()
 
 
 @ocean.on_resync("consumer_group")
