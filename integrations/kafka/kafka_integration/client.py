@@ -24,13 +24,16 @@ class KafkaClient:
         for broker in self.cluster_metadata.brokers.values():
             brokers_configs = await to_thread.run_sync(
                 self.kafka_admin_client.describe_configs,
-                [ConfigResource(confluent_kafka.admin.RESOURCE_BROKER, str(broker.id))]
+                [ConfigResource(confluent_kafka.admin.RESOURCE_BROKER, str(broker.id))],
             )
             for broker_config_resource, future in brokers_configs.items():
                 broker_id = broker_config_resource.name
                 try:
                     broker_config = {
-                        key: value.value for key, value in (await to_thread.run_sync(future.result)).items()
+                        key: value.value
+                        for key, value in (
+                            await to_thread.run_sync(future.result)
+                        ).items()
                     }
                     result_brokers.append(
                         {
@@ -57,14 +60,14 @@ class KafkaClient:
             topics_metadata_dict[topic.topic] = topic
 
         topics_configs = await to_thread.run_sync(
-            self.kafka_admin_client.describe_configs,
-            topics_config_resources
+            self.kafka_admin_client.describe_configs, topics_config_resources
         )
         for topic_config_resource, future in topics_configs.items():
             topic_name = topic_config_resource.name
             try:
                 topic_config = {
-                    key: value.value for key, value in (await to_thread.run_sync(future.result)).items()
+                    key: value.value
+                    for key, value in (await to_thread.run_sync(future.result)).items()
                 }
                 partitions = [
                     {
@@ -73,7 +76,9 @@ class KafkaClient:
                         "replicas": partition.replicas,
                         "isrs": partition.isrs,
                     }
-                    for partition in topics_metadata_dict[topic_name].partitions.values()
+                    for partition in topics_metadata_dict[
+                        topic_name
+                    ].partitions.values()
                 ]
                 result_topics.append(
                     {
