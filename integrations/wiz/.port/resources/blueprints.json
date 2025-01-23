@@ -168,6 +168,9 @@
         },
         "notes": {
           "title": "Notes",
+          "items": {
+            "type": "string"
+          },
           "type": "array"
         },
         "createdAt": {

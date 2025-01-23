@@ -133,6 +133,9 @@
         "components": {
           "title": "Components",
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "description": "The components related to this issue"
         },
         "creator": {

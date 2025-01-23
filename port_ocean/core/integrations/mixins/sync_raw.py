@@ -137,21 +137,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             entities (list[Entity]): List of entities to search for.
 
         Returns:
-            dict: Query structure for searching entities by identifier.
+            dict: Query structure for searching entities by identifier and blueprint.
         """
         return {
             "combinator": "and",
             "rules": [
                 {
-                    "combinator": "or",
-                    "rules": [
-                        {
-                            "property": "$identifier",
-                            "operator": "=",
-                            "value": entity.identifier,
-                        }
-                        for entity in entities
-                    ]
+                    "property": "$identifier",
+                    "operator": "in",
+                    "value": [entity.identifier for entity in entities]
+                },
+                {
+                    "property": "$blueprint",
+                    "operator": "=",
+                    "value": entities[0].blueprint
                 }
             ]
         }
