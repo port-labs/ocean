@@ -190,11 +190,14 @@ class TestWebhookHandlerManager:
         self.assert_event_processed_successfully(type2_event)
 
     async def test_handler_timeout(
-        self, handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
+        self, router: APIRouter, signal_handler: SignalHandler, mock_event: WebhookEvent
     ) -> None:
         """Test handler timeout behavior."""
+
         # Set a short timeout for testing
-        handler_manager._max_event_processing_seconds = 0.1
+        handler_manager = WebhookHandlerManager(
+            router, signal_handler, max_event_processing_seconds=0.1
+        )
 
         class TimeoutHandler(MockWebhookHandler):
             async def handle_event(self, payload: Dict[str, Any]) -> None:
