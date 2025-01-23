@@ -81,9 +81,6 @@ class AbstractWebhookHandler(ABC):
 
     async def process_request(self) -> None:
         """Main method to process a webhook request with retry logic."""
-        if not self.validate_webhook_setup():
-            raise ValueError("Invalid webhook setup")
-
         payload = self.event.payload
         headers = self.event.headers
 
@@ -99,13 +96,14 @@ class AbstractWebhookHandler(ABC):
                 break
 
             except Exception as e:
+                await self.on_error(e)
+
                 if self.should_retry(e) and self.retry_count < self.max_retries:
                     self.retry_count += 1
                     delay = self.calculate_retry_delay()
                     await asyncio.sleep(delay)
                     continue
 
-                await self.on_error(e)
                 raise
 
     @abstractmethod
