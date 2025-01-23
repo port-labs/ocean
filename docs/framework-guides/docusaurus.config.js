@@ -29,7 +29,7 @@ const config = {
           sidebarPath: require.resolve("./sidebars.js"),
           // Please change this to your repo.
           editUrl: ({ locale, docPath }) => {
-            return `https://github.com/port-labs/port-ocean/edit/main/docs/framework-guide/docs/${docPath}`;
+            return `https://github.com/port-labs/port-ocean/edit/main/docs/framework-guides/docs/${docPath}`;
           },
         },
         theme: {
