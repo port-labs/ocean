@@ -1,3 +1,11 @@
+## 0.1.34-beta (2025-01-22)
+
+
+### Improvements
+
+- Updated mappings to have typed array items
+
+
 ## 0.1.33-beta (2025-01-22)
 
 
