@@ -6,6 +6,7 @@ from fastapi import Request
 
 
 EventPayload: TypeAlias = Dict[str, Any]
+EventHeaders: TypeAlias = Dict[str, str]
 
 
 class WebhookEventTimestamp(StrEnum):
@@ -24,7 +25,7 @@ class WebhookEvent:
         self,
         trace_id: str,
         payload: EventPayload,
-        headers: Dict[str, str],
+        headers: EventHeaders,
         original_request: Request | None = None,
         timestamps: Dict[str, datetime.datetime] | None = None,
     ) -> None:
