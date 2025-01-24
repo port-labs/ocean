@@ -316,7 +316,7 @@ async def feed_event_to_resource(
     asset_name: str,
     project_id: str,
     asset_data: dict[str, Any],
-    rate_limiter: AsyncLimiter,
+    project_rate_limiter: AsyncLimiter,
     config: Optional[ProtoConfig] = None,
 ) -> RAW_ITEM:
     resource = None
