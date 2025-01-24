@@ -275,6 +275,6 @@ async def feed_events_callback(
     except GotFeedCreatedSuccessfullyMessageError:
         logger.info("Assets Feed created successfully")
     except Exception as e:
-        logger.exception(f"Got error {e} while handling a real time event")
+        logger.exception(f"Got error {str(e)} while handling a real time event")
         return Response(status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR)
     return Response(status_code=200)
