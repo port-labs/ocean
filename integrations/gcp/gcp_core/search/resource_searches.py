@@ -222,7 +222,7 @@ async def get_single_project(
 ) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         async with rate_limiter:
-            logger.info(
+            logger.debug(
                 f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
             )
             return parse_protobuf_message(
