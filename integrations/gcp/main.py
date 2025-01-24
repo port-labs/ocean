@@ -199,7 +199,9 @@ async def process_realtime_event(
     The dynamic initialization of the limiter will make it impossible to share the same instance across all event context.
     """
     try:
-        logger.debug(f"Processing real-time event for {asset_type} : {asset_name} in the background")
+        logger.debug(
+            f"Processing real-time event for {asset_type} : {asset_name} in the background"
+        )
         asset_resource_data = await feed_event_to_resource(
             asset_type,
             asset_name,

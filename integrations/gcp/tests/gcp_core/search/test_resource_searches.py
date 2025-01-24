@@ -174,7 +174,7 @@ async def test_feed_to_resource(
         actual_resource = await feed_event_to_resource(
             asset_type=mock_asset_type,
             asset_name=mock_asset_name,
-            rate_limiter=mock_rate_limiter,
+            project_rate_limiter=mock_rate_limiter,
             project_id=mock_asset_project_name,
             asset_data=mock_asset_data,
         )

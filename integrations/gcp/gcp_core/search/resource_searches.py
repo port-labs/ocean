@@ -350,7 +350,9 @@ async def feed_event_to_resource(
                 )
                 resource = await get_single_organization(organization_id, config)
             case AssetTypesWithSpecialHandling.PROJECT:
-                resource = await get_single_project(project_id, project_rate_limiter, config)
+                resource = await get_single_project(
+                    project_id, project_rate_limiter, config
+                )
             case _:
                 resource = asset_data["asset"]["resource"]["data"]
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
