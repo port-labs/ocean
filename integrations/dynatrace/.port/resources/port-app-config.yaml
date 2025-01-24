@@ -77,7 +77,7 @@ resources:
             description: .value.descriptions
             links: '[.value.links[] | .url]'
             emailContact: .value.contactDetails[] | select(.integrationType == "EMAIL") | .email
-            productivityToolsContact: '[.value.contactDetails[] | select(.integrationType != "EMAIL") | .url]'
+            productivityToolsContact: '[.value.contactDetails[] | select(.integrationType != "EMAIL" and .url != null) | .url]'
             responsibilities: .value.responsibilities
             additionalDetails: .value.additionalInformation
 
