@@ -96,7 +96,7 @@ class EventHandler(BaseEventHandler):
                         event_id=event_id,
                         handler=handler,
                     )
-                asyncio.create_task(observer(event_id, body))  # type: ignore
+                asyncio.create_task(observer(event_id, deepcopy(body)))  # type: ignore
 
 
 class SystemEventHandler(BaseEventHandler):
