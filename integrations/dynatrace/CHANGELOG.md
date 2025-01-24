@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.95 (2025-01-24)
+
+
+### Improvements
+
+- Added `team` kind to sync Dynatrace teams to Port
+- Added a relation between slo and monitored entities using the `attachRelatedEntities` flag
+
+
 ## 0.1.94 (2025-01-23)
 
 

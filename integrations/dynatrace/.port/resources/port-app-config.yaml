@@ -44,6 +44,7 @@ resources:
   - kind: slo
     selector:
       query: "true"
+      attachRelatedEntities: true
     port:
       entity:
         mappings:
@@ -60,6 +61,25 @@ resources:
             evaluatedPercentage: .evaluatedPercentage
             evaluationType: .evaluationType
             filter: .filter
+          relations:
+            entities: if .__entities != null then .__entities | map(.entityId) else [] end
+
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .value.identifier
+          title: .value.name
+          blueprint: '"dynatraceTeam"'
+          properties:
+            description: .value.descriptions
+            links: '[.value.links[] | .url]'
+            emailContact: .value.contactDetails[] | select(.integrationType == "EMAIL") | .email
+            productivityToolsContact: '[.value.contactDetails[] | select(.integrationType != "EMAIL" and .url != null) | .url]'
+            responsibilities: .value.responsibilities
+            additionalDetails: .value.additionalInformation
 
   - kind: entity
     selector:
