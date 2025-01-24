@@ -228,7 +228,9 @@ class GitlabService:
                 project.files.get, file_path, sha
             )
 
-            entities = await anyio.to_thread.run_sync(yaml.safe_load(file_content.decode))
+            entities = await anyio.to_thread.run_sync(
+                yaml.safe_load, file_content.decode()
+            )
             raw_entities = [
                 Entity(**entity_data)
                 for entity_data in (
@@ -839,12 +841,11 @@ class GitlabService:
                 logger.debug(
                     f"Trying to process file {file.file_path} in project {project.path_with_namespace} as YAML"
                 )
-                documents = await anyio.to_thread.run_sync(
-                    yaml.load_all, 
-                    file.decode(), 
-                    Loader=yaml.SafeLoader
+                documents = list(
+                    await anyio.to_thread.run_sync(
+                        yaml.load_all, file.decode(), yaml.SafeLoader
+                    )
                 )
-                documents = list(documents)
                 if not documents:
                     logger.debug(
                         f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as YAML,"
