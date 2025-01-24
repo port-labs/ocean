@@ -151,6 +151,8 @@ class SessionManager:
                 logger.warning(
                     "AWS Organizations is not enabled in the current account. Assuming role in the current account."
                 )
+            except Exception as e:
+                logger.error(f"Error fetching organization accounts: {str(e)}")
         logger.info(f"Found {len(self._aws_credentials)} AWS accounts")
 
     async def _assume_role_and_update_credentials(
