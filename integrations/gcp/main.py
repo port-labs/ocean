@@ -189,7 +189,17 @@ async def process_realtime_event(
     asset_data: dict[str, typing.Any],
     config: typing.Optional[ProtoConfig] = None,
 ) -> None:
+    """
+    This function runs in the background to ensure the real-time event endpoints
+    do not time out while waiting for rate-limited operations to complete. It is triggered
+    by the real-time events handler when a new event is received.
+
+    ROJECT_V3_GET_REQUESTS_RATE_LIMITER is provided as a static value instead of being dynamic because all real-time events
+    needs to share the same instance of the limiter and it had to be instantiated on start for this to be possible.
+    The dynamic initialization of the limiter will make it impossible to share the same instance across all event context.
+    """
     try:
+        logger.debug(f"Processing real-time event for {asset_type} : {asset_name} in the background")
         asset_resource_data = await feed_event_to_resource(
             asset_type,
             asset_name,
@@ -267,6 +277,9 @@ async def feed_events_callback(
                 asset_project,
                 asset_data,
                 config,
+            )
+            logger.info(
+                f"Added background task to process real-time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
             )
     except AssetHasNoProjectAncestorError:
         logger.exception(

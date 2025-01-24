@@ -323,7 +323,7 @@ async def feed_event_to_resource(
     if asset_data.get("deleted") is True:
         resource = asset_data["priorAsset"]["resource"]["data"]
         resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-            project_id, rate_limiter, config
+            project_id, project_rate_limiter, config
         )
     else:
         match asset_type:
@@ -331,13 +331,13 @@ async def feed_event_to_resource(
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
                 resource = await get_single_topic(topic_name, config)
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, rate_limiter, config
+                    project_id, project_rate_limiter, config
                 )
             case AssetTypesWithSpecialHandling.SUBSCRIPTION:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
                 resource = await get_single_subscription(topic_name, config)
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, rate_limiter, config
+                    project_id, project_rate_limiter, config
                 )
             case AssetTypesWithSpecialHandling.FOLDER:
                 folder_id = asset_name.replace(
@@ -350,10 +350,10 @@ async def feed_event_to_resource(
                 )
                 resource = await get_single_organization(organization_id, config)
             case AssetTypesWithSpecialHandling.PROJECT:
-                resource = await get_single_project(project_id, rate_limiter, config)
+                resource = await get_single_project(project_id, project_rate_limiter, config)
             case _:
                 resource = asset_data["asset"]["resource"]["data"]
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, rate_limiter, config
+                    project_id, project_rate_limiter, config
                 )
     return resource
