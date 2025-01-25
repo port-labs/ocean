@@ -131,8 +131,8 @@ class SessionManager:
                 "organizations"
             ) as organizations_client,
         ):
-            paginator = organizations_client.get_paginator("list_accounts")
             try:
+                paginator = organizations_client.get_paginator("list_accounts")
                 async for page in paginator.paginate():
                     for account in page["Accounts"]:
                         if account["Id"] == self._application_account_id:
@@ -147,6 +147,12 @@ class SessionManager:
                 logger.warning(
                     "Caller is not a member of an AWS organization. Assuming role in the current account."
                 )
+            except organizations_client.exceptions.AWSOrganizationsNotInUseException:
+                logger.warning(
+                    "AWS Organizations is not enabled in the current account. Assuming role in the current account."
+                )
+            except Exception as e:
+                logger.error(f"Error fetching organization accounts: {str(e)}")
         logger.info(f"Found {len(self._aws_credentials)} AWS accounts")
 
     async def _assume_role_and_update_credentials(
