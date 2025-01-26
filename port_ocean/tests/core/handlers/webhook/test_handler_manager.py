@@ -20,7 +20,6 @@ class MockWebhookHandler(AbstractWebhookHandler):
     def __init__(self, event: WebhookEvent) -> None:
         super().__init__(event)
         self.processed = False
-        self.teardown_called = False
         self.cancel_called = False
         self.error_to_raise: Exception | asyncio.CancelledError | None = None
 
@@ -36,9 +35,6 @@ class MockWebhookHandler(AbstractWebhookHandler):
         if self.error_to_raise:
             raise self.error_to_raise
         self.processed = True
-
-    def teardown(self) -> None:
-        self.teardown_called = True
 
     async def cancel(self) -> None:
         self.cancel_called = True

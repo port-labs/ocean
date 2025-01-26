@@ -87,7 +87,6 @@ class WebhookHandlerManager:
             finally:
                 await self._event_queues[path].commit()
                 if handler:
-                    handler.teardown()
                     self._log_processing_completion(handler.event)
 
     def _timestamp_event_error(self, event: WebhookEvent | None) -> None:

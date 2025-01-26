@@ -20,7 +20,6 @@ class TestWebhookHandler(AbstractWebhookHandler):
         should_fail: bool = False,
         fail_count: int = 0,
     ) -> None:
-        self.initialized = False
         super().__init__(event)
         self.authenticated = False
         self.validated = False
@@ -30,7 +29,6 @@ class TestWebhookHandler(AbstractWebhookHandler):
         self.current_fails = 0
         self.error_handler_called = False
         self.cancelled = False
-        self.torn_down = False
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         self.authenticated = True
@@ -45,12 +43,6 @@ class TestWebhookHandler(AbstractWebhookHandler):
             self.current_fails += 1
             raise RetryableError("Temporary failure")
         self.handled = True
-
-    def initialize(self) -> None:
-        self.initialized = True
-
-    def teardown(self) -> None:
-        self.torn_down = True
 
     async def cancel(self) -> None:
         self.cancelled = True
@@ -77,7 +69,6 @@ class TestAbstractWebhookHandler:
         """Test successful webhook processing flow."""
         await handler.process_request()
 
-        assert handler.initialized
         assert handler.authenticated
         assert handler.validated
         assert handler.handled

@@ -23,7 +23,6 @@ class AbstractWebhookHandler(ABC):
     def __init__(self, event: WebhookEvent) -> None:
         self.event = event
         self.retry_count = 0
-        self.initialize()
 
     @property
     def event_kind(self) -> Optional[str]:
@@ -43,14 +42,6 @@ class AbstractWebhookHandler(ABC):
             f"Attempt {self.retry_count}/{self.max_retries} failed. "
             f"Retrying in {delay:.2f} seconds. Error: {str(error)}"
         )
-
-    def initialize(self) -> None:
-        """Initialize resources (e.g., API clients). Override if needed."""
-        pass
-
-    def teardown(self) -> None:
-        """Clean up resources. Override if needed."""
-        pass
 
     async def cancel(self) -> None:
         """Handle cancellation of the request. Override if needed."""
