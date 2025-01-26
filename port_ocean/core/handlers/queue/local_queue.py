@@ -18,7 +18,7 @@ class LocalQueue(AbstractQueue[T]):
     async def get(self) -> T:
         return await self._queue.get()
 
-    async def wait_for_all_items_to_be_complete(self) -> None:
+    async def teardown(self) -> None:
         await self._queue.join()
 
     async def commit(self) -> None:

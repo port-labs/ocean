@@ -18,7 +18,7 @@ class AbstractQueue(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    async def wait_for_all_items_to_be_complete(self) -> None:
+    async def teardown(self) -> None:
         """Wait for all items to be processed."""
         pass
 

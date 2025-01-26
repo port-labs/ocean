@@ -83,7 +83,7 @@ class TestLocalQueue:
         processor = asyncio.create_task(slow_processor())
 
         # Wait for completion
-        await queue.wait_for_all_items_to_be_complete()
+        await queue.teardown()
 
         await processor
 

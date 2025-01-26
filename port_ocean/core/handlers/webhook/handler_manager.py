@@ -187,10 +187,7 @@ class WebhookHandlerManager:
         try:
             await asyncio.wait_for(
                 asyncio.gather(
-                    *(
-                        queue.wait_for_all_items_to_be_complete()
-                        for queue in self._event_queues.values()
-                    )
+                    *(queue.teardown() for queue in self._event_queues.values())
                 ),
                 timeout=self._max_wait_seconds_before_shutdown,
             )
