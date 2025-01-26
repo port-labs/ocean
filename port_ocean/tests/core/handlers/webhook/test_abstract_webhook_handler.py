@@ -1,7 +1,7 @@
 import pytest
 
-from port_ocean.core.handlers.webhook.abstract_webhook_handler import (
-    AbstractWebhookHandler,
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
     RetryableError,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -11,7 +11,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class TestWebhookHandler(AbstractWebhookHandler):
+class TestWebhookHandler(AbstractWebhookProcessor):
     """Concrete implementation for testing."""
 
     def __init__(
@@ -62,36 +62,36 @@ class TestAbstractWebhookHandler:
         )
 
     @pytest.fixture
-    def handler(self, webhook_event: WebhookEvent) -> TestWebhookHandler:
+    def processor(self, webhook_event: WebhookEvent) -> TestWebhookHandler:
         return TestWebhookHandler(webhook_event)
 
-    async def test_successful_processing(self, handler: TestWebhookHandler) -> None:
+    async def test_successful_processing(self, processor: TestWebhookHandler) -> None:
         """Test successful webhook processing flow."""
-        await handler.process_request()
+        await processor.process_request()
 
-        assert handler.authenticated
-        assert handler.validated
-        assert handler.handled
-        assert not handler.error_handler_called
+        assert processor.authenticated
+        assert processor.validated
+        assert processor.handled
+        assert not processor.error_handler_called
 
     async def test_retry_mechanism(self, webhook_event: WebhookEvent) -> None:
         """Test retry mechanism with temporary failures."""
-        handler = TestWebhookHandler(webhook_event, should_fail=True, fail_count=2)
+        processor = TestWebhookHandler(webhook_event, should_fail=True, fail_count=2)
 
-        await handler.process_request()
+        await processor.process_request()
 
-        assert handler.handled
-        assert handler.current_fails == 2
-        assert handler.retry_count == 2
-        assert handler.error_handler_called
+        assert processor.handled
+        assert processor.current_fails == 2
+        assert processor.retry_count == 2
+        assert processor.error_handler_called
 
     async def test_max_retries_exceeded(self, webhook_event: WebhookEvent) -> None:
         """Test behavior when max retries are exceeded."""
-        handler = TestWebhookHandler(webhook_event, should_fail=True, fail_count=5)
+        processor = TestWebhookHandler(webhook_event, should_fail=True, fail_count=5)
 
         with pytest.raises(RetryableError):
-            await handler.process_request()
+            await processor.process_request()
 
-        assert handler.retry_count == handler.max_retries
-        assert handler.error_handler_called
-        assert not handler.handled
+        assert processor.retry_count == processor.max_retries
+        assert processor.error_handler_called
+        assert not processor.handled

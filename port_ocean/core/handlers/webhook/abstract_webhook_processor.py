@@ -12,8 +12,8 @@ class RetryableError(Exception):
     pass
 
 
-class AbstractWebhookHandler(ABC):
-    """Abstract base class for webhook handlers."""
+class AbstractWebhookProcessor(ABC):
+    """Abstract base class for webhook processors."""
 
     max_retries: int = 3
     initial_retry_delay_seconds: float = 1.0

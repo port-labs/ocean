@@ -7,16 +7,16 @@ from dataclasses import dataclass
 from .webhook_event import WebhookEvent, WebhookEventTimestamp
 
 
-from .abstract_webhook_handler import AbstractWebhookHandler
+from .abstract_webhook_processor import AbstractWebhookProcessor
 from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import AbstractQueue, LocalQueue
 
 
 @dataclass
-class HandlerRegistration:
-    """Represents a registered handler with its filter."""
+class ProcessorRegistration:
+    """Represents a registered processor with its filter."""
 
-    handler: Type[AbstractWebhookHandler]
+    processor: Type[AbstractWebhookProcessor]
     filter: Callable[[WebhookEvent], bool]
 
 
@@ -31,7 +31,7 @@ class WebhookHandlerManager:
         max_wait_seconds_before_shutdown: float = 5.0,
     ) -> None:
         self._router = router
-        self._handlers: Dict[str, list[HandlerRegistration]] = {}
+        self._handlers: Dict[str, list[ProcessorRegistration]] = {}
         self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
         self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
@@ -51,33 +51,33 @@ class WebhookHandlerManager:
 
     def _extract_matching_handler(
         self, event: WebhookEvent, path: str
-    ) -> AbstractWebhookHandler:
-        """Find and extract the matching handler for an event."""
+    ) -> AbstractWebhookProcessor:
+        """Find and extract the matching processor for an event."""
         matching_handlers = [
-            reg.handler for reg in self._handlers[path] if reg.filter(event)
+            reg.processor for reg in self._handlers[path] if reg.filter(event)
         ]
 
         if not matching_handlers:
             raise ValueError("No matching handlers found")
 
-        handler = matching_handlers[0](event)
-        return handler
+        processor = matching_handlers[0](event)
+        return processor
 
     async def process_queue(self, path: str) -> None:
         """Process events for a specific path in order."""
         while True:
-            handler: AbstractWebhookHandler | None = None
+            processor: AbstractWebhookProcessor | None = None
             event: WebhookEvent | None = None
             try:
                 event = await self._event_queues[path].get()
                 with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
-                    handler = self._extract_matching_handler(event, path)
-                    await self._process_single_event(handler, path)
+                    processor = self._extract_matching_handler(event, path)
+                    await self._process_single_event(processor, path)
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
                 self._timestamp_event_error(event)
-                if handler:
-                    await handler.cancel()
+                if processor:
+                    await processor.cancel()
                 break
             except Exception as e:
                 logger.exception(
@@ -86,8 +86,8 @@ class WebhookHandlerManager:
                 self._timestamp_event_error(event)
             finally:
                 await self._event_queues[path].commit()
-                if handler:
-                    self._log_processing_completion(handler.event)
+                if processor:
+                    self._log_processing_completion(processor.event)
 
     def _timestamp_event_error(self, event: WebhookEvent | None) -> None:
         """Timestamp an event as having an error."""
@@ -95,31 +95,31 @@ class WebhookHandlerManager:
             event.set_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
 
     async def _process_single_event(
-        self, handler: AbstractWebhookHandler, path: str
+        self, processor: AbstractWebhookProcessor, path: str
     ) -> None:
-        """Process a single event with a specific handler."""
+        """Process a single event with a specific processor."""
         try:
             logger.debug("Start processing queued webhook")
-            handler.event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
+            processor.event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
 
-            await self._execute_handler(handler)
-            handler.event.set_timestamp(
+            await self._execute_handler(processor)
+            processor.event.set_timestamp(
                 WebhookEventTimestamp.FinishedProcessingSuccessfully
             )
         except Exception as e:
             logger.exception(f"Error processing queued webhook for {path}: {str(e)}")
-            self._timestamp_event_error(handler.event)
+            self._timestamp_event_error(processor.event)
 
-    async def _execute_handler(self, handler: AbstractWebhookHandler) -> None:
-        """Execute a single handler within a max processing time."""
+    async def _execute_handler(self, processor: AbstractWebhookProcessor) -> None:
+        """Execute a single processor within a max processing time."""
         try:
             await asyncio.wait_for(
-                handler.process_request(),
+                processor.process_request(),
                 timeout=self._max_event_processing_seconds,
             )
         except asyncio.TimeoutError:
             raise TimeoutError(
-                f"Handler processing timed out after {self._max_event_processing_seconds} seconds"
+                f"Processor processing timed out after {self._max_event_processing_seconds} seconds"
             )
 
     def _log_processing_completion(self, event: WebhookEvent) -> None:
@@ -133,16 +133,16 @@ class WebhookHandlerManager:
             },
         )
 
-    def register_handler(
+    def register_processor(
         self,
         path: str,
-        handler: Type[AbstractWebhookHandler],
+        processor: Type[AbstractWebhookProcessor],
         event_filter: Callable[[WebhookEvent], bool] = lambda _: True,
     ) -> None:
-        """Register a webhook handler for a specific path with optional filter."""
+        """Register a webhook processor for a specific path with optional filter."""
 
-        if not issubclass(handler, AbstractWebhookHandler):
-            raise ValueError("Handler must extend AbstractWebhookHandler")
+        if not issubclass(processor, AbstractWebhookProcessor):
+            raise ValueError("Processor must extend AbstractWebhookProcessor")
 
         if path not in self._handlers:
             self._handlers[path] = []
@@ -150,7 +150,7 @@ class WebhookHandlerManager:
             self._register_route(path)
 
         self._handlers[path].append(
-            HandlerRegistration(handler=handler, filter=event_filter)
+            ProcessorRegistration(processor=processor, filter=event_filter)
         )
 
     def _register_route(self, path: str) -> None:
@@ -182,7 +182,7 @@ class WebhookHandlerManager:
 
     async def shutdown(self) -> None:
         """Gracefully shutdown all queue processors."""
-        logger.warning("Shutting down webhook handler manager")
+        logger.warning("Shutting down webhook processor manager")
 
         try:
             await asyncio.wait_for(
