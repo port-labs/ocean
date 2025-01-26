@@ -54,7 +54,9 @@ class WebhookHandlerManager:
     ) -> AbstractWebhookProcessor:
         """Find and extract the matching processor for an event."""
         matching_processors = [
-            reg.processor for reg in self._processors[path] if reg.filter(event)
+            registration.processor
+            for registration in self._processors[path]
+            if registration.filter(event)
         ]
 
         if not matching_processors:
