@@ -84,6 +84,11 @@ class WebhookHandlerManager:
                     f"Unexpected error in queue processor for {path}: {str(e)}"
                 )
                 self._timestamp_event_error(event)
+            finally:
+                await self._event_queues[path].commit()
+                if handler:
+                    handler.teardown()
+                    self._log_processing_completion(handler.event)
 
     def _timestamp_event_error(self, event: WebhookEvent | None) -> None:
         """Timestamp an event as having an error."""
@@ -105,11 +110,6 @@ class WebhookHandlerManager:
         except Exception as e:
             logger.exception(f"Error processing queued webhook for {path}: {str(e)}")
             self._timestamp_event_error(handler.event)
-        finally:
-            await self._event_queues[path].commit()
-            if handler:
-                handler.teardown()
-            self._log_processing_completion(handler.event)
 
     async def _execute_handler(self, handler: AbstractWebhookHandler) -> None:
         """Execute a single handler within a max processing time."""
