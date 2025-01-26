@@ -77,7 +77,8 @@ class WebhookHandlerManager:
                     await self._process_single_event(processor, path)
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
-                self._timestamp_event_error(event)
+                if event:
+                    self._timestamp_event_error(event)
                 if processor:
                     await processor.cancel()
                 break
@@ -85,16 +86,16 @@ class WebhookHandlerManager:
                 logger.exception(
                     f"Unexpected error in queue processor for {path}: {str(e)}"
                 )
-                self._timestamp_event_error(event)
+                if event:
+                    self._timestamp_event_error(event)
             finally:
                 await self._event_queues[path].commit()
                 if processor:
                     self._log_processing_completion(processor.event)
 
-    def _timestamp_event_error(self, event: WebhookEvent | None) -> None:
+    def _timestamp_event_error(self, event: WebhookEvent) -> None:
         """Timestamp an event as having an error."""
-        if event:
-            event.set_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
+        event.set_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
 
     async def _process_single_event(
         self, processor: AbstractWebhookProcessor, path: str
@@ -127,7 +128,7 @@ class WebhookHandlerManager:
     def _log_processing_completion(self, event: WebhookEvent) -> None:
         """Log the completion of event processing with timing information."""
 
-        logger.debug(
+        logger.info(
             "Finished processing queued webhook",
             timestamps={
                 timestamp: event.get_timestamp(timestamp)
