@@ -146,20 +146,20 @@ class PortOceanContext:
     async def sync_raw_all(self) -> None:
         await self.integration.sync_raw_all(trigger_type="manual")
 
-    def add_handler(
+    def add_webhook_processor(
         self,
         path: str,
-        handler: type,
-        filter: Callable[[Any], bool] = lambda _: True,
+        processor: type,
+        events_filter: Callable[[Any], bool] = lambda _: True,
     ) -> None:
         """
-        Registers a webhook handler for a specific path.
+        Registers a webhook processor for a specific path.
 
         Args:
-            path: The path to register the webhook handler for.
-            handler: The handler to register.
+            path: The path to register the webhook processor for.
+            processor: The processor to register.
         """
-        self.app.webhook_manager.register_handler(path, handler, filter)
+        self.app.webhook_manager.register_processor(path, processor, events_filter)
 
 
 _port_ocean: PortOceanContext = PortOceanContext(None)
