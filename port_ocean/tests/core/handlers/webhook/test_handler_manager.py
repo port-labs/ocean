@@ -98,8 +98,8 @@ class TestWebhookHandlerManager:
     ) -> None:
         """Test registering a processor for a path."""
         handler_manager.register_processor("/test", MockWebhookHandler)
-        assert "/test" in handler_manager._handlers
-        assert len(handler_manager._handlers["/test"]) == 1
+        assert "/test" in handler_manager._processors
+        assert len(handler_manager._processors["/test"]) == 1
         assert isinstance(handler_manager._event_queues["/test"], LocalQueue)
 
     async def test_register_multiple_handlers_with_filters(
@@ -116,7 +116,7 @@ class TestWebhookHandlerManager:
         handler_manager.register_processor("/test", MockWebhookHandler, filter1)
         handler_manager.register_processor("/test", MockWebhookHandler, filter2)
 
-        assert len(handler_manager._handlers["/test"]) == 2
+        assert len(handler_manager._processors["/test"]) == 2
 
     async def test_successful_event_processing(
         self, handler_manager: WebhookHandlerManager, mock_event: WebhookEvent
@@ -261,4 +261,4 @@ class TestWebhookHandlerManager:
         # Test multiple processors for same path
         handler_manager.register_processor("/test", MockWebhookHandler)
         handler_manager.register_processor("/test", MockWebhookHandler)
-        assert len(handler_manager._handlers["/test"]) == 2
+        assert len(handler_manager._processors["/test"]) == 2
