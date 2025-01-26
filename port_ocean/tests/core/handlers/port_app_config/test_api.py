@@ -5,20 +5,20 @@ from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 
 
 @pytest.fixture
-def mock_context():
+def mock_context() -> AsyncMock:
     context = AsyncMock()
     context.port_client.get_current_integration = AsyncMock()
     return context
 
 
 @pytest.fixture
-def api_config(mock_context):
+def api_config(mock_context: AsyncMock) -> APIPortAppConfig:
     return APIPortAppConfig(mock_context)
 
 
 async def test_get_port_app_config_valid_config_returns_config(
-    api_config, mock_context
-):
+    api_config: APIPortAppConfig, mock_context: AsyncMock
+) -> None:
     # Arrange
     expected_config = {"key": "value"}
     mock_context.port_client.get_current_integration.return_value = {
@@ -34,8 +34,8 @@ async def test_get_port_app_config_valid_config_returns_config(
 
 
 async def test_get_port_app_config_empty_config_raises_value_error(
-    api_config, mock_context
-):
+    api_config: APIPortAppConfig, mock_context: AsyncMock
+) -> None:
     # Arrange
     mock_context.port_client.get_current_integration.return_value = {"config": {}}
 
@@ -45,8 +45,8 @@ async def test_get_port_app_config_empty_config_raises_value_error(
 
 
 async def test_get_port_app_config_missing_config_key_raises_key_error(
-    api_config, mock_context
-):
+    api_config: APIPortAppConfig, mock_context: AsyncMock
+) -> None:
     # Arrange
     mock_context.port_client.get_current_integration.return_value = {}
 
@@ -56,8 +56,8 @@ async def test_get_port_app_config_missing_config_key_raises_key_error(
 
 
 async def test_get_port_app_config_empty_integration_raises_key_error(
-    api_config, mock_context
-):
+    api_config: APIPortAppConfig, mock_context: AsyncMock
+) -> None:
     # Arrange
     mock_context.port_client.get_current_integration.return_value = {}
 

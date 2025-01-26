@@ -1,36 +1,39 @@
 import pytest
 from unittest.mock import MagicMock
 from pydantic import ValidationError
+from typing import Any, Dict
 
 from port_ocean.context.ocean import PortOceanContext
-from port_ocean.core.handlers.port_app_config.base import (
-    BasePortAppConfig,
-    PortAppConfig,
-)
+from port_ocean.core.handlers.port_app_config.base import BasePortAppConfig
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.context.event import EventType, event_context
 
 
 class TestPortAppConfig(BasePortAppConfig):
-    async def _get_port_app_config(self) -> dict:
-        return self.mock_get_port_app_config()  # Will be replaced with MagicMock
+    mock_get_port_app_config: Any
+
+    async def _get_port_app_config(self) -> Dict[str, Any]:
+        return self.mock_get_port_app_config()
 
 
 @pytest.fixture
-def mock_context():
+def mock_context() -> PortOceanContext:
     context = MagicMock(spec=PortOceanContext)
     context.config.port.port_app_config_cache_ttl = 300  # 5 minutes
     return context
 
 
 @pytest.fixture
-def port_app_config_handler(mock_context):
+def port_app_config_handler(mock_context: PortOceanContext) -> TestPortAppConfig:
     handler = TestPortAppConfig(mock_context)
     handler.mock_get_port_app_config = MagicMock()
     return handler
 
 
 @pytest.mark.asyncio
-async def test_get_port_app_config_success(port_app_config_handler):
+async def test_get_port_app_config_success(
+    port_app_config_handler: TestPortAppConfig,
+) -> None:
     # Arrange
     valid_config = {
         "resources": [
@@ -78,7 +81,9 @@ async def test_get_port_app_config_success(port_app_config_handler):
 
 
 @pytest.mark.asyncio
-async def test_get_port_app_config_uses_cache(port_app_config_handler):
+async def test_get_port_app_config_uses_cache(
+    port_app_config_handler: TestPortAppConfig,
+) -> None:
     # Arrange
     valid_config = {
         "resources": [
@@ -115,7 +120,9 @@ async def test_get_port_app_config_uses_cache(port_app_config_handler):
 
 
 @pytest.mark.asyncio
-async def test_get_port_app_config_bypass_cache(port_app_config_handler):
+async def test_get_port_app_config_bypass_cache(
+    port_app_config_handler: TestPortAppConfig,
+) -> None:
     # Arrange
     valid_config = {
         "resources": [
@@ -155,13 +162,13 @@ async def test_get_port_app_config_bypass_cache(port_app_config_handler):
 
 @pytest.mark.asyncio
 async def test_get_port_app_config_validation_error(
-    port_app_config_handler, monkeypatch
-):
+    port_app_config_handler: TestPortAppConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # Arrange
     invalid_config = {"invalid_field": "invalid_value"}
     port_app_config_handler.mock_get_port_app_config.return_value = invalid_config
 
-    def mock_parse_obj(*args, **kwargs):
+    def mock_parse_obj(*args: Any, **kwargs: Any) -> None:
         raise ValidationError(errors=[], model=PortAppConfig)
 
     monkeypatch.setattr(
@@ -175,7 +182,9 @@ async def test_get_port_app_config_validation_error(
 
 
 @pytest.mark.asyncio
-async def test_get_port_app_config_fetch_error(port_app_config_handler):
+async def test_get_port_app_config_fetch_error(
+    port_app_config_handler: TestPortAppConfig,
+) -> None:
     # Arrange
     port_app_config_handler.mock_get_port_app_config.side_effect = ValueError(
         "Integration port app config is empty"
