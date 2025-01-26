@@ -20,7 +20,9 @@ class APIPortAppConfig(BasePortAppConfig):
         if not config:
             logger.error(
                 "The integration port app config is empty. "
+                f"Integration: {integration}, "
+                f"Config: {config}. "
                 "Please make sure to configure your port app config using Port's API."
             )
-
+            raise ValueError("Integration port app config is empty")
         return config
