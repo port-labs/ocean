@@ -3,6 +3,7 @@ from enum import StrEnum
 from typing import Any, Dict, TypeAlias
 from uuid import uuid4
 from fastapi import Request
+from loguru import logger
 
 
 EventPayload: TypeAlias = Dict[str, Any]
@@ -60,8 +61,16 @@ class WebhookEvent:
     def set_timestamp(self, timestamp: WebhookEventTimestamp) -> None:
         if self._timestamps.get(timestamp.value):
             raise ValueError(f"Timestamp {timestamp.value} already set")
-
-        self._timestamps[timestamp.value] = datetime.datetime.now()
+        now = datetime.datetime.now()
+        logger.debug(
+            "Setting event timestamp",
+            extra={
+                "trace_id": self.trace_id,
+                "timestamp_type": timestamp.value,
+                "timestamp": now,
+            },
+        )
+        self._timestamps[timestamp.value] = now
 
     def get_timestamp(
         self, timestamp: WebhookEventTimestamp
