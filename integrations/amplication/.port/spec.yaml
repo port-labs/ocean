@@ -1,0 +1,19 @@
+description: Amplication integration for Port Ocean
+icon: Link
+features:
+  - type: exporter
+    section: Other
+    resources:
+      - kind: amplication_template
+      - kind: amplication_resource
+      - kind: amplication_alert
+configurations:
+  - name: amplicationApiUrl
+    required: false
+    type: url
+    default: "https://server.amplication.com/graphql"
+  - name: amplicationAuthorization
+    required: true
+    type: string
+    description: "The user's authorization token for the bearer"
+    sensitive: true

@@ -1,0 +1,66 @@
+[
+    {
+        "identifier": "amplication_service_from_template",
+        "title": "Amplication Service From Template",
+        "icon": "Service",
+        "description": "Creates a service from a template on Amplication",
+        "trigger": {
+            "type": "self-service",
+            "operation": "CREATE",
+            "userInputs": {
+                "properties": {
+                    "template": {
+                        "type": "string",
+                        "title": "Template",
+                        "blueprint": "AmplicationTemplate",
+                        "icon": "Template",
+                        "format": "entity"
+                    },
+                    "service_name": {
+                        "icon": "Service",
+                        "type": "string",
+                        "title": "Service Name"
+                    }
+                },
+                "required": [
+                    "template",
+                    "service_name"
+                ],
+                "order": [
+                    "template",
+                    "service_name"
+                ]
+            }
+        },
+        "invocationMethod": {
+            "type": "WEBHOOK",
+            "url": "https://server.amplication.com/graphql",
+            "agent": false,
+            "synchronized": true,
+            "method": "POST",
+            "headers": {
+                "RUN_ID": "{{ .run.id }}",
+                "authorization": "Bearer {{ .secrets.amplication_token }}"
+            },
+            "body": {
+                "operationName": "createServiceFromTemplate",
+                "variables": {
+                    "data": {
+                        "name": "{{ .inputs.service_name }}",
+                        "description": "",
+                        "project": {
+                            "connect": {
+                                "id": "{{ .inputs.template.properties.project_id }}"
+                            }
+                        },
+                        "serviceTemplate": {
+                            "id": "{{ .inputs.template.identifier }}"
+                        }
+                    }
+                },
+                "query": "mutation createServiceFromTemplate($data: ResourceFromTemplateCreateInput!) {\n  createResourceFromTemplate(data: $data) {\n    id\n    name\n    description\n    __typename\n  }\n}"
+            }
+        },
+        "requiredApproval": false
+    }
+]

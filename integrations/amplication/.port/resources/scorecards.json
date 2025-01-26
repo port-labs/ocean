@@ -1,0 +1,37 @@
+[
+  {
+    "blueprint": "amplicationResource",
+    "data": [
+      {
+        "identifier": "Readiness",
+        "title": "Readiness",
+        "levels": [
+          {
+            "color": "paleBlue",
+            "title": "Basic"
+          },
+          {
+            "color": "gold",
+            "title": "Gold"
+          }
+        ],
+        "rules": [
+          {
+            "identifier": "hasGit",
+            "title": "Has Git",
+            "level": "Gold",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "operator": "isNotEmpty",
+                  "property": "git_repository"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
