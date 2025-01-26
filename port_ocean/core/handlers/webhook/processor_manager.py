@@ -20,7 +20,7 @@ class ProcessorRegistration:
     filter: Callable[[WebhookEvent], bool]
 
 
-class WebhookHandlerManager:
+class WebhookProcessorManager:
     """Manages webhook processors and their routes."""
 
     def __init__(
