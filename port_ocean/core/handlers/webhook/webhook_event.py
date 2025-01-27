@@ -58,6 +58,15 @@ class WebhookEvent:
             timestamps=None,
         )
 
+    def clone(self) -> "WebhookEvent":
+        return WebhookEvent(
+            trace_id=self.trace_id,
+            payload=self.payload,
+            headers=self.headers,
+            original_request=self._original_request,
+            timestamps=self._timestamps,
+        )
+
     def set_timestamp(self, timestamp: WebhookEventTimestamp) -> None:
         if self._timestamps.get(timestamp.value):
             raise ValueError(f"Timestamp {timestamp.value} already set")

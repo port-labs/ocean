@@ -49,9 +49,9 @@ class WebhookProcessorManager:
             except Exception as e:
                 logger.exception(f"Error starting queue processor for {path}: {str(e)}")
 
-    def _extract_matching_processor(
+    def _extract_matching_processors(
         self, event: WebhookEvent, path: str
-    ) -> AbstractWebhookProcessor:
+    ) -> list[AbstractWebhookProcessor]:
         """Find and extract the matching processor for an event."""
         matching_processors = [
             registration.processor
@@ -62,36 +62,38 @@ class WebhookProcessorManager:
         if not matching_processors:
             raise ValueError("No matching processors found")
 
-        processor = matching_processors[0](event)
-        return processor
+        created_processors: list[AbstractWebhookProcessor] = []
+        for processor_class in matching_processors:
+            processor = processor_class(event.clone())
+            created_processors.append(processor)
+        return created_processors
 
     async def process_queue(self, path: str) -> None:
         """Process events for a specific path in order."""
         while True:
-            processor: AbstractWebhookProcessor | None = None
-            event: WebhookEvent | None = None
+            matching_processors: list[AbstractWebhookProcessor] = []
             try:
                 event = await self._event_queues[path].get()
                 with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
-                    processor = self._extract_matching_processor(event, path)
-                    await self._process_single_event(processor, path)
+                    matching_processors = self._extract_matching_processors(event, path)
+                    for processor in matching_processors:
+                        await self._process_single_event(processor, path)
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
-                if event:
-                    self._timestamp_event_error(event)
-                if processor:
+                for processor in matching_processors:
                     await processor.cancel()
+                    self._timestamp_event_error(processor.event)
                 break
             except Exception as e:
                 logger.exception(
                     f"Unexpected error in queue processor for {path}: {str(e)}"
                 )
-                if event:
-                    self._timestamp_event_error(event)
+                for processor in matching_processors:
+                    self._timestamp_event_error(processor.event)
             finally:
                 await self._event_queues[path].commit()
-                if processor:
-                    self._log_processing_completion(processor.event)
+                for processor in matching_processors:
+                    self._log_processing_completion(processor)
 
     def _timestamp_event_error(self, event: WebhookEvent) -> None:
         """Timestamp an event as having an error."""
@@ -125,8 +127,9 @@ class WebhookProcessorManager:
                 f"Processor processing timed out after {self._max_event_processing_seconds} seconds"
             )
 
-    def _log_processing_completion(self, event: WebhookEvent) -> None:
+    def _log_processing_completion(self, processor: AbstractWebhookProcessor) -> None:
         """Log the completion of event processing with timing information."""
+        event = processor.event
 
         logger.info(
             "Finished processing queued webhook",
@@ -134,6 +137,7 @@ class WebhookProcessorManager:
                 timestamp: event.get_timestamp(timestamp)
                 for timestamp in WebhookEventTimestamp
             },
+            processor=processor.__class__.__name__,
         )
 
     def register_processor(
