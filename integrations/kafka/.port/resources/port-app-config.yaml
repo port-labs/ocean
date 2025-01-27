@@ -46,3 +46,21 @@ resources:
           relations:
             cluster: .cluster_name
             brokers: '[.cluster_name + "_" + (.partitions[].replicas[] | tostring)] | unique'
+  - kind: consumer_group
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .cluster_name + "_" + .group_id
+          title: .group_id
+          blueprint: '"kafkaConsumerGroup"'
+          properties:
+            state: .state
+            members: '[.members[].client_id]'
+            coordinator: .coordinator.id
+            partition_assignor: .partition_assignor
+            is_simple_consumer_group: .is_simple_consumer_group
+            authorized_operations: .authorized_operations
+          relations:
+            cluster: .cluster_name

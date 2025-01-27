@@ -234,7 +234,10 @@
         },
         "tags": {
           "type": "array",
-          "title": "Tags"
+          "title": "Tags",
+          "items": {
+            "type": "string"
+          }
         },
         "createdAt": {
           "type": "string",

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.91 (2025-01-24)
+
+
+### Bug Fixes
+
+- Handled the `AWSOrganizationsNotInUseException` properly to avoid breaking the sync process when using accounts that does not belong to an organization.
+
+
+## 0.2.90 (2025-01-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+## 0.2.89 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
 ## 0.2.88 (2025-01-22)
 
 

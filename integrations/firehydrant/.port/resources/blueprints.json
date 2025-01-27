@@ -34,6 +34,9 @@
         },
         "tags": {
           "title": "Tags",
+          "items": {
+            "type": "string"
+          },
           "type": "array"
         },
         "currentMilestone": {
@@ -67,6 +70,9 @@
         },
         "functionalities": {
           "title": "Functionalities Impacted",
+          "items": {
+            "type": "string"
+          },
           "type": "array"
         },
         "customerImpact": {
@@ -134,6 +140,10 @@
         "links": {
           "title": "Links",
           "type": "array",
+          "items": {
+            "type": "string",
+            "format": "url"
+          },
           "icon": "DefaultProperty"
         },
         "labels": {
@@ -240,21 +250,33 @@
         "tags": {
           "title": "Tags",
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "icon": "DefaultProperty"
         },
         "services": {
           "title": "Services Impacted",
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "icon": "DefaultProperty"
         },
         "environments": {
           "title": "Environments Impacted",
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "icon": "DefaultProperty"
         },
         "functionalities": {
           "title": "Functionalities Impacted",
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "icon": "DefaultProperty"
         },
         "createdBy": {
@@ -310,6 +332,13 @@
         "questions": {
           "title": "Retro Questions and Answers",
           "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {"type": "string"},
+              "answer": {"type": "string"}
+            }
+          },
           "icon": "DefaultProperty"
         }
       },
