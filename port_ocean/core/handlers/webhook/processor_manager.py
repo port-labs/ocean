@@ -76,8 +76,13 @@ class WebhookProcessorManager:
                 event = await self._event_queues[path].get()
                 with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
                     matching_processors = self._extract_matching_processors(event, path)
-                    for processor in matching_processors:
-                        await self._process_single_event(processor, path)
+                    # Process all matching processors in parallel
+                    await asyncio.gather(
+                        *(
+                            self._process_single_event(processor, path)
+                            for processor in matching_processors
+                        )
+                    )
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
                 for processor in matching_processors:
