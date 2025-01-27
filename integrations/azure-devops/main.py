@@ -62,9 +62,7 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for teams in azure_devops_client.generate_teams():
         if selector.include_members:
             logger.info(f"Enriching {len(teams)} teams with members")
-            teams = await azure_devops_client.enrich_teams_with_members(
-                teams
-            )
+            teams = await azure_devops_client.enrich_teams_with_members(teams)
 
         yield teams
 

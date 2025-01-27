@@ -284,33 +284,32 @@ async def test_generate_teams(mock_event_context: MagicMock) -> None:
 @pytest.mark.asyncio
 async def test_get_team_members() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
-    
-    test_team = {
-        "id": "team1",
-        "projectId": "proj1",
-        "name": "Team One"
-    }
-    
+
+    test_team = {"id": "team1", "projectId": "proj1", "name": "Team One"}
+
     expected_members = [
         {"id": "member1", "displayName": "Member One"},
-        {"id": "member2", "displayName": "Member Two"}
+        {"id": "member2", "displayName": "Member Two"},
     ]
 
     async def mock_get_paginated_by_top_and_skip(
         url: str, **kwargs: Any
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        assert f"projects/{test_team['projectId']}/teams/{test_team['id']}/members" in url
+        assert (
+            f"projects/{test_team['projectId']}/teams/{test_team['id']}/members" in url
+        )
         yield expected_members
+
 
 @pytest.mark.asyncio
 async def test_enrich_teams_with_members() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
-    
+
     test_teams = [
         {"id": "team1", "projectId": "proj1", "name": "Team One"},
-        {"id": "team2", "projectId": "proj1", "name": "Team Two"}
+        {"id": "team2", "projectId": "proj1", "name": "Team Two"},
     ]
-    
+
     team1_members = [{"id": "member1", "displayName": "Member One"}]
     team2_members = [{"id": "member2", "displayName": "Member Two"}]
 
@@ -329,6 +328,7 @@ async def test_enrich_teams_with_members() -> None:
         assert len(enriched_teams) == 2
         assert enriched_teams[0]["__members"] == team1_members
         assert enriched_teams[1]["__members"] == team2_members
+
 
 @pytest.mark.asyncio
 async def test_generate_repositories(mock_event_context: MagicMock) -> None:
