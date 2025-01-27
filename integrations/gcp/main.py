@@ -253,10 +253,7 @@ async def feed_events_callback(
         matching_resource_configs = [
             resource_config
             for resource_config in resource_configs
-            if (
-                resource_config.kind == asset_type
-                and isinstance(resource_config.selector, GCPResourceSelector)
-            )
+            if (resource_config.kind == asset_type)
         ]
         for matching_resource_config in matching_resource_configs:
             selector = matching_resource_config.selector
