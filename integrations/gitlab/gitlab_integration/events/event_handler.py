@@ -29,27 +29,31 @@ class BaseEventHandler(ABC):
         logger.info(f"Started {self.__class__.__name__} worker")
         while True:
             event_ctx, event, body = await self.webhook_tasks_queue.get()
-            logger.debug(
-                f"Retrieved event: {event} [ID: {event_ctx.id}] from Queue, notifying observers",
-                queue_size=self.webhook_tasks_queue.qsize(),
-            )
-            try:
-                async with event_context(
-                    "gitlab_http_event_async_worker", parent_override=event_ctx
-                ):
-                    event_id = event_ctx.id
-                    await self._notify(event, event_id, body)
-            except Exception as e:
-                logger.error(
-                    f"Error notifying observers for event: {event} [ID: {event_ctx.id}], error: {e}"
+            with logger.contextualize(
+                event_context=event_ctx.id,
+                event_type=event_ctx.event_type,
+                event_id=event_ctx.id,
+                event=event,
+            ):
+                logger.debug(
+                    f"Retrieved event: {event} [ID: {event_ctx.id}] from Queue, notifying observers",
+                    queue_size=self.webhook_tasks_queue.qsize(),
                 )
-            finally:
-                logger.info(
-                    f"Processed event {event} [ID: {event_ctx.id}]",
-                    event=event,
-                    event_context=event_ctx.id,
-                )
-                self.webhook_tasks_queue.task_done()
+                try:
+                    async with event_context(
+                        "gitlab_http_event_async_worker", parent_override=event_ctx
+                    ):
+                        event_id = event_ctx.id
+                        await self._notify(event, event_id, body)
+                except Exception as e:
+                    logger.error(
+                        f"Error notifying observers for event: {event}, error: {e}"
+                    )
+                finally:
+                    logger.info(
+                        f"Processed event {event}",
+                    )
+                    self.webhook_tasks_queue.task_done()
 
     async def start_event_processor(self) -> None:
         asyncio.create_task(self._start_event_processor())
