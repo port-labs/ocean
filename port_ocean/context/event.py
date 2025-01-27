@@ -176,8 +176,9 @@ async def event_context(
         logger.info("Event started")
         try:
             yield event
-        except:
+        except Exception as e:
             success = False
+            logger.error(f"Event failed with error: {str(e)}", exc_info=True)
             raise
         else:
             success = True
