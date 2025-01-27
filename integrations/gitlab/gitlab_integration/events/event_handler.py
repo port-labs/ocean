@@ -132,6 +132,3 @@ class SystemEventHandler(BaseEventHandler):
                 logger.error(
                     f"Failed to notify observer for event: {event} [ID: {event_id}], error: {result}"
                 )
-
-
-# faac7a07-050f-46bc-aad7-a3f9bc7f9d6d

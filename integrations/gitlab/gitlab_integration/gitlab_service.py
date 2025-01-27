@@ -874,7 +874,7 @@ class GitlabService:
                 f"Fetched file {file_path} in project {project.path_with_namespace}"
             )
             project_file = typing.cast(ProjectFile, project_file)
-            parsed_file = self._parse_file_content(project, project_file)
+            parsed_file = await self._parse_file_content(project, project_file)
             project_file_dict = project_file.asdict()
 
             if not parsed_file:
