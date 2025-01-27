@@ -3,7 +3,8 @@ import os
 import tempfile
 import typing
 
-from fastapi import Request, Response
+from aiolimiter import AsyncLimiter
+from fastapi import Request, Response, BackgroundTasks
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -17,7 +18,6 @@ from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_dat
 from gcp_core.overrides import (
     GCPCloudResourceSelector,
     GCPPortAppConfig,
-    GCPResourceSelector,
     ProtoConfig,
 )
 from port_ocean.context.event import event
@@ -37,6 +37,8 @@ from gcp_core.utils import (
     get_credentials_json,
     resolve_request_controllers,
 )
+
+PROJECT_V3_GET_REQUESTS_RATE_LIMITER: AsyncLimiter
 
 
 async def _resolve_resync_method_for_resource(
@@ -73,6 +75,15 @@ async def _resolve_resync_method_for_resource(
                 rate_limiter=asset_rate_limiter,
                 semaphore=asset_semaphore,
             )
+
+
+@ocean.on_start()
+async def setup_real_time_request_controllers() -> None:
+    global PROJECT_V3_GET_REQUESTS_RATE_LIMITER
+    if not ocean.event_listener_type == "ONCE":
+        PROJECT_V3_GET_REQUESTS_RATE_LIMITER, _ = await resolve_request_controllers(
+            AssetTypesWithSpecialHandling.PROJECT
+        )
 
 
 @ocean.on_start()
@@ -163,8 +174,56 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield resources_batch
 
 
+async def process_realtime_event(
+    asset_type: str,
+    asset_name: str,
+    asset_project: str,
+    asset_data: dict[str, typing.Any],
+    config: ProtoConfig,
+) -> None:
+    """
+    This function runs in the background to ensure the real-time event endpoints
+    do not time out while waiting for rate-limited operations to complete. It is triggered
+    by the real-time events handler when a new event is received.
+
+    ROJECT_V3_GET_REQUESTS_RATE_LIMITER is provided as a static value instead of being dynamic because all real-time events
+    needs to share the same instance of the limiter and it had to be instantiated on start for this to be possible.
+    The dynamic initialization of the limiter will make it impossible to share the same instance across all event context.
+    """
+    try:
+        logger.debug(
+            f"Processing real-time event for {asset_type} : {asset_name} in the background"
+        )
+        asset_resource_data = await feed_event_to_resource(
+            asset_type,
+            asset_name,
+            asset_project,
+            asset_data,
+            PROJECT_V3_GET_REQUESTS_RATE_LIMITER,
+            config,
+        )
+        if asset_data.get("deleted") is True:
+            logger.info(
+                f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
+            )
+            await ocean.unregister_raw(asset_type, [asset_resource_data])
+        else:
+            logger.info(
+                f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
+            )
+            await ocean.register_raw(asset_type, [asset_resource_data])
+    except AssetHasNoProjectAncestorError:
+        logger.exception(
+            f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
+        )
+    except Exception as e:
+        logger.exception(f"Got error {e} while processing a real time event")
+
+
 @ocean.router.post("/events")
-async def feed_events_callback(request: Request) -> Response:
+async def feed_events_callback(
+    request: Request, background_tasks: BackgroundTasks
+) -> Response:
     """
     This is the real-time events handler. The subscription which is connected to the Feeds Topic will send events here once
     the events are inserted into the Assets Inventory.
@@ -193,10 +252,7 @@ async def feed_events_callback(request: Request) -> Response:
         matching_resource_configs = [
             resource_config
             for resource_config in resource_configs
-            if (
-                resource_config.kind == asset_type
-                and isinstance(resource_config.selector, GCPResourceSelector)
-            )
+            if (resource_config.kind == asset_type)
         ]
         for matching_resource_config in matching_resource_configs:
             selector = matching_resource_config.selector
@@ -205,30 +261,24 @@ async def feed_events_callback(request: Request) -> Response:
                     getattr(selector, "preserve_api_response_case_style", False)
                 )
             )
-            asset_resource_data = await feed_event_to_resource(
+            background_tasks.add_task(
+                process_realtime_event,
                 asset_type,
                 asset_name,
                 asset_project,
                 asset_data,
                 config,
             )
-            if asset_data.get("deleted") is True:
-                logger.info(
-                    f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
-                )
-                await ocean.unregister_raw(asset_type, [asset_resource_data])
-            else:
-                logger.info(
-                    f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
-                )
-                await ocean.register_raw(asset_type, [asset_resource_data])
+            logger.info(
+                f"Added background task to process real-time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
+            )
     except AssetHasNoProjectAncestorError:
         logger.exception(
             f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
         )
     except GotFeedCreatedSuccessfullyMessageError:
         logger.info("Assets Feed created successfully")
-    except Exception:
-        logger.exception("Got error while handling a real time event")
+    except Exception as e:
+        logger.exception(f"Got error {str(e)} while handling a real time event")
         return Response(status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR)
     return Response(status_code=200)
