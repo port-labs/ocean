@@ -178,9 +178,7 @@ async def list_all_subscriptions_per_project(
 
 
 @cache_iterator_result()
-async def search_all_projects(
-    rate_limiter: AsyncLimiter,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Searching projects")
     async with ProjectsAsyncClient() as projects_client:
         async for projects in paginated_query(
@@ -188,7 +186,6 @@ async def search_all_projects(
             "search_projects",
             {},
             lambda response: parse_protobuf_messages(response.projects),
-            rate_limiter,
         ):
             yield projects
 

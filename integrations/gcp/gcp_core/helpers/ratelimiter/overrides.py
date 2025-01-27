@@ -29,8 +29,3 @@ class PubSubAdministratorPerMinutePerProject(PubSubAPI):
 class ProjectGetRequestsPerMinutePerProject(CloudResourceManagerAPI):
     quota_id = "ProjectV3GetRequestsPerMinutePerProject"
     container_type = ContainerType.PROJECT
-
-
-class ProjectSearchRequestsPerMinutePerProject(CloudResourceManagerAPI):
-    quota_id = "ProjectV3SearchRequestsPerMinutePerProject"
-    container_type = ContainerType.PROJECT
