@@ -16,7 +16,7 @@ from port_ocean.context.event import (
     EventContext,
 )
 
-Observer = Callable[[str, str, dict[str, Any]], Awaitable[Any]]
+Observer = Callable[[str, dict[str, Any]], Awaitable[Any]]
 
 
 class BaseEventHandler(ABC):
@@ -36,15 +36,14 @@ class BaseEventHandler(ABC):
                 event=event,
             ):
                 logger.debug(
-                    f"Retrieved event: {event} [ID: {event_ctx.id}] from Queue, notifying observers",
+                    f"Retrieved event: {event} from Queue, notifying observers",
                     queue_size=self.webhook_tasks_queue.qsize(),
                 )
                 try:
                     async with event_context(
                         "gitlab_http_event_async_worker", parent_override=event_ctx
                     ):
-                        event_id = event_ctx.id
-                        await self._notify(event, event_id, body)
+                        await self._notify(event, body)
                 except Exception as e:
                     logger.error(
                         f"Error notifying observers for event: {event}, error: {e}"
@@ -59,14 +58,11 @@ class BaseEventHandler(ABC):
         asyncio.create_task(self._start_event_processor())
 
     @abstractmethod
-    async def _notify(self, event: str, event_id: str, body: dict[str, Any]) -> None:
+    async def _notify(self, event: str, body: dict[str, Any]) -> None:
         pass
 
     async def notify(self, event: str, body: dict[str, Any]) -> None:
-        logger.debug(
-            f"Received event: {event}, putting it in Queue for processing",
-            event_context=current_event_context.id,
-        )
+        logger.debug(f"Received event: {event}, putting it in Queue for processing")
         await self.webhook_tasks_queue.put(
             (
                 deepcopy(current_event_context),
@@ -85,7 +81,7 @@ class EventHandler(BaseEventHandler):
         for event in events:
             self._observers[event].append(observer)
 
-    async def _notify(self, event: str, event_id: str, body: dict[str, Any]) -> None:
+    async def _notify(self, event: str, body: dict[str, Any]) -> None:
         observers_list = self._observers.get(event, [])
 
         if not observers_list:
@@ -98,12 +94,11 @@ class EventHandler(BaseEventHandler):
                 if inspect.ismethod(observer):
                     handler = observer.__self__.__class__.__name__
                     logger.debug(
-                        f"Notifying observer: {handler}, for event: {event} [ID: {event_id}]",
+                        f"Notifying observer: {handler}, for event: {event}",
                         event=event,
                         handler=handler,
-                        event_context=event_id,
                     )
-                asyncio.create_task(observer(event, event_id, deepcopy(body)))  # type: ignore
+                asyncio.create_task(observer(event, deepcopy(body)))  # type: ignore
 
 
 class SystemEventHandler(BaseEventHandler):
@@ -119,12 +114,12 @@ class SystemEventHandler(BaseEventHandler):
     def add_client(self, client: GitlabService) -> None:
         self._clients.append(client)
 
-    async def _notify(self, event: str, event_id, body: dict[str, Any]) -> None:
+    async def _notify(self, event: str, body: dict[str, Any]) -> None:
         # best effort to notify using all clients, as we don't know which one of the clients have the permission to
         # access the project
         results = await asyncio.gather(
             *(
-                hook_handler(client).on_hook(event, event_id, deepcopy(body))
+                hook_handler(client).on_hook(event, deepcopy(body))
                 for client in self._clients
                 for hook_handler in self._hook_handlers.get(event, [])
             ),
@@ -134,5 +129,5 @@ class SystemEventHandler(BaseEventHandler):
         for result in results:
             if isinstance(result, Exception):
                 logger.error(
-                    f"Failed to notify observer for event: {event} [ID: {event_id}], error: {result}"
+                    f"Failed to notify observer for event: {event}, error: {result}"
                 )

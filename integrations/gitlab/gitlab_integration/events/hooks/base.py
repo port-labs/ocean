@@ -24,7 +24,7 @@ class HookHandler(ABC):
         self.gitlab_service = gitlab_service
 
     @abstractmethod
-    async def on_hook(self, event: str, event_id: str, body: dict[str, Any]) -> None:
+    async def on_hook(self, event: str, body: dict[str, Any]) -> None:
         pass
 
     async def _register_object_with_members(self, kind: str, gitlab_object: RESTObject):
@@ -64,7 +64,7 @@ class HookHandler(ABC):
 
 
 class ProjectHandler(HookHandler):
-    async def on_hook(self, event: str, event_id: str, body: dict[str, Any]) -> None:
+    async def on_hook(self, event: str, body: dict[str, Any]) -> None:
         logger.info(f"Handling {event}")
 
         project_id = (
@@ -74,18 +74,18 @@ class ProjectHandler(HookHandler):
 
         if project:
             logger.info(
-                f"Handling hook {event} [ID: {event_id}] for project {project.path_with_namespace}"
+                f"Handling hook {event} for project {project.path_with_namespace}"
             )
             try:
                 await self._on_hook(body, project)
-                logger.info(f"Finished handling {event} [ID: {event_id}]")
+                logger.info(f"Finished handling {event}")
             except Exception as e:
                 logger.error(
-                    f"Error handling hook {event} [ID: {event_id}] for project {project.path_with_namespace}. Error: {e}"
+                    f"Error handling hook {event} for project {project.path_with_namespace}. Error: {e}"
                 )
         else:
             logger.info(
-                f"Project {body['project']['id']} was filtered for event {event} [ID: {event_id}]. Skipping..."
+                f"Project {body['project']['id']} was filtered for event {event}. Skipping..."
             )
 
     @abstractmethod
@@ -94,16 +94,14 @@ class ProjectHandler(HookHandler):
 
 
 class GroupHandler(HookHandler):
-    async def on_hook(self, event: str, event_id, body: dict[str, Any]) -> None:
-        logger.info(f"Handling {event} [ID: {event_id}]")
+    async def on_hook(self, event: str, body: dict[str, Any]) -> None:
+        logger.info(f"Handling {event}")
 
         group_id = body.get("group_id", body.get("group", {}).get("id"))
         group = await self.gitlab_service.get_group(group_id)
         await self._on_hook(body, group)
         group_path = body.get("full_path", body.get("group_path"))
-        logger.info(
-            f"Finished handling {event} [ID: {event_id}] for group {group_path}"
-        )
+        logger.info(f"Finished handling {event} for group {group_path}")
 
     @abstractmethod
     async def _on_hook(
