@@ -33,3 +33,10 @@ async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     kafka_clients = init_clients()
     for kafka_client in kafka_clients:
         yield kafka_client.describe_topics()
+
+
+@ocean.on_resync("consumer_group")
+async def resync_consumer_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    kafka_clients = init_clients()
+    for kafka_client in kafka_clients:
+        yield await kafka_client.describe_consumer_groups()

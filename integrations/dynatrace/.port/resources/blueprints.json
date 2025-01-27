@@ -211,7 +211,14 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "entities": {
+        "title": "Related Entities",
+        "target": "dynatraceEntity",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "dynatraceEntityCloudResource",
@@ -243,6 +250,58 @@
           "description": "A list of tags of the entity.",
           "items": {
             "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "dynatraceTeam",
+    "description": "This blueprint represents a Dynatrace team in our software catalog",
+    "title": "Dynatrace Team",
+    "icon": "Dynatrace",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "responsibilities": {
+          "type": "object",
+          "title": "Responsibilities"
+        },
+        "productivityToolsContact": {
+          "type": "array",
+          "title": "Productivity Tools Contact",
+          "items": {
+            "type": "string",
+            "format": "url"
+          }
+        },
+        "emailContact": {
+          "type": "string",
+          "title": "Email Contact",
+          "format": "user"
+        },
+        "additionalDetails": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array",
+          "title": "Additional Details"
+        },
+        "links": {
+          "icon": "DefaultProperty",
+          "type": "array",
+          "title": "Links",
+          "items": {
+            "type": "string",
+            "format": "url"
           }
         }
       },
