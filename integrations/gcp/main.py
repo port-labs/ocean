@@ -64,6 +64,8 @@ async def _resolve_resync_method_for_resource(
             return search_all_folders()
         case AssetTypesWithSpecialHandling.ORGANIZATION:
             return search_all_organizations()
+        case AssetTypesWithSpecialHandling.PROJECT:
+            return search_all_projects()
         case _:
             asset_rate_limiter, asset_semaphore = await resolve_request_controllers(
                 kind
