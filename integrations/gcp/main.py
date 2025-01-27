@@ -18,7 +18,6 @@ from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_dat
 from gcp_core.overrides import (
     GCPCloudResourceSelector,
     GCPPortAppConfig,
-    GCPResourceSelector,
     ProtoConfig,
 )
 from port_ocean.context.event import event
@@ -180,7 +179,7 @@ async def process_realtime_event(
     asset_name: str,
     asset_project: str,
     asset_data: dict[str, typing.Any],
-    config: typing.Optional[ProtoConfig] = None,
+    config: ProtoConfig,
 ) -> None:
     """
     This function runs in the background to ensure the real-time event endpoints

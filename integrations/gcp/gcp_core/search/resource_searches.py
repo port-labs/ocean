@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 import typing
 
 from google.api_core.exceptions import NotFound, PermissionDenied
@@ -217,7 +217,7 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def get_single_project(
     project_name: str,
     rate_limiter: AsyncLimiter,
-    config: Optional[ProtoConfig] = None,
+    config: ProtoConfig,
 ) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         async with rate_limiter:
@@ -232,9 +232,7 @@ async def get_single_project(
             )
 
 
-async def get_single_folder(
-    folder_name: str, config: Optional[ProtoConfig] = None
-) -> RAW_ITEM:
+async def get_single_folder(folder_name: str, config: ProtoConfig) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
         return parse_protobuf_message(
             await folders_client.get_folder(
@@ -245,7 +243,7 @@ async def get_single_folder(
 
 
 async def get_single_organization(
-    organization_name: str, config: Optional[ProtoConfig] = None
+    organization_name: str, config: ProtoConfig
 ) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
@@ -258,7 +256,7 @@ async def get_single_organization(
 
 async def get_single_topic(
     topic_id: str,
-    config: Optional[ProtoConfig] = None,
+    config: ProtoConfig,
 ) -> RAW_ITEM:
     """
     The Topics are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
@@ -275,7 +273,7 @@ async def get_single_topic(
 
 async def get_single_subscription(
     subscription_id: str,
-    config: Optional[ProtoConfig] = None,
+    config: ProtoConfig,
 ) -> RAW_ITEM:
     """
     Subscriptions are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
@@ -316,7 +314,7 @@ async def feed_event_to_resource(
     project_id: str,
     asset_data: dict[str, Any],
     project_rate_limiter: AsyncLimiter,
-    config: Optional[ProtoConfig] = None,
+    config: ProtoConfig,
 ) -> RAW_ITEM:
     resource = None
     if asset_data.get("deleted") is True:
