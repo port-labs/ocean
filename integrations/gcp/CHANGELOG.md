@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.98 (2025-01-24)
+
+
+### Improvements
+
+- Added rate limiting support for `ProjectsV3GetRequestsPerMinutePerProject` to handle GCP project quota limits during real-time event processing.
+- Implemented a shared `AsyncLimiter` instance to ensure consistent rate limiting across real-time events
+- Moved real-time event processing to run in the background, preventing timeouts and ensuring smoother handling of rate-limited operations.
+
+
 ## 0.1.97 (2025-01-23)
 
 
