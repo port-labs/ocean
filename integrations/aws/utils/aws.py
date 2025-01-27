@@ -1,4 +1,4 @@
-from typing import Any, AsyncIterator, Optional, Union
+from typing import Any, AsyncIterator, Optional, Union, List
 
 import aioboto3
 from port_ocean.context.ocean import ocean
@@ -56,23 +56,17 @@ async def get_accounts() -> AsyncIterator[AwsCredentials]:
 
 async def session_factory(
     credentials: AwsCredentials,
-    custom_region: Optional[str],
+    custom_regions: Optional[List[str]],
     use_default_region: Optional[bool],
 ) -> AsyncIterator[aioboto3.Session]:
 
-    if use_default_region:
-        default_region = get_default_region_from_credentials(credentials)
-        yield await credentials.create_session(default_region)
-    elif custom_region:
-        yield await credentials.create_session(custom_region)
-    else:
-        async for session in credentials.create_session_for_each_region():
-            yield session
+    async for session in credentials.create_session_for_each_region(custom_regions):
+        yield session
 
 
 async def get_sessions(
     custom_account_id: Optional[str] = None,
-    custom_region: Optional[str] = None,
+    custom_regions: Optional[List[str]] = None,
     use_default_region: Optional[bool] = None,
 ) -> AsyncIterator[aioboto3.Session]:
     """
@@ -83,12 +77,12 @@ async def get_sessions(
     if custom_account_id:
         credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
         async for session in session_factory(
-            credentials, custom_region, use_default_region
+            credentials, custom_regions, use_default_region
         ):
             yield session
     else:
         tasks = [
-            session_factory(credentials, custom_region, use_default_region)
+            session_factory(credentials, custom_regions, use_default_region)
             async for credentials in get_accounts()
         ]
         if tasks:

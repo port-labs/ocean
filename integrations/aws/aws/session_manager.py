@@ -57,6 +57,40 @@ class SessionManager:
         self._organization_reader = await self._get_organization_session()
         await self._update_available_access_credentials()
 
+
+    async def reset_credentials_for_account(self, account_id: str) -> None:
+        """
+        This method resets the session for the specified account ID.
+        It is used when the application needs to interact with a specific AWS account.
+        """
+        if account_id == self._application_account_id:
+            return
+        
+        application_credentials = await self._get_application_credentials()
+        application_session = await application_credentials.create_session()
+        async with application_session.client("sts") as sts_client:
+            try:
+                account_role = await sts_client.assume_role(
+                    RoleArn=f'arn:aws:iam::{account_id}:role/{self._get_account_read_role_name()}',
+                    RoleSessionName="OceanMemberAssumeRoleSession",
+                    DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
+                )
+                raw_credentials = account_role["Credentials"]
+                credentials = AwsCredentials(
+                    account_id=account_id,
+                    access_key_id=raw_credentials["AccessKeyId"],
+                    secret_access_key=raw_credentials["SecretAccessKey"],
+                    session_token=raw_credentials["SessionToken"],
+                )
+                await credentials.update_enabled_regions()
+                return credentials
+            
+            except sts_client.exceptions.ClientError as e:
+                if is_access_denied_exception(e):
+                    logger.info(f"Cannot assume role in account {account_id}. Skipping.")
+                    pass
+        
+
     async def _get_application_credentials(self) -> AwsCredentials:
         aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
         aws_secret_access_key = ocean.integration_config.get("aws_secret_access_key")

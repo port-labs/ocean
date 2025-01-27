@@ -11,10 +11,11 @@ from utils.misc import (
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
     is_resource_not_found_exception,
+    is_token_expired_exception,
     CloudControlThrottlingConfig,
     CloudControlClientProtocol,
 )
-from utils.aws import get_sessions
+from utils.aws import get_sessions, session_factory
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.aws import _session_manager
@@ -192,6 +193,22 @@ async def resync_custom_kind(
                         f"Skipping resyncing {kind} in region {region} due to missing access permissions"
                     )
                     break
+                if is_token_expired_exception(e):
+                    logger.warning(
+                        f"Resetting credentials for account {account_id} in region {region} due to token expiration"
+                    )
+                    credentials = await _session_manager.reset_credentials_for_account(account_id)
+                    async for reset_session in session_factory(credentials, [region]): # only one region
+                        resync_custom_kind(
+                            kind,
+                            reset_session,
+                            service_name,
+                            describe_method,
+                            list_param,
+                            marker_param,
+                            resource_config,
+                            describe_method_params,
+                        )
                 else:
                     raise e
 
