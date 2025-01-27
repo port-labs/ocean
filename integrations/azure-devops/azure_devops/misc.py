@@ -67,6 +67,19 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
     selector: AzureDevopsSelector
 
 
+class TeamSelector(Selector):
+    include_members: bool = Field(
+        alias="includeMembers",
+        default=False,
+        description="Whether to include the members of the team, defaults to false",
+    )
+
+
+class AzureDevopsTeamResourceConfig(ResourceConfig):
+    kind: Literal["team"]
+    selector: TeamSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -83,6 +96,7 @@ class GitPortAppConfig(PortAppConfig):
     resources: list[
         AzureDevopsProjectResourceConfig
         | AzureDevopsWorkItemResourceConfig
+        | AzureDevopsTeamResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

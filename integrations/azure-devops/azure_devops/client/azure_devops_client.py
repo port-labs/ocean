@@ -72,16 +72,42 @@ class AzureDevopsClient(HTTPBaseClient):
         async for teams in self._get_paginated_by_top_and_skip(teams_url):
             yield teams
 
+    async def get_team_members(self, team: dict[str, Any]) -> list[dict[str, Any]]:
+        members_url = (
+            f"{self._organization_base_url}/{API_URL_PREFIX}/projects/"
+            f"{team['projectId']}/teams/{team['id']}/members"
+        )
+        members = []
+        async for members_batch in self._get_paginated_by_top_and_skip(members_url):
+            members.extend(members_batch)
+        return members
+
+    async def enrich_teams_with_members(
+        self, teams: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        logger.debug(f"Fetching members for {len(teams)} teams")
+
+        team_tasks = [self.get_team_members(team) for team in teams]
+
+        members_results = await asyncio.gather(*team_tasks)
+
+        total_members = sum(len(members) for members in members_results)
+        logger.info(f"Retrieved {total_members} members across {len(teams)} teams")
+
+        for team, members in zip(teams, members_results):
+            team["__members"] = members
+
+        return teams
+
     async def generate_members(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for teams in self.generate_teams():
-            for team in teams:
-                members_in_teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{team['projectId']}/teams/{team['id']}/members"
-                async for members in self._get_paginated_by_top_and_skip(
-                    members_in_teams_url
-                ):
-                    for member in members:
-                        member["__teamId"] = team["id"]
-                    yield members
+        members_url = (
+            self._organization_base_url.replace("dev", "vssps.dev")
+            + f"/{API_URL_PREFIX}/graph/users?api-version=7.1-preview.1"
+        )
+        async for members in self._get_paginated_by_top_and_continuation_token(
+            members_url
+        ):
+            yield members
 
     @cache_iterator_result()
     async def generate_repositories(

@@ -282,40 +282,53 @@ async def test_generate_teams(mock_event_context: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_generate_members() -> None:
+async def test_get_team_members() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
-
-    # MOCK
-    async def mock_generate_teams() -> AsyncGenerator[List[Dict[str, Any]], None]:
-        yield [{"id": "team1", "name": "Team One", "projectId": "proj1"}]
+    
+    test_team = {
+        "id": "team1",
+        "projectId": "proj1",
+        "name": "Team One"
+    }
+    
+    expected_members = [
+        {"id": "member1", "displayName": "Member One"},
+        {"id": "member2", "displayName": "Member Two"}
+    ]
 
     async def mock_get_paginated_by_top_and_skip(
         url: str, **kwargs: Any
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        if "members" in url:
-            yield [
-                {"id": "member1", "name": "Member One"},
-                {"id": "member2", "name": "Member Two"},
-            ]
-        else:
-            yield []
+        assert f"projects/{test_team['projectId']}/teams/{test_team['id']}/members" in url
+        yield expected_members
 
-    with patch.object(client, "generate_teams", side_effect=mock_generate_teams):
-        with patch.object(
-            client,
-            "_get_paginated_by_top_and_skip",
-            side_effect=mock_get_paginated_by_top_and_skip,
-        ):
-            # ACT
-            members: List[Dict[str, Any]] = []
-            async for member_batch in client.generate_members():
-                for member in member_batch:
-                    member["__teamId"] = "team1"
-                members.extend(member_batch)
+@pytest.mark.asyncio
+async def test_enrich_teams_with_members() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    
+    test_teams = [
+        {"id": "team1", "projectId": "proj1", "name": "Team One"},
+        {"id": "team2", "projectId": "proj1", "name": "Team Two"}
+    ]
+    
+    team1_members = [{"id": "member1", "displayName": "Member One"}]
+    team2_members = [{"id": "member2", "displayName": "Member Two"}]
 
-            # ASSERT
-            assert members == EXPECTED_MEMBERS
+    async def mock_get_team_members(team: Dict[str, Any]) -> List[Dict[str, Any]]:
+        return team1_members if team["id"] == "team1" else team2_members
 
+    with patch.object(
+        client,
+        "get_team_members",
+        side_effect=mock_get_team_members,
+    ):
+        # ACT
+        enriched_teams = await client.enrich_teams_with_members(test_teams)
+
+        # ASSERT
+        assert len(enriched_teams) == 2
+        assert enriched_teams[0]["__members"] == team1_members
+        assert enriched_teams[1]["__members"] == team2_members
 
 @pytest.mark.asyncio
 async def test_generate_repositories(mock_event_context: MagicMock) -> None:
