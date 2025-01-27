@@ -300,6 +300,17 @@ async def test_get_team_members() -> None:
         )
         yield expected_members
 
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_skip",
+        side_effect=mock_get_paginated_by_top_and_skip,
+    ):
+        # ACT
+        members = await client.get_team_members(test_team)
+
+        # ASSERT
+        assert members == expected_members
+
 
 @pytest.mark.asyncio
 async def test_enrich_teams_with_members() -> None:
