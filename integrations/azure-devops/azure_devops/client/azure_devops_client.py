@@ -102,7 +102,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_members(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         members_url = (
             self._organization_base_url.replace("dev", "vssps.dev")
-            + f"/{API_URL_PREFIX}/graph/users?api-version=7.1-preview.1"
+            + f"/{API_URL_PREFIX}/graph/users"
         )
         async for members in self._get_paginated_by_top_and_continuation_token(
             members_url
