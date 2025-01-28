@@ -158,6 +158,22 @@ class PortOceanContext:
         Args:
             path: The path to register the webhook processor for.
             processor: The processor to register.
+        Examples:
+            >>> from port_ocean.context.ocean import ocean
+            >>> from port_ocean.core.handlers.webhook import AbstractWebhookProcessor
+            >>> from port_ocean.core.handlers.webhook import WebhookEvent
+            >>> class MyWebhookProcessor(AbstractWebhookProcessor):
+            ...     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+            ...         return True
+            ...     async def validate_payload(self, payload: EventPayload) -> bool:
+            ...         return True
+            ...     async def handle_event(self, payload: EventPayload) -> None:
+            ...         pass
+            >>> def events_filter(event: WebhookEvent) -> bool:
+            ...     return True
+            >>> ocean.add_webhook_processor('/my-webhook', MyWebhookProcessor, events_filter)
+        Raises:
+            ValueError: If the processor does not extend AbstractWebhookProcessor.
         """
         self.app.webhook_manager.register_processor(path, processor, events_filter)
 
