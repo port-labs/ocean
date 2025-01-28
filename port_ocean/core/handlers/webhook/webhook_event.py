@@ -64,7 +64,7 @@ class WebhookEvent:
             payload=self.payload,
             headers=self.headers,
             original_request=self._original_request,
-            timestamps=self._timestamps,
+            timestamps=self._timestamps.copy(),
         )
 
     def set_timestamp(self, timestamp: WebhookEventTimestamp) -> None:
