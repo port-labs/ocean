@@ -3,13 +3,7 @@ from typing import Any
 from loguru import logger
 
 from port_ocean.core.handlers.port_app_config.base import BasePortAppConfig
-
-
-class EmptyPortAppConfigError(Exception):
-    """Exception raised when the Port app configuration is empty."""
-
-    def __init__(self, message="Port app config is empty"):
-        super().__init__(message)
+from port_ocean.exceptions.api import EmptyPortAppConfigError
 
 
 class APIPortAppConfig(BasePortAppConfig):

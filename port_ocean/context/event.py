@@ -14,12 +14,12 @@ from typing import (
 from uuid import uuid4
 
 from loguru import logger
-from port_ocean.core.handlers.port_app_config.api import EmptyPortAppConfigError
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.context.resource import resource
+from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.exceptions.context import (
     EventContextNotFoundError,
     ResourceContextNotFoundError,
