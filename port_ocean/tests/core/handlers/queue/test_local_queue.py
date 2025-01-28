@@ -6,7 +6,7 @@ from port_ocean.core.handlers.queue.local_queue import LocalQueue
 
 
 @dataclass
-class TestMessage:
+class MockMessage:
     """Example message type for testing."""
 
     id: str
@@ -21,12 +21,12 @@ class TestLocalQueue:
     """
 
     @pytest.fixture
-    def queue(self) -> LocalQueue[TestMessage]:
-        return LocalQueue[TestMessage]()
+    def queue(self) -> LocalQueue[MockMessage]:
+        return LocalQueue[MockMessage]()
 
-    async def test_basic_queue_operations(self, queue: LocalQueue[TestMessage]) -> None:
+    async def test_basic_queue_operations(self, queue: LocalQueue[MockMessage]) -> None:
         """Test basic put/get operations."""
-        message = TestMessage(id="1", data="test")
+        message = MockMessage(id="1", data="test")
 
         # Put item in queue
         await queue.put(message)
@@ -40,12 +40,12 @@ class TestLocalQueue:
         # Mark as processed
         await queue.commit()
 
-    async def test_fifo_order(self, queue: LocalQueue[TestMessage]) -> None:
+    async def test_fifo_order(self, queue: LocalQueue[MockMessage]) -> None:
         """Demonstrate and test FIFO (First In, First Out) behavior."""
         messages = [
-            TestMessage(id="1", data="first"),
-            TestMessage(id="2", data="second"),
-            TestMessage(id="3", data="third"),
+            MockMessage(id="1", data="first"),
+            MockMessage(id="2", data="second"),
+            MockMessage(id="3", data="third"),
         ]
 
         # Put items in queue
@@ -58,7 +58,7 @@ class TestLocalQueue:
             assert received.id == expected.id
             await queue.commit()
 
-    async def test_wait_for_completion(self, queue: LocalQueue[TestMessage]) -> None:
+    async def test_wait_for_completion(self, queue: LocalQueue[MockMessage]) -> None:
         """Example of waiting for all messages to be processed."""
         processed_count = 0
 
@@ -77,7 +77,7 @@ class TestLocalQueue:
         # Add messages
         message_count = 5
         for i in range(message_count):
-            await queue.put(TestMessage(id=str(i), data=f"test_{i}"))
+            await queue.put(MockMessage(id=str(i), data=f"test_{i}"))
 
         # Start processor
         processor = asyncio.create_task(slow_processor())

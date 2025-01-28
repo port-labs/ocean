@@ -53,6 +53,8 @@ class RetryableProcessor(MockWebhookProcessor):
 
 
 class TestableWebhookProcessorManager(WebhookProcessorManager):
+    __test__ = False
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.running_processors: list[AbstractWebhookProcessor] = []
