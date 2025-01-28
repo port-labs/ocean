@@ -1,19 +1,38 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Optional
 import asyncio
 from loguru import logger
 
-from .webhook_event import WebhookEvent, EventPayload
+from port_ocean.exceptions.webhook_processor import RetryableError
 
-
-class RetryableError(Exception):
-    """Base exception class for errors that should trigger a retry."""
-
-    pass
+from .webhook_event import WebhookEvent, EventPayload, EventHeaders
 
 
 class AbstractWebhookProcessor(ABC):
-    """Abstract base class for webhook processors."""
+    """
+    Abstract base class for webhook processors.
+    Extend this class to implement custom webhook processing logic.
+
+    Attributes:
+        max_retries: The maximum number of retries before giving up.
+        initial_retry_delay_seconds: The initial delay before the first retry.
+        max_retry_delay_seconds: The maximum delay between retries.
+        exponential_base_seconds: The base for exponential backoff calculations.
+
+    Args:
+        event: The webhook event to process.
+
+    Examples:
+        >>> from port_ocean.core.handlers.webhook import AbstractWebhookProcessor
+        >>> from port_ocean.core.handlers.webhook import WebhookEvent
+        >>> class MyWebhookProcessor(AbstractWebhookProcessor):
+        ...     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+        ...         return True
+        ...     async def validate_payload(self, payload: EventPayload) -> bool:
+        ...         return True
+        ...     async def handle_event(self, payload: EventPayload) -> None:
+        ...         pass
+    """
 
     max_retries: int = 3
     initial_retry_delay_seconds: float = 1.0
@@ -98,9 +117,7 @@ class AbstractWebhookProcessor(ABC):
                 raise
 
     @abstractmethod
-    async def authenticate(
-        self, payload: EventPayload, headers: Dict[str, str]
-    ) -> bool:
+    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         """Authenticate the request."""
         pass
 
