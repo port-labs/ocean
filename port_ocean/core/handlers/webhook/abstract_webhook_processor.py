@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 import asyncio
 from loguru import logger
 
@@ -42,16 +41,6 @@ class AbstractWebhookProcessor(ABC):
     def __init__(self, event: WebhookEvent) -> None:
         self.event = event
         self.retry_count = 0
-
-    @property
-    def event_kind(self) -> Optional[str]:
-        """Extract event type from the webhook payload. Override if needed."""
-        return None
-
-    @property
-    def resource_id(self) -> Optional[str]:
-        """Extract resource identifier from the webhook payload. Override if needed."""
-        return None
 
     async def on_error(self, error: Exception) -> None:
         """Hook to handle errors during processing. Override if needed."""
