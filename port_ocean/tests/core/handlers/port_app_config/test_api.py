@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
+from port_ocean.exceptions.api import EmptyPortAppConfigError
 
 
 @pytest.fixture
@@ -40,7 +41,7 @@ async def test_get_port_app_config_empty_config_raises_value_error(
     mock_context.port_client.get_current_integration.return_value = {"config": {}}
 
     # Act & Assert
-    with pytest.raises(ValueError, match="Integration port app config is empty"):
+    with pytest.raises(EmptyPortAppConfigError, match="Port app config is empty"):
         await api_config._get_port_app_config()
 
 

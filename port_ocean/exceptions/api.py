@@ -18,4 +18,5 @@ class InternalServerException(BaseAPIException):
 class EmptyPortAppConfigError(Exception):
     """Exception raised when the Port app configuration is empty."""
 
-    pass
+    def __init__(self, message="Port app config is empty"):
+        super().__init__(message)
