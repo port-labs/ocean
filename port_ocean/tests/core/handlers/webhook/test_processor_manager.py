@@ -56,6 +56,16 @@ class TestableWebhookProcessorManager(WebhookProcessorManager):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.running_processors: list[AbstractWebhookProcessor] = []
+        self.no_matching_processors: bool = False
+
+    def _extract_matching_processors(
+        self, event: WebhookEvent, path: str
+    ) -> list[AbstractWebhookProcessor]:
+        try:
+            return super()._extract_matching_processors(event, path)
+        except ValueError:
+            self.no_matching_processors = True
+            raise
 
     async def _process_single_event(
         self, processor: AbstractWebhookProcessor, path: str
@@ -293,12 +303,8 @@ class TestWebhookProcessorManager:
 
         await asyncio.sleep(0.1)
 
-        # Since no processors match, the original event should still have the error timestamp
-        # assert (
-        #     mock_event.get_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
-        #     is not None
-        # )
-        self.assert_event_processed_with_error(processor_manager.running_processors[0])
+        assert processor_manager.no_matching_processors
+        assert len(processor_manager.running_processors) == 0
 
     async def test_multiple_processors(
         self, processor_manager: TestableWebhookProcessorManager
