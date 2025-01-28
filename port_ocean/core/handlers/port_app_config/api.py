@@ -5,6 +5,13 @@ from loguru import logger
 from port_ocean.core.handlers.port_app_config.base import BasePortAppConfig
 
 
+class EmptyPortAppConfigError(Exception):
+    """Exception raised when the Port app configuration is empty."""
+
+    def __init__(self, message="Port app config is empty"):
+        super().__init__(message)
+
+
 class APIPortAppConfig(BasePortAppConfig):
     """Class for obtaining port application configuration through an API.
 
@@ -24,5 +31,5 @@ class APIPortAppConfig(BasePortAppConfig):
                 f"Config: {config}. "
                 "Please make sure to configure your port app config using Port's API."
             )
-            raise ValueError("Integration port app config is empty")
+            raise EmptyPortAppConfigError()
         return config

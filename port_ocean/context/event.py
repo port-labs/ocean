@@ -14,6 +14,7 @@ from typing import (
 from uuid import uuid4
 
 from loguru import logger
+from port_ocean.core.handlers.port_app_config.api import EmptyPortAppConfigError
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
@@ -176,6 +177,11 @@ async def event_context(
         logger.info("Event started")
         try:
             yield event
+        except EmptyPortAppConfigError as e:
+            logger.error(
+                f"Skipping resync due to empty mapping: {str(e)}", exc_info=True
+            )
+            raise
         except Exception as e:
             success = False
             logger.error(f"Event failed with error: {str(e)}", exc_info=True)
