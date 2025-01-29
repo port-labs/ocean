@@ -3,7 +3,6 @@ import pytest
 from fastapi import APIRouter
 from typing import Dict, Any
 
-from port_ocean.core.handlers.webhook.utils import process_webhook_request
 from port_ocean.exceptions.webhook_processor import RetryableError
 from port_ocean.core.handlers.webhook.processor_manager import WebhookProcessorManager
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -403,7 +402,7 @@ class TestWebhookProcessorManager:
 
         processor.handle_event = handle_event  # type: ignore
 
-        await process_webhook_request(processor)
+        await processor_manager._process_webhook_request(processor)
 
         assert processor.processed
         assert processor.retry_count == 2
@@ -419,6 +418,6 @@ class TestWebhookProcessorManager:
         processor.error_to_raise = RetryableError("Temporary failure")
 
         with pytest.raises(RetryableError):
-            await process_webhook_request(processor)
+            await processor_manager._process_webhook_request(processor)
 
         assert processor.retry_count == processor.max_retries

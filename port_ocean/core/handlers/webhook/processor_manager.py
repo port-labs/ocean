@@ -4,8 +4,6 @@ from loguru import logger
 import asyncio
 from dataclasses import dataclass
 
-from .utils import process_webhook_request
-
 from .webhook_event import WebhookEvent, WebhookEventTimestamp
 
 
@@ -126,13 +124,53 @@ class WebhookProcessorManager:
         """Execute a single processor within a max processing time."""
         try:
             await asyncio.wait_for(
-                process_webhook_request(processor),
+                self._process_webhook_request(processor),
                 timeout=self._max_event_processing_seconds,
             )
         except asyncio.TimeoutError:
             raise TimeoutError(
                 f"Processor processing timed out after {self._max_event_processing_seconds} seconds"
             )
+
+    async def _process_webhook_request(
+        self, processor: AbstractWebhookProcessor
+    ) -> None:
+        """Process a webhook request with retry logic.
+
+        Args:
+            processor: The webhook processor to use
+        """
+        await processor.before_processing()
+
+        payload = processor.event.payload
+        headers = processor.event.headers
+
+        if not await processor.authenticate(payload, headers):
+            raise ValueError("Authentication failed")
+
+        if not await processor.validate_payload(payload):
+            raise ValueError("Invalid payload")
+
+        while True:
+            try:
+                await processor.handle_event(payload)
+                break
+
+            except Exception as e:
+                await processor.on_error(e)
+
+                if (
+                    processor.should_retry(e)
+                    and processor.retry_count < processor.max_retries
+                ):
+                    processor.retry_count += 1
+                    delay = processor.calculate_retry_delay()
+                    await asyncio.sleep(delay)
+                    continue
+
+                raise
+
+        await processor.after_processing()
 
     def _log_processing_completion(self, processor: AbstractWebhookProcessor) -> None:
         """Log the completion of event processing with timing information."""
