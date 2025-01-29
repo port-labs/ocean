@@ -3,10 +3,11 @@ import pytest
 from fastapi import APIRouter
 from typing import Dict, Any
 
+from port_ocean.core.handlers.webhook.utils import process_webhook_request
+from port_ocean.exceptions.webhook_processor import RetryableError
 from port_ocean.core.handlers.webhook.processor_manager import WebhookProcessorManager
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
-    RetryableError,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
@@ -22,6 +23,8 @@ class MockWebhookProcessor(AbstractWebhookProcessor):
         self.processed = False
         self.cancel_called = False
         self.error_to_raise: Exception | asyncio.CancelledError | None = None
+        self.retry_count = 0
+        self.max_retries = 3
 
     async def authenticate(
         self, payload: Dict[str, Any], headers: Dict[str, str]
@@ -382,3 +385,40 @@ class TestWebhookProcessorManager:
 
         # Verify successful processors ran despite failing one
         assert processed_count == 2
+
+    async def test_retry_mechanism(
+        self,
+        processor_manager: TestableWebhookProcessorManager,
+        mock_event: WebhookEvent,
+    ) -> None:
+        """Test retry mechanism with temporary failures."""
+        processor = MockWebhookProcessor(mock_event)
+        processor.error_to_raise = RetryableError("Temporary failure")
+
+        # Simulate 2 failures before success
+        async def handle_event(payload: Dict[str, Any]) -> None:
+            if processor.retry_count < 2:
+                raise RetryableError("Temporary failure")
+            processor.processed = True
+
+        processor.handle_event = handle_event  # type: ignore
+
+        await process_webhook_request(processor)
+
+        assert processor.processed
+        assert processor.retry_count == 2
+
+    async def test_max_retries_exceeded(
+        self,
+        processor_manager: TestableWebhookProcessorManager,
+        mock_event: WebhookEvent,
+    ) -> None:
+        """Test behavior when max retries are exceeded."""
+        processor = MockWebhookProcessor(mock_event)
+        processor.max_retries = 1
+        processor.error_to_raise = RetryableError("Temporary failure")
+
+        with pytest.raises(RetryableError):
+            await process_webhook_request(processor)
+
+        assert processor.retry_count == processor.max_retries

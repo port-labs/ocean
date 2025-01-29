@@ -1,9 +1,10 @@
 import pytest
 
+from port_ocean.core.handlers.webhook.utils import process_webhook_request
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
-    RetryableError,
 )
+from port_ocean.exceptions.webhook_processor import RetryableError
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
@@ -69,7 +70,7 @@ class TestAbstractWebhookHandler:
 
     async def test_successful_processing(self, processor: MockWebhookHandler) -> None:
         """Test successful webhook processing flow."""
-        await processor.process_request()
+        await process_webhook_request(processor)
 
         assert processor.authenticated
         assert processor.validated
@@ -80,7 +81,7 @@ class TestAbstractWebhookHandler:
         """Test retry mechanism with temporary failures."""
         processor = MockWebhookHandler(webhook_event, should_fail=True, fail_count=2)
 
-        await processor.process_request()
+        await process_webhook_request(processor)
 
         assert processor.handled
         assert processor.current_fails == 2
@@ -94,7 +95,7 @@ class TestAbstractWebhookHandler:
         )
 
         with pytest.raises(RetryableError):
-            await processor.process_request()
+            await process_webhook_request(processor)
 
         assert processor.retry_count == processor.max_retries
         assert processor.error_handler_called

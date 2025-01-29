@@ -4,6 +4,8 @@ from loguru import logger
 import asyncio
 from dataclasses import dataclass
 
+from .utils import process_webhook_request
+
 from .webhook_event import WebhookEvent, WebhookEventTimestamp
 
 
@@ -124,7 +126,7 @@ class WebhookProcessorManager:
         """Execute a single processor within a max processing time."""
         try:
             await asyncio.wait_for(
-                processor.process_request(),
+                process_webhook_request(processor),
                 timeout=self._max_event_processing_seconds,
             )
         except asyncio.TimeoutError:

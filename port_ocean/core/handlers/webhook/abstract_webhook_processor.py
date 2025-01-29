@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import asyncio
 from loguru import logger
 
 from port_ocean.exceptions.webhook_processor import RetryableError
@@ -78,32 +77,13 @@ class AbstractWebhookProcessor(ABC):
         )
         return delay
 
-    async def process_request(self) -> None:
-        """Main method to process a webhook request with retry logic."""
-        payload = self.event.payload
-        headers = self.event.headers
+    async def before_processing(self) -> None:
+        """Hook to run before processing the event."""
+        pass
 
-        if not await self.authenticate(payload, headers):
-            raise ValueError("Authentication failed")
-
-        if not await self.validate_payload(payload):
-            raise ValueError("Invalid payload")
-
-        while True:
-            try:
-                await self.handle_event(payload)
-                break
-
-            except Exception as e:
-                await self.on_error(e)
-
-                if self.should_retry(e) and self.retry_count < self.max_retries:
-                    self.retry_count += 1
-                    delay = self.calculate_retry_delay()
-                    await asyncio.sleep(delay)
-                    continue
-
-                raise
+    async def after_processing(self) -> None:
+        """Hook to run after processing the event."""
+        pass
 
     @abstractmethod
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
