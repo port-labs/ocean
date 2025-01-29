@@ -1,6 +1,6 @@
 import datetime
 from enum import StrEnum
-from typing import Any, Dict, TypeAlias
+from typing import Any, Dict, Type, TypeAlias
 from uuid import uuid4
 from fastapi import Request
 from loguru import logger
@@ -36,21 +36,23 @@ class WebhookEvent:
         self._timestamps = timestamps or {}
         self._original_request = original_request
 
-    @staticmethod
-    async def from_request(request: Request) -> "WebhookEvent":
+    @classmethod
+    async def from_request(
+        cls: Type["WebhookEvent"], request: Request
+    ) -> "WebhookEvent":
         trace_id = str(uuid4())
         payload = await request.json()
 
-        return WebhookEvent(
+        return cls(
             trace_id=trace_id,
             payload=payload,
             headers=dict(request.headers),
             original_request=request,
         )
 
-    @staticmethod
-    def from_dict(data: Dict[str, Any]) -> "WebhookEvent":
-        return WebhookEvent(
+    @classmethod
+    def from_dict(cls: Type["WebhookEvent"], data: Dict[str, Any]) -> "WebhookEvent":
+        return cls(
             trace_id=data["trace_id"],
             payload=data["payload"],
             headers=data["headers"],
