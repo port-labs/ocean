@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Entity diff calculation as optional feature
+- Entity diff calculation only on resync
 
 ## 0.18.5 (2025-01-28)
 

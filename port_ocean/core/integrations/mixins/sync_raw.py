@@ -220,7 +220,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
         modified_objects = []
 
-        if ocean.config.integration.calculate_entities_diff:
+        if event.event_type == EventType.RESYNC:
             try:
                 changed_entities = await self._map_entities_compared_with_port(
                     objects_diff[0].entity_selector_diff.passed,
