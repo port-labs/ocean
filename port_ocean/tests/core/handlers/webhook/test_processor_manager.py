@@ -181,7 +181,7 @@ class TestWebhookProcessorManager:
         processor_manager: TestableWebhookProcessorManager,
         mock_event: WebhookEvent,
     ) -> None:
-        """Test graceful shutdown with in-flight requests."""
+        """Test graceful shutdown with in-flight requests"""
         processor_manager.register_processor("/test", MockWebhookProcessor)
 
         await processor_manager.start_processing_event_messages()

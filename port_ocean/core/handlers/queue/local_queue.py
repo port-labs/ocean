@@ -7,7 +7,7 @@ T = TypeVar("T")
 
 
 class LocalQueue(AbstractQueue[T]):
-    """Implementation of Queue using asyncio.Queue."""
+    """Implementation of Queue using asyncio.Queue"""
 
     def __init__(self) -> None:
         self._queue: asyncio.Queue[T] = asyncio.Queue()

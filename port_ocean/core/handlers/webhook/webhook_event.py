@@ -11,7 +11,7 @@ EventHeaders: TypeAlias = Dict[str, str]
 
 
 class WebhookEventTimestamp(StrEnum):
-    """Enum for timestamp keys."""
+    """Enum for timestamp keys"""
 
     AddedToQueue = "AddedToQueue"
     StartedProcessing = "StartedProcessing"
@@ -20,7 +20,7 @@ class WebhookEventTimestamp(StrEnum):
 
 
 class WebhookEvent:
-    """Represents a webhook event."""
+    """Represents a webhook event"""
 
     def __init__(
         self,

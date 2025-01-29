@@ -7,7 +7,7 @@ from port_ocean.core.handlers.queue.local_queue import LocalQueue
 
 @dataclass
 class MockMessage:
-    """Example message type for testing."""
+    """Example message type for testing"""
 
     id: str
     data: str
@@ -16,8 +16,8 @@ class MockMessage:
 
 class TestLocalQueue:
     """
-    Test suite for LocalQueue implementation.
-    This can serve as an example for testing other Queue implementations.
+    Test suite for LocalQueue implementation
+    This can serve as an example for testing other Queue implementations
     """
 
     @pytest.fixture
@@ -25,7 +25,7 @@ class TestLocalQueue:
         return LocalQueue[MockMessage]()
 
     async def test_basic_queue_operations(self, queue: LocalQueue[MockMessage]) -> None:
-        """Test basic put/get operations."""
+        """Test basic put/get operations"""
         message = MockMessage(id="1", data="test")
 
         # Put item in queue
@@ -41,7 +41,7 @@ class TestLocalQueue:
         await queue.commit()
 
     async def test_fifo_order(self, queue: LocalQueue[MockMessage]) -> None:
-        """Demonstrate and test FIFO (First In, First Out) behavior."""
+        """Demonstrate and test FIFO (First In, First Out) behavior"""
         messages = [
             MockMessage(id="1", data="first"),
             MockMessage(id="2", data="second"),
@@ -59,7 +59,7 @@ class TestLocalQueue:
             await queue.commit()
 
     async def test_wait_for_completion(self, queue: LocalQueue[MockMessage]) -> None:
-        """Example of waiting for all messages to be processed."""
+        """Example of waiting for all messages to be processed"""
         processed_count = 0
 
         async def slow_processor() -> None:
