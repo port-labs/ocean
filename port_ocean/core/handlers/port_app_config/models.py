@@ -50,7 +50,7 @@ class ResourceConfig(BaseModel):
     port: PortResourceConfig
 
 
-class PortAppConfig(BaseModel):  # add here entityDeletionThreshold
+class PortAppConfig(BaseModel):
     enable_merge_entity: bool = Field(alias="enableMergeEntity", default=True)
     delete_dependent_entities: bool = Field(
         alias="deleteDependentEntities", default=True
