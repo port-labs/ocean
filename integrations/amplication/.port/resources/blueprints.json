@@ -2,7 +2,7 @@
   {
     "identifier": "AmplicationTemplate",
     "description": "Blueprint for templates coming from Amplication's app",
-    "title": "Amplication Templates",
+    "title": "Amplication Template",
     "icon": "Template",
     "schema": {
       "properties": {
@@ -21,6 +21,14 @@
         "project_id": {
           "type": "string",
           "title": "Project ID"
+        },
+        "blueprint": {
+          "type": "string",
+          "title": "Blueprint"
+        },
+        "blueprint_id": {
+          "type": "string",
+          "title": "Blueprint ID"
         }
       },
       "required": [
@@ -49,7 +57,7 @@
   {
     "identifier": "AmplicationResource",
     "description": "Blueprint for resources coming from Amplication's app",
-    "title": "Amplication Resources",
+    "title": "Amplication Resource",
     "icon": "Box",
     "schema": {
       "properties": {
@@ -70,30 +78,22 @@
           "title": "Project ID"
         },
         "git_organization": {
-          "type": "string",
-          "default": "Other",
-          "title": "Git Organization",
           "icon": "Git",
-          "enum": [
-            "Github",
-            "Bitbucket",
-            "AwsCodeCommit",
-            "GitLab",
-            "AzureDevOps",
-            "Other"
-          ],
-          "enumColors": {
-            "Github": "lightGray",
-            "Bitbucket": "blue",
-            "AwsCodeCommit": "darkGray",
-            "GitLab": "red",
-            "AzureDevOps": "green",
-            "Other": "bronze"
-          }
+          "type": "string",
+          "title": "Git Organization"
         },
         "git_repository": {
+          "icon": "Git",
           "type": "string",
           "title": "Git Repository"
+        },
+        "blueprint": {
+          "type": "string",
+          "title": "Blueprint"
+        },
+        "blueprint_id": {
+          "type": "string",
+          "title": "Blueprint ID"
         }
       },
       "required": [
@@ -105,12 +105,22 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {
-      "resource_count": {
+      "new_alerts_count": {
         "title": "Alerts Count",
         "icon": "BadgeAlert",
         "type": "number",
-        "description": "Number of outdated version alerts this resource has",
+        "description": "Number of new outdated version alerts this resource has",
         "target": "AmplicationAlert",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "=",
+              "value": "New"
+            }
+          ]
+        },
         "calculationSpec": {
           "func": "count",
           "calculationBy": "entities"
@@ -130,7 +140,7 @@
   {
     "identifier": "AmplicationAlert",
     "description": "Blueprint for outdated version alerts coming from Amplication's app",
-    "title": "Amplication Version Alerts",
+    "title": "Amplication Version Alert",
     "icon": "Box",
     "schema": {
       "properties": {
@@ -140,7 +150,7 @@
         },
         "block_displayName": {
           "type": "string",
-          "title": "Block Description"
+          "title": "Plugin Name"
         },
         "type": {
           "type": "string",

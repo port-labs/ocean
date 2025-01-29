@@ -34,6 +34,10 @@ class AmplicationClient:
                         id
                         name
                     }
+                    blueprint {
+                        id
+                        name
+                    }
                 }
                 __typename
             }
@@ -76,6 +80,10 @@ class AmplicationClient:
                         id
                         name
                     }
+                    blueprint {
+                        id
+                        name
+                    }
                     serviceTemplate {
                         id
                         name
@@ -94,11 +102,10 @@ class AmplicationClient:
         }
         """
 
-        # Variables for the query
         variables = {
             "take": 100,
             "skip": 0,
-            "where": {"resourceType": {"in": ["Service", "ProjectConfiguration"]}},
+            "where": {"resourceType": {"in": ["Service", "Component"]}},
         }
 
         payload = {
@@ -154,14 +161,7 @@ class AmplicationClient:
         """
 
         # Variables for the query
-        variables = {
-            "orderBy": {"createdAt": "Desc"},
-            "take": 100,
-            "skip": 0,
-            "where": {
-                "status": {"equals": "New"},
-            },
-        }
+        variables = {"orderBy": {"createdAt": "Desc"}, "take": 100, "skip": 0}
 
         payload = {
             "query": query,

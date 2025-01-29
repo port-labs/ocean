@@ -1,8 +1,8 @@
 [
   {
     "icon": "Table",
-    "title": "Amplication Dash",
-    "description": "Dashboard for Amplication",
+    "title": "Amplication Dashboard",
+    "description": "Dashboard for Amplication data",
     "protected": false,
     "widgets": [
       {

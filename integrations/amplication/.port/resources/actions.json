@@ -1,9 +1,9 @@
 [
     {
         "identifier": "amplication_service_from_template",
-        "title": "Amplication Service From Template",
-        "icon": "Service",
-        "description": "Creates a service from a template on Amplication",
+        "title": "Scaffold a Service",
+        "icon": "Microservice",
+        "description": "Create a new service from template (using [Amplication](https://amplication.com))",
         "trigger": {
             "type": "self-service",
             "operation": "CREATE",
@@ -62,5 +62,70 @@
             }
         },
         "requiredApproval": false
-    }
+    },
+    {
+        "identifier": "amplication_rebuild_code",
+        "title": "Code Re-build",
+        "icon": "Microservice",
+        "trigger": {
+          "type": "self-service",
+          "operation": "DAY-2",
+          "userInputs": {
+            "properties": {
+              "resource": {
+                "title": "Resource",
+                "icon": "Service",
+                "type": "string",
+                "blueprint": "AmplicationResource",
+                "format": "entity"
+              },
+              "message": {
+                "icon": "Neo4j",
+                "type": "string",
+                "title": "Message"
+              }
+            },
+            "required": [
+              "resource",
+              "message"
+            ],
+            "order": [
+              "resource",
+              "message"
+            ]
+          }
+        },
+        "invocationMethod": {
+          "type": "WEBHOOK",
+          "url": "https://server.amplication.com/graphql",
+          "agent": false,
+          "synchronized": true,
+          "method": "POST",
+          "headers": {
+            "RUN_ID": "{{ .run.id }}",
+            "authorization": "Bearer {{ .secrets.amplication_token }}"
+          },
+          "body": {
+            "operationName": "commit",
+            "variables": {
+              "data": {
+                "message": "{{ .inputs.message }}",
+                "project": {
+                  "connect": {
+                    "id": "{{ .inputs.resource.properties.project_id }}"
+                  }
+                },
+                "resourceIds": [
+                  "{{ .inputs.resource.identifier }}"
+                ],
+                "bypassLimitations": true,
+                "commitStrategy": "Specific",
+                "resourceTypeGroup": "Services"
+              }
+            },
+            "query": "mutation commit($data: CommitCreateInput!) {\n  commit(data: $data) {\n    id\n    builds {\n      id\n      resourceId\n      status\n      __typename\n    }\n    __typename\n  }\n}"
+          }
+        },
+        "requiredApproval": false
+      }
 ]

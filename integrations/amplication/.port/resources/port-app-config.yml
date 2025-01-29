@@ -15,6 +15,8 @@ resources:
             description: .description
             project: .project.name
             project_id: .project.id
+            blueprint: .blueprint.name
+            blueprint_id: .blueprint.id
   - kind: amplication_resource
     selector:
       query: 'true'
@@ -29,6 +31,8 @@ resources:
             description: .description
             project: .project.name
             project_id: .project.id
+            blueprint: .blueprint.name
+            blueprint_id: .blueprint.id
             git_organization: .gitRepository.gitOrganization.provider
             git_repository: '.gitRepository.gitOrganization.name + "/" + .gitRepository.name'
           relations:
