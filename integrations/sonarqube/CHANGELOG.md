@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.142 (2025-01-29)
+## 0.1.143 (2025-02-03)
 
 
 ### Improvements
 
 - Bumped ocean version to ^0.18.6
+
+
+## 0.1.142 (2025-01-29)
+
+
+### Bug Fixes
+
+- Fixed bug where subsequent resync when integration schedules a resync causes entities to be deleted
 
 
 ## 0.1.141 (2025-01-28)
