@@ -10,7 +10,6 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
-    WebhookEventTimestamp,
 )
 from port_ocean.core.handlers.queue import LocalQueue
 from port_ocean.utils.signal import SignalHandler
@@ -105,25 +104,15 @@ class TestWebhookProcessorManager:
 
     @staticmethod
     def assert_event_processed_successfully(
-        processor: AbstractWebhookProcessor,
+        processor: MockWebhookProcessor,
     ) -> None:
-        """Assert that a processor's event was processed successfully."""
-        assert (
-            processor.event.get_timestamp(
-                WebhookEventTimestamp.FinishedProcessingSuccessfully
-            )
-            is not None
-        ), "Event was not processed successfully"
+        """Assert that a processor's event was processed successfully"""
+        assert processor.processed, "Event was not processed successfully"
 
     @staticmethod
-    def assert_event_processed_with_error(processor: AbstractWebhookProcessor) -> None:
-        """Assert that an event was processed with an error by checking its timestamp."""
-        assert (
-            processor.event.get_timestamp(
-                WebhookEventTimestamp.FinishedProcessingWithError
-            )
-            is not None
-        ), "Event did not fail as expected"
+    def assert_event_processed_with_error(processor: MockWebhookProcessor) -> None:
+        """Assert that an event was processed with an error"""
+        assert not processor.processed, "Event did not fail as expected"
 
     async def test_register_handler(
         self, processor_manager: TestableWebhookProcessorManager
@@ -156,7 +145,7 @@ class TestWebhookProcessorManager:
         mock_event: WebhookEvent,
     ) -> None:
         """Test successful processing of an event."""
-        processed_events: list[AbstractWebhookProcessor] = []
+        processed_events: list[MockWebhookProcessor] = []
 
         class SuccessProcessor(MockWebhookProcessor):
             async def handle_event(self, payload: Dict[str, Any]) -> None:
@@ -193,7 +182,7 @@ class TestWebhookProcessorManager:
         # Verify all tasks are cleaned up
         assert len(processor_manager._webhook_processor_tasks) == 0
         self.assert_event_processed_successfully(
-            processor_manager.running_processors[0]
+            processor_manager.running_processors[0]  # type: ignore
         )
 
     async def test_handler_filter_matching(
@@ -227,10 +216,10 @@ class TestWebhookProcessorManager:
 
         # Verify both events were processed
         self.assert_event_processed_successfully(
-            processor_manager.running_processors[0]
+            processor_manager.running_processors[0]  # type: ignore
         )
         self.assert_event_processed_successfully(
-            processor_manager.running_processors[1]
+            processor_manager.running_processors[1]  # type: ignore
         )
 
     async def test_handler_timeout(
@@ -254,7 +243,9 @@ class TestWebhookProcessorManager:
         # Wait long enough for the timeout to occur
         await asyncio.sleep(0.2)
 
-        self.assert_event_processed_with_error(processor_manager.running_processors[0])
+        self.assert_event_processed_with_error(
+            processor_manager.running_processors[0]  # type: ignore
+        )
 
     async def test_handler_cancellation(
         self,
@@ -317,41 +308,6 @@ class TestWebhookProcessorManager:
         processor_manager.register_processor("/test", MockWebhookProcessor)
         processor_manager.register_processor("/test", MockWebhookProcessor)
         assert len(processor_manager._processors["/test"]) == 2
-
-    async def test_multiple_processors_parallel_execution(
-        self,
-        processor_manager: TestableWebhookProcessorManager,
-        mock_event: WebhookEvent,
-    ) -> None:
-        """Test that multiple matching processors are executed in parallel."""
-        processing_times: list[float] = []
-
-        class TimedProcessor(MockWebhookProcessor):
-            async def handle_event(self, payload: Dict[str, Any]) -> None:
-                start_time = asyncio.get_event_loop().time()
-                await asyncio.sleep(0.1)  # Simulate work
-                end_time = asyncio.get_event_loop().time()
-                processing_times.append(end_time - start_time)
-                self.processed = True
-
-        # Register multiple processors
-        processor_manager.register_processor("/test", TimedProcessor)
-        processor_manager.register_processor("/test", TimedProcessor)
-        processor_manager.register_processor("/test", TimedProcessor)
-
-        await processor_manager.start_processing_event_messages()
-        await processor_manager._event_queues["/test"].put(mock_event)
-
-        # Wait for processing to complete
-        await asyncio.sleep(0.2)
-
-        # Verify all processors ran
-        assert len(processing_times) == 3
-
-        # Verify parallel execution by checking that total time is less than sequential would be
-        # If sequential, total time would be >0.3s (3 * 0.1s)
-        # In parallel, should be just over 0.1s
-        assert max(processing_times) < 0.3
 
     async def test_all_matching_processors_execute(
         self,

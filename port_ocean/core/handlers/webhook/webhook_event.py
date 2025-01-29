@@ -1,4 +1,3 @@
-import datetime
 from enum import StrEnum
 from typing import Any, Dict, Type, TypeAlias
 from uuid import uuid4
@@ -13,10 +12,10 @@ EventHeaders: TypeAlias = Dict[str, str]
 class WebhookEventTimestamp(StrEnum):
     """Enum for timestamp keys"""
 
-    AddedToQueue = "AddedToQueue"
-    StartedProcessing = "StartedProcessing"
-    FinishedProcessingSuccessfully = "FinishedProcessingSuccessfully"
-    FinishedProcessingWithError = "FinishedProcessingWithError"
+    AddedToQueue = "Added To Queue"
+    StartedProcessing = "Started Processing"
+    FinishedProcessingSuccessfully = "Finished Processing Successfully"
+    FinishedProcessingWithError = "Finished Processing With Error"
 
 
 class WebhookEvent:
@@ -28,12 +27,10 @@ class WebhookEvent:
         payload: EventPayload,
         headers: EventHeaders,
         original_request: Request | None = None,
-        timestamps: Dict[str, datetime.datetime] | None = None,
     ) -> None:
         self.trace_id = trace_id
         self.payload = payload
         self.headers = headers
-        self._timestamps = timestamps or {}
         self._original_request = original_request
 
     @classmethod
@@ -57,7 +54,6 @@ class WebhookEvent:
             payload=data["payload"],
             headers=data["headers"],
             original_request=None,
-            timestamps=None,
         )
 
     def clone(self) -> "WebhookEvent":
@@ -66,24 +62,16 @@ class WebhookEvent:
             payload=self.payload,
             headers=self.headers,
             original_request=self._original_request,
-            timestamps=self._timestamps.copy(),
         )
 
     def set_timestamp(self, timestamp: WebhookEventTimestamp) -> None:
-        if self._timestamps.get(timestamp.value):
-            raise ValueError(f"Timestamp {timestamp.value} already set")
-        now = datetime.datetime.now()
-        logger.debug(
-            "Setting event timestamp",
+        """Set a timestamp for a specific event"""
+        logger.info(
+            f"Event {timestamp.value}",
             extra={
                 "trace_id": self.trace_id,
+                "payload": self.payload,
+                "headers": self.headers,
                 "timestamp_type": timestamp.value,
-                "timestamp": now,
             },
         )
-        self._timestamps[timestamp.value] = now
-
-    def get_timestamp(
-        self, timestamp: WebhookEventTimestamp
-    ) -> datetime.datetime | None:
-        return self._timestamps.get(timestamp.value, None)

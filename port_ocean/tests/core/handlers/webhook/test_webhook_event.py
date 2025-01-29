@@ -1,11 +1,9 @@
 import pytest
-from datetime import datetime
 from fastapi import Request
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
     WebhookEvent,
-    WebhookEventTimestamp,
 )
 
 
@@ -65,26 +63,3 @@ class TestWebhookEvent:
         assert event.payload == sample_payload
         assert event.headers == sample_headers
         assert event._original_request is None
-        assert event._timestamps == {}
-
-    def test_set_timestamp(self, webhook_event: WebhookEvent) -> None:
-        """Test setting timestamps."""
-        webhook_event.set_timestamp(WebhookEventTimestamp.AddedToQueue)
-
-        timestamp = webhook_event.get_timestamp(WebhookEventTimestamp.AddedToQueue)
-        assert isinstance(timestamp, datetime)
-        assert timestamp <= datetime.now()
-
-    def test_set_duplicate_timestamp(self, webhook_event: WebhookEvent) -> None:
-        """Test that setting the same timestamp twice raises an error."""
-        webhook_event.set_timestamp(WebhookEventTimestamp.AddedToQueue)
-
-        with pytest.raises(ValueError) as exc_info:
-            webhook_event.set_timestamp(WebhookEventTimestamp.AddedToQueue)
-
-        assert "Timestamp AddedToQueue already set" in str(exc_info.value)
-
-    def test_get_nonexistent_timestamp(self, webhook_event: WebhookEvent) -> None:
-        """Test getting a timestamp that hasn't been set."""
-        timestamp = webhook_event.get_timestamp(WebhookEventTimestamp.StartedProcessing)
-        assert timestamp is None

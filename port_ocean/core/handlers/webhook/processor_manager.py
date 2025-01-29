@@ -97,8 +97,6 @@ class WebhookProcessorManager:
                     self._timestamp_event_error(processor.event)
             finally:
                 await self._event_queues[path].commit()
-                for processor in matching_processors:
-                    self._log_processing_completion(processor)
 
     def _timestamp_event_error(self, event: WebhookEvent) -> None:
         """Timestamp an event as having an error"""
@@ -171,19 +169,6 @@ class WebhookProcessorManager:
                 raise
 
         await processor.after_processing()
-
-    def _log_processing_completion(self, processor: AbstractWebhookProcessor) -> None:
-        """Log the completion of event processing with timing information"""
-        event = processor.event
-
-        logger.info(
-            "Finished processing queued webhook",
-            timestamps={
-                timestamp: event.get_timestamp(timestamp)
-                for timestamp in WebhookEventTimestamp
-            },
-            processor=processor.__class__.__name__,
-        )
 
     def register_processor(
         self,
