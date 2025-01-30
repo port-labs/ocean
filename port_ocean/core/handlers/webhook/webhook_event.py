@@ -67,7 +67,7 @@ class WebhookEvent:
     def set_timestamp(self, timestamp: WebhookEventTimestamp) -> None:
         """Set a timestamp for a specific event"""
         logger.info(
-            f"Event {timestamp.value}",
+            f"Webhook Event {timestamp.value}",
             extra={
                 "trace_id": self.trace_id,
                 "payload": self.payload,
