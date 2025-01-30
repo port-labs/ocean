@@ -58,6 +58,9 @@ class PortAppConfig(BaseModel):
     create_missing_related_entities: bool = Field(
         alias="createMissingRelatedEntities", default=True
     )
+    entity_deletion_threshold: float = Field(
+        alias="createMissingRelatedEntities", default=0.9
+    )
     resources: list[ResourceConfig] = Field(default_factory=list)
 
     def get_port_request_options(self) -> RequestOptions:
