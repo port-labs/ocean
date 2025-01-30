@@ -241,8 +241,12 @@ async def feed_events_callback(
     try:
         request_json = await request.json()
     except Exception as e:
-        logger.warning(f"Client raised exception {str(e)} before the request could be processed.")
-        return Response(status_code=http.HTTPStatus.BAD_REQUEST, content="Client disconnected.")
+        logger.warning(
+            f"Client raised exception {str(e)} before the request could be processed."
+        )
+        return Response(
+            status_code=http.HTTPStatus.BAD_REQUEST, content="Client disconnected."
+        )
     try:
         asset_data = await parse_asset_data(request_json["message"]["data"])
         asset_type = asset_data["asset"]["assetType"]

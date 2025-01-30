@@ -132,7 +132,9 @@ class GCPResourceRateLimiter(GCPResourceQuota):
             f"The Integration will utilize {_PERCENTAGE_OF_QUOTA * 100}% of the quota, which equates to {effective_quota_limit} for rate limiting."
         )
 
-        limiter = AsyncLimiter(max_rate=effective_quota_limit, time_period=self.time_period)
+        limiter = AsyncLimiter(
+            max_rate=effective_quota_limit, time_period=self.time_period
+        )
         return limiter
 
     @final
