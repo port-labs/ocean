@@ -9,6 +9,9 @@
         "tags": {
           "type": "array",
           "title": "Tags",
+          "items": {
+            "type": "string"
+          },
           "description": "Tags associated with the project for organizational purposes."
         }
       },
@@ -55,6 +58,9 @@
         "tags": {
           "type": "array",
           "title": "Tags",
+          "items": {
+            "type": "string"
+          },
           "description": "Tags associated with the feature flag."
         },
         "maintainer": {

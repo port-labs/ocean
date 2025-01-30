@@ -9,6 +9,7 @@ features:
       - kind: problem
       - kind: slo
       - kind: entity
+      - kind: team
 configurations:
   - name: dynatraceApiKey
     required: true

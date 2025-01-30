@@ -35,6 +35,9 @@
         "contact_methods": {
           "title": "Contact Methods",
           "icon": "DefaultProperty",
+          "items": {
+            "type": "string"
+          },
           "type": "array"
         },
         "description": {
@@ -44,6 +47,9 @@
         "teams": {
           "title": "Teams",
           "icon": "DefaultProperty",
+          "items": {
+            "type": "string"
+          },
           "type": "array"
         },
         "time_zone": {

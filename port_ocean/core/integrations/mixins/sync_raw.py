@@ -137,21 +137,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             entities (list[Entity]): List of entities to search for.
 
         Returns:
-            dict: Query structure for searching entities by identifier.
+            dict: Query structure for searching entities by identifier and blueprint.
         """
         return {
             "combinator": "and",
             "rules": [
                 {
-                    "combinator": "or",
-                    "rules": [
-                        {
-                            "property": "$identifier",
-                            "operator": "=",
-                            "value": entity.identifier,
-                        }
-                        for entity in entities
-                    ]
+                    "property": "$identifier",
+                    "operator": "in",
+                    "value": [entity.identifier for entity in entities]
+                },
+                {
+                    "property": "$blueprint",
+                    "operator": "=",
+                    "value": entities[0].blueprint
                 }
             ]
         }
@@ -221,14 +220,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
         modified_objects = []
 
-        if ocean.app.is_saas():
+        if event.event_type == EventType.RESYNC:
             try:
                 changed_entities = await self._map_entities_compared_with_port(
                     objects_diff[0].entity_selector_diff.passed,
                     resource,
                     user_agent_type
                 )
-
                 if changed_entities:
                     logger.info("Upserting changed entities", changed_entities=len(changed_entities),
                         total_entities=len(objects_diff[0].entity_selector_diff.passed))
@@ -237,7 +235,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
                 else:
                     logger.info("Entities in batch didn't changed since last sync, skipping", total_entities=len(objects_diff[0].entity_selector_diff.passed))
-
                 modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
             except Exception as e:
                 logger.warning(f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}")
@@ -245,9 +242,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     objects_diff[0].entity_selector_diff.passed, user_agent_type
                     )
         else:
-            modified_objects = await self.entities_state_applier.upsert(
-                objects_diff[0].entity_selector_diff.passed, user_agent_type
-        )
+           modified_objects = await self.entities_state_applier.upsert(
+                    objects_diff[0].entity_selector_diff.passed, user_agent_type
+                    )
+
+
         return CalculationResult(
             objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
             errors=objects_diff[0].errors,
