@@ -59,7 +59,7 @@ class PortAppConfig(BaseModel):
         alias="createMissingRelatedEntities", default=True
     )
     entity_deletion_threshold: float = Field(
-        alias="createMissingRelatedEntities", default=0.9
+        alias="entityDeletionThreshold", default=0.9
     )
     resources: list[ResourceConfig] = Field(default_factory=list)
 
