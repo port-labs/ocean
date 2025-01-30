@@ -4,16 +4,17 @@ from port_ocean.core.handlers.entities_state_applier.port.applier import (
     HttpEntitiesStateApplier,
 )
 from port_ocean.core.models import Entity
+from port_ocean.core.ocean_types import EntityDiff
 from port_ocean.clients.port.types import UserAgentType
 
 
 @pytest.mark.asyncio
-async def test_delete_diff_no_deleted_entities():
+async def test_delete_diff_no_deleted_entities() -> None:
     applier = HttpEntitiesStateApplier(Mock())
-    entities = {
-        "before": [Entity(identifier="1", blueprint="test")],
-        "after": [Entity(identifier="1", blueprint="test")],
-    }
+    entities = EntityDiff(
+        before=[Entity(identifier="1", blueprint="test")],
+        after=[Entity(identifier="1", blueprint="test")],
+    )
 
     with patch.object(applier, "_safe_delete") as mock_safe_delete:
         await applier.delete_diff(entities, UserAgentType.exporter)
@@ -22,19 +23,19 @@ async def test_delete_diff_no_deleted_entities():
 
 
 @pytest.mark.asyncio
-async def test_delete_diff_below_threshold():
+async def test_delete_diff_below_threshold() -> None:
     applier = HttpEntitiesStateApplier(Mock())
-    entities = {
-        "before": [
+    entities = EntityDiff(
+        before=[
             Entity(identifier="1", blueprint="test"),
             Entity(identifier="2", blueprint="test"),
             Entity(identifier="3", blueprint="test"),
         ],
-        "after": [
+        after=[
             Entity(identifier="1", blueprint="test"),
             Entity(identifier="2", blueprint="test"),
         ],
-    }
+    )
 
     with patch.object(applier, "_safe_delete") as mock_safe_delete:
         await applier.delete_diff(entities, UserAgentType.exporter)
@@ -45,17 +46,16 @@ async def test_delete_diff_below_threshold():
 
 
 @pytest.mark.asyncio
-async def test_delete_diff_above_default_threshold():
-    # Arrange
+async def test_delete_diff_above_default_threshold() -> None:
     applier = HttpEntitiesStateApplier(Mock())
-    entities = {
-        "before": [
+    entities = EntityDiff(
+        before=[
             Entity(identifier="1", blueprint="test"),
             Entity(identifier="2", blueprint="test"),
             Entity(identifier="3", blueprint="test"),
         ],
-        "after": [],
-    }
+        after=[],
+    )
 
     with patch.object(applier, "_safe_delete") as mock_safe_delete:
         await applier.delete_diff(entities, UserAgentType.exporter)
@@ -64,15 +64,15 @@ async def test_delete_diff_above_default_threshold():
 
 
 @pytest.mark.asyncio
-async def test_delete_diff_custom_threshold_above_threshold_not_deleted():
+async def test_delete_diff_custom_threshold_above_threshold_not_deleted() -> None:
     applier = HttpEntitiesStateApplier(Mock())
-    entities = {
-        "before": [
+    entities = EntityDiff(
+        before=[
             Entity(identifier="1", blueprint="test"),
             Entity(identifier="2", blueprint="test"),
         ],
-        "after": [],
-    }
+        after=[],
+    )
 
     with patch.object(applier, "_safe_delete") as mock_safe_delete:
         await applier.delete_diff(
