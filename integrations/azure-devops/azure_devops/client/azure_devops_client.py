@@ -100,14 +100,20 @@ class AzureDevopsClient(HTTPBaseClient):
         return teams
 
     async def generate_members(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        members_url = (
+        async for teams in self.generate_teams():
+            for team in teams:
+                members = await self.get_team_members(team)
+                for member in members:
+                    member["__teamId"] = team["id"]
+                yield members
+
+    async def generate_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        users_url = (
             self._organization_base_url.replace("dev", "vssps.dev")
             + f"/{API_URL_PREFIX}/graph/users"
         )
-        async for members in self._get_paginated_by_top_and_continuation_token(
-            members_url
-        ):
-            yield members
+        async for users in self._get_paginated_by_top_and_continuation_token(users_url):
+            yield users
 
     @cache_iterator_result()
     async def generate_repositories(

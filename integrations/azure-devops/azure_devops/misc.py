@@ -22,6 +22,8 @@ class Kind(StrEnum):
     BOARD = "board"
     COLUMN = "column"
     RELEASE = "release"
+    TEAMWITHMEMBER = "team-with-members"
+    USER = "user"
 
 
 PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
