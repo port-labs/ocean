@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.18.6
 
 
+## 0.1.101 (2025-01-30)
+
+
+### Improvements
+
+- Improved the performance by collecting garbage immediately after processing the real-time event in the background to release memory resources.
+- Updated the rate limiter in `GCPResourceRateLimiter` to actually use the effect limit value rather than the quota value.
+
+
 ## 0.1.99 (2025-01-28)
 
 
