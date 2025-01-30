@@ -19,6 +19,7 @@ from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.context.resource import resource
+from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.exceptions.context import (
     EventContextNotFoundError,
     ResourceContextNotFoundError,
@@ -176,8 +177,14 @@ async def event_context(
         logger.info("Event started")
         try:
             yield event
-        except:
+        except EmptyPortAppConfigError as e:
+            logger.error(
+                f"Skipping resync due to empty mapping: {str(e)}", exc_info=True
+            )
+            raise
+        except Exception as e:
             success = False
+            logger.error(f"Event failed with error: {str(e)}", exc_info=True)
             raise
         else:
             success = True

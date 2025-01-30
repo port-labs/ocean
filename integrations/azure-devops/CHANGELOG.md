@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.113 (2025-01-27)
+## 0.1.115 (2025-01-30)
 
 
 ### Bug Fixes
 
 - Fixed Bug where team members are synced multiple times.
+
+
+## 0.1.114 (2025-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.1.113 (2025-01-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
 
 
 ## 0.1.112 (2025-01-23)
