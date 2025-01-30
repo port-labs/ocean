@@ -41,7 +41,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/prod install/local-core lint lint/fix run test clean
+.SILENT: install install/prod install/local-core lint lint/fix run test clean seed
 
 install:
 	$(call deactivate_virtualenv) && \
@@ -85,3 +85,11 @@ clean:
 	rm -rf .tox/
 	rm -rf docs/_build
 	rm -rf dist/
+
+seed:
+	@if [ -f "tests/seed_data.py" ]; then \
+		$(ACTIVATE) && python tests/seed_data.py; \
+	else \
+		echo "No seeding script found. Create tests/seed_data.py for this integration if needed."; \
+		exit 0; \
+	fi
