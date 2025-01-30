@@ -220,26 +220,32 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
         modified_objects = []
 
-        try:
-            changed_entities = await self._map_entities_compared_with_port(
-                objects_diff[0].entity_selector_diff.passed,
-                resource,
-                user_agent_type
-            )
-            if changed_entities:
-                logger.info("Upserting changed entities", changed_entities=len(changed_entities),
-                    total_entities=len(objects_diff[0].entity_selector_diff.passed))
-                await self.entities_state_applier.upsert(
-                    changed_entities, user_agent_type
+        if event.event_type == EventType.RESYNC:
+            try:
+                changed_entities = await self._map_entities_compared_with_port(
+                    objects_diff[0].entity_selector_diff.passed,
+                    resource,
+                    user_agent_type
                 )
-            else:
-                logger.info("Entities in batch didn't changed since last sync, skipping", total_entities=len(objects_diff[0].entity_selector_diff.passed))
-            modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
-        except Exception as e:
-            logger.warning(f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}")
-            modified_objects = await self.entities_state_applier.upsert(
-                objects_diff[0].entity_selector_diff.passed, user_agent_type
-                )
+                if changed_entities:
+                    logger.info("Upserting changed entities", changed_entities=len(changed_entities),
+                        total_entities=len(objects_diff[0].entity_selector_diff.passed))
+                    await self.entities_state_applier.upsert(
+                        changed_entities, user_agent_type
+                    )
+                else:
+                    logger.info("Entities in batch didn't changed since last sync, skipping", total_entities=len(objects_diff[0].entity_selector_diff.passed))
+                modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
+            except Exception as e:
+                logger.warning(f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}")
+                modified_objects = await self.entities_state_applier.upsert(
+                    objects_diff[0].entity_selector_diff.passed, user_agent_type
+                    )
+        else:
+           modified_objects = await self.entities_state_applier.upsert(
+                    objects_diff[0].entity_selector_diff.passed, user_agent_type
+                    )
+
 
         return CalculationResult(
             objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
