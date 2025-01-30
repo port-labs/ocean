@@ -72,11 +72,11 @@ class WebhookProcessorManager:
         """Process events for a specific path in order"""
         while True:
             matching_processors: list[AbstractWebhookProcessor] = []
+            event: WebhookEvent | None = None
             try:
                 event = await self._event_queues[path].get()
                 with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
                     matching_processors = self._extract_matching_processors(event, path)
-                    # Process all matching processors in parallel
                     await asyncio.gather(
                         *(
                             self._process_single_event(processor, path)
@@ -96,7 +96,10 @@ class WebhookProcessorManager:
                 for processor in matching_processors:
                     self._timestamp_event_error(processor.event)
             finally:
-                await self._event_queues[path].commit()
+                if event:
+                    await self._event_queues[path].commit()
+                    # Prevents committing empty events for cases where we shutdown while processing
+                    event = None
 
     def _timestamp_event_error(self, event: WebhookEvent) -> None:
         """Timestamp an event as having an error"""
