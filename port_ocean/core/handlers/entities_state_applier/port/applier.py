@@ -78,6 +78,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         self,
         entities: EntityDiff,
         user_agent_type: UserAgentType,
+        entity_deletion_threshold: float = 0.9,
     ) -> None:
         diff = get_port_diff(entities["before"], entities["after"])
 
@@ -87,10 +88,21 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         kept_entities = diff.created + diff.modified
 
         logger.info(
-            f"Determining entities to delete ({len(diff.deleted)}/{len(kept_entities)})"
+            f"Determining entities to delete ({len(diff.deleted)}/{len(kept_entities)})",
+            deleting_entities=len(diff.deleted),
+            keeping_entities=len(kept_entities),
         )
 
-        await self._safe_delete(diff.deleted, kept_entities, user_agent_type)
+        delete_rate = len(diff.deleted) / len(entities["before"])
+        if delete_rate <= entity_deletion_threshold:
+            await self._safe_delete(diff.deleted, kept_entities, user_agent_type)
+        else:
+            logger.info(
+                f"Skipping deletion of entities with delete rate {delete_rate}",
+                delete_rate=delete_rate,
+                deleting_entities=len(diff.deleted),
+                total_entities=len(entities),
+            )
 
     async def upsert(
         self, entities: list[Entity], user_agent_type: UserAgentType
