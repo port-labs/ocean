@@ -12,11 +12,11 @@ from collections.abc import MutableSequence
 import asyncio
 
 
-_DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0
+_DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 63.0
 _DEFAULT_RATE_LIMIT_QUOTA: int = int(
     ocean.integration_config["search_all_resources_per_minute_quota"]
 )
-_PERCENTAGE_OF_QUOTA: float = 0.8
+_PERCENTAGE_OF_QUOTA: float = 0.7
 MAXIMUM_CONCURRENT_REQUESTS: int = 10
 
 if TYPE_CHECKING:
@@ -132,7 +132,7 @@ class GCPResourceRateLimiter(GCPResourceQuota):
             f"The Integration will utilize {_PERCENTAGE_OF_QUOTA * 100}% of the quota, which equates to {effective_quota_limit} for rate limiting."
         )
 
-        limiter = AsyncLimiter(max_rate=quota, time_period=self.time_period)
+        limiter = AsyncLimiter(max_rate=effective_quota_limit, time_period=self.time_period)
         return limiter
 
     @final

@@ -1,3 +1,4 @@
+import gc
 import http
 import os
 import tempfile
@@ -218,6 +219,8 @@ async def process_realtime_event(
         )
     except Exception as e:
         logger.exception(f"Got error {e} while processing a real time event")
+    finally:
+        gc.collect()
 
 
 @ocean.router.post("/events")
@@ -235,7 +238,11 @@ async def feed_events_callback(
     The message schema: https://cloud.google.com/pubsub/docs/push?_gl=1*thv8i4*_ga*NDQwMTA2MzM5LjE3MTEyNzQ2MDY.*_ga_WH2QY8WWF5*MTcxMzA3NzU3Ni40My4xLjE3MTMwNzgxMjUuMC4wLjA.&_ga=2.161162040.-440106339.1711274606&_gac=1.184150868.1711468720.CjwKCAjw5ImwBhBtEiwAFHDZx1mm-z19UdKpEARcG2-F_TXXbXw7j7_gVPKiQ9Z5KcpsvXF1fFb_MBoCUFkQAvD_BwE#receive_push
     The Asset schema: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#creating_feeds
     """
-    request_json = await request.json()
+    try:
+        request_json = await request.json()
+    except Exception as e:
+        logger.warning(f"Client raised exception {str(e)} before the request could be processed.")
+        return Response(status_code=http.HTTPStatus.BAD_REQUEST, content="Client disconnected.")
     try:
         asset_data = await parse_asset_data(request_json["message"]["data"])
         asset_type = asset_data["asset"]["assetType"]
