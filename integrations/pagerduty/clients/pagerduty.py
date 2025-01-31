@@ -228,7 +228,7 @@ class PagerDutyClient:
                     },
                     extensions={
                         "retryable": True,
-                    }
+                    },
                 )
                 yield data["data"]
                 more = data["more"]

@@ -78,9 +78,7 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else:
             incidents_map = {
                 **incidents_map,
-                **{
-                    incident["id"]: incident for incident in incidents
-                }
+                **{incident["id"]: incident for incident in incidents},
             }
 
     if selector.incident_analytics:
@@ -88,7 +86,7 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for services in pager_duty_client.get_services():
             services_map = {
                 **services_map,
-                **{service["id"]: service for service in services}
+                **{service["id"]: service for service in services},
             }
 
         async for analytics in pager_duty_client.get_incident_analytics_by_services(
@@ -96,7 +94,7 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ):
             analytics_map = {
                 **analytics_map,
-                **{analytic["id"]: analytic for analytic in analytics}
+                **{analytic["id"]: analytic for analytic in analytics},
             }
 
         incidents = await pager_duty_client.enrich_incidents_with_analytics_data(
