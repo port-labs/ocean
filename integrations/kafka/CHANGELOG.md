@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.119 (2025-01-31)
+
+
+### Improvements
+
+- Converted client to use asyncio and added batching
+
+
 ## 0.1.118 (2025-01-29)
 
 
