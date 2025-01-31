@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.18 (2025-01-31)
+
+
+### Bug Fixes
+
+- Changed incident analytics API endpoint to fix rate limit errors when incident analytics are enabled
+
+
 ## 0.2.17 (2025-01-29)
 
 
