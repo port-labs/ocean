@@ -184,7 +184,7 @@ class TestPagerDutyClient:
         mock_response.__aiter__.return_value = expected_analytics
 
         with patch(
-            "clients.pagerduty.PagerDutyClient.get_incident_analytics_by_services",
+            "client.PagerDutyClient.get_incident_analytics_by_services",
             return_value=mock_response,
         ):
             result = []
