@@ -120,7 +120,8 @@ class KafkaClient:
         self, batch_size: int = DEFAULT_BATCH_SIZE
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Describe all consumer groups in the cluster."""
-        current_batch = []
+        from itertools import islice
+        import asyncio
 
         groups_metadata = await to_thread.run_sync(
             self.kafka_admin_client.list_consumer_groups
@@ -132,47 +133,57 @@ class KafkaClient:
         if not group_ids:
             return
 
-        groups_description = await to_thread.run_sync(
-            self.kafka_admin_client.describe_consumer_groups, group_ids
-        )
+        # Process group_ids in batches
+        while group_ids:
+            current_batch_ids = list(islice(group_ids, batch_size))
+            group_ids = group_ids[batch_size:]
+            
+            groups_description = await to_thread.run_sync(
+                self.kafka_admin_client.describe_consumer_groups, current_batch_ids
+            )
 
-        for group_id, future in groups_description.items():
+            # Process all groups in the current batch concurrently
+            tasks = []
+            for group_id, future in groups_description.items():
+                tasks.append(self._process_consumer_group(group_id, future))
+            
+            current_batch = []
             try:
-                group_info = await to_thread.run_sync(future.result)
-                members = [
-                    {
-                        "id": member.member_id,
-                        "client_id": member.client_id,
-                        "host": member.host,
-                        "assignment": {
-                            "topic_partitions": [
-                                {"topic": tp.topic, "partition": tp.partition}
-                                for tp in member.assignment.topic_partitions
-                            ]
-                        },
-                    }
-                    for member in group_info.members
-                ]
-
-                current_batch.append(
-                    {
-                        "group_id": group_id,
-                        "state": group_info.state.name,
-                        "members": members,
-                        "cluster_name": self.cluster_name,
-                        "coordinator": group_info.coordinator.id,
-                        "partition_assignor": group_info.partition_assignor,
-                        "is_simple_consumer_group": group_info.is_simple_consumer_group,
-                        "authorized_operations": group_info.authorized_operations,
-                    }
-                )
-
-                if len(current_batch) >= batch_size:
-                    yield current_batch
-                    current_batch = []
+                current_batch = await asyncio.gather(*tasks)
+                yield [group for group in current_batch if group is not None]
             except Exception as e:
-                logger.error(f"Failed to describe consumer group {group_id}: {e}")
+                logger.error(f"Failed to process batch of consumer groups: {e}")
                 raise e
 
-        if current_batch:  # Yield any remaining items
-            yield current_batch
+    async def _process_consumer_group(self, group_id: str, future: Any) -> dict[str, Any] | None:
+        """Process a single consumer group and return its description."""
+        try:
+            group_info = await to_thread.run_sync(future.result)
+            members = [
+                {
+                    "id": member.member_id,
+                    "client_id": member.client_id,
+                    "host": member.host,
+                    "assignment": {
+                        "topic_partitions": [
+                            {"topic": tp.topic, "partition": tp.partition}
+                            for tp in member.assignment.topic_partitions
+                        ]
+                    },
+                }
+                for member in group_info.members
+            ]
+
+            return {
+                "group_id": group_id,
+                "state": group_info.state.name,
+                "members": members,
+                "cluster_name": self.cluster_name,
+                "coordinator": group_info.coordinator.id,
+                "partition_assignor": group_info.partition_assignor,
+                "is_simple_consumer_group": group_info.is_simple_consumer_group,
+                "authorized_operations": group_info.authorized_operations,
+            }
+        except Exception as e:
+            logger.error(f"Failed to describe consumer group {group_id}: {e}")
+            return None
