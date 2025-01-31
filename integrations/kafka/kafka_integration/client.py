@@ -134,9 +134,8 @@ class KafkaClient:
             return
 
         # Process group_ids in batches
-        while group_ids:
-            current_batch_ids = list(islice(group_ids, batch_size))
-            group_ids = group_ids[batch_size:]
+        group_ids_iter = iter(group_ids)
+        while current_batch_ids := list(islice(group_ids_iter, batch_size)):
 
             groups_description = await to_thread.run_sync(
                 self.kafka_admin_client.describe_consumer_groups, current_batch_ids
