@@ -226,6 +226,9 @@ class PagerDutyClient:
                         "filters": {"service_ids": service_ids},
                         "starting_after": starting_after,
                     },
+                    extensions={
+                        "retryable": True,
+                    }
                 )
                 yield data["data"]
                 more = data["more"]
