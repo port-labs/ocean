@@ -1,6 +1,6 @@
 import pytest
 from typing import Dict, List, Any, Optional
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -172,18 +172,28 @@ class TestPagerDutyClient:
                 assert service["__oncall_user"] == matching_oncalls
 
     async def test_get_incident_analytics(self, client: PagerDutyClient) -> None:
-        mock_response = MagicMock()
-        expected_analytics: Dict[str, int] = {
-            "total_incidents": 10,
-            "mean_time_to_resolve": 3600,
-        }
-        mock_response.json.return_value = expected_analytics
+        mock_response = AsyncMock()
+        expected_analytics = [
+            [
+                {
+                    "total_incidents": 10,
+                    "mean_time_to_resolve": 3600,
+                }
+            ]
+        ]
+        mock_response.__aiter__.return_value = expected_analytics
 
         with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
+            "clients.pagerduty.PagerDutyClient.get_incident_analytics_by_services",
+            return_value=mock_response,
         ):
-            result = await client.get_incident_analytics("INCIDENT123")
-            assert result == expected_analytics
+            result = []
+            async for analytics in client.get_incident_analytics_by_services(
+                ["service123"]
+            ):
+                result.extend(analytics)
+
+            assert result == expected_analytics[0]
 
     async def test_get_service_analytics(self, client: PagerDutyClient) -> None:
         # Scenario 1: Successful data retrieval

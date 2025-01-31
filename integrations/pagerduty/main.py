@@ -1,4 +1,3 @@
-import asyncio
 import typing
 from typing import Any
 
@@ -9,8 +8,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients.pagerduty import PagerDutyClient
 from integration import (
-    ObjectKind,
     OBJECTS_WITH_SPECIAL_HANDLING,
+    ObjectKind,
     PagerdutyEscalationPolicyResourceConfig,
     PagerdutyIncidentResourceConfig,
     PagerdutyOncallResourceConfig,
@@ -57,22 +56,6 @@ async def enrich_service_with_analytics_data(
     return await fetch_service_analytics(services)
 
 
-async def enrich_incidents_with_analytics_data(
-    client: PagerDutyClient,
-    incidents: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    analytics_data = await asyncio.gather(
-        *[client.get_incident_analytics(incident["id"]) for incident in incidents]
-    )
-
-    enriched_incidents = [
-        {**incident, "__analytics": analytics}
-        for incident, analytics in zip(incidents, analytics_data)
-    ]
-
-    return enriched_incidents
-
-
 @ocean.on_resync(ObjectKind.INCIDENTS)
 async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Pagerduty resource: {kind}")
@@ -83,20 +66,32 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector
 
     query_params = selector.api_query_params
-
-    async for incidents in pager_duty_client.paginate_request_to_pager_duty(
-        resource=ObjectKind.INCIDENTS,
-        params=query_params.generate_request_params() if query_params else None,
+    incidents_map: dict[str, Any] = {}
+    services_map: dict[str, Any] = {}
+    analytics_map: dict[str, Any] = {}
+    async for incidents in pager_duty_client.get_incidents(
+        params=(query_params.generate_request_params() if query_params else None),
     ):
         logger.info(f"Received batch with {len(incidents)} incidents")
-
-        if selector.incident_analytics:
-            enriched_incident_batch = await enrich_incidents_with_analytics_data(
-                pager_duty_client, incidents
-            )
-            yield enriched_incident_batch
-        else:
+        if not selector.incident_analytics:
             yield incidents
+        else:
+            incidents_map = {incident["id"]: incident for incident in incidents}
+
+    if selector.incident_analytics:
+        logger.info("Fetching incident analytics data")
+        async for services in pager_duty_client.get_services():
+            services_map = {service["id"]: service for service in services}
+
+        async for analytics in pager_duty_client.get_incident_analytics_by_services(
+            list(services_map.keys())
+        ):
+            analytics_map = {analytic["id"]: analytic for analytic in analytics}
+
+        incidents = await pager_duty_client.enrich_incidents_with_analytics_data(
+            incidents_map, analytics_map
+        )
+        yield incidents
 
 
 @ocean.on_resync(ObjectKind.SERVICES)
@@ -108,8 +103,7 @@ async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         PagerdutyServiceResourceConfig, event.resource_config
     ).selector
 
-    async for services in pager_duty_client.paginate_request_to_pager_duty(
-        resource=ObjectKind.SERVICES,
+    async for services in pager_duty_client.get_services(
         params=(
             selector.api_query_params.generate_request_params()
             if selector.api_query_params
@@ -228,10 +222,14 @@ async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
             object_type=ObjectKind.INCIDENTS, identifier=incident_id
         )
 
-        enriched_incident = await enrich_incidents_with_analytics_data(
-            pager_duty_client, [incident["incident"]]
-        )
-        await ocean.register_raw(ObjectKind.INCIDENTS, enriched_incident)
+        async for analytics in pager_duty_client.get_incident_analytics_by_services(
+            [incident["incident"]["service"]["id"]]
+        ):
+            for analytic in analytics:
+                if analytic["id"] == incident["id"]:
+                    incident["incident"]["__analytics"] = analytic
+                    break
+        await ocean.register_raw(ObjectKind.INCIDENTS, [incident["incident"]])
 
     elif event_type in pager_duty_client.service_upsert_events:
         service_id = data["event"]["data"]["id"]
