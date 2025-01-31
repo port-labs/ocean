@@ -248,7 +248,7 @@ class PagerDutyClient:
     async def enrich_incidents_with_analytics_data(
         self, incidents: dict[str, Any], analytics_data: dict[str, Any]
     ) -> list[dict[str, Any]]:
-        for id, incident in incidents.values():
+        for id, incident in incidents.items():
             incident["__analytics"] = analytics_data.get(id)
         return list(incidents.values())
 
