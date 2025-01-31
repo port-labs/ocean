@@ -1,6 +1,14 @@
 from datetime import datetime, timedelta
 
 
+class ObjectKind:
+    SERVICES = "services"
+    INCIDENTS = "incidents"
+    SCHEDULES = "schedules"
+    ONCALLS = "oncalls"
+    ESCALATION_POLICIES = "escalation_policies"
+
+
 def get_date_range_for_last_n_months(n: int) -> tuple[str, str]:
     now = datetime.utcnow()
     start_date = (now - timedelta(days=30 * n)).strftime(

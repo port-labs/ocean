@@ -10,18 +10,11 @@ from port_ocean.core.integrations.base import BaseIntegration
 from pydantic.fields import Field
 from pydantic.main import BaseModel
 
-from clients.utils import (
+from utils import (
     get_date_range_for_last_n_months,
     get_date_range_for_upcoming_n_months,
+    ObjectKind,
 )
-
-
-class ObjectKind:
-    SERVICES = "services"
-    INCIDENTS = "incidents"
-    SCHEDULES = "schedules"
-    ONCALLS = "oncalls"
-    ESCALATION_POLICIES = "escalation_policies"
 
 
 OBJECTS_WITH_SPECIAL_HANDLING = [

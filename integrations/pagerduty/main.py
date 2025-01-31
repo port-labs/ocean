@@ -6,16 +6,16 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from clients.pagerduty import PagerDutyClient
+from client import PagerDutyClient
 from integration import (
     OBJECTS_WITH_SPECIAL_HANDLING,
-    ObjectKind,
     PagerdutyEscalationPolicyResourceConfig,
     PagerdutyIncidentResourceConfig,
     PagerdutyOncallResourceConfig,
     PagerdutyScheduleResourceConfig,
     PagerdutyServiceResourceConfig,
 )
+from utils import ObjectKind
 
 
 def initialize_client() -> PagerDutyClient:

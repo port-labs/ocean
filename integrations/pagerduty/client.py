@@ -7,18 +7,14 @@ from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 
-from .utils import get_date_range_for_last_n_months
+from utils import ObjectKind as Resources
+from utils import get_date_range_for_last_n_months
 
 USER_KEY = "users"
 
 MAX_CONCURRENT_REQUESTS = 10
 PAGE_SIZE = 100
 OAUTH_TOKEN_PREFIX = "pd"
-
-
-class Resources:
-    INCIDENTS = "incidents"
-    SERVICES = "services"
 
 
 class PagerDutyClient:

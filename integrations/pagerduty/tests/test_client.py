@@ -1,11 +1,11 @@
-import pytest
-from typing import Dict, List, Any, Optional
-from unittest.mock import AsyncMock, patch, MagicMock
+from typing import Any, Dict, List, Optional
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
+from client import PagerDutyClient
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from clients.pagerduty import PagerDutyClient
-
 
 TEST_CONFIG: Dict[str, str] = {
     "token": "mock-token",
