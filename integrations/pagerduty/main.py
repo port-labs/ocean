@@ -76,17 +76,28 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if not selector.incident_analytics:
             yield incidents
         else:
-            incidents_map = {incident["id"]: incident for incident in incidents}
+            incidents_map = {
+                **incidents_map,
+                **{
+                    incident["id"]: incident for incident in incidents
+                }
+            }
 
     if selector.incident_analytics:
         logger.info("Fetching incident analytics data")
         async for services in pager_duty_client.get_services():
-            services_map = {service["id"]: service for service in services}
+            services_map = {
+                **services_map,
+                **{service["id"]: service for service in services}
+            }
 
         async for analytics in pager_duty_client.get_incident_analytics_by_services(
             list(services_map.keys())
         ):
-            analytics_map = {analytic["id"]: analytic for analytic in analytics}
+            analytics_map = {
+                **analytics_map,
+                **{analytic["id"]: analytic for analytic in analytics}
+            }
 
         incidents = await pager_duty_client.enrich_incidents_with_analytics_data(
             incidents_map, analytics_map
