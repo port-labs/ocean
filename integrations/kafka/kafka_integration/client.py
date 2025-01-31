@@ -137,7 +137,7 @@ class KafkaClient:
         while group_ids:
             current_batch_ids = list(islice(group_ids, batch_size))
             group_ids = group_ids[batch_size:]
-            
+
             groups_description = await to_thread.run_sync(
                 self.kafka_admin_client.describe_consumer_groups, current_batch_ids
             )
@@ -146,7 +146,7 @@ class KafkaClient:
             tasks = []
             for group_id, future in groups_description.items():
                 tasks.append(self._process_consumer_group(group_id, future))
-            
+
             current_batch = []
             try:
                 current_batch = await asyncio.gather(*tasks)
@@ -155,7 +155,9 @@ class KafkaClient:
                 logger.error(f"Failed to process batch of consumer groups: {e}")
                 raise e
 
-    async def _process_consumer_group(self, group_id: str, future: Any) -> dict[str, Any] | None:
+    async def _process_consumer_group(
+        self, group_id: str, future: Any
+    ) -> dict[str, Any] | None:
         """Process a single consumer group and return its description."""
         try:
             group_info = await to_thread.run_sync(future.result)
