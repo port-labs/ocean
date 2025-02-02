@@ -94,13 +94,13 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             entity_deletion_threshold=entity_deletion_threshold,
         )
 
-        delete_rate = len(diff.deleted) / len(entities["before"])
-        if delete_rate <= entity_deletion_threshold:
+        deletion_rate = len(diff.deleted) / len(entities["before"])
+        if deletion_rate <= entity_deletion_threshold:
             await self._safe_delete(diff.deleted, kept_entities, user_agent_type)
         else:
             logger.info(
-                f"Skipping deletion of entities with delete rate {delete_rate}",
-                delete_rate=delete_rate,
+                f"Skipping deletion of entities with delition rate {deletion_rate}",
+                deletion_rate=deletion_rate,
                 deleting_entities=len(diff.deleted),
                 total_entities=len(entities),
             )
