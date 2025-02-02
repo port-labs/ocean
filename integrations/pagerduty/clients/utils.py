@@ -3,7 +3,7 @@ import httpx
 from loguru import logger
 import time
 from port_ocean.helpers.retry import CustomTokenRefreshABC, IntegrationRetryStrategyABC
-
+from port_ocean.core.utils.utils import load_config_from_file
 
 def get_date_range_for_last_n_months(n: int) -> tuple[str, str]:
     now = datetime.utcnow()
@@ -50,6 +50,19 @@ class RetryWithRefreshStrategy(IntegrationRetryStrategyABC, CustomTokenRefreshAB
 
         return False
 
+    async def refresh_token_from_file(self, config_file_path: str) -> bool:
+        try:
+            config = await load_config_from_file(self, config_file_path)
+            if(config.get("token") and config.get("token") != self.token):
+                self.token = config.get("token")
+                return True
+            else:
+                logger.debug(f"Token is the same as the current token or missing: {config.get('token')}")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to load configuration from file: {e}")
+            return False
+
     def token_refresh_handler(self, response: httpx.Response, max_token_retries: int, token_refresh_backoff_interval: int, config_file_path: str | None = None) -> bool:
         retry_count = response.extensions.get("token_retry_count", 0)
 
@@ -63,14 +76,11 @@ class RetryWithRefreshStrategy(IntegrationRetryStrategyABC, CustomTokenRefreshAB
         # Update token retry count
         response.extensions["token_retry_count"] = retry_count + 1
 
-        # Assuming the refresh process takes some time, we sleep for a bit before retrying
-        #TODO: check if the tokens are different, if so, no need to wait. (? wait before refresh or after ?)
-        time.sleep(token_refresh_backoff_interval)
-
         if config_file_path is not None:
             try:
                 logger.debug(f"Loading configuration from file: {config_file_path}")
                 refresh_success = self.refresh_token_from_file(self, config_file_path)
+                time.sleep(token_refresh_backoff_interval)
             except Exception as e:
                 logger.error(f"Failed to load configuration from file: {e}")
                 return False
@@ -79,7 +89,7 @@ class RetryWithRefreshStrategy(IntegrationRetryStrategyABC, CustomTokenRefreshAB
             return False
 
         if not refresh_success:
-            logger.error("Unable to refresh token")
+            logger.error(f"Unable to refresh token, retry attempt failed. attempt {retry_count + 1} of {max_token_retries}")
             return False
 
         return True

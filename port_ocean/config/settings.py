@@ -1,7 +1,4 @@
 from typing import Any, Literal, Type, cast
-
-import yaml
-from loguru import logger
 from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
 from pydantic.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
@@ -12,6 +9,7 @@ from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
 from port_ocean.core.models import CreatePortResourcesOrigin, Runtime
 from port_ocean.utils.misc import get_integration_name, get_spec_file
+from port_ocean.core.utils.utils import load_config_from_file
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
@@ -62,18 +60,8 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
 
         return values
 
-    async def load_config_from_file(self, config_file_path: str) -> None:
-        logger.debug(f"Loading configuration from file: {config_file_path}")
-        try:
-            with open(config_file_path, "r") as f:
-                file_config = yaml.safe_load(f)
-
-            if isinstance(self.config, dict):
-                self.config = {**self.config, **file_config}
-            else:
-                self.config = {**self.config.dict(), **file_config}
-        except Exception as e:
-            raise ValueError(f"Failed to load configuration from file: {e}")
+    async def load_integration_config_from_file(self, config_file_path: str) -> None:
+        self.config = load_config_from_file(self, config_file_path)
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):

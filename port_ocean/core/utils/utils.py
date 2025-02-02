@@ -186,12 +186,16 @@ def resolve_entities_diff(
     return changed_entities
 
 
-def refresh_token_from_file(self: Any, config_file_path: str) -> Any:
+async def load_config_from_file(self: Any, config_file_path: str) -> Any:
+    logger.debug(f"Loading configuration from file: {config_file_path}")
     try:
         with open(config_file_path, "r") as f:
             file_config = yaml.safe_load(f)
 
-        return file_config
-
+        if isinstance(self.config, dict):
+            config = {**self.config, **file_config}
+        else:
+            config = {**self.config.dict(), **file_config}
+        return config
     except Exception as e:
-        logger.error(f"Failed to load configuration from file: {e}")
+        raise ValueError(f"Failed to load configuration from file: {e}")

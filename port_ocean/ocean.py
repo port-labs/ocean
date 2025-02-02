@@ -109,7 +109,7 @@ class Ocean:
         seconds = self.config.config_reload_interval
         config_file_path = self.config.config_file_path
         await schedule_repeated_task(
-            self.config.integration.load_config_from_file,
+            self.config.integration.load_integration_config_from_file,
             seconds,
             config_file_path=config_file_path,
         )
