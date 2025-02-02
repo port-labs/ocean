@@ -38,7 +38,9 @@ async def test_delete_diff_below_threshold() -> None:
     )
 
     with patch.object(applier, "_safe_delete") as mock_safe_delete:
-        await applier.delete_diff(entities, UserAgentType.exporter)
+        await applier.delete_diff(
+            entities, UserAgentType.exporter, entity_deletion_threshold=0.9
+        )
 
     mock_safe_delete.assert_called_once()
     assert len(mock_safe_delete.call_args[0][0]) == 1
@@ -58,7 +60,9 @@ async def test_delete_diff_above_default_threshold() -> None:
     )
 
     with patch.object(applier, "_safe_delete") as mock_safe_delete:
-        await applier.delete_diff(entities, UserAgentType.exporter)
+        await applier.delete_diff(
+            entities, UserAgentType.exporter, entity_deletion_threshold=0.9
+        )
 
     mock_safe_delete.assert_not_called()
 

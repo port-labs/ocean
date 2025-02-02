@@ -78,7 +78,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         self,
         entities: EntityDiff,
         user_agent_type: UserAgentType,
-        entity_deletion_threshold: float = 0.9,
+        entity_deletion_threshold: float = None,
     ) -> None:
         diff = get_port_diff(entities["before"], entities["after"])
 
