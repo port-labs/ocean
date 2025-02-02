@@ -91,6 +91,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             f"Determining entities to delete ({len(diff.deleted)}/{len(kept_entities)})",
             deleting_entities=len(diff.deleted),
             keeping_entities=len(kept_entities),
+            entity_deletion_threshold=entity_deletion_threshold,
         )
 
         delete_rate = len(diff.deleted) / len(entities["before"])
