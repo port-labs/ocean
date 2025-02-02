@@ -15,19 +15,30 @@ OAUTH_TOKEN_PREFIX = "pd"
 OAUTH_TOKEN_RETRY_ATTEMPTS = 3
 OAUTH_TOKEN_REFRESH_BACKOFF_INTERVAL = 10
 
+
 class PagerDutyClient(RetryWithRefreshStrategy):
 
-    def __init__(self, token: str, api_url: str, app_host: str | None, config_file_path: str | None):
+    def __init__(
+        self,
+        token: str,
+        api_url: str,
+        app_host: str | None,
+        config_file_path: str | None,
+    ):
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
         self.http_client = http_async_client
         self.http_client.headers.update(self.headers)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-        #conditional retry logic
-        if (config_file_path is not None):
+        # conditional retry logic
+        if config_file_path is not None:
             self.config_file_path = config_file_path
-            self.http_client._transport._custom_retry_method = self.should_retry_async_handler
+            self.http_client._transport._custom_retry_method = (
+                self.should_retry_async_handler
+            )
+            self.max_token_retries = OAUTH_TOKEN_RETRY_ATTEMPTS
+            self.token_refresh_backoff_interval = OAUTH_TOKEN_REFRESH_BACKOFF_INTERVAL
 
     @property
     def incident_upsert_events(self) -> list[str]:

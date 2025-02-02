@@ -191,12 +191,7 @@ async def load_config_from_file(self: Any, config_file_path: str) -> Any:
     try:
         with open(config_file_path, "r") as f:
             file_config = yaml.safe_load(f)
-
-        if isinstance(self.config, dict):
-            config = {**self.config, **file_config}
-        else:
-            config = {**self.config.dict(), **file_config}
-        return config
+        return file_config
     except Exception as e:
         raise ValueError(f"Failed to load configuration from file: {e}")
 
