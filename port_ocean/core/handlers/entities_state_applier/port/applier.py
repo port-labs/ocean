@@ -78,7 +78,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         self,
         entities: EntityDiff,
         user_agent_type: UserAgentType,
-        entity_deletion_threshold: float = None,
+        entity_deletion_threshold: float | None = None,
     ) -> None:
         diff = get_port_diff(entities["before"], entities["after"])
 
@@ -95,7 +95,10 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         )
 
         deletion_rate = len(diff.deleted) / len(entities["before"])
-        if deletion_rate <= entity_deletion_threshold:
+        if (
+            entity_deletion_threshold is not None
+            and deletion_rate <= entity_deletion_threshold
+        ):
             await self._safe_delete(diff.deleted, kept_entities, user_agent_type)
         else:
             logger.info(
