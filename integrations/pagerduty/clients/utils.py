@@ -3,7 +3,7 @@ import httpx
 from loguru import logger
 import time
 from port_ocean.helpers.retry import CustomTokenRefreshABC, IntegrationRetryStrategyABC
-from port_ocean.core.utils.utils import load_config_from_file
+from port_ocean.core.utils.utils import refresh_token_from_file
 
 def get_date_range_for_last_n_months(n: int) -> tuple[str, str]:
     now = datetime.utcnow()
@@ -50,20 +50,7 @@ class RetryWithRefreshStrategy(IntegrationRetryStrategyABC, CustomTokenRefreshAB
 
         return False
 
-    async def refresh_token_from_file(self, config_file_path: str) -> bool:
-        try:
-            config = await load_config_from_file(self, config_file_path)
-            if(config.get("token") and config.get("token") != self.token):
-                self.token = config.get("token")
-                return True
-            else:
-                logger.debug(f"Token is the same as the current token or missing: {config.get('token')}")
-                return False
-        except Exception as e:
-            logger.error(f"Failed to load configuration from file: {e}")
-            return False
-
-    def token_refresh_handler(self, response: httpx.Response, max_token_retries: int, token_refresh_backoff_interval: int, config_file_path: str | None = None) -> bool:
+    async def token_refresh_handler(self, response: httpx.Response, max_token_retries: int, token_refresh_backoff_interval: int, config_file_path: str | None = None) -> bool:
         retry_count = response.extensions.get("token_retry_count", 0)
 
         logger.debug("Start token refresh validation")
@@ -79,7 +66,7 @@ class RetryWithRefreshStrategy(IntegrationRetryStrategyABC, CustomTokenRefreshAB
         if config_file_path is not None:
             try:
                 logger.debug(f"Loading configuration from file: {config_file_path}")
-                refresh_success = self.refresh_token_from_file(self, config_file_path)
+                refresh_success = await refresh_token_from_file(self, config_file_path)
                 time.sleep(token_refresh_backoff_interval)
             except Exception as e:
                 logger.error(f"Failed to load configuration from file: {e}")
@@ -107,7 +94,7 @@ class RetryWithRefreshStrategy(IntegrationRetryStrategyABC, CustomTokenRefreshAB
 
             try:
                 logger.debug("Attempting to refresh invalid token")
-                return self.token_refresh_handler(self, response, self.max_token_retries, self.token_refresh_backoff_interval, self.config_file_path)
+                return await self.token_refresh_handler(self, response, self.max_token_retries, self.token_refresh_backoff_interval, self.config_file_path)
             except Exception as e:
                 logger.error(f"Failed to refresh token: {e}")
                 pass

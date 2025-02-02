@@ -381,7 +381,7 @@ class CustomTokenRefreshABC(ABC):
         pass
 
     @abstractmethod
-    def token_refresh_handler(self, response: httpx.Response) -> bool:
+    async def token_refresh_handler(self, response: httpx.Response) -> bool:
         """
         Custom token refresh logic for the integration, \
         this is the place to customize the way the integration should refresh the token if needed.

@@ -61,7 +61,7 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
         return values
 
     async def load_integration_config_from_file(self, config_file_path: str) -> None:
-        self.config = load_config_from_file(self, config_file_path)
+        self.config = await load_config_from_file(self, config_file_path)
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
