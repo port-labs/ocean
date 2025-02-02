@@ -4,6 +4,7 @@ resources:
   - kind: project
     selector:
       query: "true"
+      includeLabels: "true"
     port:
       entity:
         mappings:
@@ -13,5 +14,5 @@ resources:
           properties:
             url: .web_url
             readme: file://README.md
-            description: .description
             language: .__languages | to_entries | max_by(.value) | .key
+            labels: .__labels

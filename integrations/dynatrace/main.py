@@ -1,17 +1,20 @@
 from enum import StrEnum
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import DynatraceClient
+from integration import DynatraceSLOConfig, DynatraceResourceConfig
 
 
 class ObjectKind(StrEnum):
     PROBLEM = "problem"
     SLO = "slo"
     ENTITY = "entity"
+    TEAM = "team"
 
 
 def initialize_client() -> DynatraceClient:
@@ -32,17 +35,36 @@ async def on_resync_problems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SLO)
 async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dynatrace_client = initialize_client()
-
+    selector = cast(DynatraceSLOConfig, event.resource_config).selector
     async for slos in dynatrace_client.get_slos():
-        yield slos
+        if selector.attach_related_entities:
+            enriched_slos = await dynatrace_client.enrich_slos_with_related_entities(
+                slos
+            )
+            yield enriched_slos
+        else:
+            yield slos
 
 
 @ocean.on_resync(ObjectKind.ENTITY)
 async def on_resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dynatrace_client = initialize_client()
 
-    async for entities in dynatrace_client.get_entities():
-        yield entities
+    selector = cast(DynatraceResourceConfig, event.resource_config).selector
+
+    for entity_type in selector.entity_types:
+        async for entities in dynatrace_client.get_entities(
+            f'type("{entity_type}")', selector.entity_fields
+        ):
+            yield entities
+
+
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dynatrace_client = initialize_client()
+
+    async for teams in dynatrace_client.get_teams():
+        yield teams
 
 
 @ocean.router.post("/webhook/problem")

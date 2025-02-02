@@ -13,11 +13,13 @@ from port_ocean.core.defaults.common import (
     get_port_integration_defaults,
 )
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-from port_ocean.core.models import Blueprint
-from port_ocean.core.utils import gather_and_split_errors_from_results
+from port_ocean.core.models import Blueprint, CreatePortResourcesOrigin
+from port_ocean.core.utils.utils import gather_and_split_errors_from_results
 from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
+
+ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG = "USE_PROVISIONED_DEFAULTS"
 
 
 def deconstruct_blueprints_to_creation_steps(
@@ -54,8 +56,8 @@ def deconstruct_blueprints_to_creation_steps(
 
 async def _initialize_required_integration_settings(
     port_client: PortClient,
-    default_mapping: PortAppConfig,
     integration_config: IntegrationConfiguration,
+    default_mapping: PortAppConfig | None = None,
 ) -> None:
     try:
         logger.info("Initializing integration at port")
@@ -68,8 +70,10 @@ async def _initialize_required_integration_settings(
             )
             integration = await port_client.create_integration(
                 integration_config.integration.type,
-                integration_config.event_listener.to_request(),
+                integration_config.event_listener.get_changelog_destination_details(),
                 port_app_config=default_mapping,
+                create_port_resources_origin_in_port=integration_config.create_port_resources_origin
+                == CreatePortResourcesOrigin.Port,
             )
         elif not integration.get("config"):
             logger.info(
@@ -77,7 +81,7 @@ async def _initialize_required_integration_settings(
             )
             integration = await port_client.patch_integration(
                 integration_config.integration.type,
-                integration_config.event_listener.to_request(),
+                integration_config.event_listener.get_changelog_destination_details(),
                 port_app_config=default_mapping,
             )
     except httpx.HTTPStatusError as err:
@@ -85,8 +89,10 @@ async def _initialize_required_integration_settings(
         raise err
 
     logger.info("Checking for diff in integration configuration")
-    changelog_destination = integration_config.event_listener.to_request().get(
-        "changelog_destination"
+    changelog_destination = (
+        integration_config.event_listener.get_changelog_destination_details().get(
+            "changelog_destination"
+        )
     )
     if (
         integration.get("changelogDestination") != changelog_destination
@@ -100,8 +106,10 @@ async def _initialize_required_integration_settings(
 
 async def _create_resources(
     port_client: PortClient,
-    defaults: Defaults,
+    defaults: Defaults | None = None,
 ) -> None:
+    if not defaults:
+        return
     creation_stage, *blueprint_patches = deconstruct_blueprints_to_creation_steps(
         defaults.blueprints
     )
@@ -197,22 +205,64 @@ async def _create_resources(
 async def _initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
+    if not integration_config.initialize_port_resources:
+        return
+
     port_client = ocean.port_client
     defaults = get_port_integration_defaults(
         config_class, integration_config.resources_path
     )
-    if not defaults:
+
+    if (
+        not integration_config.create_port_resources_origin
+        and integration_config.runtime.is_saas_runtime
+    ):
+        logger.info("Setting resources origin to be Port")
+        integration_config.create_port_resources_origin = CreatePortResourcesOrigin.Port
+
+    if (
+        integration_config.create_port_resources_origin
+        == CreatePortResourcesOrigin.Port
+    ):
+        logger.info(
+            "Resources origin is set to be Port, verifying integration is supported"
+        )
+        org_feature_flags = await port_client.get_organization_feature_flags()
+        if ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG not in org_feature_flags:
+            logger.info(
+                "Port origin for Integration is not supported, changing resources origin to use Ocean"
+            )
+            integration_config.create_port_resources_origin = (
+                CreatePortResourcesOrigin.Ocean
+            )
+
+    if (
+        integration_config.create_port_resources_origin
+        != CreatePortResourcesOrigin.Port
+        and not defaults
+    ):
         logger.warning("No defaults found. Skipping initialization...")
         return None
 
-    if defaults.port_app_config:
+    if (
+        (defaults and defaults.port_app_config)
+        or integration_config.create_port_resources_origin
+        == CreatePortResourcesOrigin.Port
+    ):
         await _initialize_required_integration_settings(
-            port_client, defaults.port_app_config, integration_config
+            port_client,
+            integration_config,
+            defaults.port_app_config if defaults else None,
         )
 
-    if not integration_config.initialize_port_resources:
+    if (
+        integration_config.create_port_resources_origin
+        == CreatePortResourcesOrigin.Port
+    ):
+        logger.info(
+            "Skipping creating defaults resources due to `create_port_resources_origin` being `Port`"
+        )
         return
-
     try:
         logger.info("Found default resources, starting creation process")
         await _create_resources(port_client, defaults)

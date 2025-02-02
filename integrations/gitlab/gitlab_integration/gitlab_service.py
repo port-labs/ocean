@@ -20,6 +20,7 @@ from gitlab.v4.objects import (
     ProjectFile,
     ProjectPipeline,
     ProjectPipelineJob,
+    ProjectLabel,
     Hook,
 )
 from gitlab_integration.core.async_fetcher import AsyncFetcher
@@ -227,7 +228,9 @@ class GitlabService:
                 project.files.get, file_path, sha
             )
 
-            entities = yaml.safe_load(file_content.decode())
+            entities = await anyio.to_thread.run_sync(
+                yaml.safe_load, file_content.decode()
+            )
             raw_entities = [
                 Entity(**entity_data)
                 for entity_data in (
@@ -550,9 +553,15 @@ class GitlabService:
     @classmethod
     async def async_project_labels_wrapper(cls, project: Project) -> dict[str, Any]:
         try:
-            labels = await anyio.to_thread.run_sync(project.labels.list)
-            serialized_labels = [label.attributes for label in labels]
-            return {"__labels": serialized_labels}
+            all_labels = [
+                label.attributes
+                async for labels_batch in AsyncFetcher.fetch_batch(
+                    fetch_func=project.labels.list
+                )
+                for label in typing.cast(List[ProjectLabel], labels_batch)
+            ]
+
+            return {"__labels": all_labels}
         except Exception as e:
             logger.warning(
                 f"Failed to get labels for project={project.path_with_namespace}. error={e}"
@@ -571,11 +580,16 @@ class GitlabService:
             return {"__languages": {}}
 
     @classmethod
-    async def enrich_project_with_extras(cls, project: Project) -> Project:
-        tasks = [
-            cls.async_project_language_wrapper(project),
-            cls.async_project_labels_wrapper(project),
-        ]
+    async def enrich_project_with_extras(
+        cls, project: Project, include_labels: bool = False
+    ) -> Project:
+        if include_labels:
+            tasks = [
+                cls.async_project_language_wrapper(project),
+                cls.async_project_labels_wrapper(project),
+            ]
+        else:
+            tasks = [cls.async_project_language_wrapper(project)]
         tasks_extras = await asyncio.gather(*tasks)
         for task_extras in tasks_extras:
             for key, value in task_extras.items():
@@ -806,7 +820,7 @@ class GitlabService:
 
         return entities_before, entities_after
 
-    def _parse_file_content(
+    async def _parse_file_content(
         self, project: Project, file: ProjectFile
     ) -> Union[str, dict[str, Any], list[Any]] | None:
         """
@@ -821,13 +835,17 @@ class GitlabService:
             )
             return None
         try:
-            return json.loads(file.decode())
+            return await anyio.to_thread.run_sync(json.loads, file.decode())
         except json.JSONDecodeError:
             try:
                 logger.debug(
                     f"Trying to process file {file.file_path} in project {project.path_with_namespace} as YAML"
                 )
-                documents = list(yaml.load_all(file.decode(), Loader=yaml.SafeLoader))
+                documents = list(
+                    await anyio.to_thread.run_sync(
+                        yaml.load_all, file.decode(), yaml.SafeLoader
+                    )
+                )
                 if not documents:
                     logger.debug(
                         f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as YAML,"
@@ -856,7 +874,7 @@ class GitlabService:
                 f"Fetched file {file_path} in project {project.path_with_namespace}"
             )
             project_file = typing.cast(ProjectFile, project_file)
-            parsed_file = self._parse_file_content(project, project_file)
+            parsed_file = await self._parse_file_content(project, project_file)
             project_file_dict = project_file.asdict()
 
             if not parsed_file:

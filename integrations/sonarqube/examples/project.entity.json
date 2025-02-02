@@ -1,0 +1,19 @@
+{
+    "identifier": "port-labs_Port_port-api",
+    "title": "Port API",
+    "team": [],
+    "properties": {
+        "organization": "port-labs",
+        "link": "https://sonarcloud.io/project/overview?id=port-labs_Port_port-api",
+        "qualityGateStatus": "ERROR",
+        "numberOfBugs": 20,
+        "numberOfCodeSmells": 262,
+        "numberOfVulnerabilities": 0,
+        "numberOfHotSpots": 3,
+        "numberOfDuplications": 18,
+        "coverage": 0,
+        "mainBranch": "main"
+    },
+    "relations": {},
+    "icon": "sonarqube"
+}

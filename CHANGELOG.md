@@ -6,6 +6,148 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.18.6 (2025-01-29)
+
+### Improvements
+
+- Entity diff calculation only on resync
+
+## 0.18.5 (2025-01-28)
+
+### Bug Fixes
+
+- Fixed an issue where the integration would delete all entities if the Port app configuration was empty
+
+## 0.18.4 (2025-01-22)
+
+### Improvements
+
+- added check diff entitites to reduce load from port to all integrations
+
+## 0.18.3 (2025-01-22)
+
+### Improvements
+
+- Opt-in integration resource provision by Port
+
+## 0.18.2 (2025-01-21)
+
+### Improvements
+
+- Updated the search entities query sent to port with one rule of identifier instead of many
+
+## 0.18.1 (2025-01-21)
+
+### Improvements
+
+- Updated the search entities query sent to port with blueprint
+
+## 0.18.0 (2025-01-15)
+
+### Improvements
+
+- Introduced a new entity diff resolver to reduce port system load by comparing entities and upserting changed entities only
+
+## 0.17.8 (2025-01-15)
+
+### Bug Fixes
+
+- Fixed vulnerability in the jinja package that is resolved by updating to 3.1.5
+
+
+## 0.17.7 (2025-01-08)
+
+### Bug Fixes
+
+- Fixed a bug where creating an integration with WEBHOOKS_ONLY event listener failed.
+
+### Improvements
+
+- Added jira integration running config to vscode.
+
+## 0.17.6 (2025-01-08)
+
+### Bug Fixes
+
+- Fixed a bug where the `unregister_raw` and `register_raw` were not handling right the errors and misconfigured entity keys
+
+
+## 0.17.5 (2025-01-07)
+
+
+### Bug Fixes
+
+- Explicit poetry version due to major version (2.0.0) breaking the CI
+
+
+## 0.17.4 (2024-12-31)
+
+
+### Bug Fixes
+
+- Adjusted log terminology
+- Failed transformations counter now increments for all cases (None (null / missing), empty)
+
+## 0.17.3 (2024-12-31)
+
+
+### Bug Fixes
+
+- Added support for empty values for JQ mapping logs
+- Added tests to assert for proper response when JQ is missmapped or values are empty
+
+## 0.17.2 (2024-12-31)
+
+
+### Bug Fixes
+
+- Fixed lint failures
+
+
+## 0.17.1 (2024-12-31)
+
+
+### Bug Fixes
+
+- Fixed lint failure for resources that have two `on_resync` decorators
+
+
+## 0.17.0 (2024-12-31)
+
+
+### Features
+
+- Added new webhooks only event listener mode. This event listener handles only webhook invocations and raises error once used for resync.
+
+
+## 0.16.1 (2024-12-25)
+
+### Bug Fixes
+
+- Added new info log for JQ mapping per batch to notify of misconfigured JQ mappings between a property and the JQ target
+
+
+## 0.16.0 (2024-12-24)
+
+
+### Improvements
+
+- When `createMissingRelatedEntities` is set to `false` and upserting entity failed on not existing entity, the entity will be gathered to the end of the resync and will try sorting all
+  the failed entities through a topological sort and upsert them as well
+- Test upsert with dependencies, with self circular dependency and external entity dependency.
+
+### Bug Fixes
+
+- When experiencing cyclic error on topological sort try unsorted upsert of the entities
+- Fix topologicals sort tree creation so an entity cannot be its own dependency
+
+
+## 0.15.3 (2024-12-22)
+
+### Bug Fixes
+
+- Extended `Ocean new` cli command to fill out more information for the user and also fixed wrong output
+
 
 ## 0.15.3 (2024-12-19)
 

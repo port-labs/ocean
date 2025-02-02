@@ -12,6 +12,7 @@ resources:
           blueprint: '"jiraProject"'
           properties:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
+            totalIssues: .insight.totalIssueCount
 
   - kind: user
     selector:
@@ -24,12 +25,28 @@ resources:
           blueprint: '"jiraUser"'
           properties:
             emailAddress: .emailAddress
-            displayName: .displayName
             active: .active
             accountType: .accountType
             timeZone: .timeZone
             locale: .locale
             avatarUrl: .avatarUrls["48x48"]
+
+  - kind: team
+    selector:
+      query: "true"
+      includeMembers: true
+    port:
+      entity:
+        mappings:
+          identifier: .teamId
+          title: .displayName
+          blueprint: '"jiraTeam"'
+          properties:
+            organizationId: .organizationId
+            teamType: .teamType
+            description: .description
+          relations:
+            members: if .__members != null then .__members | map(.accountId) else [] end
 
   - kind: issue
     selector:
@@ -47,7 +64,7 @@ resources:
             issueType: .fields.issuetype.name
             components: .fields.components
             creator: .fields.creator.emailAddress
-            priority: .fields.priority.id
+            priority: .fields.priority.name
             labels: .fields.labels
             created: .fields.created
             updated: .fields.updated

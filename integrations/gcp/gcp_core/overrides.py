@@ -5,7 +5,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic import Field
+from pydantic import Field, BaseModel
 
 
 class GCPCloudResourceSelector(Selector):
@@ -39,3 +39,7 @@ class GCPPortAppConfig(PortAppConfig):
     resources: list[GCPCloudResourceConfig | GCPResourceConfig | ResourceConfig] = (
         Field(default_factory=list)
     )
+
+
+class ProtoConfig(BaseModel):
+    preserving_proto_field_name: typing.Optional[bool] = None

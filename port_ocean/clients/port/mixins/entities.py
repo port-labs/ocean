@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote_plus
 
 import httpx
@@ -11,7 +11,8 @@ from port_ocean.clients.port.utils import (
     handle_status_code,
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
 )
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, PortAPIErrorMessage
+from starlette import status
 
 
 class EntityClientMixin:
@@ -21,7 +22,9 @@ class EntityClientMixin:
         # Semaphore is used to limit the number of concurrent requests to port, to avoid overloading it.
         # The number of concurrent requests is set to 90% of the max connections limit, to leave some room for other
         # requests that are not related to entities.
-        self.semaphore = asyncio.Semaphore(round(0.9 * PORT_HTTP_MAX_CONNECTIONS_LIMIT))
+        self.semaphore = asyncio.Semaphore(
+            round(0.5 * PORT_HTTP_MAX_CONNECTIONS_LIMIT)
+        )  # 50% of the max connections limit in order to avoid overloading port
 
     async def upsert_entity(
         self,
@@ -29,7 +32,27 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> Entity | None:
+    ) -> Entity | None | Literal[False]:
+        """
+        This function upserts an entity into Port.
+
+        Usage:
+        ```python
+            upsertedEntity = await self.context.port_client.upsert_entity(
+                            entity,
+                            event.port_app_config.get_port_request_options(),
+                            user_agent_type,
+                            should_raise=False,
+                        )
+        ```
+        :param entity: An Entity to be upserted
+        :param request_options: A dictionary specifying how to upsert the entity
+        :param user_agent_type: a UserAgentType specifying who is preforming the action
+        :param should_raise: A boolean specifying whether the error should be raised or handled silently
+        :return: [Entity] if the upsert occured successfully
+        :return: [None] will be returned if entity is using search identifier
+        :return: [False] will be returned if upsert failed because of unmet dependency
+        """
         validation_only = request_options["validation_only"]
         async with self.semaphore:
             logger.debug(
@@ -50,13 +73,21 @@ class EntityClientMixin:
                 },
                 extensions={"retryable": True},
             )
-
         if response.is_error:
             logger.error(
                 f"Error {'Validating' if validation_only else 'Upserting'} "
                 f"entity: {entity.identifier} of "
                 f"blueprint: {entity.blueprint}"
             )
+            result = response.json()
+
+            if (
+                response.status_code == status.HTTP_404_NOT_FOUND
+                and not result.get("ok")
+                and result.get("error") == PortAPIErrorMessage.NOT_FOUND.value
+            ):
+                # Return false to differentiate from `result_entity.is_using_search_identifier`
+                return False
         handle_status_code(response, should_raise)
         result = response.json()
 
@@ -69,10 +100,22 @@ class EntityClientMixin:
         if result_entity.is_using_search_identifier:
             return None
 
-        # In order to save memory we'll keep only the identifier, blueprint and relations of the
-        # upserted entity result for later calculations
+        return self._reduce_entity(result_entity)
+
+    @staticmethod
+    def _reduce_entity(entity: Entity) -> Entity:
+        """
+        Reduces an entity to only keep identifier, blueprint and processed relations.
+        This helps save memory by removing unnecessary data.
+
+        Args:
+            entity: The entity to reduce
+
+        Returns:
+            Entity: A new entity with only the essential data
+        """
         reduced_entity = Entity(
-            identifier=result_entity.identifier, blueprint=result_entity.blueprint
+            identifier=entity.identifier, blueprint=entity.blueprint
         )
 
         # Turning dict typed relations (raw search relations) is required
@@ -80,7 +123,7 @@ class EntityClientMixin:
         # and ignore the ones that don't as they weren't upserted
         reduced_entity.relations = {
             key: None if isinstance(relation, dict) else relation
-            for key, relation in result_entity.relations.items()
+            for key, relation in entity.relations.items()
         }
 
         return reduced_entity
@@ -173,7 +216,10 @@ class EntityClientMixin:
         )
 
     async def search_entities(
-        self, user_agent_type: UserAgentType, query: dict[Any, Any] | None = None
+        self,
+        user_agent_type: UserAgentType,
+        query: dict[Any, Any] | None = None,
+        parameters_to_include: list[str] | None = None,
     ) -> list[Entity]:
         default_query = {
             "combinator": "and",
@@ -203,7 +249,7 @@ class EntityClientMixin:
             headers=await self.auth.headers(user_agent_type),
             params={
                 "exclude_calculated_properties": "true",
-                "include": ["blueprint", "identifier"],
+                "include": parameters_to_include or ["blueprint", "identifier"],
             },
             extensions={"retryable": True},
         )

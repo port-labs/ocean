@@ -65,9 +65,19 @@
           "icon": "Git",
           "title": "Main Branch"
         },
-        "tags": {
-          "type": "array",
-          "title": "Tags"
+        "mainBranchLastAnalysisDate": {
+          "type": "string",
+          "format": "date-time",
+          "icon": "Clock",
+          "title": "Main Branch Last Analysis Date"
+        },
+        "revision": {
+          "type": "string",
+          "title": "Revision"
+        },
+        "managed": {
+          "type": "boolean",
+          "title": "Managed"
         }
       },
       "required": []
@@ -224,7 +234,10 @@
         },
         "tags": {
           "type": "array",
-          "title": "Tags"
+          "title": "Tags",
+          "items": {
+            "type": "string"
+          }
         },
         "createdAt": {
           "type": "string",

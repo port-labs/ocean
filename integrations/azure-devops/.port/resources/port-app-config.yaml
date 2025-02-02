@@ -1,5 +1,6 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
+useDefaultBranch: true
 resources:
   - kind: project
     selector:

@@ -3,6 +3,17 @@
   "configurations": [
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jira",
+      "envFile": "${workspaceFolder}/integrations/jira/.env",
+      "justMyCode": true,
+      "name": "Run jira integration",
+      "program": "${workspaceFolder}/integrations/jira/debug.py",
+      "python": "${workspaceFolder}/integrations/jira/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/snyk",
       "envFile": "${workspaceFolder}/integrations/snyk/.env",
       "justMyCode": true,
@@ -79,6 +90,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/datadog",
+      "envFile": "${workspaceFolder}/integrations/datadog/.env",
+      "justMyCode": false,
+      "name": "Run Datadog integration",
+      "program": "${workspaceFolder}/integrations/datadog/debug.py",
+      "python": "${workspaceFolder}/integrations/datadog/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/test-integration",
       "envFile": "${workspaceFolder}/integrations/test-integration/.env",
       "justMyCode": true,
@@ -98,6 +120,17 @@
       "python": "${workspaceFolder}/integrations/backstage/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/port_ocean/cli",
+      "justMyCode": true,
+      "name": "Run ocean new command",
+      "program": "${workspaceFolder}/port_ocean/debug_cli.py",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy",
+      "args": ["new"]
     }
   ]
 }
