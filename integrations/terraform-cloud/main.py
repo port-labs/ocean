@@ -186,7 +186,7 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     run_id = data["run_id"]
     logger.info(f"Processing Terraform run event for run: {run_id}")
 
-    workspace_id = data["workspace_id"]
+    workspace_id = datamake["workspace_id"]
     logger.info(f"Processing Terraform run event for workspace: {workspace_id}")
 
     run, workspace = await gather(

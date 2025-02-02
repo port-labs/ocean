@@ -307,7 +307,6 @@ class TestPagerDutyClient:
         assert should_retry is True
         assert client.token == "new-mock-token"
 
-
     async def test_token_refresh_without_file(self, client: PagerDutyClient) -> None:
         client.config_file_path = None
 

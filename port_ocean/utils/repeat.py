@@ -1,8 +1,9 @@
 import asyncio
+import threading
 from asyncio import ensure_future
 from functools import wraps
 from traceback import format_exception
-from typing import Callable, Coroutine, Any
+from typing import Any, Callable, Coroutine
 
 from loguru import logger
 from starlette.concurrency import run_in_threadpool
@@ -80,3 +81,26 @@ def repeat_every(
         return wrapped
 
     return decorator
+
+
+async def schedule_repeated_task(
+    function: Callable[..., Coroutine[Any, Any, None]],
+    interval: int,
+    *args: Any,
+    **kwargs: Any,
+) -> None:
+    """
+    Schedule a repeated task that will run the given function every `interval` seconds
+    """
+    loop = asyncio.get_event_loop()
+    repeated_function = repeat_every(
+        seconds=interval,
+        wait_first=True,
+    )(
+        lambda: threading.Thread(
+            target=lambda: asyncio.run_coroutine_threadsafe(
+                function(*args, **kwargs), loop
+            )
+        ).start()
+    )
+    await repeated_function()

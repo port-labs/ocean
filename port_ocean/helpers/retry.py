@@ -9,6 +9,8 @@ from typing import Any, Callable, Coroutine, Iterable, Mapping, Union, Awaitable
 import httpx
 from dateutil.parser import isoparse
 
+from abc import ABC, abstractmethod
+
 
 # Adapted from https://github.com/encode/httpx/issues/108#issuecomment-1434439481
 class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
@@ -366,3 +368,54 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     raise
             attempts_made += 1
             remaining_attempts -= 1
+
+
+class IntegrationRetryStrategyABC(ABC):
+    @abstractmethod
+    async def should_retry_async_handler(self, response: httpx.Response) -> bool:
+        """
+        Custom retry logic for async calls of the integration, \
+        this is the place to customize the way the integration should identify if a retry is needed \
+        with the considuration of the refresh token logic if required \
+        or any other in the future
+        """
+        pass
+
+    @abstractmethod
+    def should_retry_handler(self, response: httpx.Response) -> bool:
+        """
+        Custom retry logic for calls of the integration, \
+        this is the place to customize the way the integration should identify if a retry is needed \
+        with the considuration of the refresh token logic if required \
+        or any other in the future
+        """
+        pass
+
+    def base_retry_async_handler(
+        self, response: httpx.Response, retry_status_codes: frozenset[int]
+    ) -> bool:
+        return response.status_code in retry_status_codes
+
+    def base_retry_handler(
+        self, response: httpx.Response, retry_status_codes: frozenset[int]
+    ) -> bool:
+        return response.status_code in retry_status_codes
+
+
+class CustomTokenRefreshABC(ABC):
+
+    @abstractmethod
+    def check_token_invalidity(self, response: httpx.Response) -> bool:
+        """
+        Custom token invalidity logic for the integration, \
+        this is the place to customize the way the integration should identify if the token is invalid or expired.
+        """
+        pass
+
+    @abstractmethod
+    def token_refresh_handler(self, response: httpx.Response) -> bool:
+        """
+        Custom token refresh logic for the integration, \
+        this is the place to customize the way the integration should refresh the token if needed.
+        """
+        return False
