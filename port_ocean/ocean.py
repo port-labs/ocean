@@ -25,6 +25,7 @@ from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import schedule_repeated_task
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
+from port_ocean.core.handlers.webhook.processor_manager import WebhookProcessorManager
 
 
 class Ocean:
@@ -51,6 +52,10 @@ class Ocean:
             *self.config.get_sensitive_fields_data()
         )
         self.integration_router = integration_router or APIRouter()
+
+        self.webhook_manager = WebhookProcessorManager(
+            self.integration_router, signal_handler
+        )
 
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
@@ -116,6 +121,7 @@ class Ocean:
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
+                await self.webhook_manager.start_processing_event_messages()
                 await self._setup_scheduled_resync()
                 if self.config.config_file_path:
                     await self._setup_scheduled_config_loading()
@@ -125,7 +131,7 @@ class Ocean:
                 logger.complete()
                 sys.exit("Server stopped")
             finally:
-                signal_handler.exit()
+                await signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
         self.app_initialized = True
