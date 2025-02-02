@@ -228,20 +228,20 @@ class TestPagerDutyClient:
             result = await client.send_api_request("nonexistent/endpoint")
             assert result == {}
 
-        # mock_401_response = MagicMock()
-        # mock_401_response.status_code = 401
-        # mock_401_response.json.return_value = {}
-        # mock_401_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        #     "Unauthorized", request=MagicMock(), response=mock_401_response
-        # )
+        mock_401_response = MagicMock()
+        mock_401_response.status_code = 401
+        mock_401_response.json.return_value = {}
+        mock_401_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Unauthorized", request=MagicMock(), response=mock_401_response
+        )
 
-        # with patch(
-        #     "port_ocean.utils.http_async_client.request",
-        #     side_effect=[mock_401_response, mock_response],
-        # ) as mock_request:
-        #     result = await client.send_api_request("test/needs-retry")
-        #     assert mock_request.call_count == 2
-        #     assert result == {"result": "success"}
+        with patch(
+            "port_ocean.utils.http_async_client.request",
+            side_effect=[mock_401_response, mock_response],
+        ) as mock_request:
+            result = await client.send_api_request("test/needs-retry")
+            assert mock_request.call_count == 2
+            assert result == {"result": "success"}
 
     async def test_transform_user_ids_to_emails(self, client: PagerDutyClient) -> None:
         # Mock the fetch_and_cache_users method to populate user cache
@@ -302,7 +302,7 @@ class TestPagerDutyClient:
         mock_success_response.json.return_value = {"result": "success"}
 
         # Test the retry handler
-        should_retry = await client._should_retry_async_handler(mock_401_response)
+        should_retry = await client.should_retry_async_handler(mock_401_response)
 
         assert should_retry is True
         assert client.token == "new-mock-token"
@@ -318,6 +318,6 @@ class TestPagerDutyClient:
             "Unauthorized", request=MagicMock(), response=mock_401_response
         )
 
-        should_retry = await client._should_retry_async_handler(mock_401_response)
+        should_retry = await client.should_retry_async_handler(mock_401_response)
 
         assert should_retry is False

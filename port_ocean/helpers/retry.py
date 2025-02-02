@@ -370,6 +370,25 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             remaining_attempts -= 1
 
 
+class CustomTokenRefreshABC(ABC):
+
+    @abstractmethod
+    def check_token_invalidity(self, response: httpx.Response) -> bool:
+        """
+        Custom token invalidity logic for the integration, \
+        this is the place to customize the way the integration should identify if the token is invalid or expired.
+        """
+        pass
+
+    @abstractmethod
+    def token_refresh_handler(self, response: httpx.Response) -> bool:
+        """
+        Custom token refresh logic for the integration, \
+        this is the place to customize the way the integration should refresh the token if needed.
+        """
+        return False
+
+
 class IntegrationRetryStrategyABC(ABC):
     @abstractmethod
     async def should_retry_async_handler(self, response: httpx.Response) -> bool:
@@ -400,22 +419,3 @@ class IntegrationRetryStrategyABC(ABC):
         self, response: httpx.Response, retry_status_codes: frozenset[int]
     ) -> bool:
         return response.status_code in retry_status_codes
-
-
-class CustomTokenRefreshABC(ABC):
-
-    @abstractmethod
-    def check_token_invalidity(self, response: httpx.Response) -> bool:
-        """
-        Custom token invalidity logic for the integration, \
-        this is the place to customize the way the integration should identify if the token is invalid or expired.
-        """
-        pass
-
-    @abstractmethod
-    def token_refresh_handler(self, response: httpx.Response) -> bool:
-        """
-        Custom token refresh logic for the integration, \
-        this is the place to customize the way the integration should refresh the token if needed.
-        """
-        return False

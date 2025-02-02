@@ -4,9 +4,8 @@ from typing import Any, AsyncGenerator, Dict, Optional
 import httpx
 from loguru import logger
 from port_ocean.context.event import event
-from port_ocean.utils import http_async_client, should_retry_async_handler
-
-from .utils import RetryWithRefreshStrategy, get_date_range_for_last_n_months, check_token_invalidity, attempt_token_refresh
+from port_ocean.utils import http_async_client
+from .utils import RetryWithRefreshStrategy, get_date_range_for_last_n_months
 
 USER_KEY = "users"
 
