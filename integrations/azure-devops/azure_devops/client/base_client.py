@@ -63,10 +63,13 @@ class HTTPBaseClient:
                 params["continuationToken"] = continuation_token
 
             response = await self.send_request("GET", url, params=params)
+            response_json = response.json()
+            items = response_json.get("value", response_json.get("items", []))
+
             logger.info(
-                f"Found {len(response.json()['value'])} objects in url {url} with params: {params}"
+                f"Found {len(items)} objects in url {url} with params: {params}"
             )
-            yield response.json()["value"]
+            yield items
             if CONTINUATION_TOKEN_HEADER not in response.headers:
                 break
             continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)

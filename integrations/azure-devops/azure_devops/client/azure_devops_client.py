@@ -78,7 +78,9 @@ class AzureDevopsClient(HTTPBaseClient):
             f"{team['projectId']}/teams/{team['id']}/members"
         )
         members = []
-        async for members_batch in self._get_paginated_by_top_and_skip(members_url):
+        async for members_batch in self._get_paginated_by_top_and_skip(
+            members_url,
+        ):
             members.extend(members_batch)
         return members
 
@@ -109,8 +111,8 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def generate_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         users_url = (
-            self._organization_base_url.replace("dev", "vssps.dev")
-            + f"/{API_URL_PREFIX}/graph/users"
+            self._organization_base_url.replace("dev", "vsaex.dev")
+            + f"/{API_URL_PREFIX}/userentitlements"
         )
         async for users in self._get_paginated_by_top_and_continuation_token(users_url):
             yield users
