@@ -219,11 +219,12 @@ async def get_single_project(
     rate_limiter: AsyncLimiter,
     config: ProtoConfig,
 ) -> RAW_ITEM:
-    async with rate_limiter:
-        async with ProjectsAsyncClient() as projects_client:
-            logger.debug(
-                f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
-            )
+    async with ProjectsAsyncClient() as projects_client:
+        logger.debug(
+            f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
+        )
+        async with rate_limiter:
+            logger.debug(f"Rate limiter instance in get_single_project: {id(rate_limiter)}")
             return parse_protobuf_message(
                 await projects_client.get_project(
                     name=project_name, timeout=DEFAULT_REQUEST_TIMEOUT
