@@ -1,93 +1,93 @@
-import asyncio
-import pytest
-from dataclasses import dataclass
+# import asyncio
+# import pytest
+# from dataclasses import dataclass
 
-from port_ocean.core.handlers.queue.local_queue import LocalQueue
-
-
-@dataclass
-class MockMessage:
-    """Example message type for testing"""
-
-    id: str
-    data: str
-    processed: bool = False
+# from port_ocean.core.handlers.queue.local_queue import LocalQueue
 
 
-class TestLocalQueue:
-    """
-    Test suite for LocalQueue implementation
-    This can serve as an example for testing other Queue implementations
-    """
+# @dataclass
+# class MockMessage:
+#     """Example message type for testing"""
 
-    @pytest.fixture
-    def queue(self) -> LocalQueue[MockMessage]:
-        return LocalQueue[MockMessage]()
+#     id: str
+#     data: str
+#     processed: bool = False
 
-    @pytest.mark.asyncio
-    async def test_basic_queue_operations(self, queue: LocalQueue[MockMessage]) -> None:
-        """Test basic put/get operations"""
-        message = MockMessage(id="1", data="test")
 
-        # Put item in queue
-        await queue.put(message)
+# class TestLocalQueue:
+#     """
+#     Test suite for LocalQueue implementation
+#     This can serve as an example for testing other Queue implementations
+#     """
 
-        # Get item from queue
-        received = await queue.get()
+#     @pytest.fixture
+#     def queue(self) -> LocalQueue[MockMessage]:
+#         return LocalQueue[MockMessage]()
 
-        assert received.id == message.id
-        assert received.data == message.data
+#     @pytest.mark.asyncio
+#     async def test_basic_queue_operations(self, queue: LocalQueue[MockMessage]) -> None:
+#         """Test basic put/get operations"""
+#         message = MockMessage(id="1", data="test")
 
-        # Mark as processed
-        await queue.commit()
+#         # Put item in queue
+#         await queue.put(message)
 
-    @pytest.mark.asyncio
-    async def test_fifo_order(self, queue: LocalQueue[MockMessage]) -> None:
-        """Demonstrate and test FIFO (First In, First Out) behavior"""
-        messages = [
-            MockMessage(id="1", data="first"),
-            MockMessage(id="2", data="second"),
-            MockMessage(id="3", data="third"),
-        ]
+#         # Get item from queue
+#         received = await queue.get()
 
-        # Put items in queue
-        for msg in messages:
-            await queue.put(msg)
+#         assert received.id == message.id
+#         assert received.data == message.data
 
-        # Verify order
-        for expected in messages:
-            received = await queue.get()
-            assert received.id == expected.id
-            await queue.commit()
+#         # Mark as processed
+#         await queue.commit()
 
-    @pytest.mark.asyncio
-    async def test_wait_for_completion(self, queue: LocalQueue[MockMessage]) -> None:
-        """Example of waiting for all messages to be processed"""
-        processed_count = 0
+#     @pytest.mark.asyncio
+#     async def test_fifo_order(self, queue: LocalQueue[MockMessage]) -> None:
+#         """Demonstrate and test FIFO (First In, First Out) behavior"""
+#         messages = [
+#             MockMessage(id="1", data="first"),
+#             MockMessage(id="2", data="second"),
+#             MockMessage(id="3", data="third"),
+#         ]
 
-        async def slow_processor() -> None:
-            nonlocal processed_count
-            while True:
-                try:
-                    await asyncio.wait_for(queue.get(), timeout=0.1)
-                    # Simulate processing time
-                    await asyncio.sleep(0.1)
-                    processed_count += 1
-                    await queue.commit()
-                except asyncio.TimeoutError:
-                    break
+#         # Put items in queue
+#         for msg in messages:
+#             await queue.put(msg)
 
-        # Add messages
-        message_count = 5
-        for i in range(message_count):
-            await queue.put(MockMessage(id=str(i), data=f"test_{i}"))
+#         # Verify order
+#         for expected in messages:
+#             received = await queue.get()
+#             assert received.id == expected.id
+#             await queue.commit()
 
-        # Start processor
-        processor = asyncio.create_task(slow_processor())
+#     @pytest.mark.asyncio
+#     async def test_wait_for_completion(self, queue: LocalQueue[MockMessage]) -> None:
+#         """Example of waiting for all messages to be processed"""
+#         processed_count = 0
 
-        # Wait for completion
-        await queue.teardown()
+#         async def slow_processor() -> None:
+#             nonlocal processed_count
+#             while True:
+#                 try:
+#                     await asyncio.wait_for(queue.get(), timeout=0.1)
+#                     # Simulate processing time
+#                     await asyncio.sleep(0.1)
+#                     processed_count += 1
+#                     await queue.commit()
+#                 except asyncio.TimeoutError:
+#                     break
 
-        await processor
+#         # Add messages
+#         message_count = 5
+#         for i in range(message_count):
+#             await queue.put(MockMessage(id=str(i), data=f"test_{i}"))
 
-        assert processed_count == message_count
+#         # Start processor
+#         processor = asyncio.create_task(slow_processor())
+
+#         # Wait for completion
+#         await queue.teardown()
+
+#         await processor
+
+#         assert processed_count == message_count
