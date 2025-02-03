@@ -65,20 +65,15 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.TEAM)
 async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for teams in azure_devops_client.generate_teams():
-        logger.info(f"Resyncing {len(teams)} teams")
-
-        yield teams
-
-
-@ocean.on_resync(Kind.TEAMWITHMEMBER)
-async def resync_team_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     selector = cast(AzureDevopsTeamResourceConfig, event.resource_config).selector
 
     async for teams in azure_devops_client.generate_teams():
-        logger.info(f"Enriching {len(teams)} teams with members")
-        yield await azure_devops_client.enrich_teams_with_members(teams)
+        logger.info(f"Resyncing {len(teams)} teams")
+        if selector.include_members:
+            logger.info(f"Enriching {len(teams)} teams with members")
+            teams = await azure_devops_client.enrich_teams_with_members(teams)
+        
+        yield teams
 
 
 @ocean.on_resync(Kind.MEMBER)

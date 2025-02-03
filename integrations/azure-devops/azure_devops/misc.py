@@ -22,7 +22,6 @@ class Kind(StrEnum):
     BOARD = "board"
     COLUMN = "column"
     RELEASE = "release"
-    TEAMWITHMEMBER = "team-with-members"
     USER = "user"
 
 
