@@ -8,6 +8,7 @@ from aiolimiter import AsyncLimiter
 from fastapi import Request, Response
 from loguru import logger
 
+from gcp_core.helpers.ratelimiter.base import PersistentAsyncLimiter
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -39,7 +40,7 @@ from gcp_core.utils import (
     resolve_request_controllers,
 )
 
-PROJECT_V3_GET_REQUESTS_RATE_LIMITER: AsyncLimiter
+PROJECT_V3_GET_REQUESTS_RATE_LIMITER: PersistentAsyncLimiter | AsyncLimiter
 
 
 async def _resolve_resync_method_for_resource(
@@ -270,8 +271,10 @@ async def feed_events_callback(
                     getattr(selector, "preserve_api_response_case_style", False)
                 )
             )
-            task = asyncio.create_task(
-                process_realtime_event(asset_type, asset_name, asset_project, asset_data, config)
+            asyncio.create_task(
+                process_realtime_event(
+                    asset_type, asset_name, asset_project, asset_data, config
+                )
             )
             logger.info(
                 f"Added background task to process real-time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
