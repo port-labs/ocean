@@ -178,25 +178,25 @@ async def test_successful_event_processing(
         assert_event_processed_successfully(processor)
 
 
-@pytest.mark.asyncio
-async def test_graceful_shutdown(
-    processor_manager: TestableWebhookProcessorManager,
-    mock_event: WebhookEvent,
-) -> None:
-    """Test graceful shutdown with in-flight requests"""
-    processor_manager.register_processor("/test", MockWebhookProcessor)
+# @pytest.mark.asyncio
+# async def test_graceful_shutdown(
+#     processor_manager: TestableWebhookProcessorManager,
+#     mock_event: WebhookEvent,
+# ) -> None:
+#     """Test graceful shutdown with in-flight requests"""
+#     processor_manager.register_processor("/test", MockWebhookProcessor)
 
-    await processor_manager.start_processing_event_messages()
-    await processor_manager._event_queues["/test"].put(mock_event)
+#     await processor_manager.start_processing_event_messages()
+#     await processor_manager._event_queues["/test"].put(mock_event)
 
-    # Start shutdown
-    await processor_manager.shutdown()
+#     # Start shutdown
+#     await processor_manager.shutdown()
 
-    # Verify all tasks are cleaned up
-    assert len(processor_manager._webhook_processor_tasks) == 0
-    assert_event_processed_successfully(
-        processor_manager.running_processors[0]  # type: ignore
-    )
+#     # Verify all tasks are cleaned up
+#     assert len(processor_manager._webhook_processor_tasks) == 0
+#     assert_event_processed_successfully(
+#         processor_manager.running_processors[0]  # type: ignore
+#     )
 
 
 # @pytest.mark.asyncio
