@@ -25,11 +25,9 @@ def init_sonar_client() -> SonarQubeClient:
     )
 
 
-sonar_client = init_sonar_client()
-
-
 @ocean.on_resync(ObjectKind.PROJECTS)
 async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sonar_client = init_sonar_client()
     logger.warning(
         "The `project` resource is deprecated. Please use `projects_ga` instead."
     )
@@ -53,6 +51,7 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PROJECTS_GA)
 async def on_ga_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sonar_client = init_sonar_client()
     selector = cast(SonarQubeGAProjectResourceConfig, event.resource_config).selector
     sonar_client.metrics = selector.metrics
     params = {}
@@ -66,6 +65,7 @@ async def on_ga_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sonar_client = init_sonar_client()
     selector = cast(SonarQubeIssueResourceConfig, event.resource_config).selector
     query_params = selector.generate_request_params()
     project_query_params = (
@@ -84,6 +84,7 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ANALYSIS)
 @ocean.on_resync(ObjectKind.SASS_ANALYSIS)
 async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sonar_client = init_sonar_client()
     if not ocean.integration_config["sonar_is_on_premise"]:
         logger.info("Sonar is not on-premise, processing SonarCloud on saas analysis")
         async for analyses_list in sonar_client.get_all_sonarcloud_analyses():
@@ -93,6 +94,7 @@ async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ONPREM_ANALYSIS)
 async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sonar_client = init_sonar_client()
     if ocean.integration_config["sonar_is_on_premise"]:
         logger.info("Sonar is on-premise, processing on-premise SonarQube analysis")
         async for analyses_list in sonar_client.get_all_sonarqube_analyses():
@@ -102,6 +104,7 @@ async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PORTFOLIOS)
 async def on_portfolio_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sonar_client = init_sonar_client()
     async for portfolio_list in sonar_client.get_all_portfolios():
         logger.info(f"Received portfolio batch of size: {len(portfolio_list)}")
         yield portfolio_list
@@ -112,6 +115,7 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
     logger.info(
         f"Processing Sonarqube webhook for event type: {webhook_data.get('project', {}).get('key')}"
     )
+    sonar_client = init_sonar_client()
 
     project = await sonar_client.get_single_component(
         webhook_data.get("project", {})
@@ -145,6 +149,7 @@ async def on_start() -> None:
                 "Organization ID is required for SonarCloud. Please specify a valid sonarOrganizationId"
             )
 
+    sonar_client = init_sonar_client()
     sonar_client.sanity_check()
 
     if ocean.event_listener_type == "ONCE":
