@@ -114,6 +114,7 @@ class TestWebhookProcessorManager:
         """Assert that an event was processed with an error"""
         assert not processor.processed, "Event did not fail as expected"
 
+    @pytest.mark.asyncio
     async def test_register_handler(
         self, processor_manager: TestableWebhookProcessorManager
     ) -> None:
@@ -123,6 +124,7 @@ class TestWebhookProcessorManager:
         assert len(processor_manager._processors["/test"]) == 1
         assert isinstance(processor_manager._event_queues["/test"], LocalQueue)
 
+    @pytest.mark.asyncio
     async def test_register_multiple_handlers_with_filters(
         self, processor_manager: TestableWebhookProcessorManager
     ) -> None:
@@ -139,6 +141,7 @@ class TestWebhookProcessorManager:
 
         assert len(processor_manager._processors["/test"]) == 2
 
+    @pytest.mark.asyncio
     async def test_successful_event_processing(
         self,
         processor_manager: TestableWebhookProcessorManager,
@@ -165,6 +168,7 @@ class TestWebhookProcessorManager:
         for processor in processed_events:
             self.assert_event_processed_successfully(processor)
 
+    @pytest.mark.asyncio
     async def test_graceful_shutdown(
         self,
         processor_manager: TestableWebhookProcessorManager,
@@ -185,6 +189,7 @@ class TestWebhookProcessorManager:
             processor_manager.running_processors[0]  # type: ignore
         )
 
+    @pytest.mark.asyncio
     async def test_handler_filter_matching(
         self, processor_manager: TestableWebhookProcessorManager
     ) -> None:
@@ -222,6 +227,7 @@ class TestWebhookProcessorManager:
             processor_manager.running_processors[1]  # type: ignore
         )
 
+    @pytest.mark.asyncio
     async def test_handler_timeout(
         self, router: APIRouter, signal_handler: SignalHandler, mock_event: WebhookEvent
     ) -> None:
@@ -247,6 +253,7 @@ class TestWebhookProcessorManager:
             processor_manager.running_processors[0]  # type: ignore
         )
 
+    @pytest.mark.asyncio
     async def test_handler_cancellation(
         self,
         processor_manager: TestableWebhookProcessorManager,
@@ -276,6 +283,7 @@ class TestWebhookProcessorManager:
         assert len(cancelled_events) > 0
         assert any(event.payload.get("canceled") for event in cancelled_events)
 
+    @pytest.mark.asyncio
     async def test_invalid_handler_registration(self) -> None:
         """Test registration of invalid processor type."""
         handler_manager = WebhookProcessorManager(APIRouter(), SignalHandler())
@@ -283,6 +291,7 @@ class TestWebhookProcessorManager:
         with pytest.raises(ValueError):
             handler_manager.register_processor("/test", object)  # type: ignore
 
+    @pytest.mark.asyncio
     async def test_no_matching_handlers(
         self,
         processor_manager: TestableWebhookProcessorManager,
@@ -301,6 +310,7 @@ class TestWebhookProcessorManager:
         assert processor_manager.no_matching_processors
         assert len(processor_manager.running_processors) == 0
 
+    @pytest.mark.asyncio
     async def test_multiple_processors(
         self, processor_manager: TestableWebhookProcessorManager
     ) -> None:
@@ -309,6 +319,7 @@ class TestWebhookProcessorManager:
         processor_manager.register_processor("/test", MockWebhookProcessor)
         assert len(processor_manager._processors["/test"]) == 2
 
+    @pytest.mark.asyncio
     async def test_all_matching_processors_execute(
         self,
         processor_manager: TestableWebhookProcessorManager,
@@ -341,6 +352,7 @@ class TestWebhookProcessorManager:
         # Verify successful processors ran despite failing one
         assert processed_count == 2
 
+    @pytest.mark.asyncio
     async def test_retry_mechanism(
         self,
         processor_manager: TestableWebhookProcessorManager,
@@ -363,6 +375,7 @@ class TestWebhookProcessorManager:
         assert processor.processed
         assert processor.retry_count == 2
 
+    @pytest.mark.asyncio
     async def test_max_retries_exceeded(
         self,
         processor_manager: TestableWebhookProcessorManager,

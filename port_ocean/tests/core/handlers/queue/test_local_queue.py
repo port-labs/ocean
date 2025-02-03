@@ -24,6 +24,7 @@ class TestLocalQueue:
     def queue(self) -> LocalQueue[MockMessage]:
         return LocalQueue[MockMessage]()
 
+    @pytest.mark.asyncio
     async def test_basic_queue_operations(self, queue: LocalQueue[MockMessage]) -> None:
         """Test basic put/get operations"""
         message = MockMessage(id="1", data="test")
@@ -40,6 +41,7 @@ class TestLocalQueue:
         # Mark as processed
         await queue.commit()
 
+    @pytest.mark.asyncio
     async def test_fifo_order(self, queue: LocalQueue[MockMessage]) -> None:
         """Demonstrate and test FIFO (First In, First Out) behavior"""
         messages = [
@@ -58,6 +60,7 @@ class TestLocalQueue:
             assert received.id == expected.id
             await queue.commit()
 
+    @pytest.mark.asyncio
     async def test_wait_for_completion(self, queue: LocalQueue[MockMessage]) -> None:
         """Example of waiting for all messages to be processed"""
         processed_count = 0

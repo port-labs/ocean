@@ -74,6 +74,7 @@ class TestAbstractWebhookHandler:
     def processor(self, webhook_event: WebhookEvent) -> MockWebhookHandler:
         return MockWebhookHandler(webhook_event)
 
+    @pytest.mark.asyncio
     async def test_successful_processing(
         self, processor: MockWebhookHandler, processor_manager: WebhookProcessorManager
     ) -> None:
@@ -85,6 +86,7 @@ class TestAbstractWebhookHandler:
         assert processor.handled
         assert not processor.error_handler_called
 
+    @pytest.mark.asyncio
     async def test_retry_mechanism(
         self, webhook_event: WebhookEvent, processor_manager: WebhookProcessorManager
     ) -> None:
@@ -98,6 +100,7 @@ class TestAbstractWebhookHandler:
         assert processor.retry_count == 2
         assert processor.error_handler_called
 
+    @pytest.mark.asyncio
     async def test_max_retries_exceeded(
         self, webhook_event: WebhookEvent, processor_manager: WebhookProcessorManager
     ) -> None:
