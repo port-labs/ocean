@@ -237,7 +237,7 @@ class GCPResourceRateLimiter(GCPResourceQuota):
 
     async def persistent_rate_limiter(
         self, container_id: str
-    ) -> "PersistentAsyncLimiter" | AsyncLimiter:
+    ) -> PersistentAsyncLimiter | AsyncLimiter:
         return await self._get_limiter(container_id, persistent=True)
 
 
