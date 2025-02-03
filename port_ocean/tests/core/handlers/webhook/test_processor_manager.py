@@ -199,43 +199,44 @@ async def test_successful_event_processing(
 #     )
 
 
-# @pytest.mark.asyncio
-# async def test_handler_filter_matching(
-#     processor_manager: TestableWebhookProcessorManager
-# ) -> None:
-#     """Test that processors are selected based on their filters."""
-#     type1_event = WebhookEvent.from_dict(
-#         {"payload": {"type": "type1"}, "headers": {}, "trace_id": "test-trace-1"}
-#     )
+@pytest.mark.asyncio
+async def test_handler_filter_matching(
+    processor_manager: TestableWebhookProcessorManager,
+) -> None:
+    """Test that processors are selected based on their filters."""
+    type1_event = WebhookEvent.from_dict(
+        {"payload": {"type": "type1"}, "headers": {}, "trace_id": "test-trace-1"}
+    )
 
-#     type2_event = WebhookEvent.from_dict(
-#         {"payload": {"type": "type2"}, "headers": {}, "trace_id": "test-trace-2"}
-#     )
+    type2_event = WebhookEvent.from_dict(
+        {"payload": {"type": "type2"}, "headers": {}, "trace_id": "test-trace-2"}
+    )
 
-#     def filter1(e: WebhookEvent) -> bool:
-#         return e.payload.get("type") == "type1"
+    def filter1(e: WebhookEvent) -> bool:
+        return e.payload.get("type") == "type1"
 
-#     def filter2(e: WebhookEvent) -> bool:
-#         return e.payload.get("type") == "type2"
+    def filter2(e: WebhookEvent) -> bool:
+        return e.payload.get("type") == "type2"
 
-#     processor_manager.register_processor("/test", MockWebhookProcessor, filter1)
-#     processor_manager.register_processor("/test", MockWebhookProcessor, filter2)
+    processor_manager.register_processor("/test", MockWebhookProcessor, filter1)
+    processor_manager.register_processor("/test", MockWebhookProcessor, filter2)
 
-#     await processor_manager.start_processing_event_messages()
+    await processor_manager.start_processing_event_messages()
 
-#     # Process both events
-#     await processor_manager._event_queues["/test"].put(type1_event)
-#     await processor_manager._event_queues["/test"].put(type2_event)
+    # Process both events
+    await processor_manager._event_queues["/test"].put(type1_event)
+    await processor_manager._event_queues["/test"].put(type2_event)
 
-#     await asyncio.sleep(0.1)
+    await asyncio.sleep(0.1)
 
-#     # Verify both events were processed
-#     assert_event_processed_successfully(
-#         processor_manager.running_processors[0]  # type: ignore
-#     )
-#     assert_event_processed_successfully(
-#         processor_manager.running_processors[1]  # type: ignore
-#     )
+    # Verify both events were processed
+    assert_event_processed_successfully(
+        processor_manager.running_processors[0]  # type: ignore
+    )
+    assert_event_processed_successfully(
+        processor_manager.running_processors[1]  # type: ignore
+    )
+
 
 # @pytest.mark.asyncio
 # async def test_handler_timeout(
