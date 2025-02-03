@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed bug where subsequent resync when integration schedules a resync causes entities to be deleted
+- Fixed a bug where the global sonar_client loses its HTTP header context during scheduled resyncs, triggering 403 errors that ultimately leads to the unintended deletion of ingested entities
 
 
 ## 0.1.141 (2025-01-28)
