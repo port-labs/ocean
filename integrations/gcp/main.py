@@ -1,11 +1,11 @@
-import gc
+import asyncio
 import http
 import os
 import tempfile
 import typing
 
 from aiolimiter import AsyncLimiter
-from fastapi import Request, Response, BackgroundTasks
+from fastapi import Request, Response
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -219,13 +219,11 @@ async def process_realtime_event(
         )
     except Exception as e:
         logger.exception(f"Got error {e} while processing a real time event")
-    finally:
-        gc.collect()
 
 
 @ocean.router.post("/events")
 async def feed_events_callback(
-    request: Request, background_tasks: BackgroundTasks
+    request: Request,
 ) -> Response:
     """
     This is the real-time events handler. The subscription which is connected to the Feeds Topic will send events here once
@@ -272,13 +270,8 @@ async def feed_events_callback(
                     getattr(selector, "preserve_api_response_case_style", False)
                 )
             )
-            background_tasks.add_task(
-                process_realtime_event,
-                asset_type,
-                asset_name,
-                asset_project,
-                asset_data,
-                config,
+            task = asyncio.create_task(
+                process_realtime_event(asset_type, asset_name, asset_project, asset_data, config)
             )
             logger.info(
                 f"Added background task to process real-time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
