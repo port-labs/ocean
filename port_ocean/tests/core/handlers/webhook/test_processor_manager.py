@@ -133,49 +133,49 @@ async def test_register_handler(
     assert isinstance(processor_manager._event_queues["/test"], LocalQueue)
 
 
-# @pytest.mark.asyncio
-# async def test_register_multiple_handlers_with_filters(
-#     processor_manager: TestableWebhookProcessorManager,
-# ) -> None:
-#     """Test registering multiple processors with different filters."""
+@pytest.mark.asyncio
+async def test_register_multiple_handlers_with_filters(
+    processor_manager: TestableWebhookProcessorManager,
+) -> None:
+    """Test registering multiple processors with different filters."""
 
-#     def filter1(e: WebhookEvent) -> bool:
-#         return e.payload.get("type") == "type1"
+    def filter1(e: WebhookEvent) -> bool:
+        return e.payload.get("type") == "type1"
 
-#     def filter2(e: WebhookEvent) -> bool:
-#         return e.payload.get("type") == "type2"
+    def filter2(e: WebhookEvent) -> bool:
+        return e.payload.get("type") == "type2"
 
-#     processor_manager.register_processor("/test", MockWebhookProcessor, filter1)
-#     processor_manager.register_processor("/test", MockWebhookProcessor, filter2)
+    processor_manager.register_processor("/test", MockWebhookProcessor, filter1)
+    processor_manager.register_processor("/test", MockWebhookProcessor, filter2)
 
-#     assert len(processor_manager._processors["/test"]) == 2
+    assert len(processor_manager._processors["/test"]) == 2
 
 
-# @pytest.mark.asyncio
-# async def test_successful_event_processing(
-#     processor_manager: TestableWebhookProcessorManager,
-#     mock_event: WebhookEvent,
-# ) -> None:
-#     """Test successful processing of an event."""
-#     processed_events: list[MockWebhookProcessor] = []
+@pytest.mark.asyncio
+async def test_successful_event_processing(
+    processor_manager: TestableWebhookProcessorManager,
+    mock_event: WebhookEvent,
+) -> None:
+    """Test successful processing of an event."""
+    processed_events: list[MockWebhookProcessor] = []
 
-#    class SuccessProcessor(MockWebhookProcessor):
-#         async def handle_event(self, payload: Dict[str, Any]) -> None:
-#             self.processed = True
-#             processed_events.append(self)
+    class SuccessProcessor(MockWebhookProcessor):
+        async def handle_event(self, payload: Dict[str, Any]) -> None:
+            self.processed = True
+            processed_events.append(self)
 
-#     processor_manager.register_processor("/test", SuccessProcessor)
+    processor_manager.register_processor("/test", SuccessProcessor)
 
-#     await processor_manager.start_processing_event_messages()
-#     await processor_manager._event_queues["/test"].put(mock_event)
+    await processor_manager.start_processing_event_messages()
+    await processor_manager._event_queues["/test"].put(mock_event)
 
-#     # Allow time for processing
-#     await asyncio.sleep(0.1)
+    # Allow time for processing
+    await asyncio.sleep(0.1)
 
-#     # Verify at least one processor ran and completed successfully
-#     assert len(processed_events) > 0
-#     for processor in processed_events:
-#         assert_event_processed_successfully(processor)
+    # Verify at least one processor ran and completed successfully
+    assert len(processed_events) > 0
+    for processor in processed_events:
+        assert_event_processed_successfully(processor)
 
 
 # @pytest.mark.asyncio
