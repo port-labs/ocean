@@ -119,7 +119,7 @@ class SystemEventHandler(BaseEventHandler):
         # access the project
         results = await asyncio.gather(
             *(
-                hook_handler(client).on_hook(event,body)
+                hook_handler(client).on_hook(event, body)
                 for client in self._clients
                 for hook_handler in self._hook_handlers.get(event, [])
             ),
