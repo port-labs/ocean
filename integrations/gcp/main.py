@@ -80,15 +80,6 @@ async def _resolve_resync_method_for_resource(
 
 
 @ocean.on_start()
-async def setup_real_time_request_controllers() -> None:
-    global PROJECT_V3_GET_REQUESTS_RATE_LIMITER
-    if not ocean.event_listener_type == "ONCE":
-        PROJECT_V3_GET_REQUESTS_RATE_LIMITER, _ = await resolve_request_controllers(
-            AssetTypesWithSpecialHandling.PROJECT
-        )
-
-
-@ocean.on_start()
 async def setup_application_default_credentials() -> None:
     if not ocean.integration_config["encoded_adc_configuration"]:
         logger.info(
@@ -103,6 +94,15 @@ async def setup_application_default_credentials() -> None:
 
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
     logger.info("Created Application Default Credentials configuration")
+
+
+@ocean.on_start()
+async def setup_real_time_request_controllers() -> None:
+    global PROJECT_V3_GET_REQUESTS_RATE_LIMITER
+    if not ocean.event_listener_type == "ONCE":
+        PROJECT_V3_GET_REQUESTS_RATE_LIMITER, _ = await resolve_request_controllers(
+            AssetTypesWithSpecialHandling.PROJECT
+        )
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
