@@ -98,7 +98,7 @@ class EventHandler(BaseEventHandler):
                         event=event,
                         handler=handler,
                     )
-                asyncio.create_task(observer(event, deepcopy(body)))  # type: ignore
+                asyncio.create_task(observer(event, body))  # type: ignore
 
 
 class SystemEventHandler(BaseEventHandler):
@@ -119,7 +119,7 @@ class SystemEventHandler(BaseEventHandler):
         # access the project
         results = await asyncio.gather(
             *(
-                hook_handler(client).on_hook(event, deepcopy(body))
+                hook_handler(client).on_hook(event,body)
                 for client in self._clients
                 for hook_handler in self._hook_handlers.get(event, [])
             ),
