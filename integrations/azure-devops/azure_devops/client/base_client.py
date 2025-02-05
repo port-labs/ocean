@@ -49,7 +49,10 @@ class HTTPBaseClient:
         return response
 
     async def _get_paginated_by_top_and_continuation_token(
-        self, url: str, additional_params: Optional[dict[str, Any]] = None
+        self,
+        url: str,
+        data_key: str = "value",
+        additional_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         continuation_token = None
         while True:
@@ -64,7 +67,7 @@ class HTTPBaseClient:
 
             response = await self.send_request("GET", url, params=params)
             response_json = response.json()
-            items = response_json.get("value", response_json.get("items", []))
+            items = response_json[data_key]
 
             logger.info(
                 f"Found {len(items)} objects in url {url} with params: {params}"
@@ -75,14 +78,13 @@ class HTTPBaseClient:
             continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)
 
     async def _get_paginated_by_top_and_skip(
-        self, url: str, params: Optional[dict[str, Any]] = None
+        self, url: str, data_key: str = "value", params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
         while True:
-            objects_page = (await self.send_request("GET", url, params=params)).json()[
-                "value"
-            ]
+            response_json = (await self.send_request("GET", url, params=params)).json()
+            objects_page = response_json[data_key]
             if objects_page:
                 logger.info(
                     f"Found {len(objects_page)} objects in url {url} with params: {params}"

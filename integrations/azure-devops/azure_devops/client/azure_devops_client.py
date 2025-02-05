@@ -114,7 +114,9 @@ class AzureDevopsClient(HTTPBaseClient):
             self._organization_base_url.replace("dev", "vsaex.dev")
             + f"/{API_URL_PREFIX}/userentitlements"
         )
-        async for users in self._get_paginated_by_top_and_continuation_token(users_url):
+        async for users in self._get_paginated_by_top_and_continuation_token(
+            users_url, data_key="items"
+        ):
             yield users
 
     @cache_iterator_result()
