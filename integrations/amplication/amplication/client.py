@@ -19,9 +19,7 @@ class AmplicationClient:
         }
 
     async def _execute_graphql_query(
-        self,
-        query: str,
-        variables: Optional[dict[str, Any]] = None
+        self, query: str, variables: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
         """Execute a GraphQL query and handle common error cases"""
         payload = {
@@ -51,7 +49,11 @@ class AmplicationClient:
         }
 
         data = await self._execute_graphql_query(TEMPLATE_QUERY, variables)
-        if "data" not in data or "catalog" not in data["data"] or "data" not in data["data"]["catalog"]:
+        if (
+            "data" not in data
+            or "catalog" not in data["data"]
+            or "data" not in data["data"]["catalog"]
+        ):
             logger.error(f"Unexpected response structure from Amplication API: {data}")
             return []
         return data["data"]["catalog"]["data"]
@@ -65,18 +67,18 @@ class AmplicationClient:
         }
 
         data = await self._execute_graphql_query(RESOURCE_QUERY, variables)
-        if "data" not in data or "catalog" not in data["data"] or "data" not in data["data"]["catalog"]:
+        if (
+            "data" not in data
+            or "catalog" not in data["data"]
+            or "data" not in data["data"]["catalog"]
+        ):
             logger.error(f"Unexpected response structure from Amplication API: {data}")
             return []
         return data["data"]["catalog"]["data"]
 
     async def get_alerts(self) -> list[dict[str, Any]]:
         logger.info("Getting alerts from Amplication")
-        variables = {
-            "orderBy": {"createdAt": "Desc"},
-            "take": 100,
-            "skip": 0
-        }
+        variables = {"orderBy": {"createdAt": "Desc"}, "take": 100, "skip": 0}
 
         data = await self._execute_graphql_query(ALERTS_QUERY, variables)
         if "data" not in data or "outdatedVersionAlerts" not in data["data"]:
