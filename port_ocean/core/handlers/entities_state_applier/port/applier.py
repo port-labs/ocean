@@ -102,7 +102,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             await self._safe_delete(diff.deleted, kept_entities, user_agent_type)
         else:
             logger.info(
-                f"Skipping deletion of entities with delition rate {deletion_rate}",
+                f"Skipping deletion of entities with deletion rate {deletion_rate}",
                 deletion_rate=deletion_rate,
                 deleting_entities=len(diff.deleted),
                 total_entities=len(entities),
