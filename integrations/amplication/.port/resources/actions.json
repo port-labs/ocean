@@ -40,7 +40,7 @@
             "method": "POST",
             "headers": {
                 "RUN_ID": "{{ .run.id }}",
-                "authorization": "Bearer {{ .secrets.amplication_token }}"
+                "authorization": "Bearer {{ .secrets._AMPLICATION_AMPLICATION_TOKEN }}"
             },
             "body": {
                 "operationName": "createServiceFromTemplate",
@@ -103,7 +103,7 @@
           "method": "POST",
           "headers": {
             "RUN_ID": "{{ .run.id }}",
-            "authorization": "Bearer {{ .secrets.amplication_token }}"
+            "authorization": "Bearer {{ .secrets._AMPLICATION_AMPLICATION_TOKEN }}"
           },
           "body": {
             "operationName": "commit",
