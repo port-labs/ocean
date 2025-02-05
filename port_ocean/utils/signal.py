@@ -1,3 +1,4 @@
+from asyncio import iscoroutinefunction
 from typing import Callable, Any
 
 from werkzeug.local import LocalProxy, LocalStack
@@ -13,13 +14,16 @@ class SignalHandler:
     def __init__(self) -> None:
         self._handlers: dict[str, Callable[[], Any]] = {}
 
-    def exit(self) -> None:
+    async def exit(self) -> None:
         """
         Handles the exit signal.
         """
         while self._handlers:
             _, handler = self._handlers.popitem()
-            handler()
+            if iscoroutinefunction(handler):
+                await handler()
+            else:
+                handler()
 
     def register(self, callback: Callable[[], Any]) -> str:
         _id = generate_uuid()

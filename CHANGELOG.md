@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.18.8 (2025-02-04)
+
+### Bug Fixes
+
+- Fix flaky tests
+
+## 0.18.7 (2025-01-29)
+
+### Improvements
+
+- Reduce cases of mass deletion of entities on resync by adding threshold for deletion
+
+## 0.18.6 (2025-01-29)
+
+### Improvements
+
+- Entity diff calculation only on resync
+
+## 0.18.5 (2025-01-28)
+
+### Bug Fixes
+
+- Fixed an issue where the integration would delete all entities if the Port app configuration was empty
+
 ## 0.18.4 (2025-01-22)
 
 ### Improvements
