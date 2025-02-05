@@ -41,6 +41,7 @@ from gcp_core.utils import (
 )
 
 PROJECT_V3_GET_REQUESTS_RATE_LIMITER: PersistentAsyncLimiter | AsyncLimiter
+BACKGROUND_TASK_THRESHOLD: float
 
 
 async def _resolve_resync_method_for_resource(
@@ -99,10 +100,12 @@ async def setup_application_default_credentials() -> None:
 @ocean.on_start()
 async def setup_real_time_request_controllers() -> None:
     global PROJECT_V3_GET_REQUESTS_RATE_LIMITER
+    global BACKGROUND_TASK_THRESHOLD
     if not ocean.event_listener_type == "ONCE":
         PROJECT_V3_GET_REQUESTS_RATE_LIMITER, _ = await resolve_request_controllers(
             AssetTypesWithSpecialHandling.PROJECT
         )
+        BACKGROUND_TASK_THRESHOLD = float(PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 100)
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
@@ -236,6 +239,10 @@ async def feed_events_callback(
     The request has a message, which contains a 64based data of the asset.
     The message schema: https://cloud.google.com/pubsub/docs/push?_gl=1*thv8i4*_ga*NDQwMTA2MzM5LjE3MTEyNzQ2MDY.*_ga_WH2QY8WWF5*MTcxMzA3NzU3Ni40My4xLjE3MTMwNzgxMjUuMC4wLjA.&_ga=2.161162040.-440106339.1711274606&_gac=1.184150868.1711468720.CjwKCAjw5ImwBhBtEiwAFHDZx1mm-z19UdKpEARcG2-F_TXXbXw7j7_gVPKiQ9Z5KcpsvXF1fFb_MBoCUFkQAvD_BwE#receive_push
     The Asset schema: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#creating_feeds
+
+    The handler will reject the request if the background processing threshold is reached, to avoid overloading the system.
+    The subscription has a retry policy, so the event will be retried later if it's rejected.
+    Documentation: https://cloud.google.com/pubsub/docs/handling-failures#subscription_retry_policy
     """
     try:
         request_json = await request.json()
@@ -247,6 +254,11 @@ async def feed_events_callback(
             status_code=http.HTTPStatus.BAD_REQUEST, content="Client disconnected."
         )
     try:
+        if len([task for task in asyncio.all_tasks() if "process_realtime_event" in str(task)]) > BACKGROUND_TASK_THRESHOLD:
+            logger.debug(
+                f"Background processing threshold reached. Closing incoming real-time event"
+            )
+            return Response(status_code=http.HTTPStatus.SERVICE_UNAVAILABLE)
         asset_data = await parse_asset_data(request_json["message"]["data"])
         asset_type = asset_data["asset"]["assetType"]
         asset_name = asset_data["asset"]["name"]
