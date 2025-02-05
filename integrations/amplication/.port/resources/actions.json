@@ -55,7 +55,8 @@
                         },
                         "serviceTemplate": {
                             "id": "{{ .inputs.template.identifier }}"
-                        }
+                        },
+                        "buildAfterCreation": true
                     }
                 },
                 "query": "mutation createServiceFromTemplate($data: ResourceFromTemplateCreateInput!) {\n  createResourceFromTemplate(data: $data) {\n    id\n    name\n    description\n    __typename\n  }\n}"
