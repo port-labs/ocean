@@ -78,13 +78,14 @@ class HTTPBaseClient:
             continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)
 
     async def _get_paginated_by_top_and_skip(
-        self, url: str, data_key: str = "value", params: Optional[dict[str, Any]] = None
+        self, url: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
         while True:
-            response_json = (await self.send_request("GET", url, params=params)).json()
-            objects_page = response_json[data_key]
+            objects_page = (await self.send_request("GET", url, params=params)).json()[
+                "value"
+            ]
             if objects_page:
                 logger.info(
                     f"Found {len(objects_page)} objects in url {url} with params: {params}"
