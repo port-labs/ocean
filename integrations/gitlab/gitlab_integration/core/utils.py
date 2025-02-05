@@ -1,34 +1,24 @@
-import fnmatch
+from glob2 import fnmatch  # type: ignore
+from typing import Union, List
+from braceexpand import braceexpand
 
 
-def _match(pattern_parts: list[str], string_parts: list[str]) -> bool:
-    if not pattern_parts:  # Reached the end of the pattern
-        return not string_parts
-    if not string_parts:  # Reached the end of the string
-        return False
-
-    if pattern_parts[0] == "**":
-        if len(pattern_parts) == 1:
-            return True
-        else:  # Recursive matching
-            return _match(pattern_parts[1:], string_parts) or _match(
-                pattern_parts, string_parts[1:]
-            )
-
-    if fnmatch.fnmatch(string_parts[0], pattern_parts[0]):  # Regular matching
-        return _match(pattern_parts[1:], string_parts[1:])
-    return False
-
-
-def does_pattern_apply(pattern: str | list[str], string: str) -> bool:
+def does_pattern_apply(pattern: Union[str, List[str]], string: str) -> bool:
     if isinstance(pattern, list):
-        return any(
-            does_pattern_apply(single_pattern, string) for single_pattern in pattern
-        )
+        return any(does_pattern_apply(p, string) for p in pattern)
+    return fnmatch.fnmatch(string, pattern)
 
-    pattern_parts = pattern.split("/")
-    string_parts = string.split("/")
-    return _match(pattern_parts, string_parts)
+
+def convert_glob_to_gitlab_patterns(pattern: Union[str, List[str]]) -> List[str]:
+    """Converts glob patterns into GitLab-compatible patterns."""
+    if isinstance(pattern, list):
+        expanded_patterns: list[str] = []
+        for glob_pattern in pattern:
+            expanded_patterns.extend(braceexpand(glob_pattern))
+        return expanded_patterns
+
+    # Handle case where the input is a single pattern
+    return list(braceexpand(pattern))
 
 
 def generate_ref(branch_name: str) -> str:
