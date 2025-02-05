@@ -71,9 +71,12 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Resyncing {len(teams)} teams")
         if selector.include_members:
             logger.info(f"Enriching {len(teams)} teams with members")
-            teams = await azure_devops_client.enrich_teams_with_members(teams)
-
-        yield teams
+            team_with_members = await azure_devops_client.enrich_teams_with_members(
+                teams
+            )
+            yield team_with_members
+        else:
+            yield teams
 
 
 @ocean.on_resync(Kind.MEMBER)
