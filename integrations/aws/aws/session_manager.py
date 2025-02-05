@@ -75,13 +75,16 @@ class SessionManager:
             )
 
         default_session = aioboto3.Session(**credentials)
+        default_credentials = await default_session.get_credentials()  # type: ignore
+        frozen_credentials = await default_credentials.get_frozen_credentials()
+
         async with default_session.client("sts") as sts_client:
             caller_identity = await sts_client.get_caller_identity()
             current_account_id = caller_identity["Account"]
             return AwsCredentials(
                 account_id=current_account_id,
-                access_key_id=aws_access_key_id,
-                secret_access_key=aws_secret_access_key,
+                access_key_id=frozen_credentials.access_key,
+                secret_access_key=frozen_credentials.secret_key,
                 duration=DURATION_SECONDS,
             )
 

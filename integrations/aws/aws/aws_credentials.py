@@ -5,6 +5,7 @@ from aiobotocore.credentials import (
 )
 from aiobotocore.session import get_session
 from loguru import logger
+import asyncio
 
 from datetime import datetime, timezone, timedelta
 
@@ -31,6 +32,7 @@ class AwsCredentials:
             "aws_access_key_id": access_key_id,
             "aws_secret_access_key": secret_access_key,
         }  # non-dynamic default credentials
+        self._refresh_lock = asyncio.Lock()
 
     def is_role(self) -> bool:
         return bool(self.role_arn)
@@ -54,19 +56,9 @@ class AwsCredentials:
             ]
 
     def _create_refresh_function(self) -> Callable[[], Awaitable[Dict[str, Any]]]:
-        """
-        Returns a callable that fetches new credentials when the current credentials are close to expiry.
-        """
-
         async def refresh() -> Dict[str, Any]:
-            """
-            Refreshes AWS credentials by re-assuming the role to get new credentials.
-
-            :return: A dictionary containing the new credentials and their expiration time.
-            """
-            default_session = aioboto3.Session(**self.default_credentials)
-
-            if self.is_role():
+            async with self._refresh_lock:
+                default_session = aioboto3.Session(**self.default_credentials)
                 logger.debug(
                     f"Refreshing AWS credentials for role {self.role_arn} in account {self.account_id}"
                 )
@@ -77,6 +69,9 @@ class AwsCredentials:
                         DurationSeconds=int(self.duration),
                     )
                     credentials = response["Credentials"]
+                    logger.debug(
+                        f"Access key {self.access_key_id} for role {self.role_arn} in account {self.account_id} has been refreshed to {credentials['AccessKeyId']}"
+                    )
                     self.access_key_id = credentials["AccessKeyId"]
                     refreshable_credentials = {
                         "access_key": self.access_key_id,
@@ -84,21 +79,7 @@ class AwsCredentials:
                         "token": credentials["SessionToken"],
                         "expiry_time": credentials["Expiration"].isoformat(),
                     }
-            else:
-                logger.debug(
-                    f"Refreshing AWS credentials for default account {self.account_id}"
-                )
-                default_credentials = await default_session.get_credentials()  # type: ignore
-                frozen_credentials = await default_credentials.get_frozen_credentials()
-
-                self.access_key_id = frozen_credentials.access_key
-                refreshable_credentials = {
-                    "access_key": frozen_credentials.access_key,
-                    "secret_key": frozen_credentials.secret_key,
-                    "token": frozen_credentials.token,
-                    "expiry_time": self.expiry_time(),
-                }
-            return refreshable_credentials
+                return refreshable_credentials
 
         return refresh
 
@@ -110,21 +91,32 @@ class AwsCredentials:
             f"Creating a refreshable session for role {self.role_arn} in account {self.account_id} for region {region}"
         )
 
-        refresh_func = self._create_refresh_function()
+        if self.is_role():
+            refresh_func = self._create_refresh_function()
 
-        credentials = AioRefreshableCredentials.create_from_metadata(
-            metadata=await refresh_func(),
-            refresh_using=refresh_func,
-            method="sts-assume-role",
-        )
+            credentials = AioRefreshableCredentials.create_from_metadata(
+                metadata=await refresh_func(),
+                refresh_using=refresh_func,
+                method="sts-assume-role",
+            )
 
-        botocore_session = get_session()
-        setattr(botocore_session, "_credentials", credentials)
-        if region:
-            botocore_session.set_config_variable("region", region)
+            botocore_session = get_session()
+            setattr(botocore_session, "_credentials", credentials)
+            if region:
+                botocore_session.set_config_variable("region", region)
 
-        autorefresh_session = aioboto3.Session(botocore_session=botocore_session)
-        return autorefresh_session
+            autorefresh_session = aioboto3.Session(botocore_session=botocore_session)
+            return autorefresh_session
+        else:
+            logger.debug(
+                f"Creating AWS credentials for default account {self.account_id}"
+            )
+
+            return aioboto3.Session(
+                aws_access_key_id=self.default_credentials["aws_access_key_id"],
+                aws_secret_access_key=self.default_credentials["aws_secret_access_key"],
+                region_name=region,
+            )
 
     async def create_session_for_each_region(
         self, allowed_regions: Optional[Iterable[str]] = None
