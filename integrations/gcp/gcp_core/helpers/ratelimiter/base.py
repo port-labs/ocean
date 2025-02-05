@@ -54,7 +54,7 @@ class PersistentAsyncLimiter(AsyncLimiter):
     def _attach_to_global_loop(self) -> None:
         """Ensures the limiter remains attached to a global event loop."""
         current_loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
-        if PersistentAsyncLimiter._global_event_loop is None:
+        if self._global_event_loop is None:
             PersistentAsyncLimiter._global_event_loop = current_loop
         elif PersistentAsyncLimiter._global_event_loop != current_loop:
             logger.warning(
