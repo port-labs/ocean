@@ -43,11 +43,6 @@ configurations:
     require: false
     description: The number of concurrent accounts to scan. By default, it is set to 50.
     default: 50
-  - name: assumeRoleDuration
-    type: integer
-    require: false
-    description: The duration in seconds for which the credentials are valid. By default, it is set to 3600 seconds.
-    default: 3600
 deploymentMethodRequirements:
   - type: default
     configurations: ['awsAccessKeyId', 'awsSecretAccessKey']
