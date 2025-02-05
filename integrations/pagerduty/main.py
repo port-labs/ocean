@@ -66,40 +66,26 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector
 
     query_params = selector.api_query_params
-    incidents_map: dict[str, Any] = {}
-    services_map: dict[str, Any] = {}
-    analytics_map: dict[str, Any] = {}
     async for incidents in pager_duty_client.get_incidents(
         params=(query_params.generate_request_params() if query_params else None),
     ):
         logger.info(f"Received batch with {len(incidents)} incidents")
-        if not selector.incident_analytics:
-            yield incidents
-        else:
-            incidents_map = {
-                **incidents_map,
-                **{incident["id"]: incident for incident in incidents},
-            }
 
-    if selector.incident_analytics:
-        logger.info("Fetching incident analytics data")
-        async for services in pager_duty_client.get_services():
-            services_map = {
-                **services_map,
-                **{service["id"]: service for service in services},
-            }
+        if selector.incident_analytics and incidents:
+            service_ids = list({incident["service"]["id"] for incident in incidents})
+            analytics_map: dict[str, Any] = {}
+            async for analytics in pager_duty_client.get_incident_analytics_by_services(
+                service_ids, months_period=selector.analytics_months_period
+            ):
+                analytics_map.update(
+                    {analytic["id"]: analytic for analytic in analytics}
+                )
 
-        async for analytics in pager_duty_client.get_incident_analytics_by_services(
-            list(services_map.keys())
-        ):
-            analytics_map = {
-                **analytics_map,
-                **{analytic["id"]: analytic for analytic in analytics},
-            }
+            # Enrich the incidents with their analytics data
+            incidents = await pager_duty_client.enrich_incidents_with_analytics_data(
+                {incident["id"]: incident for incident in incidents}, analytics_map
+            )
 
-        incidents = await pager_duty_client.enrich_incidents_with_analytics_data(
-            incidents_map, analytics_map
-        )
         yield incidents
 
 

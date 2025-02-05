@@ -207,20 +207,26 @@ class PagerDutyClient:
         return services
 
     async def get_incident_analytics_by_services(
-        self, service_ids: list[str]
+        self, service_ids: list[str], months_period: int = 3
     ) -> AsyncGenerator[list[dict[str, Any]], Any]:
         logger.info(f"Fetching analytics for services : {service_ids}")
 
         starting_after = None
         more = True
+        date_ranges = get_date_range_for_last_n_months(months_period)
         try:
             while more:
                 data = await self.send_api_request(
                     endpoint="analytics/raw/incidents",
                     method="POST",
                     json_data={
-                        "filters": {"service_ids": service_ids},
+                        "filters": {
+                            "service_ids": service_ids,
+                            "created_at_start": date_ranges[0],
+                            "created_at_end": date_ranges[1],
+                        },
                         "starting_after": starting_after,
+                        "limit": 1000,
                     },
                     extensions={
                         "retryable": True,
@@ -237,7 +243,7 @@ class PagerDutyClient:
             raise
         except httpx.HTTPError as e:
             logger.error(
-                f"Got an HTTP error while fetching " f"incident analytics: {str(e)}"
+                f"Got an HTTP error while fetching incident analytics: {str(e)}"
             )
             raise
 
