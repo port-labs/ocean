@@ -102,13 +102,19 @@ class KafkaLoadTest:
             time.sleep(1)
 
 
+KAFKA_SERVERS_ARRAY = [
+    "localhost:19092",
+    "localhost:9092",
+    "localhost:9093",
+    "localhost:9094",
+]
 # Configuration
-KAFKA_BOOTSTRAP_SERVERS = "localhost:19092,localhost:9092,localhost:9093,localhost:9094"
 NUM_TOPICS = 50
 PARTITIONS_PER_TOPIC = 3
+KAFKA_BOOTSTRAP_SERVERS = ",".join(KAFKA_SERVERS_ARRAY)
 REPLICATION_FACTOR = 1
-NUM_CONSUMER_GROUPS = 20
-CONSUMERS_PER_GROUP = 3
+NUM_CONSUMER_GROUPS = 40
+CONSUMERS_PER_GROUP = 5
 
 
 def create_topics(admin_client: AdminClient, topic_names: List[str]) -> None:
