@@ -1,4 +1,0 @@
-scheduledResyncInterval: 60
-port:
-  clientId: "{{ from env OCEAN__PORT__CLIENT_ID }}"
-  clientSecret: "{{ from env OCEAN__PORT__CLIENT_SECRET }}"
