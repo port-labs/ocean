@@ -96,12 +96,13 @@ class SyncMixin(HandlerMixin):
             IntegrationNotStartedException: If EntitiesStateApplier class is not initialized.
         """
         entities_at_port = await ocean.port_client.search_entities(user_agent_type)
+        app_config = await self.port_app_config_handler.get_port_app_config()
 
         modified_entities = await self.entities_state_applier.upsert(
             entities, user_agent_type
         )
         await self.entities_state_applier.delete_diff(
-            {"before": entities_at_port, "after": modified_entities}, user_agent_type
+            {"before": entities_at_port, "after": modified_entities}, user_agent_type, app_config.entity_deletion_threshold
         )
 
         logger.info("Finished syncing change")
