@@ -204,16 +204,21 @@ class GitlabService:
                         continue
 
                     files_list = typing.cast(List[dict[str, Any]], search_results)
+                    matching_files = [
+                        f for f in files_list if does_pattern_apply(pattern, f["path"])
+                    ]
                     logger.info(
-                        f"Found {len(files_list)} files in project {project.path_with_namespace} "
+                        f"Found {len(matching_files)} files in project {project.path_with_namespace} "
                         f"for pattern {pattern}"
                     )
+                    if not matching_files:
+                        continue
 
                     content_tasks = [
                         self.get_and_parse_single_file(
                             project, file["path"], project.default_branch
                         )
-                        for file in files_list
+                        for file in matching_files
                     ]
 
                     parsed_files = await asyncio.gather(*content_tasks)
