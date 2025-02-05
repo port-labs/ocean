@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, TYPE_CHECKING, final, Type
+from typing import Any, Optional, TYPE_CHECKING, final, Type, cast
 from aiolimiter import AsyncLimiter
 from google.cloud.cloudquotas_v1 import CloudQuotasAsyncClient, GetQuotaInfoRequest
 from google.api_core.exceptions import GoogleAPICallError
@@ -55,13 +55,13 @@ class PersistentAsyncLimiter(AsyncLimiter):
         """Ensures the limiter remains attached to a global event loop."""
         current_loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         if self._global_event_loop is None:
-            PersistentAsyncLimiter._global_event_loop = current_loop
-        elif PersistentAsyncLimiter._global_event_loop != current_loop:
+            self._global_event_loop = current_loop
+        elif self._global_event_loop != current_loop:
             logger.warning(
                 "PersistentAsyncLimiter is being reused across different event loops. "
                 "It has been re-attached to prevent state loss."
             )
-            PersistentAsyncLimiter._global_event_loop = current_loop
+            self._global_event_loop = current_loop
 
     @classmethod
     def get_limiter(
@@ -223,7 +223,7 @@ class GCPResourceRateLimiter(GCPResourceQuota):
 
     async def _get_limiter(
         self, container_id: str, persistent: bool = False
-    ) -> AsyncLimiter | PersistentAsyncLimiter:
+    ) -> AsyncLimiter:
         """
         Fetches the rate limiter for the given container.
 
@@ -241,8 +241,11 @@ class GCPResourceRateLimiter(GCPResourceQuota):
 
     async def persistent_rate_limiter(
         self, container_id: str
-    ) -> PersistentAsyncLimiter | AsyncLimiter:
-        return await self._get_limiter(container_id, persistent=True)
+    ) -> PersistentAsyncLimiter:
+        return cast(
+            PersistentAsyncLimiter,
+            await self._get_limiter(container_id, persistent=True),
+        )
 
 
 class ResourceBoundedSemaphore(GCPResourceRateLimiter):

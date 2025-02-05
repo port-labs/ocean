@@ -26,7 +26,10 @@ from gcp_core.utils import (
 )
 from aiolimiter import AsyncLimiter
 from gcp_core.search.paginated_query import paginated_query, DEFAULT_REQUEST_TIMEOUT
-from gcp_core.helpers.ratelimiter.base import MAXIMUM_CONCURRENT_REQUESTS
+from gcp_core.helpers.ratelimiter.base import (
+    MAXIMUM_CONCURRENT_REQUESTS,
+    PersistentAsyncLimiter,
+)
 from asyncio import BoundedSemaphore
 from gcp_core.overrides import ProtoConfig
 
@@ -313,7 +316,7 @@ async def feed_event_to_resource(
     asset_name: str,
     project_id: str,
     asset_data: dict[str, Any],
-    project_rate_limiter: AsyncLimiter,
+    project_rate_limiter: PersistentAsyncLimiter,
     config: ProtoConfig,
 ) -> RAW_ITEM:
     resource = None

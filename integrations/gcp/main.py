@@ -3,8 +3,6 @@ import http
 import os
 import tempfile
 import typing
-
-from aiolimiter import AsyncLimiter
 from fastapi import Request, Response
 from loguru import logger
 
@@ -40,7 +38,7 @@ from gcp_core.utils import (
     resolve_request_controllers,
 )
 
-PROJECT_V3_GET_REQUESTS_RATE_LIMITER: PersistentAsyncLimiter | AsyncLimiter
+PROJECT_V3_GET_REQUESTS_RATE_LIMITER: PersistentAsyncLimiter
 BACKGROUND_TASK_THRESHOLD: float
 
 
@@ -102,8 +100,9 @@ async def setup_real_time_request_controllers() -> None:
     global PROJECT_V3_GET_REQUESTS_RATE_LIMITER
     global BACKGROUND_TASK_THRESHOLD
     if not ocean.event_listener_type == "ONCE":
-        PROJECT_V3_GET_REQUESTS_RATE_LIMITER, _ = await resolve_request_controllers(
-            AssetTypesWithSpecialHandling.PROJECT
+        PROJECT_V3_GET_REQUESTS_RATE_LIMITER, _ = typing.cast(
+            tuple[PersistentAsyncLimiter, asyncio.BoundedSemaphore],
+            await resolve_request_controllers(AssetTypesWithSpecialHandling.PROJECT),
         )
         BACKGROUND_TASK_THRESHOLD = float(
             PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 100
@@ -269,7 +268,7 @@ async def feed_events_callback(
             logger.debug(
                 "Background processing threshold reached. Closing incoming real-time event"
             )
-            return Response(status_code=http.HTTPStatus.SERVICE_UNAVAILABLE)
+            return Response(status_code=http.HTTPStatus.TOO_MANY_REQUESTS)
         asset_data = await parse_asset_data(request_json["message"]["data"])
         asset_type = asset_data["asset"]["assetType"]
         asset_name = asset_data["asset"]["name"]
