@@ -1,14 +1,23 @@
-from typing import Any, TYPE_CHECKING, Optional, TypedDict
+import asyncio
+from typing import Any, Dict, TYPE_CHECKING, Optional, TypedDict
 from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+
+
+INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS = 3
+INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR = 1.15
+INTEGRATION_POLLING_RETRY_LIMIT = 30
+CREATE_RESOURCES_PARAM_NAME = "integration_modes"
+CREATE_RESOURCES_PARAM_VALUE = ["create_resources"]
 
 
 class LogAttributes(TypedDict):
@@ -50,12 +59,41 @@ class IntegrationClientMixin:
             self._log_attributes = response["logAttributes"]
         return self._log_attributes
 
+    async def _poll_integration_until_default_provisioning_is_complete(
+        self,
+    ) -> Dict[str, Any]:
+        attempts = 0
+        current_interval_seconds = INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS
+
+        while attempts < INTEGRATION_POLLING_RETRY_LIMIT:
+            logger.info(
+                f"Fetching created integration and validating config, attempt {attempts+1}/{INTEGRATION_POLLING_RETRY_LIMIT}",
+                attempt=attempts,
+            )
+            response = await self._get_current_integration()
+            integration_json = response.json()
+            if integration_json.get("integration", {}).get("config", {}):
+                return integration_json
+
+            logger.info(
+                f"Integration config is still being provisioned, retrying in {current_interval_seconds} seconds"
+            )
+            await asyncio.sleep(current_interval_seconds)
+
+            attempts += 1
+            current_interval_seconds = int(
+                current_interval_seconds * INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR
+            )
+
+        raise DefaultsProvisionFailed(INTEGRATION_POLLING_RETRY_LIMIT)
+
     async def create_integration(
         self,
         _type: str,
         changelog_destination: dict[str, Any],
         port_app_config: Optional["PortAppConfig"] = None,
-    ) -> dict:
+        create_port_resources_origin_in_port: Optional[bool] = False,
+    ) -> Dict[str, Any]:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
         json = {
@@ -65,12 +103,26 @@ class IntegrationClientMixin:
             "changelogDestination": changelog_destination,
             "config": {},
         }
-        if port_app_config:
+
+        query_params = {}
+
+        if create_port_resources_origin_in_port:
+            query_params[CREATE_RESOURCES_PARAM_NAME] = CREATE_RESOURCES_PARAM_VALUE
+
+        if port_app_config and not create_port_resources_origin_in_port:
             json["config"] = port_app_config.to_request()
         response = await self.client.post(
-            f"{self.auth.api_url}/integration", headers=headers, json=json
+            f"{self.auth.api_url}/integration",
+            headers=headers,
+            json=json,
+            params=query_params,
         )
         handle_status_code(response)
+        if create_port_resources_origin_in_port:
+            result = (
+                await self._poll_integration_until_default_provisioning_is_complete()
+            )
+            return result["integration"]
         return response.json()["integration"]
 
     async def patch_integration(

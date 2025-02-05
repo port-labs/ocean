@@ -6,6 +6,123 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+0.2.32 (2025-02-05)
+===================
+
+### Improvements
+
+- Fixed glob pattern matching by utilizing GitLab's glob path search capabilities with pattern matching.
+
+
+0.2.31 (2025-02-04)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+0.2.30 (2025-01-29)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+0.2.29 (2025-01-28)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+
+0.2.28 (2025-01-27)
+===================
+
+### Bug Fixes
+
+- Revert changes made in 0.2.1
+
+
+0.2.27 (2025-01-23)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+0.2.26 (2025-01-22)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+0.2.25 (2025-01-22)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+0.2.24 (2025-01-21)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+0.2.23 (2025-01-19)
+===================
+
+### Bug Fixes
+
+- Deleted `description` from the default mapping
+
+0.2.22 (2025-01-19)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+0.2.21 (2025-01-16)
+===================
+
+### Bug Fixes
+
+- Fixed UserWarning log caused by not setting the `get_all` parameter for `project.label.list` request
+
+
+0.2.20 (2025-01-16)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+0.2.19 (2025-01-15)
+===================
+
+### Improvements
+
+- Event handler now retries handling events if it takes too long to complete
+
+0.2.18 (2025-01-15)
+===================
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
 
 0.2.17 (2025-01-12)
 ===================
