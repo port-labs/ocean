@@ -105,7 +105,9 @@ async def setup_real_time_request_controllers() -> None:
         PROJECT_V3_GET_REQUESTS_RATE_LIMITER, _ = await resolve_request_controllers(
             AssetTypesWithSpecialHandling.PROJECT
         )
-        BACKGROUND_TASK_THRESHOLD = float(PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 100)
+        BACKGROUND_TASK_THRESHOLD = float(
+            PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 100
+        )
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
@@ -254,9 +256,18 @@ async def feed_events_callback(
             status_code=http.HTTPStatus.BAD_REQUEST, content="Client disconnected."
         )
     try:
-        if len([task for task in asyncio.all_tasks() if "process_realtime_event" in str(task)]) > BACKGROUND_TASK_THRESHOLD:
+        if (
+            len(
+                [
+                    task
+                    for task in asyncio.all_tasks()
+                    if "process_realtime_event" in str(task)
+                ]
+            )
+            > BACKGROUND_TASK_THRESHOLD
+        ):
             logger.debug(
-                f"Background processing threshold reached. Closing incoming real-time event"
+                "Background processing threshold reached. Closing incoming real-time event"
             )
             return Response(status_code=http.HTTPStatus.SERVICE_UNAVAILABLE)
         asset_data = await parse_asset_data(request_json["message"]["data"])

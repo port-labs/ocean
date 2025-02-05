@@ -11,11 +11,11 @@ from collections.abc import MutableSequence
 import asyncio
 
 
-_DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 63.0
+_DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 61.0
 _DEFAULT_RATE_LIMIT_QUOTA: int = int(
     ocean.integration_config["search_all_resources_per_minute_quota"]
 )
-_PERCENTAGE_OF_QUOTA: float = 0.7
+_PERCENTAGE_OF_QUOTA: float = 0.8
 MAXIMUM_CONCURRENT_REQUESTS: int = 10
 
 if TYPE_CHECKING:
@@ -32,6 +32,10 @@ class PersistentAsyncLimiter(AsyncLimiter):
     """
     Persistent AsyncLimiter that remains valid across event loops.
     Ensures rate limiting holds across multiple API requests, even when a new event loop is created.
+
+    The AsyncLimiter documentation states that it is not designed to be reused across different event loops.
+    This class extends AsyncLimiter to ensure that the rate limiter remains attached to a global event loop.
+    Documentation: https://aiolimiter.readthedocs.io/en/latest/#:~:text=Note,this%20will%20work.
     """
 
     _global_event_loop: Optional[asyncio.AbstractEventLoop] = None

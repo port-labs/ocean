@@ -223,7 +223,6 @@ async def get_single_project(
         async with rate_limiter:
             logger.debug(
                 f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
-                f"rate_limiter id: {id(rate_limiter)}"
             )
             return parse_protobuf_message(
                 await projects_client.get_project(
