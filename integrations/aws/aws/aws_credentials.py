@@ -56,28 +56,57 @@ class AwsCredentials:
             ]
 
     def _create_refresh_function(self) -> Callable[[], Awaitable[Dict[str, Any]]]:
+        """
+        Returns a callable that fetches new credentials when the current credentials are close to expiry.
+        """
+
         async def refresh() -> Dict[str, Any]:
+            """
+            Refreshes AWS credentials by re-assuming the role to get new credentials.
+            :return: A dictionary containing the new credentials and their expiration time.
+            """
             async with self._refresh_lock:
                 default_session = aioboto3.Session(**self.default_credentials)
-                logger.debug(
-                    f"Refreshing AWS credentials for role {self.role_arn} in account {self.account_id}"
-                )
-                async with default_session.client("sts") as sts_client:
-                    response = await sts_client.assume_role(
-                        RoleArn=str(self.role_arn),
-                        RoleSessionName=str(self.session_name),
-                        DurationSeconds=int(self.duration),
-                    )
-                    credentials = response["Credentials"]
+
+                if self.is_role():
                     logger.debug(
-                        f"Access key {self.access_key_id} for role {self.role_arn} in account {self.account_id} has been refreshed to {credentials['AccessKeyId']}"
+                        f"Refreshing AWS credentials for role {self.role_arn} in account {self.account_id}"
                     )
-                    self.access_key_id = credentials["AccessKeyId"]
+                    async with default_session.client("sts") as sts_client:
+                        response = await sts_client.assume_role(
+                            RoleArn=str(self.role_arn),
+                            RoleSessionName=str(self.session_name),
+                            DurationSeconds=int(self.duration),
+                        )
+                        credentials = response["Credentials"]
+                        logger.debug(
+                            f"Access key {self.access_key_id} for role {self.role_arn} in account {self.account_id} has been refreshed to {credentials['AccessKeyId']}"
+                        )
+                        self.access_key_id = credentials["AccessKeyId"]
+                        # To ensure credentials have enough time before expiry, we refresh 5 minutes before expiry
+                        expiry_time = (
+                            credentials["Expiration"] - timedelta(minutes=5)
+                        ).isoformat()
+                        refreshable_credentials = {
+                            "access_key": self.access_key_id,
+                            "secret_key": credentials["SecretAccessKey"],
+                            "token": credentials["SessionToken"],
+                            "expiry_time": expiry_time,
+                        }
+                else:
+                    logger.debug(
+                        f"Refreshing AWS credentials for default account {self.account_id}"
+                    )
+                    default_credentials = await default_session.get_credentials()  # type: ignore
+                    frozen_credentials = (
+                        await default_credentials.get_frozen_credentials()
+                    )
+                    self.access_key_id = frozen_credentials.access_key
                     refreshable_credentials = {
-                        "access_key": self.access_key_id,
-                        "secret_key": credentials["SecretAccessKey"],
-                        "token": credentials["SessionToken"],
-                        "expiry_time": credentials["Expiration"].isoformat(),
+                        "access_key": frozen_credentials.access_key,
+                        "secret_key": frozen_credentials.secret_key,
+                        "token": frozen_credentials.token,
+                        "expiry_time": self.expiry_time(),
                     }
                 return refreshable_credentials
 
