@@ -36,10 +36,8 @@ class KafkaClient:
         while current_batch_brokers := list(islice(brokers_iter, batch_size)):
             tasks = []
             for broker in current_batch_brokers:
-                tasks.append(
-                    self._process_broker(broker)
-                )
-            
+                tasks.append(self._process_broker(broker))
+
             try:
                 current_batch = await asyncio.gather(*tasks)
                 yield [broker for broker in current_batch if broker is not None]
@@ -47,7 +45,7 @@ class KafkaClient:
                 logger.error(f"Failed to process batch of brokers: {e}")
                 raise e
 
-    async def _process_broker(self, broker: Any) -> dict[str, Any] | None:
+    async def _process_broker(self, broker: Any) -> dict[str, Any] | None:  # type: ignore[return]
         try:
             brokers_configs = await to_thread.run_sync(
                 self.kafka_admin_client.describe_configs,
@@ -92,10 +90,12 @@ class KafkaClient:
             topics_configs = await to_thread.run_sync(
                 self.kafka_admin_client.describe_configs, topics_config_resources
             )
-            
+
             for topic_config_resource, future in topics_configs.items():
                 tasks.append(
-                    self._process_topic(topic_config_resource, future, topics_metadata_dict)
+                    self._process_topic(
+                        topic_config_resource, future, topics_metadata_dict
+                    )
                 )
 
             try:
@@ -106,7 +106,10 @@ class KafkaClient:
                 raise e
 
     async def _process_topic(
-        self, topic_config_resource: Any, future: Any, topics_metadata_dict: dict
+        self,
+        topic_config_resource: Any,
+        future: Any,
+        topics_metadata_dict: dict[str, Any],
     ) -> dict[str, Any] | None:
         topic_name = topic_config_resource.name
         try:
