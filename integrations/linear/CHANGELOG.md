@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.80 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.1.79 (2025-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.1.78 (2025-01-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+
+## 0.1.77 (2025-01-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+## 0.1.76 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+## 0.1.75 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+## 0.1.74 (2025-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+## 0.1.73 (2025-01-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+## 0.1.72 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.1.71 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
 ## 0.1.70 (2025-01-12)
 
 
@@ -395,7 +475,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser. 
+- Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser.
 
 
 ## 0.1.21 (2024-07-31)

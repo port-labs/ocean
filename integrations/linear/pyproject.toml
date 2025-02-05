@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "linear"
-version = "0.1.70"
+version = "0.1.80"
 description = "Integration to bring information from Linear into Port"
 authors = ["Mor Paz <mor@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.17.7", extras = ["cli"]}
+port_ocean = {version = "^0.18.8", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration

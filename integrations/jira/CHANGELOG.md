@@ -6,6 +6,112 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.2.33 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.2.32 (2025-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.2.31 (2025-01-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+
+## 0.2.30 (2025-01-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+## 0.2.29 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+## 0.2.28 (2025-01-22)
+
+
+### Improvements
+
+- Updated mappings to have typed array items
+
+
+## 0.2.27 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+## 0.2.26 (2025-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+## 0.2.25 (2025-01-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+## 0.2.24 (2025-01-16)
+
+
+### Bug Fixes
+
+- Updated default mapping for Jira Issue to use by removing `""` to prevent `parentIssue` error spam
+
+
+## 0.2.23 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.2.22 (2025-01-15)
+
+
+### Improvements
+
+- Added rate limit support to avoid failures due to 429 errors
+
+
+
+## 0.2.21 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
 ## 0.2.20 (2025-1-13)
 
 

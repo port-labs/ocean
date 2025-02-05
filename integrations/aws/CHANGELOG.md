@@ -7,12 +7,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.84 (2025-01-13)
+## 0.2.95 (2025-01-24)
 
 
 ### Bug Fixes
 
 - Fixed a bug where token refresh fails because its triggered while an active session was still using the old token.
+
+
+## 0.2.94 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.2.93 (2025-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.2.92 (2025-01-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+
+## 0.2.91 (2025-01-24)
+
+
+### Bug Fixes
+
+- Handled the `AWSOrganizationsNotInUseException` properly to avoid breaking the sync process when using accounts that does not belong to an organization.
+
+
+## 0.2.90 (2025-01-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+## 0.2.89 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+## 0.2.88 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+## 0.2.87 (2025-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+## 0.2.86 (2025-01-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+## 0.2.85 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.2.84 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
 
 
 ## 0.2.83 (2025-01-12)
@@ -37,7 +125,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Updated the serialized response to include valid custom property json key by accessing the StrEnum value properly. 
+- Updated the serialized response to include valid custom property json key by accessing the StrEnum value properly.
 
 
 ## 0.2.80 (2025-01-08)

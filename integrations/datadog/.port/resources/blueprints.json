@@ -145,6 +145,9 @@
         "sources": {
           "title": "Sources",
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "description": "Source or cloud provider associated with your host."
         },
         "tags": {
@@ -172,6 +175,9 @@
         },
         "tags": {
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "title": "Tags"
         },
         "overallState": {
@@ -316,6 +322,9 @@
       "properties": {
         "tags": {
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "title": "Tags"
         },
         "sloType": {
@@ -423,6 +432,9 @@
         "sources": {
           "title": "Sources",
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "description": "Source or cloud provider associated with your host."
         },
         "tags": {

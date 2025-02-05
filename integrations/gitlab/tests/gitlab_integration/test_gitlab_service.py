@@ -70,29 +70,6 @@ async def test_search_files_in_project(
     assert actual_files == expected_files
 
 
-async def test_search_files_invalid_glob_in_project(
-    monkeypatch: Any,
-    mocked_gitlab_service: GitlabService,
-    mock_get_and_parse_single_file: Any,
-) -> None:
-    # Arrange
-    search_pattern = "**/file.{yaml,yml,json}"
-
-    mock_project = MagicMock()
-    monkeypatch.setattr(mock_project, "search", mock_search)
-    expected_files: list[Any] = []
-    # Act
-    actual_files = []
-    async for file in mocked_gitlab_service.search_files_in_project(
-        mock_project, search_pattern
-    ):
-        actual_files.extend(file)
-
-    # Assert
-    assert len(actual_files) == 0
-    assert actual_files == expected_files
-
-
 async def test_search_generic_files_inside_folder_inside_folder_in_project(
     monkeypatch: Any,
     mocked_gitlab_service: GitlabService,

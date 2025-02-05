@@ -28,7 +28,7 @@ from port_ocean.core.ocean_types import (
     RAW_ITEM,
     CalculationResult,
 )
-from port_ocean.core.utils.utils import zip_and_sum, gather_and_split_errors_from_results
+from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -130,24 +130,127 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
 
+    def _construct_search_query_for_entities(self, entities: list[Entity]) -> dict:
+        """Create a query to search for entities by their identifiers.
+
+        Args:
+            entities (list[Entity]): List of entities to search for.
+
+        Returns:
+            dict: Query structure for searching entities by identifier and blueprint.
+        """
+        return {
+            "combinator": "and",
+            "rules": [
+                {
+                    "property": "$identifier",
+                    "operator": "in",
+                    "value": [entity.identifier for entity in entities]
+                },
+                {
+                    "property": "$blueprint",
+                    "operator": "=",
+                    "value": entities[0].blueprint
+                }
+            ]
+        }
+
+    async def _map_entities_compared_with_port(
+        self,
+        entities: list[Entity],
+        resource: ResourceConfig,
+        user_agent_type: UserAgentType,
+    ) -> list[Entity]:
+        if not entities:
+            return []
+
+        if entities[0].is_using_search_identifier or entities[0].is_using_search_relation:
+            return entities
+
+        BATCH_SIZE = 50
+        entities_at_port_with_properties = []
+
+        # Process entities in batches
+        for start_index in range(0, len(entities), BATCH_SIZE):
+            entities_batch = entities[start_index:start_index + BATCH_SIZE]
+            batch_results = await self._fetch_entities_batch_from_port(
+                entities_batch,
+                resource,
+                user_agent_type
+            )
+            entities_at_port_with_properties.extend(batch_results)
+
+        logger.info("Got entities from port with properties and relations", port_entities=len(entities_at_port_with_properties))
+
+        if len(entities_at_port_with_properties) > 0:
+            return resolve_entities_diff(entities, entities_at_port_with_properties)
+        return entities
+
+    async def _fetch_entities_batch_from_port(
+        self,
+        entities_batch: list[Entity],
+        resource: ResourceConfig,
+        user_agent_type: UserAgentType,
+    ) -> list[Entity]:
+        query = self._construct_search_query_for_entities(entities_batch)
+        return await ocean.port_client.search_entities(
+            user_agent_type,
+            parameters_to_include=["blueprint", "identifier"] + (
+                ["title"] if resource.port.entity.mappings.title != None else []
+            ) + (
+                ["team"] if resource.port.entity.mappings.team != None else []
+            ) + [
+                f"properties.{prop}" for prop in resource.port.entity.mappings.properties
+            ] + [
+                f"relations.{relation}" for relation in resource.port.entity.mappings.relations
+            ],
+            query=query
+        )
+
     async def _register_resource_raw(
         self,
         resource: ResourceConfig,
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
+        send_raw_data_examples_amount: int = 0
     ) -> CalculationResult:
         objects_diff = await self._calculate_raw(
             [(resource, results)], parse_all, send_raw_data_examples_amount
         )
-        modified_objects = await self.entities_state_applier.upsert(
-            objects_diff[0].entity_selector_diff.passed, user_agent_type
-        )
+        modified_objects = []
+
+        if event.event_type == EventType.RESYNC:
+            try:
+                changed_entities = await self._map_entities_compared_with_port(
+                    objects_diff[0].entity_selector_diff.passed,
+                    resource,
+                    user_agent_type
+                )
+                if changed_entities:
+                    logger.info("Upserting changed entities", changed_entities=len(changed_entities),
+                        total_entities=len(objects_diff[0].entity_selector_diff.passed))
+                    await self.entities_state_applier.upsert(
+                        changed_entities, user_agent_type
+                    )
+                else:
+                    logger.info("Entities in batch didn't changed since last sync, skipping", total_entities=len(objects_diff[0].entity_selector_diff.passed))
+                modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
+            except Exception as e:
+                logger.warning(f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}")
+                modified_objects = await self.entities_state_applier.upsert(
+                    objects_diff[0].entity_selector_diff.passed, user_agent_type
+                    )
+        else:
+           modified_objects = await self.entities_state_applier.upsert(
+                    objects_diff[0].entity_selector_diff.passed, user_agent_type
+                    )
+
+
         return CalculationResult(
             objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
             errors=objects_diff[0].errors,
-            misonfigured_entity_keys=objects_diff[0].misonfigured_entity_keys,
+            misonfigured_entity_keys=objects_diff[0].misonfigured_entity_keys
         )
 
     async def _unregister_resource_raw(
@@ -186,14 +289,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         send_raw_data_examples_amount = (
             SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
         )
-        all_entities, register_errors,_ = await self._register_resource_raw(
-            resource_config,
-            raw_results,
-            user_agent_type,
-            send_raw_data_examples_amount=send_raw_data_examples_amount,
-        )
-        errors.extend(register_errors)
-        passed_entities = list(all_entities.passed)
+
+        passed_entities = []
+        if raw_results:
+            calculation_result = await self._register_resource_raw(
+                resource_config,
+                raw_results,
+                user_agent_type,
+                send_raw_data_examples_amount=send_raw_data_examples_amount
+            )
+            errors.extend(calculation_result.errors)
+            passed_entities = list(calculation_result.entity_selector_diff.passed)
 
         for generator in async_generators:
             try:
@@ -203,14 +309,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             0, send_raw_data_examples_amount - len(passed_entities)
                         )
 
-                    entities, register_errors,_ = await self._register_resource_raw(
+                    calculation_result = await self._register_resource_raw(
                         resource_config,
                         items,
                         user_agent_type,
-                        send_raw_data_examples_amount=send_raw_data_examples_amount,
+                        send_raw_data_examples_amount=send_raw_data_examples_amount
                     )
-                    errors.extend(register_errors)
-                    passed_entities.extend(entities.passed)
+                    errors.extend(calculation_result.errors)
+                    passed_entities.extend(calculation_result.entity_selector_diff.passed)
             except* OceanAbortException as error:
                 errors.append(error)
 
@@ -446,9 +552,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             try:
                 did_fetched_current_state = True
-                entities_at_port = await ocean.port_client.search_entities(
-                    user_agent_type
-                )
             except httpx.HTTPError as e:
                 logger.warning(
                     "Failed to fetch the current state of entities at Port. "
@@ -461,6 +564,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
+
             try:
                 for resource in app_config.resources:
                     # create resource context per resource kind, so resync method could have access to the resource
@@ -471,7 +575,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         )
 
                         event.on_abort(lambda: task.cancel())
-
                         creation_results.append(await task)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
@@ -487,7 +590,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     return
 
                 logger.info("Starting resync diff calculation")
-                flat_created_entities, errors = zip_and_sum(creation_results) or [
+                generated_entities, errors = zip_and_sum(creation_results) or [
                     [],
                     [],
                 ]
@@ -504,10 +607,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.error(message, exc_info=error_group)
                 else:
                     logger.info(
-                        f"Running resync diff calculation, number of entities at Port before resync: {len(entities_at_port)}, number of entities created during sync: {len(flat_created_entities)}"
+                        f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
+                    )
+                    entities_at_port = await ocean.port_client.search_entities(
+                        user_agent_type
                     )
                     await self.entities_state_applier.delete_diff(
-                        {"before": entities_at_port, "after": flat_created_entities},
-                        user_agent_type,
+                        {"before": entities_at_port, "after": generated_entities},
+                        user_agent_type, app_config.entity_deletion_threshold
                     )
+
                     logger.info("Resync finished successfully")

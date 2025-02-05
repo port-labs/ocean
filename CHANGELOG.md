@@ -6,6 +6,66 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.18.8 (2025-02-04)
+
+### Bug Fixes
+
+- Fix flaky tests
+
+## 0.18.7 (2025-01-29)
+
+### Improvements
+
+- Reduce cases of mass deletion of entities on resync by adding threshold for deletion
+
+## 0.18.6 (2025-01-29)
+
+### Improvements
+
+- Entity diff calculation only on resync
+
+## 0.18.5 (2025-01-28)
+
+### Bug Fixes
+
+- Fixed an issue where the integration would delete all entities if the Port app configuration was empty
+
+## 0.18.4 (2025-01-22)
+
+### Improvements
+
+- added check diff entitites to reduce load from port to all integrations
+
+## 0.18.3 (2025-01-22)
+
+### Improvements
+
+- Opt-in integration resource provision by Port
+
+## 0.18.2 (2025-01-21)
+
+### Improvements
+
+- Updated the search entities query sent to port with one rule of identifier instead of many
+
+## 0.18.1 (2025-01-21)
+
+### Improvements
+
+- Updated the search entities query sent to port with blueprint
+
+## 0.18.0 (2025-01-15)
+
+### Improvements
+
+- Introduced a new entity diff resolver to reduce port system load by comparing entities and upserting changed entities only
+
+## 0.17.8 (2025-01-15)
+
+### Bug Fixes
+
+- Fixed vulnerability in the jinja package that is resolved by updating to 3.1.5
+
 
 ## 0.17.7 (2025-01-08)
 

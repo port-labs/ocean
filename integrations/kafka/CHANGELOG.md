@@ -7,6 +7,108 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.120 (2025-02-05)
+
+### Improvements
+
+- Converted client to use asyncio and added batching
+
+
+## 0.1.119 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.1.118 (2025-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.1.117 (2025-01-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+## 0.1.116 (2025-01-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+## 0.1.115 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+## 0.1.114 (2025-01-22)
+
+
+### Improvements
+
+- Added support for ingesting consumer groups
+
+
+## 0.1.113 (2025-01-22)
+
+
+### Improvements
+
+- Updated mappings to have typed array items
+
+
+## 0.1.112 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+## 0.1.111 (2025-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+## 0.1.110 (2025-01-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+## 0.1.109 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.1.108 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
 ## 0.1.107 (2025-01-12)
 
 
