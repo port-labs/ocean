@@ -11,9 +11,10 @@ configurations:
   - name: amplicationApiUrl
     required: false
     type: url
+    description: "The URL of Amplication's server"
     default: "https://server.amplication.com/graphql"
   - name: amplicationAuthorization
     required: true
     type: string
-    description: "The user's authorization token for the bearer"
+    description: "Your user authorization token from Amplication"
     sensitive: true

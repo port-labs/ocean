@@ -1,5 +1,4 @@
 createMissingRelatedEntities: True
-
 resources:
   - kind: amplication_template
     selector:
