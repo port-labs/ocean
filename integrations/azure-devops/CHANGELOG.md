@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed Bug where team members are synced multiple times.
 
+### Improvements
+
+- Added support for User kind
+- Added selector `includeMembers` to enable enriching team with members
 
 ## 0.1.114 (2025-01-29)
 
