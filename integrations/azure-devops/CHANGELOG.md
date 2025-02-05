@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.115 (2025-01-30)
+## 0.1.116 (2025-02-5)
 
 
 ### Bug Fixes
@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added support for User kind
 - Added selector `includeMembers` to enable enriching team with members
+
+## 0.1.115 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
 
 ## 0.1.114 (2025-01-29)
 

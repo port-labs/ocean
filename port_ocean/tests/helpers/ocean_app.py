@@ -11,6 +11,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import RESYNC_RESULT
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
+from port_ocean.utils.signal import init_signal_handler
 
 
 def get_integration_ocean_app(
@@ -21,6 +22,7 @@ def get_integration_ocean_app(
     if spec_file is not None:
         config_factory = default_config_factory(spec_file.get("configurations", []))
 
+    init_signal_handler()
     default_app = create_default_app(
         integration_path,
         config_factory,
