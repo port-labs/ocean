@@ -13,8 +13,8 @@ class ObjectKind(StrEnum):
 
 def init_client() -> AmplicationClient:
     return AmplicationClient(
-        ocean.integration_config["amplication_api_url"],
-        ocean.integration_config["amplication_authorization"],
+        ocean.integration_config["amplication_host"],
+        ocean.integration_config["amplication_token"],
     )
 
 
