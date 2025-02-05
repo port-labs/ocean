@@ -10,7 +10,7 @@ from port_ocean.context.event import EventType, event_context
 from port_ocean.exceptions.api import EmptyPortAppConfigError
 
 
-class TestPortAppConfig(BasePortAppConfig):
+class MockPortAppConfig(BasePortAppConfig):
     mock_get_port_app_config: Any
 
     async def _get_port_app_config(self) -> Dict[str, Any]:
@@ -25,15 +25,15 @@ def mock_context() -> PortOceanContext:
 
 
 @pytest.fixture
-def port_app_config_handler(mock_context: PortOceanContext) -> TestPortAppConfig:
-    handler = TestPortAppConfig(mock_context)
+def port_app_config_handler(mock_context: PortOceanContext) -> MockPortAppConfig:
+    handler = MockPortAppConfig(mock_context)
     handler.mock_get_port_app_config = MagicMock()
     return handler
 
 
 @pytest.mark.asyncio
 async def test_get_port_app_config_success(
-    port_app_config_handler: TestPortAppConfig,
+    port_app_config_handler: MockPortAppConfig,
 ) -> None:
     # Arrange
     valid_config = {
@@ -83,7 +83,7 @@ async def test_get_port_app_config_success(
 
 @pytest.mark.asyncio
 async def test_get_port_app_config_uses_cache(
-    port_app_config_handler: TestPortAppConfig,
+    port_app_config_handler: MockPortAppConfig,
 ) -> None:
     # Arrange
     valid_config = {
@@ -122,7 +122,7 @@ async def test_get_port_app_config_uses_cache(
 
 @pytest.mark.asyncio
 async def test_get_port_app_config_bypass_cache(
-    port_app_config_handler: TestPortAppConfig,
+    port_app_config_handler: MockPortAppConfig,
 ) -> None:
     # Arrange
     valid_config = {
@@ -163,7 +163,7 @@ async def test_get_port_app_config_bypass_cache(
 
 @pytest.mark.asyncio
 async def test_get_port_app_config_validation_error(
-    port_app_config_handler: TestPortAppConfig, monkeypatch: pytest.MonkeyPatch
+    port_app_config_handler: MockPortAppConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Arrange
     invalid_config = {"invalid_field": "invalid_value"}
@@ -184,7 +184,7 @@ async def test_get_port_app_config_validation_error(
 
 @pytest.mark.asyncio
 async def test_get_port_app_config_fetch_error(
-    port_app_config_handler: TestPortAppConfig,
+    port_app_config_handler: MockPortAppConfig,
 ) -> None:
     # Arrange
     port_app_config_handler.mock_get_port_app_config.side_effect = (
