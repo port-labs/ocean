@@ -1,21 +1,38 @@
 from typing import Any, AsyncIterator, Optional, Union
 
 import aioboto3
+from port_ocean.context.ocean import ocean
 from starlette.requests import Request
 
-from port_ocean.context.ocean import ocean
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-
+from aws.session_manager import SessionManager, ASSUME_ROLE_DURATION_SECONDS
 from aws.aws_credentials import AwsCredentials
-from aws.session_manager import SessionManager
 
+from aiocache import cached, Cache  # type: ignore
+from asyncio import Lock
+
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 _session_manager: SessionManager = SessionManager()
 
+CACHE_DURATION_SECONDS = (
+    0.80 * ASSUME_ROLE_DURATION_SECONDS
+)  # Refresh role credentials after exhausting 80% of the session duration
 
-async def initialize_access_credentials() -> bool:
-    await _session_manager.reset()
-    return True
+lock = Lock()
+
+
+@cached(ttl=CACHE_DURATION_SECONDS, cache=Cache.MEMORY)
+async def update_available_access_credentials() -> bool:
+    """
+    Fetches the AWS account IDs that the current IAM role can access.
+    and saves them up to use as sessions
+
+    :return: List of AWS account IDs.
+    """
+    async with lock:
+        await _session_manager.reset()
+        # makes this run once per DurationSeconds
+        return True
 
 
 def describe_accessible_accounts() -> list[dict[str, Any]]:
@@ -32,7 +49,7 @@ async def get_accounts() -> AsyncIterator[AwsCredentials]:
     """
     Gets the AWS account IDs that the current IAM role can access.
     """
-
+    await update_available_access_credentials()
     for credentials in _session_manager._aws_credentials:
         yield credentials
 
@@ -61,6 +78,7 @@ async def get_sessions(
     """
     Gets boto3 sessions for the AWS regions.
     """
+    await update_available_access_credentials()
 
     if custom_account_id:
         credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
