@@ -10,13 +10,13 @@ _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
 def _get_http_client_context() -> httpx.AsyncClient:
     client = _http_client.top
+    transport_kwargs = {}
+    if ocean.app.should_load_config():
+        transport_kwargs["on_retry"] = ocean.app.load_integration_config
     if client is None:
         client = OceanAsyncClient(
             transport_class=RetryTransport,
-            transport_kwargs={
-                "refresh_config_function": ocean.app.reload_integration_config,
-                "should_refresh_config": ocean.app.should_refresh_config(),
-            },
+            transport_kwargs=transport_kwargs,
             timeout=ocean.config.client_timeout,
         )
         _http_client.push(client)

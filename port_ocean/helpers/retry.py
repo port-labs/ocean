@@ -69,8 +69,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         retryable_methods: Iterable[str] | None = None,
         retry_status_codes: Iterable[int] | None = None,
         logger: Any | None = None,
-        should_refresh_config: bool = False,
-        refresh_config_function: Callable[[], None] | None = None,
+        on_retry: Callable[[], None] | None = None,
     ) -> None:
         """
         Initializes the instance of RetryTransport class with the given parameters.
@@ -123,8 +122,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         self._jitter_ratio = jitter_ratio
         self._max_backoff_wait = max_backoff_wait
         self._logger = logger
-        self._refresh_config_function = refresh_config_function
-        self._should_refresh_config = should_refresh_config
+        self._on_retry = on_retry or (lambda: None)
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         """
@@ -321,8 +319,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
-            if self._should_refresh_config and self._refresh_config_function:
-                self._refresh_config_function()
+            self._on_retry()
             attempts_made += 1
             remaining_attempts -= 1
 
@@ -364,7 +361,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
-            if self._should_refresh_config and self._refresh_config_function:
-                self._refresh_config_function()
+            self._on_retry()
             attempts_made += 1
             remaining_attempts -= 1

@@ -106,19 +106,19 @@ class Ocean:
             )
             await schedule_repeated_task(execute_resync_all, interval * 60)
 
-    async def reload_integration_config(self) -> None:
+    async def load_integration_config(self) -> None:
         integration_config = load_integration_config_from_file(
             self.config.integration.config
         )
         self.config.integration.config = integration_config
 
-    def should_refresh_config(self) -> bool:
+    def should_load_config(self) -> bool:
         return self.config.config_file_path is not None
 
     async def _setup_scheduled_config_loading(self) -> None:
         seconds = self.config.config_reload_interval
         await schedule_repeated_task(
-            self.reload_integration_config,
+            self.load_integration_config,
             seconds,
         )
 
@@ -131,7 +131,7 @@ class Ocean:
                 await self.integration.start()
                 await self.webhook_manager.start_processing_event_messages()
                 await self._setup_scheduled_resync()
-                if self.should_refresh_config():
+                if self.should_load_config():
                     await self._setup_scheduled_config_loading()
                 yield None
             except Exception:
