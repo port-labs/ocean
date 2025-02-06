@@ -32,6 +32,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"].
         retry_status_codes (Iterable[int], optional): The HTTP status codes that can be retried. Defaults to
             [429, 502, 503, 504].
+        on_retry (Callable[[], None], optional): A function to call when a retry is made. Defaults to a no-op function.
 
     Attributes:
         _wrapped_transport (Union[httpx.BaseTransport, httpx.AsyncBaseTransport]): The underlying HTTP transport
@@ -43,7 +44,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         _retry_status_codes (frozenset): The HTTP status codes that can be retried.
         _jitter_ratio (float): The amount of jitter to add to the backoff time.
         _max_backoff_wait (float): The maximum time to wait between retries in seconds.
-
+        _on_retry (Callable[[], None]): A function to call when a retry is made.
     """
 
     RETRYABLE_METHODS = frozenset(["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"])
