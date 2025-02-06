@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from starlette.types import Receive, Scope, Send
 
 from port_ocean.clients.port.client import PortClient
+from port_ocean.config.utils.load_config import load_integration_config_from_file
 from port_ocean.config.settings import (
     IntegrationConfiguration,
 )
@@ -25,7 +26,6 @@ from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import schedule_repeated_task
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
-from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.core.handlers.webhook.processor_manager import WebhookProcessorManager
 
 
@@ -106,13 +106,20 @@ class Ocean:
             )
             await schedule_repeated_task(execute_resync_all, interval * 60)
 
+    async def reload_integration_config(self) -> None:
+        integration_config = load_integration_config_from_file(
+            self.config.integration.config
+        )
+        self.config.integration.config = integration_config
+
+    def should_refresh_config(self) -> bool:
+        return self.config.config_file_path is not None
+
     async def _setup_scheduled_config_loading(self) -> None:
         seconds = self.config.config_reload_interval
-        config_file_path = self.config.config_file_path
         await schedule_repeated_task(
-            self.config.integration.load_config_from_file,
+            self.reload_integration_config,
             seconds,
-            config_file_path=config_file_path,
         )
 
     def initialize_app(self) -> None:
@@ -124,7 +131,7 @@ class Ocean:
                 await self.integration.start()
                 await self.webhook_manager.start_processing_event_messages()
                 await self._setup_scheduled_resync()
-                if self.config.config_file_path:
+                if self.should_refresh_config():
                     await self._setup_scheduled_config_loading()
                 yield None
             except Exception:

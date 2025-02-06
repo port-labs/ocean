@@ -1,7 +1,5 @@
 from typing import Any, Literal, Type, cast
 
-import yaml
-from loguru import logger
 from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
 from pydantic.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
@@ -61,19 +59,6 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
             values["identifier"] = f"my-{integ_type}-integration".lower()
 
         return values
-
-    async def load_config_from_file(self, config_file_path: str) -> None:
-        logger.debug(f"Loading configuration from file: {config_file_path}")
-        try:
-            with open(config_file_path, "r") as f:
-                file_config = yaml.safe_load(f)
-
-            if isinstance(self.config, dict):
-                self.config = {**self.config, **file_config}
-            else:
-                self.config = {**self.config.dict(), **file_config}
-        except Exception as e:
-            raise ValueError(f"Failed to load configuration from file: {e}")
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
