@@ -21,7 +21,7 @@ from utils.aws import (
     describe_accessible_accounts,
     get_accounts,
     get_sessions,
-    update_available_access_credentials,
+    initialize_access_credentials,
     validate_request,
 )
 from port_ocean.context.ocean import ocean
@@ -77,6 +77,9 @@ async def resync_resources_for_account(
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
     if is_global_resource(kind):
+        logger.info(
+            f"Handling global resource {kind} for account {credentials.account_id}"
+        )
         async for batch in _handle_global_resource_resync(
             kind, credentials, aws_resource_config
         ):
@@ -106,7 +109,6 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(ResourceKindsWithSpecialHandling):
         return
 
-    await update_available_access_credentials()
     tasks = [
         semaphore_async_iterator(
             semaphore,
@@ -116,20 +118,17 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
-            await update_available_access_credentials()
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
 async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    await update_available_access_credentials()
     for account in describe_accessible_accounts():
         yield [fix_unserializable_date_properties(account)]
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER)
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    await update_available_access_credentials()
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
     tasks = [
@@ -150,13 +149,11 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
-            await update_available_access_credentials()
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER)
 async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    await update_available_access_credentials()
 
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
@@ -178,13 +175,11 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
-            await update_available_access_credentials()
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM_CERTIFICATE)
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    await update_available_access_credentials()
 
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
@@ -206,13 +201,11 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
-            await update_available_access_credentials()
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.AMI_IMAGE)
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    await update_available_access_credentials()
 
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
@@ -234,13 +227,11 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
-            await update_available_access_credentials()
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    await update_available_access_credentials()
 
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
@@ -262,7 +253,6 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
-            await update_available_access_credentials()
             yield batch
 
 
@@ -301,7 +291,6 @@ class ResourceUpdate(BaseModel):
 
 @ocean.router.post("/webhook")
 async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Response:
-    await update_available_access_credentials()
     try:
         logger.info(f"Received AWS Webhook request body: {update}")
         resource_type = update.resource_type
@@ -404,3 +393,16 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=json.dumps({"ok": False, "error": str(e)}),
         )
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    logger.info("Starting Port Ocean AWS integration")
+
+    if not ocean.integration_config.get("live_events_api_key"):
+        logger.warning(
+            "No live events api key provided"
+            "Without setting up the webhook, the integration will not export live changes from AWS"
+        )
+
+    await initialize_access_credentials()

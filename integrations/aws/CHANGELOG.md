@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.95 (2025-01-24)
+
+
+### Bug Fixes
+
+- Fixed invalid token errors by implementing an auto-retry strategy using botocore's AioRefreshable Credentials
+
+
 ## 0.2.94 (2025-02-04)
 
 
