@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed rate limiting by changing analytics fetch from per-incident API calls to service-based batch retrieval 
 
-### Features
+### Improvements
 
 - Add cursor-based pagination for analytics batch retrieval; add configurable analytics period.
 
