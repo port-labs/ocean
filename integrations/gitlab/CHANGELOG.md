@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+0.2.32 (2025-02-05)
+===================
+
+### Improvements
+
+- Fixed glob pattern matching by utilizing GitLab's glob path search capabilities with pattern matching.
+
+
+0.2.31 (2025-02-04)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
 
 0.2.30 (2025-01-29)
 ===================
