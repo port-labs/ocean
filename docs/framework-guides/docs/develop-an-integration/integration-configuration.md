@@ -61,7 +61,7 @@ initializePortResources: true
 
 This configuration is used to specify the interval in minutes in which the integration should initiate a full resync from the 3rd-party system.
 
-By default, this feature is disabled. To enable it, set the value to a positive integer representing the interval in
+By default, this feature is disabled in most integrations. To enable it, set the value to a positive integer representing the interval in
 minutes.
 
 <ResyncAbortMessage />

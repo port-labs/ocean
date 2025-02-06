@@ -2,4 +2,6 @@
 If a resync event is received by your integration while it is actively performing a resync, the currently running resync will be aborted and a new resync process will start.
 
 If a new resync trigger consistently aborts a running resync, it means that your integration never finishes a complete resync process (which means some information from the 3rd-party system might never appear in Port).
+
+If you specify a `scheduledResyncInterval`, we recommend that you start with a larger buffer between resyncs (2 hours are almost always enough), and reduce the resync buffer only if you need more frequent automatic updates.
 :::
