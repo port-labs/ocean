@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.116 (2025-02-5)
+
+
+### Improvements
+
+- Added support for User kind
+- Added selector `includeMembers` to enable enriching team with members
+
 ## 0.1.115 (2025-02-04)
 
 
