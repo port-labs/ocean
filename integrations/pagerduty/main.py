@@ -61,7 +61,7 @@ async def enrich_incidents_with_analytics_data(
 ) -> list[dict[str, Any]]:
     if not incidents:
         return incidents
-
+    logger.info(f"Enriching batch of {len(incidents)} incidents with analytics")
     service_ids = list({incident["service"]["id"] for incident in incidents})
 
     analytics_map = {}
