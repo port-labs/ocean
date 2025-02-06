@@ -185,11 +185,12 @@ class SessionManager:
                 raise
 
     async def find_account_id_by_session(self, session: aioboto3.Session) -> str:
-        session_credentials = await session.get_credentials()  # type: ignore
-        frozen_credentials = await session_credentials.get_frozen_credentials()
-        for cred in self._aws_credentials:
-            if cred.access_key_id == frozen_credentials.access_key:
-                return cred.account_id
+        async with session.client("sts") as sts_client:
+            caller_identity = await sts_client.get_caller_identity()
+            account_id = caller_identity["Account"]
+            for cred in self._aws_credentials:
+                if cred.account_id == account_id:
+                    return cred.account_id
 
         raise AccountNotFoundError(
             f"Cannot find credentials linked with this session {session}"

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aws"
-version = "0.2.95-rc3"
+version = "0.2.95-rc4"
 description = "This integration will map all your resources in all the available accounts to your Port entities"
 authors = ["Shalev Avhar <shalev@getport.io>", "Erik Zaadi <erik@getport.io>"]
 
