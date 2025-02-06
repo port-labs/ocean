@@ -120,32 +120,21 @@ class AwsCredentials:
             f"Creating a refreshable session for role {self.role_arn} in account {self.account_id} for region {region}"
         )
 
-        if self.is_role():
-            refresh_func = self._create_refresh_function()
+        refresh_func = self._create_refresh_function()
 
-            credentials = AioRefreshableCredentials.create_from_metadata(
-                metadata=await refresh_func(),
-                refresh_using=refresh_func,
-                method="sts-assume-role",
-            )
+        credentials = AioRefreshableCredentials.create_from_metadata(
+            metadata=await refresh_func(),
+            refresh_using=refresh_func,
+            method="sts-assume-role",
+        )
 
-            botocore_session = get_session()
-            setattr(botocore_session, "_credentials", credentials)
-            if region:
-                botocore_session.set_config_variable("region", region)
+        botocore_session = get_session()
+        setattr(botocore_session, "_credentials", credentials)
+        if region:
+            botocore_session.set_config_variable("region", region)
 
-            autorefresh_session = aioboto3.Session(botocore_session=botocore_session)
-            return autorefresh_session
-        else:
-            logger.debug(
-                f"Creating AWS credentials for default account {self.account_id}"
-            )
-
-            return aioboto3.Session(
-                aws_access_key_id=self.default_credentials["aws_access_key_id"],
-                aws_secret_access_key=self.default_credentials["aws_secret_access_key"],
-                region_name=region,
-            )
+        autorefresh_session = aioboto3.Session(botocore_session=botocore_session)
+        return autorefresh_session
 
     async def create_session_for_each_region(
         self, allowed_regions: Optional[Iterable[str]] = None
