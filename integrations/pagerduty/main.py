@@ -1,4 +1,3 @@
-import asyncio
 import typing
 from typing import Any
 
@@ -9,8 +8,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients.pagerduty import PagerDutyClient
 from integration import (
-    ObjectKind,
     OBJECTS_WITH_SPECIAL_HANDLING,
+    ObjectKind,
     PagerdutyEscalationPolicyResourceConfig,
     PagerdutyIncidentResourceConfig,
     PagerdutyOncallResourceConfig,
