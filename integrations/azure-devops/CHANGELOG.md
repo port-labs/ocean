@@ -10,10 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.116 (2025-02-5)
 
 
-### Bug Fixes
-
-- Fixed Bug where team members are synced multiple times.
-
 ### Improvements
 
 - Added support for User kind
