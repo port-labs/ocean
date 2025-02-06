@@ -58,9 +58,7 @@ async def enrich_service_with_analytics_data(
 
 
 async def enrich_incidents_with_analytics_data(
-    client: PagerDutyClient, 
-    incidents: list[dict[str, Any]], 
-    months_period: int = 3
+    client: PagerDutyClient, incidents: list[dict[str, Any]], months_period: int = 3
 ) -> list[dict[str, Any]]:
     if not incidents:
         return incidents
@@ -68,13 +66,14 @@ async def enrich_incidents_with_analytics_data(
     service_ids = list({incident["service"]["id"] for incident in incidents})
 
     analytics_map = {}
-    async for analytics_batch in client.get_incident_analytics_by_services(service_ids, months_period):
+    async for analytics_batch in client.get_incident_analytics_by_services(
+        service_ids, months_period
+    ):
+        logger.info(f"Received analytics batch with {len(analytics_batch)} entries")
         analytics_map.update({analytic["id"]: analytic for analytic in analytics_batch})
 
     for incident in incidents:
         incident["__analytics"] = analytics_map.get(incident["id"])
-        
-    
 
     return incidents
 
@@ -99,7 +98,9 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if selector.incident_analytics:
             yield (
                 await enrich_incidents_with_analytics_data(
-                    pager_duty_client, incidents, months_period=selector.analytics_months_period
+                    pager_duty_client,
+                    incidents,
+                    months_period=selector.analytics_months_period,
                 )
             )
         else:
