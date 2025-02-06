@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.19 (2025-02-06)
+
+
+### Bug Fix
+
+- Fixed rate limiting by changing analytics fetch from per-incident API calls to service-based batch retrieval 
+
+### Features
+
+- Add cursor-based pagination for analytics batch retrieval; add configurable analytics period.
+
+
 ## 0.2.18 (2025-02-04)
 
 
