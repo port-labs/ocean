@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.19.0 (2025-02-06)
+
+### Features
+
+- Added capability to read configurations from a file.
+- Add option to periodically keep the integration's configuration updated with the file's configuration.
+- Add reloading configuration on retry
+
+
 ## 0.18.8 (2025-02-04)
 
 ### Bug Fixes
@@ -159,13 +168,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Extended `Ocean new` cli command to fill out more information for the user and also fixed wrong output
-
-
-## 0.15.3 (2024-12-19)
-
-### Features
-
-- Added capability to read configurations from a file, And periodically keep the integration's configuration updated with the file's configuration.
 
 
 ## 0.15.2 (2024-12-15)
