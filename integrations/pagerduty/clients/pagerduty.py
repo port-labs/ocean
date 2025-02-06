@@ -222,6 +222,53 @@ class PagerDutyClient:
                 logger.error(f"Error fetching incident analytics data: {e}")
                 return {}
 
+    async def paginate_cursor_request(
+        self,
+        endpoint: str,
+        json_data: dict[str, Any],
+        method: str = "POST"
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        starting_after = None
+        while True:
+            request_data = {**json_data, "starting_after": starting_after}
+            data = await self.send_api_request(
+                endpoint=endpoint,
+                method=method,
+                json_data=request_data,
+                extensions={"retryable": True}
+            )
+            yield data["data"]
+            
+            if not data["more"]:
+                break
+                
+            starting_after = data["starting_after"]
+
+    async def get_incident_analytics_by_services(
+        self, 
+        service_ids: list[str], 
+        months_period: int = 3
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+
+        date_start, date_end = get_date_range_for_last_n_months(months_period)
+        logger.info(f"Fetching analytics for services: {service_ids} for period {date_start} to {date_end}")
+
+        
+        request_data = {
+            "filters": {
+                "service_ids": service_ids,
+                "created_at_start": date_start,
+                "created_at_end": date_end
+            },
+            "limit": 1000
+        }
+        
+        async for analytics in self.paginate_cursor_request(
+            endpoint="analytics/raw/incidents",
+            json_data=request_data
+        ):
+            yield analytics
+
     async def get_service_analytics(
         self, service_ids: list[str], months_period: int = 3
     ) -> list[Dict[str, Any]]:

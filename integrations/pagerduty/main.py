@@ -58,19 +58,25 @@ async def enrich_service_with_analytics_data(
 
 
 async def enrich_incidents_with_analytics_data(
-    client: PagerDutyClient,
-    incidents: list[dict[str, Any]],
+    client: PagerDutyClient, 
+    incidents: list[dict[str, Any]], 
+    months_period: int = 3
 ) -> list[dict[str, Any]]:
-    analytics_data = await asyncio.gather(
-        *[client.get_incident_analytics(incident["id"]) for incident in incidents]
-    )
+    if not incidents:
+        return incidents
 
-    enriched_incidents = [
-        {**incident, "__analytics": analytics}
-        for incident, analytics in zip(incidents, analytics_data)
-    ]
+    service_ids = list({incident["service"]["id"] for incident in incidents})
 
-    return enriched_incidents
+    analytics_map = {}
+    async for analytics_batch in client.get_incident_analytics_by_services(service_ids, months_period):
+        analytics_map.update({analytic["id"]: analytic for analytic in analytics_batch})
+
+    for incident in incidents:
+        incident["__analytics"] = analytics_map.get(incident["id"])
+        
+    
+
+    return incidents
 
 
 @ocean.on_resync(ObjectKind.INCIDENTS)
@@ -91,10 +97,11 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received batch with {len(incidents)} incidents")
 
         if selector.incident_analytics:
-            enriched_incident_batch = await enrich_incidents_with_analytics_data(
-                pager_duty_client, incidents
+            yield (
+                await enrich_incidents_with_analytics_data(
+                    pager_duty_client, incidents, months_period=selector.analytics_months_period
+                )
             )
-            yield enriched_incident_batch
         else:
             yield incidents
 
