@@ -39,7 +39,7 @@ class PersistentAsyncLimiter(AsyncLimiter):
     """
 
     _global_event_loop: Optional[asyncio.AbstractEventLoop] = None
-    _limiter_instances: dict[tuple[float, float], "PersistentAsyncLimiter"] = {}
+    _limiter_instance: Optional["PersistentAsyncLimiter"] = None
 
     def __init__(self, max_rate: float, time_period: float = 60) -> None:
         """
@@ -75,13 +75,12 @@ class PersistentAsyncLimiter(AsyncLimiter):
         :param time_period: Time period in seconds.
         :return: An instance of PersistentAsyncLimiter.
         """
-        key: tuple[float, float] = (max_rate, time_period)
-        if key not in cls._limiter_instances:
+        if cls._limiter_instance is None:
             logger.info(
-                f"Creating new persistent limiter for {max_rate} requests per {time_period} sec"
+                f"Creating new global persistent limiter for {max_rate} requests per {time_period} sec"
             )
-            cls._limiter_instances[key] = cls(max_rate, time_period)
-        return cls._limiter_instances[key]
+            cls._limiter_instance = cls(max_rate, time_period)
+        return cls._limiter_instance
 
     async def __aenter__(self) -> None:
         await self.acquire()
