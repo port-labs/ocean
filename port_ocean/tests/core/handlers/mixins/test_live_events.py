@@ -65,6 +65,7 @@ def mock_port_app_config() -> PortAppConfig:
                 ),
             )
         ],
+        entity_deletion_threshold=0.5,
     )
 
 
@@ -165,18 +166,21 @@ async def test_get_live_event_resources(
     )
 
 
-# async def test_get_entity_deletion_threshold(self, mixin):
-#     # Arrange
-#     mock_config = MagicMock()
-#     mock_config.entity_deletion_threshold = 0.5
-#     mixin.port_app_config_handler.get_port_app_config.return_value = mock_config
+async def test_get_entity_deletion_threshold(
+    mock_live_events_mixin: LiveEventsMixin, mock_port_app_config: PortAppConfig
+):
+    # Arrange
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = (
+        mock_port_app_config
+    )
 
-#     # Act
-#     result = await mixin._get_entity_deletion_threshold()
+    result = await mock_live_events_mixin._get_entity_deletion_threshold()
 
-#     # Assert
-#     assert result == 0.5
-#     mixin.port_app_config_handler.get_port_app_config.assert_called_once_with(use_cache=True)
+    assert result == 0.5
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(
+        use_cache=True
+    )
+
 
 # async def test_calculate_raw(self, mixin):
 #     # Arrange
