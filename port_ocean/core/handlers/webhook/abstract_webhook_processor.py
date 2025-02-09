@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
+from typing import Any
 from loguru import logger
 
+from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.exceptions.webhook_processor import RetryableError
 
 from .webhook_event import WebhookEvent, EventPayload, EventHeaders
 
 
-class AbstractWebhookProcessor(ABC):
+class AbstractWebhookProcessor(ABC, LiveEventsMixin):
     """
     Abstract base class for webhook processors
     Extend this class to implement custom webhook processing logic
@@ -40,6 +42,7 @@ class AbstractWebhookProcessor(ABC):
     def __init__(self, event: WebhookEvent) -> None:
         self.event = event
         self.retry_count = 0
+        LiveEventsMixin.__init__(self)
 
     async def on_error(self, error: Exception) -> None:
         """Hook to handle errors during processing. Override if needed"""
@@ -84,6 +87,13 @@ class AbstractWebhookProcessor(ABC):
     async def after_processing(self) -> None:
         """Hook to run after processing the event"""
         pass
+
+    async def process_data(self, kind: str, data: dict[str, Any]) -> None:
+        """Process the data for the given kind:
+        1) map data to port entities
+        2) update data in port - upsert and delete entities accordingly
+        """
+        await self.on_live_event(kind, data)
 
     @abstractmethod
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:

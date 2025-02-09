@@ -41,6 +41,7 @@ class EventType:
     START = "start"
     RESYNC = "resync"
     HTTP_REQUEST = "http_request"
+    LIVE_EVENT = "live_event"
 
 
 @dataclass
