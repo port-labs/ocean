@@ -238,13 +238,12 @@ class PagerDutyClient:
                 extensions={"retryable": True},
             )
 
-            # batch = data["data"]
             yield data["data"]
 
             if not data.get("more", False):
                 break
 
-            starting_after = data.get("starting_after")
+            starting_after = data.get("last")
             if not starting_after:
                 break
 
