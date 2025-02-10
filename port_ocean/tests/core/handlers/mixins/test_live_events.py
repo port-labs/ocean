@@ -3,7 +3,6 @@ from httpx import Response
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.clients.port.client import PortClient
-from port_ocean.context import ocean
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
     HttpEntitiesStateApplier,
@@ -20,14 +19,15 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.models import Entity
 from port_ocean.ocean import Ocean
 
 
 @pytest.fixture
-def mock_context(mock_ocean: Ocean) -> PortOceanContext:
-    context = PortOceanContext(mock_ocean)
-    ocean._app = context.app
-    return context
+def mock_context(monkeypatch: Any) -> PortOceanContext:
+    mock_context = AsyncMock()
+    monkeypatch.setattr(PortOceanContext, "app", mock_context)
+    return mock_context
 
 
 @pytest.fixture
@@ -43,36 +43,49 @@ def mock_entities_state_applier(
 
 
 @pytest.fixture
-def mock_port_app_config() -> PortAppConfig:
+def mock_repository_resource_config() -> ResourceConfig:
+    return ResourceConfig(
+        kind="repository",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".name",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={
+                        "url": ".links.html.href",
+                        "readme": "file://README.md",
+                        "defaultBranch": ".main_branch",
+                    },
+                    relations={},
+                )
+            )
+        ),
+    )
+
+
+@pytest.fixture
+def mock_port_app_config_with_repository_resource(
+    mock_repository_resource_config: ResourceConfig,
+) -> PortAppConfig:
     return PortAppConfig(
         enable_merge_entity=True,
         delete_dependent_entities=True,
         create_missing_related_entities=False,
-        resources=[
-            ResourceConfig(
-                kind="project",
-                selector=Selector(query="true"),
-                port=PortResourceConfig(
-                    entity=MappingsConfig(
-                        mappings=EntityMapping(
-                            identifier=".id | tostring",
-                            title=".name",
-                            blueprint='"service"',
-                            properties={"url": ".web_url"},
-                            relations={},
-                        )
-                    )
-                ),
-            )
-        ],
+        resources=[mock_repository_resource_config],
         entity_deletion_threshold=0.5,
     )
 
 
 @pytest.fixture
-def mock_port_app_config_handler(mock_port_app_config: PortAppConfig) -> MagicMock:
+def mock_port_app_config_handler(
+    mock_port_app_config_with_repository_resource: PortAppConfig,
+) -> MagicMock:
     handler = MagicMock()
-    handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)
+    handler.get_port_app_config = AsyncMock(
+        return_value=mock_port_app_config_with_repository_resource
+    )
     return handler
 
 
@@ -150,28 +163,63 @@ def mock_http_client() -> MagicMock:
     return mock_http_client
 
 
-async def test_get_live_event_resources(
-    mock_live_events_mixin: LiveEventsMixin, mock_port_app_config: PortAppConfig
-):
+@pytest.mark.asyncio
+async def test_getLiveEventResources_mappingHasTheResource_returnsTheResource(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_port_app_config_with_repository_resource: PortAppConfig,
+) -> None:
     mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = (
-        mock_port_app_config
+        mock_port_app_config_with_repository_resource
     )
 
-    result = await mock_live_events_mixin._get_live_event_resources("project")
+    result = await mock_live_events_mixin._get_live_event_resources("repository")
 
     assert len(result) == 1
-    assert result[0].kind == "project"  # Updated to match the actual config
+    assert result[0].kind == "repository"
     mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(
         use_cache=False
     )
 
 
-async def test_get_entity_deletion_threshold(
-    mock_live_events_mixin: LiveEventsMixin, mock_port_app_config: PortAppConfig
-):
-    # Arrange
+@pytest.mark.asyncio
+async def test_getLiveEventResources_mappingDoesNotHaveTheResource_returnsEmptyList(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_port_app_config_with_repository_resource: PortAppConfig,
+) -> None:
     mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = (
-        mock_port_app_config
+        mock_port_app_config_with_repository_resource
+    )
+
+    result = await mock_live_events_mixin._get_live_event_resources("project")
+
+    assert len(result) == 0
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(
+        use_cache=False
+    )
+
+
+@pytest.mark.asyncio
+async def test_getLiveEventResources_exceptionWhenGettingPortAppConfig_raisesException(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    mock_error = Exception("Test error")
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.side_effect = (
+        mock_error
+    )
+
+    with pytest.raises(Exception) as exc_info:
+        await mock_live_events_mixin._get_live_event_resources("repository")
+
+    assert str(exc_info.value) == "Test error"
+
+
+@pytest.mark.asyncio
+async def test_getEntityDeletionThreshold_returnsTheThreshold(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_port_app_config_with_repository_resource: PortAppConfig,
+) -> None:
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = (
+        mock_port_app_config_with_repository_resource
     )
 
     result = await mock_live_events_mixin._get_entity_deletion_threshold()
@@ -182,26 +230,106 @@ async def test_get_entity_deletion_threshold(
     )
 
 
-# async def test_calculate_raw(self, mixin):
-#     # Arrange
-#     resource_config = ResourceConfig(kind="test_kind")
-#     raw_data = [{"key": "value"}]
-#     input_data = [(resource_config, raw_data)]
+@pytest.mark.asyncio
+async def test_calculateRaw_oneRawDataMatchesTheResourceConfig_returnsTheResult(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    sample_data = {
+        "name": "my-example-repo",
+        "links": {"html": {"href": "https://example.com/my-example-repo"}},
+        "main_branch": "main",
+    }
+    input_data = [(mock_repository_resource_config, [sample_data])]
+    expected_entity = Entity(
+        identifier="my-example-repo",
+        blueprint="service",
+        title="my-example-repo",
+        team=[],
+        properties={
+            "url": "https://example.com/my-example-repo",
+            "readme": None,
+            "defaultBranch": "main",
+        },
+        relations={},
+    )
 
-#     expected_result = CalculationResult(
-#         entity_selector_diff=EntitySelectorDiff(passed=[], failed=[]),
-#         raw_data_examples=[]
-#     )
-#     mixin.entity_processor.parse_items.return_value = expected_result
+    result = await mock_live_events_mixin._calculate_raw(input_data)
 
-#     # Act
-#     result = await mixin._calculate_raw(input_data)
+    assert result[0].entity_selector_diff.passed[0] == expected_entity
 
-#     # Assert
-#     assert result == [expected_result]
-#     mixin.entity_processor.parse_items.assert_called_once_with(
-#         resource_config, raw_data, False, 0
-#     )
+
+@pytest.mark.asyncio
+async def test_calculateRaw_multipleRawDataMatchesTheResourceConfig_returnsAllResults(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    sample_data = [
+        {
+            "name": "repo-one",
+            "links": {"html": {"href": "https://example.com/repo-one"}},
+            "main_branch": "main",
+        },
+        {
+            "name": "repo-two",
+            "links": {"html": {"href": "https://example.com/repo-two"}},
+            "main_branch": "develop",
+        },
+        {
+            "name": "repo-three",
+            "links": {"html": {"href": "https://example.com/repo-three"}},
+            "main_branch": "master",
+        },
+    ]
+    input_data = [(mock_repository_resource_config, sample_data)]
+
+    expected_entities = [
+        Entity(
+            identifier="repo-one",
+            blueprint="service",
+            title="repo-one",
+            team=[],
+            properties={
+                "url": "https://example.com/repo-one",
+                "readme": None,
+                "defaultBranch": "main",
+            },
+            relations={},
+        ),
+        Entity(
+            identifier="repo-two",
+            blueprint="service",
+            title="repo-two",
+            team=[],
+            properties={
+                "url": "https://example.com/repo-two",
+                "readme": None,
+                "defaultBranch": "develop",
+            },
+            relations={},
+        ),
+        Entity(
+            identifier="repo-three",
+            blueprint="service",
+            title="repo-three",
+            team=[],
+            properties={
+                "url": "https://example.com/repo-three",
+                "readme": None,
+                "defaultBranch": "master",
+            },
+            relations={},
+        ),
+    ]
+
+    result = await mock_live_events_mixin._calculate_raw(input_data)
+
+    assert len(result[0].entity_selector_diff.passed) == 3
+    for expected, actual in zip(
+        expected_entities, result[0].entity_selector_diff.passed
+    ):
+        assert expected == actual
+
 
 # @patch('port_ocean.context.ocean')
 # async def test_on_live_event(self, mock_ocean, mixin):
