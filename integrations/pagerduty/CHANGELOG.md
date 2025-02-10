@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.19 (2025-02-06)
+## 0.2.20 (2025-02-10)
 
 
 ### Bug Fix
@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Add cursor-based pagination for analytics batch retrieval; add configurable analytics period.
+
+
+## 0.2.19 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
 
 
 ## 0.2.18 (2025-02-04)
