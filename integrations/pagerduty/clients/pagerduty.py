@@ -256,6 +256,18 @@ class PagerDutyClient:
                 logger.error(f"Error during pagination: {e}")
                 break
 
+                if not data.get("more", False):
+                    break
+
+                starting_after = data.get("last")
+                if not starting_after:
+                    break
+
+                page += 1
+            except Exception as e:
+                logger.error(f"Error during pagination: {e}")
+                break
+
             starting_after = data.get("last")
             if not starting_after:
                 break
