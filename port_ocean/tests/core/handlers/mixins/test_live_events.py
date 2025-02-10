@@ -226,17 +226,14 @@ async def test_getLiveEventResources_mappingHasTheResource_returnsTheResource(
     mock_live_events_mixin: LiveEventsMixin,
     mock_port_app_config_with_repository_resource: PortAppConfig,
 ) -> None:
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = (
-        mock_port_app_config_with_repository_resource
-    )
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
 
     result = await mock_live_events_mixin._get_live_event_resources("repository")
 
     assert len(result) == 1
     assert result[0].kind == "repository"
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(
-        use_cache=False
-    )
+    assert mock_live_events_mixin._port_app_config_handler is not None
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(use_cache=False)  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -244,16 +241,13 @@ async def test_getLiveEventResources_mappingDoesNotHaveTheResource_returnsEmptyL
     mock_live_events_mixin: LiveEventsMixin,
     mock_port_app_config_with_repository_resource: PortAppConfig,
 ) -> None:
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = (
-        mock_port_app_config_with_repository_resource
-    )
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
 
     result = await mock_live_events_mixin._get_live_event_resources("project")
 
     assert len(result) == 0
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(
-        use_cache=False
-    )
+    assert mock_live_events_mixin._port_app_config_handler is not None
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(use_cache=False)  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -261,9 +255,7 @@ async def test_getLiveEventResources_exceptionWhenGettingPortAppConfig_raisesExc
     mock_live_events_mixin: LiveEventsMixin,
 ) -> None:
     mock_error = Exception("Test error")
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.side_effect = (
-        mock_error
-    )
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.side_effect = mock_error  # type: ignore
 
     with pytest.raises(Exception) as exc_info:
         await mock_live_events_mixin._get_live_event_resources("repository")
@@ -276,16 +268,13 @@ async def test_getEntityDeletionThreshold_returnsTheThreshold(
     mock_live_events_mixin: LiveEventsMixin,
     mock_port_app_config_with_repository_resource: PortAppConfig,
 ) -> None:
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = (
-        mock_port_app_config_with_repository_resource
-    )
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
 
     result = await mock_live_events_mixin._get_entity_deletion_threshold()
 
     assert result == 0.5
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(
-        use_cache=True
-    )
+    assert mock_live_events_mixin._port_app_config_handler is not None
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(use_cache=True)  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -342,17 +331,14 @@ async def test_calculateRaw_multipleRawDataMatchesTheResourceConfig_returnsAllRe
 async def test_onLiveEvent_dataForThreeEntities_threeEntitiesAreUpsertedAndNoEntitiesAreDeleted(
     mock_live_events_mixin: LiveEventsMixin,
 ) -> None:
-    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock(
-        return_value=expected_entities
-    )
-    mock_live_events_mixin._entities_state_applier.delete_diff = AsyncMock(
-        return_value=[]
-    )
+    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock(return_value=expected_entities)  # type: ignore
+    mock_live_events_mixin._entities_state_applier.delete_diff = AsyncMock(return_value=[])  # type: ignore
 
     await mock_live_events_mixin.on_live_event(
         "repository", event_data_for_three_entities_for_repository_resource
     )
 
+    assert mock_live_events_mixin._entities_state_applier is not None
     mock_live_events_mixin._entities_state_applier.upsert.assert_called_once()
     args, _ = mock_live_events_mixin._entities_state_applier.upsert.call_args
     assert len(args[0]) == 3
@@ -367,13 +353,13 @@ async def test_onLiveEvent_dataForThreeEntities_threeEntitiesAreUpsertedAndNoEnt
 async def test_onLiveEvent_noResourceMappings_noOperationsPerformed(
     mock_live_events_mixin: LiveEventsMixin,
 ) -> None:
-    mock_live_events_mixin._get_live_event_resources = AsyncMock(return_value=[])
-    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock()
-    mock_live_events_mixin._entities_state_applier.delete_diff = AsyncMock()
+    mock_live_events_mixin._get_live_event_resources = AsyncMock(return_value=[])  # type: ignore
+    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_live_events_mixin._entities_state_applier.delete_diff = AsyncMock()  # type: ignore
 
     await mock_live_events_mixin.on_live_event(
         "non_existent_resource", event_data_for_three_entities_for_repository_resource
     )
-
+    assert mock_live_events_mixin._entities_state_applier is not None
     mock_live_events_mixin._entities_state_applier.upsert.assert_not_called()
     mock_live_events_mixin._entities_state_applier.delete_diff.assert_not_called()
