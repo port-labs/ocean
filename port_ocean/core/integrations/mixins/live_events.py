@@ -1,4 +1,3 @@
-
 import asyncio
 from typing import Any, Dict
 from loguru import logger
@@ -22,20 +21,24 @@ class LiveEventsMixin(HandlerMixin, EventsMixin):
         EventsMixin.__init__(self)
 
     async def _get_live_event_resources(self, kind: str) -> list[ResourceConfig]:
-        app_config = await self.port_app_config_handler.get_port_app_config(
-            use_cache=False
-        )
-        logger.info(f"process data will use the following mappings: {app_config.dict()}")
+        try:
+            app_config = await self.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
+            logger.info(f"process data will use the following mappings: {app_config.dict()}")
 
-        resource_mappings = [
-            resource for resource in app_config.resources if resource.kind == kind
-        ]
+            resource_mappings = [
+                resource for resource in app_config.resources if resource.kind == kind
+            ]
 
-        if not resource_mappings:
-            logger.warning(f"No resource mappings found for kind: {kind}")
-            return []
+            if not resource_mappings:
+                logger.warning(f"No resource mappings found for kind: {kind}")
+                return []
 
-        return resource_mappings
+            return resource_mappings
+        except Exception as e:
+            logger.error(f"Error getting live event resources: {str(e)}")
+            raise
 
     async def _get_entity_deletion_threshold(self) -> float:
         app_config = await self.port_app_config_handler.get_port_app_config(
@@ -58,7 +61,7 @@ class LiveEventsMixin(HandlerMixin, EventsMixin):
             )
         )
 
-    async def on_live_event(self, kind: str, event_data: Dict[str, Any], user_agent_type: UserAgentType = UserAgentType.exporter,) -> None:
+    async def on_live_event(self, kind: str, event_data: list[RAW_ITEM], user_agent_type: UserAgentType = UserAgentType.exporter,) -> None:
         logger.info("Starting to process data for kind: {kind}")
         async with event_context(
             EventType.LIVE_EVENT,
