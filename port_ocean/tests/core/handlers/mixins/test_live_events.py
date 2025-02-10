@@ -23,6 +23,64 @@ from port_ocean.core.models import Entity
 from port_ocean.ocean import Ocean
 
 
+expected_entities = [
+    Entity(
+        identifier="repo-one",
+        blueprint="service",
+        title="repo-one",
+        team=[],
+        properties={
+            "url": "https://example.com/repo-one",
+            "readme": None,
+            "defaultBranch": "main",
+        },
+        relations={},
+    ),
+    Entity(
+        identifier="repo-two",
+        blueprint="service",
+        title="repo-two",
+        team=[],
+        properties={
+            "url": "https://example.com/repo-two",
+            "readme": None,
+            "defaultBranch": "develop",
+        },
+        relations={},
+    ),
+    Entity(
+        identifier="repo-three",
+        blueprint="service",
+        title="repo-three",
+        team=[],
+        properties={
+            "url": "https://example.com/repo-three",
+            "readme": None,
+            "defaultBranch": "master",
+        },
+        relations={},
+    ),
+]
+
+event_data_for_three_entities_for_repository_resource = [
+    {
+        "name": "repo-one",
+        "links": {"html": {"href": "https://example.com/repo-one"}},
+        "main_branch": "main",
+    },
+    {
+        "name": "repo-two",
+        "links": {"html": {"href": "https://example.com/repo-two"}},
+        "main_branch": "develop",
+    },
+    {
+        "name": "repo-three",
+        "links": {"html": {"href": "https://example.com/repo-three"}},
+        "main_branch": "master",
+    },
+]
+
+
 @pytest.fixture
 def mock_context(monkeypatch: Any) -> PortOceanContext:
     mock_context = AsyncMock()
@@ -264,62 +322,11 @@ async def test_calculateRaw_multipleRawDataMatchesTheResourceConfig_returnsAllRe
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
-    sample_data = [
-        {
-            "name": "repo-one",
-            "links": {"html": {"href": "https://example.com/repo-one"}},
-            "main_branch": "main",
-        },
-        {
-            "name": "repo-two",
-            "links": {"html": {"href": "https://example.com/repo-two"}},
-            "main_branch": "develop",
-        },
-        {
-            "name": "repo-three",
-            "links": {"html": {"href": "https://example.com/repo-three"}},
-            "main_branch": "master",
-        },
-    ]
-    input_data = [(mock_repository_resource_config, sample_data)]
-
-    expected_entities = [
-        Entity(
-            identifier="repo-one",
-            blueprint="service",
-            title="repo-one",
-            team=[],
-            properties={
-                "url": "https://example.com/repo-one",
-                "readme": None,
-                "defaultBranch": "main",
-            },
-            relations={},
-        ),
-        Entity(
-            identifier="repo-two",
-            blueprint="service",
-            title="repo-two",
-            team=[],
-            properties={
-                "url": "https://example.com/repo-two",
-                "readme": None,
-                "defaultBranch": "develop",
-            },
-            relations={},
-        ),
-        Entity(
-            identifier="repo-three",
-            blueprint="service",
-            title="repo-three",
-            team=[],
-            properties={
-                "url": "https://example.com/repo-three",
-                "readme": None,
-                "defaultBranch": "master",
-            },
-            relations={},
-        ),
+    input_data = [
+        (
+            mock_repository_resource_config,
+            event_data_for_three_entities_for_repository_resource,
+        )
     ]
 
     result = await mock_live_events_mixin._calculate_raw(input_data)
@@ -331,54 +338,42 @@ async def test_calculateRaw_multipleRawDataMatchesTheResourceConfig_returnsAllRe
         assert expected == actual
 
 
-# @patch('port_ocean.context.ocean')
-# async def test_on_live_event(self, mock_ocean, mixin):
-#     # Arrange
-#     kind = "test_kind"
-#     event_data = {"key": "value"}
-#     resource_config = ResourceConfig(kind=kind)
+@pytest.mark.asyncio
+async def test_onLiveEvent_dataForThreeEntities_threeEntitiesAreUpsertedAndNoEntitiesAreDeleted(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock(
+        return_value=expected_entities
+    )
+    mock_live_events_mixin._entities_state_applier.delete_diff = AsyncMock(
+        return_value=[]
+    )
 
-#     mixin._get_live_event_resources.return_value = [resource_config]
-#     mixin._get_entity_deletion_threshold.return_value = 0.5
+    await mock_live_events_mixin.on_live_event(
+        "repository", event_data_for_three_entities_for_repository_resource
+    )
 
-#     calculation_result = CalculationResult(
-#         entity_selector_diff=EntitySelectorDiff(passed=[{"id": "1"}], failed=[]),
-#         raw_data_examples=[]
-#     )
-#     mixin._calculate_raw.return_value = [calculation_result]
+    mock_live_events_mixin._entities_state_applier.upsert.assert_called_once()
+    args, _ = mock_live_events_mixin._entities_state_applier.upsert.call_args
+    assert len(args[0]) == 3
+    mock_live_events_mixin._entities_state_applier.delete_diff.assert_called_once()
+    delete_diff_args, _ = (
+        mock_live_events_mixin._entities_state_applier.delete_diff.call_args
+    )
+    assert delete_diff_args[0]["after"] == expected_entities
 
-#     modified_objects = [{"id": "1", "modified": True}]
-#     mixin.entities_state_applier.upsert.return_value = modified_objects
 
-#     entities_at_port = [{"id": "2"}]
-#     mock_ocean.port_client.search_entities.return_value = entities_at_port
+@pytest.mark.asyncio
+async def test_onLiveEvent_noResourceMappings_noOperationsPerformed(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    mock_live_events_mixin._get_live_event_resources = AsyncMock(return_value=[])
+    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock()
+    mock_live_events_mixin._entities_state_applier.delete_diff = AsyncMock()
 
-#     # Act
-#     await mixin.on_live_event(kind, event_data)
+    await mock_live_events_mixin.on_live_event(
+        "non_existent_resource", event_data_for_three_entities_for_repository_resource
+    )
 
-#     # Assert
-#     mixin._get_live_event_resources.assert_called_once_with(kind)
-#     mixin._calculate_raw.assert_called_once_with([(resource_config, event_data)])
-#     mixin.entities_state_applier.upsert.assert_called_once_with(
-#         [{"id": "1"}], UserAgentType.exporter
-#     )
-#     mock_ocean.port_client.search_entities.assert_called_once_with(UserAgentType.exporter)
-#     mixin.entities_state_applier.delete_diff.assert_called_once_with(
-#         {"before": entities_at_port, "after": modified_objects},
-#         UserAgentType.exporter,
-#         0.5
-#     )
-
-# async def test_on_live_event_no_resources(self, mixin):
-# Arrange
-# kind = "test_kind"
-# event_data = {"key": "value"}
-# mixin._get_live_event_resources.return_value = []
-
-# # Act
-# await mixin.on_live_event(kind, event_data)
-
-# # Assert
-# mixin._get_live_event_resources.assert_called_once_with(kind)
-# mixin._calculate_raw.assert_not_called()
-# mixin.entities_state_applier.upsert.assert_not_called()
+    mock_live_events_mixin._entities_state_applier.upsert.assert_not_called()
+    mock_live_events_mixin._entities_state_applier.delete_diff.assert_not_called()

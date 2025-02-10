@@ -1,8 +1,7 @@
 import asyncio
-from typing import Any, Dict
 from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context import ocean
+from port_ocean.context.ocean import ocean
 from port_ocean.context.event import EventType, event_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
