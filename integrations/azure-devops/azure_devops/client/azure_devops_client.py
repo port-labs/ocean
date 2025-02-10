@@ -213,6 +213,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     work_item_ids,
                     query_params={"$expand": expand},
                 ):
+                    logger.debug(f"Received {len(work_items_batch)} work items")
                     # Enrich each work item with project details before yielding
                     yield self._add_project_details_to_work_items(
                         work_items_batch, project
@@ -271,6 +272,11 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         for i in range(0, len(work_item_ids), page_size):
             batch_ids = work_item_ids[i : i + page_size]
+            if not batch_ids:
+                continue
+            logger.debug(
+                f"Processing batch {i//page_size + 1} with {len(batch_ids)} work items"
+            )
             work_items_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems"
             params = {
                 **query_params,
