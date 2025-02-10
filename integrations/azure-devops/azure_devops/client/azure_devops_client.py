@@ -166,24 +166,21 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         async for projects in self.generate_projects():
             for project in projects:
-                # 1. Execute WIQL query to get work item IDs
+                # Execute WIQL query to get work item IDs
                 work_item_ids = await self._fetch_work_item_ids(project, wiql)
                 logger.info(
                     f"Found {len(work_item_ids)} work item IDs for project {project['name']}"
                 )
-                # 2. Fetch work items using the IDs (in batches if needed)
-                work_items = await self._fetch_work_items_in_batches(
+                # Fetch work items using the IDs (in batches if needed)
+                async for work_items_batch in self._fetch_work_items_in_batches(
                     project["id"],
                     work_item_ids,
                     query_params={"$expand": expand},
-                )
-                logger.debug(f"Received {len(work_items)} work items")
-
-                # Call the private method to add __projectId to each work item
-                work_items = self._add_project_details_to_work_items(
-                    work_items, project
-                )
-                yield work_items
+                ):
+                    # Enrich each work item with project details before yielding
+                    yield self._add_project_details_to_work_items(
+                        work_items_batch, project
+                    )
 
     async def _fetch_work_item_ids(
         self, project: dict[str, Any], wiql: Optional[str]
@@ -225,17 +222,19 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id: str,
         work_item_ids: list[int],
         query_params: dict[str, Any] = {},
-    ) -> list[dict[str, Any]]:
+        page_size: int = MAX_WORK_ITEMS_PER_REQUEST,  # default to API maximum if not overridden
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
-        Fetches work items in batches based on the list of work item IDs.
+        Fetches work items in batches from the given list of work item IDs.
 
-        :param project_id: The ID of the project.
-        :param work_item_ids: A list of work item IDs to fetch.
-        :return: A list of work items.
+        :param project_id: The project ID.
+        :param work_item_ids: List of work item IDs to fetch.
+        :param query_params: Additional query parameters (e.g., for expansion).
+        :param page_size: Number of work items to request per API call.
+        :yield: A list (batch) of work items.
         """
-        work_items = []
-        for i in range(0, len(work_item_ids), MAX_WORK_ITEMS_PER_REQUEST):
-            batch_ids = work_item_ids[i : i + MAX_WORK_ITEMS_PER_REQUEST]
+        for i in range(0, len(work_item_ids), page_size):
+            batch_ids = work_item_ids[i : i + page_size]
             work_items_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems"
             params = {
                 **query_params,
@@ -246,9 +245,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 "GET", work_items_url, params=params
             )
             work_items_response.raise_for_status()
-            work_items.extend(work_items_response.json()["value"])
-
-        return work_items
+            yield work_items_response.json()["value"]
 
     def _add_project_details_to_work_items(
         self, work_items: list[dict[str, Any]], project: dict[str, Any]

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.116 (2025-02-10)
+
+
+### Bug Fixes
+
+- Modified the work item fetching logic to retrieve work items in paginated batches rather than loading up to 19,999 items in a single request.
+
+
 ## 0.1.115 (2025-02-04)
 
 
