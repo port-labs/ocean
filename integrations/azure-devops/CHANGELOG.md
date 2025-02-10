@@ -7,12 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.116 (2025-02-10)
+
+## 0.1.118 (2025-02-10)
 
 
 ### Bug Fixes
 
 - Modified the work item fetching logic to retrieve work items in paginated batches rather than loading up to 19,999 items in a single request.
+
+
+## 0.1.117 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
+
+
+## 0.1.116 (2025-02-5)
+
+
+### Improvements
+
+- Added support for User kind
+- Added selector `includeMembers` to enable enriching team with members
 
 
 ## 0.1.115 (2025-02-04)
