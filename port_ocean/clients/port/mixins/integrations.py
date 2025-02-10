@@ -178,3 +178,18 @@ class IntegrationClientMixin:
         )
         handle_status_code(response, should_log=should_log)
         logger.debug(f"Examples for kind {kind} successfully ingested")
+
+    async def _delete_current_integration(self) -> httpx.Response:
+        logger.info(f"Deleting integration with id: {self.integration_identifier}")
+        response = await self.client.delete(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}",
+            headers=await self.auth.headers(),
+        )
+        return response
+
+    async def delete_current_integration(
+        self, should_raise: bool = True, should_log: bool = True
+    ) -> dict[str, Any]:
+        response = await self._delete_current_integration()
+        handle_status_code(response, should_raise, should_log)
+        return response.json()

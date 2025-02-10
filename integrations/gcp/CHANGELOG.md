@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.102 (2025-02-05)
+## 0.1.103 (2025-02-10)
 
 
 ### Bug Fixes
@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved the performance by setting a threshold for the number of background queue
 - Added checks that returns server busy when queue exceeds limit
 - Updated the rate limiter in `GCPResourceRateLimiter` to actually use the effective limit value rather than the quota value.
+
+
+
+## 0.1.102 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
 
 
 ## 0.1.101 (2025-02-04)
