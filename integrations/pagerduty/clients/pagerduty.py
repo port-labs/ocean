@@ -229,46 +229,22 @@ class PagerDutyClient:
         page = 1
 
         while True:
-            try:
-                request_data = {**json_data, "starting_after": starting_after}
-                data = await self.send_api_request(
-                    endpoint=endpoint,
-                    method=method,
-                    json_data=request_data,
-                    extensions={"retryable": True},
-                )
+            request_data = {**json_data, "starting_after": starting_after}
 
-                if not isinstance(data, dict) or "data" not in data:
-                    logger.error(f"Unexpected response format: {data}")
-                    break
+            data = await self.send_api_request(
+                endpoint=endpoint,
+                method=method,
+                json_data=request_data,
+                extensions={"retryable": True},
+            )
 
-                yield data["data"]
+            # batch = data["data"]
+            yield data["data"]
 
-                if not data.get("more", False):
-                    break
-
-                starting_after = data.get("last")
-                if not starting_after:
-                    break
-
-                page += 1
-            except Exception as e:
-                logger.error(f"Error during pagination: {e}")
+            if not data.get("more", False):
                 break
 
-                if not data.get("more", False):
-                    break
-
-                starting_after = data.get("last")
-                if not starting_after:
-                    break
-
-                page += 1
-            except Exception as e:
-                logger.error(f"Error during pagination: {e}")
-                break
-
-            starting_after = data.get("last")
+            starting_after = data.get("starting_after")
             if not starting_after:
                 break
 
