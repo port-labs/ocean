@@ -270,12 +270,16 @@ class AzureDevopsClient(HTTPBaseClient):
         :param page_size: Number of work items to request per API call.
         :yield: A list (batch) of work items.
         """
+        number_of_batches = len(work_item_ids) // page_size
+        logger.info(
+            f"Fetching work items in {number_of_batches} batches with {page_size} work items per batch for project {project_id}"
+        )
         for i in range(0, len(work_item_ids), page_size):
             batch_ids = work_item_ids[i : i + page_size]
             if not batch_ids:
                 continue
             logger.debug(
-                f"Processing batch {i//page_size + 1} with {len(batch_ids)} work items"
+                f"Processing batch {i//page_size + 1}/{number_of_batches} with {len(batch_ids)} work items for project {project_id}"
             )
             work_items_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems"
             params = {
