@@ -119,7 +119,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def generate_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         users_url = (
-            self._format_api_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
+            self._format_organization_url_with_subdomain("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
         )
         async for users in self._get_paginated_by_top_and_continuation_token(
             users_url, data_key="items"
@@ -169,7 +169,7 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 releases_url = (
-                    self._format_api_url("vsrm")
+                    self._format_organization_url_with_subdomain("vsrm")
                     + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
                 )
                 async for releases in self._get_paginated_by_top_and_continuation_token(
