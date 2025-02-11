@@ -109,17 +109,17 @@ class AzureDevopsClient(HTTPBaseClient):
                     member["__teamId"] = team["id"]
                 yield members
 
-    def _format_url_for_useentitlements(self) -> str:
-        if ".visualstudio.com" in self._organization_base_url:
-            return self._organization_base_url.replace(
-                ".visualstudio.com", ".vsaex.visualstudio.com"
+    def _format_api_url(self, subdomain: str) -> str:
+        base_url = self._organization_base_url
+        if ".visualstudio.com" in base_url:
+            return base_url.replace(
+                ".visualstudio.com", f".{subdomain}.visualstudio.com"
             )
-        return self._organization_base_url.replace("dev", "vsaex.dev")
+        return base_url.replace("dev.azure.com", f"{subdomain}.dev.azure.com")
 
     async def generate_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         users_url = (
-            self._format_url_for_useentitlements()
-            + f"/{API_URL_PREFIX}/userentitlements"
+            self._format_api_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
         )
         async for users in self._get_paginated_by_top_and_continuation_token(
             users_url, data_key="items"
@@ -169,9 +169,7 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 releases_url = (
-                    self._organization_base_url.replace(
-                        "dev.azure.com", "vsrm.dev.azure.com"
-                    )
+                    self._format_api_url("vsrm")
                     + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
                 )
                 async for releases in self._get_paginated_by_top_and_continuation_token(
