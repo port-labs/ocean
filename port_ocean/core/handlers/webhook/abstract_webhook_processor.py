@@ -2,10 +2,9 @@ from abc import ABC, abstractmethod
 from loguru import logger
 
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
-from port_ocean.core.ocean_types import RAW_ITEM
 from port_ocean.exceptions.webhook_processor import RetryableError
 
-from .webhook_event import WebhookEvent, EventPayload, EventHeaders
+from .webhook_event import WebhookEvent, EventPayload, EventHeaders, WebhookEventData
 
 
 class AbstractWebhookProcessor(ABC, LiveEventsMixin):
@@ -88,12 +87,12 @@ class AbstractWebhookProcessor(ABC, LiveEventsMixin):
         """Hook to run after processing the event"""
         pass
 
-    async def process_data(self, kind: str, data: list[RAW_ITEM]) -> None:
+    async def process_data(self, event_data: WebhookEventData) -> None:
         """Process the data for the given kind:
         1) map data to port entities
         2) update data in port - upsert and delete entities accordingly
         """
-        await self.on_live_event(kind, data)
+        await self.on_live_event(event_data)
 
     @abstractmethod
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
@@ -106,7 +105,7 @@ class AbstractWebhookProcessor(ABC, LiveEventsMixin):
         pass
 
     @abstractmethod
-    async def handle_event(self, payload: EventPayload) -> None:
+    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
         """Process the event."""
         pass
 
