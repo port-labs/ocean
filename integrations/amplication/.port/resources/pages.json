@@ -1,6 +1,6 @@
 [
   {
-    "icon": "Table",
+    "icon": "Amplication",
     "title": "Amplication Dashboard",
     "description": "Dashboard for Amplication data",
     "protected": false,
@@ -52,7 +52,7 @@
             "id": "amplicationAlert",
             "type": "table-entities-explorer",
             "title": "Outdated Version Alerts",
-            "icon": "BadgeAlert",
+            "icon": "Alert",
             "blueprintConfig": {
               "service": {
                 "groupSettings": {
@@ -80,7 +80,7 @@
             "id": "amplicationResource",
             "type": "table-entities-explorer",
             "title": "Resources",
-            "icon": "Service",
+            "icon": "Amplication",
             "blueprintConfig": {
               "service": {
                 "groupSettings": {
@@ -108,7 +108,7 @@
             "id": "amplicationTemplate",
             "type": "table-entities-explorer",
             "title": "Templates",
-            "icon": "Template",
+            "icon": "Amplication",
             "blueprintConfig": {
               "service": {
                 "groupSettings": {

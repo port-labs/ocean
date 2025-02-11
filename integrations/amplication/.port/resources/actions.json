@@ -2,7 +2,7 @@
     {
         "identifier": "amplication_service_from_template",
         "title": "Scaffold a Service",
-        "icon": "Microservice",
+        "icon": "Amplication",
         "description": "Create a new service from template (using [Amplication](https://amplication.com))",
         "trigger": {
             "type": "self-service",
@@ -13,12 +13,12 @@
                         "type": "string",
                         "title": "Template",
                         "blueprint": "AmplicationTemplate",
-                        "icon": "Template",
+                        "icon": "Amplication",
                         "format": "entity"
                     },
                     "service_name": {
-                        "icon": "Service",
                         "type": "string",
+                        "icon": "DefaultProperty",
                         "title": "Service Name"
                     }
                 },
@@ -67,7 +67,7 @@
     {
         "identifier": "amplication_rebuild_code",
         "title": "Code Re-build",
-        "icon": "Microservice",
+        "icon": "Amplication",
         "trigger": {
           "type": "self-service",
           "operation": "DAY-2",
@@ -75,15 +75,15 @@
             "properties": {
               "resource": {
                 "title": "Resource",
-                "icon": "Service",
+                "icon": "Amplication",
                 "type": "string",
                 "blueprint": "AmplicationResource",
                 "format": "entity"
               },
               "message": {
-                "icon": "Neo4j",
-                "type": "string",
-                "title": "Message"
+                "title": "Message",
+                "icon": "DefaultProperty",
+                "type": "string"
               }
             },
             "required": [

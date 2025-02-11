@@ -1,5 +1,5 @@
 description: Amplication integration for Port Ocean
-icon: Link
+icon: Amplication
 features:
   - type: exporter
     section: Other
