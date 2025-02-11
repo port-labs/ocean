@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.118 (2025-02-11)
+
+
+### Bugfix
+
+- Fixed an issue where if the organization url was formatted like https://XXX.visualstudio.com pulling users would return 404
+
 ## 0.1.117 (2025-02-09)
 
 
