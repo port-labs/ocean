@@ -109,9 +109,16 @@ class AzureDevopsClient(HTTPBaseClient):
                     member["__teamId"] = team["id"]
                 yield members
 
+    def _format_url_for_useentitlements(self) -> str:
+        if ".visualstudio.com" in self._organization_base_url:
+            return self._organization_base_url.replace(
+                ".visualstudio.com", ".vsaex.visualstudio.com"
+            )
+        return self._organization_base_url.replace("dev", "vsaex.dev")
+
     async def generate_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         users_url = (
-            self._organization_base_url.replace("dev", "vsaex.dev")
+            self._format_url_for_useentitlements()
             + f"/{API_URL_PREFIX}/userentitlements"
         )
         async for users in self._get_paginated_by_top_and_continuation_token(
