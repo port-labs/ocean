@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.34 (2025-02-11)
+===================
+
+### Improvements
+
+- Removed the need for sending a deepcopy of the event body to all listeners, which previously led to a memory leak
+
+
 0.2.33 (2025-02-09)
 ===================
 
@@ -23,21 +31,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fixed glob pattern matching by utilizing GitLab's glob path search capabilities with pattern matching.
 
 
-0.2.32 (2025-02-04)
-===================
-
-### Improvements
-
-- Removed the need for sending a deepcopy of the event body to all listeners, which previously led to a memory leak
-
-
 0.2.31 (2025-02-04)
 ===================
 
 ### Improvements
 
 - Bumped ocean version to ^0.18.8
-- Removed the need for sending a deepcopy of the event body to all listeners, which previously led to a memory leak
 
 
 0.2.30 (2025-01-29)
