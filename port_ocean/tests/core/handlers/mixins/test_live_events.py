@@ -10,6 +10,7 @@ from port_ocean.core.handlers.entities_state_applier.port.applier import (
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEventData
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
@@ -79,6 +80,18 @@ event_data_for_three_entities_for_repository_resource = [
         "main_branch": "master",
     },
 ]
+
+webHook_event_data_for_creation = WebhookEventData(
+    kind="repository",
+    update_data=event_data_for_three_entities_for_repository_resource,
+    delete_data=[],
+)
+
+webHook_event_data_for_deletion = WebhookEventData(
+    kind="repository",
+    update_data=[],
+    delete_data=event_data_for_three_entities_for_repository_resource,
+)
 
 
 @pytest.fixture
@@ -264,20 +277,6 @@ async def test_getLiveEventResources_exceptionWhenGettingPortAppConfig_raisesExc
 
 
 @pytest.mark.asyncio
-async def test_getEntityDeletionThreshold_returnsTheThreshold(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_port_app_config_with_repository_resource: PortAppConfig,
-) -> None:
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
-
-    result = await mock_live_events_mixin._get_entity_deletion_threshold()
-
-    assert result == 0.5
-    assert mock_live_events_mixin._port_app_config_handler is not None
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(use_cache=True)  # type: ignore
-
-
-@pytest.mark.asyncio
 async def test_calculateRaw_oneRawDataMatchesTheResourceConfig_returnsTheResult(
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
@@ -328,25 +327,35 @@ async def test_calculateRaw_multipleRawDataMatchesTheResourceConfig_returnsAllRe
 
 
 @pytest.mark.asyncio
-async def test_onLiveEvent_dataForThreeEntities_threeEntitiesAreUpsertedAndNoEntitiesAreDeleted(
+async def test_onLiveEvent_dataForCreationThreeEntities_threeEntitiesAreUpsertedAndNoEntitiesAreDeleted(
     mock_live_events_mixin: LiveEventsMixin,
 ) -> None:
-    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock(return_value=expected_entities)  # type: ignore
-    mock_live_events_mixin._entities_state_applier.delete_diff = AsyncMock(return_value=[])  # type: ignore
+    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
 
-    await mock_live_events_mixin.on_live_event(
-        "repository", event_data_for_three_entities_for_repository_resource
-    )
+    await mock_live_events_mixin.on_live_event(webHook_event_data_for_creation)
 
     assert mock_live_events_mixin._entities_state_applier is not None
     mock_live_events_mixin._entities_state_applier.upsert.assert_called_once()
     args, _ = mock_live_events_mixin._entities_state_applier.upsert.call_args
     assert len(args[0]) == 3
-    mock_live_events_mixin._entities_state_applier.delete_diff.assert_called_once()
-    delete_diff_args, _ = (
-        mock_live_events_mixin._entities_state_applier.delete_diff.call_args
-    )
-    assert delete_diff_args[0]["after"] == expected_entities
+    mock_live_events_mixin._entities_state_applier.delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_onLiveEvent_dataForDeletionThreeEntities_threeEntitiesAreDeletedAndNoEntitiesAreUpserted(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
+
+    await mock_live_events_mixin.on_live_event(webHook_event_data_for_deletion)
+
+    assert mock_live_events_mixin._entities_state_applier is not None
+    mock_live_events_mixin._entities_state_applier.delete.assert_called_once()
+    args, _ = mock_live_events_mixin._entities_state_applier.delete.call_args
+    assert len(args[0]) == 3
+    mock_live_events_mixin._entities_state_applier.upsert.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -355,11 +364,15 @@ async def test_onLiveEvent_noResourceMappings_noOperationsPerformed(
 ) -> None:
     mock_live_events_mixin._get_live_event_resources = AsyncMock(return_value=[])  # type: ignore
     mock_live_events_mixin._entities_state_applier.upsert = AsyncMock()  # type: ignore
-    mock_live_events_mixin._entities_state_applier.delete_diff = AsyncMock()  # type: ignore
+    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
 
     await mock_live_events_mixin.on_live_event(
-        "non_existent_resource", event_data_for_three_entities_for_repository_resource
+        WebhookEventData(
+            kind="non_existent_resource",
+            update_data=[],
+            delete_data=[],
+        )
     )
     assert mock_live_events_mixin._entities_state_applier is not None
     mock_live_events_mixin._entities_state_applier.upsert.assert_not_called()
-    mock_live_events_mixin._entities_state_applier.delete_diff.assert_not_called()
+    mock_live_events_mixin._entities_state_applier.delete.assert_not_called()

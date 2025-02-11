@@ -7,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.ocean_types import RAW_ITEM, CalculationResult
-
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEventData
 
 class LiveEventsMixin(HandlerMixin, EventsMixin):
     """Mixin class for live events.
@@ -39,12 +39,6 @@ class LiveEventsMixin(HandlerMixin, EventsMixin):
             logger.error(f"Error getting live event resources: {str(e)}")
             raise
 
-    async def _get_entity_deletion_threshold(self) -> float:
-        app_config = await self.port_app_config_handler.get_port_app_config(
-            use_cache=True
-        )
-        return app_config.entity_deletion_threshold
-
     async def _calculate_raw(
         self,
         raw_data_and_matching_resource_config: list[tuple[ResourceConfig, list[RAW_ITEM]]],
@@ -60,35 +54,36 @@ class LiveEventsMixin(HandlerMixin, EventsMixin):
             )
         )
 
-    async def on_live_event(self, kind: str, event_data: list[RAW_ITEM], user_agent_type: UserAgentType = UserAgentType.exporter,) -> None:
-        logger.info("Starting to process data for kind: {kind}")
+    async def on_live_event(self, event_data: WebhookEventData, user_agent_type: UserAgentType = UserAgentType.exporter,) -> None:
+        logger.info(f"Starting to process data for kind: {event_data.get_kind}")
         async with event_context(
             EventType.LIVE_EVENT,
             trigger_type="machine",
         ):
             logger.info("starting to process live event")
 
-            resource_mappings = await self._get_live_event_resources(kind)
+            resource_mappings = await self._get_live_event_resources(event_data.get_kind)
 
             if not resource_mappings:
-                logger.warning(f"No resource mappings found for kind: {kind}")
+                logger.warning(f"No resource mappings found for kind: {event_data.get_kind}")
                 return
 
-            generated_entities = []
-            for resource_mapping in resource_mappings:
-                logger.info(f"Processing data for resource: {resource_mapping.dict()}")
-                calculation_results = await self._calculate_raw(
-                    [(resource_mapping, event_data)]
-                )
-                modified_objects = await self.entities_state_applier.upsert(
-                    calculation_results[0].entity_selector_diff.passed, user_agent_type
+            if event_data.get_update_data:
+                for resource_mapping in resource_mappings:
+                    logger.info(f"Processing data for resource: {resource_mapping.dict()}")
+                    calculation_results = await self._calculate_raw(
+                        [(resource_mapping, event_data.get_update_data)]
                     )
-                generated_entities.extend(modified_objects)
+                    await self.entities_state_applier.upsert(
+                        calculation_results[0].entity_selector_diff.passed, user_agent_type
+                        )
 
-            entities_at_port = await ocean.port_client.search_entities(
-                        user_agent_type
+            if event_data.get_delete_data:
+                for resource_mapping in resource_mappings:
+                    logger.info(f"Processing delete data for resource: {resource_mapping.dict()}")
+                    calculation_results = await self._calculate_raw(
+                        [(resource_mapping, event_data.get_delete_data)]
                     )
-            await self.entities_state_applier.delete_diff(
-                {"before": entities_at_port, "after": generated_entities},
-                user_agent_type, await self._get_entity_deletion_threshold()
-            )
+                    await self.entities_state_applier.delete(
+                        calculation_results[0].entity_selector_diff.passed, user_agent_type
+                        )

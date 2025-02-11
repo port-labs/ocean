@@ -4,6 +4,8 @@ from uuid import uuid4
 from fastapi import Request
 from loguru import logger
 
+from port_ocean.core.ocean_types import RAW_ITEM
+
 
 EventPayload: TypeAlias = Dict[str, Any]
 EventHeaders: TypeAlias = Dict[str, str]
@@ -75,3 +77,28 @@ class WebhookEvent:
                 "timestamp_type": timestamp.value,
             },
         )
+
+
+class WebhookEventData:
+    """
+    Class for webhook event to store the updated data for the event
+    """
+
+    def __init__(
+        self, kind: str, update_data: list[RAW_ITEM], delete_data: list[RAW_ITEM]
+    ) -> None:
+        self.kind = kind
+        self.update_data = update_data
+        self.delete_data = delete_data
+
+    @property
+    def get_kind(self) -> str:
+        return self.kind
+
+    @property
+    def get_update_data(self) -> list[RAW_ITEM]:
+        return self.update_data
+
+    @property
+    def get_delete_data(self) -> list[RAW_ITEM]:
+        return self.delete_data
