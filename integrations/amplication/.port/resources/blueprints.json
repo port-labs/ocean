@@ -3,7 +3,7 @@
     "identifier": "AmplicationTemplate",
     "description": "Blueprint for templates coming from Amplication's app",
     "title": "Amplication Template",
-    "icon": "Template",
+    "icon": "Amplication",
     "schema": {
       "properties": {
         "name": {
@@ -42,7 +42,7 @@
     "aggregationProperties": {
       "resource_count": {
         "title": "Resource Count",
-        "icon": "OpenFolder",
+        "icon": "Amplication",
         "type": "number",
         "description": "Number of resources created from this template",
         "target": "AmplicationResource",
@@ -58,7 +58,7 @@
     "identifier": "AmplicationResource",
     "description": "Blueprint for resources coming from Amplication's app",
     "title": "Amplication Resource",
-    "icon": "Box",
+    "icon": "Amplication",
     "schema": {
       "properties": {
         "name": {
@@ -107,7 +107,7 @@
     "aggregationProperties": {
       "new_alerts_count": {
         "title": "Alerts Count",
-        "icon": "BadgeAlert",
+        "icon": "Alert",
         "type": "number",
         "description": "Number of new outdated version alerts this resource has",
         "target": "AmplicationAlert",
@@ -141,7 +141,7 @@
     "identifier": "AmplicationAlert",
     "description": "Blueprint for outdated version alerts coming from Amplication's app",
     "title": "Amplication Version Alert",
-    "icon": "Box",
+    "icon": "Amplication",
     "schema": {
       "properties": {
         "block_id": {
