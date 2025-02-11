@@ -23,6 +23,9 @@ class ConcreteWebhookProcessor(AbstractWebhookProcessor):
     async def handle_event(self, payload: EventPayload) -> None:
         pass
 
+    async def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
+        return True
+
 
 @pytest.fixture
 def webhook_event() -> WebhookEvent:

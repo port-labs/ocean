@@ -109,3 +109,8 @@ class AbstractWebhookProcessor(ABC, LiveEventsMixin):
     async def handle_event(self, payload: EventPayload) -> None:
         """Process the event."""
         pass
+
+    @abstractmethod
+    async def filter_event_data(self, event: WebhookEvent) -> bool:
+        """Filter the event data."""
+        pass

@@ -1,8 +1,7 @@
-from typing import Dict, Type, Set, Callable
+from typing import Dict, Type, Set
 from fastapi import APIRouter, Request
 from loguru import logger
 import asyncio
-from dataclasses import dataclass
 
 from .webhook_event import WebhookEvent, WebhookEventTimestamp
 
@@ -10,14 +9,6 @@ from .webhook_event import WebhookEvent, WebhookEventTimestamp
 from .abstract_webhook_processor import AbstractWebhookProcessor
 from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import AbstractQueue, LocalQueue
-
-
-@dataclass
-class ProcessorRegistration:
-    """Represents a registered processor with its filter"""
-
-    processor: Type[AbstractWebhookProcessor]
-    filter: Callable[[WebhookEvent], bool]
 
 
 class WebhookProcessorManager:
@@ -31,7 +22,7 @@ class WebhookProcessorManager:
         max_wait_seconds_before_shutdown: float = 5.0,
     ) -> None:
         self._router = router
-        self._processors: Dict[str, list[ProcessorRegistration]] = {}
+        self._processors: Dict[str, list[Type[AbstractWebhookProcessor]]] = {}
         self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
         self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
@@ -54,9 +45,9 @@ class WebhookProcessorManager:
     ) -> list[AbstractWebhookProcessor]:
         """Find and extract the matching processor for an event"""
         matching_processors = [
-            registration.processor
-            for registration in self._processors[path]
-            if registration.filter(event)
+            processor
+            for processor in self._processors[path]
+            if processor.filter_event_data(event)
         ]
 
         if not matching_processors:
@@ -154,7 +145,8 @@ class WebhookProcessorManager:
 
         while True:
             try:
-                await processor.handle_event(payload)
+                data, kind = await processor.handle_event(payload)
+                processor.process_data(kind, data)
                 break
 
             except Exception as e:
@@ -174,10 +166,7 @@ class WebhookProcessorManager:
         await processor.after_processing()
 
     def register_processor(
-        self,
-        path: str,
-        processor: Type[AbstractWebhookProcessor],
-        event_filter: Callable[[WebhookEvent], bool] = lambda _: True,
+        self, path: str, processor: Type[AbstractWebhookProcessor]
     ) -> None:
         """Register a webhook processor for a specific path with optional filter"""
 
@@ -189,9 +178,7 @@ class WebhookProcessorManager:
             self._event_queues[path] = LocalQueue()
             self._register_route(path)
 
-        self._processors[path].append(
-            ProcessorRegistration(processor=processor, filter=event_filter)
-        )
+        self._processors[path].append(processor)
 
     def _register_route(self, path: str) -> None:
         """Register a route for a specific path"""
