@@ -3,7 +3,12 @@ from fastapi import APIRouter, Request
 from loguru import logger
 import asyncio
 
-from .webhook_event import WebhookEvent, WebhookEventTimestamp
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.integrations.mixins.handler import HandlerMixin
+from port_ocean.core.models import Entity
+from port_ocean.core.ocean_types import RAW_ITEM, CalculationResult
+
+from .webhook_event import WebhookEvent, WebhookEventData, WebhookEventTimestamp
 
 
 from .abstract_webhook_processor import AbstractWebhookProcessor
@@ -14,10 +19,13 @@ from port_ocean.core.handlers.queue import AbstractQueue, LocalQueue
 class WebhookProcessorManager:
     """Manages webhook processors and their routes"""
 
+    handler_mixin: HandlerMixin
+
     def __init__(
         self,
         router: APIRouter,
         signal_handler: SignalHandler,
+        handler_mixin: HandlerMixin,
         max_event_processing_seconds: float = 90.0,
         max_wait_seconds_before_shutdown: float = 5.0,
     ) -> None:
@@ -27,6 +35,7 @@ class WebhookProcessorManager:
         self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
+        self.handler_mixin = handler_mixin
         signal_handler.register(self.shutdown)
 
     async def start_processing_event_messages(self) -> None:
@@ -64,16 +73,20 @@ class WebhookProcessorManager:
         while True:
             matching_processors: list[AbstractWebhookProcessor] = []
             event: WebhookEvent | None = None
+            webhookEventDatas: list[WebhookEventData] = []
             try:
                 event = await self._event_queues[path].get()
                 with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
-                    matching_processors = self._extract_matching_processors(event, path)
-                    await asyncio.gather(
+                    matching_processors = self._extract_matching_processors(
+                        event, path
+                    )  # what if 2 processors map to same entities, add handle here
+                    webhookEventDatas = await asyncio.gather(
                         *(
                             self._process_single_event(processor, path)
                             for processor in matching_processors
                         )
                     )
+                    await self.processData(webhookEventDatas)
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
                 for processor in matching_processors:
@@ -98,24 +111,27 @@ class WebhookProcessorManager:
 
     async def _process_single_event(
         self, processor: AbstractWebhookProcessor, path: str
-    ) -> None:
+    ) -> WebhookEventData:
         """Process a single event with a specific processor"""
         try:
             logger.debug("Start processing queued webhook")
             processor.event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
 
-            await self._execute_processor(processor)
+            webhookEventData = await self._execute_processor(processor)
             processor.event.set_timestamp(
                 WebhookEventTimestamp.FinishedProcessingSuccessfully
             )
+            return webhookEventData
         except Exception as e:
             logger.exception(f"Error processing queued webhook for {path}: {str(e)}")
             self._timestamp_event_error(processor.event)
 
-    async def _execute_processor(self, processor: AbstractWebhookProcessor) -> None:
+    async def _execute_processor(
+        self, processor: AbstractWebhookProcessor
+    ) -> WebhookEventData:
         """Execute a single processor within a max processing time"""
         try:
-            await asyncio.wait_for(
+            return await asyncio.wait_for(
                 self._process_webhook_request(processor),
                 timeout=self._max_event_processing_seconds,
             )
@@ -126,7 +142,7 @@ class WebhookProcessorManager:
 
     async def _process_webhook_request(
         self, processor: AbstractWebhookProcessor
-    ) -> None:
+    ) -> WebhookEventData:
         """Process a webhook request with retry logic
 
         Args:
@@ -143,10 +159,10 @@ class WebhookProcessorManager:
         if not await processor.validate_payload(payload):
             raise ValueError("Invalid payload")
 
+        webhookEventData = None
         while True:
             try:
                 webhookEventData = await processor.handle_event(payload)
-                await processor.process_data(webhookEventData)
                 break
 
             except Exception as e:
@@ -162,6 +178,7 @@ class WebhookProcessorManager:
                     continue
 
                 raise
+        return webhookEventData
 
         await processor.after_processing()
 
@@ -222,3 +239,69 @@ class WebhookProcessorManager:
             logger.warning("Shutdown timed out waiting for queues to empty")
 
         await self._cancel_all_tasks()
+
+    async def processData(self, webhookEventDatas: list[WebhookEventData]) -> None:
+        """Process the webhook event data collected from multiple processors.
+
+        Args:
+            webhookEventDatas: List of WebhookEventData objects to process
+        """
+        # Filter out None values that might occur from failed processing
+        createdEntities: list[Entity] = []
+        deletedEntities: list[Entity] = []
+        for webhookEventData in webhookEventDatas:
+            resource_mappings = await self._get_live_event_resources(
+                webhookEventData.get_kind
+            )
+
+            if not resource_mappings:
+                logger.warning(
+                    f"No resource mappings found for kind: {webhookEventData.get_kind}"
+                )
+                continue
+
+            if webhookEventData.get_update_data:
+                for resource_mapping in resource_mappings:
+                    logger.info(
+                        f"Processing data for resource: {resource_mapping.dict()}"
+                    )
+                    calculation_results = await self._calculate_raw(
+                        [(resource_mapping, webhookEventData.get_update_data)]
+                    )
+                    createdEntities.extend(
+                        calculation_results[0].entity_selector_diff.passed
+                    )
+
+            if webhookEventData.get_delete_data:
+                for resource_mapping in resource_mappings:
+                    logger.info(
+                        f"Processing delete data for resource: {resource_mapping.dict()}"
+                    )
+                    calculation_results = await self._calculate_raw(
+                        [(resource_mapping, webhookEventData.get_delete_data)]
+                    )
+                    deletedEntities.extend(
+                        calculation_results[0].entity_selector_diff.passed
+                    )
+
+        await self.handler_mixin.entities_state_applier.upsert(  # add here better logic
+            createdEntities
+        )
+        await self.handler_mixin.entities_state_applier.delete(deletedEntities)
+
+    async def _calculate_raw(
+        self,
+        raw_data_and_matching_resource_config: list[
+            tuple[ResourceConfig, list[RAW_ITEM]]
+        ],
+        parse_all: bool = False,
+        send_raw_data_examples_amount: int = 0,
+    ) -> list[CalculationResult]:
+        return await asyncio.gather(
+            *(
+                self.handler_mixin.entity_processor.parse_items(
+                    mapping, raw_data, parse_all, send_raw_data_examples_amount
+                )
+                for mapping, raw_data in raw_data_and_matching_resource_config
+            )
+        )
