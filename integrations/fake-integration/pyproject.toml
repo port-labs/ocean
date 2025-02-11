@@ -23,7 +23,7 @@ pytest-xdist = "^3.6.1"
 requests = "^2.32.3"
 ruff = "^0.0.278"
 towncrier = "^23.6.0"
-cryptography = "^43.0.1"
+cryptography = "^44.0.1"
 
 [tool.towncrier]
 directory = "changelog"
