@@ -109,7 +109,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     member["__teamId"] = team["id"]
                 yield members
 
-    def _format_api_url(self, subdomain: str) -> str:
+    def _format_organization_url_with_subdomain(self, subdomain: str) -> str:
         base_url = self._organization_base_url
         if ".visualstudio.com" in base_url:
             return base_url.replace(
