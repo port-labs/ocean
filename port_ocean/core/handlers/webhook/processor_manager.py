@@ -145,8 +145,8 @@ class WebhookProcessorManager:
 
         while True:
             try:
-                data, kind = await processor.handle_event(payload)
-                processor.process_data(kind, data)
+                webhookEventData = await processor.handle_event(payload)
+                await processor.process_data(webhookEventData)
                 break
 
             except Exception as e:
