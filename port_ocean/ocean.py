@@ -7,9 +7,9 @@ from fastapi import APIRouter, FastAPI
 from loguru import logger
 from pydantic import BaseModel
 from starlette.types import Receive, Scope, Send
+from yaml import safe_load  # type: ignore
 
 from port_ocean.clients.port.client import PortClient
-from port_ocean.helpers.load_config import load_integration_config_from_file
 from port_ocean.config.settings import (
     IntegrationConfiguration,
 )
@@ -106,21 +106,17 @@ class Ocean:
             )
             await schedule_repeated_task(execute_resync_all, interval * 60)
 
-    async def load_integration_config(self) -> None:
-        integration_config = load_integration_config_from_file(
-            self.config.integration.config
-        )
-        self.config.integration.config = integration_config
+    def load_external_integration_config(self) -> dict[str, Any]:
+        integration_config = self.config.integration.config.dict()
+        if self.config.config_file_path is not None:
+            with open(self.config.config_file_path, "r") as f:
+                file_config = safe_load(f)
+            for key, value in file_config.items():
+                integration_config[key] = value
+        return integration_config
 
-    def should_load_config(self) -> bool:
+    def should_load_external_config(self) -> bool:
         return self.config.config_file_path is not None
-
-    async def _setup_scheduled_config_loading(self) -> None:
-        seconds = self.config.config_reload_interval
-        await schedule_repeated_task(
-            self.load_integration_config,
-            seconds,
-        )
 
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
@@ -131,8 +127,6 @@ class Ocean:
                 await self.integration.start()
                 await self.webhook_manager.start_processing_event_messages()
                 await self._setup_scheduled_resync()
-                if self.should_load_config():
-                    await self._setup_scheduled_config_loading()
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")

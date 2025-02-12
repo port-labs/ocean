@@ -72,7 +72,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
     config_file_path: str | None = None
-    config_reload_interval: int = 10
+    scheduled_config_reload_interval: int = 10
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
         default=cast(EventListenerSettingsType, {"type": "POLLING"})

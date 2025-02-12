@@ -58,8 +58,14 @@ class PortOceanContext:
     @property
     def integration_config(self) -> dict[str, Any]:
         if isinstance(self.app.config.integration.config, BaseModel):
-            return self.app.config.integration.config.dict()
-        return self.app.config.integration.config
+            integration_config = self.app.config.integration.config.dict()
+        else:
+            integration_config = self.app.config.integration.config
+        if self.app.should_load_external_config():
+            external_config = self.app.load_external_integration_config()
+            for key, value in external_config.items():
+                integration_config[key] = value
+        return integration_config
 
     @property
     def port_client(self) -> "PortClient":
