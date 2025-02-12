@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Add cursor-based pagination for analytics batch retrieval; add configurable analytics period.
+- Added cursor-based pagination for analytics batch retrieval
+- Added configurable analytics period.
 
 
 ## 0.2.19 (2025-02-09)
