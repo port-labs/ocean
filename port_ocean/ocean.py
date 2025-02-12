@@ -122,10 +122,14 @@ class Ocean:
     def load_external_integration_config(self) -> dict[str, Any]:
         integration_config = self.config.integration.config.dict()
         if self.config.config_file_path is not None:
-            with open(self.config.config_file_path, "r") as f:
-                file_config = safe_load(f)
-            for key, value in file_config.items():
-                integration_config[key] = value
+            try:
+                with open(self.config.config_file_path, "r") as f:
+                    file_config = safe_load(f)
+                for key, value in file_config.items():
+                    integration_config[key] = value
+            except Exception as e:
+                logger.error(f"Error loading external integration config: {e}")
+                return integration_config
         return integration_config
 
     def should_load_external_config(self) -> bool:
