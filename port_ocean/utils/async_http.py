@@ -11,10 +11,7 @@ _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 def _get_http_client_context() -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
-        client = OceanAsyncClient(
-            transport_class=RetryTransport,
-            timeout=ocean.config.client_timeout,
-        )
+        client = OceanAsyncClient(RetryTransport, timeout=ocean.config.client_timeout)
         _http_client.push(client)
 
     return client
