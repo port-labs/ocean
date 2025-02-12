@@ -87,18 +87,18 @@ class WebhookEventData:
     def __init__(
         self, kind: str, update_data: list[RAW_ITEM], delete_data: list[RAW_ITEM]
     ) -> None:
-        self.kind = kind
-        self.update_data = update_data
-        self.delete_data = delete_data
+        self._kind = kind
+        self._update_data = update_data
+        self._delete_data = delete_data
 
     @property
-    def get_kind(self) -> str:
-        return self.kind
+    def kind(self) -> str:
+        return self._kind
 
     @property
-    def get_update_data(self) -> list[RAW_ITEM]:
-        return self.update_data
+    def update_data(self) -> list[RAW_ITEM]:
+        return self._update_data
 
     @property
-    def get_delete_data(self) -> list[RAW_ITEM]:
-        return self.delete_data
+    def delete_data(self) -> list[RAW_ITEM]:
+        return self._delete_data

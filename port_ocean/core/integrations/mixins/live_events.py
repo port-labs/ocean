@@ -25,34 +25,34 @@ class LiveEventsMixin(HandlerMixin):
         ):
             for webhookEventData in webhookEventDatas:
                 resource_mappings = await self._get_live_event_resources(
-                    webhookEventData.get_kind
+                    webhookEventData.kind
                 )
 
                 if not resource_mappings:
                     logger.warning(
-                        f"No resource mappings found for kind: {webhookEventData.get_kind}"
+                        f"No resource mappings found for kind: {webhookEventData.kind}"
                     )
                     continue
 
-                if webhookEventData.get_update_data:
+                if webhookEventData.update_data:
                     for resource_mapping in resource_mappings:
                         logger.info(
                             f"Processing data for resource: {resource_mapping.dict()}"
                         )
                         calculation_results = await self._calculate_raw(
-                            [(resource_mapping, webhookEventData.get_update_data)]
+                            [(resource_mapping, webhookEventData.update_data)]
                         )
                         createdEntities.extend(
                             calculation_results[0].entity_selector_diff.passed
                         )
 
-                if webhookEventData.get_delete_data:
+                if webhookEventData.delete_data:
                     for resource_mapping in resource_mappings:
                         logger.info(
                             f"Processing delete data for resource: {resource_mapping.dict()}"
                         )
                         calculation_results = await self._calculate_raw(
-                            [(resource_mapping, webhookEventData.get_delete_data)]
+                            [(resource_mapping, webhookEventData.delete_data)]
                         )
                         deletedEntities.extend(
                             calculation_results[0].entity_selector_diff.passed
