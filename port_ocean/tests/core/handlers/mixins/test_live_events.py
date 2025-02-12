@@ -547,9 +547,11 @@ async def test_getEntitiesToDelete_failedEntity_returnsTheEntity(
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
-    mock_parse_items.return_value = [
-        MagicMock(entity_selector_diff=MagicMock(failed=[entity]))
-    ]
+    mock_parse_items.return_value = CalculationResult(
+        entity_selector_diff=EntitySelectorDiff(failed=[entity], passed=[]),
+        errors=[],
+        misonfigured_entity_keys={},
+    )
 
     with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=True):
         result = await mock_live_events_mixin._get_entities_to_delete(
@@ -569,9 +571,11 @@ async def test_getEntitiesToDelete_failedEntityThatNotExsists_returnsEmptyList(
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
-    mock_parse_items.return_value = [
-        MagicMock(entity_selector_diff=MagicMock(failed=[entity]))
-    ]
+    mock_parse_items.return_value = CalculationResult(
+        entity_selector_diff=EntitySelectorDiff(failed=[entity], passed=[]),
+        errors=[],
+        misonfigured_entity_keys={},
+    )
 
     with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=False):
         result = await mock_live_events_mixin._get_entities_to_delete(
@@ -591,9 +595,11 @@ async def test_getEntitiesToDelete_noFailedEntity_returnsEmptyList(
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
-    mock_parse_items.return_value = [
-        MagicMock(entity_selector_diff=MagicMock(failed=[]))
-    ]
+    mock_parse_items.return_value = CalculationResult(
+        entity_selector_diff=EntitySelectorDiff(failed=[], passed=[]),
+        errors=[],
+        misonfigured_entity_keys={},
+    )
 
     with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=True):
         result = await mock_live_events_mixin._get_entities_to_delete(
@@ -613,9 +619,11 @@ async def test_getEntitiesToDelete_noFailedEntityAndNotExsists_returnsEmptyList(
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
-    mock_parse_items.return_value = [
-        MagicMock(entity_selector_diff=MagicMock(failed=[]))
-    ]
+    mock_parse_items.return_value = CalculationResult(
+        entity_selector_diff=EntitySelectorDiff(failed=[], passed=[]),
+        errors=[],
+        misonfigured_entity_keys={},
+    )
 
     with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=False):
         result = await mock_live_events_mixin._get_entities_to_delete(
