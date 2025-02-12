@@ -107,7 +107,8 @@ class Ocean:
                 scheduled_interval=interval,
             )
             repeated_function = repeat_every(
-                seconds=interval,
+                seconds=interval * 60,
+                # Not running the resync immediately because the event listener should run resync on startup
                 wait_first=True,
             )(
                 lambda: threading.Thread(
