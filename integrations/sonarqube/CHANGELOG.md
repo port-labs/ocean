@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.145 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
+
+
+## 0.1.144 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.1.143 (2025-02-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.1.142 (2025-01-29)
+
+
+### Bug Fixes
+
+- Fixed a bug where the global sonar_client loses its HTTP header context during scheduled resyncs, triggering 403 errors that ultimately leads to the unintended deletion of ingested entities
+
+
 ## 0.1.141 (2025-01-28)
 
 

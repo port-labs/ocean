@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.96 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
+
+
+## 0.2.95 (2025-01-24)
+
+
+### Bug Fixes
+
+- Fixed invalid token errors by implementing an auto-retry strategy using botocore's AioRefreshable Credentials
+
+
+## 0.2.94 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.2.93 (2025-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
 ## 0.2.92 (2025-01-28)
 
 
