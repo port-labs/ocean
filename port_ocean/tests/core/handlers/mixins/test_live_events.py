@@ -349,7 +349,7 @@ async def test_processData_dataForDeletionThreeEntities_threeEntitiesAreDeletedA
     mock_live_events_mixin._entities_state_applier.upsert = AsyncMock()  # type: ignore
     mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
 
-    await mock_live_events_mixin.process_data(webHook_event_data_for_deletion)
+    await mock_live_events_mixin.process_data([webHook_event_data_for_deletion])
 
     assert mock_live_events_mixin._entities_state_applier is not None
     mock_live_events_mixin._entities_state_applier.delete.assert_called_once()
@@ -367,11 +367,13 @@ async def test_processData_noResourceMappings_noOperationsPerformed(
     mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
 
     await mock_live_events_mixin.process_data(
-        WebhookEventData(
-            kind="non_existent_resource",
-            update_data=[],
-            delete_data=[],
-        )
+        [
+            WebhookEventData(
+                kind="non_existent_resource",
+                update_data=[],
+                delete_data=[],
+            )
+        ]
     )
     assert mock_live_events_mixin._entities_state_applier is not None
     mock_live_events_mixin._entities_state_applier.upsert.assert_not_called()
