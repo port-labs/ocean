@@ -122,11 +122,11 @@ class LiveEventsMixin(HandlerMixin):
                 resource_mapping, [raw_item], parse_all=True, send_raw_data_examples_amount=0
             )
 
-            if not calculation_results or len(calculation_results[0].entity_selector_diff.passed)== 0:
+            if not calculation_results or len(calculation_results.entity_selector_diff.passed)== 0:
                 logger.info(f"No entities passed selector for resource: {resource_mapping.kind}")
                 return True, []
 
-            upsertedEntities = await self.entities_state_applier.upsert(calculation_results[0].    entity_selector_diff.passed)
+            upsertedEntities = await self.entities_state_applier.upsert(calculation_results.    entity_selector_diff.passed)
             return True, upsertedEntities
 
         except Exception as e:

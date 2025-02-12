@@ -21,9 +21,21 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.models import Entity
+from port_ocean.core.ocean_types import CalculationResult, EntitySelectorDiff
 from port_ocean.ocean import Ocean
 
-
+entity = Entity(
+    identifier="repo-one",
+    blueprint="service",
+    title="repo-one",
+    team=[],
+    properties={
+        "url": "https://example.com/repo-one",
+        "readme": None,
+        "defaultBranch": "main",
+    },
+    relations={},
+)
 expected_entities = [
     Entity(
         identifier="repo-one",
@@ -378,3 +390,259 @@ async def test_processData_noResourceMappings_noOperationsPerformed(
     assert mock_live_events_mixin._entities_state_applier is not None
     mock_live_events_mixin._entities_state_applier.upsert.assert_not_called()
     mock_live_events_mixin._entities_state_applier.delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
+)
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
+)
+async def test_export_oneEntityParsedAndUpserted_returnsSuccessAndTheEntity(
+    mock_upsert,
+    mock_parse_items,
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    mock_parse_items.return_value = CalculationResult(
+        entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
+        errors=[],
+        misonfigured_entity_keys={},
+    )
+    mock_upsert.return_value = list[entity]
+
+    success, exported_entities = await mock_live_events_mixin._export(
+        mock_repository_resource_config, {}
+    )
+
+    assert success is True
+    assert exported_entities == list[entity]
+    mock_parse_items.assert_called_once()
+    mock_upsert.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
+)
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
+)
+async def test_export_noEntitiesParsed_returnesSuccessAndEmptyList(
+    mock_upsert,
+    mock_parse_items,
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    mock_parse_items.return_value = CalculationResult(
+        entity_selector_diff=EntitySelectorDiff(passed=[], failed=[]),
+        errors=[],
+        misonfigured_entity_keys={},
+    )
+    mock_upsert.return_value = []
+
+    success, exported_entities = await mock_live_events_mixin._export(
+        mock_repository_resource_config, {}
+    )
+
+    assert success is True
+    assert exported_entities == []
+    mock_parse_items.assert_called_once()
+    mock_upsert.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
+)
+async def test_export_failureWhenTringToExport_returnsFailureAndEmptyList(
+    mock_parse_items,
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    mock_parse_items.side_effect = Exception("Test error")
+
+    success, exported_entities = await mock_live_events_mixin._export(
+        mock_repository_resource_config, {}
+    )
+
+    assert success is False
+    assert exported_entities == []
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
+)
+async def test_isEntityExists_returnsTrue(
+    mock_search_entities,
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    entity = Entity(
+        identifier="test",
+        blueprint="test_bp",
+        title="test",
+        team=[],
+        properties={},
+        relations={},
+    )
+    mock_search_entities.return_value = [entity]
+
+    result = await mock_live_events_mixin._is_entity_exists(entity)
+
+    assert result is True
+    mock_search_entities.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
+)
+async def test_isEntityExists_returnsFalse(
+    mock_search_entities,
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    entity = Entity(
+        identifier="test",
+        blueprint="test_bp",
+        title="test",
+        team=[],
+        properties={},
+        relations={},
+    )
+    mock_search_entities.return_value = []
+
+    result = await mock_live_events_mixin._is_entity_exists(entity)
+
+    assert result is False
+    mock_search_entities.assert_called_once()
+
+
+def test_allEntitiesFilteredOutAtExport_testMultipleCases(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    assert mock_live_events_mixin._all_entities_filtered_out_at_exort(True, []) is True
+    assert (
+        mock_live_events_mixin._all_entities_filtered_out_at_exort(False, []) is False
+    )
+    assert (
+        mock_live_events_mixin._all_entities_filtered_out_at_exort(
+            True,
+            [
+                Entity(
+                    identifier="test",
+                    blueprint="test_bp",
+                    title="test",
+                    team=[],
+                    properties={},
+                    relations={},
+                )
+            ],
+        )
+        is False
+    )
+    assert (
+        mock_live_events_mixin._all_entities_filtered_out_at_exort(
+            False,
+            [
+                Entity(
+                    identifier="test",
+                    blueprint="test_bp",
+                    title="test",
+                    team=[],
+                    properties={},
+                    relations={},
+                )
+            ],
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
+)
+async def test_getEntitiesToDelete_failedEntity_returnsTheEntity(
+    mock_parse_items,
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    mock_parse_items.return_value = [
+        MagicMock(entity_selector_diff=MagicMock(failed=[entity]))
+    ]
+
+    with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=True):
+        result = await mock_live_events_mixin._get_entities_to_delete(
+            mock_repository_resource_config, {}
+        )
+
+        assert result == [entity]
+        mock_parse_items.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
+)
+async def test_getEntitiesToDelete_failedEntityThatNotExsists_returnsEmptyList(
+    mock_parse_items,
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    mock_parse_items.return_value = [
+        MagicMock(entity_selector_diff=MagicMock(failed=[entity]))
+    ]
+
+    with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=False):
+        result = await mock_live_events_mixin._get_entities_to_delete(
+            mock_repository_resource_config, {}
+        )
+
+        assert result == []
+        mock_parse_items.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
+)
+async def test_getEntitiesToDelete_noFailedEntity_returnsEmptyList(
+    mock_parse_items,
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    mock_parse_items.return_value = [
+        MagicMock(entity_selector_diff=MagicMock(failed=[]))
+    ]
+
+    with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=True):
+        result = await mock_live_events_mixin._get_entities_to_delete(
+            mock_repository_resource_config, {}
+        )
+
+        assert result == []
+        mock_parse_items.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
+)
+async def test_getEntitiesToDelete_noFailedEntityAndNotExsists_returnsEmptyList(
+    mock_parse_items,
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    mock_parse_items.return_value = [
+        MagicMock(entity_selector_diff=MagicMock(failed=[]))
+    ]
+
+    with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=False):
+        result = await mock_live_events_mixin._get_entities_to_delete(
+            mock_repository_resource_config, {}
+        )
+
+        assert result == []
+        mock_parse_items.assert_called_once()
