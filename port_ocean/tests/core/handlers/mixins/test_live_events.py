@@ -31,7 +31,6 @@ entity = Entity(
     team=[],
     properties={
         "url": "https://example.com/repo-one",
-        "readme": None,
         "defaultBranch": "main",
     },
     relations={},
@@ -44,7 +43,6 @@ expected_entities = [
         team=[],
         properties={
             "url": "https://example.com/repo-one",
-            "readme": None,
             "defaultBranch": "main",
         },
         relations={},
@@ -56,7 +54,6 @@ expected_entities = [
         team=[],
         properties={
             "url": "https://example.com/repo-two",
-            "readme": None,
             "defaultBranch": "develop",
         },
         relations={},
@@ -68,7 +65,6 @@ expected_entities = [
         team=[],
         properties={
             "url": "https://example.com/repo-three",
-            "readme": None,
             "defaultBranch": "master",
         },
         relations={},
@@ -95,14 +91,16 @@ event_data_for_three_entities_for_repository_resource = [
 
 webHook_event_data_for_creation = WebhookEventData(
     kind="repository",
-    update_data=event_data_for_three_entities_for_repository_resource,
-    delete_data=[],
+    data=event_data_for_three_entities_for_repository_resource,
 )
 
-webHook_event_data_for_deletion = WebhookEventData(
+one_webHook_event_data_for_creation = WebhookEventData(
     kind="repository",
-    update_data=[],
-    delete_data=event_data_for_three_entities_for_repository_resource,
+    data={
+        "name": "repo-one",
+        "links": {"html": {"href": "https://example.com/repo-one"}},
+        "main_branch": "main",
+    },
 )
 
 
@@ -138,7 +136,28 @@ def mock_repository_resource_config() -> ResourceConfig:
                     blueprint='"service"',
                     properties={
                         "url": ".links.html.href",
-                        "readme": "file://README.md",
+                        "defaultBranch": ".main_branch",
+                    },
+                    relations={},
+                )
+            )
+        ),
+    )
+
+
+@pytest.fixture
+def mock_repository_resource_config_not_passong_selector() -> ResourceConfig:
+    return ResourceConfig(
+        kind="repository",
+        selector=Selector(query="false"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".name",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={
+                        "url": ".links.html.href",
                         "defaultBranch": ".main_branch",
                     },
                     relations={},
@@ -157,6 +176,19 @@ def mock_port_app_config_with_repository_resource(
         delete_dependent_entities=True,
         create_missing_related_entities=False,
         resources=[mock_repository_resource_config],
+        entity_deletion_threshold=0.5,
+    )
+
+
+@pytest.fixture
+def mock_port_app_config_with_repository_resource_not_passing_selector(
+    mock_repository_resource_config_not_passong_selector: ResourceConfig,
+) -> PortAppConfig:
+    return PortAppConfig(
+        enable_merge_entity=True,
+        delete_dependent_entities=True,
+        create_missing_related_entities=False,
+        resources=[mock_repository_resource_config_not_passong_selector],
         entity_deletion_threshold=0.5,
     )
 
@@ -336,60 +368,6 @@ async def test_calculateRaw_multipleRawDataMatchesTheResourceConfig_returnsAllRe
         expected_entities, result[0].entity_selector_diff.passed
     ):
         assert expected == actual
-
-
-@pytest.mark.asyncio
-async def test_processData_dataForCreationThreeEntities_threeEntitiesAreUpsertedAndNoEntitiesAreDeleted(
-    mock_live_events_mixin: LiveEventsMixin,
-) -> None:
-    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock()  # type: ignore
-    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
-
-    await mock_live_events_mixin.process_data([webHook_event_data_for_creation])
-
-    assert mock_live_events_mixin._entities_state_applier is not None
-    mock_live_events_mixin._entities_state_applier.upsert.assert_called_once()
-    args, _ = mock_live_events_mixin._entities_state_applier.upsert.call_args
-    assert len(args[0]) == 3
-    mock_live_events_mixin._entities_state_applier.delete.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_processData_dataForDeletionThreeEntities_threeEntitiesAreDeletedAndNoEntitiesAreUpserted(
-    mock_live_events_mixin: LiveEventsMixin,
-) -> None:
-    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock()  # type: ignore
-    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
-
-    await mock_live_events_mixin.process_data([webHook_event_data_for_deletion])
-
-    assert mock_live_events_mixin._entities_state_applier is not None
-    mock_live_events_mixin._entities_state_applier.delete.assert_called_once()
-    args, _ = mock_live_events_mixin._entities_state_applier.delete.call_args
-    assert len(args[0]) == 3
-    mock_live_events_mixin._entities_state_applier.upsert.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_processData_noResourceMappings_noOperationsPerformed(
-    mock_live_events_mixin: LiveEventsMixin,
-) -> None:
-    mock_live_events_mixin._get_live_event_resources = AsyncMock(return_value=[])  # type: ignore
-    mock_live_events_mixin._entities_state_applier.upsert = AsyncMock()  # type: ignore
-    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
-
-    await mock_live_events_mixin.process_data(
-        [
-            WebhookEventData(
-                kind="non_existent_resource",
-                update_data=[],
-                delete_data=[],
-            )
-        ]
-    )
-    assert mock_live_events_mixin._entities_state_applier is not None
-    mock_live_events_mixin._entities_state_applier.upsert.assert_not_called()
-    mock_live_events_mixin._entities_state_applier.delete.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -646,3 +624,54 @@ async def test_getEntitiesToDelete_noFailedEntityAndNotExsists_returnsEmptyList(
 
         assert result == []
         mock_parse_items.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
+)
+@patch(
+    "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
+)
+async def test_processData_singleWebhookEvent_entityUpsertedAndNoDelete(
+    mock_search_entities,
+    mock_upsert,
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_port_app_config_with_repository_resource: PortAppConfig,
+):
+
+    mock_search_entities.return_value = [entity]
+    mock_upsert.return_value = [entity]
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
+    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()
+
+    await mock_live_events_mixin.process_data([one_webHook_event_data_for_creation])
+
+    assert mock_upsert.call_count == 1
+    assert mock_live_events_mixin._entities_state_applier.delete.call_count == 0
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
+)
+@patch(
+    "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
+)
+async def test_processData_singleWebhookEvent_entityDeleted(
+    mock_search_entities,
+    mock_upsert,
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_port_app_config_with_repository_resource_not_passing_selector: PortAppConfig,
+):
+
+    mock_search_entities.return_value = [entity]
+    mock_upsert.return_value = [entity]
+    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource_not_passing_selector  # type: ignore
+    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()
+
+    with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=True):
+        await mock_live_events_mixin.process_data([one_webHook_event_data_for_creation])
+
+        assert mock_upsert.call_count == 0
+        assert mock_live_events_mixin._entities_state_applier.delete.call_count == 1

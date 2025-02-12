@@ -84,21 +84,14 @@ class WebhookEventData:
     Class for webhook event to store the updated data for the event
     """
 
-    def __init__(
-        self, kind: str, update_data: list[RAW_ITEM], delete_data: list[RAW_ITEM]
-    ) -> None:
+    def __init__(self, kind: str, data: list[RAW_ITEM]) -> None:
         self._kind = kind
-        self._update_data = update_data
-        self._delete_data = delete_data
+        self._data = data
 
     @property
     def kind(self) -> str:
         return self._kind
 
     @property
-    def update_data(self) -> list[RAW_ITEM]:
-        return self._update_data
-
-    @property
-    def delete_data(self) -> list[RAW_ITEM]:
-        return self._delete_data
+    def data(self) -> list[RAW_ITEM]:
+        return self._data

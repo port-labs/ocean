@@ -19,9 +19,6 @@ class LiveEventsMixin(HandlerMixin):
         Args:
             webhookEventDatas: List of WebhookEventData objects to process
         """
-        # Filter out None values that might occur from failed processing
-        createdEntities: list[Entity] = []
-        deletedEntities: list[Entity] = []
         async with event_context(
             EventType.LIVE_EVENT,
             trigger_type="machine",
@@ -31,40 +28,7 @@ class LiveEventsMixin(HandlerMixin):
                     webhookEventData.kind
                 )
 
-                if not resource_mappings:
-                    logger.warning(
-                        f"No resource mappings found for kind: {webhookEventData.kind}"
-                    )
-                    continue
-
-                if webhookEventData.update_data:
-                    for resource_mapping in resource_mappings:
-                        logger.info(
-                            f"Processing data for resource: {resource_mapping.dict()}"
-                        )
-                        calculation_results = await self._calculate_raw(
-                            [(resource_mapping, webhookEventData.update_data)]
-                        )
-                        createdEntities.extend(
-                            calculation_results[0].entity_selector_diff.passed
-                        )
-
-                if webhookEventData.delete_data:
-                    for resource_mapping in resource_mappings:
-                        logger.info(
-                            f"Processing delete data for resource: {resource_mapping.dict()}"
-                        )
-                        calculation_results = await self._calculate_raw(
-                            [(resource_mapping, webhookEventData.delete_data)]
-                        )
-                        deletedEntities.extend(
-                            calculation_results[0].entity_selector_diff.passed
-                        )
-
-            await self.entities_state_applier.upsert(  # add here better logic
-                createdEntities
-            )
-            await self.entities_state_applier.delete(deletedEntities)
+                await self._export_single_resource(resource_mappings, webhookEventData.data)
 
     async def _calculate_raw(
         self,
@@ -170,8 +134,8 @@ class LiveEventsMixin(HandlerMixin):
         calculation_results = await self.entity_processor.parse_items(
                     resource_mapping, [raw_item], parse_all=True, send_raw_data_examples_amount=0
                 )
-        if len(calculation_results[0].entity_selector_diff.failed) == 1 and await self._is_entity_exists(calculation_results[0].entity_selector_diff.failed[0]):
-            return calculation_results[0].entity_selector_diff.failed
+        if len(calculation_results.entity_selector_diff.failed) == 1 and await self._is_entity_exists(calculation_results.entity_selector_diff.failed[0]):
+            return calculation_results.entity_selector_diff.failed
         return []
 
     async def _export_single_resource(self, resource_mappings: list[ResourceConfig], raw_item: RAW_ITEM) -> None:
@@ -192,6 +156,7 @@ class LiveEventsMixin(HandlerMixin):
         logger.info(f"Deleting entities after filtering out the bluepprint entities to keep",
                     deleted_entities_count=len(entitiesToDeleteFilteredByKeptBlueprints))
         try:
-            await self.entities_state_applier.delete(entitiesToDeleteFilteredByKeptBlueprints)
+            if entitiesToDeleteFilteredByKeptBlueprints:
+                await self.entities_state_applier.delete(entitiesToDeleteFilteredByKeptBlueprints)
         except Exception as e:
             logger.error(f"Failed to delete entities: {str(e)}")
