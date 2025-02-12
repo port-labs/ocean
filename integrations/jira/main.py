@@ -33,7 +33,7 @@ class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
         logger.info(f"Processing webhook event: {webhook_event}")
         return WebhookEventData(
             kind=ObjectKind.ISSUE,
-            update_data=payload.get("issue"),
+            update_data=[payload.get("issue")],
             delete_data=[]
         )
 
