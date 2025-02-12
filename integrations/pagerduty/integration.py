@@ -145,11 +145,6 @@ class PagerdutyIncidentResourceConfig(ResourceConfig):
             description="If set to true, will ingest incident analytics data to Port. Default value is false",
             alias="incidentAnalytics",
         )
-        analytics_months_period: int = Field(
-            default=3,
-            description="Number of months to consider for the service analytics date range. Must be a positive integer. Default value is 3 months",
-            alias="analyticsMonthsPeriod",
-        )
 
     kind: Literal["incidents"]
     selector: PagerdutySelector
