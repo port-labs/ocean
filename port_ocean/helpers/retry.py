@@ -9,6 +9,15 @@ from typing import Any, Callable, Coroutine, Iterable, Mapping, Union
 import httpx
 from dateutil.parser import isoparse
 
+_ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
+
+
+def register_on_retry_callback(
+    _on_retry_callback: Callable[[httpx.Request], httpx.Request]
+) -> None:
+    global _ON_RETRY_CALLBACK
+    _ON_RETRY_CALLBACK = _on_retry_callback
+
 
 # Adapted from https://github.com/encode/httpx/issues/108#issuecomment-1434439481
 class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
@@ -32,7 +41,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"].
         retry_status_codes (Iterable[int], optional): The HTTP status codes that can be retried. Defaults to
             [429, 502, 503, 504].
-        on_retry (Callable[[], None], optional): A function to call when a retry is made. Defaults to a no-op function.
 
     Attributes:
         _wrapped_transport (Union[httpx.BaseTransport, httpx.AsyncBaseTransport]): The underlying HTTP transport
@@ -44,7 +52,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         _retry_status_codes (frozenset): The HTTP status codes that can be retried.
         _jitter_ratio (float): The amount of jitter to add to the backoff time.
         _max_backoff_wait (float): The maximum time to wait between retries in seconds.
-        _on_retry (Callable[[], None]): A function to call when a retry is made.
     """
 
     RETRYABLE_METHODS = frozenset(["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"])
@@ -55,6 +62,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             HTTPStatus.SERVICE_UNAVAILABLE,
             HTTPStatus.GATEWAY_TIMEOUT,
             HTTPStatus.UNAUTHORIZED,
+            HTTPStatus.BAD_REQUEST,
         ]
     )
     MAX_BACKOFF_WAIT_IN_SECONDS = 60
@@ -70,7 +78,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         retryable_methods: Iterable[str] | None = None,
         retry_status_codes: Iterable[int] | None = None,
         logger: Any | None = None,
-        on_retry: Callable[[], None] | None = None,
     ) -> None:
         """
         Initializes the instance of RetryTransport class with the given parameters.
@@ -123,7 +130,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         self._jitter_ratio = jitter_ratio
         self._max_backoff_wait = max_backoff_wait
         self._logger = logger
-        self._on_retry = on_retry or (lambda: None)
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         """
@@ -320,7 +326,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
-            self._on_retry()
+            if _ON_RETRY_CALLBACK:
+                request = _ON_RETRY_CALLBACK(request)
             attempts_made += 1
             remaining_attempts -= 1
 
@@ -362,6 +369,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
-            self._on_retry()
+            if _ON_RETRY_CALLBACK:
+                request = _ON_RETRY_CALLBACK(request)
             attempts_made += 1
             remaining_attempts -= 1
