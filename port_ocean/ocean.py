@@ -1,6 +1,7 @@
 import asyncio
 import sys
 from contextlib import asynccontextmanager
+import threading
 from typing import Any, AsyncIterator, Callable, Dict, Type
 
 from fastapi import APIRouter, FastAPI
@@ -23,7 +24,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.misc import IntegrationStateStatus
-from port_ocean.utils.repeat import schedule_repeated_task
+from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
 from port_ocean.core.handlers.webhook.processor_manager import WebhookProcessorManager
@@ -99,12 +100,23 @@ class Ocean:
                 raise e
 
         interval = self.config.scheduled_resync_interval
+        loop = asyncio.get_event_loop()
         if interval is not None:
             logger.info(
                 f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)",
                 scheduled_interval=interval,
             )
-            await schedule_repeated_task(execute_resync_all, interval * 60)
+            repeated_function = repeat_every(
+                seconds=interval,
+                wait_first=True,
+            )(
+                lambda: threading.Thread(
+                    target=lambda: asyncio.run_coroutine_threadsafe(
+                        execute_resync_all(), loop
+                    )
+                ).start()
+            )
+            await repeated_function()
 
     def load_external_integration_config(self) -> dict[str, Any]:
         integration_config = self.config.integration.config.dict()
