@@ -69,8 +69,8 @@ class WebhookProcessorManager(LiveEventsMixin):
     async def process_queue(self, path: str) -> None:
         """Process events for a specific path in order"""
         while True:
-            webhookEvent = None
-            matching_processors = []
+            matching_processors: list[AbstractWebhookProcessor] = []
+            webhookEvent: WebhookEvent | None = None
             try:
                 queue = self._event_queues[path]
                 webhookEvent, eventContext = await queue.get()
