@@ -1,10 +1,13 @@
+from copy import deepcopy
 from typing import Dict, Type, Set
 from fastapi import APIRouter, Request
 from loguru import logger
 import asyncio
 
+from port_ocean.context.event import EventContext, EventType, event_context
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from .webhook_event import WebhookEvent, WebhookEventData, WebhookEventTimestamp
+from port_ocean.context.event import event
 
 
 from .abstract_webhook_processor import AbstractWebhookProcessor
@@ -24,7 +27,9 @@ class WebhookProcessorManager(LiveEventsMixin):
     ) -> None:
         self._router = router
         self._processors: Dict[str, list[Type[AbstractWebhookProcessor]]] = {}
-        self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
+        self._event_queues: Dict[
+            str, AbstractQueue[tuple[WebhookEvent, EventContext]]
+        ] = {}
         self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
@@ -64,22 +69,34 @@ class WebhookProcessorManager(LiveEventsMixin):
     async def process_queue(self, path: str) -> None:
         """Process events for a specific path in order"""
         while True:
-            matching_processors: list[AbstractWebhookProcessor] = []
-            event: WebhookEvent | None = None
-            webhookEventDatas: list[WebhookEventData] = []
+            webhookEvent = None
+            matching_processors = []
             try:
-                event = await self._event_queues[path].get()
-                with logger.contextualize(webhook_path=path, trace_id=event.trace_id):
-                    matching_processors = self._extract_matching_processors(
-                        event, path
-                    )  # what if 2 processors map to same entities, add handle here
-                    webhookEventDatas = await asyncio.gather(
-                        *(
-                            self._process_single_event(processor, path)
-                            for processor in matching_processors
+                queue = self._event_queues[path]
+                webhookEvent, eventContext = await queue.get()
+                with logger.contextualize(
+                    webhook_path=path, trace_id=webhookEvent.trace_id
+                ):
+                    async with event_context(
+                        EventType.LIVE_EVENT,
+                        trigger_type="machine",
+                        **(
+                            {"parent_override": eventContext}
+                            if eventContext is not None
+                            else {}
+                        ),
+                    ):
+                        self.port_app_config_handler.get_port_app_config()
+                        matching_processors = self._extract_matching_processors(
+                            webhookEvent, path
                         )
-                    )
-                    await self.process_data(webhookEventDatas)
+                        webhookEventDatas = await asyncio.gather(
+                            *(
+                                self._process_single_event(processor, path)
+                                for processor in matching_processors
+                            )
+                        )
+                        await self.process_data(webhookEventDatas)
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
                 for processor in matching_processors:
@@ -93,10 +110,8 @@ class WebhookProcessorManager(LiveEventsMixin):
                 for processor in matching_processors:
                     self._timestamp_event_error(processor.event)
             finally:
-                if event:
+                if webhookEvent:
                     await self._event_queues[path].commit()
-                    # Prevents committing empty events for cases where we shutdown while processing
-                    event = None
 
     def _timestamp_event_error(self, event: WebhookEvent) -> None:
         """Timestamp an event as having an error"""
@@ -196,9 +211,9 @@ class WebhookProcessorManager(LiveEventsMixin):
         async def handle_webhook(request: Request) -> Dict[str, str]:
             """Handle incoming webhook requests for a specific path."""
             try:
-                event = await WebhookEvent.from_request(request)
-                event.set_timestamp(WebhookEventTimestamp.AddedToQueue)
-                await self._event_queues[path].put(event)
+                webhookEvent = await WebhookEvent.from_request(request)
+                webhookEvent.set_timestamp(WebhookEventTimestamp.AddedToQueue)
+                await self._event_queues[path].put((webhookEvent, deepcopy(event)))
                 return {"status": "ok"}
             except Exception as e:
                 logger.exception(f"Error processing webhook: {str(e)}")

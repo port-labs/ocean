@@ -9,6 +9,7 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import RAW_ITEM, CalculationResult
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
 
 
 class LiveEventsMixin(HandlerMixin):
@@ -19,16 +20,16 @@ class LiveEventsMixin(HandlerMixin):
         Args:
             webhookEventDatas: List of WebhookEventData objects to process
         """
-        async with event_context(
-            EventType.LIVE_EVENT,
-            trigger_type="machine",
-        ):
-            for webhookEventData in webhookEventDatas:
-                resource_mappings = await self._get_live_event_resources(
-                    webhookEventData.kind
-                )
-                for raw_item in webhookEventData.data:
-                    await self._export_single_resource(resource_mappings, raw_item)
+        # async with event_context(
+        #     EventType.LIVE_EVENT,
+        #     trigger_type="machine",
+        # ):
+        for webhookEventData in webhookEventDatas:
+            resource_mappings = await self._get_live_event_resources(
+                webhookEventData.kind
+            )
+            for raw_item in webhookEventData.data:
+                await self._export_single_resource(resource_mappings, raw_item)
 
     async def _calculate_raw(
         self,
@@ -49,9 +50,10 @@ class LiveEventsMixin(HandlerMixin):
 
     async def _get_live_event_resources(self, kind: str) -> list[ResourceConfig]:
         try:
-            app_config = await self.port_app_config_handler.get_port_app_config(
-                use_cache=False
-            )
+            # app_config = await self.port_app_config_handler.get_port_app_config(
+            #     use_cache=False
+            # )
+            app_config = event.port_app_config
             logger.info(
                 f"process data will use the following mappings: {app_config.dict()}"
             )
