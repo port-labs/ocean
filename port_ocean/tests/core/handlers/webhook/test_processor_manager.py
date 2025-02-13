@@ -398,49 +398,56 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from fastapi import APIRouter
 from port_ocean.utils.signal import SignalHandler
+from typing import Dict, Any
 
 
 class MockProcessor(AbstractWebhookProcessor):
-    async def authenticate(self, payload, headers) -> bool:
+    async def authenticate(
+        self, payload: Dict[str, Any], headers: Dict[str, str]
+    ) -> bool:
         return True
 
-    async def validate_payload(self, payload) -> bool:
+    async def validate_payload(self, payload: Dict[str, Any]) -> bool:
         return True
 
-    async def handle_event(self, payload):
-        pass
+    async def handle_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return {}
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return True
 
 
 class MockProcessorFalse(AbstractWebhookProcessor):
-    async def authenticate(self, payload, headers) -> bool:
+    async def authenticate(
+        self, payload: Dict[str, Any], headers: Dict[str, str]
+    ) -> bool:
         return True
 
-    async def validate_payload(self, payload) -> bool:
+    async def validate_payload(self, payload: Dict[str, Any]) -> bool:
         return True
 
-    async def handle_event(self, payload):
-        pass
+    async def handle_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return {}
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return False
 
 
 @pytest.fixture
-def processor_manager():
+def processor_manager() -> WebhookProcessorManager:
     router = APIRouter()
     signal_handler = SignalHandler()
     return WebhookProcessorManager(router, signal_handler)
 
 
 @pytest.fixture
-def webhook_event():
+def webhook_event() -> WebhookEvent:
     return WebhookEvent(payload={}, headers={}, trace_id="test-trace")
 
 
-def test_extract_matching_processors_with_match(processor_manager, webhook_event):
+def test_extract_matching_processors_with_match(
+    processor_manager: WebhookProcessorManager, webhook_event: WebhookEvent
+) -> None:
     # Arrange
     test_path = "/test"
     processor_manager.register_processor(
@@ -459,7 +466,9 @@ def test_extract_matching_processors_with_match(processor_manager, webhook_event
     assert processors[0].event.payload == webhook_event.payload
 
 
-def test_extract_matching_processors_no_match(processor_manager, webhook_event):
+def test_extract_matching_processors_no_match(
+    processor_manager: WebhookProcessorManager, webhook_event: WebhookEvent
+) -> None:
     # Arrange
     test_path = "/test"
     processor_manager.register_processor(
@@ -471,7 +480,9 @@ def test_extract_matching_processors_no_match(processor_manager, webhook_event):
         processor_manager._extract_matching_processors(webhook_event, test_path)
 
 
-def test_extract_matching_processors_multiple_matches(processor_manager, webhook_event):
+def test_extract_matching_processors_multiple_matches(
+    processor_manager: WebhookProcessorManager, webhook_event: WebhookEvent
+) -> None:
     # Arrange
     test_path = "/test"
     processor_manager.register_processor(

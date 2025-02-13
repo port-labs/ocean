@@ -367,8 +367,8 @@ async def test_calculateRaw_multipleRawDataMatchesTheResourceConfig_returnsAllRe
     "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
 )
 async def test_export_oneEntityParsedAndUpserted_returnsSuccessAndTheEntity(
-    mock_upsert,
-    mock_parse_items,
+    mock_upsert: AsyncMock,
+    mock_parse_items: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
@@ -377,14 +377,14 @@ async def test_export_oneEntityParsedAndUpserted_returnsSuccessAndTheEntity(
         errors=[],
         misonfigured_entity_keys={},
     )
-    mock_upsert.return_value = list[entity]
+    mock_upsert.return_value = list[entity]  # type: ignore
 
     success, exported_entities = await mock_live_events_mixin._export(
         mock_repository_resource_config, {}
     )
 
     assert success is True
-    assert exported_entities == list[entity]
+    assert exported_entities == list[entity]  # type: ignore
     mock_parse_items.assert_called_once()
     mock_upsert.assert_called_once()
 
@@ -397,8 +397,8 @@ async def test_export_oneEntityParsedAndUpserted_returnsSuccessAndTheEntity(
     "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
 )
 async def test_export_noEntitiesParsed_returnesSuccessAndEmptyList(
-    mock_upsert,
-    mock_parse_items,
+    mock_upsert: AsyncMock,
+    mock_parse_items: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
@@ -424,7 +424,7 @@ async def test_export_noEntitiesParsed_returnesSuccessAndEmptyList(
     "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
 )
 async def test_export_failureWhenTringToExport_returnsFailureAndEmptyList(
-    mock_parse_items,
+    mock_parse_items: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
@@ -443,7 +443,7 @@ async def test_export_failureWhenTringToExport_returnsFailureAndEmptyList(
     "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
 )
 async def test_isEntityExists_returnsTrue(
-    mock_search_entities,
+    mock_search_entities: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
 ) -> None:
     entity = Entity(
@@ -467,7 +467,7 @@ async def test_isEntityExists_returnsTrue(
     "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
 )
 async def test_isEntityExists_returnsFalse(
-    mock_search_entities,
+    mock_search_entities: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
 ) -> None:
     entity = Entity(
@@ -532,7 +532,7 @@ def test_allEntitiesFilteredOutAtExport_testMultipleCases(
     "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
 )
 async def test_getEntitiesToDelete_failedEntity_returnsTheEntity(
-    mock_parse_items,
+    mock_parse_items: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
@@ -556,7 +556,7 @@ async def test_getEntitiesToDelete_failedEntity_returnsTheEntity(
     "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
 )
 async def test_getEntitiesToDelete_failedEntityThatNotExsists_returnsEmptyList(
-    mock_parse_items,
+    mock_parse_items: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
@@ -580,7 +580,7 @@ async def test_getEntitiesToDelete_failedEntityThatNotExsists_returnsEmptyList(
     "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
 )
 async def test_getEntitiesToDelete_noFailedEntity_returnsEmptyList(
-    mock_parse_items,
+    mock_parse_items: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
@@ -604,7 +604,7 @@ async def test_getEntitiesToDelete_noFailedEntity_returnsEmptyList(
     "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
 )
 async def test_getEntitiesToDelete_noFailedEntityAndNotExsists_returnsEmptyList(
-    mock_parse_items,
+    mock_parse_items: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
@@ -631,23 +631,23 @@ async def test_getEntitiesToDelete_noFailedEntityAndNotExsists_returnsEmptyList(
     "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
 )
 async def test_processData_singleWebhookEvent_entityUpsertedAndNoDelete(
-    mock_search_entities,
-    mock_upsert,
+    mock_search_entities: AsyncMock,
+    mock_upsert: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
     mock_port_app_config_with_repository_resource: PortAppConfig,
-):
+) -> None:
 
     mock_search_entities.return_value = [entity]
     mock_upsert.return_value = [entity]
     mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
-    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()
+    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
 
     async with event_context("test_event") as event:
         event.port_app_config = mock_port_app_config_with_repository_resource
         await mock_live_events_mixin.process_data([one_webHook_event_data_for_creation])
 
     assert mock_upsert.call_count == 1
-    assert mock_live_events_mixin._entities_state_applier.delete.call_count == 0
+    assert mock_live_events_mixin._entities_state_applier.delete.call_count == 0  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -658,16 +658,16 @@ async def test_processData_singleWebhookEvent_entityUpsertedAndNoDelete(
     "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
 )
 async def test_processData_singleWebhookEvent_entityDeleted(
-    mock_search_entities,
-    mock_upsert,
+    mock_search_entities: AsyncMock,
+    mock_upsert: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
     mock_port_app_config_with_repository_resource_not_passing_selector: PortAppConfig,
-):
+) -> None:
 
     mock_search_entities.return_value = [entity]
     mock_upsert.return_value = [entity]
     mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource_not_passing_selector  # type: ignore
-    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()
+    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
 
     with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=True):
         async with event_context("test_event") as event:
@@ -679,4 +679,4 @@ async def test_processData_singleWebhookEvent_entityDeleted(
             )
 
         assert mock_upsert.call_count == 0
-        assert mock_live_events_mixin._entities_state_applier.delete.call_count == 1
+        assert mock_live_events_mixin._entities_state_applier.delete.call_count == 1  # type: ignore
