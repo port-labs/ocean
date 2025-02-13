@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.121 (2025-02-13)
+
+
+### Improvements
+
+- Bumped cryptography version to ^44.0.1
+
+
+## 0.1.120 (2025-02-11)
+
+
+### Bug Fixes
+
+- Fixed an issue where if the organization URL was formatted like https://org.visualstudio.com pulling release would return 404
+
+
+## 0.1.119 (2025-02-11)
+
+
+### Bug Fixes
+
+- Modified the work item fetching logic to retrieve work items in paginated batches rather than loading up to 19,999 items in a single request.
+
+
+## 0.1.118 (2025-02-11)
+
+
+### Bugfix
+
+- Fixed an issue where if the organization url was formatted like https://XXX.visualstudio.com pulling users would return 404
+
+
 ## 0.1.117 (2025-02-09)
 
 
@@ -22,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added support for User kind
 - Added selector `includeMembers` to enable enriching team with members
+
 
 ## 0.1.115 (2025-02-04)
 
