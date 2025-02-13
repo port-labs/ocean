@@ -338,7 +338,6 @@ async def test_calculateRaw_oneRawDataMatchesTheResourceConfig_returnsTheResult(
         team=[],
         properties={
             "url": "https://example.com/my-example-repo",
-            "readme": None,
             "defaultBranch": "main",
         },
         relations={},
