@@ -27,8 +27,8 @@ class LiveEventsMixin(HandlerMixin):
                 resource_mappings = await self._get_live_event_resources(
                     webhookEventData.kind
                 )
-
-                await self._export_single_resource(resource_mappings, webhookEventData.data)
+                for raw_item in webhookEventData.data:
+                    await self._export_single_resource(resource_mappings, raw_item)
 
     async def _calculate_raw(
         self,
