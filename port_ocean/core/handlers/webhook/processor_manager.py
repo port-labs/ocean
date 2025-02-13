@@ -47,9 +47,9 @@ class WebhookProcessorManager(LiveEventsMixin):
     ) -> list[AbstractWebhookProcessor]:
         """Find and extract the matching processor for an event"""
         matching_processors = [
-            processor
-            for processor in self._processors[path]
-            if processor.filter_event_data(event)
+            processor_class
+            for processor_class in self._processors[path]
+            if processor_class(event).filter_event_data(event)
         ]
 
         if not matching_processors:

@@ -17,6 +17,55 @@ from jira.overrides import (
     JiraProjectResourceConfig,
     TeamResourceConfig,
 )
+class JiraProjectWebhookProcessor(AbstractWebhookProcessor):
+    @classmethod
+    async def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
+        return webhook_event.headers.startswith("project_")
+    @classmethod
+    async def handle_event(self, payload: EventPayload) -> None:
+        client = create_jira_client()
+        project_key = payload["project"]["key"]
+        logger.debug(f"Fetching project with key: {project_key}")
+        item = await client.get_single_project(project_key)
+        return WebhookEventData(
+            kind=ObjectKind.PROJECT,
+            data=[item]
+        )
+    @classmethod
+    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+        # For Jira webhooks, we don't need additional authentication as they are validated
+        # through the webhook secret in the URL
+        return True
+
+    @classmethod
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        # Validate that the payload contains the required fields
+        return True
+
+class JiraUserWebhookProcessor(AbstractWebhookProcessor):
+    @classmethod
+    async def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
+        return webhook_event.headers.startswith("user_")
+    @classmethod
+    async def handle_event(self, payload: EventPayload) -> None:
+        client = create_jira_client()
+        account_id = payload["user"]["accountId"]
+        logger.debug(f"Fetching user with accountId: {account_id}")
+        item = await client.get_single_user(account_id)
+        return WebhookEventData(
+            kind=ObjectKind.USER,
+            data=[item]
+        )
+    @classmethod
+    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+        # For Jira webhooks, we don't need additional authentication as they are validated
+        # through the webhook secret in the URL
+        return True
+
+    @classmethod
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        # Validate that the payload contains the required fields
+        return True
 
 class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
     @classmethod
@@ -239,3 +288,5 @@ async def on_start() -> None:
 
     await setup_application()
 ocean.add_webhook_processor("/webhook", JiraIssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", JiraProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", JiraUserWebhookProcessor)
