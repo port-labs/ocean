@@ -2,7 +2,6 @@ import asyncio
 from typing import Set
 from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context.event import EventType, event_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventData
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
@@ -20,10 +19,6 @@ class LiveEventsMixin(HandlerMixin):
         Args:
             webhookEventDatas: List of WebhookEventData objects to process
         """
-        # async with event_context(
-        #     EventType.LIVE_EVENT,
-        #     trigger_type="machine",
-        # ):
         for webhookEventData in webhookEventDatas:
             resource_mappings = await self._get_live_event_resources(
                 webhookEventData.kind
@@ -50,9 +45,6 @@ class LiveEventsMixin(HandlerMixin):
 
     async def _get_live_event_resources(self, kind: str) -> list[ResourceConfig]:
         try:
-            # app_config = await self.port_app_config_handler.get_port_app_config(
-            #     use_cache=False
-            # )
             app_config = event.port_app_config
             logger.info(
                 f"process data will use the following mappings: {app_config.dict()}"

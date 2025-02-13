@@ -86,7 +86,6 @@ class WebhookProcessorManager(LiveEventsMixin):
                             else {}
                         ),
                     ):
-                        self.port_app_config_handler.get_port_app_config()
                         matching_processors = self._extract_matching_processors(
                             webhookEvent, path
                         )
