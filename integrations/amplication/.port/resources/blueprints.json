@@ -6,10 +6,6 @@
     "icon": "Amplication",
     "schema": {
       "properties": {
-        "name": {
-          "type": "string",
-          "title": "Name"
-        },
         "description": {
           "type": "string",
           "title": "Description"
@@ -32,7 +28,6 @@
         }
       },
       "required": [
-        "name",
         "project_id",
         "project"
       ]
@@ -61,10 +56,6 @@
     "icon": "Amplication",
     "schema": {
       "properties": {
-        "name": {
-          "type": "string",
-          "title": "Name"
-        },
         "description": {
           "type": "string",
           "title": "Description"
@@ -97,7 +88,6 @@
         }
       },
       "required": [
-        "name",
         "project",
         "project_id"
       ]
@@ -196,8 +186,6 @@
         }
       },
       "required": [
-        "block_id",
-        "block_displayName",
         "type",
         "outdatedVersion",
         "latestVersion",

@@ -1,6 +1,6 @@
 [
     {
-      "blueprint": "amplicationResource",
+      "blueprint": "AmplicationResource",
       "data": [
           {
             "identifier": "resource_alerts",

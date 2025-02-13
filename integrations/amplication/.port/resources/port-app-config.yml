@@ -1,3 +1,4 @@
+deleteDependentEntities: true
 createMissingRelatedEntities: True
 resources:
   - kind: amplication_template
@@ -10,7 +11,6 @@ resources:
           title: .name
           blueprint: '"AmplicationTemplate"'
           properties:
-            name: .name
             description: .description
             project: .project.name
             project_id: .project.id
@@ -26,7 +26,6 @@ resources:
           title: .name
           blueprint: '"AmplicationResource"'
           properties:
-            name: .name
             description: .description
             project: .project.name
             project_id: .project.id
@@ -35,7 +34,7 @@ resources:
             git_organization: .gitRepository.gitOrganization.provider
             git_repository: '.gitRepository.gitOrganization.name + "/" + .gitRepository.name'
           relations:
-            template: if .serviceTemplate != null and .serviceTemplate != "None" then .serviceTemplate.id else null end
+            template: if .serviceTemplate != null then .serviceTemplate.id else null end
   - kind: amplication_alert
     selector:
       query: 'true'
@@ -43,11 +42,11 @@ resources:
       entity:
         mappings:
           identifier: .id
-          title: '.type + ": " + .block.displayName'
+          title: 'if .block != null then .type + ": " + .block.displayName else .type end'
           blueprint: '"AmplicationAlert"'
           properties:
-            block_id: .block.id
-            block_displayName: .block.displayName
+            block_id: if .block != null then .block.id else null end
+            block_displayName: if .block != null then .block.displayName else null end
             type: .type
             outdatedVersion: .outdatedVersion
             latestVersion: .latestVersion

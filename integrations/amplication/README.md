@@ -16,3 +16,4 @@ An integration used to import amplication resources into Port.
 
 - [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)
 - See out [contributing guide](CONTRIBUTING.md)
+- For any questions or inquiries, please reach out to our team at [support@amplication.com](mailto:support@amplication.com).
