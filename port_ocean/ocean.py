@@ -54,6 +54,10 @@ class Ocean:
         )
         self.integration_router = integration_router or APIRouter()
 
+        self.webhook_manager = WebhookProcessorManager(
+            self.integration_router, signal_handler
+        )
+
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
             client_id=self.config.port.client_id,
@@ -64,10 +68,6 @@ class Ocean:
         )
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
-        )
-
-        self.webhook_manager = WebhookProcessorManager(
-            self.integration_router, signal_handler
         )
 
         self.resync_state_updater = ResyncStateUpdater(
