@@ -23,6 +23,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import CalculationResult, EntitySelectorDiff
 from port_ocean.ocean import Ocean
+from port_ocean.context.event import event_context
 
 entity = Entity(
     identifier="repo-one",
@@ -96,11 +97,13 @@ webHook_event_data_for_creation = WebhookEventData(
 
 one_webHook_event_data_for_creation = WebhookEventData(
     kind="repository",
-    data={
-        "name": "repo-one",
-        "links": {"html": {"href": "https://example.com/repo-one"}},
-        "main_branch": "main",
-    },
+    data=[
+        {
+            "name": "repo-one",
+            "links": {"html": {"href": "https://example.com/repo-one"}},
+            "main_branch": "main",
+        }
+    ],
 )
 
 
@@ -285,12 +288,12 @@ async def test_getLiveEventResources_mappingHasTheResource_returnsTheResource(
 ) -> None:
     mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
 
-    result = await mock_live_events_mixin._get_live_event_resources("repository")
+    async with event_context("test_event") as event:
+        event.port_app_config = mock_port_app_config_with_repository_resource
+        result = await mock_live_events_mixin._get_live_event_resources("repository")
 
     assert len(result) == 1
     assert result[0].kind == "repository"
-    assert mock_live_events_mixin._port_app_config_handler is not None
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(use_cache=False)  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -300,24 +303,11 @@ async def test_getLiveEventResources_mappingDoesNotHaveTheResource_returnsEmptyL
 ) -> None:
     mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
 
-    result = await mock_live_events_mixin._get_live_event_resources("project")
+    async with event_context("test_event") as event:
+        event.port_app_config = mock_port_app_config_with_repository_resource
+        result = await mock_live_events_mixin._get_live_event_resources("project")
 
     assert len(result) == 0
-    assert mock_live_events_mixin._port_app_config_handler is not None
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.assert_called_once_with(use_cache=False)  # type: ignore
-
-
-@pytest.mark.asyncio
-async def test_getLiveEventResources_exceptionWhenGettingPortAppConfig_raisesException(
-    mock_live_events_mixin: LiveEventsMixin,
-) -> None:
-    mock_error = Exception("Test error")
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.side_effect = mock_error  # type: ignore
-
-    with pytest.raises(Exception) as exc_info:
-        await mock_live_events_mixin._get_live_event_resources("repository")
-
-    assert str(exc_info.value) == "Test error"
 
 
 @pytest.mark.asyncio
@@ -652,7 +642,9 @@ async def test_processData_singleWebhookEvent_entityUpsertedAndNoDelete(
     mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
     mock_live_events_mixin._entities_state_applier.delete = AsyncMock()
 
-    await mock_live_events_mixin.process_data([one_webHook_event_data_for_creation])
+    async with event_context("test_event") as event:
+        event.port_app_config = mock_port_app_config_with_repository_resource
+        await mock_live_events_mixin.process_data([one_webHook_event_data_for_creation])
 
     assert mock_upsert.call_count == 1
     assert mock_live_events_mixin._entities_state_applier.delete.call_count == 0
@@ -678,7 +670,13 @@ async def test_processData_singleWebhookEvent_entityDeleted(
     mock_live_events_mixin._entities_state_applier.delete = AsyncMock()
 
     with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=True):
-        await mock_live_events_mixin.process_data([one_webHook_event_data_for_creation])
+        async with event_context("test_event") as event:
+            event.port_app_config = (
+                mock_port_app_config_with_repository_resource_not_passing_selector
+            )
+            await mock_live_events_mixin.process_data(
+                [one_webHook_event_data_for_creation]
+            )
 
         assert mock_upsert.call_count == 0
         assert mock_live_events_mixin._entities_state_applier.delete.call_count == 1
