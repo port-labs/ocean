@@ -8,7 +8,6 @@ from fastapi import APIRouter, FastAPI
 from loguru import logger
 from pydantic import BaseModel
 from starlette.types import Receive, Scope, Send
-from yaml import safe_load  # type: ignore
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
@@ -119,21 +118,11 @@ class Ocean:
             )
             await repeated_function()
 
-    def load_external_integration_config(self) -> dict[str, Any]:
-        integration_config = self.config.integration.config.dict()
-        if self.config.config_file_path is not None:
-            try:
-                with open(self.config.config_file_path, "r") as f:
-                    file_config = safe_load(f)
-                for key, value in file_config.items():
-                    integration_config[key] = value
-            except Exception as e:
-                logger.error(f"Error loading external integration config: {e}")
-                return integration_config
-        return integration_config
-
-    def should_load_external_config(self) -> bool:
-        return self.config.config_file_path is not None
+    def load_external_oauth_access_token(self) -> str | None:
+        if self.config.oauth_access_token_file_path is not None:
+            with open(self.config.oauth_access_token_file_path, "r") as f:
+                return f.read()
+        return None
 
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")

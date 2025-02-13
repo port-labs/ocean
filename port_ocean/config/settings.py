@@ -71,8 +71,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     # Determines if Port should generate resources such as blueprints and pages instead of ocean
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
-    config_file_path: str | None = None
-    scheduled_config_reload_interval: int = 10
+    oauth_access_token_file_path: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
         default=cast(EventListenerSettingsType, {"type": "POLLING"})
