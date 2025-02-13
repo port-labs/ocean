@@ -101,6 +101,6 @@ class AbstractWebhookProcessor(ABC):
         pass
 
     @abstractmethod
-    async def filter_event_data(self, event: WebhookEvent) -> bool:
+    def filter_event_data(self, event: WebhookEvent) -> bool:
         """Filter the event data."""
         pass

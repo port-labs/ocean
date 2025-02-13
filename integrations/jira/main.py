@@ -18,10 +18,8 @@ from jira.overrides import (
     TeamResourceConfig,
 )
 class JiraProjectWebhookProcessor(AbstractWebhookProcessor):
-    @classmethod
-    async def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
-        return webhook_event.headers.startswith("project_")
-    @classmethod
+    def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
+        return webhook_event.payload.get("webhookEvent", "").startswith("project_")
     async def handle_event(self, payload: EventPayload) -> None:
         client = create_jira_client()
         project_key = payload["project"]["key"]
@@ -31,22 +29,18 @@ class JiraProjectWebhookProcessor(AbstractWebhookProcessor):
             kind=ObjectKind.PROJECT,
             data=[item]
         )
-    @classmethod
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         # For Jira webhooks, we don't need additional authentication as they are validated
         # through the webhook secret in the URL
         return True
 
-    @classmethod
     async def validate_payload(self, payload: EventPayload) -> bool:
         # Validate that the payload contains the required fields
         return True
 
 class JiraUserWebhookProcessor(AbstractWebhookProcessor):
-    @classmethod
-    async def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
-        return webhook_event.headers.startswith("user_")
-    @classmethod
+    def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
+        return webhook_event.payload.get("webhookEvent", "").startswith("user_")
     async def handle_event(self, payload: EventPayload) -> None:
         client = create_jira_client()
         account_id = payload["user"]["accountId"]
@@ -56,22 +50,18 @@ class JiraUserWebhookProcessor(AbstractWebhookProcessor):
             kind=ObjectKind.USER,
             data=[item]
         )
-    @classmethod
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         # For Jira webhooks, we don't need additional authentication as they are validated
         # through the webhook secret in the URL
         return True
 
-    @classmethod
     async def validate_payload(self, payload: EventPayload) -> bool:
         # Validate that the payload contains the required fields
         return True
 
 class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
-    @classmethod
-    async def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
-        return webhook_event.headers.startswith("jira:issue_")
-    @classmethod
+    def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
+        return webhook_event.payload.get("webhookEvent", "").startswith("jira:issue_")
     async def handle_event(self, payload: EventPayload) -> None:
         #client = create_jira_client()
         webhook_event = payload.get("webhookEvent")
@@ -85,13 +75,11 @@ class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
             data=[payload.get("issue")]
         )
 
-    @classmethod
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         # For Jira webhooks, we don't need additional authentication as they are validated
         # through the webhook secret in the URL
         return True
 
-    @classmethod
     async def validate_payload(self, payload: EventPayload) -> bool:
         # Validate that the payload contains the required fields
         return True
