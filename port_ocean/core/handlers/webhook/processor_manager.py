@@ -95,7 +95,8 @@ class WebhookProcessorManager(LiveEventsMixin):
                                 for processor in matching_processors
                             )
                         )
-                        await self.process_data(webhookEventDatas)
+                        if webhookEventDatas and all(webhookEventDatas):
+                            await self.process_data(webhookEventDatas)
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
                 for processor in matching_processors:
@@ -111,6 +112,8 @@ class WebhookProcessorManager(LiveEventsMixin):
             finally:
                 if webhookEvent:
                     await self._event_queues[path].commit()
+                    # Prevents committing empty events for cases where we shutdown while processing
+                    webhookEvent = None
 
     def _timestamp_event_error(self, event: WebhookEvent) -> None:
         """Timestamp an event as having an error"""

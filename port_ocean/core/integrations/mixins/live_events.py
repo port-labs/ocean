@@ -151,6 +151,6 @@ class LiveEventsMixin(HandlerMixin):
                     deleted_entities_count=len(entitiesToDeleteFilteredByKeptBlueprints))
         try:
             if entitiesToDeleteFilteredByKeptBlueprints:
-                await self.entities_state_applier.delete(entitiesToDeleteFilteredByKeptBlueprints)
+                await self.entities_state_applier.delete(entitiesToDeleteFilteredByKeptBlueprints, UserAgentType.exporter)
         except Exception as e:
             logger.error(f"Failed to delete entities: {str(e)}")
