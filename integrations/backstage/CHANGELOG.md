@@ -1,3 +1,11 @@
+## 0.1.41-beta (2025-02-13)
+
+
+### Improvements
+
+- Bumped cryptography version to ^44.0.1
+
+
 ## 0.1.40-beta (2025-02-09)
 
 
