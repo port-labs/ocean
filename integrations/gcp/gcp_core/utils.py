@@ -193,10 +193,8 @@ async def get_quotas_for_project(
                 project_rate_limiter = await project_get_requests_per_minute_per_project.persistent_rate_limiter(
                     project_id
                 )
-                project_semaphore = (
-                    await project_get_requests_per_minute_per_project.semaphore(
-                        project_id
-                    )
+                project_semaphore = await project_get_requests_per_minute_per_project.semaphore_for_real_time_event(
+                    project_id
                 )
                 return project_rate_limiter, project_semaphore
             case (

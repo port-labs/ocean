@@ -289,3 +289,14 @@ class ResourceBoundedSemaphore(GCPResourceRateLimiter):
                 f"Consider increasing the {self.service}/{self.quota_id} quota for {container_id} to process more {self.container_type.value} concurrently."
             )
         return limit
+
+    async def semaphore_for_real_time_event(
+        self, container_id: str
+    ) -> asyncio.BoundedSemaphore:
+        name = self.quota_name(container_id)
+        quota = await self.register(container_id, name)
+        semaphore = asyncio.BoundedSemaphore(int(quota.max_rate))
+        logger.info(
+            f"The integration will process {quota.max_rate} {self.container_type.value} at a time based on {container_id}'s quota capacity"
+        )
+        return semaphore

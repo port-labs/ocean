@@ -3,6 +3,8 @@ import http
 import os
 import tempfile
 import typing
+from asyncio import BoundedSemaphore
+
 from fastapi import Request, Response
 from loguru import logger
 
@@ -39,6 +41,7 @@ from gcp_core.utils import (
 )
 
 PROJECT_V3_GET_REQUESTS_RATE_LIMITER: PersistentAsyncLimiter
+PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE: BoundedSemaphore
 BACKGROUND_TASK_THRESHOLD: float
 
 
@@ -98,14 +101,18 @@ async def setup_application_default_credentials() -> None:
 @ocean.on_start()
 async def setup_real_time_request_controllers() -> None:
     global PROJECT_V3_GET_REQUESTS_RATE_LIMITER
+    global PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE
     global BACKGROUND_TASK_THRESHOLD
     if not ocean.event_listener_type == "ONCE":
-        PROJECT_V3_GET_REQUESTS_RATE_LIMITER, _ = typing.cast(
+        (
+            PROJECT_V3_GET_REQUESTS_RATE_LIMITER,
+            PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE,
+        ) = typing.cast(
             tuple[PersistentAsyncLimiter, asyncio.BoundedSemaphore],
             await resolve_request_controllers(AssetTypesWithSpecialHandling.PROJECT),
         )
         BACKGROUND_TASK_THRESHOLD = float(
-            PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 100
+            PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 10
         )
 
 
@@ -206,6 +213,7 @@ async def process_realtime_event(
             asset_project,
             asset_data,
             PROJECT_V3_GET_REQUESTS_RATE_LIMITER,
+            PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE,
             config,
         )
         if asset_data.get("deleted") is True:
