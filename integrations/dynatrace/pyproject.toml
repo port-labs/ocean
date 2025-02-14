@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dynatrace"
-version = "0.1.99"
+version = "0.1.100"
 description = "An integration used to import Dynatrace resources into Port"
 authors = ["Ayodeji Adeoti <<ayodeji.adeoti@getport.io>>"]
 
@@ -20,7 +20,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
-cryptography = "^43.0.1"
+cryptography = "^44.0.1"
 
 [tool.towncrier]
 directory = "changelog"

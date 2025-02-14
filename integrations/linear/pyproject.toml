@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "linear"
-version = "0.1.81"
+version = "0.1.82"
 description = "Integration to bring information from Linear into Port"
 authors = ["Mor Paz <mor@getport.io>"]
 
@@ -20,7 +20,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
-cryptography = "^43.0.1"
+cryptography = "^44.0.1"
 
 [tool.towncrier]
 directory = "changelog"
