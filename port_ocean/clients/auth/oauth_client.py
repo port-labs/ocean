@@ -1,6 +1,3 @@
-from abc import abstractmethod
-
-
 from port_ocean.clients.auth.auth_client import AuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import register_on_retry_callback
@@ -18,10 +15,8 @@ class OAuthClient(AuthClient):
         return ocean.app.load_external_oauth_access_token() is not None
 
     @property
-    def external_access_token(self) -> str | None:
-        return ocean.app.load_external_oauth_access_token()
-
-    @property
-    @abstractmethod
-    def access_token(self) -> str:
-        pass
+    def external_access_token(self) -> str:
+        access_token = ocean.app.load_external_oauth_access_token()
+        if access_token is None:
+            raise ValueError("No external access token found")
+        return access_token
