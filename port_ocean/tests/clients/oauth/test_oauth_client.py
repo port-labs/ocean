@@ -3,7 +3,7 @@ import httpx
 from unittest.mock import MagicMock, patch
 from port_ocean.ocean import Ocean
 
-from port_ocean.clients.oauth.oauth_client import OAuthClient
+from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.config.settings import IntegrationConfiguration
 
 
@@ -24,7 +24,7 @@ class MockOAuthClient(OAuthClient):
     def is_oauth_enabled(self) -> bool:
         return self._is_oauth_enabled
 
-    def refresh_request_oauth_creds(self, request: httpx.Request) -> httpx.Request:
+    def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
         headers = dict(request.headers)
         headers["Authorization"] = f"Bearer {self.access_token}"
         return httpx.Request(
@@ -61,7 +61,7 @@ def test_oauth_client_disabled_initialization(
     assert disabled_oauth_client.is_oauth_enabled() is False
 
 
-def test_refresh_request_oauth_creds(mock_oauth_client: MockOAuthClient) -> None:
+def test_refresh_request_auth_creds(mock_oauth_client: MockOAuthClient) -> None:
     # Create request with some content and existing headers
     original_headers = {"Accept": "application/json", "X-Custom": "value"}
     original_content = b'{"key": "value"}'
@@ -72,7 +72,7 @@ def test_refresh_request_oauth_creds(mock_oauth_client: MockOAuthClient) -> None
         content=original_content,
     )
 
-    refreshed_request = mock_oauth_client.refresh_request_oauth_creds(original_request)
+    refreshed_request = mock_oauth_client.refresh_request_auth_creds(original_request)
 
     # Verify all attributes are identical except headers
     assert refreshed_request.method == original_request.method
