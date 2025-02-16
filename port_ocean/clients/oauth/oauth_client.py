@@ -14,17 +14,16 @@ class OAuthClient(ABC):
         if self.is_oauth_enabled():
             register_on_retry_callback(self.refresh_request_oauth_creds)
 
-    @abstractmethod
     def is_oauth_enabled(self) -> bool:
-        pass
-
-    @abstractmethod
-    def refresh_request_oauth_creds(self, request: httpx.Request) -> httpx.Request:
-        pass
+        return ocean.app.load_external_oauth_access_token() is not None
 
     @property
     def external_access_token(self) -> str | None:
         return ocean.app.load_external_oauth_access_token()
+
+    @abstractmethod
+    def refresh_request_oauth_creds(self, request: httpx.Request) -> httpx.Request:
+        pass
 
     @property
     @abstractmethod
