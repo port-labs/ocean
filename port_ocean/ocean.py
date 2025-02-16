@@ -120,8 +120,14 @@ class Ocean:
 
     def load_external_oauth_access_token(self) -> str | None:
         if self.config.oauth_access_token_file_path is not None:
-            with open(self.config.oauth_access_token_file_path, "r") as f:
-                return f.read()
+            try:
+                with open(self.config.oauth_access_token_file_path, "r") as f:
+                    return f.read()
+            except Exception:
+                logger.exception(
+                    "Failed to load external oauth access token from file",
+                    file_path=self.config.oauth_access_token_file_path,
+                )
         return None
 
     def initialize_app(self) -> None:
