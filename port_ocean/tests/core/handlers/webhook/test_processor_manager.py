@@ -678,21 +678,19 @@ async def test_webhook_processing_flow(
             return True
 
     processing_complete = asyncio.Event()
-    original_export_single_resource = LiveEventsMixin.process_data
+    original_process_data = LiveEventsMixin.process_data
 
     async def patched_export_single_resource(
         self, webhookEventDatas: list[WebhookEventData]
     ) -> None:
         try:
-            await original_export_single_resource(self, webhookEventDatas)
+            await original_process_data(self, webhookEventDatas)
         except Exception as e:
             raise e
         finally:
             processing_complete.set()
 
-    monkeypatch.setattr(
-        LiveEventsMixin, "_export_single_resource", patched_export_single_resource
-    )
+    monkeypatch.setattr(LiveEventsMixin, "process_data", patched_export_single_resource)
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = WebhookProcessorManager(
