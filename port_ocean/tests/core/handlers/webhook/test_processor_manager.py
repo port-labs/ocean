@@ -423,6 +423,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
+from port_ocean.core.models import Entity
 
 
 class MockProcessor(AbstractWebhookProcessor):
@@ -525,15 +527,18 @@ def mock_port_app_config() -> PortAppConfig:
         create_missing_related_entities=False,
         resources=[
             ResourceConfig(
-                kind="project",
+                kind="repository",
                 selector=Selector(query="true"),
                 port=PortResourceConfig(
                     entity=MappingsConfig(
                         mappings=EntityMapping(
-                            identifier=".id | tostring",
+                            identifier=".name",
                             title=".name",
                             blueprint='"service"',
-                            properties={"url": ".web_url"},
+                            properties={
+                                "url": ".links.html.href",
+                                "defaultBranch": ".main_branch",
+                            },
                             relations={},
                         )
                     )
@@ -612,8 +617,25 @@ def mock_context(mock_ocean: Ocean) -> PortOceanContext:
     return context
 
 
+entity = Entity(
+    identifier="repo-one",
+    blueprint="service",
+    title="repo-one",
+    team=[],
+    properties={
+        "url": "https://example.com/repo-one",
+        "defaultBranch": "main",
+    },
+    relations={},
+)
+
+
 @pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
+)
 async def test_webhook_processing_flow(
+    mock_upsert: AsyncMock,
     mock_context: PortOceanContext,
     mock_port_app_config: PortAppConfig,
     monkeypatch,
@@ -623,7 +645,11 @@ async def test_webhook_processing_flow(
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.handler.ocean", mock_context
     )
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
+    )
     processed_events: list[WebhookEventData] = []
+    mock_upsert.return_value = [entity]
 
     class TestProcessor(AbstractWebhookProcessor):
         async def authenticate(
@@ -635,13 +661,38 @@ async def test_webhook_processing_flow(
             return True
 
         async def handle_event(self, payload: EventPayload) -> WebhookEventData:
-            event_data = WebhookEventData(kind="test", data=[{"processed": True}])
+            event_data = WebhookEventData(
+                kind="repository",
+                data=[
+                    {
+                        "name": "repo-one",
+                        "links": {"html": {"href": "https://example.com/repo-one"}},
+                        "main_branch": "main",
+                    }
+                ],
+            )
             processed_events.append(event_data)
             return event_data
 
         def filter_event_data(self, event: WebhookEvent) -> bool:
             return True
 
+    processing_complete = asyncio.Event()
+    original_export_single_resource = LiveEventsMixin.process_data
+
+    async def patched_export_single_resource(
+        self, webhookEventDatas: list[WebhookEventData]
+    ) -> None:
+        try:
+            await original_export_single_resource(self, webhookEventDatas)
+        except Exception as e:
+            raise e
+        finally:
+            processing_complete.set()
+
+    monkeypatch.setattr(
+        LiveEventsMixin, "_export_single_resource", patched_export_single_resource
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = WebhookProcessorManager(
@@ -669,17 +720,16 @@ async def test_webhook_processing_flow(
             test_path, json=test_payload, headers={"Content-Type": "application/json"}
         )
 
-    # 4. Verify response
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
-    # 5. Wait for event processing
-    await asyncio.sleep(0.1)  # Allow time for async processing
+    try:
+        await asyncio.wait_for(processing_complete.wait(), timeout=500.0)
+    except asyncio.TimeoutError:
+        pytest.fail("Event processing timed out")
 
-    # 6. Verify event was processed
     assert len(processed_events) == 1
     assert processed_events[0].kind == "test"
     assert processed_events[0].data[0]["processed"] is True
 
-    # 7. Cleanup
     await processor_manager.shutdown()
