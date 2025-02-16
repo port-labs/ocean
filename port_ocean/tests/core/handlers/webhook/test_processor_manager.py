@@ -1,258 +1,3 @@
-# import asyncio
-# import pytest
-# from fastapi import APIRouter
-# from typing import Dict, Any
-
-# from port_ocean.exceptions.webhook_processor import RetryableError
-# from port_ocean.core.handlers.webhook.processor_manager import WebhookProcessorManager
-# from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-#     AbstractWebhookProcessor,
-# )
-# from port_ocean.core.handlers.webhook.webhook_event import (
-#     WebhookEvent,
-# )
-# from port_ocean.core.handlers.queue import LocalQueue
-# from port_ocean.utils.signal import SignalHandler
-
-
-# class MockWebhookProcessor(AbstractWebhookProcessor):
-#     def __init__(self, event: WebhookEvent) -> None:
-#         super().__init__(event)
-#         self.processed = False
-#         self.cancel_called = False
-#         self.error_to_raise: Exception | asyncio.CancelledError | None = None
-#         self.retry_count = 0
-#         self.max_retries = 3
-
-#     async def authenticate(
-#         self, payload: Dict[str, Any], headers: Dict[str, str]
-#     ) -> bool:
-#         return True
-
-#     async def validate_payload(self, payload: Dict[str, Any]) -> bool:
-#         return True
-
-#     async def handle_event(self, payload: Dict[str, Any]) -> None:
-#         if self.error_to_raise:
-#             raise self.error_to_raise
-#         self.processed = True
-
-#     async def cancel(self) -> None:
-#         self.cancel_called = True
-
-
-# class RetryableProcessor(MockWebhookProcessor):
-#     def __init__(self, event: WebhookEvent) -> None:
-#         super().__init__(event)
-#         self.attempt_count = 0
-
-#     async def handle_event(self, payload: Dict[str, Any]) -> None:
-#         self.attempt_count += 1
-#         if self.attempt_count < 3:  # Succeed on third attempt
-#             raise RetryableError("Temporary failure")
-#         self.processed = True
-
-
-# class TestableWebhookProcessorManager(WebhookProcessorManager):
-#     __test__ = False
-
-#     def __init__(self, *args: Any, **kwargs: Any) -> None:
-#         super().__init__(*args, **kwargs)
-#         self.running_processors: list[AbstractWebhookProcessor] = []
-#         self.no_matching_processors: bool = False
-
-#     def _extract_matching_processors(
-#         self, event: WebhookEvent, path: str
-#     ) -> list[AbstractWebhookProcessor]:
-#         try:
-#             return super()._extract_matching_processors(event, path)
-#         except ValueError:
-#             self.no_matching_processors = True
-#             raise
-
-#     async def _process_single_event(
-#         self, processor: AbstractWebhookProcessor, path: str
-#     ) -> None:
-#         self.running_processors.append(processor)
-#         await super()._process_single_event(processor, path)
-
-
-# class TestWebhookProcessorManager:
-#     @pytest.fixture
-#     def router(self) -> APIRouter:
-#         return APIRouter()
-
-#     @pytest.fixture
-#     def signal_handler(self) -> SignalHandler:
-#         return SignalHandler()
-
-#     @pytest.fixture
-#     def processor_manager(
-#         self, router: APIRouter, signal_handler: SignalHandler
-#     ) -> TestableWebhookProcessorManager:
-#         return TestableWebhookProcessorManager(router, signal_handler)
-
-#     @pytest.fixture
-#     def mock_event(self) -> WebhookEvent:
-#         return WebhookEvent.from_dict(
-#             {
-#                 "payload": {"test": "data"},
-#                 "headers": {"content-type": "application/json"},
-#                 "trace_id": "test-trace",
-#             }
-#         )
-
-#     @staticmethod
-#     def assert_event_processed_successfully(
-#         processor: MockWebhookProcessor,
-#     ) -> None:
-#         """Assert that a processor's event was processed successfully"""
-#         assert processor.processed, "Event was not processed successfully"
-
-#     @staticmethod
-#     def assert_event_processed_with_error(processor: MockWebhookProcessor) -> None:
-#         """Assert that an event was processed with an error"""
-#         assert not processor.processed, "Event did not fail as expected"
-
-#     @pytest.mark.skip(reason="Temporarily ignoring this test")
-#     async def test_register_handler(
-#         self, processor_manager: TestableWebhookProcessorManager
-#     ) -> None:
-#         """Test registering a processor for a path."""
-#         processor_manager.register_processor("/test", MockWebhookProcessor)
-#         assert "/test" in processor_manager._processors
-#         assert len(processor_manager._processors["/test"]) == 1
-#         assert isinstance(processor_manager._event_queues["/test"], LocalQueue)
-
-#     @pytest.mark.skip(reason="Temporarily ignoring this test")
-#     async def test_register_multiple_handlers_with_filters(
-#         self, processor_manager: TestableWebhookProcessorManager
-#     ) -> None:
-#         """Test registering multiple processors with different filters."""
-
-#         def filter1(e: WebhookEvent) -> bool:
-#             return e.payload.get("type") == "type1"
-
-#         def filter2(e: WebhookEvent) -> bool:
-#             return e.payload.get("type") == "type2"
-
-#         processor_manager.register_processor("/test", MockWebhookProcessor, filter1)
-#         processor_manager.register_processor("/test", MockWebhookProcessor, filter2)
-
-#         assert len(processor_manager._processors["/test"]) == 2
-
-#     @pytest.mark.skip(reason="Temporarily ignoring this test")
-#     async def test_successful_event_processing(
-#         self,
-#         processor_manager: TestableWebhookProcessorManager,
-#         mock_event: WebhookEvent,
-#     ) -> None:
-#         """Test successful processing of an event."""
-#         processed_events: list[MockWebhookProcessor] = []
-
-#         class SuccessProcessor(MockWebhookProcessor):
-#             async def handle_event(self, payload: Dict[str, Any]) -> None:
-#                 self.processed = True
-#                 processed_events.append(self)
-
-#         processor_manager.register_processor("/test", SuccessProcessor)
-
-#         await processor_manager.start_processing_event_messages()
-#         await processor_manager._event_queues["/test"].put(mock_event)
-
-#         # Allow time for processing
-#         await asyncio.sleep(0.1)
-
-#         # Verify at least one processor ran and completed successfully
-#         assert len(processed_events) > 0
-#         for processor in processed_events:
-#             self.assert_event_processed_successfully(processor)
-
-#     @pytest.mark.skip(reason="Temporarily ignoring this test")
-#     async def test_graceful_shutdown(
-#         self,
-#         processor_manager: TestableWebhookProcessorManager,
-#         mock_event: WebhookEvent,
-#     ) -> None:
-#         """Test graceful shutdown with in-flight requests"""
-#         processor_manager.register_processor("/test", MockWebhookProcessor)
-
-#         await processor_manager.start_processing_event_messages()
-#         await processor_manager._event_queues["/test"].put(mock_event)
-
-#         # Start shutdown
-#         await processor_manager.shutdown()
-
-#         # Verify all tasks are cleaned up
-#         assert len(processor_manager._webhook_processor_tasks) == 0
-#         self.assert_event_processed_successfully(
-#             processor_manager.running_processors[0]  # type: ignore
-#         )
-
-#     @pytest.mark.skip(reason="Temporarily ignoring this test")
-#     async def test_handler_filter_matching(
-#         self, processor_manager: TestableWebhookProcessorManager
-#     ) -> None:
-#         """Test that processors are selected based on their filters."""
-#         type1_event = WebhookEvent.from_dict(
-#             {"payload": {"type": "type1"}, "headers": {}, "trace_id": "test-trace-1"}
-#         )
-
-#         type2_event = WebhookEvent.from_dict(
-#             {"payload": {"type": "type2"}, "headers": {}, "trace_id": "test-trace-2"}
-#         )
-
-#         def filter1(e: WebhookEvent) -> bool:
-#             return e.payload.get("type") == "type1"
-
-#         def filter2(e: WebhookEvent) -> bool:
-#             return e.payload.get("type") == "type2"
-
-#         processor_manager.register_processor("/test", MockWebhookProcessor, filter1)
-#         processor_manager.register_processor("/test", MockWebhookProcessor, filter2)
-
-#         await processor_manager.start_processing_event_messages()
-
-#         # Process both events
-#         await processor_manager._event_queues["/test"].put(type1_event)
-#         await processor_manager._event_queues["/test"].put(type2_event)
-
-#         await asyncio.sleep(0.1)
-
-#         # Verify both events were processed
-#         self.assert_event_processed_successfully(
-#             processor_manager.running_processors[0]  # type: ignore
-#         )
-#         self.assert_event_processed_successfully(
-#             processor_manager.running_processors[1]  # type: ignore
-#         )
-
-#     @pytest.mark.skip(reason="Temporarily ignoring this test")
-#     async def test_handler_timeout(
-#         self, router: APIRouter, signal_handler: SignalHandler, mock_event: WebhookEvent
-#     ) -> None:
-#         """Test processor timeout behavior."""
-
-#         # Set a short timeout for testing
-#         processor_manager = TestableWebhookProcessorManager(
-#             router, signal_handler, max_event_processing_seconds=0.1
-#         )
-
-#         class TimeoutHandler(MockWebhookProcessor):
-#             async def handle_event(self, payload: Dict[str, Any]) -> None:
-#                 await asyncio.sleep(2)  # Longer than max_handler_processing_seconds
-
-#         processor_manager.register_processor("/test", TimeoutHandler)
-#         await processor_manager.start_processing_event_messages()
-#         await processor_manager._event_queues["/test"].put(mock_event)
-
-#         # Wait long enough for the timeout to occur
-#         await asyncio.sleep(0.2)
-
-#         self.assert_event_processed_with_error(
-#             processor_manager.running_processors[0]  # type: ignore
-#         )
-
 #     @pytest.mark.skip(reason="Temporarily ignoring this test")
 #     async def test_handler_cancellation(
 #         self,
@@ -425,6 +170,8 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.models import Entity
+from port_ocean.exceptions.webhook_processor import RetryableError
+from port_ocean.core.handlers.queue import LocalQueue
 
 
 class MockProcessor(AbstractWebhookProcessor):
@@ -459,11 +206,84 @@ class MockProcessorFalse(AbstractWebhookProcessor):
         return False
 
 
+class MockTimeoutProcessor(AbstractWebhookProcessor):
+    async def authenticate(
+        self, payload: Dict[str, Any], headers: Dict[str, str]
+    ) -> bool:
+        return True
+
+    async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        return True
+
+    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+        await asyncio.sleep(5)
+        return WebhookEventData(kind="test", data=[{}])
+
+    def filter_event_data(self, event: WebhookEvent) -> bool:
+        return True
+
+
+class MockWebhookProcessor(AbstractWebhookProcessor):
+    def __init__(self, event: WebhookEvent) -> None:
+        super().__init__(event)
+        self.processed = False
+        self.cancel_called = False
+        self.error_to_raise: Exception | asyncio.CancelledError | None = None
+        self.retry_count = 0
+        self.max_retries = 3
+
+    async def authenticate(
+        self, payload: Dict[str, Any], headers: Dict[str, str]
+    ) -> bool:
+        return True
+
+    async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        return True
+
+    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+        if self.error_to_raise:
+            raise self.error_to_raise
+        self.processed = True
+        return WebhookEventData(kind="test", data=[{}])
+
+    async def cancel(self) -> None:
+        self.cancel_called = True
+
+    def filter_event_data(self, event: WebhookEvent) -> bool:
+        return True
+
+
+class RetryableProcessor(MockWebhookProcessor):
+    def __init__(self, event: WebhookEvent) -> None:
+        super().__init__(event)
+        self.attempt_count = 0
+
+    async def authenticate(
+        self, payload: Dict[str, Any], headers: Dict[str, str]
+    ) -> bool:
+        return True
+
+    async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        return True
+
+    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+        self.attempt_count += 1
+        if self.attempt_count < 3:  # Succeed on third attempt
+            raise RetryableError("Temporary failure")
+        self.processed = True
+        return WebhookEventData(kind="test", data=[{}])
+
+    def filter_event_data(self, event: WebhookEvent) -> bool:
+        return True
+
+
 @pytest.fixture
 def processor_manager() -> WebhookProcessorManager:
     router = APIRouter()
     signal_handler = SignalHandler()
-    return WebhookProcessorManager(router, signal_handler)
+    return WebhookProcessorManager(
+        router, signal_handler, max_event_processing_seconds=3
+    )
 
 
 @pytest.fixture
@@ -475,9 +295,7 @@ def test_extractMatchingProcessors_processorMatch(
     processor_manager: WebhookProcessorManager, webhook_event: WebhookEvent
 ) -> None:
     test_path = "/test"
-    processor_manager.register_processor(
-        test_path, MockProcessor
-    )  # Use register_processor instead of direct assignment
+    processor_manager.register_processor(test_path, MockProcessor)
 
     processors = processor_manager._extract_matching_processors(
         webhook_event, test_path
@@ -485,7 +303,7 @@ def test_extractMatchingProcessors_processorMatch(
 
     assert len(processors) == 1
     assert isinstance(processors[0], MockProcessor)
-    assert processors[0].event != webhook_event  # Should be a clone
+    assert processors[0].event != webhook_event
     assert processors[0].event.payload == webhook_event.payload
 
 
@@ -493,9 +311,7 @@ def test_extractMatchingProcessors_noMatch(
     processor_manager: WebhookProcessorManager, webhook_event: WebhookEvent
 ) -> None:
     test_path = "/test"
-    processor_manager.register_processor(
-        test_path, MockProcessorFalse
-    )  # Use register_processor here too
+    processor_manager.register_processor(test_path, MockProcessorFalse)
 
     with pytest.raises(ValueError, match="No matching processors found"):
         processor_manager._extract_matching_processors(webhook_event, test_path)
@@ -505,9 +321,7 @@ def test_extractMatchingProcessors_multipleMatches(
     processor_manager: WebhookProcessorManager, webhook_event: WebhookEvent
 ) -> None:
     test_path = "/test"
-    processor_manager.register_processor(
-        test_path, MockProcessor
-    )  # Register processors properly
+    processor_manager.register_processor(test_path, MockProcessor)
     processor_manager.register_processor(test_path, MockProcessor)
 
     processors = processor_manager._extract_matching_processors(
@@ -516,7 +330,79 @@ def test_extractMatchingProcessors_multipleMatches(
 
     assert len(processors) == 2
     assert all(isinstance(p, MockProcessor) for p in processors)
-    assert all(p.event != webhook_event for p in processors)  # All should be clones
+    assert all(p.event != webhook_event for p in processors)
+
+
+def test_registerHandler_registrationWorks(
+    processor_manager: WebhookProcessorManager,
+) -> None:
+    processor_manager.register_processor("/test", MockWebhookProcessor)
+    assert "/test" in processor_manager._processors
+    assert len(processor_manager._processors["/test"]) == 1
+    assert isinstance(processor_manager._event_queues["/test"], LocalQueue)
+
+
+def test_register_multiple_handlers_with_filters(
+    processor_manager: WebhookProcessorManager,
+) -> None:
+    processor_manager.register_processor("/test", MockWebhookProcessor)
+    processor_manager.register_processor("/test", MockWebhookProcessor)
+
+    assert len(processor_manager._processors["/test"]) == 2
+
+
+async def test_shutdown_ShutsDownAllTasks(
+    processor_manager: WebhookProcessorManager,
+    webhook_event: WebhookEvent,
+    mock_context: PortOceanContext,
+) -> None:
+    processor_manager.register_processor("/test", MockWebhookProcessor)
+    await processor_manager.start_processing_event_messages()
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
+        await processor_manager._event_queues["/test"].put((webhook_event, event))
+
+    await processor_manager.shutdown()
+
+    assert len(processor_manager._webhook_processor_tasks) == 0
+
+
+@pytest.mark.asyncio
+async def test_process_queue_handlerReachedTimeout_exceptionThrown(
+    processor_manager: WebhookProcessorManager,
+    webhook_event: WebhookEvent,
+    monkeypatch: pytest.MonkeyPatch,
+    mock_context: PortOceanContext,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    """Test processor timeout behavior."""
+    processing_complete = asyncio.Event()
+    original_process_data = WebhookProcessorManager._execute_processor
+    test_state = {"exception_thrown": None}
+
+    async def patched_export_single_resource(
+        self: WebhookProcessorManager, processor: AbstractWebhookProcessor
+    ) -> WebhookEventData:
+        try:
+            await original_process_data(self, processor)
+        except Exception as e:
+            test_state["exception_thrown"] = e  # type: ignore
+        finally:
+            processing_complete.set()
+            return WebhookEventData(kind="test", data=[{}])
+
+    monkeypatch.setattr(
+        WebhookProcessorManager, "_execute_processor", patched_export_single_resource
+    )
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
+        processor_manager.register_processor("/test", MockTimeoutProcessor)
+        event.port_app_config = mock_port_app_config
+        await processor_manager.start_processing_event_messages()
+        await processor_manager._event_queues["/test"].put((webhook_event, event))
+
+    await asyncio.wait_for(processing_complete.wait(), timeout=10.0)
+    assert isinstance(test_state["exception_thrown"], asyncio.TimeoutError) is True
+    await processor_manager.shutdown()
 
 
 @pytest.fixture
@@ -637,7 +523,7 @@ entity = Entity(
 @patch(
     "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
 )
-async def test_webhook_processing_flow(
+async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityUpserted(
     mock_delete: AsyncMock,
     mock_upsert: AsyncMock,
     mock_context: PortOceanContext,
