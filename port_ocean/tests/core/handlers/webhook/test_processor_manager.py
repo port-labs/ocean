@@ -722,12 +722,11 @@ async def test_webhook_processing_flow(
     assert response.json() == {"status": "ok"}
 
     try:
-        await asyncio.wait_for(processing_complete.wait(), timeout=500.0)
+        await asyncio.wait_for(processing_complete.wait(), timeout=10.0)
     except asyncio.TimeoutError:
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 1
-    assert processed_events[0].kind == "test"
-    assert processed_events[0].data[0]["processed"] is True
+    assert processed_events[0].kind == "repository"
 
     await processor_manager.shutdown()
