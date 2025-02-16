@@ -62,7 +62,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             HTTPStatus.SERVICE_UNAVAILABLE,
             HTTPStatus.GATEWAY_TIMEOUT,
             HTTPStatus.UNAUTHORIZED,
-            HTTPStatus.BAD_REQUEST,
         ]
     )
     MAX_BACKOFF_WAIT_IN_SECONDS = 60
