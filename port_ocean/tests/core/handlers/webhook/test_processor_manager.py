@@ -634,7 +634,11 @@ entity = Entity(
 @patch(
     "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
 )
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
+)
 async def test_webhook_processing_flow(
+    mock_delete: AsyncMock,
     mock_upsert: AsyncMock,
     mock_context: PortOceanContext,
     mock_port_app_config: PortAppConfig,
@@ -729,4 +733,7 @@ async def test_webhook_processing_flow(
     assert len(processed_events) == 1
     assert processed_events[0].kind == "repository"
 
-    await processor_manager.shutdown()
+    mock_upsert.assert_called_once()
+    mock_delete.assert_not_called()
+
+    await mock_context.app.webhook_manager.shutdown()
