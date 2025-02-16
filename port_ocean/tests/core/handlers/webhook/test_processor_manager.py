@@ -403,6 +403,26 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from fastapi import APIRouter
 from port_ocean.utils.signal import SignalHandler
 from typing import Dict, Any
+import asyncio
+from fastapi.testclient import TestClient
+from fastapi import FastAPI
+from port_ocean.context.ocean import PortOceanContext
+from unittest.mock import AsyncMock
+from port_ocean.context.event import event_context, EventType
+from port_ocean.context.ocean import ocean
+from unittest.mock import MagicMock, patch
+from httpx import Response
+from port_ocean.clients.port.client import PortClient
+from port_ocean import Ocean
+from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.handlers.port_app_config.models import (
+    EntityMapping,
+    MappingsConfig,
+    PortAppConfig,
+    PortResourceConfig,
+    ResourceConfig,
+    Selector,
+)
 
 
 class MockProcessor(AbstractWebhookProcessor):
@@ -449,57 +469,217 @@ def webhook_event() -> WebhookEvent:
     return WebhookEvent(payload={}, headers={}, trace_id="test-trace")
 
 
-def test_extract_matching_processors_with_match(
+def test_extractMatchingProcessors_processorMatch(
     processor_manager: WebhookProcessorManager, webhook_event: WebhookEvent
 ) -> None:
-    # Arrange
     test_path = "/test"
     processor_manager.register_processor(
         test_path, MockProcessor
     )  # Use register_processor instead of direct assignment
 
-    # Act
     processors = processor_manager._extract_matching_processors(
         webhook_event, test_path
     )
 
-    # Assert
     assert len(processors) == 1
     assert isinstance(processors[0], MockProcessor)
     assert processors[0].event != webhook_event  # Should be a clone
     assert processors[0].event.payload == webhook_event.payload
 
 
-def test_extract_matching_processors_no_match(
+def test_extractMatchingProcessors_noMatch(
     processor_manager: WebhookProcessorManager, webhook_event: WebhookEvent
 ) -> None:
-    # Arrange
     test_path = "/test"
     processor_manager.register_processor(
         test_path, MockProcessorFalse
     )  # Use register_processor here too
 
-    # Act & Assert
     with pytest.raises(ValueError, match="No matching processors found"):
         processor_manager._extract_matching_processors(webhook_event, test_path)
 
 
-def test_extract_matching_processors_multiple_matches(
+def test_extractMatchingProcessors_multipleMatches(
     processor_manager: WebhookProcessorManager, webhook_event: WebhookEvent
 ) -> None:
-    # Arrange
     test_path = "/test"
     processor_manager.register_processor(
         test_path, MockProcessor
     )  # Register processors properly
     processor_manager.register_processor(test_path, MockProcessor)
 
-    # Act
     processors = processor_manager._extract_matching_processors(
         webhook_event, test_path
     )
 
-    # Assert
     assert len(processors) == 2
     assert all(isinstance(p, MockProcessor) for p in processors)
     assert all(p.event != webhook_event for p in processors)  # All should be clones
+
+
+@pytest.fixture
+def mock_port_app_config() -> PortAppConfig:
+    return PortAppConfig(
+        enable_merge_entity=True,
+        delete_dependent_entities=True,
+        create_missing_related_entities=False,
+        resources=[
+            ResourceConfig(
+                kind="project",
+                selector=Selector(query="true"),
+                port=PortResourceConfig(
+                    entity=MappingsConfig(
+                        mappings=EntityMapping(
+                            identifier=".id | tostring",
+                            title=".name",
+                            blueprint='"service"',
+                            properties={"url": ".web_url"},
+                            relations={},
+                        )
+                    )
+                ),
+            )
+        ],
+    )
+
+
+@pytest.fixture
+def mock_http_client() -> MagicMock:
+    mock_http_client = MagicMock()
+    mock_upserted_entities = []
+
+    async def post(url: str, *args: Any, **kwargs: Any) -> Response:
+        entity = kwargs.get("json", {})
+        if entity.get("properties", {}).get("mock_is_to_fail", {}):
+            return Response(
+                404, headers=MagicMock(), json={"ok": False, "error": "not_found"}
+            )
+
+        mock_upserted_entities.append(
+            f"{entity.get('identifier')}-{entity.get('blueprint')}"
+        )
+        return Response(
+            200,
+            json={
+                "entity": {
+                    "identifier": entity.get("identifier"),
+                    "blueprint": entity.get("blueprint"),
+                }
+            },
+        )
+
+    mock_http_client.post = AsyncMock(side_effect=post)
+    return mock_http_client
+
+
+@pytest.fixture
+def mock_port_client(mock_http_client: MagicMock) -> PortClient:
+    mock_port_client = PortClient(
+        MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
+    mock_port_client.auth = AsyncMock()
+    mock_port_client.auth.headers = AsyncMock(
+        return_value={
+            "Authorization": "test",
+            "User-Agent": "test",
+        }
+    )
+
+    mock_port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+    mock_port_client.client = mock_http_client
+    return mock_port_client
+
+
+@pytest.fixture
+def mock_ocean(mock_port_client: PortClient) -> Ocean:
+    with patch("port_ocean.ocean.Ocean.__init__", return_value=None):
+        ocean_mock = Ocean(
+            MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        )
+        ocean_mock.config = MagicMock()
+        ocean_mock.config.port = MagicMock()
+        ocean_mock.config.port.port_app_config_cache_ttl = 60
+        ocean_mock.port_client = mock_port_client
+        ocean_mock.integration_router = APIRouter()
+        ocean_mock.fast_api_app = FastAPI()
+        return ocean_mock
+
+
+@pytest.fixture
+def mock_context(mock_ocean: Ocean) -> PortOceanContext:
+    context = PortOceanContext(mock_ocean)
+    ocean._app = context.app
+    return context
+
+
+@pytest.mark.asyncio
+async def test_webhook_processing_flow(
+    mock_context: PortOceanContext,
+    mock_port_app_config: PortAppConfig,
+    monkeypatch,
+) -> None:
+    """Integration test for the complete webhook processing flow"""
+
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.handler.ocean", mock_context
+    )
+    processed_events: list[WebhookEventData] = []
+
+    class TestProcessor(AbstractWebhookProcessor):
+        async def authenticate(
+            self, payload: Dict[str, Any], headers: Dict[str, str]
+        ) -> bool:
+            return True
+
+        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+            return True
+
+        async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+            event_data = WebhookEventData(kind="test", data=[{"processed": True}])
+            processed_events.append(event_data)
+            return event_data
+
+        def filter_event_data(self, event: WebhookEvent) -> bool:
+            return True
+
+    test_path = "/webhook-test"
+    mock_context.app.integration = BaseIntegration(ocean)
+    mock_context.app.webhook_manager = WebhookProcessorManager(
+        mock_context.app.integration_router, SignalHandler()
+    )
+
+    mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
+    await mock_context.app.webhook_manager.start_processing_event_messages()
+    mock_context.app.fast_api_app.include_router(
+        mock_context.app.webhook_manager._router
+    )
+    client = TestClient(mock_context.app.fast_api_app)
+
+    test_payload = {"test": "data"}
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
+        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = (
+            AsyncMock(return_value=mock_port_app_config)
+        )
+        event.port_app_config = (
+            await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
+        )
+
+        response = client.post(
+            test_path, json=test_payload, headers={"Content-Type": "application/json"}
+        )
+
+    # 4. Verify response
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+    # 5. Wait for event processing
+    await asyncio.sleep(0.1)  # Allow time for async processing
+
+    # 6. Verify event was processed
+    assert len(processed_events) == 1
+    assert processed_events[0].kind == "test"
+    assert processed_events[0].data[0]["processed"] is True
+
+    # 7. Cleanup
+    await processor_manager.shutdown()
