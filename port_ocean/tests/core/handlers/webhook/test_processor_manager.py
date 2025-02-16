@@ -642,7 +642,7 @@ async def test_webhook_processing_flow(
     mock_upsert: AsyncMock,
     mock_context: PortOceanContext,
     mock_port_app_config: PortAppConfig,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Integration test for the complete webhook processing flow"""
 
@@ -685,7 +685,7 @@ async def test_webhook_processing_flow(
     original_process_data = LiveEventsMixin.process_data
 
     async def patched_export_single_resource(
-        self, webhookEventDatas: list[WebhookEventData]
+        self: LiveEventsMixin, webhookEventDatas: list[WebhookEventData]
     ) -> None:
         try:
             await original_process_data(self, webhookEventDatas)
@@ -711,9 +711,7 @@ async def test_webhook_processing_flow(
     test_payload = {"test": "data"}
 
     async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
-        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = (
-            AsyncMock(return_value=mock_port_app_config)
-        )
+        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)  # type: ignore
         event.port_app_config = (
             await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
         )
