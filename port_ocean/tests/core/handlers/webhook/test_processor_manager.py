@@ -395,7 +395,11 @@ from port_ocean.core.handlers.webhook.processor_manager import WebhookProcessorM
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+from port_ocean.core.handlers.webhook.webhook_event import (
+    WebhookEvent,
+    WebhookEventData,
+    EventPayload,
+)
 from fastapi import APIRouter
 from port_ocean.utils.signal import SignalHandler
 from typing import Dict, Any
@@ -410,8 +414,8 @@ class MockProcessor(AbstractWebhookProcessor):
     async def validate_payload(self, payload: Dict[str, Any]) -> bool:
         return True
 
-    async def handle_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        return {}
+    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+        return WebhookEventData(kind="test", data=[{}])
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return True
@@ -426,8 +430,8 @@ class MockProcessorFalse(AbstractWebhookProcessor):
     async def validate_payload(self, payload: Dict[str, Any]) -> bool:
         return True
 
-    async def handle_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        return {}
+    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+        return WebhookEventData(kind="test", data=[{}])
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return False

@@ -6,6 +6,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
     WebhookEvent,
+    WebhookEventData,
 )
 from port_ocean.exceptions.webhook_processor import RetryableError
 
@@ -25,10 +26,10 @@ class ConcreteWebhookProcessor(AbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         return True
 
-    async def handle_event(self, payload: EventPayload) -> None:
-        pass
+    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+        return WebhookEventData(kind="test", data=[{}])
 
-    async def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
+    def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
         return True
 
     async def before_processing(self) -> None:

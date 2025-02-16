@@ -80,11 +80,7 @@ class WebhookProcessorManager(LiveEventsMixin):
                     async with event_context(
                         EventType.LIVE_EVENT,
                         trigger_type="machine",
-                        **(
-                            {"parent_override": eventContext}
-                            if eventContext is not None
-                            else {}
-                        ),
+                        parent_override=eventContext,
                     ):
                         matching_processors = self._extract_matching_processors(
                             webhookEvent, path
@@ -135,6 +131,7 @@ class WebhookProcessorManager(LiveEventsMixin):
         except Exception as e:
             logger.exception(f"Error processing queued webhook for {path}: {str(e)}")
             self._timestamp_event_error(processor.event)
+            return WebhookEventData(kind="", data=[{}])
 
     async def _execute_processor(
         self, processor: AbstractWebhookProcessor
@@ -188,9 +185,9 @@ class WebhookProcessorManager(LiveEventsMixin):
                     continue
 
                 raise
-        return webhookEventData
 
         await processor.after_processing()
+        return webhookEventData
 
     def register_processor(
         self, path: str, processor: Type[AbstractWebhookProcessor]

@@ -9,6 +9,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
     WebhookEvent,
+    WebhookEventData,
 )
 from port_ocean.core.handlers.webhook.processor_manager import WebhookProcessorManager
 from port_ocean.utils.signal import SignalHandler
@@ -43,11 +44,16 @@ class MockWebhookHandler(AbstractWebhookProcessor):
         self.validated = True
         return True
 
-    async def handle_event(self, payload: EventPayload) -> None:
+    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
         if self.should_fail and self.current_fails < self.fail_count:
             self.current_fails += 1
             raise RetryableError("Temporary failure")
         self.handled = True
+        return WebhookEventData(kind="test", data=[{}])
+
+    def filter_event_data(self, event: WebhookEvent) -> bool:
+        """Filter the event data before processing."""
+        return True
 
     async def cancel(self) -> None:
         self.cancelled = True
