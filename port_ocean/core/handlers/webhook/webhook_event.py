@@ -77,6 +77,7 @@ class WebhookEvent:
                 "timestamp_type": timestamp.value,
             },
         )
+        self._timestamp = timestamp
 
 
 class WebhookEventData:

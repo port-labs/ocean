@@ -36,6 +36,7 @@ entity = Entity(
     },
     relations={},
 )
+
 expected_entities = [
     Entity(
         identifier="repo-one",
