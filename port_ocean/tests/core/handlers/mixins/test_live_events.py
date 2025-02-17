@@ -312,55 +312,6 @@ async def test_getLiveEventResources_mappingDoesNotHaveTheResource_returnsEmptyL
 
 
 @pytest.mark.asyncio
-async def test_calculateRaw_oneRawDataMatchesTheResourceConfig_returnsTheResult(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    sample_data = {
-        "name": "my-example-repo",
-        "links": {"html": {"href": "https://example.com/my-example-repo"}},
-        "main_branch": "main",
-    }
-    input_data = [(mock_repository_resource_config, [sample_data])]
-    expected_entity = Entity(
-        identifier="my-example-repo",
-        blueprint="service",
-        title="my-example-repo",
-        team=[],
-        properties={
-            "url": "https://example.com/my-example-repo",
-            "defaultBranch": "main",
-        },
-        relations={},
-    )
-
-    result = await mock_live_events_mixin._calculate_raw(input_data)
-
-    assert result[0].entity_selector_diff.passed[0] == expected_entity
-
-
-@pytest.mark.asyncio
-async def test_calculateRaw_multipleRawDataMatchesTheResourceConfig_returnsAllResults(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    input_data = [
-        (
-            mock_repository_resource_config,
-            event_data_for_three_entities_for_repository_resource,
-        )
-    ]
-
-    result = await mock_live_events_mixin._calculate_raw(input_data)
-
-    assert len(result[0].entity_selector_diff.passed) == 3
-    for expected, actual in zip(
-        expected_entities, result[0].entity_selector_diff.passed
-    ):
-        assert expected == actual
-
-
-@pytest.mark.asyncio
 @patch(
     "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
 )

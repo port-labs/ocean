@@ -26,23 +26,6 @@ class LiveEventsMixin(HandlerMixin):
             for raw_item in webhookEventData.data:
                 await self._export_single_resource(resource_mappings, raw_item)
 
-    async def _calculate_raw(
-        self,
-        raw_data_and_matching_resource_config: list[
-            tuple[ResourceConfig, list[RAW_ITEM]]
-        ],
-        parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
-    ) -> list[CalculationResult]:
-        return await asyncio.gather(
-            *(
-                self.entity_processor.parse_items(
-                    mapping, raw_data, parse_all, send_raw_data_examples_amount
-                )
-                for mapping, raw_data in raw_data_and_matching_resource_config
-            )
-        )
-
     async def _get_live_event_resources(self, kind: str) -> list[ResourceConfig]:
         try:
             app_config = event.port_app_config
