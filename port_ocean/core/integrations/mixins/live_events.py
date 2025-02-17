@@ -136,7 +136,7 @@ class LiveEventsMixin(HandlerMixin):
         entities_to_delete: list[Entity] = []
         blueprints_to_keep: Set[str] = set()
 
-        logger.info(f"Exporting single resource: {raw_item}")
+        logger.info("Exporting single resource", raw_item=raw_item, resource_mappings_count=len(resource_mappings))
         for resource_mapping in resource_mappings:
             export_succeded, exported_entities = await self._export(resource_mapping, raw_item)
             if self._did_all_entities_filtered_out_at_export(export_succeded, exported_entities):

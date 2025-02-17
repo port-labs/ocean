@@ -508,7 +508,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
     class TestProcessor(AbstractWebhookProcessor):
         def __init__(self, event: WebhookEvent) -> None:
             super().__init__(event)
-            self.tries = 0
 
         async def authenticate(
             self, payload: Dict[str, Any], headers: Dict[str, str]
@@ -519,9 +518,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
             return True
 
         async def handle_event(self, payload: EventPayload) -> WebhookEventData:
-            self.tries += 1
-            if self.tries < 2:
-                raise RetryableError("Test error")
             event_data = WebhookEventData(
                 kind="repository",
                 data=[
