@@ -366,45 +366,6 @@ async def test_shutdown_ShutsDownAllTasks(
     assert len(processor_manager._webhook_processor_tasks) == 0
 
 
-@pytest.mark.asyncio
-async def test_process_queue_handlerReachedTimeout_exceptionThrown(
-    processor_manager: WebhookProcessorManager,
-    webhook_event: WebhookEvent,
-    monkeypatch: pytest.MonkeyPatch,
-    mock_context: PortOceanContext,
-    mock_port_app_config: PortAppConfig,
-) -> None:
-    """Test processor timeout behavior."""
-    processing_complete = asyncio.Event()
-    original_process_data = WebhookProcessorManager._execute_processor
-    test_state = {"exception_thrown": None}
-
-    async def patched_export_single_resource(
-        self: WebhookProcessorManager, processor: AbstractWebhookProcessor
-    ) -> WebhookEventData:
-        try:
-            await original_process_data(self, processor)
-        except Exception as e:
-            test_state["exception_thrown"] = e  # type: ignore
-        finally:
-            processing_complete.set()
-            return WebhookEventData(kind="test", data=[{}])
-
-    monkeypatch.setattr(
-        WebhookProcessorManager, "_execute_processor", patched_export_single_resource
-    )
-
-    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
-        processor_manager.register_processor("/test", MockTimeoutProcessor)
-        event.port_app_config = mock_port_app_config
-        await processor_manager.start_processing_event_messages()
-        await processor_manager._event_queues["/test"].put((webhook_event, event))
-
-    await asyncio.wait_for(processing_complete.wait(), timeout=10.0)
-    assert isinstance(test_state["exception_thrown"], asyncio.TimeoutError) is True
-    await processor_manager.shutdown()
-
-
 @pytest.fixture
 def mock_port_app_config() -> PortAppConfig:
     return PortAppConfig(
@@ -618,6 +579,104 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
     assert processed_events[0].kind == "repository"
 
     mock_upsert.assert_called_once()
+    mock_delete.assert_not_called()
+
+    await mock_context.app.webhook_manager.shutdown()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
+)
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
+)
+async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
+    mock_delete: AsyncMock,
+    mock_upsert: AsyncMock,
+    mock_context: PortOceanContext,
+    mock_port_app_config: PortAppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Integration test for the complete webhook processing flow"""
+
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.handler.ocean", mock_context
+    )
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
+    )
+    mock_upsert.return_value = [entity]
+    test_state = {"exception_thrown": None}
+
+    class TestProcessor(AbstractWebhookProcessor):
+        async def authenticate(
+            self, payload: Dict[str, Any], headers: Dict[str, str]
+        ) -> bool:
+            return True
+
+        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+            return True
+
+        async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+            await asyncio.sleep(3)
+            return WebhookEventData(kind="test", data=[{}])
+
+        def filter_event_data(self, event: WebhookEvent) -> bool:
+            return True
+
+    processing_complete = asyncio.Event()
+    original_process_data = WebhookProcessorManager._process_single_event
+
+    async def patched_process_single_event(
+        self: WebhookProcessorManager, processor: AbstractWebhookProcessor, path: str
+    ) -> WebhookEventData:
+        try:
+            return await original_process_data(self, processor, path)
+        except Exception as e:
+            test_state["exception_thrown"] = e  # type: ignore
+            return WebhookEventData(kind="test", data=[{}])
+        finally:
+            processing_complete.set()
+
+    monkeypatch.setattr(
+        WebhookProcessorManager, "_process_single_event", patched_process_single_event
+    )
+    test_path = "/webhook-test"
+    mock_context.app.integration = BaseIntegration(ocean)
+    mock_context.app.webhook_manager = WebhookProcessorManager(
+        mock_context.app.integration_router, SignalHandler(), 2
+    )
+
+    mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
+    await mock_context.app.webhook_manager.start_processing_event_messages()
+    mock_context.app.fast_api_app.include_router(
+        mock_context.app.webhook_manager._router
+    )
+    client = TestClient(mock_context.app.fast_api_app)
+
+    test_payload = {"test": "data"}
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
+        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)  # type: ignore
+        event.port_app_config = (
+            await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
+        )
+
+        response = client.post(
+            test_path, json=test_payload, headers={"Content-Type": "application/json"}
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+    try:
+        await asyncio.wait_for(processing_complete.wait(), timeout=50.0)
+    except asyncio.TimeoutError:
+        pytest.fail("Event processing timed out")
+
+    assert isinstance(test_state["exception_thrown"], asyncio.TimeoutError) is True
+    mock_upsert.assert_not_called()
     mock_delete.assert_not_called()
 
     await mock_context.app.webhook_manager.shutdown()

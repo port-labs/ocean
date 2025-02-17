@@ -131,7 +131,7 @@ class WebhookProcessorManager(LiveEventsMixin):
         except Exception as e:
             logger.exception(f"Error processing queued webhook for {path}: {str(e)}")
             self._timestamp_event_error(processor.event)
-            return WebhookEventData(kind="", data=[{}])
+            raise
 
     async def _execute_processor(
         self, processor: AbstractWebhookProcessor
@@ -143,7 +143,7 @@ class WebhookProcessorManager(LiveEventsMixin):
                 timeout=self._max_event_processing_seconds,
             )
         except asyncio.TimeoutError:
-            raise TimeoutError(
+            raise asyncio.TimeoutError(
                 f"Processor processing timed out after {self._max_event_processing_seconds} seconds"
             )
 
