@@ -153,6 +153,7 @@ ignore = ["E501"]
 exclude = [
     'venv',
     '.venv',
+    'integrations',
     '**/site-packages/**',  # Exclude all site-packages directories
 ]
 target-version = "py311"
