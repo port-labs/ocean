@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jenkins"
-version = "0.1.102"
+version = "0.1.103"
 description = "Jenkins Integration to Port Ocean"
 authors = ["Albert Luganga <ahosea15@gmail.com>"]
 
@@ -23,7 +23,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
-cryptography = "^43.0.1"
+cryptography = "^44.0.1"
 
 [tool.towncrier]
 directory = "changelog"

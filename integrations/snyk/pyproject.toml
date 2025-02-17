@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "snyk"
-version = "0.1.135"
+version = "0.1.137"
 description = "Snyk integration powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
@@ -21,7 +21,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
-cryptography = "^43.0.1"
+cryptography = "^44.0.1"
 
 [tool.towncrier]
 directory = "changelog"
