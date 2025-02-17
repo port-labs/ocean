@@ -63,7 +63,7 @@ class LiveEventsMixin(HandlerMixin):
             logger.error(f"Error getting live event resources: {str(e)}")
             raise
 
-    async def _export(self, resource_mapping: ResourceConfig, raw_item: RAW_ITEM) -> tuple[bool, list[str]]:
+    async def _export(self, resource_mapping: ResourceConfig, raw_item: RAW_ITEM) -> tuple[bool, list[Entity]]:
         """Export a single resource mapping with the given raw item.
 
         Args:
