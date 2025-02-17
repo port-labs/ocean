@@ -490,12 +490,16 @@ async def test_isEntityExists_returnsFalse(
 def test_allEntitiesFilteredOutAtExport_testMultipleCases(
     mock_live_events_mixin: LiveEventsMixin,
 ) -> None:
-    assert mock_live_events_mixin._all_entities_filtered_out_at_exort(True, []) is True
     assert (
-        mock_live_events_mixin._all_entities_filtered_out_at_exort(False, []) is False
+        mock_live_events_mixin._did_all_entities_filtered_out_at_export(True, [])
+        is True
     )
     assert (
-        mock_live_events_mixin._all_entities_filtered_out_at_exort(
+        mock_live_events_mixin._did_all_entities_filtered_out_at_export(False, [])
+        is False
+    )
+    assert (
+        mock_live_events_mixin._did_all_entities_filtered_out_at_export(
             True,
             [
                 Entity(
@@ -511,7 +515,7 @@ def test_allEntitiesFilteredOutAtExport_testMultipleCases(
         is False
     )
     assert (
-        mock_live_events_mixin._all_entities_filtered_out_at_exort(
+        mock_live_events_mixin._did_all_entities_filtered_out_at_export(
             False,
             [
                 Entity(

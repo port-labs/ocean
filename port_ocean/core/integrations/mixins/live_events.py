@@ -121,7 +121,7 @@ class LiveEventsMixin(HandlerMixin):
                     )
         return len(entities_at_port) > 0
 
-    def _all_entities_filtered_out_at_exort(self, export_succeded: bool, exported_entities: list[Entity]) -> bool:
+    def _did_all_entities_filtered_out_at_export(self, export_succeded: bool, exported_entities: list[Entity]) -> bool:
         return export_succeded and len(exported_entities) == 0
 
     async def _get_entities_to_delete(self, resource_mapping: ResourceConfig, raw_item: RAW_ITEM) -> list[Entity]:
@@ -139,7 +139,7 @@ class LiveEventsMixin(HandlerMixin):
         logger.info(f"Exporting single resource: {raw_item}")
         for resource_mapping in resource_mappings:
             export_succeded, exported_entities = await self._export(resource_mapping, raw_item)
-            if self._all_entities_filtered_out_at_exort(export_succeded, exported_entities):
+            if self._did_all_entities_filtered_out_at_export(export_succeded, exported_entities):
                 entities_to_delete.extend(await self._get_entities_to_delete(resource_mapping, raw_item))
             else:
                 for entity in exported_entities:
