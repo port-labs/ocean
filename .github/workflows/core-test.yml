@@ -77,7 +77,7 @@ jobs:
       - name: Test all integrations with current core
         run: |
           echo "Testing all integrations with local core"
-          SCRIPT_TO_RUN="PYTEST_ADDOPTS=--junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml make test" make execute/all
+          PYTEST_ADDOPTS=--junitxml=${PWD}/junit/test-results-core-change/`basename $PWD`.xml make execute/all
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5

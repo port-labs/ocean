@@ -73,16 +73,18 @@ test/all: test
 
 
 execute/all:
-	# run script for all integrations (${SCRIPT_TO_RUN})
+	# Run tests for all integrations and track failures
+	exit_code=0; \
 	for dir in $(wildcard $(CURDIR)/integrations/*); do \
 		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
 		if [ $$count -ne 0 ]; then \
-			echo "Running '${SCRIPT_TO_RUN}' $$dir"; \
-		  	cd $$dir; \
-			${SCRIPT_TO_RUN} || exit_code=$$?; \
+			echo "Running tests in $$dir"; \
+			cd $$dir; \
+			PYTEST_ADDOPTS=--junitxml=${PWD}/junit/test-results-core-change/`basename $$dir`.xml make test || exit_code=$$?; \
 			cd ../..; \
 		fi; \
-	done;
+	done; \
+	exit $$exit_code
 
 install/all: install
 	exit_code=0; \
