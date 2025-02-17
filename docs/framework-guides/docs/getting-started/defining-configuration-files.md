@@ -275,4 +275,9 @@ resources:
 </details>
 
 
+:::tip Source Code
+You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+
+:::
+
 Having defined the configuration files, we can now proceed to the publishing our integration.

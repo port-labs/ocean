@@ -17,3 +17,9 @@ At the end of this guide, you will have a working integration that can be run lo
 This guide assumes you have Python 3.11 installed on your machine. If you don't have Python installed, you can download it from the [official Python website](https://www.python.org/downloads/).
 
 In addition, you should be familiar with the basics of Python programming and have a basic understanding of how to use the command line.
+
+
+:::tip Source Code
+You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+
+:::

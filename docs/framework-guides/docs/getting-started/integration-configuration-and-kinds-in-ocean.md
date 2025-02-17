@@ -152,6 +152,10 @@ In this guide, we learned how to configure the integration and accept user-defin
 
 Your `integration.py` file should look like this:
 
+<details>
+
+<summary><b>Integration Configuration</b></summary>
+
 ```python showLineNumbers
 from typing import Literal
 
@@ -235,7 +239,12 @@ class GitHubIntegration(BaseIntegration):
 
 ```
 
-<details>
+</details>
 
+
+:::tip Source Code
+You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+
+:::
 
 Next, we will learn how to send data to Port using the API client we implemented.

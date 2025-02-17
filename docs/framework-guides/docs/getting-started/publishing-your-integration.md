@@ -45,5 +45,10 @@ To make your integration available to other users, you also need to document it.
 
 You can do this by forking the [Port Docs repository](https://github.com/port-labs/port-docs) and adding your integration documentation, following the same format used by other integrations.
 
+:::tip Source Code
+You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+
+:::
+
 ## Next Steps
 With your integration published, you can now share it with other users on Port. You can also continue to improve your integration by adding more features and fixing bugs.

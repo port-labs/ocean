@@ -180,6 +180,10 @@ In this guide, we learned how to send data to Port using resync functions. We in
 
 At the end of this section, your `main.py` file` should look like this:
 
+<details>
+
+<summary><b>`main.py`</b></summary>
+
 ```python showLineNumbers
 from typing import cast
 
@@ -244,5 +248,10 @@ async def get_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 ```
 
 </details>
+
+:::tip Source Code
+You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+
+:::
 
 Next, we will define default blueprints and mappings for the resources we are syncing.

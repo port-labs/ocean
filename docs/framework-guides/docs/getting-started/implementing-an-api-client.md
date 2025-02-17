@@ -518,6 +518,10 @@ We have successfully implemented the `GitHubClient` class with methods to retrie
 
 Your `client.py` file should look like this:
 
+<details>
+
+<summary><b>GitHub Client (Click to expand)</b></summary>
+
 ```python showLineNumbers
 import asyncio
 from typing import Any, AsyncGenerator, Literal
@@ -670,5 +674,10 @@ Remember to format your code using [`black`](https://black.readthedocs.io/en/sta
 ```bash
 poetry run black . && poetry run isort .
 ```
+
+:::tip Source Code
+You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+
+:::
 
 Next, we will look at integration configurations, kinds and sending data to Port.

@@ -79,3 +79,8 @@ Give it some time and it should sync the data from GitHub to your Port dashboard
 
 ## Conclusion
 Having developed and tested your integration, you can decide to use it locally or contribute to the Port community by following the guide in the next section.
+
+:::tip Source Code
+You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+
+:::

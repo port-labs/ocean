@@ -209,7 +209,7 @@ github/
 </details>
 
 
-The `.port` directory contains configurations for the integration and is documented in detail in the [Integration Spec and Default page](../integration-internals//integration-spec-and-default-resources.md)
+The `.port` directory contains configurations for the integration and is documented in detail in the [Integration Spec and Default page](../develop-an-integration/integration-spec-and-default-resources.md)
 
 With this done, we will go ahead to implement an API client for the GitHub API to fetch organizations, repositories and pull requests.
 
@@ -231,3 +231,8 @@ Open your browser and go to [http://localhost:8000/redoc](http://localhost:8000/
 ![IntegrationScaffoldSwagger.png](../../static/img/getting-started/IntegrationScaffoldRedoc.png)
 
 </details>
+
+:::tip Source Code
+You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+
+:::
