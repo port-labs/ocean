@@ -8,9 +8,11 @@ define run_checks
 	echo "Running mypy"; \
 	mypy . --exclude '/\.venv/' || exit_code=$$?; \
 	echo "Running ruff"; \
-	ruff check . || exit_code=$$?; \
+	ruff check . || exit_code=$$?;
 	echo "Running black"; \
 	black --check . || exit_code=$$?; \
+	echo "Running yamllint"; \
+	yamllint . || exit_code=$$?; \
 	if [ $$exit_code -eq 1 ]; then \
 		echo "\033[0;31mOne or more checks failed with exit code $$exit_code\033[0m"; \
 	else \
