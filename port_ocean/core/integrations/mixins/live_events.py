@@ -84,8 +84,8 @@ class LiveEventsMixin(HandlerMixin):
                 logger.info(f"No entities passed selector for resource: {resource_mapping.kind}")
                 return True, []
 
-            upsertedEntities = await self.entities_state_applier.upsert(calculation_results.    entity_selector_diff.passed, UserAgentType.exporter)
-            return True, upsertedEntities
+            upserted_entities = await self.entities_state_applier.upsert(calculation_results.entity_selector_diff.passed, UserAgentType.exporter)
+            return True, upserted_entities
 
         except Exception as e:
             logger.error(f"Error exporting resource {resource_mapping.kind}: {str(e)}")
@@ -121,8 +121,8 @@ class LiveEventsMixin(HandlerMixin):
                     )
         return len(entities_at_port) > 0
 
-    def _all_entities_filtered_out_at_exort(self, exportSucceded: bool, exportedEntities: list[Entity]) -> bool:
-        return exportSucceded and len(exportedEntities) == 0
+    def _all_entities_filtered_out_at_exort(self, export_succeded: bool, exported_entities: list[Entity]) -> bool:
+        return export_succeded and len(exported_entities) == 0
 
     async def _get_entities_to_delete(self, resource_mapping: ResourceConfig, raw_item: RAW_ITEM) -> list[Entity]:
         calculation_results = await self.entity_processor.parse_items(
@@ -133,24 +133,24 @@ class LiveEventsMixin(HandlerMixin):
         return []
 
     async def _export_single_resource(self, resource_mappings: list[ResourceConfig], raw_item: RAW_ITEM) -> None:
-        entitiesToDelete: list[Entity] = []
-        blueprintsToKeep: Set[str] = set()
+        entities_to_delete: list[Entity] = []
+        blueprints_to_keep: Set[str] = set()
 
         logger.info(f"Exporting single resource: {raw_item}")
         for resource_mapping in resource_mappings:
-            exportSucceded, exportedEntities = await self._export(resource_mapping, raw_item)
-            if self._all_entities_filtered_out_at_exort(exportSucceded, exportedEntities):
-                entitiesToDelete.extend(await self._get_entities_to_delete(resource_mapping, raw_item))
+            export_succeded, exported_entities = await self._export(resource_mapping, raw_item)
+            if self._all_entities_filtered_out_at_exort(export_succeded, exported_entities):
+                entities_to_delete.extend(await self._get_entities_to_delete(resource_mapping, raw_item))
             else:
-                for entity in exportedEntities:
-                    blueprintsToKeep.add(entity.blueprint)
+                for entity in exported_entities:
+                    blueprints_to_keep.add(entity.blueprint)
 
-        entitiesToDeleteFilteredByKeptBlueprints = [entity for entity in entitiesToDelete if entity.blueprint not in blueprintsToKeep]
+        entities_to_delete_filtered_by_kept_blueprints = [entity for entity in entities_to_delete if entity.blueprint not in blueprints_to_keep]
 
         logger.info(f"Deleting entities after filtering out the bluepprint entities to keep",
-                    deleted_entities_count=len(entitiesToDeleteFilteredByKeptBlueprints))
+                    deleted_entities_count=len(entities_to_delete_filtered_by_kept_blueprints))
         try:
-            if entitiesToDeleteFilteredByKeptBlueprints:
-                await self.entities_state_applier.delete(entitiesToDeleteFilteredByKeptBlueprints, UserAgentType.exporter)
+            if entities_to_delete_filtered_by_kept_blueprints:
+                await self.entities_state_applier.delete(entities_to_delete_filtered_by_kept_blueprints, UserAgentType.exporter)
         except Exception as e:
             logger.error(f"Failed to delete entities: {str(e)}")
