@@ -30,6 +30,8 @@ from gcp_core.helpers.ratelimiter.base import (
     MAXIMUM_CONCURRENT_REQUESTS,
     PersistentAsyncLimiter,
 )
+from gcp_core.helpers.retry.async_retry import async_retry
+
 from asyncio import BoundedSemaphore
 from gcp_core.overrides import ProtoConfig
 
@@ -231,7 +233,7 @@ async def get_single_project(
                 )
                 return parse_protobuf_message(
                     await projects_client.get_project(
-                        name=project_name, timeout=DEFAULT_REQUEST_TIMEOUT
+                        name=project_name, retry=async_retry
                     ),
                     config,
                 )
