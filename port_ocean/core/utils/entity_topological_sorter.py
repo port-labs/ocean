@@ -7,7 +7,7 @@ from loguru import logger
 from graphlib import TopologicalSorter, CycleError
 from typing import Set
 
-from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.core import OceanAbortError
 
 Node = tuple[str, str]
 
@@ -83,7 +83,7 @@ class EntityTopologicalSorter:
         try:
             return [entities_map[item] for item in sort_op.static_order()]
         except CycleError as ex:
-            raise OceanAbortException(
+            raise OceanAbortError(
                 "Cannot order entities due to cyclic dependencies. \n"
                 "If you do want to have cyclic dependencies, please make sure to set the keys"
                 " 'createMissingRelatedEntities' and 'deleteDependentEntities' in the integration config in Port."

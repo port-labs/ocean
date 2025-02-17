@@ -1,7 +1,7 @@
-from port_ocean.exceptions.base import BaseOceanException
+from port_ocean.exceptions.base import BaseOceanError
 
 
-class AbortDefaultCreationError(BaseOceanException):
+class AbortDefaultCreationError(BaseOceanError):
     def __init__(
         self,
         blueprints_to_rollback: list[str],
@@ -12,11 +12,11 @@ class AbortDefaultCreationError(BaseOceanException):
         super().__init__("Aborting defaults creation")
 
 
-class UnsupportedDefaultFileType(BaseOceanException):
+class UnsupportedDefaultFileTypeError(BaseOceanError):
     pass
 
 
-class DefaultsProvisionFailed(BaseOceanException):
+class DefaultsProvisionFailedError(BaseOceanError):
     def __init__(
         self,
         retries: int,

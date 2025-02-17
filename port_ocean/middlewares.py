@@ -3,7 +3,7 @@ from typing import Callable, Awaitable
 from fastapi import Request, Response
 from loguru import logger
 
-from port_ocean.exceptions.api import BaseAPIException, InternalServerException
+from port_ocean.exceptions.api import BaseAPIError, InternalServerError
 from .context.event import event_context, EventType
 from .context.ocean import ocean
 from .utils.misc import get_time, generate_uuid
@@ -21,7 +21,7 @@ async def _handle_silently(
         else:
             response = await call_next(request)
 
-    except BaseAPIException as ex:
+    except BaseAPIError as ex:
         response = ex.response()
         if response.status_code < 500:
             logger.bind(exception=str(ex)).info(
@@ -34,7 +34,7 @@ async def _handle_silently(
 
     except Exception:
         logger.opt(exception=True).error("Request failed due to unexpected error")
-        response = InternalServerException().response()
+        response = InternalServerError().response()
 
     return response
 

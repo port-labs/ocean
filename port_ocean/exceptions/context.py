@@ -1,7 +1,7 @@
-from port_ocean.exceptions.base import BaseOceanException
+from port_ocean.exceptions.base import BaseOceanError
 
 
-class NoContextError(BaseOceanException):
+class NoContextError(BaseOceanError):
     pass
 
 

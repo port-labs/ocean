@@ -9,7 +9,7 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
 from port_ocean.core.ocean_types import CalculationResult
-from port_ocean.exceptions.core import EntityProcessorException
+from port_ocean.exceptions.core import EntityProcessorError
 
 
 @pytest.mark.asyncio
@@ -196,7 +196,7 @@ class TestJQEntityProcessor:
         data = {"foo": "bar"}
         pattern = ".foo"
         with pytest.raises(
-            EntityProcessorException,
+            EntityProcessorError,
             match="Expected boolean value, got value:bar of type: <class 'str'> instead",
         ):
             await mocked_processor._search_as_bool(data, pattern)

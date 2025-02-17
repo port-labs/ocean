@@ -175,7 +175,7 @@ class PortOceanContext:
         Raises:
             ValueError: If the processor does not extend AbstractWebhookProcessor.
         """
-        self.app.webhook_manager.register_processor(path, processor, events_filter)
+        self.app.webhookManager.register_processor(path, processor, events_filter)
 
 
 _port_ocean: PortOceanContext = PortOceanContext(None)

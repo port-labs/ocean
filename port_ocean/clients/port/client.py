@@ -13,7 +13,7 @@ from port_ocean.clients.port.utils import (
     handle_status_code,
     get_internal_http_client,
 )
-from port_ocean.exceptions.clients import KafkaCredentialsNotFound
+from port_ocean.exceptions.clients import KafkaCredentialsNotFoundError
 from typing import Any
 
 
@@ -64,7 +64,7 @@ class PortClient(
         credentials = response.json().get("credentials")
 
         if credentials is None:
-            raise KafkaCredentialsNotFound("No kafka credentials found")
+            raise KafkaCredentialsNotFoundError("No kafka credentials found")
 
         return credentials
 

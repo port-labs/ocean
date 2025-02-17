@@ -54,7 +54,7 @@ class Ocean:
         )
         self.integration_router = integration_router or APIRouter()
 
-        self.webhook_manager = WebhookProcessorManager(
+        self.webhookManager = WebhookProcessorManager(
             self.integration_router, signal_handler
         )
 
@@ -137,7 +137,7 @@ class Ocean:
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
-                await self.webhook_manager.start_processing_event_messages()
+                await self.webhookManager.start_processing_event_messages()
                 await self._setup_scheduled_resync()
                 yield None
             except Exception:

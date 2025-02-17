@@ -1,9 +1,9 @@
-from port_ocean.exceptions.base import BaseOceanException
+from port_ocean.exceptions.base import BaseOceanError
 
 
-class PortClientException(BaseOceanException):
+class PortClientError(BaseOceanError):
     pass
 
 
-class KafkaCredentialsNotFound(PortClientException):
+class KafkaCredentialsNotFoundError(PortClientError):
     pass

@@ -57,7 +57,7 @@ class HTTPMemoryHandler(MemoryHandler):
         self._serialized_buffer.append(_serialize_record(record))
         super().emit(record)
 
-    def shouldFlush(self, record: logging.LogRecord) -> bool:
+    def shouldFlush(self, record: logging.LogRecord) -> bool:  # noqa: N802
         """
         Extending shouldFlush to include size and time validation as part of the decision whether to flush
         """

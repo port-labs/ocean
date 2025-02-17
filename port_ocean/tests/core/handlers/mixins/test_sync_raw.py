@@ -5,7 +5,7 @@ from typing import Any, AsyncGenerator
 from httpx import Response
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
-from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.core import OceanAbortError
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from port_ocean.ocean import Ocean
@@ -334,7 +334,7 @@ async def test_sync_raw_mixin_circular_dependency(
                     for call in event.entity_topological_sorter.get_entities.call_args_list
                 ] == [(), (False,)]
                 assert len(raiesed_error_handle_failed) == 1
-                assert isinstance(raiesed_error_handle_failed[0], OceanAbortException)
+                assert isinstance(raiesed_error_handle_failed[0], OceanAbortError)
                 assert isinstance(raiesed_error_handle_failed[0].__cause__, CycleError)
                 assert (
                     len(mock_ocean.port_client.client.post.call_args_list)  # type: ignore

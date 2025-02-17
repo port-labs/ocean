@@ -19,7 +19,7 @@ from port_ocean.core.utils.utils import (
     gather_and_split_errors_from_results,
     zip_and_sum,
 )
-from port_ocean.exceptions.core import EntityProcessorException
+from port_ocean.exceptions.core import EntityProcessorError
 from port_ocean.utils.queue_utils import process_in_queue
 
 
@@ -106,7 +106,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         )
         if isinstance(value, bool):
             return value
-        raise EntityProcessorException(
+        raise EntityProcessorError(
             f"Expected boolean value, got value:{value} of type: {type(value)} instead"
         )
 
