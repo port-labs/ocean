@@ -90,7 +90,9 @@ class WebhookProcessorManager(LiveEventsMixin):
                             )
                         )
                         if webhook_event_datas and all(webhook_event_datas):
-                            await self.process_data(webhook_event_datas)
+                            await self.export_raw_event_results_to_entities(
+                                webhook_event_datas
+                            )
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
                 for processor in matching_processors:

@@ -13,11 +13,11 @@ from port_ocean.context.event import event
 
 class LiveEventsMixin(HandlerMixin):
 
-    async def process_data(self, webhook_events_data: list[WebhookEventData]) -> None:
-        """Process the webhook event data collected from multiple processors.
+    async def export_raw_event_results_to_entities(self, webhook_events_data: list[WebhookEventData]) -> None:
+        """Process the webhook event data collected from multiple processors and export it.
 
         Args:
-            webhookEventDatas: List of WebhookEventData objects to process
+            webhook_events_data: List of WebhookEventData objects to process
         """
         for webhook_event_data in webhook_events_data:
             resource_mappings = await self._get_live_event_resources(

@@ -535,7 +535,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
             return True
 
     processing_complete = asyncio.Event()
-    original_process_data = LiveEventsMixin.process_data
+    original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
 
     async def patched_export_single_resource(
         self: LiveEventsMixin, webhookEventDatas: list[WebhookEventData]
@@ -547,7 +547,11 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
         finally:
             processing_complete.set()
 
-    monkeypatch.setattr(LiveEventsMixin, "process_data", patched_export_single_resource)
+    monkeypatch.setattr(
+        LiveEventsMixin,
+        "export_raw_event_results_to_entities",
+        patched_export_single_resource,
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = WebhookProcessorManager(
@@ -902,7 +906,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
             return False
 
     processing_complete = asyncio.Event()
-    original_process_data = LiveEventsMixin.process_data
+    original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
 
     async def patched_export_single_resource(
         self: LiveEventsMixin, webhookEventDatas: list[WebhookEventData]
@@ -914,7 +918,11 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
         finally:
             processing_complete.set()
 
-    monkeypatch.setattr(LiveEventsMixin, "process_data", patched_export_single_resource)
+    monkeypatch.setattr(
+        LiveEventsMixin,
+        "export_raw_event_results_to_entities",
+        patched_export_single_resource,
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = WebhookProcessorManager(
@@ -1022,7 +1030,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
             return True
 
     processing_complete = asyncio.Event()
-    original_process_data = LiveEventsMixin.process_data
+    original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
 
     async def patched_export_single_resource(
         self: LiveEventsMixin, webhookEventDatas: list[WebhookEventData]
@@ -1034,7 +1042,11 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
         finally:
             processing_complete.set()
 
-    monkeypatch.setattr(LiveEventsMixin, "process_data", patched_export_single_resource)
+    monkeypatch.setattr(
+        LiveEventsMixin,
+        "export_raw_event_results_to_entities",
+        patched_export_single_resource,
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = WebhookProcessorManager(
