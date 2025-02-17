@@ -6,6 +6,10 @@ title: Getting Started
 
 In this guide, you will learn the basics of the Ocean framework used to develop integrations for Port. This is a hands-on guide that will walk you through the process of developing your first integration. You will be building a version of the GitHub integration that ingests organizations (a configured list of organizations), their repositories and their pull requests.
 
+:::note Port's GitHub Integration
+It is important to note that Port has a fully featured [GitHub integration](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github/). This is only a simplified version to help you understand the basics of developing an integration using the Ocean framework.
+:::
+
 At the end of this guide, you will have a working integration that can be run locally and tested, and you should be able to:
 
 - Understand the structure of an Ocean integration
