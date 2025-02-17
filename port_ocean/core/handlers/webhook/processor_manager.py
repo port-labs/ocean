@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from loguru import logger
 import asyncio
 
-from port_ocean.context.event import EventContext, EventType, event_context
+from port_ocean.context.event import EventType, event_context
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from .webhook_event import WebhookEvent, WebhookEventData, WebhookEventTimestamp
 from port_ocean.context.event import event
@@ -27,9 +27,7 @@ class WebhookProcessorManager(LiveEventsMixin):
     ) -> None:
         self._router = router
         self._processors: Dict[str, list[Type[AbstractWebhookProcessor]]] = {}
-        self._event_queues: Dict[
-            str, AbstractQueue[tuple[WebhookEvent, EventContext]]
-        ] = {}
+        self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
         self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
@@ -73,14 +71,14 @@ class WebhookProcessorManager(LiveEventsMixin):
             webhook_event: WebhookEvent | None = None
             try:
                 queue = self._event_queues[path]
-                webhook_event, event_cntxt = await queue.get()
+                webhook_event = await queue.get()
                 with logger.contextualize(
                     webhook_path=path, trace_id=webhook_event.trace_id
                 ):
                     async with event_context(
                         EventType.LIVE_EVENT,
                         trigger_type="machine",
-                        parent_override=event_cntxt,
+                        parent_override=webhook_event.event_context,
                     ):
                         matching_processors = self._extract_matching_processors(
                             webhook_event, path
@@ -212,7 +210,8 @@ class WebhookProcessorManager(LiveEventsMixin):
             try:
                 webhook_event = await WebhookEvent.from_request(request)
                 webhook_event.set_timestamp(WebhookEventTimestamp.AddedToQueue)
-                await self._event_queues[path].put((webhook_event, deepcopy(event)))
+                webhook_event.set_event_context(deepcopy(event))
+                await self._event_queues[path].put(webhook_event)
                 return {"status": "ok"}
             except Exception as e:
                 logger.exception(f"Error processing webhook: {str(e)}")

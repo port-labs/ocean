@@ -272,7 +272,8 @@ async def test_shutdown_ShutsDownAllTasks(
     processor_manager.register_processor("/test", MockWebhookProcessor)
     await processor_manager.start_processing_event_messages()
     async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
-        await processor_manager._event_queues["/test"].put((webhook_event, event))
+        webhook_event.set_event_context(event)
+        await processor_manager._event_queues["/test"].put(webhook_event)
 
     await processor_manager.shutdown()
 
@@ -1067,7 +1068,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
     assert response.json() == {"status": "ok"}
 
     try:
-        await asyncio.wait_for(processing_complete.wait(), timeout=100.0)
+        await asyncio.wait_for(processing_complete.wait(), timeout=10.0)
     except asyncio.TimeoutError:
         pytest.fail("Event processing timed out")
 
@@ -1188,7 +1189,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
     assert response.json() == {"status": "ok"}
 
     try:
-        await asyncio.wait_for(processing_complete.wait(), timeout=100.0)
+        await asyncio.wait_for(processing_complete.wait(), timeout=30.0)
     except asyncio.TimeoutError:
         pytest.fail("Event processing timed out")
 
