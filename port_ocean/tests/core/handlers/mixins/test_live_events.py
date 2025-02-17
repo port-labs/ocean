@@ -457,7 +457,7 @@ async def test_isEntityExists_returnsTrue(
     )
     mock_search_entities.return_value = [entity]
 
-    result = await mock_live_events_mixin._is_entity_exists(entity)
+    result = await mock_live_events_mixin._does_entity_exists(entity)
 
     assert result is True
     mock_search_entities.assert_called_once()
@@ -481,7 +481,7 @@ async def test_isEntityExists_returnsFalse(
     )
     mock_search_entities.return_value = []
 
-    result = await mock_live_events_mixin._is_entity_exists(entity)
+    result = await mock_live_events_mixin._does_entity_exists(entity)
 
     assert result is False
     mock_search_entities.assert_called_once()
@@ -547,7 +547,7 @@ async def test_getEntitiesToDelete_failedEntity_returnsTheEntity(
         misonfigured_entity_keys={},
     )
 
-    with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=True):
+    with patch.object(mock_live_events_mixin, "_does_entity_exists", return_value=True):
         result = await mock_live_events_mixin._get_entities_to_delete(
             mock_repository_resource_config, {}
         )
@@ -571,7 +571,9 @@ async def test_getEntitiesToDelete_failedEntityThatNotExsists_returnsEmptyList(
         misonfigured_entity_keys={},
     )
 
-    with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=False):
+    with patch.object(
+        mock_live_events_mixin, "_does_entity_exists", return_value=False
+    ):
         result = await mock_live_events_mixin._get_entities_to_delete(
             mock_repository_resource_config, {}
         )
@@ -595,7 +597,7 @@ async def test_getEntitiesToDelete_noFailedEntity_returnsEmptyList(
         misonfigured_entity_keys={},
     )
 
-    with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=True):
+    with patch.object(mock_live_events_mixin, "_does_entity_exists", return_value=True):
         result = await mock_live_events_mixin._get_entities_to_delete(
             mock_repository_resource_config, {}
         )
@@ -619,7 +621,9 @@ async def test_getEntitiesToDelete_noFailedEntityAndNotExsists_returnsEmptyList(
         misonfigured_entity_keys={},
     )
 
-    with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=False):
+    with patch.object(
+        mock_live_events_mixin, "_does_entity_exists", return_value=False
+    ):
         result = await mock_live_events_mixin._get_entities_to_delete(
             mock_repository_resource_config, {}
         )
@@ -674,7 +678,7 @@ async def test_processData_singleWebhookEvent_entityDeleted(
     mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource_not_passing_selector  # type: ignore
     mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
 
-    with patch.object(mock_live_events_mixin, "_is_entity_exists", return_value=True):
+    with patch.object(mock_live_events_mixin, "_does_entity_exists", return_value=True):
         async with event_context("test_event") as event:
             event.port_app_config = (
                 mock_port_app_config_with_repository_resource_not_passing_selector

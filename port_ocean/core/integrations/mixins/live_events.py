@@ -91,7 +91,7 @@ class LiveEventsMixin(HandlerMixin):
             logger.error(f"Error exporting resource {resource_mapping.kind}: {str(e)}")
             return False, []
 
-    async def _is_entity_exists(self, entity: Entity) -> bool:
+    async def _does_entity_exists(self, entity: Entity) -> bool:
         """Check if this integration is the owner of the given entity.
 
         Args:
@@ -128,7 +128,7 @@ class LiveEventsMixin(HandlerMixin):
         calculation_results = await self.entity_processor.parse_items(
                     resource_mapping, [raw_item], parse_all=True, send_raw_data_examples_amount=0
                 )
-        if len(calculation_results.entity_selector_diff.failed) == 1 and await self._is_entity_exists(calculation_results.entity_selector_diff.failed[0]):
+        if len(calculation_results.entity_selector_diff.failed) == 1 and await self._does_entity_exists(calculation_results.entity_selector_diff.failed[0]):
             return calculation_results.entity_selector_diff.failed
         return []
 
