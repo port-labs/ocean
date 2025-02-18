@@ -1,7 +1,11 @@
 from port_ocean.exceptions.base import BaseOceanError
 
 
-class OceanAbortError(BaseOceanError):
+class OceanAbortException(BaseOceanError):  # noqa F401
+    pass
+
+
+class OceanAbortError(OceanAbortException):
     pass
 
 
