@@ -14,7 +14,7 @@ We are interested in three APIs respectively:
 ## GitHubClient
 We create a `client.py` file in the `github` directory. This file will contain the `GitHubClient` class, which will be responsible for interacting with the GitHub API.
 
-```bash
+```console
 $ touch client.py
 ```
 
@@ -87,7 +87,7 @@ When building an integration, it is important to be mindful of the rate limits o
 
 Let's install it with Poetry:
 
-```bash
+```console
 $ poetry add aiolimiter
 ```
 
@@ -662,8 +662,8 @@ class GitHubClient:
 :::tip Formatting your code
 Remember to format your code using [`black`](https://black.readthedocs.io/en/stable/) and sort imports with [`isort`](https://pycqa.github.io/isort/) before proceeding. You can do this by running the following command:
 
-```bash
-poetry run black . && poetry run isort .
+```console
+$ poetry run black . && poetry run isort .
 ```
 
 :::tip Source Code

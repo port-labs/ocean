@@ -37,8 +37,8 @@ OCEAN__EVENT_LISTENER__TYPE=POLLING
 
 Now, it is time to do what we have been waiting for. Run the integration using the Ocean CLI:
 
-```shell showLineNumbers
-make run
+```console showLineNumbers
+$ make run
 ```
 
 You should see the integration running with the following output:

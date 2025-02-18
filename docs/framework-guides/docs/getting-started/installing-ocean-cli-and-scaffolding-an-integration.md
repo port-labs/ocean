@@ -19,25 +19,25 @@ While integrations are usually developed within the [Ocean monorepo](https://git
 #### Installing the Ocean CLI
 Run the following command to install the Ocean framework and its CLI tool:
 
-```bash showLineNumbers
+```console showLineNumbers
 $ pip install "port-ocean[cli]"
 ```
 
 Once this is done, verify the installation by running the following command, you should see an output with the version of the Ocean CLI:
 
-```bash showLineNumbers
+```console showLineNumbers
 $ ocean version
 🌊 Ocean version: 0.18.9
 ```
 
 #### Scaffolding Your Fist Integration
-Next, you will scaffold the GitHub integration for ingesting Organizations, Repositories and Pull Requests. Run the following command to scaffold a new integration:
+Next, you will scaffold the GitHub integration for ingesting Organizations, Repositories and Pull Requests. Run the `ocean new` command in your CLI to scaffold a new integration:
 
 <details>
 <summary><b>Scaffolding a standalone integration (Click to expand)</b></summary>
 
-```bash showLineNumbers
-ocean new
+```console showLineNumbers
+$ ocean new
 =====================================================================================
           ::::::::       ::::::::       ::::::::::           :::        ::::    :::
         :+:    :+:     :+:    :+:      :+:                :+: :+:      :+:+:   :+:
@@ -82,7 +82,7 @@ To develop integrations within the Ocean monorepo, you need to fork the [Port Oc
 <details>
 <summary><b>Installing dependencies on Ocean monorepo (Click to expand)</b></summary>
 
-```bash showLineNumbers
+```console showLineNumbers
 $ make install
 ```
 
@@ -94,8 +94,8 @@ Next, you will scaffold the GitHub integration for ingesting Organizations, Repo
 <details>
 <summary><b>Scaffolding an integration within Ocean monorepo (Click to expand)</b></summary>
 
-```bash showLineNumbers
-make new
+```console showLineNumbers
+$ make new
 =====================================================================================
           ::::::::       ::::::::       ::::::::::           :::        ::::    :::
         :+:    :+:     :+:    :+:      :+:                :+: :+:      :+:+:   :+:
@@ -139,7 +139,7 @@ To test to see that the integration is working, we will initialize the environme
 
 <summary><b>Setting up the environment variables (Click to expand)</b></summary>
 
-```bash showLineNumbers
+```console showLineNumbers
 $ cd ./github # or cd ./integrations/github if you are in the monorepo
 $ cp .env.example .env
 ```
@@ -152,7 +152,7 @@ Next, activate the virtual environment and run the integration:
 
 <summary><b>Running the integration (Click to expand)</b></summary>
 
-```bash showLineNumbers
+```console showLineNumbers
 $ poetry shell
 $ make run
 
@@ -186,7 +186,7 @@ The integration scaffold comes with the following structure which can be visuali
 
 <summary><b>Integration structure (Click to expand)</b></summary>
 
-```bash
+```console
 $ tree
 
 github/
