@@ -91,12 +91,12 @@ Let's install it with Poetry:
 $ poetry add aiolimiter
 ```
 
-We will create a `rate_limiter` method property that will return an instance of the `aiolimiter.AsyncLimiter` class. The arguments passed to the `AsyncLimiter` depends on the authentication status of the client.
+We will create a `rate_limiter` property that will contain an instance of the `aiolimiter.AsyncLimiter` class. The arguments passed to the `AsyncLimiter` depends on the authentication status of the client.
 
 
 <details>
 
-<summary><b>GitHub Client rate_limiter property (Click to expand)</b></summary>
+<summary><b>GitHub Client `rate_limiter` property (Click to expand)</b></summary>
 
 ```python showLineNumbers
 // highlight-next-line
@@ -117,8 +117,14 @@ class GitHubClient:
         self.access_token = access_token
         self.http_client = http_async_client
         self.http_client.headers.update(self.headers)
-        // highlight-next-line
-        self.limiter = self.rate_limiter
+        // highlight-start
+        time_period = 60 * 60  # 1 hour in seconds
+        self.rate_limiter = AsyncLimiter((
+            self.REQUEST_LIMIT_AUTHENTICATED
+            if self.access_token
+            else self.REQUEST_LIMIT_UNAUTHENTICATED
+        ), time_period)
+        // highlight-end
 
     @property
     def headers(self) -> dict[str, str]:
@@ -131,21 +137,6 @@ class GitHubClient:
 
         return initial_headers
 
-// highlight-start
-    @property
-    def rate_limiter(self) -> AsyncLimiter:
-        time_period = 60 * 60  # 1 hour in seconds
-        if self.access_token:
-            return AsyncLimiter(
-                self.REQUEST_LIMIT_AUTHENTICATED,
-                time_period
-            )
-        return AsyncLimiter(
-            self.REQUEST_LIMIT_UNAUTHENTICATED,
-            time_period
-        )
-// highlight-end
-
     # Other methods will be added here
 
 ```
@@ -153,7 +144,7 @@ class GitHubClient:
 </details>
 
 
-#### Implementing the method to retrieve organization details
+### Implementing the method to retrieve organization details
 Since we are going to work with specific organizations input by the user, we will create a method to retrieve information on a specific organization so we can have data to export to Port. We could start by creating a method to retrieve the organization details:
 
 <details>
@@ -174,7 +165,7 @@ class GitHubClient:
 
     async def get_organization(self, organization: str) -> dict:
         url = f"{self.base_url}/orgs/{organization}"
-        async with self.limiter:
+        async with self.rate_limiter:
             try:
                 response = await self.http_client.get(
                     url
@@ -226,7 +217,7 @@ class GitHubClient:
 
 // highlight-start
     async def _send_api_request(self, url: str) -> dict[str, Any]:
-        async with self.limiter:
+        async with self.rate_limiter:
             try:
                 response = await self.http_client.get(
                     url
@@ -268,7 +259,7 @@ Despite the fact that we can modify the data returned by GitHub to fit a specifi
 
 
 
-#### Retrieving repositories of an organization
+### Retrieving repositories of an organization
 The endpoint for retrieving repositories of an organization is a paginaged endpoint.
 Since the we expect to use another endpoint which also requires pagination, it would be smart
 to implement a method that can handle pagination. We will create a method called `_get_paginated_data` that will be used by the `get_repositories` and `get_pull_requests` methods.
@@ -318,7 +309,7 @@ class GitHub:
 
 // highlight-next-line
     async def _send_api_request(self, url: str, params: dict[str, Any] | None = None) -> httpx.Response:
-        async with self.limiter:
+        async with self.rate_limiter:
 // highlight-next-line
             logger.info(f"Making request to {url} with params: {params}")
             try:
@@ -430,7 +421,7 @@ class GitHub:
 The `stream_async_iterators_tasks` function takes in a list of async iterators and returns an async generator that yields the results of each async iterator as they are retrieved. This is a much cleaner and more efficient way to retrieve data from multiple async iterators.
 
 
-#### Retrieving pull requests of a repository
+### Retrieving pull requests of a repository
 The endpoint for retrieving pull requests of a repository is also paginated. We will create a method called `get_pull_requests` that will be similar to the `get_repositories` method. The `get_pull_requests` method will also use the `_get_paginated_data` method to handle pagination.
 
 
@@ -471,7 +462,7 @@ class GitHub:
 
 </details>
 
-
+### Caching the results of API calls
 We have successfully implemented the `GitHubClient` class with methods to retrieve organization details, repositories of an organization, and pull requests of a repository.
 We have also handled pagination and rate limiting. The `GitHubClient` class is now ready to be used to interact with the GitHub API.
 Just one thing is left: the `get_pull_requests` method calls the `get_repositories` method to retrieve repositories
@@ -514,6 +505,8 @@ class GitHub:
 </details>
 
 
+## Conclusion
+
 We have successfully implemented the `GitHubClient` class with methods to retrieve organization details, repositories of an organization, and pull requests of a repository.
 
 Your `client.py` file should look like this:
@@ -548,13 +541,18 @@ class GitHubClient:
     REQUEST_LIMIT_UNAUTHENTICATED = 60
 
     def __init__(
-        self, base_url: str ="https://api.github.com", access_token: str | None = None
+        self, base_url: str = "https://api.github.com", access_token: str | None = None
     ) -> None:
         self.base_url = base_url
         self.access_token = access_token
         self.http_client = http_async_client
         self.http_client.headers.update(self.headers)
-        self.limiter = self.rate_limiter
+        time_period = 60 * 60  # 1 hour in seconds
+        self.rate_limiter = AsyncLimiter((
+            self.REQUEST_LIMIT_AUTHENTICATED
+            if self.access_token
+            else self.REQUEST_LIMIT_UNAUTHENTICATED
+        ), time_period)
 
     @property
     def headers(self) -> dict[str, str]:
@@ -566,13 +564,6 @@ class GitHubClient:
             initial_headers["Authorization"] = f"Bearer {self.access_token}"
 
         return initial_headers
-
-    @property
-    def rate_limiter(self) -> AsyncLimiter:
-        time_period = 60 * 60  # 1 hour in seconds
-        if self.access_token:
-            return AsyncLimiter(self.REQUEST_LIMIT_AUTHENTICATED, time_period)
-        return AsyncLimiter(self.REQUEST_LIMIT_UNAUTHENTICATED, time_period)
 
     def _get_next_page_url(self, response: httpx.Headers) -> str | None:
         link: str = response.get("Link", None)
@@ -590,7 +581,7 @@ class GitHubClient:
     async def _send_api_request(
         self, url: str, params: dict[str, Any] | None = None
     ) -> httpx.Response:
-        async with self.limiter:
+        async with self.rate_limiter:
             logger.info(f"Making request to {url} with params: {params}")
             try:
                 response = await self.http_client.get(url, params=params)
