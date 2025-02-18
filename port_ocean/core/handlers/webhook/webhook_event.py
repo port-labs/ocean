@@ -5,6 +5,7 @@ from fastapi import Request
 from loguru import logger
 
 from port_ocean.context.event import EventContext
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import RAW_ITEM
 
 
@@ -91,15 +92,18 @@ class WebhookEventData:
     """
 
     def __init__(
-        self, kind: str, data_to_update: list[RAW_ITEM], data_to_delete: list[RAW_ITEM]
+        self,
+        resourse: ResourceConfig,
+        data_to_update: list[RAW_ITEM],
+        data_to_delete: list[RAW_ITEM],
     ) -> None:
-        self._kind = kind
+        self._resource = resourse
         self._data_to_update = data_to_update
         self._data_to_delete = data_to_delete
 
     @property
-    def kind(self) -> str:
-        return self._kind
+    def resource(self) -> ResourceConfig:
+        return self._resource
 
     @property
     def data_to_update(self) -> list[RAW_ITEM]:

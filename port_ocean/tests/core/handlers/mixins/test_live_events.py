@@ -93,13 +93,47 @@ event_data_for_three_entities_for_repository_resource = [
 ]
 
 webHook_event_data_for_creation = WebhookEventData(
-    kind="repository",
+    resourse=ResourceConfig(
+        kind="repository",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".name",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={
+                        "url": ".links.html.href",
+                        "defaultBranch": ".main_branch",
+                    },
+                    relations={},
+                )
+            )
+        ),
+    ),
     data_to_update=event_data_for_three_entities_for_repository_resource,
     data_to_delete=[],
 )
 
 one_webHook_event_data_for_creation = WebhookEventData(
-    kind="repository",
+    resourse=ResourceConfig(
+        kind="repository",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".name",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={
+                        "url": ".links.html.href",
+                        "defaultBranch": ".main_branch",
+                    },
+                    relations={},
+                )
+            )
+        ),
+    ),
     data_to_update=[
         {
             "name": "repo-one",
@@ -655,9 +689,9 @@ async def test_deleteEntities_emptyRawItems_deleteNotCalled(
     """Test that _delete_entities returns early when raw_items_to_delete is empty"""
     mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
 
-    await mock_live_events_mixin._delete_entities(
+    await mock_live_events_mixin._delete_entity(
         resource_mappings=[mock_repository_resource_config],
-        upserted_entities=[],
+        upserted_blueprints=[],
         raw_items_to_delete=[],
     )
 
@@ -682,9 +716,9 @@ async def test_deleteEntities_oneEntityDeleted(
         calculation_result
     )
 
-    await mock_live_events_mixin._delete_entities(
+    await mock_live_events_mixin._delete_entity(
         resource_mappings=[mock_repository_resource_config],
-        upserted_entities=[],
+        upserted_blueprints=[],
         raw_items_to_delete=[{"id": "test"}],
     )
 
@@ -711,9 +745,9 @@ async def test_deleteEntities_NoEntityDeletedDueToUpsertedEntity(
         calculation_result
     )
 
-    await mock_live_events_mixin._delete_entities(
+    await mock_live_events_mixin._delete_entity(
         resource_mappings=[mock_repository_resource_config],
-        upserted_entities=[entity],  # Same entity was upserted
+        upserted_blueprints=[entity],  # Same entity was upserted
         raw_items_to_delete=[{"id": "test"}],
     )
 
@@ -745,8 +779,8 @@ async def test_delete_entities_error_handling(
         "Test error"
     )
 
-    await mock_live_events_mixin._delete_entities(
+    await mock_live_events_mixin._delete_entity(
         resource_mappings=[mock_repository_resource_config],
-        upserted_entities=[],
+        upserted_blueprints=[],
         raw_items_to_delete=[{"id": "test"}],
     )

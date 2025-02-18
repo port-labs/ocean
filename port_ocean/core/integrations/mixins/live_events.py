@@ -19,18 +19,15 @@ class LiveEventsMixin(HandlerMixin):
         Args:
             webhook_events_data: List of WebhookEventData objects to process
         """
+        exported_entities: list[Entity] = []
         for webhook_event_data in webhook_events_data:
-            resource_mappings = await self._get_live_event_resources(
-                webhook_event_data.kind
-            )
-
-            exported_entities: list[Entity] = []
-
             for raw_item in webhook_event_data.data_to_update:
-                exported_entities_from_export = await self._export_single_resource(resource_mappings, raw_item)
+                exported_entities_from_export = await self._export_single_resource(webhook_event_data.resource, raw_item)
                 exported_entities.extend(exported_entities_from_export)
 
-            await self._delete_entities(resource_mappings, exported_entities, webhook_event_data.data_to_delete)
+        for webhook_event_data in webhook_events_data:
+            for raw_item in webhook_event_data.data_to_delete:
+                await self._delete_entity(webhook_event_data.resource, exported_entities, raw_item)
 
 
 
@@ -123,41 +120,40 @@ class LiveEventsMixin(HandlerMixin):
             return calculation_results.entity_selector_diff.failed
         return []
 
-    async def _export_single_resource(self, resource_mappings: list[ResourceConfig], raw_item: RAW_ITEM) -> list[Entity]:
+    async def _export_single_resource(self, resource_mapping: ResourceConfig, raw_item: RAW_ITEM) -> list[tuple[str, str]]:
         entities_to_delete: list[Entity] = []
-        blueprints_to_keep: Set[str] = set()
+        blueprints_to_keep: Set[tuple[str, str]] = set()
 
-        logger.info("Exporting single resource", raw_item=raw_item, resource_mappings_count=len(resource_mappings))
-        for resource_mapping in resource_mappings:
-            export_succeded, exported_entities = await self._export(resource_mapping, raw_item)
-            if self._did_all_entities_filtered_out_at_export(export_succeded, exported_entities):
-                entities_to_delete.extend(await self._get_entities_to_delete(resource_mapping, raw_item))
-            else:
-                for entity in exported_entities:
-                    blueprints_to_keep.add(entity.blueprint)
+        logger.info("Exporting single resource", raw_item=raw_item)
+        export_succeded, exported_entities = await self._export(resource_mapping, raw_item)
+        if self._did_all_entities_filtered_out_at_export(export_succeded, exported_entities):
+            entities_to_delete.extend(await self._get_entities_to_delete(resource_mapping, raw_item))
+        else:
+            for entity in exported_entities:
+                blueprints_to_keep.add((entity.blueprint, entity.identifier))
 
-        entities_to_delete_filtered_by_kept_blueprints = [entity for entity in entities_to_delete if entity.blueprint not in blueprints_to_keep]
+        #entities_to_delete_filtered_by_kept_blueprints = [entity for entity in entities_to_delete if (entity.blueprint, entity.identifier) not in blueprints_to_keep]
 
-        logger.info(f"Deleting entities after filtering out the bluepprint entities to keep",
-                    deleted_entities_count=len(entities_to_delete_filtered_by_kept_blueprints))
         try:
-            if entities_to_delete_filtered_by_kept_blueprints:
-                await self.entities_state_applier.delete(entities_to_delete_filtered_by_kept_blueprints, UserAgentType.exporter)
-            return exported_entities
+            if entities_to_delete:
+                logger.info(f"Deleting entities after filtering out the bluepprint entities to keep",
+                    deleted_entities_count=len(entities_to_delete))
+                await self.entities_state_applier.delete(entities_to_delete, UserAgentType.exporter)
+            return list(blueprints_to_keep)
         except Exception as e:
             logger.error(f"Failed to delete entities: {str(e)}")
 
-    async def _delete_entities(self, resource_mappings: list[ResourceConfig],upserted_entities: list[Entity], raw_items_to_delete: list[RAW_ITEM]) -> None:
+    async def _delete_entity(self, resource_mapping: ResourceConfig, upserted_blueprints: list[tuple[str, str]], raw_item_to_delete: RAW_ITEM) -> None:
         entities_to_delete: list[Entity] = []
-        if len(raw_items_to_delete) == 0:
-            return
-        for resource_mapping in resource_mappings:
-            calculation_results = await self.entity_processor.parse_items(
-                resource_mapping, raw_items_to_delete, parse_all=True, send_raw_data_examples_amount=0
-            )
-            entities_to_delete.extend([entity for entity in calculation_results.entity_selector_diff.passed if entity not in upserted_entities])
+
+        calculation_results = await self.entity_processor.parse_items(
+            resource_mapping, [raw_item_to_delete], parse_all=True, send_raw_data_examples_amount=0
+        )
+        entities_to_delete.extend([entity for entity in calculation_results.entity_selector_diff.passed
+                                 if (entity.blueprint, entity.identifier) not in upserted_blueprints])
 
         try:
-            await self.entities_state_applier.delete(entities_to_delete, UserAgentType.exporter)
+            if entities_to_delete:
+                await self.entities_state_applier.delete(entities_to_delete, UserAgentType.exporter)
         except Exception as e:
             logger.error(f"Failed to delete entities: {str(e)}")
