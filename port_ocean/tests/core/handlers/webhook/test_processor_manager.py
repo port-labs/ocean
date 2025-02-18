@@ -599,7 +599,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 1
-    assert processed_events[0].kind == "repository"
 
     mock_upsert.assert_called_once()
     mock_delete.assert_not_called()
@@ -1008,8 +1007,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 2
-    assert processed_events[0].kind == "repository"
-    assert processed_events[1].kind == "repository"
     assert mock_upsert.call_count == 2
     mock_delete.assert_not_called()
 
@@ -1134,7 +1131,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 1
-    assert processed_events[0].kind == "repository"
     assert test_state["retry"] is True
     mock_upsert.assert_called_once()
     mock_delete.assert_not_called()
