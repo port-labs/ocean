@@ -81,6 +81,8 @@ class JiraClient:
                 response = await self.client.request(
                     method=method, url=url, params=params, json=json, headers=headers
                 )
+                if response.status_code == 400:
+                    logger.error(f"error response: {response.text}")
                 response.raise_for_status()
                 return response.json()
         except httpx.HTTPStatusError as e:
