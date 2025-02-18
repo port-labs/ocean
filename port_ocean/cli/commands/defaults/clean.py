@@ -8,6 +8,7 @@ from port_ocean.cli.commands.main import print_logo, console
 from port_ocean.core.defaults import clean_defaults
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import load_module
+from port_ocean.utils.signal import init_signal_handler
 from .group import defaults
 
 
@@ -27,12 +28,20 @@ from .group import defaults
     is_flag=True,
     help="Wait for the migration to finish. when force is set to true.",
 )
-def clean(path: str, force: bool, wait: bool) -> None:
+@click.option(
+    "-d",
+    "--destroy",
+    "destroy",
+    is_flag=True,
+    help="Destroy the integration after cleaning the defaults.",
+)
+def clean(path: str, force: bool, wait: bool, destroy: bool) -> None:
     """
     Clean defaults of the integration from the .port/resources PATH.
 
     PATH: Path to the integration. If not provided, the current directory will be used.
     """
+    init_signal_handler()
     print_logo()
 
     console.print("Cleaning blueprints and configurations! ⚓️")
@@ -52,5 +61,9 @@ def clean(path: str, force: bool, wait: bool) -> None:
     )
 
     clean_defaults(
-        app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config, force, wait
+        app.integration.AppConfigHandlerClass.CONFIG_CLASS,
+        app.config,
+        force,
+        wait,
+        destroy,
     )
