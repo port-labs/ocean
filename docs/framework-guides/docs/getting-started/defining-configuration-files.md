@@ -3,7 +3,7 @@ sidebar_position: 5
 ---
 
 
-# Defining Configuration Files
+# 📝 Defining Configuration Files
 The next step in our integration journey is to define configurations for our integration which are are just three (3):
 
 - `.port/spec.yaml`: A required file used to provide the integration specification and also a validation layer for the inputs required by the integration. The validation layer is used to verify the provided integration configuration during the integration startup process. The [The `spec.yaml` section](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#specyaml-file) of the Integration Spec and Defaults documentation gives more details.

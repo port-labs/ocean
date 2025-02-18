@@ -2,7 +2,7 @@
 title: Getting Started
 ---
 
-# Getting Started
+# ⚡️ Getting Started
 
 In this guide, you will learn the basics of the Ocean framework used to develop integrations for Port. This is a hands-on guide that will walk you through the process of developing your first integration. You will be building a version of the GitHub integration that ingests organizations (a configured list of organizations), their repositories and their pull requests.
 

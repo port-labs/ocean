@@ -3,7 +3,7 @@ sidebar_position: 7
 ---
 
 
-# Publishing Your Integration
+# 📦 Publishing Your Integration
 With the integration developed, you can decide to deploy it via [Helm](../deployment/helm.md), [Terraform](../deployment/terraform.md), [Docker](../deployment//docker.md), or [ArgoCD](../deployment/argocd.md).
 
 However, if you would like your integration to be available to other users on Port, you can publish it to the Port Ocean repository. This will make it available to other users who can install it directly from the Port Ocean dashboard.

@@ -1,9 +1,9 @@
 ---
-sidebar_position: 7
+sidebar_position: 6
 ---
 
 
-# Testing the Integration
+# 🧪 Testing the Integration
 Having completed the implementation of the integration, the next step is to test it. In this guide, we will learn how to test the integration to ingest data into our dashboard on Port.
 
 ## Prerequisites

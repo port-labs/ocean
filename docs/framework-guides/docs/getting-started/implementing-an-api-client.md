@@ -2,7 +2,7 @@
 sidebar_position: 2
 ---
 
-# Implementing an API Client
+# 🔗 Implementing an API Client
 One of the first steps to implementing an integration with Ocean is to create an API client. This client will be responsible for interacting with the third-party API and pulling in the data that you need to send to Port. In this case, our client, `GitHubClient`, will be interacting with the GitHub API.
 
 We are interested in three APIs respectively:
@@ -34,7 +34,7 @@ In addition, we will add an attribute for the http client we will be using to ma
 from port_ocean.utils import http_async_client
 
 class GitHubClient:
-    def __init__(self, base_url: str ="https://api.github.com", access_token: str | None = None):
+    def __init__(self, base_url: str ="https://api.github.com", access_token: str | None = None) -> None:
         self.base_url = base_url
         self.access_token = access_token
         self.http_client = http_async_client
@@ -57,7 +57,7 @@ from port_ocean.utils import http_async_client
 
 
 class GitHubClient:
-    def __init__(self, base_url: str ="https://api.github.com", access_token: str | None = None):
+    def __init__(self, base_url: str ="https://api.github.com", access_token: str | None = None) -> None:
         self.base_url = base_url
         self.access_token = access_token
         self.http_client = http_async_client
@@ -112,7 +112,7 @@ class GitHubClient:
 
     def __init__(
         self, base_url: str ="https://api.github.com", access_token: str | None = None
-    ):
+    ) -> None:
         self.base_url = base_url
         self.access_token = access_token
         self.http_client = http_async_client
@@ -549,7 +549,7 @@ class GitHubClient:
 
     def __init__(
         self, base_url: str ="https://api.github.com", access_token: str | None = None
-    ):
+    ) -> None:
         self.base_url = base_url
         self.access_token = access_token
         self.http_client = http_async_client

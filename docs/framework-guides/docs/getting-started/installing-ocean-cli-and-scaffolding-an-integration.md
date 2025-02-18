@@ -1,12 +1,11 @@
 ---
 sidebar_position: 1
-title: Installing Ocean CLI and Scaffolding an Integration
 ---
 
 
 import CodeBlock from '@theme/CodeBlock';
 
-# ⚡️ Getting Started
+# 🚀 Installing Ocean CLI and Scaffolding an Integration
 
 In this part of the guide, you'll learn how to **install** the Ocean CLI and **scaffold** a new integration
 

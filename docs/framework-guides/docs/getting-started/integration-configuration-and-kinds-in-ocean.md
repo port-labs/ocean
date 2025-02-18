@@ -2,7 +2,7 @@
 sidebar_position: 3
 ---
 
-# Integration Configuration and Kinds in Ocean
+# 🏗️ Integration Configuration and Kinds in Ocean
 With the API client implemented, you will notice we are exporting three types of data, namely organizations, repositories and pull requests. In Ocean, these are referred to as kinds. Kinds are a way to categorize data in Ocean. They are used to define the structure of the data that is being exported.
 
 In addition, some of these kinds require specific configurations to be set up. For example, the organizations kind requires the user to provide a list of organizations that they want to export data from. Similarly, the repositories kind requires the user to provide the same organizations, and the type of repositories they want to export data from. Lastly, the pull requests kind requires the user to provide the same organizations, repository type, and the type of pull requests they want to export data from.
@@ -12,7 +12,7 @@ In this guide, we will learn how to configure the integration and accept user-de
 ## Integration Configuration
 Create an `integration.py` file in the same directory you defined the `client.py` file. This file will contain the configuration for the integration.
 
-Configurations are defined using Python types, backed with [Pydantic][https://docs.pydantic.dev/latest/]. Pydantic is a data validation and settings management using Python type annotations. In addition, Ocean already has a default configuration that is used to define the structure of the data that is being exported. We will inherit this class and add our custom configurations.
+Configurations are defined using Python types, backed with [Pydantic](https://docs.pydantic.dev/latest/). Pydantic is a data validation and settings management using Python type annotations. In addition, Ocean already has a default configuration that is used to define the structure of the data that is being exported. We will inherit this class and add our custom configurations.
 
 For each of the kinds, we will define `Selector` subclasses that will hold the parameters we are passing to the kinds.
 

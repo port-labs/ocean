@@ -2,7 +2,7 @@
 sidebar_position: 4
 ---
 
-# Sending Data to Port using Resync Functions
+# 📡 Sending Data to Port using Resync Functions
 
 In this guide, we will learn how to send data to Port using resync functions. Resync functions are functions that are executed by Port to retrieve data from a source and send it to Port.
 
