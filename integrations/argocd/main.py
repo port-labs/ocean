@@ -45,6 +45,10 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     applications = await argocd_client.get_resources(
         resource_kind=ObjectKind.APPLICATION
     )
+    if not applications:
+        logger.info("No applications found. Skipping managed resources ingestion")
+        return
+
     errors = []
     for application in applications:
         try:
