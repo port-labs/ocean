@@ -1,11 +1,11 @@
-from port_ocean.exceptions.core import OceanAbortError
+from port_ocean.exceptions.core import OceanAbortException
 
 
-class GitlabTokenNotFoundException(OceanAbortError):
+class GitlabTokenNotFoundException(OceanAbortException):
     pass
 
 
-class GitlabTooManyTokensException(OceanAbortError):
+class GitlabTooManyTokensException(OceanAbortException):
     def __init__(self):
         super().__init__(
             "There are too many tokens in tokenMapping. When useSystemHook = true,"
@@ -13,9 +13,9 @@ class GitlabTooManyTokensException(OceanAbortError):
         )
 
 
-class GitlabEventListenerConflict(OceanAbortError):
+class GitlabEventListenerConflict(OceanAbortException):
     pass
 
 
-class GitlabIllegalEventName(OceanAbortError):
+class GitlabIllegalEventName(OceanAbortException):
     pass
