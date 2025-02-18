@@ -5,9 +5,6 @@ from typing import Any, cast
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import AbstractWebhookProcessor
-from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPayload, WebhookEvent, WebhookEventData
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from jira.client import JiraClient
@@ -110,144 +107,94 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received users batch with {len(users_batch)} users")
         yield users_batch
 
-class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
-    def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
-        return webhook_event.payload.get("webhookEvent", "").startswith("jira:issue_")
 
-    def get_kind(self, payload: EventPayload) -> str:
-        return ObjectKind.ISSUE
+@ocean.router.post("/webhook")
+async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+    client = create_jira_client()
 
-    async def handle_event(self, payload: EventPayload, resource_config: ResourceConfig) -> None:
-        client = create_jira_client()
-        issue_key = payload["issue"]["key"]
-        logger.info(
-            f"Fetching issue with key: {issue_key} and applying specified JQL filter"
-        )
+    webhook_event = data.get("webhookEvent")
+    if not webhook_event:
+        logger.error("Missing webhook event")
+        return {"ok": False, "error": "Missing webhook event"}
 
-        params = {}
+    logger.info(f"Processing webhook event: {webhook_event}")
 
-        if resource_config.selector.jql:
-            params["jql"] = (
-                f"{resource_config.selector.jql} AND key = {payload['issue']['key']}"
+    match webhook_event:
+        case event_data if event_data.startswith("user_"):
+            account_id = data["user"]["accountId"]
+            logger.debug(f"Fetching user with accountId: {account_id}")
+            item = await client.get_single_user(account_id)
+            kind = ObjectKind.USER
+        case event_data if event_data.startswith("project_"):
+            project_key = data["project"]["key"]
+            logger.debug(f"Fetching project with key: {project_key}")
+            item = await client.get_single_project(project_key)
+            kind = ObjectKind.PROJECT
+        case event_data if event_data.startswith("jira:issue_"):
+            issue_key = data["issue"]["key"]
+            logger.info(
+                f"Fetching issue with key: {issue_key} and applying specified JQL filter"
             )
-        else:
-            params["jql"] = f"key = {payload['issue']['key']}"
+            resource_configs = cast(JiraPortAppConfig, event.port_app_config).resources
 
-        issues: list[dict[str, Any]] = []
-        async for issues_batch in client.get_paginated_issues(params):
-            issues.extend(issues_batch)
+            matching_resource_configs: list[JiraIssueConfig] = [
+                resource_config  # type: ignore
+                for resource_config in resource_configs
+                if (
+                    resource_config.kind == ObjectKind.ISSUE
+                    and isinstance(resource_config.selector, JiraIssueSelector)
+                )
+            ]
 
-        data_to_update = []
-        data_to_delete = []
-        if not issues:
-            logger.warning(
-                f"Issue {payload['issue']['key']} not found"
-                f" using the following query: {params['jql']},"
-                " trying to remove..."
-            )
-            data_to_delete.append(payload["issue"])
-        else:
-            data_to_update.extend(issues)
+            for config in matching_resource_configs:
 
-        return WebhookEventData(resourse=resource_config, data_to_update=data_to_update, data_to_delete=data_to_delete)
+                params = {}
 
-    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        # For Jira webhooks, we don't need additional authentication as they are validated
-        # through the webhook secret in the URL
-        return True
+                if config.selector.jql:
+                    params["jql"] = (
+                        f"{config.selector.jql} AND key = {data['issue']['key']}"
+                    )
+                else:
+                    params["jql"] = f"key = {data['issue']['key']}"
 
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        # Validate that the payload contains the required fields
-        return True
+                issues: list[dict[str, Any]] = []
+                async for issues in client.get_paginated_issues(params):
+                    issues.extend(issues)
 
+                if not issues:
+                    logger.warning(
+                        f"Issue {data['issue']['key']} not found"
+                        f" using the following query: {params['jql']},"
+                        " trying to remove..."
+                    )
+                    await ocean.unregister_raw(ObjectKind.ISSUE, [data["issue"]])
+                else:
+                    await ocean.register_raw(ObjectKind.ISSUE, issues)
 
-# @ocean.router.post("/webhook")
-# async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-#     client = create_jira_client()
+                return {"ok": True}
+        case _:
+            logger.warning(f"Unknown webhook event type: {webhook_event}")
+            return {
+                "ok": False,
+                "error": f"Unknown webhook event type: {webhook_event}",
+            }
 
-#     webhook_event = data.get("webhookEvent")
-#     if not webhook_event:
-#         logger.error("Missing webhook event")
-#         return {"ok": False, "error": "Missing webhook event"}
+    if not item:
+        error_msg = f"Failed to retrieve {kind}"
+        logger.warning(error_msg)
+        return {"ok": False, "error": error_msg}
 
-#     logger.info(f"Processing webhook event: {webhook_event}")
+    logger.debug(f"Retrieved {kind} item: {item}")
 
-#     match webhook_event:
-#         case event_data if event_data.startswith("user_"):
-#             account_id = data["user"]["accountId"]
-#             logger.debug(f"Fetching user with accountId: {account_id}")
-#             item = await client.get_single_user(account_id)
-#             kind = ObjectKind.USER
-#         case event_data if event_data.startswith("project_"):
-#             project_key = data["project"]["key"]
-#             logger.debug(f"Fetching project with key: {project_key}")
-#             item = await client.get_single_project(project_key)
-#             kind = ObjectKind.PROJECT
-#         case event_data if event_data.startswith("jira:issue_"):
-#             issue_key = data["issue"]["key"]
-#             logger.info(
-#                 f"Fetching issue with key: {issue_key} and applying specified JQL filter"
-#             )
-#             resource_configs = cast(JiraPortAppConfig, event.port_app_config).resources
+    if "deleted" in webhook_event:
+        logger.info(f"Unregistering {kind} item")
+        await ocean.unregister_raw(kind, [item])
+    else:
+        logger.info(f"Registering {kind} item")
+        await ocean.register_raw(kind, [item])
 
-#             matching_resource_configs: list[JiraIssueConfig] = [
-#                 resource_config  # type: ignore
-#                 for resource_config in resource_configs
-#                 if (
-#                     resource_config.kind == ObjectKind.ISSUE
-#                     and isinstance(resource_config.selector, JiraIssueSelector)
-#                 )
-#             ]
-
-#             for config in matching_resource_configs:
-
-#                 params = {}
-
-#                 if config.selector.jql:
-#                     params["jql"] = (
-#                         f"{config.selector.jql} AND key = {data['issue']['key']}"
-#                     )
-#                 else:
-#                     params["jql"] = f"key = {data['issue']['key']}"
-
-#                 issues: list[dict[str, Any]] = []
-#                 async for issues in client.get_paginated_issues(params):
-#                     issues.extend(issues)
-
-#                 if not issues:
-#                     logger.warning(
-#                         f"Issue {data['issue']['key']} not found"
-#                         f" using the following query: {params['jql']},"
-#                         " trying to remove..."
-#                     )
-#                     await ocean.unregister_raw(ObjectKind.ISSUE, [data["issue"]])
-#                 else:
-#                     await ocean.register_raw(ObjectKind.ISSUE, issues)
-
-#                 return {"ok": True}
-#         case _:
-#             logger.warning(f"Unknown webhook event type: {webhook_event}")
-#             return {
-#                 "ok": False,
-#                 "error": f"Unknown webhook event type: {webhook_event}",
-#             }
-
-#     if not item:
-#         error_msg = f"Failed to retrieve {kind}"
-#         logger.warning(error_msg)
-#         return {"ok": False, "error": error_msg}
-
-#     logger.debug(f"Retrieved {kind} item: {item}")
-
-#     if "deleted" in webhook_event:
-#         logger.info(f"Unregistering {kind} item")
-#         await ocean.unregister_raw(kind, [item])
-#     else:
-#         logger.info(f"Registering {kind} item")
-#         await ocean.register_raw(kind, [item])
-
-#     logger.info(f"Webhook event '{webhook_event}' processed successfully")
-#     return {"ok": True}
+    logger.info(f"Webhook event '{webhook_event}' processed successfully")
+    return {"ok": True}
 
 
 # Called once when the integration starts.
@@ -260,5 +207,3 @@ async def on_start() -> None:
         return
 
     await setup_application()
-
-ocean.add_webhook_processor("/webhook", JiraIssueWebhookProcessor)
