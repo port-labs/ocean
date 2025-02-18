@@ -32,7 +32,7 @@ install:
 
 install/local-core: install
 	# NOTE: This is a temporary change that shouldn't be committed
-	$(ACTIVATE) && pip install -e ../../ && pip install pytest pytest-xdist
+	$(ACTIVATE) && pip install -e ../../
 
 install/prod:
 	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
