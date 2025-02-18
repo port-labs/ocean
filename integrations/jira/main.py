@@ -114,7 +114,7 @@ class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
     def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
         return webhook_event.payload.get("webhookEvent", "").startswith("jira:issue_")
 
-    def get_kind(self) -> str:
+    def get_kind(self, payload: EventPayload) -> str:
         return ObjectKind.ISSUE
 
     async def handle_event(self, payload: EventPayload, resource_config: ResourceConfig) -> None:

@@ -109,6 +109,6 @@ class AbstractWebhookProcessor(ABC):
         pass
 
     @abstractmethod
-    def get_kind(self) -> str:
+    def get_kind(self, payload: EventPayload) -> str:
         """Get the kind of the resource."""
         pass

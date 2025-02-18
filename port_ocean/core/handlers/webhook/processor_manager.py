@@ -57,7 +57,7 @@ class WebhookProcessorManager(LiveEventsMixin, EventsMixin):
         for processor_class in self._processors[path]:
             processor = processor_class(webhook_event.clone())
             if processor.filter_event_data(webhook_event):
-                kind = processor.get_kind()
+                kind = processor.get_kind(webhook_event.payload)
                 for resource in event.port_app_config.resources:
                     if resource.kind == kind:
                         created_processors.append((resource, processor))
