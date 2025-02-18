@@ -55,7 +55,7 @@ class MockProcessor(AbstractWebhookProcessor):
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return True
 
-    def get_kind(self) -> str | None:
+    def get_kind(self) -> str:
         return "repository"
 
 
@@ -76,7 +76,7 @@ class MockProcessorFalse(AbstractWebhookProcessor):
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return False
 
-    def get_kind(self) -> str | None:
+    def get_kind(self) -> str:
         return "repository"
 
 
@@ -97,7 +97,9 @@ class MockWebhookProcessor(AbstractWebhookProcessor):
     async def validate_payload(self, payload: Dict[str, Any]) -> bool:
         return True
 
-    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+    async def handle_event(
+        self, payload: EventPayload, resource: ResourceConfig
+    ) -> WebhookEventData:
         if self.error_to_raise:
             raise self.error_to_raise
         self.processed = True
@@ -108,6 +110,9 @@ class MockWebhookProcessor(AbstractWebhookProcessor):
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return True
+
+    def get_kind(self) -> str:
+        return "test"
 
 
 class MockWebhookHandlerForProcessWebhookRequest(AbstractWebhookProcessor):
@@ -769,7 +774,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
 
     def patched_extract_matching_processors(
         self: WebhookProcessorManager, event: WebhookEvent, path: str
-    ) -> list[AbstractWebhookProcessor]:
+    ) -> list[tuple[ResourceConfig, AbstractWebhookProcessor]]:
         try:
             return original_process_data(self, event, path)
         except Exception as e:

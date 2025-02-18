@@ -653,7 +653,7 @@ async def test_deleteEntities_emptyRawItems_deleteNotCalled(
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
     """Test that _delete_entities returns early when raw_items_to_delete is empty"""
-    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()
+    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
 
     await mock_live_events_mixin._delete_entities(
         resource_mappings=[mock_repository_resource_config],
@@ -670,8 +670,8 @@ async def test_deleteEntities_oneEntityDeleted(
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
     """Test successful deletion of entities"""
-    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()
-    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
+    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
 
     calculation_result = CalculationResult(
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
@@ -699,8 +699,8 @@ async def test_deleteEntities_NoEntityDeletedDueToUpsertedEntity(
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
     """Test that entities that were upserted are not deleted"""
-    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()
-    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
+    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
 
     calculation_result = CalculationResult(
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
@@ -729,8 +729,8 @@ async def test_delete_entities_error_handling(
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
     """Test error handling during deletion"""
-    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()
-    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
+    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
 
     calculation_result = CalculationResult(
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),

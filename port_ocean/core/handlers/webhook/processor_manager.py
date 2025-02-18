@@ -49,10 +49,10 @@ class WebhookProcessorManager(LiveEventsMixin, EventsMixin):
 
     def _extract_matching_processors(
         self, webhook_event: WebhookEvent, path: str
-    ) -> list[(ResourceConfig, AbstractWebhookProcessor)]:
+    ) -> list[tuple[ResourceConfig, AbstractWebhookProcessor]]:
         """Find and extract the matching processor for an event"""
 
-        created_processors: list[(ResourceConfig, AbstractWebhookProcessor)] = []
+        created_processors: list[tuple[ResourceConfig, AbstractWebhookProcessor]] = []
 
         for processor_class in self._processors[path]:
             processor = processor_class(webhook_event.clone())
