@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from loguru import logger
 
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.exceptions.webhook_processor import RetryableError
 
 from .webhook_event import WebhookEvent, EventPayload, EventHeaders, WebhookEventData
@@ -96,11 +97,18 @@ class AbstractWebhookProcessor(ABC):
         pass
 
     @abstractmethod
-    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+    async def handle_event(
+        self, payload: EventPayload, resource: ResourceConfig
+    ) -> WebhookEventData:
         """Process the event."""
         pass
 
     @abstractmethod
     def filter_event_data(self, event: WebhookEvent) -> bool:
         """Filter the event data."""
+        pass
+
+    @abstractmethod
+    def get_kind(self) -> str:
+        """Get the kind of the resource."""
         pass

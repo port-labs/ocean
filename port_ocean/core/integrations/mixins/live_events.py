@@ -23,8 +23,16 @@ class LiveEventsMixin(HandlerMixin):
             resource_mappings = await self._get_live_event_resources(
                 webhook_event_data.kind
             )
-            for raw_item in webhook_event_data.data:
-                await self._export_single_resource(resource_mappings, raw_item)
+
+            exported_entities: list[Entity] = []
+
+            for raw_item in webhook_event_data.data_to_update:
+                exported_entities_from_export = await self._export_single_resource(resource_mappings, raw_item)
+                exported_entities.extend(exported_entities_from_export)
+
+            await self._delete_entities(resource_mappings, exported_entities, webhook_event_data.data_to_delete)
+
+
 
     async def _get_live_event_resources(self, kind: str) -> list[ResourceConfig]:
         try:
@@ -115,7 +123,7 @@ class LiveEventsMixin(HandlerMixin):
             return calculation_results.entity_selector_diff.failed
         return []
 
-    async def _export_single_resource(self, resource_mappings: list[ResourceConfig], raw_item: RAW_ITEM) -> None:
+    async def _export_single_resource(self, resource_mappings: list[ResourceConfig], raw_item: RAW_ITEM) -> list[Entity]:
         entities_to_delete: list[Entity] = []
         blueprints_to_keep: Set[str] = set()
 
@@ -135,5 +143,21 @@ class LiveEventsMixin(HandlerMixin):
         try:
             if entities_to_delete_filtered_by_kept_blueprints:
                 await self.entities_state_applier.delete(entities_to_delete_filtered_by_kept_blueprints, UserAgentType.exporter)
+            return exported_entities
+        except Exception as e:
+            logger.error(f"Failed to delete entities: {str(e)}")
+
+    async def _delete_entities(self, resource_mappings: list[ResourceConfig],upserted_entities: list[Entity], raw_items_to_delete: list[RAW_ITEM]) -> None:
+        entities_to_delete: list[Entity] = []
+        if len(raw_items_to_delete) == 0:
+            return
+        for resource_mapping in resource_mappings:
+            calculation_results = await self.entity_processor.parse_items(
+                resource_mapping, raw_items_to_delete, parse_all=True, send_raw_data_examples_amount=0
+            )
+            entities_to_delete.extend([entity for entity in calculation_results.entity_selector_diff.passed if entity not in upserted_entities])
+
+        try:
+            await self.entities_state_applier.delete(entities_to_delete, UserAgentType.exporter)
         except Exception as e:
             logger.error(f"Failed to delete entities: {str(e)}")

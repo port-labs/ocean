@@ -1,4 +1,5 @@
 import pytest
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -26,7 +27,9 @@ class ConcreteWebhookProcessor(AbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         return True
 
-    async def handle_event(self, payload: EventPayload) -> WebhookEventData:
+    async def handle_event(
+        self, payload: EventPayload, resource: ResourceConfig
+    ) -> WebhookEventData:
         return WebhookEventData(kind="test", data=[{}])
 
     def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
@@ -43,6 +46,9 @@ class ConcreteWebhookProcessor(AbstractWebhookProcessor):
     async def cancel(self) -> None:
         await super().cancel()
         self.cancel_called = True
+
+    def get_kind(self) -> str:
+        return "test"
 
 
 @pytest.fixture

@@ -5,6 +5,8 @@ from loguru import logger
 import asyncio
 
 from port_ocean.context.event import EventType, event_context
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from .webhook_event import WebhookEvent, WebhookEventData, WebhookEventTimestamp
 from port_ocean.context.event import event
@@ -15,7 +17,7 @@ from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import AbstractQueue, LocalQueue
 
 
-class WebhookProcessorManager(LiveEventsMixin):
+class WebhookProcessorManager(LiveEventsMixin, EventsMixin):
     """Manages webhook processors and their routes"""
 
     def __init__(
@@ -46,28 +48,29 @@ class WebhookProcessorManager(LiveEventsMixin):
                 logger.exception(f"Error starting queue processor for {path}: {str(e)}")
 
     def _extract_matching_processors(
-        self, event: WebhookEvent, path: str
-    ) -> list[AbstractWebhookProcessor]:
+        self, webhook_event: WebhookEvent, path: str
+    ) -> list[(ResourceConfig, AbstractWebhookProcessor)]:
         """Find and extract the matching processor for an event"""
-        matching_processors = [
-            processor_class
-            for processor_class in self._processors[path]
-            if processor_class(event).filter_event_data(event)
-        ]
 
-        if not matching_processors:
+        created_processors: list[(ResourceConfig, AbstractWebhookProcessor)] = []
+
+        for processor_class in self._processors[path]:
+            processor = processor_class(webhook_event.clone())
+            if processor.filter_event_data(webhook_event):
+                kind = processor.get_kind()
+                for resource in event.port_app_config.resources:
+                    if resource.kind == kind:
+                        created_processors.append((resource, processor))
+
+        if not created_processors:
             raise ValueError("No matching processors found")
 
-        created_processors: list[AbstractWebhookProcessor] = []
-        for processor_class in matching_processors:
-            processor = processor_class(event.clone())
-            created_processors.append(processor)
         return created_processors
 
     async def process_queue(self, path: str) -> None:
         """Process events for a specific path in order"""
         while True:
-            matching_processors: list[AbstractWebhookProcessor] = []
+            matching_processors_with_kind: list[AbstractWebhookProcessor] = []
             webhook_event: WebhookEvent | None = None
             try:
                 queue = self._event_queues[path]
@@ -76,26 +79,28 @@ class WebhookProcessorManager(LiveEventsMixin):
                     webhook_path=path, trace_id=webhook_event.trace_id
                 ):
                     async with event_context(
-                        EventType.LIVE_EVENT,
+                        EventType.HTTP_REQUEST,
                         trigger_type="machine",
                         parent_override=webhook_event.event_context,
                     ):
-                        matching_processors = self._extract_matching_processors(
-                            webhook_event, path
+                        matching_processors_with_resource = (
+                            self._extract_matching_processors(webhook_event, path)
                         )
-                        webhook_event_datas = await asyncio.gather(
+                        webhook_event_data_for_all_resources = await asyncio.gather(
                             *(
-                                self._process_single_event(processor, path)
-                                for processor in matching_processors
+                                self._process_single_event(processor, path, resource)
+                                for resource, processor in matching_processors_with_resource
                             )
                         )
-                        if webhook_event_datas and all(webhook_event_datas):
+                        if webhook_event_data_for_all_resources and all(
+                            webhook_event_data_for_all_resources
+                        ):
                             await self.export_raw_event_results_to_entities(
-                                webhook_event_datas
+                                webhook_event_data_for_all_resources
                             )
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
-                for processor in matching_processors:
+                for processor in matching_processors_with_kind:
                     await processor.cancel()
                     self._timestamp_event_error(processor.event)
                 break
@@ -103,7 +108,7 @@ class WebhookProcessorManager(LiveEventsMixin):
                 logger.exception(
                     f"Unexpected error in queue processor for {path}: {str(e)}"
                 )
-                for processor in matching_processors:
+                for processor in matching_processors_with_kind:
                     self._timestamp_event_error(processor.event)
             finally:
                 if webhook_event:
@@ -116,14 +121,14 @@ class WebhookProcessorManager(LiveEventsMixin):
         event.set_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
 
     async def _process_single_event(
-        self, processor: AbstractWebhookProcessor, path: str
+        self, processor: AbstractWebhookProcessor, path: str, resource: ResourceConfig
     ) -> WebhookEventData:
         """Process a single event with a specific processor"""
         try:
             logger.debug("Start processing queued webhook")
             processor.event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
 
-            webhook_event_data = await self._execute_processor(processor)
+            webhook_event_data = await self._execute_processor(processor, resource)
             processor.event.set_timestamp(
                 WebhookEventTimestamp.FinishedProcessingSuccessfully
             )
@@ -134,12 +139,12 @@ class WebhookProcessorManager(LiveEventsMixin):
             raise
 
     async def _execute_processor(
-        self, processor: AbstractWebhookProcessor
+        self, processor: AbstractWebhookProcessor, resource: ResourceConfig
     ) -> WebhookEventData:
         """Execute a single processor within a max processing time"""
         try:
             return await asyncio.wait_for(
-                self._process_webhook_request(processor),
+                self._process_webhook_request(processor, resource),
                 timeout=self._max_event_processing_seconds,
             )
         except asyncio.TimeoutError:
@@ -148,7 +153,7 @@ class WebhookProcessorManager(LiveEventsMixin):
             )
 
     async def _process_webhook_request(
-        self, processor: AbstractWebhookProcessor
+        self, processor: AbstractWebhookProcessor, resource: ResourceConfig
     ) -> WebhookEventData:
         """Process a webhook request with retry logic
 
@@ -169,7 +174,7 @@ class WebhookProcessorManager(LiveEventsMixin):
         webhook_event_data = None
         while True:
             try:
-                webhook_event_data = await processor.handle_event(payload)
+                webhook_event_data = await processor.handle_event(payload, resource)
                 break
 
             except Exception as e:
@@ -192,7 +197,13 @@ class WebhookProcessorManager(LiveEventsMixin):
     def register_processor(
         self, path: str, processor: Type[AbstractWebhookProcessor]
     ) -> None:
-        """Register a webhook processor for a specific path with optional filter"""
+        """Register a webhook processor for a specific path with optional filter
+
+        Args:
+            path: The webhook path to register
+            processor: The processor class to register
+            kind: The resource kind to associate with this processor, or None to match any kind
+        """
 
         if not issubclass(processor, AbstractWebhookProcessor):
             raise ValueError("Processor must extend AbstractWebhookProcessor")

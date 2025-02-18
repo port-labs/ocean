@@ -3,6 +3,7 @@ from httpx import Response
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.clients.port.client import PortClient
+from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
     HttpEntitiesStateApplier,
@@ -93,18 +94,20 @@ event_data_for_three_entities_for_repository_resource = [
 
 webHook_event_data_for_creation = WebhookEventData(
     kind="repository",
-    data=event_data_for_three_entities_for_repository_resource,
+    data_to_update=event_data_for_three_entities_for_repository_resource,
+    data_to_delete=[],
 )
 
 one_webHook_event_data_for_creation = WebhookEventData(
     kind="repository",
-    data=[
+    data_to_update=[
         {
             "name": "repo-one",
             "links": {"html": {"href": "https://example.com/repo-one"}},
             "main_branch": "main",
         }
     ],
+    data_to_delete=[],
 )
 
 
@@ -642,3 +645,108 @@ async def test_processData_singleWebhookEvent_entityDeleted(
 
         assert mock_upsert.call_count == 0
         assert mock_live_events_mixin._entities_state_applier.delete.call_count == 1  # type: ignore
+
+
+@pytest.mark.asyncio
+async def test_deleteEntities_emptyRawItems_deleteNotCalled(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    """Test that _delete_entities returns early when raw_items_to_delete is empty"""
+    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()
+
+    await mock_live_events_mixin._delete_entities(
+        resource_mappings=[mock_repository_resource_config],
+        upserted_entities=[],
+        raw_items_to_delete=[],
+    )
+
+    mock_live_events_mixin.entities_state_applier.delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_deleteEntities_oneEntityDeleted(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    """Test successful deletion of entities"""
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()
+    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()
+
+    calculation_result = CalculationResult(
+        entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
+        errors=[],
+        misonfigured_entity_keys={},
+    )
+    mock_live_events_mixin.entity_processor.parse_items.return_value = (
+        calculation_result
+    )
+
+    await mock_live_events_mixin._delete_entities(
+        resource_mappings=[mock_repository_resource_config],
+        upserted_entities=[],
+        raw_items_to_delete=[{"id": "test"}],
+    )
+
+    mock_live_events_mixin.entities_state_applier.delete.assert_called_once_with(
+        [entity], UserAgentType.exporter
+    )
+
+
+@pytest.mark.asyncio
+async def test_deleteEntities_NoEntityDeletedDueToUpsertedEntity(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    """Test that entities that were upserted are not deleted"""
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()
+    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()
+
+    calculation_result = CalculationResult(
+        entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
+        errors=[],
+        misonfigured_entity_keys={},
+    )
+    mock_live_events_mixin.entity_processor.parse_items.return_value = (
+        calculation_result
+    )
+
+    await mock_live_events_mixin._delete_entities(
+        resource_mappings=[mock_repository_resource_config],
+        upserted_entities=[entity],  # Same entity was upserted
+        raw_items_to_delete=[{"id": "test"}],
+    )
+
+    # Should not delete anything since the entity was upserted
+    mock_live_events_mixin.entities_state_applier.delete.assert_called_once_with(
+        [], UserAgentType.exporter
+    )
+
+
+@pytest.mark.asyncio
+async def test_delete_entities_error_handling(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_repository_resource_config: ResourceConfig,
+) -> None:
+    """Test error handling during deletion"""
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()
+    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()
+
+    calculation_result = CalculationResult(
+        entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
+        errors=[],
+        misonfigured_entity_keys={},
+    )
+    mock_live_events_mixin.entity_processor.parse_items.return_value = (
+        calculation_result
+    )
+
+    mock_live_events_mixin.entities_state_applier.delete.side_effect = Exception(
+        "Test error"
+    )
+
+    await mock_live_events_mixin._delete_entities(
+        resource_mappings=[mock_repository_resource_config],
+        upserted_entities=[],
+        raw_items_to_delete=[{"id": "test"}],
+    )
