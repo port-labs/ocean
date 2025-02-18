@@ -46,8 +46,9 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         resource_kind=ObjectKind.APPLICATION
     )
     if not applications:
-        logger.info(f"No applications found. Skipping managed resources ingestion")
+        logger.info("No applications found. Skipping managed resources ingestion")
         return
+
     errors = []
     for application in applications:
         try:
