@@ -8,10 +8,10 @@ from loguru import logger
 
 from types_aiobotocore_sts import STSClient
 
-from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.core import OceanAbortError
 
 
-class AccountNotFoundError(OceanAbortException):
+class AccountNotFoundError(OceanAbortError):
     pass
 
 

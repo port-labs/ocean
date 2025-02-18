@@ -1,11 +1,11 @@
-from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.core import OceanAbortError
 
 
 class GotFeedCreatedSuccessfullyMessageError(Exception):
     pass
 
 
-class AssetHasNoProjectAncestorError(OceanAbortException):
+class AssetHasNoProjectAncestorError(OceanAbortError):
     pass
 
 
@@ -13,5 +13,5 @@ class ResourceNotFoundError(Exception):
     pass
 
 
-class NoProjectsFoundError(ResourceNotFoundError, OceanAbortException):
+class NoProjectsFoundError(ResourceNotFoundError, OceanAbortError):
     pass
