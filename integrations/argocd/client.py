@@ -79,7 +79,7 @@ class ArgocdClient:
         url = f"{self.api_url}/{resource_kind}s"
         try:
             response_data = await self._send_api_request(url=url)
-            return response_data["items"]
+            return response_data["items"] or []
         except Exception as e:
             logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
             if self.ignore_server_error:
