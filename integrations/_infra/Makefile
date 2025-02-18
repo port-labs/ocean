@@ -32,7 +32,7 @@ install:
 
 install/local-core: install
 	# NOTE: This is a temporary change that shouldn't be committed
-	$(ACTIVATE) && pip install -e ../../
+	$(ACTIVATE) && pip install -e ../../ && pip install pytest pytest-xdist
 
 install/prod:
 	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
@@ -55,7 +55,11 @@ run:
 	$(ACTIVATE) && ocean sail
 
 test:
-	$(ACTIVATE) && pytest -n auto || exit $$?
+	$(ACTIVATE) && \
+	if ! command -v pytest &> /dev/null; then \
+		pip install pytest pytest-xdist; \
+	fi && \
+	pytest -n auto || exit $$?
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;

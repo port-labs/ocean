@@ -72,7 +72,7 @@ jobs:
       - name: Install current core for all integrations
         run: |
           echo "Installing local core for all integrations"
-          SCRIPT_TO_RUN='make install/local-core' make execute/all
+          SCRIPT_TO_RUN='make install/local-core && . .venv/bin/activate && pip install pytest pytest-xdist' make execute/all
 
       - name: Test all integrations with current core
         run: |
