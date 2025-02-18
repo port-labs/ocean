@@ -39,7 +39,7 @@ class HTTPBaseClient:
                     f"Couldn't access url {url} . Make sure the PAT (Personal Access Token) is valid!"
                 )
             else:
-                logger.exception(
+                logger.error(
                     f"Request with bad status code {response.status_code}: {method} to url {url}"
                 )
             raise e
@@ -49,7 +49,10 @@ class HTTPBaseClient:
         return response
 
     async def _get_paginated_by_top_and_continuation_token(
-        self, url: str, additional_params: Optional[dict[str, Any]] = None
+        self,
+        url: str,
+        data_key: str = "value",
+        additional_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         continuation_token = None
         while True:
@@ -63,10 +66,13 @@ class HTTPBaseClient:
                 params["continuationToken"] = continuation_token
 
             response = await self.send_request("GET", url, params=params)
+            response_json = response.json()
+            items = response_json[data_key]
+
             logger.info(
-                f"Found {len(response.json()['value'])} objects in url {url} with params: {params}"
+                f"Found {len(items)} objects in url {url} with params: {params}"
             )
-            yield response.json()["value"]
+            yield items
             if CONTINUATION_TOKEN_HEADER not in response.headers:
                 break
             continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)

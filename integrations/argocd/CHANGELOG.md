@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.132 (2025-02-18)
+## 0.1.134 (2025-02-18)
 
 
 ### Bug Fixes
 
 - Fixed an issue where `get_resources` returned `None` for empty items, causing iterations over its results to fail.
+
+
+## 0.1.133 (2025-02-13)
+
+
+### Improvements
+
+- Bumped cryptography version to ^44.0.1
+
+
+## 0.1.132 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
 
 
 ## 0.1.131 (2025-02-04)

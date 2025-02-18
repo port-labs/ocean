@@ -11,6 +11,7 @@ from azure_devops.misc import (
     Kind,
     PULL_REQUEST_SEARCH_CRITERIA,
     AzureDevopsProjectResourceConfig,
+    AzureDevopsTeamResourceConfig,
 )
 
 from azure_devops.misc import AzureDevopsWorkItemResourceConfig
@@ -53,12 +54,29 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
+@ocean.on_resync(Kind.USER)
+async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for users in azure_devops_client.generate_users():
+        logger.info(f"Resyncing {len(users)} members")
+        yield users
+
+
 @ocean.on_resync(Kind.TEAM)
 async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(AzureDevopsTeamResourceConfig, event.resource_config).selector
+
     async for teams in azure_devops_client.generate_teams():
         logger.info(f"Resyncing {len(teams)} teams")
-        yield teams
+        if selector.include_members:
+            logger.info(f"Enriching {len(teams)} teams with members")
+            team_with_members = await azure_devops_client.enrich_teams_with_members(
+                teams
+            )
+            yield team_with_members
+        else:
+            yield teams
 
 
 @ocean.on_resync(Kind.MEMBER)
