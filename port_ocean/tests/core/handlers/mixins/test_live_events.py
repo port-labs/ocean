@@ -144,6 +144,35 @@ one_webHook_event_data_for_creation = WebhookEventData(
     data_to_delete=[],
 )
 
+one_webHook_event_data_for_deletion = WebhookEventData(
+    resourse=ResourceConfig(
+        kind="repository",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".name",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={
+                        "url": ".links.html.href",
+                        "defaultBranch": ".main_branch",
+                    },
+                    relations={},
+                )
+            )
+        ),
+    ),
+    data_to_delete=[
+        {
+            "name": "repo-one",
+            "links": {"html": {"href": "https://example.com/repo-one"}},
+            "main_branch": "main",
+        }
+    ],
+    data_to_update=[],
+)
+
 
 @pytest.fixture
 def mock_context(monkeypatch: Any) -> PortOceanContext:
@@ -317,35 +346,6 @@ def mock_http_client() -> MagicMock:
 
     mock_http_client.post = AsyncMock(side_effect=post)
     return mock_http_client
-
-
-@pytest.mark.asyncio
-async def test_getLiveEventResources_mappingHasTheResource_returnsTheResource(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_port_app_config_with_repository_resource: PortAppConfig,
-) -> None:
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
-
-    async with event_context("test_event") as event:
-        event.port_app_config = mock_port_app_config_with_repository_resource
-        result = await mock_live_events_mixin._get_live_event_resources("repository")
-
-    assert len(result) == 1
-    assert result[0].kind == "repository"
-
-
-@pytest.mark.asyncio
-async def test_getLiveEventResources_mappingDoesNotHaveTheResource_returnsEmptyList(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_port_app_config_with_repository_resource: PortAppConfig,
-) -> None:
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
-
-    async with event_context("test_event") as event:
-        event.port_app_config = mock_port_app_config_with_repository_resource
-        result = await mock_live_events_mixin._get_live_event_resources("project")
-
-    assert len(result) == 0
 
 
 @pytest.mark.asyncio
@@ -674,28 +674,11 @@ async def test_processData_singleWebhookEvent_entityDeleted(
                 mock_port_app_config_with_repository_resource_not_passing_selector
             )
             await mock_live_events_mixin.export_raw_event_results_to_entities(
-                [one_webHook_event_data_for_creation]
+                [one_webHook_event_data_for_deletion]
             )
 
         assert mock_upsert.call_count == 0
         assert mock_live_events_mixin._entities_state_applier.delete.call_count == 1  # type: ignore
-
-
-@pytest.mark.asyncio
-async def test_deleteEntities_emptyRawItems_deleteNotCalled(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    """Test that _delete_entities returns early when raw_items_to_delete is empty"""
-    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
-
-    await mock_live_events_mixin._delete_entity(
-        resource_mappings=[mock_repository_resource_config],
-        upserted_blueprints=[],
-        raw_items_to_delete=[],
-    )
-
-    mock_live_events_mixin.entities_state_applier.delete.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -717,9 +700,9 @@ async def test_deleteEntities_oneEntityDeleted(
     )
 
     await mock_live_events_mixin._delete_entity(
-        resource_mappings=[mock_repository_resource_config],
+        resource_mapping=mock_repository_resource_config,
         upserted_blueprints=[],
-        raw_items_to_delete=[{"id": "test"}],
+        raw_item_to_delete={"id": "test"},
     )
 
     mock_live_events_mixin.entities_state_applier.delete.assert_called_once_with(
@@ -746,15 +729,12 @@ async def test_deleteEntities_NoEntityDeletedDueToUpsertedEntity(
     )
 
     await mock_live_events_mixin._delete_entity(
-        resource_mappings=[mock_repository_resource_config],
-        upserted_blueprints=[entity],  # Same entity was upserted
-        raw_items_to_delete=[{"id": "test"}],
+        resource_mapping=mock_repository_resource_config,
+        upserted_blueprints=[("service", "repo-one")],
+        raw_item_to_delete={"id": "test"},
     )
 
-    # Should not delete anything since the entity was upserted
-    mock_live_events_mixin.entities_state_applier.delete.assert_called_once_with(
-        [], UserAgentType.exporter
-    )
+    mock_live_events_mixin.entities_state_applier.delete.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -780,7 +760,7 @@ async def test_delete_entities_error_handling(
     )
 
     await mock_live_events_mixin._delete_entity(
-        resource_mappings=[mock_repository_resource_config],
+        resource_mapping=mock_repository_resource_config,
         upserted_blueprints=[],
-        raw_items_to_delete=[{"id": "test"}],
+        raw_item_to_delete={"id": "test"},
     )

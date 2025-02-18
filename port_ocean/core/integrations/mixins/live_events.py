@@ -29,28 +29,6 @@ class LiveEventsMixin(HandlerMixin):
             for raw_item in webhook_event_data.data_to_delete:
                 await self._delete_entity(webhook_event_data.resource, exported_entities, raw_item)
 
-
-
-    async def _get_live_event_resources(self, kind: str) -> list[ResourceConfig]:
-        try:
-            app_config = event.port_app_config
-            logger.info(
-                f"process data will use the following mappings: {app_config.dict()}"
-            )
-
-            resource_mappings = [
-                resource for resource in app_config.resources if resource.kind == kind
-            ]
-
-            if not resource_mappings:
-                logger.warning(f"No resource mappings found for kind: {kind}")
-                return []
-
-            return resource_mappings
-        except Exception as e:
-            logger.error(f"Error getting live event resources: {str(e)}")
-            raise
-
     async def _export(self, resource_mapping: ResourceConfig, raw_item: RAW_ITEM) -> tuple[bool, list[Entity]]:
         """Export a single resource mapping with the given raw item.
 
