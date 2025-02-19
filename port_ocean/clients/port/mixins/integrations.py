@@ -89,7 +89,9 @@ class IntegrationClientMixin:
             logger.info(
                 "integration type is enabled, polling until provisioning is complete"
             )
-            return self._poll_integration_until_default_provisioning_is_complete()
+            integration = (
+                await self._poll_integration_until_default_provisioning_is_complete()
+            )
         return integration
 
     async def get_log_attributes(self) -> LogAttributes:
