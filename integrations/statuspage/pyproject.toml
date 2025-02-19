@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "statuspage"
-version = "0.1.72"
+version = "0.1.73"
 description = "Connect Statuspage to Ocean and automatically ingest incidents, updates, and impacted components for comprehensive monitoring"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
