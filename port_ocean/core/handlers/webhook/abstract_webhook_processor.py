@@ -109,11 +109,9 @@ class AbstractWebhookProcessor(ABC):
         pass
 
     @abstractmethod
-    def filter_event_data(self, event: WebhookEvent) -> bool:
-        """Filter the event data."""
+    def should_process_event(self, event: WebhookEvent) -> bool:
         pass
 
     @abstractmethod
     def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        """Get the kind of the resource."""
         pass

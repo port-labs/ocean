@@ -32,7 +32,7 @@ class ConcreteWebhookProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(updated_raw_results=[{}], deleted_raw_results=[])
 
-    def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
+    def should_process_event(self, webhook_event: WebhookEvent) -> bool:
         return True
 
     async def before_processing(self) -> None:

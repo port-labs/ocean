@@ -54,7 +54,7 @@ class MockProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
-    def filter_event_data(self, event: WebhookEvent) -> bool:
+    def should_process_event(self, event: WebhookEvent) -> bool:
         return True
 
     def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -75,7 +75,7 @@ class MockProcessorFalse(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
-    def filter_event_data(self, event: WebhookEvent) -> bool:
+    def should_process_event(self, event: WebhookEvent) -> bool:
         return False
 
     def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -110,7 +110,7 @@ class MockWebhookProcessor(AbstractWebhookProcessor):
     async def cancel(self) -> None:
         self.cancel_called = True
 
-    def filter_event_data(self, event: WebhookEvent) -> bool:
+    def should_process_event(self, event: WebhookEvent) -> bool:
         return True
 
     def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -158,7 +158,7 @@ class MockWebhookHandlerForProcessWebhookRequest(AbstractWebhookProcessor):
     def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["repository"]
 
-    def filter_event_data(self, event: WebhookEvent) -> bool:
+    def should_process_event(self, event: WebhookEvent) -> bool:
         """Filter the event data before processing."""
         return True
 
@@ -542,7 +542,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
             processed_events.append(event_data)
             return event_data
 
-        def filter_event_data(self, event: WebhookEvent) -> bool:
+        def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
         def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -649,7 +649,7 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        def filter_event_data(self, event: WebhookEvent) -> bool:
+        def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
         def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -766,7 +766,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
             )
             return event_data
 
-        def filter_event_data(self, event: WebhookEvent) -> bool:
+        def should_process_event(self, event: WebhookEvent) -> bool:
             return False
 
         def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -882,7 +882,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
             processed_events.append(event_data)
             return event_data
 
-        def filter_event_data(self, event: WebhookEvent) -> bool:
+        def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
         def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -913,7 +913,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
             processed_events.append(event_data)
             return event_data
 
-        def filter_event_data(self, event: WebhookEvent) -> bool:
+        def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
         def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -944,7 +944,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
             processed_events.append(event_data)
             return event_data
 
-        def filter_event_data(self, event: WebhookEvent) -> bool:
+        def should_process_event(self, event: WebhookEvent) -> bool:
             return False
 
         def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -1071,7 +1071,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
             processed_events.append(event_data)
             return event_data
 
-        def filter_event_data(self, event: WebhookEvent) -> bool:
+        def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
         def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -1195,7 +1195,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
             processed_events.append(event_data)
             return event_data
 
-        def filter_event_data(self, event: WebhookEvent) -> bool:
+        def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
         def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
