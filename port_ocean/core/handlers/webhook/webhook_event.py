@@ -1,5 +1,6 @@
+from abc import ABC
 from enum import StrEnum
-from typing import Any, Dict, Type, TypeAlias
+from typing import Any, Dict, Type, TypeAlias, Optional
 from uuid import uuid4
 from fastapi import Request
 from loguru import logger
@@ -13,19 +14,33 @@ EventPayload: TypeAlias = Dict[str, Any]
 EventHeaders: TypeAlias = Dict[str, str]
 
 
-class LiveEvent:
-    """Represents a live event marker class"""
-
-    pass
-
-
-class WebhookEventTimestamp(StrEnum):
+class LiveEventTimestamp(StrEnum):
     """Enum for timestamp keys"""
 
     AddedToQueue = "Added To Queue"
     StartedProcessing = "Started Processing"
     FinishedProcessingSuccessfully = "Finished Processing Successfully"
     FinishedProcessingWithError = "Finished Processing With Error"
+
+
+class LiveEvent(ABC):
+    """Represents a live event marker class"""
+
+    def set_timestamp(
+        self, timestamp: LiveEventTimestamp, params: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Set a timestamp for a specific event
+
+        Args:
+            timestamp: The timestamp type to set
+            params: Additional parameters to log with the event
+        """
+        log_params = params or {}
+        logger.info(
+            f"Event {timestamp.value}",
+            extra=log_params | {"timestamp_type": timestamp.value},
+        )
+        self._timestamp = timestamp
 
 
 class WebhookEvent(LiveEvent):
@@ -75,18 +90,18 @@ class WebhookEvent(LiveEvent):
             original_request=self._original_request,
         )
 
-    def set_timestamp(self, timestamp: WebhookEventTimestamp) -> None:
+    def set_timestamp(
+        self, timestamp: LiveEventTimestamp, params: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Set a timestamp for a specific event"""
-        logger.info(
-            f"Webhook Event {timestamp.value}",
-            extra={
+        super().set_timestamp(
+            timestamp,
+            params={
                 "trace_id": self.trace_id,
                 "payload": self.payload,
                 "headers": self.headers,
-                "timestamp_type": timestamp.value,
             },
         )
-        self._timestamp = timestamp
 
     def set_event_context(self, event_context: EventContext) -> None:
         self.event_context = event_context

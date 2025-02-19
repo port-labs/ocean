@@ -4,7 +4,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
     WebhookEvent,
-    WebhookEventTimestamp,
+    LiveEventTimestamp,
 )
 
 
@@ -99,8 +99,8 @@ def test_setTimestamp_setsTimestampCorrectly(
         original_request=None,
     )
 
-    event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
-    assert event._timestamp == WebhookEventTimestamp.StartedProcessing
+    event.set_timestamp(LiveEventTimestamp.StartedProcessing)
+    assert event._timestamp == LiveEventTimestamp.StartedProcessing
 
-    event.set_timestamp(WebhookEventTimestamp.FinishedProcessingSuccessfully)
-    assert event._timestamp == WebhookEventTimestamp.FinishedProcessingSuccessfully
+    event.set_timestamp(LiveEventTimestamp.FinishedProcessingSuccessfully)
+    assert event._timestamp == LiveEventTimestamp.FinishedProcessingSuccessfully

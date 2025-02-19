@@ -8,7 +8,7 @@ from port_ocean.context.event import EventType, event_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
-from .webhook_event import WebhookEvent, WebhookEventRawResults, WebhookEventTimestamp
+from .webhook_event import WebhookEvent, WebhookEventRawResults, LiveEventTimestamp
 from port_ocean.context.event import event
 
 
@@ -127,7 +127,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
     def _timestamp_event_error(self, event: WebhookEvent) -> None:
         """Timestamp an event as having an error"""
-        event.set_timestamp(WebhookEventTimestamp.FinishedProcessingWithError)
+        event.set_timestamp(LiveEventTimestamp.FinishedProcessingWithError)
 
     async def _process_single_event(
         self, processor: AbstractWebhookProcessor, path: str, resource: ResourceConfig
@@ -135,11 +135,11 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         """Process a single event with a specific processor"""
         try:
             logger.debug("Start processing queued webhook")
-            processor.event.set_timestamp(WebhookEventTimestamp.StartedProcessing)
+            processor.event.set_timestamp(LiveEventTimestamp.StartedProcessing)
 
             webhook_event_data = await self._execute_processor(processor, resource)
             processor.event.set_timestamp(
-                WebhookEventTimestamp.FinishedProcessingSuccessfully
+                LiveEventTimestamp.FinishedProcessingSuccessfully
             )
             return webhook_event_data
         except Exception as e:
@@ -232,7 +232,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             """Handle incoming webhook requests for a specific path."""
             try:
                 webhook_event = await WebhookEvent.from_request(request)
-                webhook_event.set_timestamp(WebhookEventTimestamp.AddedToQueue)
+                webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
                 webhook_event.set_event_context(deepcopy(event))
                 await self._event_queues[path].put(webhook_event)
                 return {"status": "ok"}
