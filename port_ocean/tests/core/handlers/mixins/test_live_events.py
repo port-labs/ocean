@@ -700,9 +700,8 @@ async def test_deleteEntities_oneEntityDeleted(
     )
 
     await mock_live_events_mixin._delete_resources(
-        resource_mapping=mock_repository_resource_config,
-        upserted_blueprints=[],
-        raw_item_to_delete={"id": "test"},
+        webhook_events_data=[one_webHook_event_data_for_deletion],
+        exported_blueprints=[],
     )
 
     mock_live_events_mixin.entities_state_applier.delete.assert_called_once_with(
@@ -729,16 +728,15 @@ async def test_deleteEntities_NoEntityDeletedDueToUpsertedEntity(
     )
 
     await mock_live_events_mixin._delete_resources(
-        resource_mapping=mock_repository_resource_config,
-        upserted_blueprints=[("service", "repo-one")],
-        raw_item_to_delete={"id": "test"},
+        webhook_events_data=[one_webHook_event_data_for_deletion],
+        exported_blueprints=[("service", "repo-one")],
     )
 
     mock_live_events_mixin.entities_state_applier.delete.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_delete_entities_error_handling(
+async def test_deleteEntities_errorNotRaised(
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
@@ -760,7 +758,6 @@ async def test_delete_entities_error_handling(
     )
 
     await mock_live_events_mixin._delete_resources(
-        resource_mapping=mock_repository_resource_config,
-        upserted_blueprints=[],
-        raw_item_to_delete={"id": "test"},
+        webhook_events_data=[one_webHook_event_data_for_deletion],
+        exported_blueprints=[],
     )
