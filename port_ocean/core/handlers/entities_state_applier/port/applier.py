@@ -122,16 +122,16 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             )
         else:
             for entity in entities:
-                upsertedEntity = await self.context.port_client.upsert_entity(
+                upserted_entity = await self.context.port_client.upsert_entity(
                     entity,
                     event.port_app_config.get_port_request_options(),
                     user_agent_type,
                     should_raise=False,
                 )
-                if upsertedEntity:
-                    modified_entities.append(upsertedEntity)
+                if upserted_entity:
+                    modified_entities.append(upserted_entity)
                 # condition to false to differentiate from `result_entity.is_using_search_identifier`
-                if upsertedEntity is False:
+                if upserted_entity is False:
                     event.entity_topological_sorter.register_entity(entity)
         return modified_entities
 

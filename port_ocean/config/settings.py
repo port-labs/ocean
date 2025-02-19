@@ -48,6 +48,7 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     config: Any = Field(default_factory=dict)
 
     @root_validator(pre=True)
+    @classmethod
     def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:
         integ_type = values.get("type")
 
@@ -84,6 +85,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     resources_path: str = Field(default=".port/resources")
 
     @root_validator()
+    @classmethod
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         if not (config_model := values.get("_integration_config_model")):
             return values
@@ -105,6 +107,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         return values
 
     @validator("create_port_resources_origin")
+    @classmethod
     def validate_create_port_resources_origin(
         cls, create_port_resources_origin: CreatePortResourcesOrigin | None
     ) -> CreatePortResourcesOrigin | None:
@@ -119,6 +122,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         return create_port_resources_origin
 
     @validator("runtime")
+    @classmethod
     def validate_runtime(cls, runtime: Runtime) -> Runtime:
         if runtime.is_saas_runtime:
             spec = get_spec_file()

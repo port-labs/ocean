@@ -12,8 +12,8 @@ from port_ocean.core.models import Entity, Runtime
 from port_ocean.core.models import EntityPortDiff
 from port_ocean.core.ocean_types import RAW_RESULT
 from port_ocean.exceptions.core import (
-    RawObjectValidationException,
-    IntegrationRuntimeException,
+    RawObjectValidationError,
+    IntegrationRuntimeError,
 )
 
 T = TypeVar("T", bound=tuple[list[Any], ...])
@@ -27,7 +27,7 @@ def validate_result(result: Any) -> RAW_RESULT:
     try:
         return parse_obj_as(list[dict[str, Any]], result)
     except ValidationError as e:
-        raise RawObjectValidationException(f"Expected list[dict[str, Any]], Error: {e}")
+        raise RawObjectValidationError(f"Expected list[dict[str, Any]], Error: {e}")
 
 
 def is_same_entity(first_entity: Entity, second_entity: Entity) -> bool:
@@ -49,7 +49,7 @@ async def validate_integration_runtime(
     if current_integration and not requested_runtime.is_installation_type_compatible(
         current_installation_type
     ):
-        raise IntegrationRuntimeException(
+        raise IntegrationRuntimeError(
             f"Invalid Runtime! Requested to run existing {current_installation_type} integration in {requested_runtime} runtime."
         )
 

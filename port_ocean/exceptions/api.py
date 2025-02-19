@@ -1,16 +1,16 @@
 import abc
 
 from fastapi.responses import Response, PlainTextResponse
-from port_ocean.exceptions.base import BaseOceanException
+from port_ocean.exceptions.base import BaseOceanError
 
 
-class BaseAPIException(BaseOceanException, abc.ABC):
+class BaseAPIError(BaseOceanError, abc.ABC):
     @abc.abstractmethod
     def response(self) -> Response:
         pass
 
 
-class InternalServerException(BaseAPIException):
+class InternalServerError(BaseAPIError):
     def response(self) -> Response:
         return PlainTextResponse(content="Internal server error", status_code=500)
 

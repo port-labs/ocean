@@ -21,7 +21,7 @@ from port_ocean.core.event_listener.webhooks_only import (
     WebhooksOnlyEventListener,
     WebhooksOnlyEventListenerSettings,
 )
-from port_ocean.exceptions.core import UnsupportedEventListenerTypeException
+from port_ocean.exceptions.core import UnsupportedEventListenerTypeError
 
 
 class EventListenerFactory:
@@ -98,7 +98,7 @@ class EventListenerFactory:
                 ), assert_message.format(type(config))
                 event_listener = WebhooksOnlyEventListener(wrapped_events, config)
             case _:
-                raise UnsupportedEventListenerTypeException(
+                raise UnsupportedEventListenerTypeError(
                     f"Event listener {_type} not supported"
                 )
 

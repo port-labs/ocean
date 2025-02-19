@@ -11,7 +11,7 @@ from starlette import status
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.exceptions.port_defaults import (
-    UnsupportedDefaultFileType,
+    UnsupportedDefaultFileTypeError,
 )
 
 YAML_EXTENSIONS = [".yaml", ".yml"]
@@ -112,7 +112,7 @@ def get_port_integration_defaults(
     for path in defaults_dir.iterdir():
         if path.stem in allowed_file_names:
             if not path.is_file() or path.suffix not in ALLOWED_FILE_TYPES:
-                raise UnsupportedDefaultFileType(
+                raise UnsupportedDefaultFileTypeError(
                     f"Defaults directory should contain only one of the next types: {ALLOWED_FILE_TYPES}. Found: {path}"
                 )
 

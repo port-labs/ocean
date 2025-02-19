@@ -4,8 +4,8 @@ from typing import Callable, Any
 from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.exceptions.utils import (
-    SignalHandlerNotInitialized,
-    SignalHandlerAlreadyInitialized,
+    SignalHandlerNotInitializedError,
+    SignalHandlerAlreadyInitializedError,
 )
 from port_ocean.utils.misc import generate_uuid
 
@@ -41,7 +41,7 @@ _signal_handler: LocalStack[SignalHandler] = LocalStack()
 def _get_signal_handler() -> SignalHandler:
     global _signal_handler
     if _signal_handler.top is None:
-        raise SignalHandlerNotInitialized("Signal handler is not initialized")
+        raise SignalHandlerNotInitializedError("Signal handler is not initialized")
     return _signal_handler.top
 
 
@@ -51,5 +51,7 @@ signal_handler: SignalHandler = LocalProxy(_get_signal_handler)  # type: ignore
 def init_signal_handler() -> None:
     global _signal_handler
     if _signal_handler.top is not None:
-        raise SignalHandlerAlreadyInitialized("Signal handler is already initialized")
+        raise SignalHandlerAlreadyInitializedError(
+            "Signal handler is already initialized"
+        )
     _signal_handler.push(SignalHandler())

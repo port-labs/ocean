@@ -6,7 +6,7 @@ import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_status_code
-from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
+from port_ocean.exceptions.port_defaults import DefaultsProvisionFailedError
 from port_ocean.log.sensetive import sensitive_log_filter
 
 if TYPE_CHECKING:
@@ -124,7 +124,7 @@ class IntegrationClientMixin:
                 current_interval_seconds * INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR
             )
 
-        raise DefaultsProvisionFailed(INTEGRATION_POLLING_RETRY_LIMIT)
+        raise DefaultsProvisionFailedError(INTEGRATION_POLLING_RETRY_LIMIT)
 
     async def create_integration(
         self,

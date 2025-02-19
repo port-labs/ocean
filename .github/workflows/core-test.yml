@@ -72,12 +72,12 @@ jobs:
       - name: Install current core for all integrations
         run: |
           echo "Installing local core for all integrations"
-          SCRIPT_TO_RUN='make install/local-core' make execute/all
+          SCRIPT_TO_RUN='make install/local-core && . .venv/bin/activate && pip install pytest pytest-xdist' make execute/all
 
       - name: Test all integrations with current core
         run: |
           echo "Testing all integrations with local core"
-          SCRIPT_TO_RUN="PYTEST_ADDOPTS=--junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml make test" make execute/all
+          PYTEST_ADDOPTS=--junitxml=${PWD}/junit/test-results-core-change/`basename $PWD`.xml make execute/all
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5

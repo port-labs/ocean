@@ -73,16 +73,7 @@ test/all: test
 
 
 execute/all:
-	# run script for all integrations (${SCRIPT_TO_RUN})
-	for dir in $(wildcard $(CURDIR)/integrations/*); do \
-		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
-		if [ $$count -ne 0 ]; then \
-			echo "Running '${SCRIPT_TO_RUN}' $$dir"; \
-		  	cd $$dir; \
-			${SCRIPT_TO_RUN} || exit_code=$$?; \
-			cd ../..; \
-		fi; \
-	done;
+	chmod +x ./scripts/run-integration-tests.sh && ./scripts/run-integration-tests.sh
 
 install/all: install
 	exit_code=0; \

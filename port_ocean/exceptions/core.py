@@ -1,39 +1,43 @@
-from port_ocean.exceptions.base import BaseOceanException
+from port_ocean.exceptions.base import BaseOceanError
 
 
-class OceanAbortException(BaseOceanException):
+class OceanAbortException(BaseOceanError):  # noqa F401
     pass
 
 
-class KindNotImplementedException(OceanAbortException):
+class OceanAbortError(OceanAbortException):
+    pass
+
+
+class KindNotImplementedError(OceanAbortError):
     def __init__(self, kind: str, available_kinds: list[str]):
         base_message = f"Kind {kind} is not implemented."
         super().__init__(f"{base_message} Available kinds: {available_kinds}")
 
 
-class RawObjectValidationException(OceanAbortException):
+class RawObjectValidationError(OceanAbortError):
     pass
 
 
-class EntityProcessorException(BaseOceanException):
+class EntityProcessorError(BaseOceanError):
     pass
 
 
-class RelationValidationException(OceanAbortException):
+class RelationValidationError(OceanAbortError):
     pass
 
 
-class UnsupportedEventListenerTypeException(BaseOceanException):
+class UnsupportedEventListenerTypeError(BaseOceanError):
     pass
 
 
-class IntegrationAlreadyStartedException(BaseOceanException):
+class IntegrationAlreadyStartedError(BaseOceanError):
     pass
 
 
-class IntegrationNotStartedException(BaseOceanException):
+class IntegrationNotStartedError(BaseOceanError):
     pass
 
 
-class IntegrationRuntimeException(BaseOceanException):
+class IntegrationRuntimeError(BaseOceanError):
     pass

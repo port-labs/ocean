@@ -1,9 +1,9 @@
-from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.core import OceanAbortError
 
 
-class SignalHandlerNotInitialized(OceanAbortException):
+class SignalHandlerNotInitializedError(OceanAbortError):
     pass
 
 
-class SignalHandlerAlreadyInitialized(OceanAbortException):
+class SignalHandlerAlreadyInitializedError(OceanAbortError):
     pass

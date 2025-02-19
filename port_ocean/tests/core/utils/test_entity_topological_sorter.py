@@ -2,7 +2,7 @@ from port_ocean.core.models import Entity
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from unittest.mock import MagicMock
 from port_ocean.exceptions.core import (
-    OceanAbortException,
+    OceanAbortError,
 )
 
 
@@ -91,8 +91,8 @@ def test_handle_failed_with_circular_dependencies() -> None:
         entity_topological_sort.register_entity(entity_b)
         entity_topological_sort.get_entities()
 
-    except OceanAbortException as e:
-        assert isinstance(e, OceanAbortException)
+    except OceanAbortError as e:
+        assert isinstance(e, OceanAbortError)
         assert (
             e.args[0]
             == "Cannot order entities due to cyclic dependencies. \nIf you do want to have cyclic dependencies, please make sure to set the keys 'createMissingRelatedEntities' and 'deleteDependentEntities' in the integration config in Port."

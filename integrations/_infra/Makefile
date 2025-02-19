@@ -1,24 +1,5 @@
 ACTIVATE := . .venv/bin/activate
 
-define run_checks
-	exit_code=0; \
-	cd $1; \
-	echo "Running poetry check"; \
-	poetry check || exit_code=$$?;\
-	echo "Running mypy"; \
-	mypy . --exclude '/\.venv/' || exit_code=$$?; \
-	echo "Running ruff"; \
-	ruff check . || exit_code=$$?; \
-	echo "Running black"; \
-	black --check . || exit_code=$$?; \
-	if [ $$exit_code -eq 1 ]; then \
-		echo "\033[0;31mOne or more checks failed with exit code $$exit_code\033[0m"; \
-	else \
-		echo "\033[0;32mAll checks executed successfully.\033[0m"; \
-	fi; \
-	exit $$exit_code
-endef
-
 define install_poetry
 	if ! command -v poetry &> /dev/null; then \
     	pip install --upgrade pip; \
@@ -46,7 +27,8 @@ endef
 install:
 	$(call deactivate_virtualenv) && \
 	$(call install_poetry) && \
-	poetry install --with dev
+	poetry install --with dev && \
+	$(ACTIVATE) && pip install pytest pytest-xdist
 
 install/local-core: install
 	# NOTE: This is a temporary change that shouldn't be committed
@@ -58,7 +40,11 @@ install/prod:
 
 lint:
 	$(ACTIVATE) && \
-	$(call run_checks,.)
+	poetry check && \
+	mypy . --exclude '/\.venv/' && \
+	ruff check . && \
+	black --check . && \
+	yamllint .
 
 lint/fix:
 	$(ACTIVATE) && \
@@ -69,7 +55,11 @@ run:
 	$(ACTIVATE) && ocean sail
 
 test:
-	$(ACTIVATE) && poetry run pytest -n auto
+	$(ACTIVATE) && \
+	if ! command -v pytest &> /dev/null; then \
+		pip install pytest pytest-xdist; \
+	fi && \
+	pytest -n auto || exit $$?
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;

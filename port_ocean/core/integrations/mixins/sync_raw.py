@@ -29,7 +29,7 @@ from port_ocean.core.ocean_types import (
     CalculationResult,
 )
 from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gather_and_split_errors_from_results
-from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.core import OceanAbortError
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 
@@ -317,7 +317,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
                     errors.extend(calculation_result.errors)
                     passed_entities.extend(calculation_result.entity_selector_diff.passed)
-            except* OceanAbortException as error:
+            except* OceanAbortError as error:
                 errors.append(error)
 
         logger.info(
@@ -515,7 +515,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             for entity in event.entity_topological_sorter.get_entities():
                 await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
 
-        except OceanAbortException as ocean_abort:
+        except OceanAbortError as ocean_abort:
             logger.info(f"Failed topological sort of failed to upsert entites - trying to upsert unordered {event.entity_topological_sorter.get_entities_count()} entities.",failed_topological_sort_entities_count=event.entity_topological_sorter.get_entities_count() )
             if isinstance(ocean_abort.__cause__,CycleError):
                 for entity in event.entity_topological_sorter.get_entities(False):

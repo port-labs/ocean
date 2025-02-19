@@ -71,7 +71,7 @@ class Blueprint(BaseModel):
 class Migration(BaseModel):
     id: str
     actor: str
-    sourceBlueprint: str
+    sourceBlueprint: str  # noqa: N815
     mapping: dict[str, Any]
     status: str
 

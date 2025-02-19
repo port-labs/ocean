@@ -11,7 +11,7 @@ from port_ocean.core.handlers import (
     JQEntityProcessor,
     APIPortAppConfig,
 )
-from port_ocean.exceptions.core import IntegrationNotStartedException
+from port_ocean.exceptions.core import IntegrationNotStartedError
 
 
 class HandlerMixin:
@@ -46,7 +46,7 @@ class HandlerMixin:
             IntegrationNotStartedException: If the Entity Processor class is not initialized.
         """
         if not self._entity_processor:
-            raise IntegrationNotStartedException(
+            raise IntegrationNotStartedError(
                 "Entity Processor class not initialized"
             )
         return self._entity_processor
@@ -59,7 +59,7 @@ class HandlerMixin:
             IntegrationNotStartedException: If the PortAppConfig Handler class is not initialized.
         """
         if self._port_app_config_handler is None:
-            raise IntegrationNotStartedException("PortAppConfig class not initialized")
+            raise IntegrationNotStartedError("PortAppConfig class not initialized")
         return self._port_app_config_handler
 
     @property
@@ -70,7 +70,7 @@ class HandlerMixin:
             IntegrationNotStartedException: If the EntitiesStateApplier class is not initialized.
         """
         if not self._entities_state_applier:
-            raise IntegrationNotStartedException(
+            raise IntegrationNotStartedError(
                 "EntitiesStateApplier class not initialized"
             )
         return self._entities_state_applier
