@@ -6,7 +6,7 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     WebhookEvent,
-    WebhookEventData,
+    WebhookEventRawResults,
     EventPayload,
 )
 from fastapi import APIRouter
@@ -49,8 +49,10 @@ class MockProcessor(AbstractWebhookProcessor):
 
     async def handle_event(
         self, payload: EventPayload, resource: ResourceConfig
-    ) -> WebhookEventData:
-        return WebhookEventData(resourse=resource, data_to_update=[], data_to_delete=[])
+    ) -> WebhookEventRawResults:
+        return WebhookEventRawResults(
+            resourse=resource, updated_raw_results=[], deleted_raw_results=[]
+        )
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return True
@@ -70,8 +72,10 @@ class MockProcessorFalse(AbstractWebhookProcessor):
 
     async def handle_event(
         self, payload: EventPayload, resource: ResourceConfig
-    ) -> WebhookEventData:
-        return WebhookEventData(resourse=resource, data_to_update=[], data_to_delete=[])
+    ) -> WebhookEventRawResults:
+        return WebhookEventRawResults(
+            resourse=resource, updated_raw_results=[], deleted_raw_results=[]
+        )
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return False
@@ -99,11 +103,13 @@ class MockWebhookProcessor(AbstractWebhookProcessor):
 
     async def handle_event(
         self, payload: EventPayload, resource: ResourceConfig
-    ) -> WebhookEventData:
+    ) -> WebhookEventRawResults:
         if self.error_to_raise:
             raise self.error_to_raise
         self.processed = True
-        return WebhookEventData(resourse=resource, data_to_update=[], data_to_delete=[])
+        return WebhookEventRawResults(
+            resourse=resource, updated_raw_results=[], deleted_raw_results=[]
+        )
 
     async def cancel(self) -> None:
         self.cancel_called = True
@@ -146,12 +152,14 @@ class MockWebhookHandlerForProcessWebhookRequest(AbstractWebhookProcessor):
 
     async def handle_event(
         self, payload: EventPayload, resource: ResourceConfig
-    ) -> WebhookEventData:
+    ) -> WebhookEventRawResults:
         if self.should_fail and self.current_fails < self.fail_count:
             self.current_fails += 1
             raise RetryableError("Temporary failure")
         self.handled = True
-        return WebhookEventData(resourse=resource, data_to_update=[], data_to_delete=[])
+        return WebhookEventRawResults(
+            resourse=resource, updated_raw_results=[], deleted_raw_results=[]
+        )
 
     def get_kind(self, event: WebhookEvent) -> str:
         return "repository"
@@ -509,7 +517,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
     )
-    processed_events: list[WebhookEventData] = []
+    processed_events: list[WebhookEventRawResults] = []
     mock_upsert.return_value = [entity]
 
     class TestProcessor(AbstractWebhookProcessor):
@@ -526,17 +534,17 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
 
         async def handle_event(
             self, payload: EventPayload, resource: ResourceConfig
-        ) -> WebhookEventData:
-            event_data = WebhookEventData(
+        ) -> WebhookEventRawResults:
+            event_data = WebhookEventRawResults(
                 resourse=resource,
-                data_to_update=[
+                updated_raw_results=[
                     {
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
                     }
                 ],
-                data_to_delete=[],
+                deleted_raw_results=[],
             )
             processed_events.append(event_data)
             return event_data
@@ -551,7 +559,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
     original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
 
     async def patched_export_single_resource(
-        self: LiveEventsMixin, webhookEventDatas: list[WebhookEventData]
+        self: LiveEventsMixin, webhookEventDatas: list[WebhookEventRawResults]
     ) -> None:
         try:
             await original_process_data(self, webhookEventDatas)
@@ -642,10 +650,10 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
 
         async def handle_event(
             self, payload: EventPayload, resource: ResourceConfig
-        ) -> WebhookEventData:
+        ) -> WebhookEventRawResults:
             await asyncio.sleep(3)
-            return WebhookEventData(
-                resourse=resource, data_to_update=[], data_to_delete=[]
+            return WebhookEventRawResults(
+                resourse=resource, updated_raw_results=[], deleted_raw_results=[]
             )
 
         def filter_event_data(self, event: WebhookEvent) -> bool:
@@ -662,7 +670,7 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
         processor: AbstractWebhookProcessor,
         path: str,
         resource: ResourceConfig,
-    ) -> WebhookEventData:
+    ) -> WebhookEventRawResults:
         try:
             return await original_process_data(self, processor, path, resource)
         except Exception as e:
@@ -750,17 +758,17 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
 
         async def handle_event(
             self, payload: EventPayload, resource: ResourceConfig
-        ) -> WebhookEventData:
-            event_data = WebhookEventData(
+        ) -> WebhookEventRawResults:
+            event_data = WebhookEventRawResults(
                 resourse=resource,
-                data_to_update=[
+                updated_raw_results=[
                     {
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
                     }
                 ],
-                data_to_delete=[],
+                deleted_raw_results=[],
             )
             return event_data
 
@@ -852,7 +860,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
     )
-    processed_events: list[WebhookEventData] = []
+    processed_events: list[WebhookEventRawResults] = []
     mock_upsert.return_value = [entity]
 
     class TestProcessorA(AbstractWebhookProcessor):
@@ -866,17 +874,17 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
 
         async def handle_event(
             self, payload: EventPayload, resource: ResourceConfig
-        ) -> WebhookEventData:
-            event_data = WebhookEventData(
+        ) -> WebhookEventRawResults:
+            event_data = WebhookEventRawResults(
                 resourse=resource,
-                data_to_update=[
+                updated_raw_results=[
                     {
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
                     }
                 ],
-                data_to_delete=[],
+                deleted_raw_results=[],
             )
             processed_events.append(event_data)
             return event_data
@@ -898,17 +906,17 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
 
         async def handle_event(
             self, payload: EventPayload, resource: ResourceConfig
-        ) -> WebhookEventData:
-            event_data = WebhookEventData(
+        ) -> WebhookEventRawResults:
+            event_data = WebhookEventRawResults(
                 resourse=resource,
-                data_to_update=[
+                updated_raw_results=[
                     {
                         "name": "repo-two",
                         "links": {"html": {"href": "https://example.com/repo-two"}},
                         "main_branch": "main",
                     }
                 ],
-                data_to_delete=[],
+                deleted_raw_results=[],
             )
             processed_events.append(event_data)
             return event_data
@@ -930,17 +938,17 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
 
         async def handle_event(
             self, payload: EventPayload, resource: ResourceConfig
-        ) -> WebhookEventData:
-            event_data = WebhookEventData(
+        ) -> WebhookEventRawResults:
+            event_data = WebhookEventRawResults(
                 resourse=resource,
-                data_to_update=[
+                updated_raw_results=[
                     {
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
                     }
                 ],
-                data_to_delete=[],
+                deleted_raw_results=[],
             )
             processed_events.append(event_data)
             return event_data
@@ -955,7 +963,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
     original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
 
     async def patched_export_single_resource(
-        self: LiveEventsMixin, webhookEventDatas: list[WebhookEventData]
+        self: LiveEventsMixin, webhookEventDatas: list[WebhookEventRawResults]
     ) -> None:
         try:
             await original_process_data(self, webhookEventDatas)
@@ -1035,7 +1043,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
     )
-    processed_events: list[WebhookEventData] = []
+    processed_events: list[WebhookEventRawResults] = []
     mock_upsert.return_value = [entity]
     test_state = {"retry": False}
 
@@ -1054,21 +1062,21 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
 
         async def handle_event(
             self, payload: EventPayload, resource: ResourceConfig
-        ) -> WebhookEventData:
+        ) -> WebhookEventRawResults:
             self.tries += 1
             if self.tries < 2:
                 test_state["retry"] = True
                 raise RetryableError("Test error")
-            event_data = WebhookEventData(
+            event_data = WebhookEventRawResults(
                 resourse=resource,
-                data_to_update=[
+                updated_raw_results=[
                     {
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
                     }
                 ],
-                data_to_delete=[],
+                deleted_raw_results=[],
             )
             processed_events.append(event_data)
             return event_data
@@ -1083,7 +1091,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
     original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
 
     async def patched_export_single_resource(
-        self: LiveEventsMixin, webhookEventDatas: list[WebhookEventData]
+        self: LiveEventsMixin, webhookEventDatas: list[WebhookEventRawResults]
     ) -> None:
         try:
             await original_process_data(self, webhookEventDatas)
@@ -1160,7 +1168,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
     )
-    processed_events: list[WebhookEventData] = []
+    processed_events: list[WebhookEventRawResults] = []
     mock_upsert.return_value = [entity]
     test_state = {"retry": False, "exception": False}
 
@@ -1179,21 +1187,21 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
 
         async def handle_event(
             self, payload: EventPayload, resource: ResourceConfig
-        ) -> WebhookEventData:
+        ) -> WebhookEventRawResults:
             self.tries += 1
             if self.tries < 5:
                 test_state["retry"] = True
                 raise RetryableError("Test error")
-            event_data = WebhookEventData(
+            event_data = WebhookEventRawResults(
                 resourse=resource,
-                data_to_update=[
+                updated_raw_results=[
                     {
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
                     }
                 ],
-                data_to_delete=[],
+                deleted_raw_results=[],
             )
             processed_events.append(event_data)
             return event_data
@@ -1211,7 +1219,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
         self: WebhookProcessorManager,
         processor: AbstractWebhookProcessor,
         resource: ResourceConfig,
-    ) -> WebhookEventData:
+    ) -> WebhookEventRawResults:
         try:
             return await original_process_data(self, processor, resource)
         except Exception as e:

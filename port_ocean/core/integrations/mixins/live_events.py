@@ -3,7 +3,7 @@ from typing import Set
 from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventData
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import RAW_ITEM, CalculationResult
@@ -13,7 +13,7 @@ from port_ocean.context.event import event
 
 class LiveEventsMixin(HandlerMixin):
 
-    async def export_raw_event_results_to_entities(self, webhook_events_data: list[WebhookEventData]) -> None:
+    async def export_raw_event_results_to_entities(self, webhook_events_data: list[WebhookEventRawResults]) -> None:
         """Process the webhook event data collected from multiple processors and export it.
 
         Args:
@@ -95,13 +95,13 @@ class LiveEventsMixin(HandlerMixin):
             return calculation_results.entity_selector_diff.failed
         return []
 
-    async def _export_resources(self, webhook_events_data: list[WebhookEventData]) -> list[tuple[str, str]]:
+    async def _export_resources(self, webhook_events_data: list[WebhookEventRawResults]) -> list[tuple[str, str]]:
         entities_to_delete: list[Entity] = []
         blueprints_to_keep: Set[tuple[str, str]] = set()
 
         for webhook_event_data in webhook_events_data:
-            if webhook_event_data.data_to_update:
-                for raw_item in webhook_event_data.data_to_update:
+            if webhook_event_data.updated_raw_results:
+                for raw_item in webhook_event_data.updated_raw_results:
                     logger.info("Exporting single resource", raw_item=raw_item)
                     export_succeded, exported_entities = await self._export(webhook_event_data.resource, raw_item)
                     if self._did_all_entities_filtered_out_at_export(export_succeded, exported_entities):
@@ -121,12 +121,12 @@ class LiveEventsMixin(HandlerMixin):
         except Exception as e:
             logger.error(f"Failed to delete entities: {str(e)}")
 
-    async def _delete_resources(self, webhook_events_data: list[WebhookEventData], exported_blueprints: list[tuple[str, str]]) -> None:
+    async def _delete_resources(self, webhook_events_data: list[WebhookEventRawResults], exported_blueprints: list[tuple[str, str]]) -> None:
         entities_to_delete: list[Entity] = []
 
         for webhook_event_data in webhook_events_data:
-            if webhook_event_data.data_to_delete:
-                for raw_item in webhook_event_data.data_to_delete:
+            if webhook_event_data.deleted_raw_results:
+                for raw_item in webhook_event_data.deleted_raw_results:
                     calculation_results = await self.entity_processor.parse_items(
                         webhook_event_data.resource, [raw_item], parse_all=True, send_raw_data_examples_amount=0
                     )

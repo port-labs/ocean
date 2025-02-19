@@ -8,7 +8,7 @@ from port_ocean.context.event import EventType, event_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
-from .webhook_event import WebhookEvent, WebhookEventData, WebhookEventTimestamp
+from .webhook_event import WebhookEvent, WebhookEventRawResults, WebhookEventTimestamp
 from port_ocean.context.event import event
 
 
@@ -122,7 +122,7 @@ class WebhookProcessorManager(LiveEventsMixin, EventsMixin):
 
     async def _process_single_event(
         self, processor: AbstractWebhookProcessor, path: str, resource: ResourceConfig
-    ) -> WebhookEventData:
+    ) -> WebhookEventRawResults:
         """Process a single event with a specific processor"""
         try:
             logger.debug("Start processing queued webhook")
@@ -140,7 +140,7 @@ class WebhookProcessorManager(LiveEventsMixin, EventsMixin):
 
     async def _execute_processor(
         self, processor: AbstractWebhookProcessor, resource: ResourceConfig
-    ) -> WebhookEventData:
+    ) -> WebhookEventRawResults:
         """Execute a single processor within a max processing time"""
         try:
             return await asyncio.wait_for(
@@ -154,7 +154,7 @@ class WebhookProcessorManager(LiveEventsMixin, EventsMixin):
 
     async def _process_webhook_request(
         self, processor: AbstractWebhookProcessor, resource: ResourceConfig
-    ) -> WebhookEventData:
+    ) -> WebhookEventRawResults:
         """Process a webhook request with retry logic
 
         Args:

@@ -4,7 +4,12 @@ from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.exceptions.webhook_processor import RetryableError
 
-from .webhook_event import WebhookEvent, EventPayload, EventHeaders, WebhookEventData
+from .webhook_event import (
+    WebhookEvent,
+    EventPayload,
+    EventHeaders,
+    WebhookEventRawResults,
+)
 
 
 class AbstractWebhookProcessor(ABC):
@@ -99,7 +104,7 @@ class AbstractWebhookProcessor(ABC):
     @abstractmethod
     async def handle_event(
         self, payload: EventPayload, resource: ResourceConfig
-    ) -> WebhookEventData:
+    ) -> WebhookEventRawResults:
         """Process the event."""
         pass
 

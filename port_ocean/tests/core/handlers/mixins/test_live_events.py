@@ -11,7 +11,7 @@ from port_ocean.core.handlers.entities_state_applier.port.applier import (
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventData
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
@@ -92,7 +92,7 @@ event_data_for_three_entities_for_repository_resource = [
     },
 ]
 
-webHook_event_data_for_creation = WebhookEventData(
+webHook_event_data_for_creation = WebhookEventRawResults(
     resourse=ResourceConfig(
         kind="repository",
         selector=Selector(query="true"),
@@ -111,11 +111,11 @@ webHook_event_data_for_creation = WebhookEventData(
             )
         ),
     ),
-    data_to_update=event_data_for_three_entities_for_repository_resource,
-    data_to_delete=[],
+    updated_raw_results=event_data_for_three_entities_for_repository_resource,
+    deleted_raw_results=[],
 )
 
-one_webHook_event_data_for_creation = WebhookEventData(
+one_webHook_event_data_for_creation = WebhookEventRawResults(
     resourse=ResourceConfig(
         kind="repository",
         selector=Selector(query="true"),
@@ -134,17 +134,17 @@ one_webHook_event_data_for_creation = WebhookEventData(
             )
         ),
     ),
-    data_to_update=[
+    updated_raw_results=[
         {
             "name": "repo-one",
             "links": {"html": {"href": "https://example.com/repo-one"}},
             "main_branch": "main",
         }
     ],
-    data_to_delete=[],
+    deleted_raw_results=[],
 )
 
-one_webHook_event_data_for_deletion = WebhookEventData(
+one_webHook_event_data_for_deletion = WebhookEventRawResults(
     resourse=ResourceConfig(
         kind="repository",
         selector=Selector(query="true"),
@@ -163,14 +163,14 @@ one_webHook_event_data_for_deletion = WebhookEventData(
             )
         ),
     ),
-    data_to_delete=[
+    deleted_raw_results=[
         {
             "name": "repo-one",
             "links": {"html": {"href": "https://example.com/repo-one"}},
             "main_branch": "main",
         }
     ],
-    data_to_update=[],
+    updated_raw_results=[],
 )
 
 

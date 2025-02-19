@@ -86,7 +86,7 @@ class WebhookEvent:
         self.event_context = event_context
 
 
-class WebhookEventData:
+class WebhookEventRawResults:
     """
     Class for webhook event to store the updated data for the event
     """
@@ -94,21 +94,21 @@ class WebhookEventData:
     def __init__(
         self,
         resourse: ResourceConfig,
-        data_to_update: list[RAW_ITEM],
-        data_to_delete: list[RAW_ITEM],
+        updated_raw_results: list[RAW_ITEM],
+        deleted_raw_results: list[RAW_ITEM],
     ) -> None:
         self._resource = resourse
-        self._data_to_update = data_to_update
-        self._data_to_delete = data_to_delete
+        self._updated_raw_results = updated_raw_results
+        self._deleted_raw_results = deleted_raw_results
 
     @property
     def resource(self) -> ResourceConfig:
         return self._resource
 
     @property
-    def data_to_update(self) -> list[RAW_ITEM]:
-        return self._data_to_update
+    def updated_raw_results(self) -> list[RAW_ITEM]:
+        return self._updated_raw_results
 
     @property
-    def data_to_delete(self) -> list[RAW_ITEM]:
-        return self._data_to_delete
+    def deleted_raw_results(self) -> list[RAW_ITEM]:
+        return self._deleted_raw_results
