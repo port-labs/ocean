@@ -65,7 +65,7 @@ class JiraClient(OAuthClient):
         self.client.timeout = Timeout(30)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
-    def _get_bearer(self)-> BearerAuth:
+    def _get_bearer(self) -> BearerAuth:
         try:
             return BearerAuth(self.external_access_token)
         except ValueError:
