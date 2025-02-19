@@ -6,15 +6,20 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import AbstractWebhookProcessor
-from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPayload, WebhookEvent, WebhookEventData
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+)
+from port_ocean.core.handlers.webhook.webhook_event import (
+    EventHeaders,
+    EventPayload,
+    WebhookEvent,
+    WebhookEventRawResults,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from jira.client import JiraClient
 from jira.overrides import (
     JiraIssueConfig,
-    JiraIssueSelector,
-    JiraPortAppConfig,
     JiraProjectResourceConfig,
     TeamResourceConfig,
 )
@@ -110,14 +115,17 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received users batch with {len(users_batch)} users")
         yield users_batch
 
-class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
-    def filter_event_data(self, webhook_event: WebhookEvent) -> bool:
-        return webhook_event.payload.get("webhookEvent", "").startswith("jira:issue_")
 
-    def get_kind(self, payload: EventPayload) -> str:
+class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
+    def filter_event_data(self, event: WebhookEvent) -> bool:
+        return event.payload.get("webhookEvent", "").startswith("jira:issue_")
+
+    def get_kind(self, event: WebhookEvent) -> str:
         return ObjectKind.ISSUE
 
-    async def handle_event(self, payload: EventPayload, resource_config: ResourceConfig) -> None:
+    async def handle_event(
+        self, payload: EventPayload, resource_config: ResourceConfig
+    ) -> None:
         client = create_jira_client()
         issue_key = payload["issue"]["key"]
         logger.info(
@@ -149,7 +157,11 @@ class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
         else:
             data_to_update.extend(issues)
 
-        return WebhookEventData(resourse=resource_config, data_to_update=data_to_update, data_to_delete=data_to_delete)
+        return WebhookEventRawResults(
+            resourse=resource_config,
+            updated_raw_results=data_to_update,
+            deleted_raw_results=data_to_delete,
+        )
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         # For Jira webhooks, we don't need additional authentication as they are validated
@@ -260,5 +272,6 @@ async def on_start() -> None:
         return
 
     await setup_application()
+
 
 ocean.add_webhook_processor("/webhook", JiraIssueWebhookProcessor)
