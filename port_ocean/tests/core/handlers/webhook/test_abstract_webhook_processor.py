@@ -31,7 +31,7 @@ class ConcreteWebhookProcessor(AbstractWebhookProcessor):
         self, payload: EventPayload, resource: ResourceConfig
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(
-            resourse=resource, updated_raw_results=[{}], deleted_raw_results=[]
+            resource=resource, updated_raw_results=[{}], deleted_raw_results=[]
         )
 
     def filter_event_data(self, webhook_event: WebhookEvent) -> bool:

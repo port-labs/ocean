@@ -93,11 +93,11 @@ class WebhookEventRawResults:
 
     def __init__(
         self,
-        resourse: ResourceConfig,
+        resource: ResourceConfig,
         updated_raw_results: list[RAW_ITEM],
         deleted_raw_results: list[RAW_ITEM],
     ) -> None:
-        self._resource = resourse
+        self._resource = resource
         self._updated_raw_results = updated_raw_results
         self._deleted_raw_results = deleted_raw_results
 

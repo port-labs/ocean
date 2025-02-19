@@ -93,7 +93,7 @@ event_data_for_three_entities_for_repository_resource = [
 ]
 
 webHook_event_data_for_creation = WebhookEventRawResults(
-    resourse=ResourceConfig(
+    resource=ResourceConfig(
         kind="repository",
         selector=Selector(query="true"),
         port=PortResourceConfig(
@@ -116,7 +116,7 @@ webHook_event_data_for_creation = WebhookEventRawResults(
 )
 
 one_webHook_event_data_for_creation = WebhookEventRawResults(
-    resourse=ResourceConfig(
+    resource=ResourceConfig(
         kind="repository",
         selector=Selector(query="true"),
         port=PortResourceConfig(
@@ -145,7 +145,7 @@ one_webHook_event_data_for_creation = WebhookEventRawResults(
 )
 
 one_webHook_event_data_for_deletion = WebhookEventRawResults(
-    resourse=ResourceConfig(
+    resource=ResourceConfig(
         kind="repository",
         selector=Selector(query="true"),
         port=PortResourceConfig(

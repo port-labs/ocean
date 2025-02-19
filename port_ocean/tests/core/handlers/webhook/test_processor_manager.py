@@ -51,7 +51,7 @@ class MockProcessor(AbstractWebhookProcessor):
         self, payload: EventPayload, resource: ResourceConfig
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(
-            resourse=resource, updated_raw_results=[], deleted_raw_results=[]
+            resource=resource, updated_raw_results=[], deleted_raw_results=[]
         )
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
@@ -74,7 +74,7 @@ class MockProcessorFalse(AbstractWebhookProcessor):
         self, payload: EventPayload, resource: ResourceConfig
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(
-            resourse=resource, updated_raw_results=[], deleted_raw_results=[]
+            resource=resource, updated_raw_results=[], deleted_raw_results=[]
         )
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
@@ -108,7 +108,7 @@ class MockWebhookProcessor(AbstractWebhookProcessor):
             raise self.error_to_raise
         self.processed = True
         return WebhookEventRawResults(
-            resourse=resource, updated_raw_results=[], deleted_raw_results=[]
+            resource=resource, updated_raw_results=[], deleted_raw_results=[]
         )
 
     async def cancel(self) -> None:
@@ -158,7 +158,7 @@ class MockWebhookHandlerForProcessWebhookRequest(AbstractWebhookProcessor):
             raise RetryableError("Temporary failure")
         self.handled = True
         return WebhookEventRawResults(
-            resourse=resource, updated_raw_results=[], deleted_raw_results=[]
+            resource=resource, updated_raw_results=[], deleted_raw_results=[]
         )
 
     def get_kind(self, event: WebhookEvent) -> str:
@@ -536,7 +536,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
             self, payload: EventPayload, resource: ResourceConfig
         ) -> WebhookEventRawResults:
             event_data = WebhookEventRawResults(
-                resourse=resource,
+                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -653,7 +653,7 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
         ) -> WebhookEventRawResults:
             await asyncio.sleep(3)
             return WebhookEventRawResults(
-                resourse=resource, updated_raw_results=[], deleted_raw_results=[]
+                resource=resource, updated_raw_results=[], deleted_raw_results=[]
             )
 
         def filter_event_data(self, event: WebhookEvent) -> bool:
@@ -760,7 +760,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
             self, payload: EventPayload, resource: ResourceConfig
         ) -> WebhookEventRawResults:
             event_data = WebhookEventRawResults(
-                resourse=resource,
+                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -876,7 +876,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
             self, payload: EventPayload, resource: ResourceConfig
         ) -> WebhookEventRawResults:
             event_data = WebhookEventRawResults(
-                resourse=resource,
+                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -908,7 +908,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
             self, payload: EventPayload, resource: ResourceConfig
         ) -> WebhookEventRawResults:
             event_data = WebhookEventRawResults(
-                resourse=resource,
+                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-two",
@@ -940,7 +940,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
             self, payload: EventPayload, resource: ResourceConfig
         ) -> WebhookEventRawResults:
             event_data = WebhookEventRawResults(
-                resourse=resource,
+                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -1068,7 +1068,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
                 test_state["retry"] = True
                 raise RetryableError("Test error")
             event_data = WebhookEventRawResults(
-                resourse=resource,
+                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -1193,7 +1193,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
                 test_state["retry"] = True
                 raise RetryableError("Test error")
             event_data = WebhookEventRawResults(
-                resourse=resource,
+                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
