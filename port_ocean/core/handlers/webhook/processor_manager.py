@@ -57,10 +57,11 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         for processor_class in self._processors_classes[path]:
             processor = processor_class(webhook_event.clone())
             if processor.filter_event_data(webhook_event):
-                kind = processor.get_kind(webhook_event)
-                for resource in event.port_app_config.resources:
-                    if resource.kind == kind:
-                        created_processors.append((resource, processor))
+                kinds = processor.get_matching_kinds(webhook_event)
+                for kind in kinds:
+                    for resource in event.port_app_config.resources:
+                        if resource.kind == kind:
+                            created_processors.append((resource, processor))
 
         if not created_processors:
             raise ValueError("No matching processors found")

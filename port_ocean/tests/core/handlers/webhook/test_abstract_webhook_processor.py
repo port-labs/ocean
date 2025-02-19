@@ -47,8 +47,8 @@ class ConcreteWebhookProcessor(AbstractWebhookProcessor):
         await super().cancel()
         self.cancel_called = True
 
-    def get_kind(self, event: WebhookEvent) -> str:
-        return "test"
+    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        return ["test"]
 
 
 @pytest.fixture
