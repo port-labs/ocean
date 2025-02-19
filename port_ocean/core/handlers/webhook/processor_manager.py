@@ -104,7 +104,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                         ):
                             logger.info(
                                 "Exporting raw event results to entities",
-                                webhook_event_raw_results_for_all_resources=webhook_event_raw_results_for_all_resources,
+                                webhook_event_raw_results_for_all_resources_length=len(
+                                    webhook_event_raw_results_for_all_resources
+                                ),
                             )
                             await self.export_raw_event_results_to_entities(
                                 webhook_event_raw_results_for_all_resources
