@@ -49,7 +49,7 @@ class ConcreteWebhookProcessor(AbstractWebhookProcessor):
         await super().cancel()
         self.cancel_called = True
 
-    def get_kind(self, payload: EventPayload) -> str:
+    def get_kind(self, event: WebhookEvent) -> str:
         return "test"
 
 

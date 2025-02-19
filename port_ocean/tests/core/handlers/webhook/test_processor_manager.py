@@ -55,7 +55,7 @@ class MockProcessor(AbstractWebhookProcessor):
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return True
 
-    def get_kind(self, payload: EventPayload) -> str:
+    def get_kind(self, event: WebhookEvent) -> str:
         return "repository"
 
 
@@ -76,7 +76,7 @@ class MockProcessorFalse(AbstractWebhookProcessor):
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return False
 
-    def get_kind(self, payload: EventPayload) -> str:
+    def get_kind(self, event: WebhookEvent) -> str:
         return "repository"
 
 
@@ -111,7 +111,7 @@ class MockWebhookProcessor(AbstractWebhookProcessor):
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return True
 
-    def get_kind(self, payload: EventPayload) -> str:
+    def get_kind(self, event: WebhookEvent) -> str:
         return "test"
 
 
@@ -153,7 +153,7 @@ class MockWebhookHandlerForProcessWebhookRequest(AbstractWebhookProcessor):
         self.handled = True
         return WebhookEventData(resourse=resource, data_to_update=[], data_to_delete=[])
 
-    def get_kind(self, payload: EventPayload) -> str:
+    def get_kind(self, event: WebhookEvent) -> str:
         return "repository"
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
@@ -544,7 +544,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
         def filter_event_data(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_kind(self, payload: EventPayload) -> str:
+        def get_kind(self, event: WebhookEvent) -> str:
             return "repository"
 
     processing_complete = asyncio.Event()
@@ -651,7 +651,7 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
         def filter_event_data(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_kind(self, payload: EventPayload) -> str:
+        def get_kind(self, event: WebhookEvent) -> str:
             return "repository"
 
     processing_complete = asyncio.Event()
@@ -767,7 +767,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
         def filter_event_data(self, event: WebhookEvent) -> bool:
             return False
 
-        def get_kind(self, payload: EventPayload) -> str:
+        def get_kind(self, event: WebhookEvent) -> str:
             return "repository"
 
     processing_complete = asyncio.Event()
@@ -884,7 +884,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
         def filter_event_data(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_kind(self, payload: EventPayload) -> str:
+        def get_kind(self, event: WebhookEvent) -> str:
             return "repository"
 
     class TestProcessorB(AbstractWebhookProcessor):
@@ -916,7 +916,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
         def filter_event_data(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_kind(self, payload: EventPayload) -> str:
+        def get_kind(self, event: WebhookEvent) -> str:
             return "repository"
 
     class TestProcessorFiltersOut(AbstractWebhookProcessor):
@@ -948,7 +948,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
         def filter_event_data(self, event: WebhookEvent) -> bool:
             return False
 
-        def get_kind(self, payload: EventPayload) -> str:
+        def get_kind(self, event: WebhookEvent) -> str:
             return "repository"
 
     processing_complete = asyncio.Event()
@@ -1076,7 +1076,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
         def filter_event_data(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_kind(self, payload: EventPayload) -> str:
+        def get_kind(self, event: WebhookEvent) -> str:
             return "repository"
 
     processing_complete = asyncio.Event()
@@ -1201,7 +1201,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
         def filter_event_data(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_kind(self, payload: EventPayload) -> str:
+        def get_kind(self, event: WebhookEvent) -> str:
             return "repository"
 
     processing_complete = asyncio.Event()
