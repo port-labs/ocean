@@ -1,5 +1,7 @@
 import pytest
-from port_ocean.core.handlers.webhook.processor_manager import WebhookProcessorManager
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -50,9 +52,7 @@ class MockProcessor(AbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource: ResourceConfig
     ) -> WebhookEventRawResults:
-        return WebhookEventRawResults(
-            resource=resource, updated_raw_results=[], deleted_raw_results=[]
-        )
+        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return True
@@ -73,9 +73,7 @@ class MockProcessorFalse(AbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource: ResourceConfig
     ) -> WebhookEventRawResults:
-        return WebhookEventRawResults(
-            resource=resource, updated_raw_results=[], deleted_raw_results=[]
-        )
+        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return False
@@ -107,9 +105,7 @@ class MockWebhookProcessor(AbstractWebhookProcessor):
         if self.error_to_raise:
             raise self.error_to_raise
         self.processed = True
-        return WebhookEventRawResults(
-            resource=resource, updated_raw_results=[], deleted_raw_results=[]
-        )
+        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     async def cancel(self) -> None:
         self.cancel_called = True
@@ -157,9 +153,7 @@ class MockWebhookHandlerForProcessWebhookRequest(AbstractWebhookProcessor):
             self.current_fails += 1
             raise RetryableError("Temporary failure")
         self.handled = True
-        return WebhookEventRawResults(
-            resource=resource, updated_raw_results=[], deleted_raw_results=[]
-        )
+        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     def get_kind(self, event: WebhookEvent) -> str:
         return "repository"
@@ -177,10 +171,10 @@ class MockWebhookHandlerForProcessWebhookRequest(AbstractWebhookProcessor):
 
 
 @pytest.fixture
-def processor_manager() -> WebhookProcessorManager:
+def processor_manager() -> LiveEventsProcessorManager:
     router = APIRouter()
     signal_handler = SignalHandler()
-    return WebhookProcessorManager(
+    return LiveEventsProcessorManager(
         router, signal_handler, max_event_processing_seconds=3
     )
 
@@ -200,8 +194,8 @@ def webhook_event_for_process_webhook_request() -> WebhookEvent:
 
 
 @pytest.fixture
-def processor_manager_for_process_webhook_request() -> WebhookProcessorManager:
-    return WebhookProcessorManager(APIRouter(), SignalHandler())
+def processor_manager_for_process_webhook_request() -> LiveEventsProcessorManager:
+    return LiveEventsProcessorManager(APIRouter(), SignalHandler())
 
 
 @pytest.fixture
@@ -326,7 +320,7 @@ entity = Entity(
 
 @pytest.mark.asyncio
 async def test_extractMatchingProcessors_processorMatch(
-    processor_manager: WebhookProcessorManager,
+    processor_manager: LiveEventsProcessorManager,
     webhook_event: WebhookEvent,
     mock_port_app_config: PortAppConfig,
 ) -> None:
@@ -349,7 +343,7 @@ async def test_extractMatchingProcessors_processorMatch(
 
 @pytest.mark.asyncio
 async def test_extractMatchingProcessors_noMatch(
-    processor_manager: WebhookProcessorManager,
+    processor_manager: LiveEventsProcessorManager,
     webhook_event: WebhookEvent,
     mock_port_app_config: PortAppConfig,
 ) -> None:
@@ -366,7 +360,7 @@ async def test_extractMatchingProcessors_noMatch(
 
 @pytest.mark.asyncio
 async def test_extractMatchingProcessors_multipleMatches(
-    processor_manager: WebhookProcessorManager,
+    processor_manager: LiveEventsProcessorManager,
     webhook_event: WebhookEvent,
     mock_port_app_config: PortAppConfig,
 ) -> None:
@@ -387,7 +381,7 @@ async def test_extractMatchingProcessors_multipleMatches(
 
 @pytest.mark.asyncio
 async def test_extractMatchingProcessors_onlyOneMatches(
-    processor_manager: WebhookProcessorManager,
+    processor_manager: LiveEventsProcessorManager,
     webhook_event: WebhookEvent,
     mock_port_app_config: PortAppConfig,
 ) -> None:
@@ -410,7 +404,7 @@ async def test_extractMatchingProcessors_onlyOneMatches(
 
 
 def test_registerProcessor_registrationWorks(
-    processor_manager: WebhookProcessorManager,
+    processor_manager: LiveEventsProcessorManager,
 ) -> None:
     processor_manager.register_processor("/test", MockWebhookProcessor)
     assert "/test" in processor_manager._processors
@@ -419,7 +413,7 @@ def test_registerProcessor_registrationWorks(
 
 
 def test_registerProcessor_multipleHandlers_allRegistered(
-    processor_manager: WebhookProcessorManager,
+    processor_manager: LiveEventsProcessorManager,
 ) -> None:
     processor_manager.register_processor("/test", MockWebhookProcessor)
     processor_manager.register_processor("/test", MockWebhookProcessor)
@@ -428,7 +422,7 @@ def test_registerProcessor_multipleHandlers_allRegistered(
 
 
 def test_registerProcessor_invalidHandlerRegistration_throwsError(
-    processor_manager: WebhookProcessorManager,
+    processor_manager: LiveEventsProcessorManager,
 ) -> None:
     """Test registration of invalid processor type."""
 
@@ -439,7 +433,7 @@ def test_registerProcessor_invalidHandlerRegistration_throwsError(
 @pytest.mark.asyncio
 async def test_processWebhookRequest_successfulProcessing(
     processor: MockWebhookHandlerForProcessWebhookRequest,
-    processor_manager_for_process_webhook_request: WebhookProcessorManager,
+    processor_manager_for_process_webhook_request: LiveEventsProcessorManager,
     mock_port_app_config: PortAppConfig,
 ) -> None:
     """Test successful webhook processing flow."""
@@ -456,7 +450,7 @@ async def test_processWebhookRequest_successfulProcessing(
 @pytest.mark.asyncio
 async def test_processWebhookRequest_retryTwoTimesThenSuccessfulProcessing(
     webhook_event_for_process_webhook_request: WebhookEvent,
-    processor_manager_for_process_webhook_request: WebhookProcessorManager,
+    processor_manager_for_process_webhook_request: LiveEventsProcessorManager,
     mock_port_app_config: PortAppConfig,
 ) -> None:
     """Test retry mechanism with temporary failures."""
@@ -477,7 +471,7 @@ async def test_processWebhookRequest_retryTwoTimesThenSuccessfulProcessing(
 @pytest.mark.asyncio
 async def test_processWebhookRequest_maxRetriesExceeded_exceptionRaised(
     webhook_event: WebhookEvent,
-    processor_manager_for_process_webhook_request: WebhookProcessorManager,
+    processor_manager_for_process_webhook_request: LiveEventsProcessorManager,
     mock_port_app_config: PortAppConfig,
 ) -> None:
     """Test behavior when max retries are exceeded."""
@@ -536,7 +530,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
             self, payload: EventPayload, resource: ResourceConfig
         ) -> WebhookEventRawResults:
             event_data = WebhookEventRawResults(
-                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -575,7 +568,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
     )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
-    mock_context.app.webhook_manager = WebhookProcessorManager(
+    mock_context.app.webhook_manager = LiveEventsProcessorManager(
         mock_context.app.integration_router, SignalHandler()
     )
 
@@ -653,7 +646,7 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
         ) -> WebhookEventRawResults:
             await asyncio.sleep(3)
             return WebhookEventRawResults(
-                resource=resource, updated_raw_results=[], deleted_raw_results=[]
+                updated_raw_results=[], deleted_raw_results=[]
             )
 
         def filter_event_data(self, event: WebhookEvent) -> bool:
@@ -663,10 +656,10 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
             return "repository"
 
     processing_complete = asyncio.Event()
-    original_process_data = WebhookProcessorManager._process_single_event
+    original_process_data = LiveEventsProcessorManager._process_single_event
 
     async def patched_process_single_event(
-        self: WebhookProcessorManager,
+        self: LiveEventsProcessorManager,
         processor: AbstractWebhookProcessor,
         path: str,
         resource: ResourceConfig,
@@ -680,11 +673,13 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
             processing_complete.set()
 
     monkeypatch.setattr(
-        WebhookProcessorManager, "_process_single_event", patched_process_single_event
+        LiveEventsProcessorManager,
+        "_process_single_event",
+        patched_process_single_event,
     )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
-    mock_context.app.webhook_manager = WebhookProcessorManager(
+    mock_context.app.webhook_manager = LiveEventsProcessorManager(
         mock_context.app.integration_router, SignalHandler(), 2
     )
 
@@ -760,7 +755,6 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
             self, payload: EventPayload, resource: ResourceConfig
         ) -> WebhookEventRawResults:
             event_data = WebhookEventRawResults(
-                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -779,10 +773,10 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
             return "repository"
 
     processing_complete = asyncio.Event()
-    original_process_data = WebhookProcessorManager._extract_matching_processors
+    original_process_data = LiveEventsProcessorManager._extract_matching_processors
 
     def patched_extract_matching_processors(
-        self: WebhookProcessorManager, event: WebhookEvent, path: str
+        self: LiveEventsProcessorManager, event: WebhookEvent, path: str
     ) -> list[tuple[ResourceConfig, AbstractWebhookProcessor]]:
         try:
             return original_process_data(self, event, path)
@@ -793,13 +787,13 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
             processing_complete.set()
 
     monkeypatch.setattr(
-        WebhookProcessorManager,
+        LiveEventsProcessorManager,
         "_extract_matching_processors",
         patched_extract_matching_processors,
     )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
-    mock_context.app.webhook_manager = WebhookProcessorManager(
+    mock_context.app.webhook_manager = LiveEventsProcessorManager(
         mock_context.app.integration_router, SignalHandler()
     )
 
@@ -876,7 +870,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
             self, payload: EventPayload, resource: ResourceConfig
         ) -> WebhookEventRawResults:
             event_data = WebhookEventRawResults(
-                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -908,7 +901,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
             self, payload: EventPayload, resource: ResourceConfig
         ) -> WebhookEventRawResults:
             event_data = WebhookEventRawResults(
-                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-two",
@@ -940,7 +932,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
             self, payload: EventPayload, resource: ResourceConfig
         ) -> WebhookEventRawResults:
             event_data = WebhookEventRawResults(
-                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -979,7 +970,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
     )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
-    mock_context.app.webhook_manager = WebhookProcessorManager(
+    mock_context.app.webhook_manager = LiveEventsProcessorManager(
         mock_context.app.integration_router, SignalHandler()
     )
 
@@ -1068,7 +1059,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
                 test_state["retry"] = True
                 raise RetryableError("Test error")
             event_data = WebhookEventRawResults(
-                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -1107,7 +1097,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
     )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
-    mock_context.app.webhook_manager = WebhookProcessorManager(
+    mock_context.app.webhook_manager = LiveEventsProcessorManager(
         mock_context.app.integration_router, SignalHandler()
     )
 
@@ -1193,7 +1183,6 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
                 test_state["retry"] = True
                 raise RetryableError("Test error")
             event_data = WebhookEventRawResults(
-                resource=resource,
                 updated_raw_results=[
                     {
                         "name": "repo-one",
@@ -1213,10 +1202,10 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
             return "repository"
 
     processing_complete = asyncio.Event()
-    original_process_data = WebhookProcessorManager._process_webhook_request
+    original_process_data = LiveEventsProcessorManager._process_webhook_request
 
     async def patched_process_webhook_request(
-        self: WebhookProcessorManager,
+        self: LiveEventsProcessorManager,
         processor: AbstractWebhookProcessor,
         resource: ResourceConfig,
     ) -> WebhookEventRawResults:
@@ -1229,13 +1218,13 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
             processing_complete.set()
 
     monkeypatch.setattr(
-        WebhookProcessorManager,
+        LiveEventsProcessorManager,
         "_process_webhook_request",
         patched_process_webhook_request,
     )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
-    mock_context.app.webhook_manager = WebhookProcessorManager(
+    mock_context.app.webhook_manager = LiveEventsProcessorManager(
         mock_context.app.integration_router, SignalHandler()
     )
 

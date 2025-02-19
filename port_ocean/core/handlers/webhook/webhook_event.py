@@ -13,6 +13,12 @@ EventPayload: TypeAlias = Dict[str, Any]
 EventHeaders: TypeAlias = Dict[str, str]
 
 
+class LiveEvent:
+    """Represents a live event marker class"""
+
+    pass
+
+
 class WebhookEventTimestamp(StrEnum):
     """Enum for timestamp keys"""
 
@@ -22,7 +28,7 @@ class WebhookEventTimestamp(StrEnum):
     FinishedProcessingWithError = "Finished Processing With Error"
 
 
-class WebhookEvent:
+class WebhookEvent(LiveEvent):
     """Represents a webhook event"""
 
     def __init__(
@@ -93,17 +99,22 @@ class WebhookEventRawResults:
 
     def __init__(
         self,
-        resource: ResourceConfig,
         updated_raw_results: list[RAW_ITEM],
         deleted_raw_results: list[RAW_ITEM],
     ) -> None:
-        self._resource = resource
+        self._resource: ResourceConfig | None = None
         self._updated_raw_results = updated_raw_results
         self._deleted_raw_results = deleted_raw_results
 
     @property
     def resource(self) -> ResourceConfig:
+        if self._resource is None:
+            raise ValueError("Resource has not been set")
         return self._resource
+
+    @resource.setter
+    def resource(self, value: ResourceConfig) -> None:
+        self._resource = value
 
     @property
     def updated_raw_results(self) -> list[RAW_ITEM]:

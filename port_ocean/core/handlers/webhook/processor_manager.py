@@ -17,7 +17,7 @@ from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import AbstractQueue, LocalQueue
 
 
-class WebhookProcessorManager(LiveEventsMixin, EventsMixin):
+class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     """Manages webhook processors and their routes"""
 
     def __init__(
@@ -184,6 +184,7 @@ class WebhookProcessorManager(LiveEventsMixin, EventsMixin):
         while True:
             try:
                 webhook_event_data = await processor.handle_event(payload, resource)
+                webhook_event_data.resource = resource
                 break
 
             except Exception as e:

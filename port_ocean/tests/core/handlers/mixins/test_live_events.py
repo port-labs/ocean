@@ -92,48 +92,8 @@ event_data_for_three_entities_for_repository_resource = [
     },
 ]
 
-webHook_event_data_for_creation = WebhookEventRawResults(
-    resource=ResourceConfig(
-        kind="repository",
-        selector=Selector(query="true"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".name",
-                    title=".name",
-                    blueprint='"service"',
-                    properties={
-                        "url": ".links.html.href",
-                        "defaultBranch": ".main_branch",
-                    },
-                    relations={},
-                )
-            )
-        ),
-    ),
-    updated_raw_results=event_data_for_three_entities_for_repository_resource,
-    deleted_raw_results=[],
-)
 
 one_webHook_event_data_for_creation = WebhookEventRawResults(
-    resource=ResourceConfig(
-        kind="repository",
-        selector=Selector(query="true"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".name",
-                    title=".name",
-                    blueprint='"service"',
-                    properties={
-                        "url": ".links.html.href",
-                        "defaultBranch": ".main_branch",
-                    },
-                    relations={},
-                )
-            )
-        ),
-    ),
     updated_raw_results=[
         {
             "name": "repo-one",
@@ -143,26 +103,25 @@ one_webHook_event_data_for_creation = WebhookEventRawResults(
     ],
     deleted_raw_results=[],
 )
-
-one_webHook_event_data_for_deletion = WebhookEventRawResults(
-    resource=ResourceConfig(
-        kind="repository",
-        selector=Selector(query="true"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".name",
-                    title=".name",
-                    blueprint='"service"',
-                    properties={
-                        "url": ".links.html.href",
-                        "defaultBranch": ".main_branch",
-                    },
-                    relations={},
-                )
+one_webHook_event_data_for_creation.resource = ResourceConfig(
+    kind="repository",
+    selector=Selector(query="true"),
+    port=PortResourceConfig(
+        entity=MappingsConfig(
+            mappings=EntityMapping(
+                identifier=".name",
+                title=".name",
+                blueprint='"service"',
+                properties={
+                    "url": ".links.html.href",
+                    "defaultBranch": ".main_branch",
+                },
+                relations={},
             )
-        ),
+        )
     ),
+)
+one_webHook_event_data_for_deletion = WebhookEventRawResults(
     deleted_raw_results=[
         {
             "name": "repo-one",
@@ -171,6 +130,24 @@ one_webHook_event_data_for_deletion = WebhookEventRawResults(
         }
     ],
     updated_raw_results=[],
+)
+one_webHook_event_data_for_deletion.resource = ResourceConfig(
+    kind="repository",
+    selector=Selector(query="true"),
+    port=PortResourceConfig(
+        entity=MappingsConfig(
+            mappings=EntityMapping(
+                identifier=".name",
+                title=".name",
+                blueprint='"service"',
+                properties={
+                    "url": ".links.html.href",
+                    "defaultBranch": ".main_branch",
+                },
+                relations={},
+            )
+        )
+    ),
 )
 
 
