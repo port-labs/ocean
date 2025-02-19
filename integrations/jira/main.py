@@ -120,8 +120,8 @@ class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
     def filter_event_data(self, event: WebhookEvent) -> bool:
         return event.payload.get("webhookEvent", "").startswith("jira:issue_")
 
-    def get_kind(self, event: WebhookEvent) -> str:
-        return ObjectKind.ISSUE
+    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        return [ObjectKind.ISSUE]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -158,7 +158,6 @@ class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
             data_to_update.extend(issues)
 
         return WebhookEventRawResults(
-            resourse=resource_config,
             updated_raw_results=data_to_update,
             deleted_raw_results=data_to_delete,
         )
