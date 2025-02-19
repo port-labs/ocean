@@ -699,7 +699,7 @@ async def test_deleteEntities_oneEntityDeleted(
         calculation_result
     )
 
-    await mock_live_events_mixin._delete_entity(
+    await mock_live_events_mixin._delete_resources(
         resource_mapping=mock_repository_resource_config,
         upserted_blueprints=[],
         raw_item_to_delete={"id": "test"},
@@ -728,7 +728,7 @@ async def test_deleteEntities_NoEntityDeletedDueToUpsertedEntity(
         calculation_result
     )
 
-    await mock_live_events_mixin._delete_entity(
+    await mock_live_events_mixin._delete_resources(
         resource_mapping=mock_repository_resource_config,
         upserted_blueprints=[("service", "repo-one")],
         raw_item_to_delete={"id": "test"},
@@ -759,7 +759,7 @@ async def test_delete_entities_error_handling(
         "Test error"
     )
 
-    await mock_live_events_mixin._delete_entity(
+    await mock_live_events_mixin._delete_resources(
         resource_mapping=mock_repository_resource_config,
         upserted_blueprints=[],
         raw_item_to_delete={"id": "test"},

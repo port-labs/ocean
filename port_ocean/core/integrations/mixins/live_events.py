@@ -20,14 +20,11 @@ class LiveEventsMixin(HandlerMixin):
             webhook_events_data: List of WebhookEventData objects to process
         """
         exported_entities: list[Entity] = []
-        for webhook_event_data in webhook_events_data:
-            for raw_item in webhook_event_data.data_to_update:
-                exported_entities_from_export = await self._export_single_resource(webhook_event_data.resource, raw_item)
-                exported_entities.extend(exported_entities_from_export)
 
-        for webhook_event_data in webhook_events_data:
-            for raw_item in webhook_event_data.data_to_delete:
-                await self._delete_entity(webhook_event_data.resource, exported_entities, raw_item)
+        exported_entities_from_export = await self._export_resources(webhook_events_data)
+        exported_entities.extend(exported_entities_from_export)
+
+        await self._delete_resources(webhook_events_data, exported_entities)
 
     async def _export(self, resource_mapping: ResourceConfig, raw_item: RAW_ITEM) -> tuple[bool, list[Entity]]:
         """Export a single resource mapping with the given raw item.
@@ -98,37 +95,43 @@ class LiveEventsMixin(HandlerMixin):
             return calculation_results.entity_selector_diff.failed
         return []
 
-    async def _export_single_resource(self, resource_mapping: ResourceConfig, raw_item: RAW_ITEM) -> list[tuple[str, str]]:
+    async def _export_resources(self, webhook_events_data: list[WebhookEventData]) -> list[tuple[str, str]]:
         entities_to_delete: list[Entity] = []
         blueprints_to_keep: Set[tuple[str, str]] = set()
 
-        logger.info("Exporting single resource", raw_item=raw_item)
-        export_succeded, exported_entities = await self._export(resource_mapping, raw_item)
-        if self._did_all_entities_filtered_out_at_export(export_succeded, exported_entities):
-            entities_to_delete.extend(await self._get_entities_to_delete(resource_mapping, raw_item))
-        else:
-            for entity in exported_entities:
-                blueprints_to_keep.add((entity.blueprint, entity.identifier))
+        for webhook_event_data in webhook_events_data:
+            if webhook_event_data.data_to_update:
+                for raw_item in webhook_event_data.data_to_update:
+                    logger.info("Exporting single resource", raw_item=raw_item)
+                    export_succeded, exported_entities = await self._export(webhook_event_data.resource, raw_item)
+                    if self._did_all_entities_filtered_out_at_export(export_succeded, exported_entities):
+                        entities_to_delete.extend(await self._get_entities_to_delete(webhook_event_data.resource, raw_item))
+                    else:
+                        for entity in exported_entities:
+                            blueprints_to_keep.add((entity.blueprint, entity.identifier))
 
-        #entities_to_delete_filtered_by_kept_blueprints = [entity for entity in entities_to_delete if (entity.blueprint, entity.identifier) not in blueprints_to_keep]
+        entities_to_delete_filtered_by_kept_blueprints = [entity for entity in entities_to_delete if (entity.blueprint, entity.identifier) not in blueprints_to_keep]
 
         try:
-            if entities_to_delete:
+            if entities_to_delete_filtered_by_kept_blueprints:
                 logger.info(f"Deleting entities after filtering out the bluepprint entities to keep",
-                    deleted_entities_count=len(entities_to_delete))
-                await self.entities_state_applier.delete(entities_to_delete, UserAgentType.exporter)
+                    deleted_entities_count=len(entities_to_delete_filtered_by_kept_blueprints))
+                await self.entities_state_applier.delete(entities_to_delete_filtered_by_kept_blueprints, UserAgentType.exporter)
             return list(blueprints_to_keep)
         except Exception as e:
             logger.error(f"Failed to delete entities: {str(e)}")
 
-    async def _delete_entity(self, resource_mapping: ResourceConfig, upserted_blueprints: list[tuple[str, str]], raw_item_to_delete: RAW_ITEM) -> None:
+    async def _delete_resources(self, webhook_events_data: list[WebhookEventData], exported_blueprints: list[tuple[str, str]]) -> None:
         entities_to_delete: list[Entity] = []
 
-        calculation_results = await self.entity_processor.parse_items(
-            resource_mapping, [raw_item_to_delete], parse_all=True, send_raw_data_examples_amount=0
-        )
-        entities_to_delete.extend([entity for entity in calculation_results.entity_selector_diff.passed
-                                 if (entity.blueprint, entity.identifier) not in upserted_blueprints])
+        for webhook_event_data in webhook_events_data:
+            if webhook_event_data.data_to_delete:
+                for raw_item in webhook_event_data.data_to_delete:
+                    calculation_results = await self.entity_processor.parse_items(
+                        webhook_event_data.resource, [raw_item], parse_all=True, send_raw_data_examples_amount=0
+                    )
+                    entities_to_delete.extend([entity for entity in calculation_results.entity_selector_diff.passed
+                                 if (entity.blueprint, entity.identifier) not in exported_blueprints])
 
         try:
             if entities_to_delete:
