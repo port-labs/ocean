@@ -18,3 +18,5 @@ configurations:
     type: string
     description: "Your user authorization token from Amplication"
     sensitive: true
+provider:
+ type: community
