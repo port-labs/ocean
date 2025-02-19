@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.123 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.1
+
+
+## 0.1.122 (2025-02-18)
+
+
+### Bug Fixes
+
+- Fixed bug where inappropriate log level is used leading to the integration crashing
+
+
 ## 0.1.121 (2025-02-13)
 
 
