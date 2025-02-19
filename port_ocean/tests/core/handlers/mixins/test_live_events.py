@@ -93,7 +93,7 @@ event_data_for_three_entities_for_repository_resource = [
 ]
 
 
-one_webHook_event_data_for_creation = WebhookEventRawResults(
+one_webhook_event_raw_results_for_creation = WebhookEventRawResults(
     updated_raw_results=[
         {
             "name": "repo-one",
@@ -103,7 +103,7 @@ one_webHook_event_data_for_creation = WebhookEventRawResults(
     ],
     deleted_raw_results=[],
 )
-one_webHook_event_data_for_creation.resource = ResourceConfig(
+one_webhook_event_raw_results_for_creation.resource = ResourceConfig(
     kind="repository",
     selector=Selector(query="true"),
     port=PortResourceConfig(
@@ -121,7 +121,7 @@ one_webHook_event_data_for_creation.resource = ResourceConfig(
         )
     ),
 )
-one_webHook_event_data_for_deletion = WebhookEventRawResults(
+one_webhook_event_raw_results_for_deletion = WebhookEventRawResults(
     deleted_raw_results=[
         {
             "name": "repo-one",
@@ -131,7 +131,7 @@ one_webHook_event_data_for_deletion = WebhookEventRawResults(
     ],
     updated_raw_results=[],
 )
-one_webHook_event_data_for_deletion.resource = ResourceConfig(
+one_webhook_event_raw_results_for_deletion.resource = ResourceConfig(
     kind="repository",
     selector=Selector(query="true"),
     port=PortResourceConfig(
@@ -345,7 +345,7 @@ async def test_export_oneEntityParsedAndUpserted_returnsSuccessAndTheEntity(
     )
     mock_upsert.return_value = list[entity]  # type: ignore
 
-    success, exported_entities = await mock_live_events_mixin._export(
+    success, exported_entities = await mock_live_events_mixin._register_resource_raw(
         mock_repository_resource_config, {}
     )
 
@@ -375,7 +375,7 @@ async def test_export_noEntitiesParsed_returnesSuccessAndEmptyList(
     )
     mock_upsert.return_value = []
 
-    success, exported_entities = await mock_live_events_mixin._export(
+    success, exported_entities = await mock_live_events_mixin._register_resource_raw(
         mock_repository_resource_config, {}
     )
 
@@ -389,19 +389,17 @@ async def test_export_noEntitiesParsed_returnesSuccessAndEmptyList(
 @patch(
     "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
 )
-async def test_export_failureWhenTringToExport_returnsFailureAndEmptyList(
+async def test_export_failureWhenTringToExport_errorRaised(
     mock_parse_items: AsyncMock,
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
     mock_parse_items.side_effect = Exception("Test error")
 
-    success, exported_entities = await mock_live_events_mixin._export(
-        mock_repository_resource_config, {}
-    )
-
-    assert success is False
-    assert exported_entities == []
+    with pytest.raises(Exception):
+        await mock_live_events_mixin._register_resource_raw(
+            mock_repository_resource_config, {}
+        )
 
 
 @pytest.mark.asyncio
@@ -450,51 +448,6 @@ async def test_isEntityExists_returnsFalse(
 
     assert result is False
     mock_search_entities.assert_called_once()
-
-
-def test_allEntitiesFilteredOutAtExport_testMultipleCases(
-    mock_live_events_mixin: LiveEventsMixin,
-) -> None:
-    assert (
-        mock_live_events_mixin._did_all_entities_filtered_out_at_export(True, [])
-        is True
-    )
-    assert (
-        mock_live_events_mixin._did_all_entities_filtered_out_at_export(False, [])
-        is False
-    )
-    assert (
-        mock_live_events_mixin._did_all_entities_filtered_out_at_export(
-            True,
-            [
-                Entity(
-                    identifier="test",
-                    blueprint="test_bp",
-                    title="test",
-                    team=[],
-                    properties={},
-                    relations={},
-                )
-            ],
-        )
-        is False
-    )
-    assert (
-        mock_live_events_mixin._did_all_entities_filtered_out_at_export(
-            False,
-            [
-                Entity(
-                    identifier="test",
-                    blueprint="test_bp",
-                    title="test",
-                    team=[],
-                    properties={},
-                    relations={},
-                )
-            ],
-        )
-        is False
-    )
 
 
 @pytest.mark.asyncio
@@ -619,7 +572,7 @@ async def test_processData_singleWebhookEvent_entityUpsertedAndNoDelete(
     async with event_context("test_event") as event:
         event.port_app_config = mock_port_app_config_with_repository_resource
         await mock_live_events_mixin.export_raw_event_results_to_entities(
-            [one_webHook_event_data_for_creation]
+            [one_webhook_event_raw_results_for_creation]
         )
 
     assert mock_upsert.call_count == 1
@@ -651,7 +604,7 @@ async def test_processData_singleWebhookEvent_entityDeleted(
                 mock_port_app_config_with_repository_resource_not_passing_selector
             )
             await mock_live_events_mixin.export_raw_event_results_to_entities(
-                [one_webHook_event_data_for_deletion]
+                [one_webhook_event_raw_results_for_deletion]
             )
 
         assert mock_upsert.call_count == 0
@@ -677,8 +630,8 @@ async def test_deleteEntities_oneEntityDeleted(
     )
 
     await mock_live_events_mixin._delete_resources(
-        webhook_events_data=[one_webHook_event_data_for_deletion],
-        exported_blueprints=[],
+        webhook_events_raw_results=[one_webhook_event_raw_results_for_deletion],
+        exported_entities=[],
     )
 
     mock_live_events_mixin.entities_state_applier.delete.assert_called_once_with(
@@ -705,15 +658,15 @@ async def test_deleteEntities_NoEntityDeletedDueToUpsertedEntity(
     )
 
     await mock_live_events_mixin._delete_resources(
-        webhook_events_data=[one_webHook_event_data_for_deletion],
-        exported_blueprints=[("service", "repo-one")],
+        webhook_events_raw_results=[one_webhook_event_raw_results_for_deletion],
+        exported_entities=[("service", "repo-one")],
     )
 
     mock_live_events_mixin.entities_state_applier.delete.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_deleteEntities_errorNotRaised(
+async def test_deleteEntities_errorRaised(
     mock_live_events_mixin: LiveEventsMixin,
     mock_repository_resource_config: ResourceConfig,
 ) -> None:
@@ -734,7 +687,8 @@ async def test_deleteEntities_errorNotRaised(
         "Test error"
     )
 
-    await mock_live_events_mixin._delete_resources(
-        webhook_events_data=[one_webHook_event_data_for_deletion],
-        exported_blueprints=[],
-    )
+    with pytest.raises(Exception):
+        await mock_live_events_mixin._delete_resources(
+            webhook_events_raw_results=[one_webhook_event_raw_results_for_deletion],
+            exported_entities=[],
+        )

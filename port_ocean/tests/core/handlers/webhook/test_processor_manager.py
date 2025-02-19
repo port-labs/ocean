@@ -496,7 +496,7 @@ async def test_processWebhookRequest_maxRetriesExceeded_exceptionRaised(
 @patch(
     "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
 )
-async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityUpserted(
+async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_entityUpserted(
     mock_delete: AsyncMock,
     mock_upsert: AsyncMock,
     mock_context: PortOceanContext,
@@ -552,10 +552,10 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessed_entityU
     original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
 
     async def patched_export_single_resource(
-        self: LiveEventsMixin, webhookEventDatas: list[WebhookEventRawResults]
+        self: LiveEventsMixin, webhookEventRawResults: list[WebhookEventRawResults]
     ) -> None:
         try:
-            await original_process_data(self, webhookEventDatas)
+            await original_process_data(self, webhookEventRawResults)
         except Exception as e:
             raise e
         finally:
@@ -839,7 +839,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
 @patch(
     "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
 )
-async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMultipleProcessors_entitiesUpserted(
+async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedForMultipleProcessors_entitiesUpserted(
     mock_delete: AsyncMock,
     mock_upsert: AsyncMock,
     mock_context: PortOceanContext,
@@ -954,10 +954,10 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
     original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
 
     async def patched_export_single_resource(
-        self: LiveEventsMixin, webhookEventDatas: list[WebhookEventRawResults]
+        self: LiveEventsMixin, webhookEventRawResults: list[WebhookEventRawResults]
     ) -> None:
         try:
-            await original_process_data(self, webhookEventDatas)
+            await original_process_data(self, webhookEventRawResults)
         except Exception as e:
             raise e
         finally:
@@ -1019,7 +1019,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedForMulti
 @patch(
     "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
 )
-async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetry_entityUpserted(
+async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwithRetry_entityUpserted(
     mock_delete: AsyncMock,
     mock_upsert: AsyncMock,
     mock_context: PortOceanContext,
@@ -1081,10 +1081,10 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
     original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
 
     async def patched_export_single_resource(
-        self: LiveEventsMixin, webhookEventDatas: list[WebhookEventRawResults]
+        self: LiveEventsMixin, webhookEventRawResults: list[WebhookEventRawResults]
     ) -> None:
         try:
-            await original_process_data(self, webhookEventDatas)
+            await original_process_data(self, webhookEventRawResults)
         except Exception as e:
             raise e
         finally:
@@ -1143,7 +1143,7 @@ async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetr
 @patch(
     "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
 )
-async def test_integrationTest_postRequestSent_webhookEventDataProcessedwithRetry_exceededMaxRetries_entityNotUpserted(
+async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwithRetry_exceededMaxRetries_entityNotUpserted(
     mock_delete: AsyncMock,
     mock_upsert: AsyncMock,
     mock_context: PortOceanContext,

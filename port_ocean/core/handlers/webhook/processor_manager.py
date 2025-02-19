@@ -91,21 +91,21 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                         matching_processors_with_resource = (
                             self._extract_matching_processors(webhook_event, path)
                         )
-                        webhook_event_data_for_all_resources = await asyncio.gather(
+                        webhook_event_raw_results_for_all_resources = await asyncio.gather(
                             *(
                                 self._process_single_event(processor, path, resource)
                                 for resource, processor in matching_processors_with_resource
                             )
                         )
-                        if webhook_event_data_for_all_resources and all(
-                            webhook_event_data_for_all_resources
+                        if webhook_event_raw_results_for_all_resources and all(
+                            webhook_event_raw_results_for_all_resources
                         ):
                             logger.info(
                                 "Exporting raw event results to entities",
-                                webhook_event_data_for_all_resources=webhook_event_data_for_all_resources,
+                                webhook_event_raw_results_for_all_resources=webhook_event_raw_results_for_all_resources,
                             )
                             await self.export_raw_event_results_to_entities(
-                                webhook_event_data_for_all_resources
+                                webhook_event_raw_results_for_all_resources
                             )
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
@@ -137,11 +137,13 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             logger.debug("Start processing queued webhook")
             processor.event.set_timestamp(LiveEventTimestamp.StartedProcessing)
 
-            webhook_event_data = await self._execute_processor(processor, resource)
+            webhook_event_raw_results = await self._execute_processor(
+                processor, resource
+            )
             processor.event.set_timestamp(
                 LiveEventTimestamp.FinishedProcessingSuccessfully
             )
-            return webhook_event_data
+            return webhook_event_raw_results
         except Exception as e:
             logger.exception(f"Error processing queued webhook for {path}: {str(e)}")
             self._timestamp_event_error(processor.event)
@@ -180,11 +182,13 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         if not await processor.validate_payload(payload):
             raise ValueError("Invalid payload")
 
-        webhook_event_data = None
+        webhook_event_raw_results = None
         while True:
             try:
-                webhook_event_data = await processor.handle_event(payload, resource)
-                webhook_event_data.resource = resource
+                webhook_event_raw_results = await processor.handle_event(
+                    payload, resource
+                )
+                webhook_event_raw_results.resource = resource
                 break
 
             except Exception as e:
@@ -202,7 +206,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 raise
 
         await processor.after_processing()
-        return webhook_event_data
+        return webhook_event_raw_results
 
     def register_processor(
         self, path: str, processor: Type[AbstractWebhookProcessor]
