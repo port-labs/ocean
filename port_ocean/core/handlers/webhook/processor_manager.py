@@ -75,7 +75,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     async def process_queue(self, path: str) -> None:
         """Process events for a specific path in order"""
         while True:
-            matching_processors: list[AbstractWebhookProcessor] = []
+            matching_processors_with_resource: list[
+                tuple[ResourceConfig, AbstractWebhookProcessor]
+            ] = []
             webhook_event: WebhookEvent | None = None
             try:
                 queue = self._event_queues[path]
@@ -88,17 +90,13 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                         trigger_type="machine",
                         parent_override=webhook_event.event_context,
                     ):
-                        matching_processors = self._extract_matching_processors(
-                            webhook_event, path
+                        matching_processors_with_resource = (
+                            self._extract_matching_processors(webhook_event, path)
                         )
-                        webhook_event_raw_results_for_all_resources = (
-                            await asyncio.gather(
-                                *(
-                                    self._process_single_event(
-                                        processor, path, resource
-                                    )
-                                    for resource, processor in matching_processors
-                                )
+                        webhook_event_raw_results_for_all_resources = await asyncio.gather(
+                            *(
+                                self._process_single_event(processor, path, resource)
+                                for resource, processor in matching_processors_with_resource
                             )
                         )
                         if webhook_event_raw_results_for_all_resources and all(
@@ -113,7 +111,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                             )
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
-                for processor in matching_processors:
+                for _, processor in matching_processors_with_resource:
                     await processor.cancel()
                     self._timestamp_event_error(processor.event)
                 break
@@ -121,7 +119,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 logger.exception(
                     f"Unexpected error in queue processor for {path}: {str(e)}"
                 )
-                for processor in matching_processors:
+                for _, processor in matching_processors_with_resource:
                     self._timestamp_event_error(processor.event)
             finally:
                 if webhook_event:
