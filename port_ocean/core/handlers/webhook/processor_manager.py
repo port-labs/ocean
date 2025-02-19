@@ -65,6 +65,11 @@ class WebhookProcessorManager(LiveEventsMixin, EventsMixin):
         if not created_processors:
             raise ValueError("No matching processors found")
 
+        logger.info(
+            "Found matching processors for webhook event",
+            webhook_event=webhook_event,
+            processors_length=len(created_processors),
+        )
         return created_processors
 
     async def process_queue(self, path: str) -> None:
@@ -95,6 +100,10 @@ class WebhookProcessorManager(LiveEventsMixin, EventsMixin):
                         if webhook_event_data_for_all_resources and all(
                             webhook_event_data_for_all_resources
                         ):
+                            logger.info(
+                                "Exporting raw event results to entities",
+                                webhook_event_data_for_all_resources=webhook_event_data_for_all_resources,
+                            )
                             await self.export_raw_event_results_to_entities(
                                 webhook_event_data_for_all_resources
                             )

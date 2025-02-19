@@ -48,6 +48,7 @@ class LiveEventsMixin(HandlerMixin):
                 return True, []
 
             upserted_entities = await self.entities_state_applier.upsert(calculation_results.entity_selector_diff.passed, UserAgentType.exporter)
+            logger.info("Upserted entities at export", upserted_entities=upserted_entities)
             return True, upserted_entities
 
         except Exception as e:
@@ -102,12 +103,14 @@ class LiveEventsMixin(HandlerMixin):
         for webhook_event_data in webhook_events_data:
             if webhook_event_data.updated_raw_results:
                 for raw_item in webhook_event_data.updated_raw_results:
-                    logger.info("Exporting single resource", raw_item=raw_item)
+                    logger.info("Tring to export single resource", raw_item=raw_item)
                     export_succeded, exported_entities = await self._export(webhook_event_data.resource, raw_item)
                     if self._did_all_entities_filtered_out_at_export(export_succeded, exported_entities):
+                        logger.info("No entities passed selector for resource", resource=webhook_event_data.resource)
                         entities_to_delete.extend(await self._get_entities_to_delete(webhook_event_data.resource, raw_item))
                     else:
                         for entity in exported_entities:
+                            logger.info("keeping entity from deletion", entity=entity)
                             blueprints_to_keep.add((entity.blueprint, entity.identifier))
 
         entities_to_delete_filtered_by_kept_blueprints = [entity for entity in entities_to_delete if (entity.blueprint, entity.identifier) not in blueprints_to_keep]
@@ -135,6 +138,7 @@ class LiveEventsMixin(HandlerMixin):
 
         try:
             if entities_to_delete:
+                logger.info("Deleting entities", entities_to_delete=entities_to_delete)
                 await self.entities_state_applier.delete(entities_to_delete, UserAgentType.exporter)
         except Exception as e:
             logger.error(f"Failed to delete entities: {str(e)}")
