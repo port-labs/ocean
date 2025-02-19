@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Bumped ocean version to ^0.19.1
+- Bumped ocean version to ^0.19.2
 
 
 ## 0.2.22 (2025-02-19)
@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fix
 
-- Fixed rate limiting by changing analytics fetch from per-incident API calls to service-based batch retrieval 
+- Fixed rate limiting by changing analytics fetch from per-incident API calls to service-based batch retrieval
 
 ### Improvements
 
