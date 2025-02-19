@@ -13,7 +13,7 @@ from port_ocean.context.event import event
 
 class LiveEventsMixin(HandlerMixin):
 
-    async def export_raw_event_results_to_entities(self, webhook_events_raw_result: list[WebhookEventRawResults]) -> None:
+    async def sync_raw_results(self, webhook_events_raw_result: list[WebhookEventRawResults]) -> None:
         """Process the webhook event raw results collected from multiple processors and export it.
 
         Args:

@@ -108,7 +108,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                                     webhook_event_raw_results_for_all_resources
                                 ),
                             )
-                            await self.export_raw_event_results_to_entities(
+                            await self.sync_raw_results(
                                 webhook_event_raw_results_for_all_resources
                             )
             except asyncio.CancelledError:

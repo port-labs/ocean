@@ -549,7 +549,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
             return "repository"
 
     processing_complete = asyncio.Event()
-    original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
+    original_process_data = LiveEventsMixin.sync_raw_results
 
     async def patched_export_single_resource(
         self: LiveEventsMixin, webhookEventRawResults: list[WebhookEventRawResults]
@@ -563,7 +563,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
 
     monkeypatch.setattr(
         LiveEventsMixin,
-        "export_raw_event_results_to_entities",
+        "sync_raw_results",
         patched_export_single_resource,
     )
     test_path = "/webhook-test"
@@ -951,7 +951,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
             return "repository"
 
     processing_complete = asyncio.Event()
-    original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
+    original_process_data = LiveEventsMixin.sync_raw_results
 
     async def patched_export_single_resource(
         self: LiveEventsMixin, webhookEventRawResults: list[WebhookEventRawResults]
@@ -965,7 +965,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
 
     monkeypatch.setattr(
         LiveEventsMixin,
-        "export_raw_event_results_to_entities",
+        "sync_raw_results",
         patched_export_single_resource,
     )
     test_path = "/webhook-test"
@@ -1078,7 +1078,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
             return "repository"
 
     processing_complete = asyncio.Event()
-    original_process_data = LiveEventsMixin.export_raw_event_results_to_entities
+    original_process_data = LiveEventsMixin.sync_raw_results
 
     async def patched_export_single_resource(
         self: LiveEventsMixin, webhookEventRawResults: list[WebhookEventRawResults]
@@ -1092,7 +1092,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
 
     monkeypatch.setattr(
         LiveEventsMixin,
-        "export_raw_event_results_to_entities",
+        "sync_raw_results",
         patched_export_single_resource,
     )
     test_path = "/webhook-test"

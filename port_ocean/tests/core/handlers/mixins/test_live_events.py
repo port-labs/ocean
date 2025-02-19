@@ -571,7 +571,7 @@ async def test_processData_singleWebhookEvent_entityUpsertedAndNoDelete(
 
     async with event_context("test_event") as event:
         event.port_app_config = mock_port_app_config_with_repository_resource
-        await mock_live_events_mixin.export_raw_event_results_to_entities(
+        await mock_live_events_mixin.sync_raw_results(
             [one_webhook_event_raw_results_for_creation]
         )
 
@@ -603,7 +603,7 @@ async def test_processData_singleWebhookEvent_entityDeleted(
             event.port_app_config = (
                 mock_port_app_config_with_repository_resource_not_passing_selector
             )
-            await mock_live_events_mixin.export_raw_event_results_to_entities(
+            await mock_live_events_mixin.sync_raw_results(
                 [one_webhook_event_raw_results_for_deletion]
             )
 
