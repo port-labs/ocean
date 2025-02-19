@@ -67,8 +67,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
         logger.info(
             "Found matching processors for webhook event",
-            webhook_event=webhook_event,
-            processors_length=len(created_processors),
+            processors_count=len(created_processors),
+            webhook_path=path,
         )
         return created_processors
 
