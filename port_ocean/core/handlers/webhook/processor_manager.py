@@ -28,7 +28,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         max_wait_seconds_before_shutdown: float = 5.0,
     ) -> None:
         self._router = router
-        self._processors: Dict[str, list[Type[AbstractWebhookProcessor]]] = {}
+        self._processors_classes: Dict[str, list[Type[AbstractWebhookProcessor]]] = {}
         self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
         self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
@@ -54,7 +54,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
         created_processors: list[tuple[ResourceConfig, AbstractWebhookProcessor]] = []
 
-        for processor_class in self._processors[path]:
+        for processor_class in self._processors_classes[path]:
             processor = processor_class(webhook_event.clone())
             if processor.filter_event_data(webhook_event):
                 kind = processor.get_kind(webhook_event)
@@ -75,7 +75,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     async def process_queue(self, path: str) -> None:
         """Process events for a specific path in order"""
         while True:
-            matching_processors_with_kind: list[AbstractWebhookProcessor] = []
+            matching_processors: list[AbstractWebhookProcessor] = []
             webhook_event: WebhookEvent | None = None
             try:
                 queue = self._event_queues[path]
@@ -88,13 +88,17 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                         trigger_type="machine",
                         parent_override=webhook_event.event_context,
                     ):
-                        matching_processors_with_resource = (
-                            self._extract_matching_processors(webhook_event, path)
+                        matching_processors = self._extract_matching_processors(
+                            webhook_event, path
                         )
-                        webhook_event_raw_results_for_all_resources = await asyncio.gather(
-                            *(
-                                self._process_single_event(processor, path, resource)
-                                for resource, processor in matching_processors_with_resource
+                        webhook_event_raw_results_for_all_resources = (
+                            await asyncio.gather(
+                                *(
+                                    self._process_single_event(
+                                        processor, path, resource
+                                    )
+                                    for resource, processor in matching_processors
+                                )
                             )
                         )
                         if webhook_event_raw_results_for_all_resources and all(
@@ -109,7 +113,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                             )
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
-                for processor in matching_processors_with_kind:
+                for processor in matching_processors:
                     await processor.cancel()
                     self._timestamp_event_error(processor.event)
                 break
@@ -117,7 +121,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 logger.exception(
                     f"Unexpected error in queue processor for {path}: {str(e)}"
                 )
-                for processor in matching_processors_with_kind:
+                for processor in matching_processors:
                     self._timestamp_event_error(processor.event)
             finally:
                 if webhook_event:
@@ -222,12 +226,12 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         if not issubclass(processor, AbstractWebhookProcessor):
             raise ValueError("Processor must extend AbstractWebhookProcessor")
 
-        if path not in self._processors:
-            self._processors[path] = []
+        if path not in self._processors_classes:
+            self._processors_classes[path] = []
             self._event_queues[path] = LocalQueue()
             self._register_route(path)
 
-        self._processors[path].append(processor)
+        self._processors_classes[path].append(processor)
 
     def _register_route(self, path: str) -> None:
         """Register a route for a specific path"""

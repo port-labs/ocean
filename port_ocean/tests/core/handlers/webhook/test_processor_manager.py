@@ -407,8 +407,8 @@ def test_registerProcessor_registrationWorks(
     processor_manager: LiveEventsProcessorManager,
 ) -> None:
     processor_manager.register_processor("/test", MockWebhookProcessor)
-    assert "/test" in processor_manager._processors
-    assert len(processor_manager._processors["/test"]) == 1
+    assert "/test" in processor_manager._processors_classes
+    assert len(processor_manager._processors_classes["/test"]) == 1
     assert isinstance(processor_manager._event_queues["/test"], LocalQueue)
 
 
@@ -418,7 +418,7 @@ def test_registerProcessor_multipleHandlers_allRegistered(
     processor_manager.register_processor("/test", MockWebhookProcessor)
     processor_manager.register_processor("/test", MockWebhookProcessor)
 
-    assert len(processor_manager._processors["/test"]) == 2
+    assert len(processor_manager._processors_classes["/test"]) == 2
 
 
 def test_registerProcessor_invalidHandlerRegistration_throwsError(
