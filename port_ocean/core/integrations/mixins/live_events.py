@@ -77,9 +77,9 @@ class LiveEventsMixin(HandlerMixin):
             ]
         }
         entities_at_port = await ocean.port_client.search_entities(
-                        UserAgentType.exporter,
-                        query
-                    )
+            UserAgentType.exporter,
+            query
+        )
         return len(entities_at_port) > 0
 
     async def _delete_entities(self, entities: list[Entity]) -> None:
