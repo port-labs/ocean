@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.20.0 (2025-02-20)
+
+### Features
+
+- Added comprehensive live events support in Ocean Core:
+  - Introduced `LiveEventsMixin` for standardized live event handling across integrations
+  - Added methods for resource mapping, entity deletion threshold, and data processing
+  - Enhanced `AbstractWebhookProcessor` with live events integration
+  - Added robust retry logic and lifecycle management for webhook processing
+  - Implemented history-preserving entity deletion and recreation for live events
 
 ## 0.19.3 (2025-02-19)
 
