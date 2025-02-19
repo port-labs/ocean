@@ -72,7 +72,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
     oauth_access_token_file_path: str | None = None
-    webhook_base_url: str | None = None
+    base_url: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
         default=cast(EventListenerSettingsType, {"type": "POLLING"})

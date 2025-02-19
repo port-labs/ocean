@@ -119,15 +119,15 @@ class Ocean:
             await repeated_function()
 
     @property
-    def webhook_base_url(self) -> str:
+    def base_url(self) -> str:
         integration_config = self.config.integration.config
         if isinstance(integration_config, BaseModel):
             integration_config = integration_config.dict()
         if integration_config.get("app_host"):
             logger.warning(
-                "The OCEAN__INTEGRATION__CONFIG__APP_HOST field is deprecated. Please use the OCEAN__WEBHOOK_BASE_URL field instead."
+                "The OCEAN__INTEGRATION__CONFIG__APP_HOST field is deprecated. Please use the OCEAN__BASE_URL field instead."
             )
-        return self.config.webhook_base_url or integration_config.get("app_host")
+        return self.config.base_url or integration_config.get("app_host")
 
     def load_external_oauth_access_token(self) -> str | None:
         if self.config.oauth_access_token_file_path is not None:
@@ -148,7 +148,7 @@ class Ocean:
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
-                if self.webhook_base_url:
+                if self.base_url:
                     await self.webhook_manager.start_processing_event_messages()
                 await self._setup_scheduled_resync()
                 yield None

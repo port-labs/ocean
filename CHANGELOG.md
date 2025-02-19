@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Features
 
-- Added new `webhook_base_url` to Ocean Core.
+- Added new `base_url` to Ocean Core. This will be used to deprecate the `OCEAN__INTEGRATION__CONFIG__APP_HOST` usage.
 
 ## 0.19.2 (2025-02-19)
 
