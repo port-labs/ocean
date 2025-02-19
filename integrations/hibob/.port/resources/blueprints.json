@@ -1,0 +1,70 @@
+[
+  {
+    "identifier": "HiBobTeam",
+    "description": "Teams that are fetched from employees' profiles",
+    "title": "HiBob Team",
+    "icon": "Team",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "size": {
+        "title": "Team Size",
+        "type": "number",
+        "target": "HiBobUser",
+        "calculationSpec": {
+          "func": "count",
+          "calculationBy": "entities"
+        }
+      }
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "HiBobUser",
+    "description": "Users that are fetched from HiBob",
+    "title": "HiBob User",
+    "icon": "User",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "tenure": {
+          "type": "string",
+          "title": "Tenure"
+        },
+        "is_manager": {
+          "type": "boolean",
+          "title": "Is a Manager?"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "teams": {
+        "title": "Teams",
+        "target": "HiBobTeam",
+        "required": false,
+        "many": true
+      },
+      "reportsTo": {
+        "title": "Reports To",
+        "target": "HiBobUser",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

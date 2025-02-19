@@ -1,0 +1,17 @@
+resources:
+  - kind: profile
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .email
+          title: .displayName
+          blueprint: '"HiBobUser"'
+          properties:
+            name: .displayName
+            tenure: .work.tenureDuration.humanize
+            is_manager: .work.isManager
+          relations:
+            teams: .work.department
+            reportsTo: .work.reportsTo.email
