@@ -150,6 +150,8 @@ class Ocean:
                 await self.integration.start()
                 if self.base_url:
                     await self.webhook_manager.start_processing_event_messages()
+                else:
+                    logger.warning("No base URL provided, skipping webhook processing")
                 await self._setup_scheduled_resync()
                 yield None
             except Exception:
