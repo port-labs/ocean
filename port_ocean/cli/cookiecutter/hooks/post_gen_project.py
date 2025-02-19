@@ -8,7 +8,7 @@ def handle_private_integration_flags():
     )
     root_dir = os.path.join("{{ cookiecutter._repo_dir }}", "../../../")
     infra_make_file = os.path.join(root_dir, "integrations/_infra/Makefile")
-    infra_dockerfile = os.path.join(root_dir, "integrations/_infra/Dockerfile.deb")
+    infra_dockerfile = os.path.join(root_dir, "integrations/_infra/Dockerfile.Deb")
     infra_dockerignore = os.path.join(
         root_dir, "integrations/_infra/Dockerfile.dockerignore"
     )
