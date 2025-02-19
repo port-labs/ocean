@@ -1,23 +1,32 @@
 import asyncio
 import logging
-import yaml
+import os
+from dotenv import load_dotenv
 from ocean.async_client import OceanAsyncClient
 from ocean.integration import OceanIntegration
 from ocean.webhook import WebhookHandler
 from ocean.exceptions import RateLimitExceededError, OceanError
 
-# Load configuration
-with open("config.yaml", "r") as file:
-    config = yaml.safe_load(file)
+# Load environment variables
+load_dotenv()
+
+# Get API credentials from environment variables
+BITBUCKET_ACCESS_TOKEN = os.getenv("BITBUCKET_ACCESS_TOKEN")
+PORT_API_KEY = os.getenv("PORT_API_KEY")
+WORKSPACE = os.getenv("BITBUCKET_WORKSPACE")
+
+# Validate API credentials
+if not BITBUCKET_ACCESS_TOKEN or not PORT_API_KEY or not WORKSPACE:
+    raise ValueError("Missing required environment variables. Ensure BITBUCKET_ACCESS_TOKEN, BITBUCKET_WORKSPACE, and PORT_API_KEY are set.")
 
 BITBUCKET_API_BASE = "https://api.bitbucket.org/2.0"
-WORKSPACE = config["bitbucket"]["workspace"]
+
 
 class BitbucketOceanIntegration(OceanIntegration):
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self):
+        super().__init__({"api_key": PORT_API_KEY})
         self.client = OceanAsyncClient(base_url=BITBUCKET_API_BASE, headers={
-            "Authorization": f"Bearer {config['bitbucket']['access_token']}",
+            "Authorization": f"Bearer {BITBUCKET_ACCESS_TOKEN}",
             "Content-Type": "application/json"
         })
 
@@ -33,10 +42,12 @@ class BitbucketOceanIntegration(OceanIntegration):
         """Fetch PRs for a repository."""
         return await self._fetch_paginated_data(f"/repositories/{WORKSPACE}/{repo_slug}/pullrequests")
 
-    async def _fetch_paginated_data(self, endpoint):
-        """Handles API pagination and rate limits."""
+    async def _fetch_paginated_data(self, endpoint, max_retries=3):
+        """Handles API pagination and retries on failure."""
         results = []
         url = endpoint
+        retries = 0
+
         while url:
             try:
                 response = await self.client.get(url)
@@ -44,12 +55,17 @@ class BitbucketOceanIntegration(OceanIntegration):
                 data = response.json()
                 results.extend(data.get("values", []))
                 url = data.get("next", None)
+                retries = 0  # Reset retries on success
             except RateLimitExceededError:
                 logging.warning("Rate limit exceeded, retrying after 10 seconds...")
                 await asyncio.sleep(10)
             except OceanError as e:
-                logging.error(f"API error: {e}")
-                break
+                retries += 1
+                if retries >= max_retries:
+                    logging.error(f"API error after {max_retries} retries: {e}")
+                    break
+                logging.warning(f"Temporary API error, retrying in 5 seconds... ({retries}/{max_retries})")
+                await asyncio.sleep(5)
         return results
 
     async def ingest_data_to_port(self):
@@ -57,7 +73,11 @@ class BitbucketOceanIntegration(OceanIntegration):
         try:
             projects = await self.fetch_projects()
             repositories = await self.fetch_repositories()
-            pull_requests = [await self.fetch_pull_requests(repo["slug"]) for repo in repositories]
+
+            # Fetch pull requests concurrently using asyncio.gather()
+            pull_requests = await asyncio.gather(
+                *[self.fetch_pull_requests(repo["slug"]) for repo in repositories]
+            )
 
             await self.port_client.ingest("bitbucket_projects", projects)
             await self.port_client.ingest("bitbucket_repositories", repositories)
@@ -65,11 +85,13 @@ class BitbucketOceanIntegration(OceanIntegration):
         except Exception as e:
             logging.error(f"Failed to ingest data: {e}")
 
+
 class BitbucketWebhook(WebhookHandler):
     async def handle_event(self, event):
         """Handle real-time webhook events."""
         logging.info(f"Webhook event received: {event}")
 
+
 if __name__ == "__main__":
-    integration = BitbucketOceanIntegration(config)
+    integration = BitbucketOceanIntegration()
     asyncio.run(integration.ingest_data_to_port())
