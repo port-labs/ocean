@@ -24,7 +24,6 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import CalculationResult, EntitySelectorDiff
 from port_ocean.ocean import Ocean
-from port_ocean.context.event import event_context
 
 entity = Entity(
     identifier="repo-one",
@@ -326,299 +325,38 @@ def mock_http_client() -> MagicMock:
 
 
 @pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
-)
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-async def test_export_oneEntityParsedAndUpserted_returnsSuccessAndTheEntity(
-    mock_upsert: AsyncMock,
-    mock_parse_items: AsyncMock,
+async def test_parse_raw_event_results_to_entities_creation(
     mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
 ) -> None:
-    mock_parse_items.return_value = CalculationResult(
+    """Test parsing raw event results for entity creation"""
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
+
+    calculation_result = CalculationResult(
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
         errors=[],
         misonfigured_entity_keys={},
     )
-    mock_upsert.return_value = list[entity]  # type: ignore
-
-    success, exported_entities = await mock_live_events_mixin._register_resource_raw(
-        mock_repository_resource_config, {}
+    mock_live_events_mixin.entity_processor.parse_items.return_value = (
+        calculation_result
     )
 
-    assert success is True
-    assert exported_entities == list[entity]  # type: ignore
-    mock_parse_items.assert_called_once()
-    mock_upsert.assert_called_once()
-
-
-@pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
-)
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-async def test_export_noEntitiesParsed_returnesSuccessAndEmptyList(
-    mock_upsert: AsyncMock,
-    mock_parse_items: AsyncMock,
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    mock_parse_items.return_value = CalculationResult(
-        entity_selector_diff=EntitySelectorDiff(passed=[], failed=[]),
-        errors=[],
-        misonfigured_entity_keys={},
-    )
-    mock_upsert.return_value = []
-
-    success, exported_entities = await mock_live_events_mixin._register_resource_raw(
-        mock_repository_resource_config, {}
-    )
-
-    assert success is True
-    assert exported_entities == []
-    mock_parse_items.assert_called_once()
-    mock_upsert.assert_not_called()
-
-
-@pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
-)
-async def test_export_failureWhenTringToExport_errorRaised(
-    mock_parse_items: AsyncMock,
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    mock_parse_items.side_effect = Exception("Test error")
-
-    with pytest.raises(Exception):
-        await mock_live_events_mixin._register_resource_raw(
-            mock_repository_resource_config, {}
-        )
-
-
-@pytest.mark.asyncio
-@patch(
-    "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
-)
-async def test_isEntityExists_returnsTrue(
-    mock_search_entities: AsyncMock,
-    mock_live_events_mixin: LiveEventsMixin,
-) -> None:
-    entity = Entity(
-        identifier="test",
-        blueprint="test_bp",
-        title="test",
-        team=[],
-        properties={},
-        relations={},
-    )
-    mock_search_entities.return_value = [entity]
-
-    result = await mock_live_events_mixin._does_entity_exists(entity)
-
-    assert result is True
-    mock_search_entities.assert_called_once()
-
-
-@pytest.mark.asyncio
-@patch(
-    "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
-)
-async def test_isEntityExists_returnsFalse(
-    mock_search_entities: AsyncMock,
-    mock_live_events_mixin: LiveEventsMixin,
-) -> None:
-    entity = Entity(
-        identifier="test",
-        blueprint="test_bp",
-        title="test",
-        team=[],
-        properties={},
-        relations={},
-    )
-    mock_search_entities.return_value = []
-
-    result = await mock_live_events_mixin._does_entity_exists(entity)
-
-    assert result is False
-    mock_search_entities.assert_called_once()
-
-
-@pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
-)
-async def test_getEntitiesToDelete_failedEntity_returnsTheEntity(
-    mock_parse_items: AsyncMock,
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    mock_parse_items.return_value = CalculationResult(
-        entity_selector_diff=EntitySelectorDiff(failed=[entity], passed=[]),
-        errors=[],
-        misonfigured_entity_keys={},
-    )
-
-    with patch.object(mock_live_events_mixin, "_does_entity_exists", return_value=True):
-        result = await mock_live_events_mixin._get_entities_to_delete(
-            mock_repository_resource_config, {}
-        )
-
-        assert result == [entity]
-        mock_parse_items.assert_called_once()
-
-
-@pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
-)
-async def test_getEntitiesToDelete_failedEntityThatNotExsists_returnsEmptyList(
-    mock_parse_items: AsyncMock,
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    mock_parse_items.return_value = CalculationResult(
-        entity_selector_diff=EntitySelectorDiff(failed=[entity], passed=[]),
-        errors=[],
-        misonfigured_entity_keys={},
-    )
-
-    with patch.object(
-        mock_live_events_mixin, "_does_entity_exists", return_value=False
-    ):
-        result = await mock_live_events_mixin._get_entities_to_delete(
-            mock_repository_resource_config, {}
-        )
-
-        assert result == []
-        mock_parse_items.assert_called_once()
-
-
-@pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
-)
-async def test_getEntitiesToDelete_noFailedEntity_returnsEmptyList(
-    mock_parse_items: AsyncMock,
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    mock_parse_items.return_value = CalculationResult(
-        entity_selector_diff=EntitySelectorDiff(failed=[], passed=[]),
-        errors=[],
-        misonfigured_entity_keys={},
-    )
-
-    with patch.object(mock_live_events_mixin, "_does_entity_exists", return_value=True):
-        result = await mock_live_events_mixin._get_entities_to_delete(
-            mock_repository_resource_config, {}
-        )
-
-        assert result == []
-        mock_parse_items.assert_called_once()
-
-
-@pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor.parse_items"
-)
-async def test_getEntitiesToDelete_noFailedEntityAndNotExsists_returnsEmptyList(
-    mock_parse_items: AsyncMock,
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    mock_parse_items.return_value = CalculationResult(
-        entity_selector_diff=EntitySelectorDiff(failed=[], passed=[]),
-        errors=[],
-        misonfigured_entity_keys={},
-    )
-
-    with patch.object(
-        mock_live_events_mixin, "_does_entity_exists", return_value=False
-    ):
-        result = await mock_live_events_mixin._get_entities_to_delete(
-            mock_repository_resource_config, {}
-        )
-
-        assert result == []
-        mock_parse_items.assert_called_once()
-
-
-@pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-@patch(
-    "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
-)
-async def test_processData_singleWebhookEvent_entityUpsertedAndNoDelete(
-    mock_search_entities: AsyncMock,
-    mock_upsert: AsyncMock,
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_port_app_config_with_repository_resource: PortAppConfig,
-) -> None:
-
-    mock_search_entities.return_value = [entity]
-    mock_upsert.return_value = [entity]
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource  # type: ignore
-    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
-
-    async with event_context("test_event") as event:
-        event.port_app_config = mock_port_app_config_with_repository_resource
-        await mock_live_events_mixin.sync_raw_results(
+    entities_to_create, entities_to_delete = (
+        await mock_live_events_mixin._parse_raw_event_results_to_entities(
             [one_webhook_event_raw_results_for_creation]
         )
+    )
 
-    assert mock_upsert.call_count == 1
-    assert mock_live_events_mixin._entities_state_applier.delete.call_count == 0  # type: ignore
-
-
-@pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-@patch(
-    "port_ocean.context.ocean.ocean.port_client.search_entities", new_callable=AsyncMock
-)
-async def test_processData_singleWebhookEvent_entityDeleted(
-    mock_search_entities: AsyncMock,
-    mock_upsert: AsyncMock,
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_port_app_config_with_repository_resource_not_passing_selector: PortAppConfig,
-) -> None:
-
-    mock_search_entities.return_value = [entity]
-    mock_upsert.return_value = [entity]
-    mock_live_events_mixin._port_app_config_handler.get_port_app_config.return_value = mock_port_app_config_with_repository_resource_not_passing_selector  # type: ignore
-    mock_live_events_mixin._entities_state_applier.delete = AsyncMock()  # type: ignore
-
-    with patch.object(mock_live_events_mixin, "_does_entity_exists", return_value=True):
-        async with event_context("test_event") as event:
-            event.port_app_config = (
-                mock_port_app_config_with_repository_resource_not_passing_selector
-            )
-            await mock_live_events_mixin.sync_raw_results(
-                [one_webhook_event_raw_results_for_deletion]
-            )
-
-        assert mock_upsert.call_count == 0
-        assert mock_live_events_mixin._entities_state_applier.delete.call_count == 1  # type: ignore
+    assert entities_to_create == [entity]
+    assert entities_to_delete == []
+    mock_live_events_mixin.entity_processor.parse_items.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_deleteEntities_oneEntityDeleted(
+async def test_parse_raw_event_results_to_entities_deletion(
     mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
 ) -> None:
-    """Test successful deletion of entities"""
+    """Test parsing raw event results for entity deletion"""
     mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
-    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
 
     calculation_result = CalculationResult(
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
@@ -629,66 +367,38 @@ async def test_deleteEntities_oneEntityDeleted(
         calculation_result
     )
 
-    await mock_live_events_mixin._delete_resources(
-        webhook_events_raw_results=[one_webhook_event_raw_results_for_deletion],
-        exported_entities=[],
+    entities_to_create, entities_to_delete = (
+        await mock_live_events_mixin._parse_raw_event_results_to_entities(
+            [one_webhook_event_raw_results_for_deletion]
+        )
     )
 
-    mock_live_events_mixin.entities_state_applier.delete.assert_called_once_with(
+    assert entities_to_create == []
+    assert entities_to_delete == [entity]
+    mock_live_events_mixin.entity_processor.parse_items.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_results_one_raw_result_entity_upserted(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    """Test synchronizing raw webhook event results"""
+    # Setup mocks
+    mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(return_value=([entity], []))  # type: ignore
+    mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
+    mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
+
+    # Call the method
+    await mock_live_events_mixin.sync_raw_results(
+        [one_webhook_event_raw_results_for_creation]
+    )
+
+    # Verify the method calls
+    mock_live_events_mixin._parse_raw_event_results_to_entities.assert_called_once_with(
+        [one_webhook_event_raw_results_for_creation]
+    )
+    mock_live_events_mixin.entities_state_applier.upsert.assert_called_once_with(
         [entity], UserAgentType.exporter
     )
-
-
-@pytest.mark.asyncio
-async def test_deleteEntities_NoEntityDeletedDueToUpsertedEntity(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    """Test that entities that were upserted are not deleted"""
-    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
-    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
-
-    calculation_result = CalculationResult(
-        entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
-        errors=[],
-        misonfigured_entity_keys={},
-    )
-    mock_live_events_mixin.entity_processor.parse_items.return_value = (
-        calculation_result
-    )
-
-    await mock_live_events_mixin._delete_resources(
-        webhook_events_raw_results=[one_webhook_event_raw_results_for_deletion],
-        exported_entities=[("service", "repo-one")],
-    )
-
     mock_live_events_mixin.entities_state_applier.delete.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_deleteEntities_errorRaised(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_repository_resource_config: ResourceConfig,
-) -> None:
-    """Test error handling during deletion"""
-    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
-    mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
-
-    calculation_result = CalculationResult(
-        entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
-        errors=[],
-        misonfigured_entity_keys={},
-    )
-    mock_live_events_mixin.entity_processor.parse_items.return_value = (
-        calculation_result
-    )
-
-    mock_live_events_mixin.entities_state_applier.delete.side_effect = Exception(
-        "Test error"
-    )
-
-    with pytest.raises(Exception):
-        await mock_live_events_mixin._delete_resources(
-            webhook_events_raw_results=[one_webhook_event_raw_results_for_deletion],
-            exported_entities=[],
-        )

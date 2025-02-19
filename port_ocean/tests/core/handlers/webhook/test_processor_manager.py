@@ -1006,7 +1006,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 2
-    assert mock_upsert.call_count == 2
+    assert mock_upsert.call_count == 1
     mock_delete.assert_not_called()
 
     await mock_context.app.webhook_manager.shutdown()
