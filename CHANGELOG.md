@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.19.2 (2025-02-19)
+
+### Features
+
+- Added CI linting for pep8 conventions
+
+### Bug Fixes
+
+- Fixed a bug in running the integration tests on updated core version
+
 ## 0.19.1 (2025-02-18)
 
 ### Features
