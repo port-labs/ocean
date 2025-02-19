@@ -48,7 +48,7 @@ class LiveEventsMixin(HandlerMixin):
                 return True, []
 
             upserted_entities = await self.entities_state_applier.upsert(calculation_results.entity_selector_diff.passed, UserAgentType.exporter)
-            logger.info("Upserted entities at export", upserted_entities=upserted_entities)
+            logger.info(f"Upserted entities at export: {', '.join(f'{entity.blueprint}/{entity.identifier}' for entity in upserted_entities)}")
             return True, upserted_entities
 
         except Exception as e:
@@ -135,7 +135,7 @@ class LiveEventsMixin(HandlerMixin):
                                     if (entity.blueprint, entity.identifier) not in exported_entities])
 
             if entities_to_delete:
-                logger.info("Deleting entities", entities_to_delete=entities_to_delete)
+                logger.info(f"Deleting {len(entities_to_delete)} entities: {', '.join(f'{entity.blueprint}/{entity.identifier}' for entity in entities_to_delete)}")
                 await self.entities_state_applier.delete(entities_to_delete, UserAgentType.exporter)
         except Exception as e:
             logger.error(f"Failed to delete entities: {str(e)}")
