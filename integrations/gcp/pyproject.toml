@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gcp"
-version = "0.1.105"
+version = "0.1.106"
 description = "A GCP ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
