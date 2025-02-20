@@ -1,5 +1,6 @@
 from typing import Any
 from loguru import logger
+from initialize_client import create_jira_client
 from jira.client import JiraClient
 from object_kind import ObjectKind
 from port_ocean.context.ocean import ocean
@@ -9,25 +10,16 @@ from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPa
 
 
 class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
-    def create_jira_client(self) -> JiraClient:
-        """Create JiraClient with current configuration."""
-        return JiraClient(
-            ocean.integration_config["jira_host"],
-            ocean.integration_config["atlassian_user_email"],
-            ocean.integration_config["atlassian_user_token"],
-        )
-
     def should_process_event(self, event: WebhookEvent) -> bool:
         return event.payload.get("webhookEvent", "").startswith("jira:issue_")
 
     def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ISSUE]
 
-
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        client = self.create_jira_client()
+        client = create_jira_client()
         issue_key = payload["issue"]["key"]
         logger.info(
             f"Fetching issue with key: {issue_key} and applying specified JQL filter"

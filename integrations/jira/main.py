@@ -2,6 +2,7 @@ import typing
 from typing import Any, cast
 
 from loguru import logger
+from initialize_client import create_jira_client
 from object_kind import ObjectKind
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -26,19 +27,6 @@ from jira.overrides import (
 from webhook_processors.jira_issue_webhook_processor import JiraIssueWebhookProcessor
 from webhook_processors.jira_project_webhook_processor import JiraProjectWebhookProcessor
 from webhook_processors.jira_user_webhook_processor import JiraUserWebhookProcessor
-
-
-
-
-
-def create_jira_client() -> JiraClient:
-    """Create JiraClient with current configuration."""
-    return JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
-
 
 async def setup_application() -> None:
     base_url = ocean.app.base_url
@@ -108,11 +96,6 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for users_batch in client.get_paginated_users():
         logger.info(f"Received users batch with {len(users_batch)} users")
         yield users_batch
-
-
-
-
-
 
 
 # Called once when the integration starts.

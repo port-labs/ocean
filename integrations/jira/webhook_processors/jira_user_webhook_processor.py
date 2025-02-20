@@ -1,20 +1,11 @@
 from loguru import logger
-from jira.client import JiraClient
+from initialize_client import create_jira_client
 from object_kind import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import AbstractWebhookProcessor
 from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPayload, WebhookEvent, WebhookEventRawResults
-from port_ocean.context.ocean import ocean
 
 class JiraUserWebhookProcessor(AbstractWebhookProcessor):
-    def create_jira_client(self) -> JiraClient:
-        """Create JiraClient with current configuration."""
-        return JiraClient(
-            ocean.integration_config["jira_host"],
-            ocean.integration_config["atlassian_user_email"],
-            ocean.integration_config["atlassian_user_token"],
-        )
-
     def should_process_event(self, event: WebhookEvent) -> bool:
         return event.payload.get("webhookEvent", "").startswith("user_")
 
@@ -42,7 +33,7 @@ class JiraUserWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        client = self.create_jira_client()
+        client = create_jira_client()
         account_id = payload["user"]["accountId"]
         logger.debug(f"Fetching user with accountId: {account_id}")
         item = await client.get_single_user(account_id)
