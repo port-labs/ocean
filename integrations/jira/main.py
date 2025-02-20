@@ -23,6 +23,9 @@ from jira.overrides import (
     JiraProjectResourceConfig,
     TeamResourceConfig,
 )
+from webhook_processors.jira_issue_webhook_processor import JiraIssueWebhookProcessor
+from webhook_processors.jira_project_webhook_processor import JiraProjectWebhookProcessor
+from webhook_processors.jira_user_webhook_processor import JiraUserWebhookProcessor
 
 
 
@@ -106,184 +109,11 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received users batch with {len(users_batch)} users")
         yield users_batch
 
-class JiraProjectWebhookProcessor(AbstractWebhookProcessor):
-    def should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("webhookEvent", "").startswith("project_")
-
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.PROJECT]
-
-    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        # For Jira webhooks, we don't need additional authentication as they are validated
-        # through the webhook secret in the URL
-        return True
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        # Validate that the payload contains the required fields
-        return True
-
-    async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        webhook_event = payload.get("webhookEvent")
-        if not webhook_event:
-            logger.error("Missing webhook event")
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
-
-        client = create_jira_client()
-        project_key = payload["project"]["key"]
-
-        if webhook_event == "project_soft_deleted":
-            logger.info(f"Project {project_key} was deleted")
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[payload["project"]],
-            )
-
-        logger.debug(f"Fetching project with key: {project_key}")
-        item = await client.get_single_project(project_key)
-
-        if not item:
-            logger.warning(f"Failed to retrieve {ObjectKind.PROJECT}")
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
-
-        data_to_update = []
-        data_to_delete = []
-        logger.debug(f"Retrieved {ObjectKind.PROJECT} item: {item}")
-
-        if "deleted" in webhook_event:
-            data_to_delete.extend([item])
-        else:
-            data_to_update.extend([item])
-
-        return WebhookEventRawResults(
-            updated_raw_results=data_to_update,
-            deleted_raw_results=data_to_delete,
-        )
-
-class JiraUserWebhookProcessor(AbstractWebhookProcessor):
-    def should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("webhookEvent", "").startswith("user_")
-
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.USER]
-
-    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        # For Jira webhooks, we don't need additional authentication as they are validated
-        # through the webhook secret in the URL
-        return True
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        # Validate that the payload contains the required fields
-        return True
-
-    async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        webhook_event = payload.get("webhookEvent")
-
-        if not webhook_event:
-            logger.error("Missing webhook event")
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
-
-        client = create_jira_client()
-        account_id = payload["user"]["accountId"]
-        logger.debug(f"Fetching user with accountId: {account_id}")
-        item = await client.get_single_user(account_id)
-
-        if not item:
-            logger.warning(f"Failed to retrieve {ObjectKind.USER}")
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
-
-        data_to_update = []
-        data_to_delete = []
-        logger.debug(f"Retrieved {ObjectKind.USER} item: {item}")
-
-        if "deleted" in webhook_event:
-            data_to_delete.extend([item])
-        else:
-            data_to_update.extend([item])
-
-        return WebhookEventRawResults(
-            updated_raw_results=data_to_update,
-            deleted_raw_results=data_to_delete,
-        )
 
 
-class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
-    def should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("webhookEvent", "").startswith("jira:issue_")
-
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.ISSUE]
 
 
-    async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        client = create_jira_client()
-        issue_key = payload["issue"]["key"]
-        logger.info(
-            f"Fetching issue with key: {issue_key} and applying specified JQL filter"
-        )
 
-        if payload.get("webhookEvent") == "jira:issue_deleted":
-            logger.info(f"Issue {issue_key} was deleted")
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[payload["issue"]],
-            )
-
-        params = {}
-
-        if resource_config.selector.jql:
-            params["jql"] = (
-                f"{resource_config.selector.jql} AND key = {payload['issue']['key']}"
-            )
-        else:
-            params["jql"] = f"key = {payload['issue']['key']}"
-
-        issues: list[dict[str, Any]] = []
-        async for issues_batch in client.get_paginated_issues(params):
-            issues.extend(issues_batch)
-
-        data_to_update = []
-        data_to_delete = []
-        if not issues:
-            logger.warning(
-                f"Issue {payload['issue']['key']} not found"
-                f" using the following query: {params['jql']},"
-                " trying to remove..."
-            )
-            data_to_delete.append(payload["issue"])
-        else:
-            data_to_update.extend(issues)
-
-        return WebhookEventRawResults(
-            updated_raw_results=data_to_update,
-            deleted_raw_results=data_to_delete,
-        )
-
-    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        # For Jira webhooks, we don't need additional authentication as they are validated
-        # through the webhook secret in the URL
-        return True
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        # Validate that the payload contains the required fields
-        return True
 
 # Called once when the integration starts.
 @ocean.on_start()
