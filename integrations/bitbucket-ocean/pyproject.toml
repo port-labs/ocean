@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bitbucket-ocean"
+version = "0.1.0"
+description = "Bitbucket integration for Port's Ocean Framework"
+authors = [{ name = "Habib Nuhu", email = "habibnuhu18@gmail.com" }]
+dependencies = [
+    "port-ocean[cli]",
+    "aiohttp",
+    "pydantic",
+    "asyncio",
+    "pyyaml",
+    "pytest"
+]
+
+[tool.setuptools]
+packages = ["bitbucket_ocean"]
