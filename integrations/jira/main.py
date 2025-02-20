@@ -6,19 +6,9 @@ from initialize_client import create_jira_client
 from object_kind import ObjectKind
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-    AbstractWebhookProcessor,
-)
-from port_ocean.core.handlers.webhook.webhook_event import (
-    EventHeaders,
-    EventPayload,
-    WebhookEvent,
-    WebhookEventRawResults,
-)
+
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from jira.client import JiraClient
 from jira.overrides import (
     JiraIssueConfig,
     JiraProjectResourceConfig,
