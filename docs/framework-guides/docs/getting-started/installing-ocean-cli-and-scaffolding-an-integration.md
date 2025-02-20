@@ -10,7 +10,7 @@ import CodeBlock from '@theme/CodeBlock';
 In this part of the guide, you'll learn how to **install** the Ocean CLI and **scaffold** a new integration
 
 ## Requirements
-You should have Python 3.11 installed on your machine as stated in the previous section. If you don't have Python installed, you can download it from the [official Python website](https://www.python.org/downloads/).
+You should have Python 3.12 installed on your machine as stated in the previous section. If you don't have Python installed, you can download it from the [official Python website](https://www.python.org/downloads/).
 
 ## Setting up the environment
 While integrations are usually developed within the [Ocean monorepo](https://github.com/port-labs/ocean/), you can also develop integrations standalone. If you plan to publish your integration to the Port catalog, you should develop it within the Ocean monorepo. Go to the [Monorepo development](#monorepo-development) section to learn how to set up the Ocean monorepo.
@@ -19,13 +19,13 @@ While integrations are usually developed within the [Ocean monorepo](https://git
 #### Installing the Ocean CLI
 Run the following command to install the Ocean framework and its CLI tool:
 
-```console showLineNumbers
+```console showLineNumbers title="bash"
 $ pip install "port-ocean[cli]"
 ```
 
 Once this is done, verify the installation by running the following command, you should see an output with the version of the Ocean CLI:
 
-```console showLineNumbers
+```console showLineNumbers title="bash"
 $ ocean version
 🌊 Ocean version: 0.18.9
 ```
@@ -36,7 +36,7 @@ Next, you will scaffold the GitHub integration for ingesting Organizations, Repo
 <details>
 <summary><b>Scaffolding a standalone integration (Click to expand)</b></summary>
 
-```console showLineNumbers
+```console showLineNumbers title="bash"
 $ ocean new
 =====================================================================================
           ::::::::       ::::::::       ::::::::::           :::        ::::    :::
@@ -82,7 +82,7 @@ To develop integrations within the Ocean monorepo, you need to fork the [Port Oc
 <details>
 <summary><b>Installing dependencies on Ocean monorepo (Click to expand)</b></summary>
 
-```console showLineNumbers
+```console showLineNumbers title="bash"
 $ make install
 ```
 
@@ -94,7 +94,7 @@ Next, you will scaffold the GitHub integration for ingesting Organizations, Repo
 <details>
 <summary><b>Scaffolding an integration within Ocean monorepo (Click to expand)</b></summary>
 
-```console showLineNumbers
+```console showLineNumbers title="bash"
 $ make new
 =====================================================================================
           ::::::::       ::::::::       ::::::::::           :::        ::::    :::
@@ -139,7 +139,7 @@ To test to see that the integration is working, we will initialize the environme
 
 <summary><b>Setting up the environment variables (Click to expand)</b></summary>
 
-```console showLineNumbers
+```console showLineNumbers title="bash"
 $ cd ./github # or cd ./integrations/github if you are in the monorepo
 $ cp .env.example .env
 ```
@@ -152,7 +152,7 @@ Next, activate the virtual environment and run the integration:
 
 <summary><b>Running the integration (Click to expand)</b></summary>
 
-```console showLineNumbers
+```console showLineNumbers title="bash"
 $ poetry shell
 $ make run
 
@@ -190,6 +190,7 @@ The integration scaffold comes with the following structure which can be visuali
 $ tree
 
 github/
+├── .port        # A folder containing configurations for the integration. See below for more details
 ├── changelog # A directory containing automatically generated changelog files when the integration is ready to be published
 ├── CHANGELOG.md    # A file containing the changelog of the integration
 ├── CONTRIBUTING.md # A file containing the contributing guidelines for the integration

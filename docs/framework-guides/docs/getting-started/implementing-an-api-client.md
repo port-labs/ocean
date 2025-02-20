@@ -30,7 +30,8 @@ In addition, we will add an attribute for the http client we will be using to ma
 
 <summary><b>GitHub Client constructor (Click to expand)</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="client.py"
+
 from port_ocean.utils import http_async_client
 
 class GitHubClient:
@@ -52,7 +53,7 @@ One thing remains: we haven't yet added the headers required for authentication.
 
 <summary><b>GitHub Client headers property (Click to expand)</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="client.py"
 from port_ocean.utils import http_async_client
 
 
@@ -61,7 +62,7 @@ class GitHubClient:
         self.base_url = base_url
         self.access_token = access_token
         self.http_client = http_async_client
-// highlight-start
+# highlight-start
         self.http_client.headers.update(self.headers)
 
     @property
@@ -74,7 +75,7 @@ class GitHubClient:
             initial_headers["Authorization"] = f"Bearer {self.access_token}"
 
         return initial_headers
-// highlight-end
+# highlight-end
 
     # Other methods will be added here
 
@@ -98,17 +99,17 @@ We will create a `rate_limiter` property that will contain an instance of the `a
 
 <summary><b>GitHub Client `rate_limiter` property (Click to expand)</b></summary>
 
-```python showLineNumbers
-// highlight-next-line
+```python showLineNumbers title="client.py"
+# highlight-next-line
 from aiolimiter import AsyncLimiter
 from port_ocean.utils import http_async_client
 
 
 class GitHubClient:
-    // highlight-start
+    # highlight-start
     REQUEST_LIMIT_AUTHENTICATED = 5000
     REQUEST_LIMIT_UNAUTHENTICATED = 60
-    // highlight-end
+    # highlight-end
 
     def __init__(
         self, base_url: str ="https://api.github.com", access_token: str | None = None
@@ -117,14 +118,14 @@ class GitHubClient:
         self.access_token = access_token
         self.http_client = http_async_client
         self.http_client.headers.update(self.headers)
-        // highlight-start
+        # highlight-start
         time_period = 60 * 60  # 1 hour in seconds
         self.rate_limiter = AsyncLimiter((
             self.REQUEST_LIMIT_AUTHENTICATED
             if self.access_token
             else self.REQUEST_LIMIT_UNAUTHENTICATED
         ), time_period)
-        // highlight-end
+        # highlight-end
 
     @property
     def headers(self) -> dict[str, str]:
@@ -151,11 +152,11 @@ Since we are going to work with specific organizations input by the user, we wil
 
 <summary><b>GitHub Client get_organization method (Click to expand)</b></summary>
 
-```python showLineNumbers
-// highlight-next-line
+```python showLineNumbers title="client.py"
+# highlight-next-line
 import httpx
 from aiolimiter import AsyncLimiter
-// highlight-next-line
+# highlight-next-line
 from loguru import logger
 from port_ocean.utils import http_async_client
 
@@ -200,22 +201,22 @@ To remedy this, first, we will define a separate method to make API requests, ha
 
 <summary><b>Refactoring the `get_organization` method (Click to expand)</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="client.py"
 import asyncio
 from typing import Any
 # remaining imports
 
 
-// highlight-start
+# highlight-start
 class Endpoints:
     ORGANIZATION = "orgs/{}"
-// highlight-end
+# highlight-end
 
 
 class GitHubClient:
     # rest of the class
 
-// highlight-start
+# highlight-start
     async def _send_api_request(self, url: str) -> dict[str, Any]:
         async with self.rate_limiter:
             try:
@@ -247,7 +248,7 @@ class GitHubClient:
 
         return await asyncio.gather(*tasks)
 
-// highlight-end
+# highlight-end
 
 ```
 
@@ -273,17 +274,17 @@ Since the `_send_api_request` method returns only the data, we will modify it to
 
 <summary><b>Retrieving repositories of an organization (Click to expand)</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="client.py"
 # remaining imports
-// highlight-start
+# highlight-start
 from typing import Any, AsyncGenerator
 
 type RepositoryType = Literal["all", "public", "private", "forks", "sources", "member"]
-// highlight-end
+# highlight-end
 
 class Endpoints:
     ORGANIZATION = "orgs/{}"
-// highlight-next-line
+# highlight-next-line
     REPOSITORY = "orgs/{}/repos"
 
 
@@ -291,7 +292,7 @@ class Endpoints:
 class GitHub:
     # rest of the class
 
-// highlight-start
+# highlight-start
     def _get_next_page_url(self, response: httpx.Headers) -> str | None:
         link: str = response.get("Link", None)
         if not link:
@@ -304,21 +305,21 @@ class GitHub:
                 return url.strip("<> ")
 
         return None
-// highlight-end
+# highlight-end
 
 
-// highlight-next-line
+# highlight-next-line
     async def _send_api_request(self, url: str, params: dict[str, Any] | None = None) -> httpx.Response:
         async with self.rate_limiter:
-// highlight-next-line
+# highlight-next-line
             logger.info(f"Making request to {url} with params: {params}")
             try:
                 response = await self.http_client.get(
                     url,
-// highlight-next-line
+# highlight-next-line
                     params=params
                 )
-// highlight-next-line
+# highlight-next-line
                 return response
             except httpx.HTTPStatusError as e:
                 logger.error(
@@ -334,7 +335,7 @@ class GitHub:
                 )
                 raise
 
-// highlight-start
+# highlight-start
     async def _get_paginated_data(self, url: str, params: dict[str, Any] | None = None) -> AsyncGenerator[list[dict[str, Any]], None]:
         next_url: str | None = url
 
@@ -344,7 +345,7 @@ class GitHub:
             yield response
 
             next_url = self._get_next_page_url(data.headers)
-// highlight-end
+# highlight-end
 
     async def get_organizations(self, organizations: list[str]) -> list[dict[str, Any]]:
         tasks = [
@@ -354,10 +355,10 @@ class GitHub:
             for org in organizations
         ]
 
-// highlight-next-line
+# highlight-next-line
         return [res.json() for res in await asyncio.gather(*tasks)]
 
-// highlight-start
+# highlight-start
     async def get_repositories(self, organizations: list[str], repo_type: RepositoryType) -> AsyncGenerator[list[dict[str, Any]], None]:
         for org in organizations:
             async for data in self._get_paginated_data(
@@ -365,7 +366,7 @@ class GitHub:
                 {"type": repo_type}
             ):
                 yield data
-// highlight-end
+# highlight-end
 
 ```
 
@@ -390,7 +391,7 @@ Also, using `async.gather` would be rather messy and complex. Thankfully, Ocean 
 
 <summary><b>Using the `stream_async_iterators_tasks` function (Click to expand)</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="client.py"
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 # remaining imports
 
@@ -400,7 +401,7 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 class GitHub:
     # rest of the class
 
-// highlight-start
+# highlight-start
     async def get_repositories(self, organizations: list[str], repo_type: RepositoryType) -> AsyncGenerator[list[dict[str, Any]], None]:
         tasks = [
             self._get_paginated_data(
@@ -413,7 +414,7 @@ class GitHub:
         async for repositories in stream_async_iterators_tasks(*tasks):
             yield repositories
 
-// highlight-end
+# highlight-end
 ```
 
 </details>
@@ -429,17 +430,17 @@ The endpoint for retrieving pull requests of a repository is also paginated. We 
 
 <summary><b>Retrieving pull requests of a repository (Click to expand)</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="client.py"
 # rest of code
 
-// highlight-next-line
+# highlight-next-line
 type PullRequestState = Literal["open", "closed", "all"]
 
 
 class Endpoints:
     ORGANIZATION = "orgs/{}"
     REPOSITORY = "orgs/{}/repos"
-// highlight-next-line
+# highlight-next-line
     PULL_REQUESTS = "repos/{}/pulls"
 
 class GitHub:
@@ -476,7 +477,7 @@ All we have to do is decorate the `get_repositories` method with the `cache_iter
 
 <summary><b>Caching the results of the `get_repositories` method (Click to expand)</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="client.py"
 # rest of imports
 from port_ocean.utils.cache import cache_iterator_result
 
@@ -485,7 +486,7 @@ from port_ocean.utils.cache import cache_iterator_result
 class GitHub:
     # rest of the class
 
-// highlight-next-line
+# highlight-next-line
     @cache_iterator_result()
     async def get_repositories(self, organizations: list[str], repo_type: RepositoryType) -> AsyncGenerator[list[dict[str, Any]], None]:
         tasks = [
@@ -515,7 +516,7 @@ Your `client.py` file should look like this:
 
 <summary><b>GitHub Client (Click to expand)</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="client.py"
 import asyncio
 from typing import Any, AsyncGenerator, Literal
 

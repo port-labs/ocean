@@ -20,7 +20,7 @@ For each of the kinds, we will define `Selector` subclasses that will hold the p
 
 <summary><b>Selector subclasses</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="integration.py"
 from port_ocean.core.handlers.port_app_config.models import Selector
 from pydantic.fields import Field
 
@@ -69,24 +69,24 @@ Having done this, we will define `ResourceConfig` subclasses that will associate
 
 <summary><b>ResourceConfig subclasses</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="integration.py"
 from typing import Literal
-// highlight-next-line
+# highlight-next-line
 from port_ocean.core.handlers.port_app_config.models import Selector, ResourceConfig
 from pydantic.fields import Field
 
 
-// highlight-start
+# highlight-start
 class ObjectKind:
     ORGANIZATION = "organization"
     REPOSITORY = "repository"
     PULL_REQUEST = "pull_request"
-// highlight-end
+# highlight-end
 
 
 # selector classes here
 
-// highlight-start
+# highlight-start
 class GitHubOranizationResourceConfig(ResourceConfig):
     selector: OrganizationSelector
     kind: Literal["organization"]
@@ -100,7 +100,7 @@ class GitHubRepositoryResourceConfig(ResourceConfig):
 class GitHubPullRequestResourceConfig(ResourceConfig):
     selector: PullRequestSelector
     kind: Literal["pull_request"]
-// highlight-end
+# highlight-end
 
 ```
 
@@ -112,20 +112,20 @@ Finally, we will define `AppConfig` and `BaseIntegration` subclasses that will h
 
 <summary><b>`AppConfig` and `BaseIntegration`</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="integration.py"
 from typing import Literal
-// highlight-next-line
+# highlight-next-line
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
-// highlight-next-line
+# highlight-next-line
 from port_ocean.core.handlers.port_app_config.models import Selector, ResourceConfig, PortAppConfig
 from pydantic.fields import Field
-// highlight-next-line
+# highlight-next-line
 from port_ocean.core.integrations.base import BaseIntegration
 
 
 # rest of the code here
 
-// highlight-start
+# highlight-start
 class GitHubPortAppConfig(PortAppConfig):
     resources: list[
         GitHubOranizationResourceConfig
@@ -141,7 +141,7 @@ class GitHubIntegration(BaseIntegration):
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitHubPortAppConfig
 
-// highlight-end
+# highlight-end
 
 ```
 
@@ -156,7 +156,7 @@ Your `integration.py` file should look like this:
 
 <summary><b>Integration Configuration</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="integration.py"
 from typing import Literal
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig

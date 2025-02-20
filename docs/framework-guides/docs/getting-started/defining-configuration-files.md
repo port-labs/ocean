@@ -21,7 +21,7 @@ For our `spec.yaml` file, we will specify the kinds and the configuration variab
 
 <summary><b>`spec.yaml` file</b></summary>
 
-```yaml showLineNumbers
+```yaml showLineNumbers title="spec.yaml"
 title: Github
 description: GitHub integration for Port Ocean
 icon: GitHub
@@ -57,7 +57,7 @@ For our `blueprints.json` file, we will specify the default blueprints that will
 
 <summary><b>`blueprints.json` file</b></summary>
 
-```json showLineNumbers
+```json showLineNumbers title="spec.yaml"
 [
   {
     "identifier": "githubOrganization",
@@ -203,7 +203,7 @@ For our `port-app-config.yml` file, we will specify the default integration reso
 
 <summary><b>`port-app-config.yml` file</b></summary>
 
-```yaml showLineNumbers
+```yaml showLineNumbers title="spec.yaml"
 resources:
   - kind: organization
     selector:

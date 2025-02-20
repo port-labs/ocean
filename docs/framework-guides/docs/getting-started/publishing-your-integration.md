@@ -19,7 +19,7 @@ Before you publish your integration, you need to create a changelog. A changelog
 
 Run the following command to create a changelog draft:
 
-```console showLineNumbers
+```console showLineNumbers title="bash"
 $ poetry run towncrier create --content "Implemented Port integration for GitHub" 0.1.0-beta.feature.md
 ```
 
@@ -27,7 +27,7 @@ This command will create a new file named `0.1.0-beta.feature.md` in the `change
 
 Next, let's add this to the `CHANGELOG.md` file. Run the following command:
 
-```console showLineNumbers
+```console showLineNumbers title="bash"
 $ poetry run towncrier build --yes --version 0.1.0-beta
 Loading template...
 Finding news fragments...

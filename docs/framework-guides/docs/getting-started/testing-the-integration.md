@@ -26,7 +26,7 @@ Create a `.env` file in the integration directory to store the environment varia
 
 <summary><b>Environment Variables</b></summary>
 
-```shell showLineNumbers
+```shell showLineNumbers title=".env"
 OCEAN__PORT__CLIENT_ID=<your-port-client-secret>
 OCEAN__PORT__CLIENT_SECRET=<your-port-client-secret>
 OCEAN__INTEGRATION__CONFIG__ACCESS_TOKEN=<your-github-access-token>
@@ -37,7 +37,7 @@ OCEAN__EVENT_LISTENER__TYPE=POLLING
 
 Now, it is time to do what we have been waiting for. Run the integration using the Ocean CLI:
 
-```console showLineNumbers
+```console showLineNumbers title="bash"
 $ make run
 ```
 

@@ -25,8 +25,8 @@ We expect users to pass these values via environment variables. Since Ocean load
 
 <summary><b>Initializing the `GitHubClient` class</b></summary>
 
-```python showLineNumbers
-// highlight-start
+```python showLineNumbers title="main.py"
+# highlight-start
 from port_ocean.context.ocean import ocean
 
 from client import GitHubClient
@@ -38,7 +38,7 @@ def initialize_github_client() -> GitHubClient:
         access_token=ocean.integration_config.get("access_token"),
     )
 
-// highlight-end
+# highlight-end
 
 ```
 
@@ -53,24 +53,24 @@ The first resync function we will write is to sync organizations. This function 
 
 <summary><b>Syncing Organizations</b></summary>
 
-```python showLineNumbers
-// highlight-start
+```python showLineNumbers title="main.py"
+# highlight-start
 from typing import cast
 
 from loguru import logger
 from port_ocean.context.event import event
-// highlight-end
+# highlight-end
 from port_ocean.context.ocean import ocean
-// highlight-next-line
+# highlight-next-line
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import GitHubClient
-// highlight-start
+# highlight-start
 from integration import (
     ObjectKind,
     GitHubOranizationResourceConfig,
 )
-// highlight-end
+# highlight-end
 
 
 
@@ -100,12 +100,12 @@ Syncing repositories is similar to syncing organizations. The only difference is
 
 <summary><b>Syncing Repositories</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="main.py"
 # rest of the imports
 from integration import (
     ObjectKind,
     GitHubOranizationResourceConfig,
-// highlight-next-line
+# highlight-next-line
     GitHubRepositoryResourceConfig,
 )
 
@@ -113,7 +113,7 @@ from integration import (
 # rest of the code
 
 
-// highlight-start
+# highlight-start
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def get_repositories(
     kind: str
@@ -128,7 +128,7 @@ async def get_repositories(
         logger.info(f"Retrieved repository batch of size: {len(repositories)}")
         yield repositories
 
-// highlight-end
+# highlight-end
 
 ```
 
@@ -142,13 +142,13 @@ Syncing pull requests is similar to syncing repositories. The only difference is
 
 <summary><b>Syncing Pull Requests</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="main.py"
 # rest of the imports
 from integration import (
     ObjectKind,
     GitHubOranizationResourceConfig,
     GitHubRepositoryResourceConfig,
-// highlight-next-line
+# highlight-next-line
     GitHubPullRequestResourceConfig,
 )
 
@@ -184,7 +184,7 @@ At the end of this section, your `main.py` file` should look like this:
 
 <summary><b>`main.py`</b></summary>
 
-```python showLineNumbers
+```python showLineNumbers title="main.py"
 from typing import cast
 
 from loguru import logger
