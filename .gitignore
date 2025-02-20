@@ -164,3 +164,4 @@ cython_debug/
 
 junit/*
 **/junit/*
+config.yaml

@@ -1,0 +1,5 @@
+port-ocean[cli]
+aiohttp
+pydantic
+asyncio
+pyyaml
