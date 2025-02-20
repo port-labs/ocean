@@ -1,8 +1,8 @@
 import typing
-from enum import StrEnum
 from typing import Any, cast
 
 from loguru import logger
+from object_kind import ObjectKind
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -25,11 +25,7 @@ from jira.overrides import (
 )
 
 
-class ObjectKind(StrEnum):
-    PROJECT = "project"
-    ISSUE = "issue"
-    USER = "user"
-    TEAM = "team"
+
 
 
 def create_jira_client() -> JiraClient:
