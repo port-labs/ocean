@@ -1,0 +1,41 @@
+[
+    {
+        "identifier": "gitlab-v2ExampleBlueprint",
+        "title": "gitlab-v2 Example",
+        "icon": "Blueprint",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "VALID",
+                        "FAILED"
+                    ],
+                    "enumColors": {
+                        "VALID": "green",
+                        "FAILED": "red"
+                    },
+                    "title": "Status"
+                },
+                "text": {
+                    "type": "string",
+                    "title": "Text"
+                },
+                "component": {
+                    "type": "string",
+                    "title": "Component"
+                },
+                "service": {
+                    "type": "string",
+                    "title": "Service"
+                },
+                "score": {
+                    "type": "number",
+                    "title": "Score"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    }
+]
