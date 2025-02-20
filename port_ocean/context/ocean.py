@@ -146,12 +146,7 @@ class PortOceanContext:
     async def sync_raw_all(self) -> None:
         await self.integration.sync_raw_all(trigger_type="manual")
 
-    def add_webhook_processor(
-        self,
-        path: str,
-        processor: type,
-        events_filter: Callable[[Any], bool] = lambda _: True,
-    ) -> None:
+    def add_webhook_processor(self, path: str, processor: type) -> None:
         """
         Registers a webhook processor for a specific path.
 
@@ -175,7 +170,7 @@ class PortOceanContext:
         Raises:
             ValueError: If the processor does not extend AbstractWebhookProcessor.
         """
-        self.app.webhook_manager.register_processor(path, processor, events_filter)
+        self.app.webhook_manager.register_processor(path, processor)
 
 
 _port_ocean: PortOceanContext = PortOceanContext(None)

@@ -26,7 +26,9 @@ from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
-from port_ocean.core.handlers.webhook.processor_manager import WebhookProcessorManager
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
 
 
 class Ocean:
@@ -54,7 +56,7 @@ class Ocean:
         )
         self.integration_router = integration_router or APIRouter()
 
-        self.webhook_manager = WebhookProcessorManager(
+        self.webhook_manager = LiveEventsProcessorManager(
             self.integration_router, signal_handler
         )
 
@@ -118,6 +120,17 @@ class Ocean:
             )
             await repeated_function()
 
+    @property
+    def base_url(self) -> str:
+        integration_config = self.config.integration.config
+        if isinstance(integration_config, BaseModel):
+            integration_config = integration_config.dict()
+        if integration_config.get("app_host"):
+            logger.warning(
+                "The OCEAN__INTEGRATION__CONFIG__APP_HOST field is deprecated. Please use the OCEAN__BASE_URL field instead."
+            )
+        return self.config.base_url or integration_config.get("app_host")
+
     def load_external_oauth_access_token(self) -> str | None:
         if self.config.oauth_access_token_file_path is not None:
             try:
@@ -137,7 +150,10 @@ class Ocean:
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
-                await self.webhook_manager.start_processing_event_messages()
+                if self.base_url:
+                    await self.webhook_manager.start_processing_event_messages()
+                else:
+                    logger.warning("No base URL provided, skipping webhook processing")
                 await self._setup_scheduled_resync()
                 yield None
             except Exception:
