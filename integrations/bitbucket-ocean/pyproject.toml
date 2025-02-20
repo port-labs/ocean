@@ -12,7 +12,8 @@ dependencies = [
     "aiohttp",
     "pydantic",
     "asyncio",
-    "pyyaml"
+    "pyyaml",
+    "pytest"
 ]
 
 [tool.setuptools]
