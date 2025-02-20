@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.20.0 (2025-02-20)
+
+### Features
+
+- Added comprehensive live events support in Ocean Core:
+  - Introduced `LiveEventsMixin` for standardized live event handling across integrations
+  - Added methods for resource mapping, entity deletion threshold, and data processing
+  - Enhanced `AbstractWebhookProcessor` with live events integration
+  - Added robust retry logic and lifecycle management for webhook processing
+  - Implemented history-preserving entity deletion and recreation for live events
+
+## 0.19.3 (2025-02-19)
+
+### Features
+
+- Added new `base_url` to Ocean Core. This will be used to deprecate the `OCEAN__INTEGRATION__CONFIG__APP_HOST` usage.
+
+## 0.19.2 (2025-02-19)
+
+### Bug Fixes
+
+- Fixed non awaited coroutine for provisioned integrations
+
+## 0.19.1 (2025-02-18)
+
+### Features
+
+- Verify Provision enabled integrations
+
+### Bug Fixes
+
+- Ensure no race condition with externally created integrations
 
 ## 0.19.0 (2025-02-16)
 
