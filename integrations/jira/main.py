@@ -42,17 +42,12 @@ def create_jira_client() -> JiraClient:
 
 
 async def setup_application() -> None:
-    logic_settings = ocean.integration_config
-    app_host = logic_settings.get("app_host")
-    if not app_host:
-        logger.warning(
-            "No app host provided, skipping webhook creation. "
-            "Without setting up the webhook, the integration will not export live changes from Jira"
-        )
+    base_url = ocean.app.base_url
+    if not base_url:
         return
 
     client = create_jira_client()
-    await client.create_events_webhook(app_host)
+    await client.create_events_webhook(base_url)
 
 
 @ocean.on_resync(ObjectKind.PROJECT)

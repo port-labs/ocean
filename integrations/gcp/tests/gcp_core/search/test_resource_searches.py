@@ -187,6 +187,7 @@ async def test_feed_to_resource(
             project_id=mock_asset_project_name,
             asset_data=mock_asset_data,
             config=config,
+            project_semaphore=AsyncMock(),
         )
 
     # Assert

@@ -14,7 +14,7 @@ from google.auth import exceptions as auth_exceptions
 import requests.exceptions
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from google.api_core.retry_async import exponential_sleep_generator
+from google.api_core.retry_async import exponential_sleep_generator, AsyncRetry
 from google.api_core.retry.retry_base import (
     RetryFailureReason,
     build_retry_error,
@@ -44,17 +44,6 @@ if_transient_error = if_exception_type(
 def log_retry_attempt(error: Exception) -> None:
     """Log a warning when a retryable error occurs."""
     logger.warning(f"Retrying due to {error.__class__.__name__} error")
-
-
-if_transient_error = if_exception_type(
-    TooManyRequests,
-    ServiceUnavailable,
-    DeadlineExceeded,
-    InternalServerError,
-    requests.exceptions.ConnectionError,
-    requests.exceptions.ChunkedEncodingError,
-    auth_exceptions.TransportError,
-)
 
 
 async def retry_generator_target(
@@ -181,5 +170,14 @@ async_generator_retry: AsyncGeneratorRetry = AsyncGeneratorRetry(
     maximum=_DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS,
     multiplier=_DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF,
     timeout=_DEFAULT_TIMEOUT,
+    on_error=log_retry_attempt,
+)
+
+async_retry = AsyncRetry(
+    initial=_DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES,
+    predicate=if_transient_error,
+    maximum=_DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS,
+    multiplier=_DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF,
+    deadline=_DEFAULT_TIMEOUT,
     on_error=log_retry_attempt,
 )

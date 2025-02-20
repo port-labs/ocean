@@ -4,6 +4,9 @@ from typing import Any, AsyncGenerator, Generator
 import httpx
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
+from port_ocean.clients.auth.oauth_client import (
+    OAuthClient,
+)
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
@@ -37,10 +40,11 @@ class BearerAuth(Auth):
         yield request
 
 
-class JiraClient:
+class JiraClient(OAuthClient):
     jira_api_auth: Auth
 
     def __init__(self, jira_url: str, jira_email: str, jira_token: str) -> None:
+        super().__init__()
         self.jira_url = jira_url
         self.jira_rest_url = f"{self.jira_url}/rest"
         self.jira_email = jira_email
@@ -48,7 +52,7 @@ class JiraClient:
 
         # If the Jira URL is directing to api.atlassian.com, we use OAuth2 Bearer Auth
         if "api.atlassian.com" in self.jira_url:
-            self.jira_api_auth = BearerAuth(self.jira_token)
+            self.jira_api_auth = self._get_bearer()
         else:
             self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
 
@@ -60,6 +64,15 @@ class JiraClient:
         self.client.auth = self.jira_api_auth
         self.client.timeout = Timeout(30)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+
+    def _get_bearer(self) -> BearerAuth:
+        try:
+            return BearerAuth(self.external_access_token)
+        except ValueError:
+            return BearerAuth(self.jira_token)
+
+    def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
+        return next(self._get_bearer().auth_flow(request))
 
     async def _handle_rate_limit(self, response: Response) -> None:
         if response.status_code == 429:
