@@ -135,7 +135,7 @@ async def get_repositories(
 </details>
 
 ### Syncing Pull Requests
-Syncing pull requests is similar to syncing repositories. The only difference is that we will be using the `GitHubPullRequestResourceConfig` class instead of the `GitHubOranizationResourceConfig` class.
+Syncing pull requests is similar to syncing repositories. The only difference is that we will be using the `GitHubPullRequestResourceConfig` class instead of the `GitHubOrganizationResourceConfig ` class.
 
 
 <details>
