@@ -75,7 +75,7 @@ async def _initialize_required_integration_settings(
                 create_port_resources_origin_in_port=integration_config.create_port_resources_origin
                 == CreatePortResourcesOrigin.Port,
             )
-        elif not integration.get("config"):
+        elif not integration.get("config", None):
             logger.info(
                 "Encountered that the integration's mapping is empty, Initializing to default mapping"
             )
@@ -213,11 +213,20 @@ async def _initialize_defaults(
         config_class, integration_config.resources_path
     )
 
+    is_integration_provision_enabled = (
+        await port_client.is_integration_provision_enabled(
+            integration_config.integration.type
+        )
+    )
+
     if (
         not integration_config.create_port_resources_origin
-        and integration_config.runtime.is_saas_runtime
+        and is_integration_provision_enabled
     ):
-        logger.info("Setting resources origin to be Port")
+        # Need to set default since spec is missing
+        logger.info(
+            f"Setting resources origin to be Port (integration {integration_config.integration.type} is supported)"
+        )
         integration_config.create_port_resources_origin = CreatePortResourcesOrigin.Port
 
     if (
@@ -228,7 +237,10 @@ async def _initialize_defaults(
             "Resources origin is set to be Port, verifying integration is supported"
         )
         org_feature_flags = await port_client.get_organization_feature_flags()
-        if ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG not in org_feature_flags:
+        if (
+            not is_integration_provision_enabled
+            or ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG not in org_feature_flags
+        ):
             logger.info(
                 "Port origin for Integration is not supported, changing resources origin to use Ocean"
             )
