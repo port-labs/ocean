@@ -1,56 +1,53 @@
+from enum import StrEnum
 from typing import Any
-
+from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from clients.base_client import GitLabClient
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
-@ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-
-    # Initial stub to show complete flow, replace this with your own logic
-    if kind == "gitlab-v2-example-kind":
-        return [
-            {
-                "my_custom_id": f"id_{x}",
-                "my_custom_text": f"very long text with {x} in it",
-                "my_special_score": x * 32 % 3,
-                "my_component": f"component-{x}",
-                "my_service": f"service-{x %2}",
-                "my_enum": "VALID" if x % 2 == 0 else "FAILED",
-            }
-            for x in range(25)
-        ]
-
-    return []
+class ObjectKind(StrEnum):
+    PROJECT = "project"
 
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
+def create_gitlab_client() -> GitLabClient:
+    integration_config: dict[str, Any] = ocean.integration_config
+    base_url = integration_config.get("gitlab_host", "https://gitlab.com")
+
+    if token := integration_config["gitlab_token"]:
+        return GitLabClient(base_url, token)
+    else:
+        raise ValueError("GitLab token not found in configuration")
 
 
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting gitlab-v2 integration")
+    logger.info("Starting Port Ocean GitLab integration")
+
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook setup because the event listener is ONCE")
+        return
+
+    await setup_application()
+
+
+async def setup_application() -> None:
+    """Setup application webhooks and any other necessary initialization."""
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning("No base URL provided, skipping webhook setup")
+        return
+
+    client = create_gitlab_client()
+
+    # Setup webhooks
+
+
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Sync GitLab projects to Port."""
+    client = create_gitlab_client()
+
+    async for projects in client.get_projects():
+        logger.info(f"Received project batch with {len(projects)} projects")
+        yield projects
