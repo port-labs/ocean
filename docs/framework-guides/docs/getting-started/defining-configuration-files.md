@@ -50,7 +50,7 @@ configurations:
 
 
 ## `blueprints.json` File
-For our `blueprints.json` file, we will specify the default blueprints that will be created when the integration is installed.
+In the `blueprints.json` file, we define the default blueprints that will be created upon integration installation.
 
 
 <details>

@@ -23,14 +23,14 @@ Run the following command to install the Ocean framework and its CLI tool:
 $ pip install "port-ocean[cli]"
 ```
 
-Once this is done, verify the installation by running the following command, you should see an output with the version of the Ocean CLI:
+Once this is done, verify the installation by running the `ocean version` command; you should see output that displays the version of the Ocean CLI.
 
 ```console showLineNumbers title="bash"
 $ ocean version
 🌊 Ocean version: 0.18.9
 ```
 
-#### Scaffolding Your Fist Integration
+#### Scaffolding Your First Integration
 Next, you will scaffold the GitHub integration for ingesting Organizations, Repositories and Pull Requests. Run the `ocean new` command in your CLI to scaffold a new integration:
 
 <details>
@@ -74,6 +74,10 @@ Here are your next steps:
 </details>
 
 ### Monorepo Development
+Choosing to develop an integration within the Ocean monorepo has some advantages:
+- Publishing an integration to the Port catalog requires it to be developed within the Ocean monorepo. Hence, if you plan to publish your integration, you should develop it within the Ocean monorepo.
+
+- The Ocean monorepo provides a set of automations on GitHub CI environment including testing, linting, and building the integration Docker image that are not available in standalone development, or you would have to set up yourself.
 
 #### Cloning the Ocean Monorepo
 To develop integrations within the Ocean monorepo, you need to fork the [Port Ocean monorepo](https://github.com/port-labs/ocean), clone it to your local machine, and install the dependencies from the root directory.

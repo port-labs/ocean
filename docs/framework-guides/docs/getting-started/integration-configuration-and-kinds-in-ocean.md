@@ -12,7 +12,7 @@ In this guide, we will learn how to configure the integration and accept user-de
 ## Integration Configuration
 Create an `integration.py` file in the same directory you defined the `client.py` file. This file will contain the configuration for the integration.
 
-Configurations are defined using Python types, backed with [Pydantic](https://docs.pydantic.dev/latest/). Pydantic is a data validation and settings management using Python type annotations. In addition, Ocean already has a default configuration that is used to define the structure of the data that is being exported. We will inherit this class and add our custom configurations.
+Configurations are defined using Python types, backed with [Pydantic](https://docs.pydantic.dev/latest/). Pydantic is used for data validation and settings management with Python type annotations. In addition, Ocean already has a default configuration that is used to define the structure of the data that is being exported. We will inherit this class and add our custom configurations.
 
 For each of the kinds, we will define `Selector` subclasses that will hold the parameters we are passing to the kinds.
 
@@ -32,7 +32,7 @@ class OrganizationSelector(Selector):
     )
 
 
-class RespositorySelector(Selector):
+class RepositorySelector(Selector):
     organizations: list[str] = Field(
         description="List of organizations to retrieve repositories from",
         default_factory=list,
@@ -50,7 +50,7 @@ class PullRequestSelector(Selector):
     )
     type: Literal["all", "public", "private", "forks", "sources", "member"] = Field(
         alias="repositoryType",
-        description="Type of repositories to retrieve",
+        description="Type of repositories to retrieve data from",
         default="all",
     )
     state: Literal["open", "closed", "all"] = Field(
@@ -87,13 +87,13 @@ class ObjectKind:
 # selector classes here
 
 # highlight-start
-class GitHubOranizationResourceConfig(ResourceConfig):
+class GitHubOrganizationResourceConfig(ResourceConfig):
     selector: OrganizationSelector
     kind: Literal["organization"]
 
 
 class GitHubRepositoryResourceConfig(ResourceConfig):
-    selector: RespositorySelector
+    selector: RepositorySelector
     kind: Literal["repository"]
 
 
@@ -128,13 +128,11 @@ from port_ocean.core.integrations.base import BaseIntegration
 # highlight-start
 class GitHubPortAppConfig(PortAppConfig):
     resources: list[
-        GitHubOranizationResourceConfig
+        GitHubOrganizationResourceConfig
         | GitHubRepositoryResourceConfig
         | GitHubPullRequestResourceConfig
         | ResourceConfig
-    ] = (
-        Field(default_factory=list)
-    )
+    ] = Field(default_factory=list)
 
 
 class GitHubIntegration(BaseIntegration):
@@ -182,7 +180,7 @@ class OrganizationSelector(Selector):
     )
 
 
-class RespositorySelector(Selector):
+class RepositorySelector(Selector):
     organizations: list[str] = Field(
         description="List of organizations to retrieve repositories from",
         default_factory=list,
@@ -209,13 +207,13 @@ class PullRequestSelector(Selector):
     )
 
 
-class GitHubOranizationResourceConfig(ResourceConfig):
+class GitHubOrganizationResourceConfig(ResourceConfig):
     selector: OrganizationSelector
     kind: Literal["organization"]
 
 
 class GitHubRepositoryResourceConfig(ResourceConfig):
-    selector: RespositorySelector
+    selector: RepositorySelector
     kind: Literal["repository"]
 
 
@@ -226,7 +224,7 @@ class GitHubPullRequestResourceConfig(ResourceConfig):
 
 class GitHubPortAppConfig(PortAppConfig):
     resources: list[
-        GitHubOranizationResourceConfig
+        GitHubOrganizationResourceConfig
         | GitHubRepositoryResourceConfig
         | GitHubPullRequestResourceConfig
         | ResourceConfig

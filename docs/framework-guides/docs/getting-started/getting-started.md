@@ -4,13 +4,13 @@ title: Getting Started
 
 # ⚡️ Getting Started
 
-In this guide, you will learn the basics of the Ocean framework used to develop integrations for Port. This is a hands-on guide that will walk you through the process of developing your first integration. You will be building a version of the GitHub integration that ingests organizations (a configured list of organizations), their repositories and their pull requests.
+This guide introduces you to the Ocean framework used to develop integrations for Port. It is a hands-on walkthrough that will help you build your first integration—a simplified version of the GitHub integration that ingests a configured list of organizations, their repositories, and pull requests
 
 :::note Port's GitHub Integration
-It is important to note that Port has a fully featured [GitHub integration](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github/). This is only a simplified version to help you understand the basics of developing an integration using the Ocean framework.
+Please note that Port offers a fully featured [GitHub integration](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github/). This is only a simplified version to help you understand the basics of developing an integration using the Ocean framework.
 :::
 
-At the end of this guide, you will have a working integration that can be run locally and tested, and you should be able to:
+By the end of this guide, you will have a working integration that you can run locally and test. You will be able to:
 
 - Understand the structure of an Ocean integration
 - Develop a simple integration using the Ocean framework
@@ -18,7 +18,7 @@ At the end of this guide, you will have a working integration that can be run lo
 
 
 ## Requirements
-This guide assumes you have Python 3.12 installed on your machine. If you don't have Python installed, you can download it from the [official Python website](https://www.python.org/downloads/).
+This guide assumes you have Python 3.12 installed on your computer. If you don't have Python installed, you can download it from the [official Python website](https://www.python.org/downloads/).
 
 In addition, you should be familiar with the basics of Python programming and have a basic understanding of how to use the command line.
 
