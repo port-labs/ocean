@@ -1,16 +1,17 @@
 resources:
-  - kind: gitlab-v2-example-kind
+  - kind: project
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .my_custom_id
-          title: '(.my_component + " @ " + .my_service)'
-          blueprint: '"gitlab-v2ExampleBlueprint"'
+          identifier: .fullPath
+          title: .name
+          blueprint: '"service"'
           properties:
-            status: .my_enum
-            text: .my_custom_text
-            component: .my_component
-            service: .my_service
-            score: .my_special_score
+            url: .webUrl
+            description: .description
+            readme: .repository.blobs.nodes[0].rawBlob
+            languages: .languages
+            defaultBranch: .repository.rootRef
+            labels: .labels.nodes | map(.title)
