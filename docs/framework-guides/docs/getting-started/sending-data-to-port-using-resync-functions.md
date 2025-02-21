@@ -94,7 +94,7 @@ The `@ocean.on_resync` decorator is used to register the function as a resync fu
 In addition, the `event` object is used to access the resource configuration and other information about the event that triggered the resync function. Using this, we can retrieve the user-defined configuration for the resource and use it to fetch the data from the source.
 
 ### Syncing Repositories
-Syncing repositories is similar to syncing organizations. The only difference is that we will be using the `GitHubRepositoryResourceConfig` class instead of the `GitHubOranizationResourceConfig` class.
+Syncing repositories is similar to syncing organizations. The only difference is that we will be using the `GitHubRepositoryResourceConfig` class instead of the `GitHubOrganizationResourceConfig ` class.
 
 <details>
 
