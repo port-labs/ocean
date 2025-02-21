@@ -146,7 +146,7 @@ Syncing pull requests is similar to syncing repositories. The only difference is
 # rest of the imports
 from integration import (
     ObjectKind,
-    GitHubOranizationResourceConfig,
+    GitHubOrganizationResourceConfig,
     GitHubRepositoryResourceConfig,
 # highlight-next-line
     GitHubPullRequestResourceConfig,
