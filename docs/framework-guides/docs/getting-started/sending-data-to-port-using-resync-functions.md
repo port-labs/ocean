@@ -104,7 +104,7 @@ Syncing repositories is similar to syncing organizations. The only difference is
 # rest of the imports
 from integration import (
     ObjectKind,
-    GitHubOranizationResourceConfig,
+    GitHubOrganizationResourceConfig,
 # highlight-next-line
     GitHubRepositoryResourceConfig,
 )
