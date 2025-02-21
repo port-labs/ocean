@@ -1,8 +1,8 @@
 description: gitlab-v2 integration for Port Ocean
-icon: Gitlab  # Should be one of the available icons in Port
+icon: Gitlab
 features:
   - type: exporter
-    section: Git Providers  # Should be one of the available sections in Port
+    section: Git Providers
     resources:
       - kind: projects
       # - kind: <ResourceName2>
@@ -12,10 +12,6 @@ configurations:
     type: string
     description: 'The Gitlab token to authenticate with the Gitlab API.'
     sensitive: true
-  - name: appHost
-    required: false
-    type: url
-    description: The host of the Port Ocean app. Used for setting up the webhooks against the Gitlab.
   - name: gitlabHost
     required: false
     type: url
