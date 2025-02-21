@@ -195,7 +195,7 @@ For our `blueprints.json` file, we will specify the default blueprints that will
 
 ## `port-app-config.yml` File
 
-For our `port-app-config.yml` file, we will specify the default integration resource mapping that will be created when the integration is installed. In addition, we will specify default organizations data will be ingested from.
+In the `port-app-config.yml` file, we define the default integration resource mapping that will be applied when the integration is installed, along with specifying the default organizations from which data will be ingested
 
 
 <details>
