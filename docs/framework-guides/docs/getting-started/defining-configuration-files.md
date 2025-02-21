@@ -4,13 +4,12 @@ sidebar_position: 5
 
 
 # 📝 Defining Configuration Files
-The next step in our integration journey is to define configurations for our integration which are are just three (3):
+The next step in our integration journey is to define the configurations for our integration. There are three configuration files:
 
-- `.port/spec.yaml`: A required file used to provide the integration specification and also a validation layer for the inputs required by the integration. The validation layer is used to verify the provided integration configuration during the integration startup process. The [The `spec.yaml` section](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#specyaml-file) of the Integration Spec and Defaults documentation gives more details.
+- `.port/spec.yaml`: A required file that provides the integration specification and acts as a validation layer for the inputs required during the integration startup process. For more details, see the [`spec.yaml` section](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#specyaml-file) of the Integration Spec and Defaults documentation.
+- `.port/resources/blueprints.json`: An optional file that is used to provide default resources that will be created when the integration is installed. For more details, see the [`blueprints.json` section](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#blueprintsjson-file) of the Integration Spec and Defaults documentation.
 
-- `.port/resources/blueprints.json`: An optional file that is used to provide default resources that will be created when the integration is installed. The [The `blueprints.json` section](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#blueprintsjson-file) of the Integration Spec and Defaults documentation gives more details.
-
-- `.port/resources/port-app-config.yml`: An optional file that is used to specify the default integration resource mapping that will be created when the integration is installed. The [The `port-app-config.yml` section](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#port-app-configyml-file) of the Integration Spec and Defaults documentation gives more details.
+- `.port/resources/port-app-config.yml`: An optional file that is used to specify the default integration resource mapping that will be created when the integration is installed. For more details, see the [`port-app-config.yml` section](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#port-app-configyml-file) of the Integration Spec and Defaults documentation..
 
 
 ## `spec.yaml` File
@@ -196,7 +195,7 @@ In the `blueprints.json` file, we define the default blueprints that will be cre
 
 ## `port-app-config.yml` File
 
-For our `port-app-config.yml` file, we will specify the default integration resource mapping that will be created when the integration is installed. In addition, we will specify default organizations data will be ingested from.
+In the `port-app-config.yml` file, we define the default integration resource mapping that will be applied when the integration is installed, along with specifying the default organizations from which data will be ingested
 
 
 <details>

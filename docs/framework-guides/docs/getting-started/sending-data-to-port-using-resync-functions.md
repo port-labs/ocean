@@ -94,7 +94,7 @@ The `@ocean.on_resync` decorator is used to register the function as a resync fu
 In addition, the `event` object is used to access the resource configuration and other information about the event that triggered the resync function. Using this, we can retrieve the user-defined configuration for the resource and use it to fetch the data from the source.
 
 ### Syncing Repositories
-Syncing repositories is similar to syncing organizations. The only difference is that we will be using the `GitHubRepositoryResourceConfig` class instead of the `GitHubOranizationResourceConfig` class.
+Syncing repositories is similar to syncing organizations. The only difference is that we will be using the `GitHubRepositoryResourceConfig` class instead of the `GitHubOrganizationResourceConfig ` class.
 
 <details>
 
@@ -104,7 +104,7 @@ Syncing repositories is similar to syncing organizations. The only difference is
 # rest of the imports
 from integration import (
     ObjectKind,
-    GitHubOranizationResourceConfig,
+    GitHubOrganizationResourceConfig,
 # highlight-next-line
     GitHubRepositoryResourceConfig,
 )
@@ -135,7 +135,7 @@ async def get_repositories(
 </details>
 
 ### Syncing Pull Requests
-Syncing pull requests is similar to syncing repositories. The only difference is that we will be using the `GitHubPullRequestResourceConfig` class instead of the `GitHubOranizationResourceConfig` class.
+Syncing pull requests is similar to syncing repositories. The only difference is that we will be using the `GitHubPullRequestResourceConfig` class instead of the `GitHubOrganizationResourceConfig ` class.
 
 
 <details>
@@ -146,7 +146,7 @@ Syncing pull requests is similar to syncing repositories. The only difference is
 # rest of the imports
 from integration import (
     ObjectKind,
-    GitHubOranizationResourceConfig,
+    GitHubOrganizationResourceConfig,
     GitHubRepositoryResourceConfig,
 # highlight-next-line
     GitHubPullRequestResourceConfig,
@@ -211,7 +211,7 @@ def initialize_github_client() -> GitHubClient:
 @ocean.on_resync(ObjectKind.ORGANIZATION)
 async def get_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_github_client()
-    selector = cast(GitHubOranizationResourceConfig, event.resource_config).selector
+    selector = cast(GitHubOrganizationResourceConfig, event.resource_config).selector
     logger.info(f"Retrieving organizations: {selector.organizations}")
     organizations = await client.get_organizations(selector.organizations)
     logger.info(f"Retrieved organization batch of size: {len(organizations)}")
