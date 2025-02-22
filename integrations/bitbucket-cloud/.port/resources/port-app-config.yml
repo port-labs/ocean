@@ -1,0 +1,16 @@
+resources:
+  - kind: bitbucket-cloud-example-kind
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .my_custom_id
+          title: '(.my_component + " @ " + .my_service)'
+          blueprint: '"bitbucket-cloudExampleBlueprint"'
+          properties:
+            status: .my_enum
+            text: .my_custom_text
+            component: .my_component
+            service: .my_service
+            score: .my_special_score

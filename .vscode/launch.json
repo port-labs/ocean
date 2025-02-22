@@ -130,7 +130,20 @@
       "python": "${workspaceFolder}/.venv/bin/python",
       "request": "launch",
       "type": "debugpy",
-      "args": ["new"]
+      "args": [
+        "new"
+      ]
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/bitbucket-cloud",
+      "envFile": "${workspaceFolder}/integrations/bitbucket-cloud/.env",
+      "justMyCode": true,
+      "name": "Run bitbucket-cloud integration",
+      "program": "${workspaceFolder}/integrations/bitbucket-cloud/debug.py",
+      "python": "${workspaceFolder}/integrations/bitbucket-cloud/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }
