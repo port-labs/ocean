@@ -6,6 +6,66 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.20.2 (2025-02-23)
+
+### Bug Fixes
+
+- Validate feature flag for get config in new integrations - outside of mixin
+
+## 0.20.1 (2025-02-23)
+
+### Bug Fixes
+
+- Validate feature flag for get config in new integrations
+
+## 0.20.0 (2025-02-20)
+
+### Features
+
+- Added comprehensive live events support in Ocean Core:
+  - Introduced `LiveEventsMixin` for standardized live event handling across integrations
+  - Added methods for resource mapping, entity deletion threshold, and data processing
+  - Enhanced `AbstractWebhookProcessor` with live events integration
+  - Added robust retry logic and lifecycle management for webhook processing
+  - Implemented history-preserving entity deletion and recreation for live events
+
+## 0.19.3 (2025-02-19)
+
+### Features
+
+- Added new `base_url` to Ocean Core. This will be used to deprecate the `OCEAN__INTEGRATION__CONFIG__APP_HOST` usage.
+
+## 0.19.2 (2025-02-19)
+
+### Bug Fixes
+
+- Fixed non awaited coroutine for provisioned integrations
+
+## 0.19.1 (2025-02-18)
+
+### Features
+
+- Verify Provision enabled integrations
+
+### Bug Fixes
+
+- Ensure no race condition with externally created integrations
+
+## 0.19.0 (2025-02-16)
+
+### Features
+
+- Added capability to read configurations from a file.
+- Add option to periodically keep the integration's configuration updated with the file's configuration.
+- Add reloading configuration on retry
+
+## 0.18.9 (2025-02-07)
+
+### Improvements
+
+- Added option to destroy integration config while performing defaults clean cli command: `ocean defaults clean --force --wait --destroy`
+
 ## 0.18.8 (2025-02-04)
 
 ### Bug Fixes

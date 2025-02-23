@@ -7,6 +7,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.1 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.2
+
+
+## 0.3.0 (2025-02-23)
+
+
+### Improvements
+
+- Introduced a standardized abstraction for Jira integration
+- Added dedicated webhook processors for issues, projects, and users
+- Refactored and modularized code for better maintainability
+- Enhanced error handling and logging for webhook events
+
+
+## 0.2.41 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.1
+
+
+## 0.2.40 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.0
+
+
+## 0.2.39 (2025-02-19)
+
+
+### Improvements
+
+- Added base_url reference instead of app_host
+- Made JiraClient inherit OAuthClient, and implement external access token prior to local jira token
+
+
+## 0.2.38 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.3
+
+
+## 0.2.37 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.2
+
+
+## 0.2.36 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.1
+
+
+## 0.2.35 (2025-02-13)
+
+
+### Improvements
+
+- Bumped cryptography version to ^44.0.1
+
+
+## 0.2.34 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
+
+
 ## 0.2.33 (2025-02-04)
 
 

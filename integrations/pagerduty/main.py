@@ -1,4 +1,3 @@
-import asyncio
 import typing
 from typing import Any
 
@@ -9,8 +8,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients.pagerduty import PagerDutyClient
 from integration import (
-    ObjectKind,
     OBJECTS_WITH_SPECIAL_HANDLING,
+    ObjectKind,
     PagerdutyEscalationPolicyResourceConfig,
     PagerdutyIncidentResourceConfig,
     PagerdutyOncallResourceConfig,
@@ -58,19 +57,22 @@ async def enrich_service_with_analytics_data(
 
 
 async def enrich_incidents_with_analytics_data(
-    client: PagerDutyClient,
-    incidents: list[dict[str, Any]],
+    client: PagerDutyClient, incidents: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    analytics_data = await asyncio.gather(
-        *[client.get_incident_analytics(incident["id"]) for incident in incidents]
-    )
+    if not incidents:
+        return incidents
+    logger.info(f"Enriching batch of {len(incidents)} incidents with analytics")
+    service_ids = list({incident["service"]["id"] for incident in incidents})
 
-    enriched_incidents = [
-        {**incident, "__analytics": analytics}
-        for incident, analytics in zip(incidents, analytics_data)
-    ]
+    analytics_map = {}
+    async for analytics_batch in client.get_incident_analytics_by_services(service_ids):
+        logger.info(f"Received analytics batch with {len(analytics_batch)} entries")
+        analytics_map.update({analytic["id"]: analytic for analytic in analytics_batch})
 
-    return enriched_incidents
+    for incident in incidents:
+        incident["__analytics"] = analytics_map.get(incident["id"])
+
+    return incidents
 
 
 @ocean.on_resync(ObjectKind.INCIDENTS)
@@ -91,10 +93,9 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received batch with {len(incidents)} incidents")
 
         if selector.incident_analytics:
-            enriched_incident_batch = await enrich_incidents_with_analytics_data(
-                pager_duty_client, incidents
+            yield (
+                await enrich_incidents_with_analytics_data(pager_duty_client, incidents)
             )
-            yield enriched_incident_batch
         else:
             yield incidents
 

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "pagerduty"
-version = "0.2.18"
+version = "0.2.27"
 description = "PagerDuty Integration"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.18.8", extras = ["cli"]}
+port_ocean = {version = "^0.20.2", extras = ["cli"]}
 httpx = "^0.27.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -21,7 +21,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
-cryptography = "^43.0.1"
+cryptography = "^44.0.1"
 
 [tool.towncrier]
 directory = "changelog"

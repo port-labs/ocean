@@ -22,10 +22,8 @@ def repeat_every(
 ) -> NoArgsNoReturnDecorator:
     """
     This function returns a decorator that modifies a function so it is periodically re-executed after its first call.
-
     The function it decorates should accept no arguments and return nothing. If necessary, this can be accomplished
     by using `functools.partial` or otherwise wrapping the target function prior to decoration.
-
     Parameters
     ----------
     seconds: float

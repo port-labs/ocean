@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, TYPE_CHECKING, final
-
+from typing import Any, Optional, TYPE_CHECKING, final, Type, cast
 from aiolimiter import AsyncLimiter
 from google.cloud.cloudquotas_v1 import CloudQuotasAsyncClient, GetQuotaInfoRequest
 from google.api_core.exceptions import GoogleAPICallError
@@ -12,7 +11,10 @@ from collections.abc import MutableSequence
 import asyncio
 
 
-_DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0
+# Increasing _DEFAULT_RATE_LIMIT_TIME_PERIOD to 61.0 instead of 60.0 prevents hitting 429 errors in some cases.
+# The extra second compensates for potential timing inconsistencies in request handling
+# or slight variations in rate limit enforcement by the API.
+_DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 61.0
 _DEFAULT_RATE_LIMIT_QUOTA: int = int(
     ocean.integration_config["search_all_resources_per_minute_quota"]
 )
@@ -27,6 +29,73 @@ class ContainerType(Enum):
     PROJECT = "projects"
     FOLDER = "folders"
     ORGANIZATION = "organizations"
+
+
+class PersistentAsyncLimiter(AsyncLimiter):
+    """
+    Persistent AsyncLimiter that remains valid across event loops.
+    Ensures rate limiting holds across multiple API requests, even when a new event loop is created.
+
+    The AsyncLimiter documentation states that it is not designed to be reused across different event loops.
+    This class extends AsyncLimiter to ensure that the rate limiter remains attached to a global event loop.
+    Documentation: https://aiolimiter.readthedocs.io/en/latest/#:~:text=Note,this%20will%20work.
+    """
+
+    _global_event_loop: Optional[asyncio.AbstractEventLoop] = None
+    _limiter_instance: Optional["PersistentAsyncLimiter"] = None
+
+    def __init__(self, max_rate: float, time_period: float = 60) -> None:
+        """
+        Initializes a persistent AsyncLimiter with a specified rate and time period.
+
+        :param max_rate: Maximum number of requests per time period.
+        :param time_period: Time period in seconds.
+        """
+        super().__init__(max_rate, time_period)
+        self._attach_to_global_loop()
+
+    def _attach_to_global_loop(self) -> None:
+        """Ensures the limiter remains attached to a global event loop."""
+        current_loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+        if self._global_event_loop is None:
+            self._global_event_loop = current_loop
+        elif self._global_event_loop != current_loop:
+            logger.warning(
+                "PersistentAsyncLimiter is being reused across different event loops. "
+                "It has been re-attached to prevent state loss."
+            )
+            self._global_event_loop = current_loop
+
+    @classmethod
+    def get_limiter(
+        cls, max_rate: float, time_period: float = 60
+    ) -> "PersistentAsyncLimiter":
+        """
+        Returns a persistent limiter instance for the given max_rate and time_period.
+        Ensures that rate limiting remains consistent across all API requests.
+
+        :param max_rate: Maximum number of requests per time period.
+        :param time_period: Time period in seconds.
+        :return: An instance of PersistentAsyncLimiter.
+        """
+        if cls._limiter_instance is None:
+            logger.info(
+                f"Creating new global persistent limiter for {max_rate} requests per {time_period} sec"
+            )
+            cls._limiter_instance = cls(max_rate, time_period)
+        return cls._limiter_instance
+
+    async def __aenter__(self) -> None:
+        await self.acquire()
+        return None
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[Any],
+    ) -> None:
+        return None
 
 
 class GCPResourceQuota(ABC):
@@ -132,17 +201,53 @@ class GCPResourceRateLimiter(GCPResourceQuota):
             f"The Integration will utilize {_PERCENTAGE_OF_QUOTA * 100}% of the quota, which equates to {effective_quota_limit} for rate limiting."
         )
 
-        limiter = AsyncLimiter(max_rate=quota, time_period=self.time_period)
+        limiter = AsyncLimiter(
+            max_rate=effective_quota_limit, time_period=self.time_period
+        )
+        return limiter
+
+    async def register_persistent_limiter(
+        self, container_id: str, *arg: Optional[Any]
+    ) -> "PersistentAsyncLimiter":
+        quota = await self._get_quota(container_id, *arg)
+        effective_quota_limit: int = int(max(round(quota * _PERCENTAGE_OF_QUOTA, 1), 1))
+        logger.info(
+            f"The Integration will utilize {_PERCENTAGE_OF_QUOTA * 100}% of the quota, which equates to {effective_quota_limit} for persistent rate limiting."
+        )
+        limiter = PersistentAsyncLimiter.get_limiter(
+            max_rate=effective_quota_limit, time_period=self.time_period
+        )
         return limiter
 
     @final
     def quota_name(self, container_id: str) -> str:
         return f"{self.container_type.value}/{container_id}/locations/global/services/{self.service}/quotaInfos/{self.quota_id}"
 
-    async def limiter(self, container_id: str) -> AsyncLimiter:
-        "fetches the rate limiter for the given container"
+    async def _get_limiter(
+        self, container_id: str, persistent: bool = False
+    ) -> AsyncLimiter:
+        """
+        Fetches the rate limiter for the given container.
+
+        :param container_id: The container ID for which to fetch the limiter.
+        :param persistent: Whether to return a persistent rate limiter.
+        :return: An instance of either AsyncLimiter or PersistentAsyncLimiter.
+        """
         name = self.quota_name(container_id)
+        if persistent:
+            return await self.register_persistent_limiter(container_id, name)
         return await self.register(container_id, name)
+
+    async def limiter(self, container_id: str) -> AsyncLimiter:
+        return await self._get_limiter(container_id)
+
+    async def persistent_rate_limiter(
+        self, container_id: str
+    ) -> PersistentAsyncLimiter:
+        return cast(
+            PersistentAsyncLimiter,
+            await self._get_limiter(container_id, persistent=True),
+        )
 
 
 class ResourceBoundedSemaphore(GCPResourceRateLimiter):
@@ -184,3 +289,14 @@ class ResourceBoundedSemaphore(GCPResourceRateLimiter):
                 f"Consider increasing the {self.service}/{self.quota_id} quota for {container_id} to process more {self.container_type.value} concurrently."
             )
         return limit
+
+    async def semaphore_for_real_time_event(
+        self, container_id: str
+    ) -> asyncio.BoundedSemaphore:
+        name = self.quota_name(container_id)
+        quota = await self.register(container_id, name)
+        semaphore = asyncio.BoundedSemaphore(int(quota.max_rate))
+        logger.info(
+            f"The integration will process {quota.max_rate} {self.container_type.value} at a time based on {container_id}'s quota capacity"
+        )
+        return semaphore
