@@ -3,14 +3,26 @@ import hmac
 from initialize_client import init_client
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import AbstractWebhookProcessor
-from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPayload, WebhookEvent, WebhookEventRawResults
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+)
+from port_ocean.core.handlers.webhook.webhook_event import (
+    EventHeaders,
+    EventPayload,
+    WebhookEvent,
+    WebhookEventRawResults,
+)
 from port_ocean.context.ocean import ocean
 
-class ProjectWebhookProcessor(AbstractWebhookProcessor):
+
+class SnykProjectWebhookProcessor(AbstractWebhookProcessor):
     def should_process_event(self, event: WebhookEvent) -> bool:
         signature = event.headers.get("x-hub-signature", "")
-        hmac_obj = hmac.new(ocean.integration_config["webhook_secret"].encode("utf-8"), event.payload, hashlib.sha256)
+        hmac_obj = hmac.new(
+            ocean.integration_config["webhook_secret"].encode("utf-8"),
+            event.payload,
+            hashlib.sha256,
+        )
         expected_signature = f"sha256={hmac_obj.hexdigest()}"
         return signature == expected_signature
 
@@ -38,6 +50,5 @@ class ProjectWebhookProcessor(AbstractWebhookProcessor):
         )
 
         return WebhookEventRawResults(
-            updated_raw_results= [project_details],
-            deleted_raw_results=[]
+            updated_raw_results=[project_details], deleted_raw_results=[]
         )

@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import hmac
-from typing import Any, cast, Optional
+from typing import Any, cast
 from fastapi import Request
 from loguru import logger
 from initialize_client import init_client
@@ -10,8 +10,11 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from aiolimiter import AsyncLimiter
-from snyk.client import SnykClient
 from snyk.overrides import ProjectResourceConfig
+from webhook_processors.issue_webhook_processor import SnykIssueWebhookProcessor
+from webhook_processors.project_webhook_processor import SnykProjectWebhookProcessor
+from webhook_processors.target_webhook_processor import TargetWebhookProcessor
+
 
 CONCURRENT_REQUESTS = 20
 SNYK_LIMIT = 1320
@@ -109,47 +112,6 @@ async def on_vulnerability_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues_batch
 
 
-@ocean.router.post("/webhook")
-async def on_vulnerability_webhook_handler(request: Request) -> None:
-    verify_signature_result = await verify_signature(
-        request, ocean.integration_config["webhook_secret"]
-    )
-    if not verify_signature_result:
-        logger.warning("Signature verification failed, ignoring request")
-        return
-    data = await request.json()
-    if (
-        "project" in data
-    ):  # Following this document, this is how we will detect the event type https://snyk.docs.apiary.io/#introduction/consuming-webhooks/payload-versioning
-        logger.info("Processing Snyk webhook event for project")
-
-        snyk_client = init_client()
-
-        project_id = data["project"]["id"]
-        organization_id = data["org"]["id"]
-        project_details = await snyk_client.get_single_project(
-            organization_id, project_id
-        )
-
-        tasks = [
-            ocean.register_raw(
-                Kinds.ISSUE,
-                await snyk_client.get_issues(organization_id, project_id),
-            ),
-            ocean.register_raw(Kinds.PROJECT, [project_details]),
-            ocean.register_raw(
-                Kinds.TARGET,
-                [
-                    await snyk_client.get_single_target_by_project_id(
-                        organization_id, project_id
-                    )
-                ],
-            ),
-        ]
-
-        await asyncio.gather(*tasks)
-
-
 @ocean.on_start()
 async def on_start() -> None:
     if ocean.event_listener_type == "ONCE":
@@ -165,3 +127,8 @@ async def on_start() -> None:
         snyk_client = init_client()
 
         await snyk_client.create_webhooks_if_not_exists()
+
+
+ocean.add_webhook_processor("/webhook", TargetWebhookProcessor)
+ocean.add_webhook_processor("/webhook", SnykIssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", SnykProjectWebhookProcessor)

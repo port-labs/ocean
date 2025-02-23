@@ -7,6 +7,7 @@ from port_ocean.context.ocean import ocean
 SNYK_LIMIT = 1320
 RATELIMITER = AsyncLimiter(SNYK_LIMIT)
 
+
 def init_client() -> SnykClient:
     def parse_list(value: str) -> Optional[list[str]]:
         return [item.strip() for item in value.split(",")] if value else None
