@@ -29,7 +29,7 @@ class UserWebhookProcessor(AbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        webhook_event = payload.get("webhookEvent")
+        webhook_event = payload.get("webhookEvent", "")
 
         client = create_jira_client()
         account_id = payload["user"]["accountId"]

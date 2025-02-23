@@ -29,7 +29,7 @@ class ProjectWebhookProcessor(AbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        webhook_event = payload.get("webhookEvent")
+        webhook_event = payload.get("webhookEvent", "")
 
         client = create_jira_client()
         project_key = payload["project"]["key"]
