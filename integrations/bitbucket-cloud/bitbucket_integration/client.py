@@ -1,131 +1,72 @@
-import base64
-import logging
-import asyncio
-from port_ocean.clients.auth.auth_client import AuthClient
+import httpx
+from loguru import logger
+
 from port_ocean.context.ocean import ocean
-from port_ocean.helpers.async_client import OceanAsyncClient
 
+BITBUCKET_EVENTS = [
+    "repo:push",
+    "pullrequest:created",
+    "pullrequest:updated",
+    "pullrequest:fulfilled",
+    "pullrequest:rejected",
+]
 
-logger = logging.getLogger(__name__)
+class BitbucketClient:
+    def __init__(self, workspace: str, token: str):
+        self.workspace = workspace
+        self.token = token
+        self.base_url = ocean.integration_config["bitbucket_base_url"]
+        self.headers = {"Authorization": f"Bearer {self.token}"}
 
-class CustomAuthClient(AuthClient):
-    async def refresh_request_auth_creds(self):
-        """Basic Authentication does not require credential refresh."""
-        logger.debug("Basic Authentication does not require refreshing credentials.")
+    async def _fetch_paginated_data(self, endpoint: str) -> list:
+        """Helper method to fetch paginated data from Bitbucket API."""
+        all_data = []
+        url = f"{self.base_url}/{endpoint}"
 
-class BasicAuth:
-    """Encapsulates basic authentication logic for Bitbucket API."""
+        async with httpx.AsyncClient() as client:
+            while url:
+                response = await client.get(url)
+                response.raise_for_status()
+                data = response.json()
 
-    @staticmethod
-    def get_auth_token(username: str, password: str) -> str:
-        """Generates a base64-encoded authentication token for HTTP Basic Authentication."""
-        if not username or not password:
-            logger.warning("Username or password is missing while generating auth token.")
-            raise ValueError("Username and password must be provided.")
+                all_data.extend(data.get("values", []))
 
-        auth_token = base64.b64encode(f"{username}:{password}".encode()).decode()
-        logger.debug("Generated authentication token successfully.")
-        return auth_token
-    
-class BitbucketOceanIntegration:
-    """Integration class for Bitbucket API with Ocean Framework."""
+                url = data.get("next", None)
 
+        return all_data
 
-    
+    async def fetch_repositories(self) -> list:
+        """Fetch all repositories in the workspace."""
+        logger.debug(f"Fetching repositories for workspace: {self.workspace}")
+        return await self._fetch_paginated_data(f"repositories/{self.workspace}")
 
-    def __init__(self):
-        self.BITBUCKET_API_BASE = "https://api.bitbucket.org/2.0"
-        self.WORKSPACE = ocean.integration_config.get("self.WORKSPACE")
-        self.auth_token = BasicAuth.get_auth_token(
-            ocean.integration_config.get("username"), 
-            ocean.integration_config.get("password")
-        )
-        self.client = OceanAsyncClient(
-            base_url=self.BITBUCKET_API_BASE,
-            headers={
-                "Authorization": f"Basic {self.auth_token}",
-                "Content-Type": "application/json"
-            }
-        )  
-        self.port_client = self._initialize_port_client()
+    async def fetch_projects(self) -> list:
+        """Fetch all projects in the workspace."""
+        logger.debug(f"Fetching projects for workspace: {self.workspace}")
+        return await self._fetch_paginated_data(f"workspaces/{self.workspace}/projects")
 
-    def _initialize_port_client(self):
-        """Initializes the Port client with exception handling."""
-        try:
-            return CustomAuthClient()
-        except Exception as e:
-            logger.warning(f"Failed to initialize Port client: {e}")
-            return None
-
-    async def fetch_projects(self):
-        """Fetches projects for the self.WORKSPACE."""
-        return await self._fetch_paginated_data(f"{self.BITBUCKET_API_BASE}/self.WORKSPACEs/{self.WORKSPACE}/projects")
-
-    async def fetch_repositories(self):
-        """Fetches repositories for the self.WORKSPACE."""
-        return await self._fetch_paginated_data(f"{self.BITBUCKET_API_BASE}/repositories/{self.WORKSPACE}")
-
-    async def fetch_pull_requests(self, repo_slug):
-        """Fetches pull requests for a specific repository."""
-        return await self._fetch_paginated_data(f"{self.BITBUCKET_API_BASE}/repositories/{self.WORKSPACE}/{repo_slug}/pullrequests")
-    
+    async def fetch_pull_requests(self, repo_slug: str) -> list:
+        """Fetch all pull requests for a repository."""
+        logger.debug(f"Fetching pull requests for repository: {repo_slug}")
+        return await self._fetch_paginated_data(f"repositories/{self.workspace}/{repo_slug}/pullrequests")
 
     async def fetch_components(self, repo_slug: str) -> list:
         """Fetch all components for a repository."""
         logger.debug(f"Fetching components for repository: {repo_slug}")
-        return await self._fetch_paginated_data(f"repositories/{self.self.WORKSPACE}/{repo_slug}/components")
+        return await self._fetch_paginated_data(f"repositories/{self.workspace}/{repo_slug}/components")
 
-    async def _fetch_paginated_data(self, endpoint, max_retries=3):
-        """
-        Fetches paginated data from the Bitbucket API.
-        Implements exponential backoff for handling rate limits.
-        """
-        results = []
-        url = endpoint
-        retries = 0
+    async def register_webhook(self, webhook_url: str, secret: str) -> None:
+        """Register a webhook with Bitbucket."""
+        url = f"{self.base_url}/repositories/{self.workspace}/hooks"
+        payload = {
+            "description": "Port Ocean Integration Webhook",
+            "url": webhook_url,
+            "active": True,
+            "events": BITBUCKET_EVENTS,
+            "secret": secret
+        }
 
-        while url:
-            try:
-                response = await self.client.get(url)
-                response.raise_for_status()
-
-                data = await response.json()
-                logger.debug(f"API Response: {data}")
-
-                results.extend(data.get("values", []))
-                url = data.get("next", None)
-
-            except Exception as e:
-                if retries < max_retries:
-                    wait_time = 2 ** retries  # Exponential backoff (2s, 4s, 8s)
-                    logger.warning(f"Request error, retrying in {wait_time} seconds... Error: {e}")
-                    await asyncio.sleep(wait_time)
-                    retries += 1
-                else:
-                    logger.error(f"Max retries exceeded for {endpoint}. Skipping...")
-                    break
-
-        return results
-
-    async def ingest_data_to_port(self):
-        """Ingests Bitbucket data into Port."""
-        if not self.port_client:
-            logger.error("Port client is not initialized.")
-            return
-
-        try:
-            projects = await self.fetch_projects()
-            repositories = await self.fetch_repositories()
-            pull_requests = []
-
-            for repo in repositories:
-                repo_slug = repo.get("slug")
-                if repo_slug:
-                    pull_requests.extend(await self.fetch_pull_requests(repo_slug))
-
-            logger.info(
-                f"Data ingestion completed: {len(projects)} projects, {len(repositories)} repositories, {len(pull_requests)} PRs"
-            )
-
-        except Exception as e:
-            logger.error(f"Failed to ingest data: {e}")
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, headers=self.headers)
+            response.raise_for_status()
+            logger.info(f"Webhook registered successfully: {response.json()}")
