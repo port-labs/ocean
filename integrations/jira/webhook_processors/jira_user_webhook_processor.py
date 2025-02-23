@@ -32,7 +32,7 @@ class JiraUserWebhookProcessor(AbstractWebhookProcessor):
         webhook_event = payload.get("webhookEvent")
 
         if not webhook_event:
-            logger.error("Missing webhook event")
+            logger.error("Missing webhook event for a Jira user")
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[],
