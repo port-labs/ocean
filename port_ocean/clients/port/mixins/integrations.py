@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 
+ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG = "USE_PROVISIONED_DEFAULTS"
 INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS = 3
 INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR = 1.55
 INTEGRATION_POLLING_RETRY_LIMIT = 30
@@ -75,13 +76,23 @@ class IntegrationClientMixin:
         integration = response.json().get("integration", {})
         if integration.get("config", None) or not integration:
             return integration
-        is_provision_enabled_for_integration = integration.get(
-            "installationAppType", None
-        ) and (
-            await self.is_integration_provision_enabled(
-                integration.get("installationAppType", ""),
-                should_raise,
-                should_log,
+        is_provision_enabled_for_integration = (
+            integration.get("installationAppType", None)
+            and (
+                await self.is_integration_provision_enabled(
+                    integration.get("installationAppType", ""),
+                    should_raise,
+                    should_log,
+                )
+            )
+            and (
+                ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG
+                in (
+                    await self.client.get_organization_feature_flags(
+                        should_raise,
+                        should_log,
+                    )
+                )
             )
         )
 
