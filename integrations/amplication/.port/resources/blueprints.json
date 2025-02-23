@@ -1,0 +1,207 @@
+[
+  {
+    "identifier": "AmplicationTemplate",
+    "description": "Blueprint for templates coming from Amplication's app",
+    "title": "Amplication Template",
+    "icon": "Amplication",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "project": {
+          "type": "string",
+          "title": "Project"
+        },
+        "project_id": {
+          "type": "string",
+          "title": "Project ID"
+        },
+        "blueprint": {
+          "type": "string",
+          "title": "Blueprint"
+        },
+        "blueprint_id": {
+          "type": "string",
+          "title": "Blueprint ID"
+        }
+      },
+      "required": [
+        "project_id",
+        "project"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "resource_count": {
+        "title": "Resource Count",
+        "icon": "Amplication",
+        "type": "number",
+        "description": "Number of resources created from this template",
+        "target": "AmplicationResource",
+        "calculationSpec": {
+          "func": "count",
+          "calculationBy": "entities"
+        }
+      }
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "AmplicationResource",
+    "description": "Blueprint for resources coming from Amplication's app",
+    "title": "Amplication Resource",
+    "icon": "Amplication",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "project": {
+          "type": "string",
+          "title": "Project"
+        },
+        "project_id": {
+          "type": "string",
+          "title": "Project ID"
+        },
+        "git_organization": {
+          "icon": "Git",
+          "type": "string",
+          "title": "Git Organization"
+        },
+        "git_repository": {
+          "icon": "Git",
+          "type": "string",
+          "title": "Git Repository"
+        },
+        "blueprint": {
+          "type": "string",
+          "title": "Blueprint"
+        },
+        "blueprint_id": {
+          "type": "string",
+          "title": "Blueprint ID"
+        }
+      },
+      "required": [
+        "project",
+        "project_id"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "new_alerts_count": {
+        "title": "Alerts Count",
+        "icon": "Alert",
+        "type": "number",
+        "description": "Number of new outdated version alerts this resource has",
+        "target": "AmplicationAlert",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "=",
+              "value": "New"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "func": "count",
+          "calculationBy": "entities"
+        }
+      }
+    },
+    "relations": {
+      "template": {
+        "target": "AmplicationTemplate",
+        "title": "Template",
+        "description": "The template of this resource",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "AmplicationAlert",
+    "description": "Blueprint for outdated version alerts coming from Amplication's app",
+    "title": "Amplication Version Alert",
+    "icon": "Amplication",
+    "schema": {
+      "properties": {
+        "block_id": {
+          "type": "string",
+          "title": "Block ID"
+        },
+        "block_displayName": {
+          "type": "string",
+          "title": "Plugin Name"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "default": "Other",
+          "enum": [
+            "PluginVersion",
+            "TemplateVersion",
+            "CodeEngineVersion",
+            "Other"
+          ],
+          "enumColors": {
+            "PluginVersion": "blue",
+            "TemplateVersion": "orange",
+            "CodeEngineVersion": "purple",
+            "Other": "bronze"
+          }
+        },
+        "outdatedVersion": {
+          "type": "string",
+          "title": "Outdated Version"
+        },
+        "latestVersion": {
+          "type": "string",
+          "title": "Latest Version"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "default": "New",
+          "enum": [
+            "New",
+            "Resolved",
+            "Ignored",
+            "Canceled"
+          ],
+          "enumColors": {
+            "New": "turquoise",
+            "Resolved": "red",
+            "Ignored": "green",
+            "Canceled": "blue"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "outdatedVersion",
+        "latestVersion",
+        "status"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "resource": {
+        "title": "Resource",
+        "target": "AmplicationResource",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
