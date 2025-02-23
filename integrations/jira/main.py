@@ -1,5 +1,5 @@
 import typing
-from typing import Any, cast
+from typing import cast
 
 from loguru import logger
 from initialize_client import create_jira_client
@@ -15,8 +15,11 @@ from jira.overrides import (
     TeamResourceConfig,
 )
 from webhook_processors.jira_issue_webhook_processor import JiraIssueWebhookProcessor
-from webhook_processors.jira_project_webhook_processor import JiraProjectWebhookProcessor
+from webhook_processors.jira_project_webhook_processor import (
+    JiraProjectWebhookProcessor,
+)
 from webhook_processors.jira_user_webhook_processor import JiraUserWebhookProcessor
+
 
 async def setup_application() -> None:
     base_url = ocean.app.base_url

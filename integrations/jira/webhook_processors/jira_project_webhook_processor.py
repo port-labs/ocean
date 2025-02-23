@@ -2,8 +2,15 @@ from loguru import logger
 from initialize_client import create_jira_client
 from object_kind import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import AbstractWebhookProcessor
-from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPayload, WebhookEvent, WebhookEventRawResults
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+)
+from port_ocean.core.handlers.webhook.webhook_event import (
+    EventHeaders,
+    EventPayload,
+    WebhookEvent,
+    WebhookEventRawResults,
+)
 
 
 class JiraProjectWebhookProcessor(AbstractWebhookProcessor):
