@@ -33,8 +33,9 @@ class BitbucketOceanIntegration:
 
     
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self):
+        self.BITBUCKET_API_BASE = "https://api.bitbucket.org/2.0"
+        self.WORKSPACE = ocean.integration_config.get("self.WORKSPACE")
         self.auth_token = BasicAuth.get_auth_token(
             ocean.integration_config.get("username"), 
             ocean.integration_config.get("password")
@@ -45,9 +46,7 @@ class BitbucketOceanIntegration:
                 "Authorization": f"Basic {self.auth_token}",
                 "Content-Type": "application/json"
             }
-        )
-        self.BITBUCKET_API_BASE = "https://api.bitbucket.org/2.0"
-        self.WORKSPACE = ocean.integration_config.get("self.WORKSPACE")
+        )  
         self.port_client = self._initialize_port_client()
 
     def _initialize_port_client(self):
