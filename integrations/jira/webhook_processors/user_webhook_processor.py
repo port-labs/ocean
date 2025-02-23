@@ -31,13 +31,6 @@ class UserWebhookProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         webhook_event = payload.get("webhookEvent")
 
-        if not webhook_event:
-            logger.error("Missing webhook event for a Jira user")
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
-
         client = create_jira_client()
         account_id = payload["user"]["accountId"]
         logger.debug(f"Fetching user with accountId: {account_id}")

@@ -30,12 +30,6 @@ class ProjectWebhookProcessor(AbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         webhook_event = payload.get("webhookEvent")
-        if not webhook_event:
-            logger.error("Missing webhook event for a Jira project")
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
 
         client = create_jira_client()
         project_key = payload["project"]["key"]
