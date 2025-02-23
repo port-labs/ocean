@@ -2,9 +2,9 @@ import asyncio
 import hashlib
 import hmac
 from typing import Any, cast, Optional
-from enum import StrEnum
 from fastapi import Request
 from loguru import logger
+from kinds import Kinds
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
@@ -15,14 +15,6 @@ from snyk.overrides import ProjectResourceConfig
 CONCURRENT_REQUESTS = 20
 SNYK_LIMIT = 1320
 RATELIMITER = AsyncLimiter(SNYK_LIMIT)
-
-
-class ObjectKind(StrEnum):
-    ORGANIZATION = "organization"
-    PROJECT = "project"
-    ISSUE = "issue"
-    TARGET = "target"
-    VULNERABILITY = "vulnerability"
 
 
 async def verify_signature(request: Request, secret: str) -> bool:
@@ -61,13 +53,13 @@ async def process_project_issues(
         return await snyk_client.get_issues(organization_id, project["id"])
 
 
-@ocean.on_resync(ObjectKind.ORGANIZATION)
+@ocean.on_resync(Kinds.ORGANIZATION)
 async def on_organization_resync(kind: str) -> list[dict[str, Any]]:
     snyk_client = init_client()
     return await snyk_client.get_organizations_in_groups()
 
 
-@ocean.on_resync(ObjectKind.TARGET)
+@ocean.on_resync(Kinds.TARGET)
 async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
     async for targets in snyk_client.get_paginated_targets():
@@ -75,7 +67,7 @@ async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield targets
 
 
-@ocean.on_resync(ObjectKind.PROJECT)
+@ocean.on_resync(Kinds.PROJECT)
 async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
 
@@ -99,7 +91,7 @@ async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield projects
 
 
-@ocean.on_resync(ObjectKind.ISSUE)
+@ocean.on_resync(Kinds.ISSUE)
 async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
     snyk_client = init_client()
     all_issues: list[dict[str, Any]] = []
@@ -122,7 +114,7 @@ async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
     return list({issue["id"]: issue for issue in all_issues}.values())
 
 
-@ocean.on_resync(ObjectKind.VULNERABILITY)
+@ocean.on_resync(Kinds.VULNERABILITY)
 async def on_vulnerability_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
 
@@ -155,12 +147,12 @@ async def on_vulnerability_webhook_handler(request: Request) -> None:
 
         tasks = [
             ocean.register_raw(
-                ObjectKind.ISSUE,
+                Kinds.ISSUE,
                 await snyk_client.get_issues(organization_id, project_id),
             ),
-            ocean.register_raw(ObjectKind.PROJECT, [project_details]),
+            ocean.register_raw(Kinds.PROJECT, [project_details]),
             ocean.register_raw(
-                ObjectKind.TARGET,
+                Kinds.TARGET,
                 [
                     await snyk_client.get_single_target_by_project_id(
                         organization_id, project_id
