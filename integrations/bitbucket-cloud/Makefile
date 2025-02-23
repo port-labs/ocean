@@ -1,0 +1,1 @@
+/Users/habibnuhu/.local/share/virtualenvs/bitbucket-ocean-2nzN7e93/lib/python3.12/site-packages/port_ocean/cli/cookiecutter/../../../integrations/_infra/Makefile

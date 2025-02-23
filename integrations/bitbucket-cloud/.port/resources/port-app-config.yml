@@ -1,0 +1,47 @@
+resources:
+  # Repository kind
+  - kind: repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: ".uuid[1:-1]"
+          title: .name
+          blueprint: '"bitbucketRepository"'
+          properties:
+            url: .links.html.href
+            scm: .scm
+            language: .language
+            description: .description
+          relations:
+            project: .project.key
+
+  # Project kind
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"bitbucketProject"'
+          properties:
+            url: .links.html.href
+
+  # Pull Request kind
+  - kind: pull-request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"bitbucketPullRequest"'
+          properties:
+            state: .state
+            author: .author.display_name
+          relations:
+            repository: .source.repository.uuid
