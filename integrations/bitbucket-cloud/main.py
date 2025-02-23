@@ -1,10 +1,10 @@
-from typing import Any
 from loguru import logger
 from starlette.requests import Request
-from client import BitbucketClient
+from bitbucket_integration.client import BitbucketClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
+from bitbucket_integration.webhooks.event_process import process_repo_push_event, process_pull_request_event
+from bitbucket_integration.utils import validate_webhook_payload
 from enum import StrEnum
 
 class ObjectKind(StrEnum):
@@ -16,12 +16,21 @@ class ObjectKind(StrEnum):
 
 @ocean.on_start()
 async def on_start() -> None:
+    """Register a webhook with Bitbucket when the application starts."""
     integration_config = ocean.integration_config
-    logger.info(f"Integration config: {integration_config}")
+    logger.info("Starting Bitbucket Cloud ntegration")
 
-    if "bitbucket_token" not in integration_config:
-        logger.error("bitbucket_token is missing in the integration configuration")
-        return
+    app_host = integration_config.get("app_host", None)
+
+    client = get_bitbucket_client()
+    webhook_url = f"{app_host}/webhook"
+    webhook_secret = integration_config.get("webhook_secret")
+
+    try:
+        await client.register_webhook(webhook_url, webhook_secret)
+        logger.info("Successfully registered Bitbucket webhook")
+    except Exception as e:
+        logger.error(f"Failed to register Bitbucket webhook: {e}")
 
 
 # Initialize Bitbucket cloud client
@@ -68,12 +77,25 @@ async def on_resync_components(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for component in components:
             yield component
 
-# Webhook handler
 @ocean.router.post("/webhook")
-async def handle_webhook(request: Request):
-    event = await request.json()
-    logger.info(f"Received webhook event: {event}")
-    await ocean.update_entities(event)
+async def handle_webhook(request: Request) -> dict:
+    """Handle incoming webhook events from Bitbucket."""
+    secret = ocean.integration_config.get("webhook_secret")
+    if not await validate_webhook_payload(request, secret):
+        return {"ok": False, "error": "Unauthorized"}
 
-# Logging
-logger.info("Bitbucket cloud integration is running and ready to fetch data.")
+    event = await request.json()
+    event_type = request.headers.get("X-Event-Key")
+    logger.info(f"Received Bitbucket webhook event: {event_type}")
+
+    try:
+        if event_type == "repo:push":
+            await process_repo_push_event(event)
+        elif event_type == "pullrequest:created":
+            await process_pull_request_event(event)
+
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"Failed to handle webhook event: {e}")
+        return {"ok": False, "error": str(e)}
+

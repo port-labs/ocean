@@ -3,6 +3,14 @@ from loguru import logger
 
 from port_ocean.context.ocean import ocean
 
+BITBUCKET_EVENTS = [
+    "repo:push",
+    "pullrequest:created",
+    "pullrequest:updated",
+    "pullrequest:fulfilled",
+    "pullrequest:rejected",
+]
+
 class BitbucketClient:
     def __init__(self, workspace: str, token: str):
         self.workspace = workspace
@@ -46,3 +54,19 @@ class BitbucketClient:
         """Fetch all components for a repository."""
         logger.debug(f"Fetching components for repository: {repo_slug}")
         return await self._fetch_paginated_data(f"repositories/{self.workspace}/{repo_slug}/components")
+
+    async def register_webhook(self, webhook_url: str, secret: str) -> None:
+        """Register a webhook with Bitbucket."""
+        url = f"{self.base_url}/repositories/{self.workspace}/hooks"
+        payload = {
+            "description": "Port Ocean Integration Webhook",
+            "url": webhook_url,
+            "active": True,
+            "events": BITBUCKET_EVENTS,
+            "secret": secret
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, headers=self.headers)
+            response.raise_for_status()
+            logger.info(f"Webhook registered successfully: {response.json()}")
