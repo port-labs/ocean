@@ -1,0 +1,35 @@
+description: bitbucket-cloud integration for Port Ocean
+icon: Bitbucket # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Git Providers # Should be one of the available sections in Port
+    resources:
+      - kind: repository
+      - kind: pullRequest
+      - kind: component
+      - kind: project
+      # - kind: <ResourceName2>
+configurations:
+  - name: bitbucketToken
+    required: true
+    type: string
+    description: "Bitbucket API token for authentication"
+    sensitive: true
+  - name: bitbucketWorkspace
+    required: true
+    type: string
+    description: "Bitbucket workspace name"
+  - name: bitbucketBaseUrl
+    required: false
+    type: string
+    description: "Base URL for the Bitbucket API (defaults to 'https://api.bitbucket.org/2.0')"
+    default: "https://api.bitbucket.org/2.0"
+  - name: webhookSecret
+    required: true
+    type: string
+    description: "Secret for validating Bitbucket webhook payloads"
+    sensitive: true
+  - name: appHost
+    required: false
+    type: url
+    description: The host of the Port Ocean app. Used for setting up the webhooks against Bitbucket.
