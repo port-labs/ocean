@@ -1,6 +1,7 @@
-from typing import Any
+from typing import Any, cast
 from loguru import logger
 from initialize_client import create_jira_client
+from jira.overrides import JiraIssueConfig
 from object_kind import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -25,6 +26,7 @@ class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         client = create_jira_client()
+        config = cast(JiraIssueConfig, resource_config)
         issue_key = payload["issue"]["key"]
         logger.info(
             f"Fetching issue with key: {issue_key} and applying specified JQL filter"
@@ -39,10 +41,8 @@ class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
 
         params = {}
 
-        if resource_config.selector.jql:
-            params["jql"] = (
-                f"{resource_config.selector.jql} AND key = {payload['issue']['key']}"
-            )
+        if config.selector.jql:
+            params["jql"] = f"{config.selector.jql} AND key = {payload['issue']['key']}"
         else:
             params["jql"] = f"key = {payload['issue']['key']}"
 
