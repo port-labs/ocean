@@ -21,21 +21,17 @@ class BitbucketClient:
                 response.raise_for_status()
                 data = response.json()
                 yield data.get("values", [])
+                url = data.get("next", None) 
+                all_data.extend(data.get("values", []))
+                
                 url = data.get("next", None)
-                
-                # all_data.extend(data.get("values", []))
-                
-                # url = data.get("next", None)
         
-        # return all_data
+        return all_data
 
-    async def fetch_repositories(self):
+    async def fetch_repositories(self) -> list:
         """Fetch all repositories in the workspace."""
         logger.debug(f"Fetching repositories for workspace: {self.workspace}")
-        # yield self._fetch_paginated_data(f"repositories/{self.workspace}")
-        async for page in self._fetch_paginated_data(f"repositories/{self.workspace}"):
-            for repo in page:
-                yield repo
+        return await self._fetch_paginated_data(f"repositories/{self.workspace}")
 
     async def fetch_projects(self) -> list:
         """Fetch all projects in the workspace."""
