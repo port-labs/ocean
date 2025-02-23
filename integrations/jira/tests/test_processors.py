@@ -8,11 +8,11 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from webhook_processors.jira_issue_webhook_processor import JiraIssueWebhookProcessor
+from webhook_processors.jira_issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.jira_project_webhook_processor import (
-    JiraProjectWebhookProcessor,
+    ProjectWebhookProcessor,
 )
-from webhook_processors.jira_user_webhook_processor import JiraUserWebhookProcessor
+from webhook_processors.jira_user_webhook_processor import UserWebhookProcessor
 from typing import Any, AsyncGenerator
 
 
@@ -22,18 +22,18 @@ def event() -> WebhookEvent:
 
 
 @pytest.fixture
-def jiraIssueWebhookProcessor(event: WebhookEvent) -> JiraIssueWebhookProcessor:
-    return JiraIssueWebhookProcessor(event)
+def jiraIssueWebhookProcessor(event: WebhookEvent) -> IssueWebhookProcessor:
+    return IssueWebhookProcessor(event)
 
 
 @pytest.fixture
-def jiraUserWebhookProcessor(event: WebhookEvent) -> JiraUserWebhookProcessor:
-    return JiraUserWebhookProcessor(event)
+def jiraUserWebhookProcessor(event: WebhookEvent) -> UserWebhookProcessor:
+    return UserWebhookProcessor(event)
 
 
 @pytest.fixture
-def jiraProjectWebhookProcessor(event: WebhookEvent) -> JiraProjectWebhookProcessor:
-    return JiraProjectWebhookProcessor(event)
+def jiraProjectWebhookProcessor(event: WebhookEvent) -> ProjectWebhookProcessor:
+    return ProjectWebhookProcessor(event)
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ def resource_config() -> ResourceConfig:
 
 
 def test_should_process_event(
-    jiraIssueWebhookProcessor: JiraIssueWebhookProcessor,
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
 ) -> None:
     event = WebhookEvent(
         trace_id="test-trace-id",
@@ -90,7 +90,7 @@ def test_should_process_event(
 
 
 def test_get_matching_kinds(
-    jiraIssueWebhookProcessor: JiraIssueWebhookProcessor,
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     assert jiraIssueWebhookProcessor.get_matching_kinds(event) == ["issue"]
@@ -98,7 +98,7 @@ def test_get_matching_kinds(
 
 @pytest.mark.asyncio
 async def test_authenticate(
-    jiraIssueWebhookProcessor: JiraIssueWebhookProcessor,
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
 ) -> None:
     result = await jiraIssueWebhookProcessor.authenticate({}, {})
     assert result is True
@@ -106,7 +106,7 @@ async def test_authenticate(
 
 @pytest.mark.asyncio
 async def test_validate_payload(
-    jiraIssueWebhookProcessor: JiraIssueWebhookProcessor,
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
 ) -> None:
     result = await jiraIssueWebhookProcessor.validate_payload({})
     assert result is True
@@ -114,7 +114,7 @@ async def test_validate_payload(
 
 @pytest.mark.asyncio
 async def test_handleEvent_issueUpdated_noJqlFilterIssuesReturnedFromClient_updatedRawResultsReturnedCorrectly(
-    jiraIssueWebhookProcessor: JiraIssueWebhookProcessor,
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
     resource_config: ResourceConfig,
 ) -> None:
     resource_config.selector.jql = None  # type: ignore
@@ -151,7 +151,7 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesReturnedFromClient_upda
 
 @pytest.mark.asyncio
 async def test_handleEvent_issueUpdated_noJqlFilterIssuesNotReturnedFromClient_deletedRawResultsReturnedCorrectly(
-    jiraIssueWebhookProcessor: JiraIssueWebhookProcessor,
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
     resource_config: ResourceConfig,
 ) -> None:
     resource_config.selector.jql = None  # type: ignore
@@ -184,7 +184,7 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesNotReturnedFromClient_d
 
 @pytest.mark.asyncio
 async def test_handleEvent_issueUpdated_filterIssuesReturnedFromClient_updatedRawResultsReturnedCorrectly(
-    jiraIssueWebhookProcessor: JiraIssueWebhookProcessor,
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
     resource_config: ResourceConfig,
 ) -> None:
     payload: dict[str, Any] = {
@@ -219,7 +219,7 @@ async def test_handleEvent_issueUpdated_filterIssuesReturnedFromClient_updatedRa
 
 @pytest.mark.asyncio
 async def test_handleEvent_issueUpdated_filterIssuesNotReturnedFromClient_deletedRawResultsReturnedCorrectly(
-    jiraIssueWebhookProcessor: JiraIssueWebhookProcessor,
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
     resource_config: ResourceConfig,
 ) -> None:
     payload: dict[str, Any] = {
@@ -250,7 +250,7 @@ async def test_handleEvent_issueUpdated_filterIssuesNotReturnedFromClient_delete
 
 @pytest.mark.asyncio
 async def test_handleEvent_issueDeleted_deletedRawResultsReturnedCorrectly(
-    jiraIssueWebhookProcessor: JiraIssueWebhookProcessor,
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
     resource_config: ResourceConfig,
 ) -> None:
     resource_config.selector.jql = None  # type: ignore
@@ -270,7 +270,7 @@ async def test_handleEvent_issueDeleted_deletedRawResultsReturnedCorrectly(
 
 
 def test_should_process_event_user(
-    jiraUserWebhookProcessor: JiraUserWebhookProcessor,
+    jiraUserWebhookProcessor: UserWebhookProcessor,
 ) -> None:
     event = WebhookEvent(
         trace_id="test-trace-id",
@@ -301,7 +301,7 @@ def test_should_process_event_user(
 
 
 def test_get_matching_kinds_user(
-    jiraUserWebhookProcessor: JiraUserWebhookProcessor,
+    jiraUserWebhookProcessor: UserWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     assert jiraUserWebhookProcessor.get_matching_kinds(event) == ["user"]
@@ -309,7 +309,7 @@ def test_get_matching_kinds_user(
 
 @pytest.mark.asyncio
 async def test_authenticate_user(
-    jiraUserWebhookProcessor: JiraUserWebhookProcessor,
+    jiraUserWebhookProcessor: UserWebhookProcessor,
 ) -> None:
     result = await jiraUserWebhookProcessor.authenticate({}, {})
     assert result is True
@@ -317,7 +317,7 @@ async def test_authenticate_user(
 
 @pytest.mark.asyncio
 async def test_validate_payload_user(
-    jiraUserWebhookProcessor: JiraUserWebhookProcessor,
+    jiraUserWebhookProcessor: UserWebhookProcessor,
 ) -> None:
     result = await jiraUserWebhookProcessor.validate_payload({})
     assert result is True
@@ -325,7 +325,7 @@ async def test_validate_payload_user(
 
 @pytest.mark.asyncio
 async def test_handleEvent_userUpdated_userReturnedFromClient_updatedRawResultsReturnedCorrectly(
-    jiraUserWebhookProcessor: JiraUserWebhookProcessor, resource_config: ResourceConfig
+    jiraUserWebhookProcessor: UserWebhookProcessor, resource_config: ResourceConfig
 ) -> None:
     payload: dict[str, Any] = {
         "webhookEvent": "user_updated",
@@ -357,7 +357,7 @@ async def test_handleEvent_userUpdated_userReturnedFromClient_updatedRawResultsR
 
 @pytest.mark.asyncio
 async def test_handleEvent_userUpdated_userNotReturnedFromClient_noRawResultsReturned(
-    jiraUserWebhookProcessor: JiraUserWebhookProcessor, resource_config: ResourceConfig
+    jiraUserWebhookProcessor: UserWebhookProcessor, resource_config: ResourceConfig
 ) -> None:
     payload: dict[str, Any] = {
         "webhookEvent": "user_updated",
@@ -384,7 +384,7 @@ async def test_handleEvent_userUpdated_userNotReturnedFromClient_noRawResultsRet
 
 @pytest.mark.asyncio
 async def test_handleEvent_userDeleted_noRawResultsReturned(
-    jiraUserWebhookProcessor: JiraUserWebhookProcessor, resource_config: ResourceConfig
+    jiraUserWebhookProcessor: UserWebhookProcessor, resource_config: ResourceConfig
 ) -> None:
     payload = {"webhookEvent": "user_deleted", "user": {"accountId": "TEST-123"}}
     mock_user: dict[str, Any] = {
@@ -413,7 +413,7 @@ async def test_handleEvent_userDeleted_noRawResultsReturned(
 
 @pytest.mark.asyncio
 async def test_handleEvent_noWebhookUserEvent_noRawResultsReturned(
-    jiraUserWebhookProcessor: JiraUserWebhookProcessor, resource_config: ResourceConfig
+    jiraUserWebhookProcessor: UserWebhookProcessor, resource_config: ResourceConfig
 ) -> None:
     payload: dict[str, Any] = {}
 
@@ -436,7 +436,7 @@ async def test_handleEvent_noWebhookUserEvent_noRawResultsReturned(
 
 
 def test_should_process_event_project(
-    jiraProjectWebhookProcessor: JiraProjectWebhookProcessor,
+    jiraProjectWebhookProcessor: ProjectWebhookProcessor,
 ) -> None:
     event = WebhookEvent(
         trace_id="test-trace-id",
@@ -467,7 +467,7 @@ def test_should_process_event_project(
 
 
 def test_get_matching_kinds_project(
-    jiraProjectWebhookProcessor: JiraProjectWebhookProcessor,
+    jiraProjectWebhookProcessor: ProjectWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     assert jiraProjectWebhookProcessor.get_matching_kinds(event) == ["project"]
@@ -475,7 +475,7 @@ def test_get_matching_kinds_project(
 
 @pytest.mark.asyncio
 async def test_authenticate_project(
-    jiraProjectWebhookProcessor: JiraProjectWebhookProcessor,
+    jiraProjectWebhookProcessor: ProjectWebhookProcessor,
 ) -> None:
     result = await jiraProjectWebhookProcessor.authenticate({}, {})
     assert result is True
@@ -483,7 +483,7 @@ async def test_authenticate_project(
 
 @pytest.mark.asyncio
 async def test_validate_payload_project(
-    jiraProjectWebhookProcessor: JiraProjectWebhookProcessor,
+    jiraProjectWebhookProcessor: ProjectWebhookProcessor,
 ) -> None:
     result = await jiraProjectWebhookProcessor.validate_payload({})
     assert result is True
@@ -491,7 +491,7 @@ async def test_validate_payload_project(
 
 @pytest.mark.asyncio
 async def test_handleEvent_projectUpdated_projectReturnedFromClient_updatedRawResultsReturnedCorrectly(
-    jiraProjectWebhookProcessor: JiraProjectWebhookProcessor,
+    jiraProjectWebhookProcessor: ProjectWebhookProcessor,
     resource_config: ResourceConfig,
 ) -> None:
     payload: dict[str, Any] = {
@@ -523,7 +523,7 @@ async def test_handleEvent_projectUpdated_projectReturnedFromClient_updatedRawRe
 
 @pytest.mark.asyncio
 async def test_handleEvent_projectUpdated_projectNotReturnedFromClient_noRawResultsReturned(
-    jiraProjectWebhookProcessor: JiraProjectWebhookProcessor,
+    jiraProjectWebhookProcessor: ProjectWebhookProcessor,
     resource_config: ResourceConfig,
 ) -> None:
     payload: dict[str, Any] = {
@@ -553,7 +553,7 @@ async def test_handleEvent_projectUpdated_projectNotReturnedFromClient_noRawResu
 
 @pytest.mark.asyncio
 async def test_handleEvent_projectSoftDeleted_deletedRawResultsReturnedCorrectly(
-    jiraProjectWebhookProcessor: JiraProjectWebhookProcessor,
+    jiraProjectWebhookProcessor: ProjectWebhookProcessor,
     resource_config: ResourceConfig,
 ) -> None:
     payload = {"webhookEvent": "project_soft_deleted", "project": {"key": "TEST"}}
@@ -581,7 +581,7 @@ async def test_handleEvent_projectSoftDeleted_deletedRawResultsReturnedCorrectly
 
 @pytest.mark.asyncio
 async def test_handleEvent_noWebhookProjectEvent_noRawResultsReturned(
-    jiraProjectWebhookProcessor: JiraProjectWebhookProcessor,
+    jiraProjectWebhookProcessor: ProjectWebhookProcessor,
     resource_config: ResourceConfig,
 ) -> None:
     payload: dict[str, Any] = {}

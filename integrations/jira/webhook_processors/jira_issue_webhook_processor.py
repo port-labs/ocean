@@ -15,7 +15,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
+class IssueWebhookProcessor(AbstractWebhookProcessor):
     def should_process_event(self, event: WebhookEvent) -> bool:
         return event.payload.get("webhookEvent", "").startswith("jira:issue_")
 

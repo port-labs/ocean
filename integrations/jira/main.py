@@ -14,11 +14,11 @@ from jira.overrides import (
     JiraProjectResourceConfig,
     TeamResourceConfig,
 )
-from webhook_processors.jira_issue_webhook_processor import JiraIssueWebhookProcessor
+from webhook_processors.jira_issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.jira_project_webhook_processor import (
-    JiraProjectWebhookProcessor,
+    ProjectWebhookProcessor,
 )
-from webhook_processors.jira_user_webhook_processor import JiraUserWebhookProcessor
+from webhook_processors.jira_user_webhook_processor import UserWebhookProcessor
 
 
 async def setup_application() -> None:
@@ -103,6 +103,6 @@ async def on_start() -> None:
     await setup_application()
 
 
-ocean.add_webhook_processor("/webhook", JiraIssueWebhookProcessor)
-ocean.add_webhook_processor("/webhook", JiraProjectWebhookProcessor)
-ocean.add_webhook_processor("/webhook", JiraUserWebhookProcessor)
+ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
