@@ -12,7 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated live event handling to new standard format
+- Introduced a standardized abstraction for Jira integration
+- Added dedicated webhook processors for issues, projects, and users
+- Refactored and modularized code for better maintainability
+- Enhanced error handling and logging for webhook events
 
 
 ## 0.2.41 (2025-02-23)
