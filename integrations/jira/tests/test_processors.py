@@ -266,7 +266,7 @@ async def test_validate_payload_user(jiraUserWebhookProcessor):
     assert result is True
 
 @pytest.mark.asyncio
-async def test_handleEvent_userUpdated_issuesReturnedFromClient_updatedRawResultsReturnedCorrectly(
+async def test_handleEvent_userUpdated_userReturnedFromClient_updatedRawResultsReturnedCorrectly(
     jiraUserWebhookProcessor, resource_config
 ):
     payload = {"webhookEvent": "user_updated", "user": {"accountId": "TEST-123"}}
@@ -292,7 +292,7 @@ async def test_handleEvent_userUpdated_issuesReturnedFromClient_updatedRawResult
         assert result.updated_raw_results[0] == mock_user
 
 @pytest.mark.asyncio
-async def test_handleEvent_userUpdated_issuesNotReturnedFromClient_noRawResultsReturned(
+async def test_handleEvent_userUpdated_userNotReturnedFromClient_noRawResultsReturned(
     jiraUserWebhookProcessor, resource_config
 ):
     payload = {"webhookEvent": "user_updated", "user": {"accountId": "TEST-123"}}
@@ -315,7 +315,7 @@ async def test_handleEvent_userUpdated_issuesNotReturnedFromClient_noRawResultsR
         assert len(result.deleted_raw_results) == 0
 
 @pytest.mark.asyncio
-async def test_handleEvent_userDeleted_issuesNotReturnedFromClient_noRawResultsReturned(
+async def test_handleEvent_userDeleted_noRawResultsReturned(
     jiraUserWebhookProcessor, resource_config
 ):
     payload = {"webhookEvent": "user_deleted", "user": {"accountId": "TEST-123"}}
@@ -338,3 +338,26 @@ async def test_handleEvent_userDeleted_issuesNotReturnedFromClient_noRawResultsR
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == mock_user
+
+@pytest.mark.asyncio
+async def test_handleEvent_noWebhookEvent_noRawResultsReturned(
+    jiraUserWebhookProcessor, resource_config
+):
+    payload = {}
+
+    with patch(
+        "webhook_processors.jira_user_webhook_processor.create_jira_client"
+    ) as mock_create_client:
+        mock_client = AsyncMock()
+
+        async def mock_get_single_user(*args, **kwargs):
+            assert args[0] == "TEST-123"
+            return ""
+
+        mock_client.get_single_user = mock_get_single_user
+        mock_create_client.return_value = mock_client
+
+        result = await jiraUserWebhookProcessor.handle_event(payload, resource_config)
+
+        assert len(result.updated_raw_results) == 0
+        assert len(result.deleted_raw_results) == 0
