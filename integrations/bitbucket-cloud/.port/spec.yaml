@@ -1,0 +1,31 @@
+type: bitbucket-cloud
+description: Bitbucket Cloud integration for Port Ocean
+icon: bitbuckets
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: project
+      - kind: repository
+      - kind: pull-request
+      - kind: component
+configurations:
+  - name: bitbucketToken
+    required: true
+    type: string
+    description: "Bitbucket API token for authentication"
+    sensitive: true
+  - name: bitbucketWorkspace
+    required: true
+    type: string
+    description: "Bitbucket workspace name"
+  - name: bitbucketBaseUrl
+    required: false
+    type: string
+    description: "Base URL for the Bitbucket API (defaults to 'https://api.bitbucket.org/2.0')"
+    default: "https://api.bitbucket.org/2.0"
+  - name: webhookSecret
+    required: true
+    type: string
+    description: "Secret for validating Bitbucket webhook payloads"
+    sensitive: true
