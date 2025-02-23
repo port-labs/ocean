@@ -8,11 +8,11 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from webhook_processors.jira_issue_webhook_processor import IssueWebhookProcessor
-from webhook_processors.jira_project_webhook_processor import (
+from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
+from webhook_processors.project_webhook_processor import (
     ProjectWebhookProcessor,
 )
-from webhook_processors.jira_user_webhook_processor import UserWebhookProcessor
+from webhook_processors.user_webhook_processor import UserWebhookProcessor
 from typing import Any, AsyncGenerator
 
 
@@ -129,7 +129,7 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesReturnedFromClient_upda
     }
 
     with patch(
-        "webhook_processors.jira_issue_webhook_processor.create_jira_client"
+        "webhook_processors.issue_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
@@ -162,7 +162,7 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesNotReturnedFromClient_d
     }
 
     with patch(
-        "webhook_processors.jira_issue_webhook_processor.create_jira_client"
+        "webhook_processors.issue_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
@@ -197,7 +197,7 @@ async def test_handleEvent_issueUpdated_filterIssuesReturnedFromClient_updatedRa
     }
 
     with patch(
-        "webhook_processors.jira_issue_webhook_processor.create_jira_client"
+        "webhook_processors.issue_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
@@ -228,7 +228,7 @@ async def test_handleEvent_issueUpdated_filterIssuesNotReturnedFromClient_delete
     }
 
     with patch(
-        "webhook_processors.jira_issue_webhook_processor.create_jira_client"
+        "webhook_processors.issue_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
@@ -258,7 +258,7 @@ async def test_handleEvent_issueDeleted_deletedRawResultsReturnedCorrectly(
     payload = {"webhookEvent": "jira:issue_deleted", "issue": {"key": "TEST-123"}}
 
     with patch(
-        "webhook_processors.jira_issue_webhook_processor.create_jira_client"
+        "webhook_processors.issue_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_create_client.return_value = AsyncMock()
 
@@ -337,7 +337,7 @@ async def test_handleEvent_userUpdated_userReturnedFromClient_updatedRawResultsR
     }
 
     with patch(
-        "webhook_processors.jira_user_webhook_processor.create_jira_client"
+        "webhook_processors.user_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
@@ -365,7 +365,7 @@ async def test_handleEvent_userUpdated_userNotReturnedFromClient_noRawResultsRet
     }
 
     with patch(
-        "webhook_processors.jira_user_webhook_processor.create_jira_client"
+        "webhook_processors.user_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
@@ -393,7 +393,7 @@ async def test_handleEvent_userDeleted_noRawResultsReturned(
     }
 
     with patch(
-        "webhook_processors.jira_user_webhook_processor.create_jira_client"
+        "webhook_processors.user_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
@@ -418,7 +418,7 @@ async def test_handleEvent_noWebhookUserEvent_noRawResultsReturned(
     payload: dict[str, Any] = {}
 
     with patch(
-        "webhook_processors.jira_user_webhook_processor.create_jira_client"
+        "webhook_processors.user_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
@@ -501,7 +501,7 @@ async def test_handleEvent_projectUpdated_projectReturnedFromClient_updatedRawRe
     mock_project: dict[str, Any] = {"key": "TEST", "name": "Test Project"}
 
     with patch(
-        "webhook_processors.jira_project_webhook_processor.create_jira_client"
+        "webhook_processors.project_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
@@ -532,7 +532,7 @@ async def test_handleEvent_projectUpdated_projectNotReturnedFromClient_noRawResu
     }
 
     with patch(
-        "webhook_processors.jira_project_webhook_processor.create_jira_client"
+        "webhook_processors.project_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
@@ -559,7 +559,7 @@ async def test_handleEvent_projectSoftDeleted_deletedRawResultsReturnedCorrectly
     payload = {"webhookEvent": "project_soft_deleted", "project": {"key": "TEST"}}
 
     with patch(
-        "webhook_processors.jira_project_webhook_processor.create_jira_client"
+        "webhook_processors.project_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 

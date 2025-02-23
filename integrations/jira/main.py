@@ -14,11 +14,9 @@ from jira.overrides import (
     JiraProjectResourceConfig,
     TeamResourceConfig,
 )
-from webhook_processors.jira_issue_webhook_processor import IssueWebhookProcessor
-from webhook_processors.jira_project_webhook_processor import (
-    ProjectWebhookProcessor,
-)
-from webhook_processors.jira_user_webhook_processor import UserWebhookProcessor
+from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
+from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
+from webhook_processors.user_webhook_processor import UserWebhookProcessor
 
 
 async def setup_application() -> None:
