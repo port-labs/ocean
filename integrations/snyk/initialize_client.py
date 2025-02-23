@@ -1,0 +1,22 @@
+from typing import Optional
+
+from aiolimiter import AsyncLimiter
+from snyk.client import SnykClient
+from port_ocean.context.ocean import ocean
+
+SNYK_LIMIT = 1320
+RATELIMITER = AsyncLimiter(SNYK_LIMIT)
+
+def init_client() -> SnykClient:
+    def parse_list(value: str) -> Optional[list[str]]:
+        return [item.strip() for item in value.split(",")] if value else None
+
+    return SnykClient(
+        ocean.integration_config["token"],
+        ocean.integration_config["api_url"],
+        ocean.integration_config.get("app_host"),
+        parse_list(ocean.integration_config.get("organization_id", "")),
+        parse_list(ocean.integration_config.get("groups", "")),
+        ocean.integration_config.get("webhook_secret"),
+        RATELIMITER,
+    )

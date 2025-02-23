@@ -4,6 +4,7 @@ import hmac
 from typing import Any, cast, Optional
 from fastapi import Request
 from loguru import logger
+from initialize_client import init_client
 from kinds import Kinds
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
@@ -27,21 +28,6 @@ async def verify_signature(request: Request, secret: str) -> bool:
 def generate_signature(payload: bytes, secret: str) -> str:
     hmac_obj = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256)
     return f"sha256={hmac_obj.hexdigest()}"
-
-
-def init_client() -> SnykClient:
-    def parse_list(value: str) -> Optional[list[str]]:
-        return [item.strip() for item in value.split(",")] if value else None
-
-    return SnykClient(
-        ocean.integration_config["token"],
-        ocean.integration_config["api_url"],
-        ocean.integration_config.get("app_host"),
-        parse_list(ocean.integration_config.get("organization_id", "")),
-        parse_list(ocean.integration_config.get("groups", "")),
-        ocean.integration_config.get("webhook_secret"),
-        RATELIMITER,
-    )
 
 
 async def process_project_issues(
