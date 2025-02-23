@@ -1,9 +1,9 @@
 ---
-title: Develop an Integration
-sidebar_label: 🔧 Develop an Integration
+title: Introduction
+sidebar_label: 🔧 Introduction
 ---
 
-# 🔧 Develop an Integration
+# 🔧 Introduction
 
 This section builds on the [getting started](../getting-started/getting-started.md) section which shows how to install the Ocean CLI and scaffold a new integration to begin development.
 
