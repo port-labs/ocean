@@ -69,7 +69,10 @@ class IntegrationClientMixin:
         return response
 
     async def get_current_integration(
-        self, should_raise: bool = True, should_log: bool = True
+        self,
+        should_raise: bool = True,
+        should_log: bool = True,
+        has_provision_feature_flag: bool = False,
     ) -> dict[str, Any]:
         response = await self._get_current_integration()
         handle_status_code(response, should_raise, should_log)
@@ -85,15 +88,7 @@ class IntegrationClientMixin:
                     should_log,
                 )
             )
-            and (
-                ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG
-                in (
-                    await self.client.get_organization_feature_flags(
-                        should_raise,
-                        should_log,
-                    )
-                )
-            )
+            and has_provision_feature_flag
         )
 
         if is_provision_enabled_for_integration:
