@@ -87,19 +87,23 @@ def test_should_process_event(jiraIssueWebhookProcessor):
     )
     assert jiraIssueWebhookProcessor.should_process_event(event) is False
 
+
 def test_get_matching_kinds(jiraIssueWebhookProcessor):
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     assert jiraIssueWebhookProcessor.get_matching_kinds(event) == ["issue"]
+
 
 @pytest.mark.asyncio
 async def test_authenticate(jiraIssueWebhookProcessor):
     result = await jiraIssueWebhookProcessor.authenticate({}, {})
     assert result is True
 
+
 @pytest.mark.asyncio
 async def test_validate_payload(jiraIssueWebhookProcessor):
     result = await jiraIssueWebhookProcessor.validate_payload({})
     assert result is True
+
 
 @pytest.mark.asyncio
 async def test_handleEvent_issueUpdated_noJqlFilterIssuesReturnedFromClient_updatedRawResultsReturnedCorrectly(
@@ -128,6 +132,7 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesReturnedFromClient_upda
         assert len(result.deleted_raw_results) == 0
         assert result.updated_raw_results[0] == mock_issue
 
+
 @pytest.mark.asyncio
 async def test_handleEvent_issueUpdated_noJqlFilterIssuesNotReturnedFromClient_deletedRawResultsReturnedCorrectly(
     jiraIssueWebhookProcessor, resource_config
@@ -154,6 +159,7 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesNotReturnedFromClient_d
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == payload["issue"]
 
+
 @pytest.mark.asyncio
 async def test_handleEvent_issueUpdated_filterIssuesReturnedFromClient_updatedRawResultsReturnedCorrectly(
     jiraIssueWebhookProcessor, resource_config
@@ -179,12 +185,12 @@ async def test_handleEvent_issueUpdated_filterIssuesReturnedFromClient_updatedRa
         assert len(result.deleted_raw_results) == 0
         assert result.updated_raw_results[0] == mock_issue
 
+
 @pytest.mark.asyncio
 async def test_handleEvent_issueUpdated_filterIssuesNotReturnedFromClient_deletedRawResultsReturnedCorrectly(
     jiraIssueWebhookProcessor, resource_config
 ):
     payload = {"webhookEvent": "jira:issue_updated", "issue": {"key": "TEST-123"}}
-    mock_issue = {"key": "TEST-123", "fields": {"summary": "Test Issue"}}
 
     with patch(
         "integrations.jira.webhook_processors.jira_issue_webhook_processor.create_jira_client"
@@ -204,6 +210,7 @@ async def test_handleEvent_issueUpdated_filterIssuesNotReturnedFromClient_delete
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == payload["issue"]
 
+
 @pytest.mark.asyncio
 async def test_handleEvent_issueDeleted_deletedRawResultsReturnedCorrectly(
     jiraIssueWebhookProcessor, resource_config
@@ -222,6 +229,7 @@ async def test_handleEvent_issueDeleted_deletedRawResultsReturnedCorrectly(
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == payload["issue"]
+
 
 def test_should_process_event_user(jiraUserWebhookProcessor):
     event = WebhookEvent(
@@ -251,19 +259,23 @@ def test_should_process_event_user(jiraUserWebhookProcessor):
     )
     assert jiraUserWebhookProcessor.should_process_event(event) is False
 
+
 def test_get_matching_kinds_user(jiraUserWebhookProcessor):
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     assert jiraUserWebhookProcessor.get_matching_kinds(event) == ["user"]
+
 
 @pytest.mark.asyncio
 async def test_authenticate_user(jiraUserWebhookProcessor):
     result = await jiraUserWebhookProcessor.authenticate({}, {})
     assert result is True
 
+
 @pytest.mark.asyncio
 async def test_validate_payload_user(jiraUserWebhookProcessor):
     result = await jiraUserWebhookProcessor.validate_payload({})
     assert result is True
+
 
 @pytest.mark.asyncio
 async def test_handleEvent_userUpdated_userReturnedFromClient_updatedRawResultsReturnedCorrectly(
@@ -286,10 +298,10 @@ async def test_handleEvent_userUpdated_userReturnedFromClient_updatedRawResultsR
 
         result = await jiraUserWebhookProcessor.handle_event(payload, resource_config)
 
-
         assert len(result.updated_raw_results) == 1
         assert len(result.deleted_raw_results) == 0
         assert result.updated_raw_results[0] == mock_user
+
 
 @pytest.mark.asyncio
 async def test_handleEvent_userUpdated_userNotReturnedFromClient_noRawResultsReturned(
@@ -313,6 +325,7 @@ async def test_handleEvent_userUpdated_userNotReturnedFromClient_noRawResultsRet
 
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0
+
 
 @pytest.mark.asyncio
 async def test_handleEvent_userDeleted_noRawResultsReturned(
@@ -339,6 +352,7 @@ async def test_handleEvent_userDeleted_noRawResultsReturned(
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == mock_user
 
+
 @pytest.mark.asyncio
 async def test_handleEvent_noWebhookUserEvent_noRawResultsReturned(
     jiraUserWebhookProcessor, resource_config
@@ -361,6 +375,7 @@ async def test_handleEvent_noWebhookUserEvent_noRawResultsReturned(
 
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0
+
 
 def test_should_process_event_project(jiraProjectWebhookProcessor):
     event = WebhookEvent(
@@ -390,19 +405,23 @@ def test_should_process_event_project(jiraProjectWebhookProcessor):
     )
     assert jiraProjectWebhookProcessor.should_process_event(event) is False
 
+
 def test_get_matching_kinds_project(jiraProjectWebhookProcessor):
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     assert jiraProjectWebhookProcessor.get_matching_kinds(event) == ["project"]
+
 
 @pytest.mark.asyncio
 async def test_authenticate_project(jiraProjectWebhookProcessor):
     result = await jiraProjectWebhookProcessor.authenticate({}, {})
     assert result is True
 
+
 @pytest.mark.asyncio
 async def test_validate_payload_project(jiraProjectWebhookProcessor):
     result = await jiraProjectWebhookProcessor.validate_payload({})
     assert result is True
+
 
 @pytest.mark.asyncio
 async def test_handleEvent_projectUpdated_projectReturnedFromClient_updatedRawResultsReturnedCorrectly(
@@ -423,11 +442,14 @@ async def test_handleEvent_projectUpdated_projectReturnedFromClient_updatedRawRe
         mock_client.get_single_project = mock_get_single_project
         mock_create_client.return_value = mock_client
 
-        result = await jiraProjectWebhookProcessor.handle_event(payload, resource_config)
+        result = await jiraProjectWebhookProcessor.handle_event(
+            payload, resource_config
+        )
 
         assert len(result.updated_raw_results) == 1
         assert len(result.deleted_raw_results) == 0
         assert result.updated_raw_results[0] == mock_project
+
 
 @pytest.mark.asyncio
 async def test_handleEvent_projectUpdated_projectNotReturnedFromClient_noRawResultsReturned(
@@ -447,10 +469,13 @@ async def test_handleEvent_projectUpdated_projectNotReturnedFromClient_noRawResu
         mock_client.get_single_project = mock_get_single_project
         mock_create_client.return_value = mock_client
 
-        result = await jiraProjectWebhookProcessor.handle_event(payload, resource_config)
+        result = await jiraProjectWebhookProcessor.handle_event(
+            payload, resource_config
+        )
 
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0
+
 
 @pytest.mark.asyncio
 async def test_handleEvent_projectSoftDeleted_deletedRawResultsReturnedCorrectly(
@@ -470,11 +495,14 @@ async def test_handleEvent_projectSoftDeleted_deletedRawResultsReturnedCorrectly
         mock_client.get_single_project = mock_get_single_project
         mock_create_client.return_value = mock_client
 
-        result = await jiraProjectWebhookProcessor.handle_event(payload, resource_config)
+        result = await jiraProjectWebhookProcessor.handle_event(
+            payload, resource_config
+        )
 
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == payload["project"]
+
 
 @pytest.mark.asyncio
 async def test_handleEvent_noWebhookProjectEvent_noRawResultsReturned(
