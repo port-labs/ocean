@@ -68,10 +68,7 @@ class JiraIssueWebhookProcessor(AbstractWebhookProcessor):
         )
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        # For Jira webhooks, we don't need additional authentication as they are validated
-        # through the webhook secret in the URL
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        # Validate that the payload contains the required fields
         return True
