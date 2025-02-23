@@ -340,7 +340,7 @@ async def test_handleEvent_userDeleted_noRawResultsReturned(
         assert result.deleted_raw_results[0] == mock_user
 
 @pytest.mark.asyncio
-async def test_handleEvent_noWebhookEvent_noRawResultsReturned(
+async def test_handleEvent_noWebhookUserEvent_noRawResultsReturned(
     jiraUserWebhookProcessor, resource_config
 ):
     payload = {}
@@ -361,3 +361,128 @@ async def test_handleEvent_noWebhookEvent_noRawResultsReturned(
 
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0
+
+def test_should_process_event_project(jiraProjectWebhookProcessor):
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload={
+            "webhookEvent": "project_created",
+        },
+        headers={},
+    )
+    assert jiraProjectWebhookProcessor.should_process_event(event) is True
+
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload={
+            "webhookEvent": "project_updated",
+        },
+        headers={},
+    )
+    assert jiraProjectWebhookProcessor.should_process_event(event) is True
+
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload={
+            "webhookEvent": "jira:issue_created",
+        },
+        headers={},
+    )
+    assert jiraProjectWebhookProcessor.should_process_event(event) is False
+
+def test_get_matching_kinds_project(jiraProjectWebhookProcessor):
+    event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
+    assert jiraProjectWebhookProcessor.get_matching_kinds(event) == ["project"]
+
+@pytest.mark.asyncio
+async def test_authenticate_project(jiraProjectWebhookProcessor):
+    result = await jiraProjectWebhookProcessor.authenticate({}, {})
+    assert result is True
+
+@pytest.mark.asyncio
+async def test_validate_payload_project(jiraProjectWebhookProcessor):
+    result = await jiraProjectWebhookProcessor.validate_payload({})
+    assert result is True
+
+@pytest.mark.asyncio
+async def test_handleEvent_projectUpdated_projectReturnedFromClient_updatedRawResultsReturnedCorrectly(
+    jiraProjectWebhookProcessor, resource_config
+):
+    payload = {"webhookEvent": "project_updated", "project": {"key": "TEST"}}
+    mock_project = {"key": "TEST", "name": "Test Project"}
+
+    with patch(
+        "webhook_processors.jira_project_webhook_processor.create_jira_client"
+    ) as mock_create_client:
+        mock_client = AsyncMock()
+
+        async def mock_get_single_project(*args, **kwargs):
+            assert args[0] == "TEST"
+            return mock_project
+
+        mock_client.get_single_project = mock_get_single_project
+        mock_create_client.return_value = mock_client
+
+        result = await jiraProjectWebhookProcessor.handle_event(payload, resource_config)
+
+        assert len(result.updated_raw_results) == 1
+        assert len(result.deleted_raw_results) == 0
+        assert result.updated_raw_results[0] == mock_project
+
+@pytest.mark.asyncio
+async def test_handleEvent_projectUpdated_projectNotReturnedFromClient_noRawResultsReturned(
+    jiraProjectWebhookProcessor, resource_config
+):
+    payload = {"webhookEvent": "project_updated", "project": {"key": "TEST"}}
+
+    with patch(
+        "webhook_processors.jira_project_webhook_processor.create_jira_client"
+    ) as mock_create_client:
+        mock_client = AsyncMock()
+
+        async def mock_get_single_project(*args, **kwargs):
+            assert args[0] == "TEST"
+            return None
+
+        mock_client.get_single_project = mock_get_single_project
+        mock_create_client.return_value = mock_client
+
+        result = await jiraProjectWebhookProcessor.handle_event(payload, resource_config)
+
+        assert len(result.updated_raw_results) == 0
+        assert len(result.deleted_raw_results) == 0
+
+@pytest.mark.asyncio
+async def test_handleEvent_projectSoftDeleted_deletedRawResultsReturnedCorrectly(
+    jiraProjectWebhookProcessor, resource_config
+):
+    payload = {"webhookEvent": "project_soft_deleted", "project": {"key": "TEST"}}
+
+    with patch(
+        "webhook_processors.jira_project_webhook_processor.create_jira_client"
+    ) as mock_create_client:
+        mock_client = AsyncMock()
+
+        async def mock_get_single_project(*args, **kwargs):
+            assert args[0] == "TEST"
+            return None
+
+        mock_client.get_single_project = mock_get_single_project
+        mock_create_client.return_value = mock_client
+
+        result = await jiraProjectWebhookProcessor.handle_event(payload, resource_config)
+
+        assert len(result.updated_raw_results) == 0
+        assert len(result.deleted_raw_results) == 1
+        assert result.deleted_raw_results[0] == payload["project"]
+
+@pytest.mark.asyncio
+async def test_handleEvent_noWebhookProjectEvent_noRawResultsReturned(
+    jiraProjectWebhookProcessor, resource_config
+):
+    payload = {}
+
+    result = await jiraProjectWebhookProcessor.handle_event(payload, resource_config)
+
+    assert len(result.updated_raw_results) == 0
+    assert len(result.deleted_raw_results) == 0
