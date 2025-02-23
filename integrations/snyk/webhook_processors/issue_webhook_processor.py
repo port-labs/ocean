@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 from initialize_client import init_client
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -20,7 +21,7 @@ class SnykIssueWebhookProcessor(AbstractWebhookProcessor):
         signature = event.headers.get("x-hub-signature", "")
         hmac_obj = hmac.new(
             ocean.integration_config["webhook_secret"].encode("utf-8"),
-            event.payload,
+            json.dumps(event.payload).encode("utf-8"),
             hashlib.sha256,
         )
         expected_signature = f"sha256={hmac_obj.hexdigest()}"
@@ -33,7 +34,7 @@ class SnykIssueWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        data = await payload.json()
+        data = json.dumps(payload)
         if "project" in data:
             return True
         return False
