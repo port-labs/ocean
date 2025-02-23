@@ -4,17 +4,17 @@ features:
   - type: exporter
     section: Git Providers # Should be one of the available sections in Port
     resources:
-      - kind: project
       - kind: repository
       - kind: pullRequest
       - kind: component
+      - kind: project
       # - kind: <ResourceName2>
 configurations:
-  - name: mybitbucket-cloudToken
-    # required: true
-    type: string
-    sensitive: true
-  - name: workspaceid
+  # - name: mybitbucket-cloudToken
+  #   required: true
+  #   type: string
+  #   sensitive: true
+  - name: workspaceId
     type: string
     sensitive: true
     required: true

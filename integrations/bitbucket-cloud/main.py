@@ -1,6 +1,7 @@
 from typing import Any
 
 from port_ocean.context.ocean import ocean
+from bitbucket_integration.client import BitbucketOceanIntegration
 
 
 # Required
@@ -34,17 +35,24 @@ async def on_resync(kind: str) -> list[dict[Any, Any]]:
 
 
 # The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
+@ocean.on_resync('project')
+async def resync_project(kind: str) -> list[dict[Any, Any]]:
+    # 1. Get all projects from the source system
+    # 2. Return a list of dictionaries with the raw data of the state
+    return BitbucketOceanIntegration().fetch_repositories()
+
+@ocean.on_resync('pullRequest')
+async def resync_pull_request(kind: str) -> list[dict[Any, Any]]:
+    # 1. Get all projects from the source system
+    # 2. Return a list of dictionaries with the raw data of the state
+    return BitbucketOceanIntegration().fetch_pull_requests()
+
 #
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
+@ocean.on_resync('issues')
+async def resync_issues(kind: str) -> list[dict[Any, Any]]:
+    # 1. Get all issues from the source system
+    # 2. Return a list of dictionaries with the raw data of the state
+    return BitbucketOceanIntegration().fetch_projects()
 
 
 # Optional

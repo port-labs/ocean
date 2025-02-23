@@ -1,6 +1,10 @@
 import base64
 import logging
+import asyncio
 from port_ocean.clients.auth.auth_client import AuthClient
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.async_client import OceanAsyncClient
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,22 +27,27 @@ class BasicAuth:
         logger.debug("Generated authentication token successfully.")
         return auth_token
     
-class BitbucketOceanIntegration(BaseIntegration):
+class BitbucketOceanIntegration:
     """Integration class for Bitbucket API with Ocean Framework."""
+
+
+    
 
     def __init__(self, config):
         super().__init__(config)
-        self.auth_token = get_auth_token(
-            config.integration.bitbucket.username, 
-            config.integration.bitbucket.app_password
+        self.auth_token = BasicAuth.get_auth_token(
+            ocean.integration_config.get("username"), 
+            ocean.integration_config.get("password")
         )
         self.client = OceanAsyncClient(
-            base_url=BITBUCKET_API_BASE,
+            base_url=self.BITBUCKET_API_BASE,
             headers={
                 "Authorization": f"Basic {self.auth_token}",
                 "Content-Type": "application/json"
             }
         )
+        self.BITBUCKET_API_BASE = "https://api.bitbucket.org/2.0"
+        self.WORKSPACE = ocean.integration_config.get("self.WORKSPACE")
         self.port_client = self._initialize_port_client()
 
     def _initialize_port_client(self):
@@ -50,16 +59,22 @@ class BitbucketOceanIntegration(BaseIntegration):
             return None
 
     async def fetch_projects(self):
-        """Fetches projects for the workspace."""
-        return await self._fetch_paginated_data(f"{BITBUCKET_API_BASE}/workspaces/{WORKSPACE}/projects")
+        """Fetches projects for the self.WORKSPACE."""
+        return await self._fetch_paginated_data(f"{self.BITBUCKET_API_BASE}/self.WORKSPACEs/{self.WORKSPACE}/projects")
 
     async def fetch_repositories(self):
-        """Fetches repositories for the workspace."""
-        return await self._fetch_paginated_data(f"{BITBUCKET_API_BASE}/repositories/{WORKSPACE}")
+        """Fetches repositories for the self.WORKSPACE."""
+        return await self._fetch_paginated_data(f"{self.BITBUCKET_API_BASE}/repositories/{self.WORKSPACE}")
 
     async def fetch_pull_requests(self, repo_slug):
         """Fetches pull requests for a specific repository."""
-        return await self._fetch_paginated_data(f"{BITBUCKET_API_BASE}/repositories/{WORKSPACE}/{repo_slug}/pullrequests")
+        return await self._fetch_paginated_data(f"{self.BITBUCKET_API_BASE}/repositories/{self.WORKSPACE}/{repo_slug}/pullrequests")
+    
+
+    async def fetch_components(self, repo_slug: str) -> list:
+        """Fetch all components for a repository."""
+        logger.debug(f"Fetching components for repository: {repo_slug}")
+        return await self._fetch_paginated_data(f"repositories/{self.self.WORKSPACE}/{repo_slug}/components")
 
     async def _fetch_paginated_data(self, endpoint, max_retries=3):
         """

@@ -1,16 +1,44 @@
 resources:
-  - kind: bitbucket-cloud-example-kind
+  - kind: repository
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .my_custom_id
-          title: '(.my_component + " @ " + .my_service)'
-          blueprint: '"bitbucket-cloudExampleBlueprint"'
+          identifier: ".uuid[1:-1]"
+          title: .name
+          blueprint: '"bitbucketRepository"'
           properties:
-            status: .my_enum
-            text: .my_custom_text
-            component: .my_component
-            service: .my_service
-            score: .my_special_score
+            url: .links.html.href
+            scm: .scm
+            language: .language
+            description: .description
+          relations:
+            project: .project.key
+
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"bitbucketProject"'
+          properties:
+            url: .links.html.href
+
+  - kind: pull-request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"bitbucketPullRequest"'
+          properties:
+            state: .state
+            author: .author.display_name
+          relations:
+            repository: .source.repository.uuid
