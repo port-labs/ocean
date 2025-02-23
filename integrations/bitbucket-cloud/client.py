@@ -10,7 +10,7 @@ class BitbucketClient:
         self.base_url = ocean.integration_config["bitbucket_base_url"]
         self.headers = {"Authorization": f"Bearer {self.token}"}
 
-    async def _fetch_paginated_data(self, endpoint: str):
+    async def _fetch_paginated_data(self, endpoint: str) -> list:
         """Helper method to fetch paginated data from Bitbucket API."""
         all_data = []
         url = f"{self.base_url}/{endpoint}"
@@ -20,8 +20,7 @@ class BitbucketClient:
                 response = await client.get(url)
                 response.raise_for_status()
                 data = response.json()
-                yield data.get("values", [])
-                url = data.get("next", None) 
+                
                 all_data.extend(data.get("values", []))
                 
                 url = data.get("next", None)

@@ -34,8 +34,8 @@ def get_bitbucket_client() -> BitbucketClient:
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_bitbucket_client()
-    # repositories = client.fetch_repositories()
-    async for repo in client.fetch_repositories():
+    repositories = await client.fetch_repositories()
+    for repo in repositories:
         yield repo
 
 # Resync handler for projects
