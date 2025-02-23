@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.42 (2025-02-23)
+
+
+### Improvements
+
+- Updated live event handling to new standard format
+
+
 ## 0.2.41 (2025-02-23)
 
 
