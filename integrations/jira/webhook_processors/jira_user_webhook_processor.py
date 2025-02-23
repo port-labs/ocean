@@ -1,6 +1,6 @@
 from loguru import logger
 from initialize_client import create_jira_client
-from object_kind import ObjectKind
+from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -18,7 +18,7 @@ class UserWebhookProcessor(AbstractWebhookProcessor):
         return event.payload.get("webhookEvent", "").startswith("user_")
 
     def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.USER]
+        return [Kinds.USER]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
@@ -44,7 +44,7 @@ class UserWebhookProcessor(AbstractWebhookProcessor):
         item = await client.get_single_user(account_id)
 
         if not item:
-            logger.warning(f"Failed to retrieve {ObjectKind.USER}")
+            logger.warning(f"Failed to retrieve {Kinds.USER}")
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[],
@@ -52,7 +52,7 @@ class UserWebhookProcessor(AbstractWebhookProcessor):
 
         data_to_update = []
         data_to_delete = []
-        logger.debug(f"Retrieved {ObjectKind.USER} item: {item}")
+        logger.debug(f"Retrieved {Kinds.USER} item: {item}")
 
         if "deleted" in webhook_event:
             data_to_delete.extend([item])

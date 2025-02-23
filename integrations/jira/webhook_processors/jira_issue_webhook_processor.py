@@ -2,7 +2,7 @@ from typing import Any, cast
 from loguru import logger
 from initialize_client import create_jira_client
 from jira.overrides import JiraIssueConfig
-from object_kind import ObjectKind
+from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -20,7 +20,7 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         return event.payload.get("webhookEvent", "").startswith("jira:issue_")
 
     def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.ISSUE]
+        return [Kinds.ISSUE]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

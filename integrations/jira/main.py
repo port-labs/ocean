@@ -3,7 +3,7 @@ from typing import cast
 
 from loguru import logger
 from initialize_client import create_jira_client
-from object_kind import ObjectKind
+from kinds import Kinds
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
@@ -30,7 +30,7 @@ async def setup_application() -> None:
     await client.create_events_webhook(base_url)
 
 
-@ocean.on_resync(ObjectKind.PROJECT)
+@ocean.on_resync(Kinds.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
@@ -42,7 +42,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
-@ocean.on_resync(ObjectKind.ISSUE)
+@ocean.on_resync(Kinds.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
@@ -63,7 +63,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
-@ocean.on_resync(ObjectKind.TEAM)
+@ocean.on_resync(Kinds.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
     org_id = ocean.integration_config.get("atlassian_organization_id")
@@ -82,7 +82,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield teams
 
 
-@ocean.on_resync(ObjectKind.USER)
+@ocean.on_resync(Kinds.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
