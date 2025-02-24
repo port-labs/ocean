@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2025-02-24)
+
+### Improvements
+
+- Implemented Snyk integration with standardized abstraction.
+- Added webhook processors for project, issue, and target events.
+- Refactored and modularized Snyk client initialization and kinds enumeration.
+- Developed extensive unit tests for webhook processors.
+
+
+
 ## 0.1.142 (2025-02-23)
 
 
