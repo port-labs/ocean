@@ -273,7 +273,7 @@ async def test_create_events_webhook(mock_jira_client: JiraClient) -> None:
             {"id": "new_webhook"},  # Creation response
         ]
 
-        await mock_jira_client.create_events_webhook(app_host)
+        await mock_jira_client.create_webhooks(app_host)
 
         # Verify webhook creation call
         create_call = mock_request.call_args_list[1]
@@ -288,5 +288,5 @@ async def test_create_events_webhook(mock_jira_client: JiraClient) -> None:
     ) as mock_request:
         mock_request.return_value = [{"url": webhook_url}]
 
-        await mock_jira_client.create_events_webhook(app_host)
+        await mock_jira_client.create_webhooks(app_host)
         mock_request.assert_called_once()  # Only checks for existence
