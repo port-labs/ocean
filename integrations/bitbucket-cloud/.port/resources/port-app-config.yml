@@ -1,4 +1,16 @@
 resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .key | tostring
+          title: .name
+          blueprint: '"bitbucketProject"'
+          properties:
+            url: .links.html.href
+
   - kind: repository
     selector:
       query: 'true'
@@ -15,18 +27,6 @@ resources:
             description: .description
           relations:
             project: .project.key
-
-  - kind: project
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .key | tostring
-          title: .name
-          blueprint: '"bitbucketProject"'
-          properties:
-            url: .links.html.href
 
   - kind: pull-request
     selector:

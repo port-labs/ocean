@@ -1,5 +1,7 @@
 import base64
 from typing import Any, AsyncGenerator, Dict, List
+
+import httpx
 from port_ocean.utils import http_async_client
 from loguru import logger
 from port_ocean.utils.cache import cache_iterator_result
@@ -39,14 +41,27 @@ class BitbucketClient:
         logger.info(f"Fetching paginated data from endpoint: {endpoint}")
 
         while url:
-            logger.debug(f"Fetching data from URL: {url}")
-            response = await self.http_client.get(url, headers=self.headers)
-            response.raise_for_status()
-            data = response.json()
-            values = data.get("values", [])
-            logger.info(f"Retrieved {len(values)} items from {url}")
-            yield values
-            url = data.get("next", None)
+            try:
+                logger.debug(f"Fetching data from URL: {url}")
+                response = await self.http_client.get(url, headers=self.headers)
+                response.raise_for_status()
+                data = response.json()
+                values = data.get("values", [])
+                logger.info(f"Retrieved {len(values)} items from {url}")
+                yield values
+                url = data.get("next", None)
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    logger.warning(f"Endpoint not found (404): {url}")
+                    return
+                elif e.response.status_code == 401:
+                    logger.error("Unauthorized access (401). Check authentication.")
+                    return
+                else:
+                    logger.error(f"HTTP error {e.response.status_code}: {e.response.text}")
+                    return
+
 
     @cache_iterator_result()
     async def fetch_workspaces(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
