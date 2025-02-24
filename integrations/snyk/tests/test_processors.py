@@ -1,4 +1,4 @@
-#here we will test the webhook processors
+# here we will test the webhook processors
 
 import pytest
 from unittest.mock import AsyncMock, patch
@@ -9,10 +9,12 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from integrations.snyk.webhook_processors.project_webhook_processor import ProjectWebhookProcessor
-from integrations.snyk.webhook_processors.issue_webhook_processor import IssueWebhookProcessor
-from integrations.snyk.webhook_processors.target_webhook_processor import TargetWebhookProcessor
-from typing import Any, AsyncGenerator
+from integrations.snyk.webhook_processors.project_webhook_processor import ProjectWebhookProcessor  # type: ignore
+from integrations.snyk.webhook_processors.issue_webhook_processor import IssueWebhookProcessor  # type: ignore
+from integrations.snyk.webhook_processors.target_webhook_processor import TargetWebhookProcessor  # type: ignore
+from typing import Any
+
+from snyk.overrides import ProjectSelector
 
 
 @pytest.fixture
@@ -39,7 +41,7 @@ def targetWebhookProcessor(event: WebhookEvent) -> TargetWebhookProcessor:
 def resource_config() -> ResourceConfig:
     return ResourceConfig(
         kind="project",
-        selector=None,
+        selector=ProjectSelector(attachIssuesToProject=True, query=""),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -55,7 +57,6 @@ def resource_config() -> ResourceConfig:
             )
         ),
     )
-
 
 
 def test_shouldProcessEvent_project(

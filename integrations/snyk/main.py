@@ -11,9 +11,9 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from aiolimiter import AsyncLimiter
 from snyk.overrides import ProjectResourceConfig
-from integrations.snyk.webhook_processors.issue_webhook_processor import IssueWebhookProcessor
-from integrations.snyk.webhook_processors.project_webhook_processor import ProjectWebhookProcessor
-from integrations.snyk.webhook_processors.target_webhook_processor import TargetWebhookProcessor
+from integrations.snyk.webhook_processors.issue_webhook_processor import IssueWebhookProcessor  # type: ignore
+from integrations.snyk.webhook_processors.project_webhook_processor import ProjectWebhookProcessor  # type: ignore
+from integrations.snyk.webhook_processors.target_webhook_processor import TargetWebhookProcessor  # type: ignore
 
 
 CONCURRENT_REQUESTS = 20
