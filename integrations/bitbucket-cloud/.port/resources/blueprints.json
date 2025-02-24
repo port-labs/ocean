@@ -11,7 +11,10 @@
         }
       },
       "required": []
-    }
+    },
+    "calculationProperties": {},
+    "mirrorProperties": {},
+    "aggregationProperties": {}
   },
   {
     "identifier": "bitbucketRepository",
@@ -46,7 +49,10 @@
         "required": false,
         "many": false
       }
-    }
+    },
+    "calculationProperties": {},
+    "mirrorProperties": {},
+    "aggregationProperties": {}
   },
   {
     "identifier": "bitbucketPullRequest",
@@ -72,7 +78,10 @@
         "required": true,
         "many": false
       }
-    }
+    },
+    "calculationProperties": {},
+    "mirrorProperties": {},
+    "aggregationProperties": {}
   },
   {
     "identifier": "bitbucketComponent",
@@ -99,6 +108,9 @@
         "required": true,
         "many": false
       }
-    }
+    },
+    "calculationProperties": {},
+    "mirrorProperties": {},
+    "aggregationProperties": {}
   }
 ]

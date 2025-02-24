@@ -22,7 +22,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .key
+          identifier: .key | tostring
           title: .name
           blueprint: '"bitbucketProject"'
           properties:
@@ -34,7 +34,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id
+          identifier: .id | tostring
           title: .title
           blueprint: '"bitbucketPullRequest"'
           properties:

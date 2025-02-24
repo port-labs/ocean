@@ -10,10 +10,6 @@ features:
       - kind: pull-request
       - kind: component
 configurations:
-  - name: bitbucketWorkspace
-    required: true
-    type: string
-    description: "Bitbucket workspace name"
   - name: bitbucketBaseUrl
     required: false
     type: string
@@ -24,12 +20,12 @@ configurations:
     type: string
     description: "Secret for validating Bitbucket webhook payloads"
     sensitive: true
-  - name: username
+  - name: bitbucketUsername
     required: true
     type: string
     description: "Bitbucket username"
     sensitive: true
-  - name: appPassword
+  - name: bitbucketAppPassword
     required: true
     type: string
     description: "App password for Bitbucket authentication"
