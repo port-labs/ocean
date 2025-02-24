@@ -10,14 +10,21 @@ PAGE_SIZE = 20
 class BackstageClient:
     BASE_ENDPOINT = "api/catalog/entities/by-query"
 
-    def __init__(self, backstage_host: str, backstage_token: str) -> None:
+    def __init__(
+        self, backstage_host: str, backstage_token: Optional[str] = None
+    ) -> None:
         logger.info(f"Initializing BackstageClient with host: {backstage_host}")
         self.backstage_host = backstage_host
         self.backstage_token = backstage_token
 
         self.client = http_async_client
-        self.api_auth_header = {"Authorization": f"Bearer {self.backstage_token}"}
-        self.client.headers.update(self.api_auth_header)
+        self.api_auth_header = (
+            {"Authorization": f"Bearer {self.backstage_token}"}
+            if self.backstage_token
+            else {}
+        )
+        if self.api_auth_header:
+            self.client.headers.update(self.api_auth_header)
 
     @property
     def entities_query_endpoint(self) -> str:
