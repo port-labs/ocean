@@ -1,5 +1,3 @@
-# here we will test the webhook processors
-
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.context.ocean import PortOceanContext
