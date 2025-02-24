@@ -80,7 +80,7 @@ async def setup_application() -> None:
     """Set up the application by registering webhooks."""
     integration_config = ocean.integration_config
 
-    app_host = ocean.config("base_url", None)
+    app_host = ocean.config.base_url
     webhook_secret = integration_config.get("webhook_secret")
 
     if not app_host:
