@@ -16,7 +16,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.context.ocean import ocean
 
 
-class SnykIssueWebhookProcessor(AbstractWebhookProcessor):
+class IssueWebhookProcessor(AbstractWebhookProcessor):
     def should_process_event(self, event: WebhookEvent) -> bool:
         signature = event.headers.get("x-hub-signature", "")
         hmac_obj = hmac.new(

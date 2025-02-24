@@ -11,9 +11,9 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from aiolimiter import AsyncLimiter
 from snyk.overrides import ProjectResourceConfig
-from webhook_processors.issue_webhook_processor import SnykIssueWebhookProcessor
-from webhook_processors.project_webhook_processor import SnykProjectWebhookProcessor
-from webhook_processors.target_webhook_processor import TargetWebhookProcessor
+from integrations.snyk.webhook_processors.issue_webhook_processor import IssueWebhookProcessor
+from integrations.snyk.webhook_processors.project_webhook_processor import ProjectWebhookProcessor
+from integrations.snyk.webhook_processors.target_webhook_processor import TargetWebhookProcessor
 
 
 CONCURRENT_REQUESTS = 20
@@ -130,5 +130,5 @@ async def on_start() -> None:
 
 
 ocean.add_webhook_processor("/webhook", TargetWebhookProcessor)
-ocean.add_webhook_processor("/webhook", SnykIssueWebhookProcessor)
-ocean.add_webhook_processor("/webhook", SnykProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
