@@ -25,7 +25,7 @@ async def setup_application() -> None:
         return
 
     client = create_jira_client()
-    await client.create_events_webhook(base_url)
+    await client.create_webhooks(base_url)
 
 
 @ocean.on_resync(Kinds.PROJECT)
