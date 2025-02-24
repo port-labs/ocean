@@ -7,6 +7,8 @@ features:
       - kind: amplication_template
       - kind: amplication_resource
       - kind: amplication_alert
+saas:
+  enabled: true
 configurations:
   - name: amplicationHost
     required: false
