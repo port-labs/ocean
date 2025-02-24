@@ -82,9 +82,7 @@ class JiraClient(OAuthClient):
             return BearerAuth(self.jira_token)
 
     def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
-        if "api.atlassian.com" in str(request.url):
-            return next(self._get_bearer().auth_flow(request))
-        return request
+        return next(self._get_bearer().auth_flow(request))
 
     async def _handle_rate_limit(self, response: Response) -> None:
         if response.status_code == 429:
