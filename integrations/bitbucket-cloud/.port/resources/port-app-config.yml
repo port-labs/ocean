@@ -1,5 +1,4 @@
 resources:
-  # Repository kind
   - kind: repository
     selector:
       query: 'true'
@@ -17,7 +16,6 @@ resources:
           relations:
             project: .project.key
 
-  # Project kind
   - kind: project
     selector:
       query: 'true'
@@ -30,7 +28,6 @@ resources:
           properties:
             url: .links.html.href
 
-  # Pull Request kind
   - kind: pull-request
     selector:
       query: 'true'

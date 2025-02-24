@@ -1,5 +1,8 @@
-import httpx
+import base64
+from typing import Any, AsyncGenerator, Dict, List
+from port_ocean.utils import http_async_client
 from loguru import logger
+from port_ocean.utils.cache import cache_iterator_result
 
 from port_ocean.context.ocean import ocean
 
@@ -11,62 +14,96 @@ BITBUCKET_EVENTS = [
     "pullrequest:rejected",
 ]
 
+
 class BitbucketClient:
-    def __init__(self, workspace: str, token: str):
-        self.workspace = workspace
-        self.token = token
+    def __init__(self, username: str, app_password: str):
+        self.http_client = http_async_client
+        self.username = username
+        self.app_password = app_password
+        self.token = None
         self.base_url = ocean.integration_config["bitbucket_base_url"]
-        self.headers = {"Authorization": f"Bearer {self.token}"}
+        self.headers = {}
+        self._generate_token()
 
-    async def _fetch_paginated_data(self, endpoint: str) -> list:
+    def _generate_token(self) -> None:
+        credentials = f"{self.username}:{self.app_password}".encode()
+        token = base64.b64encode(credentials).decode()
+        self.token = token
+        self.headers = {"Authorization": f"Basic {token}"}
+        logger.info("Access token generated successfully")
+
+    async def _fetch_paginated_data(
+        self, endpoint: str
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Helper method to fetch paginated data from Bitbucket API."""
-        all_data = []
         url = f"{self.base_url}/{endpoint}"
-        
-        async with httpx.AsyncClient() as client:
-            while url:
-                response = await client.get(url)
-                response.raise_for_status()
-                data = response.json()
-                
-                all_data.extend(data.get("values", []))
-                
-                url = data.get("next", None)
-        
-        return all_data
 
-    async def fetch_repositories(self) -> list:
-        """Fetch all repositories in the workspace."""
-        logger.debug(f"Fetching repositories for workspace: {self.workspace}")
-        return await self._fetch_paginated_data(f"repositories/{self.workspace}")
+        while url:
+            response = await self.http_client.get(url, headers=self.headers)
+            response.raise_for_status()
+            data = response.json()
+            yield data.get("values", [])
+            url = data.get("next", None)
 
-    async def fetch_projects(self) -> list:
-        """Fetch all projects in the workspace."""
-        logger.debug(f"Fetching projects for workspace: {self.workspace}")
-        return await self._fetch_paginated_data(f"workspaces/{self.workspace}/projects")
+    @cache_iterator_result()
+    async def fetch_workspaces(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch all workspaces the user has access to."""
+        async for data in self._fetch_paginated_data("workspaces"):
+            yield data
 
-    async def fetch_pull_requests(self, repo_slug: str) -> list:
-        """Fetch all pull requests for a repository."""
+    @cache_iterator_result()
+    async def fetch_repositories(
+        self, workspace: str
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch all repositories in a specific workspace."""
+        async for data in self._fetch_paginated_data(f"repositories/{workspace}"):
+            yield data
+
+    async def fetch_projects(
+        self, workspace: str
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch all projects in a specific workspace."""
+        logger.debug(f"Fetching projects for workspace: {workspace}")
+        async for data in self._fetch_paginated_data(
+            f"workspaces/{workspace}/projects"
+        ):
+            yield data
+
+    async def fetch_pull_requests(
+        self, workspace: str, repo_slug: str
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch all pull requests for a repository in a specific workspace."""
         logger.debug(f"Fetching pull requests for repository: {repo_slug}")
-        return await self._fetch_paginated_data(f"repositories/{self.workspace}/{repo_slug}/pullrequests")
+        async for data in self._fetch_paginated_data(
+            f"repositories/{workspace}/{repo_slug}/pullrequests"
+        ):
+            yield data
 
-    async def fetch_components(self, repo_slug: str) -> list:
-        """Fetch all components for a repository."""
+    async def fetch_components(
+        self, workspace: str, repo_slug: str
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch all components for a repository in a specific workspace."""
         logger.debug(f"Fetching components for repository: {repo_slug}")
-        return await self._fetch_paginated_data(f"repositories/{self.workspace}/{repo_slug}/components")
+        async for data in self._fetch_paginated_data(
+            f"repositories/{workspace}/{repo_slug}/components"
+        ):
+            yield data
 
-    async def register_webhook(self, webhook_url: str, secret: str) -> None:
-        """Register a webhook with Bitbucket."""
-        url = f"{self.base_url}/repositories/{self.workspace}/hooks"
+    async def register_webhook(
+        self, workspace: str, webhook_url: str, secret: str
+    ) -> None:
+        """Register a webhook for a specific workspace."""
+        url = f"{self.base_url}/workspaces/{workspace}/hooks"
         payload = {
             "description": "Port Ocean Integration Webhook",
             "url": webhook_url,
             "active": True,
             "events": BITBUCKET_EVENTS,
-            "secret": secret
+            "secret": secret,
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=payload, headers=self.headers)
-            response.raise_for_status()
-            logger.info(f"Webhook registered successfully: {response.json()}")
+        response = await self.http_client.post(url, json=payload, headers=self.headers)
+        response.raise_for_status()
+        logger.info(
+            f"Webhook registered successfully for workspace {workspace}: {response.json()}"
+        )

@@ -1,101 +1,115 @@
 from loguru import logger
-from starlette.requests import Request
 from bitbucket_integration.client import BitbucketClient
+from bitbucket_integration.webhooks.handler import BitbucketWebhookHandler
+from bitbucket_integration.models.main import ObjectKind
+from starlette.requests import Request
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from bitbucket_integration.webhooks.event_process import process_repo_push_event, process_pull_request_event
-from bitbucket_integration.utils import validate_webhook_payload
-from enum import StrEnum
 
-class ObjectKind(StrEnum):
-    REPOSITORY = "repository"
-    PROJECT = "project"
-    PULL_REQUEST = "pull-request"
-    COMPONENT = "component"
+
+webhook_handler = BitbucketWebhookHandler()
 
 
 @ocean.on_start()
 async def on_start() -> None:
-    """Register a webhook with Bitbucket when the application starts."""
-    integration_config = ocean.integration_config
-    logger.info("Starting Bitbucket Cloud ntegration")
-
-    app_host = integration_config.get("app_host", None)
-
-    client = get_bitbucket_client()
-    webhook_url = f"{app_host}/webhook"
-    webhook_secret = integration_config.get("webhook_secret")
-
-    try:
-        await client.register_webhook(webhook_url, webhook_secret)
-        logger.info("Successfully registered Bitbucket webhook")
-    except Exception as e:
-        logger.error(f"Failed to register Bitbucket webhook: {e}")
+    logger.info("Starting Port Ocean Bitbucket Cloud Integration")
+    await setup_application()
 
 
-# Initialize Bitbucket cloud client
 def get_bitbucket_client() -> BitbucketClient:
-    bitbucket_token = ocean.integration_config["bitbucket_token"]
-    bitbucket_workspace = ocean.integration_config["bitbucket_workspace"]
-    return BitbucketClient(bitbucket_workspace, bitbucket_token)
+    bitbucket_username = ocean.integration_config["username"]
+    bitbucket_app_password = ocean.integration_config["app_password"]
+    return BitbucketClient(bitbucket_username, bitbucket_app_password)
 
-# Resync handler for repositories
+
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_bitbucket_client()
-    repositories = await client.fetch_repositories()
-    for repo in repositories:
-        yield repo
+    async for workspaces in client.fetch_workspaces():
+        for workspace in workspaces:
+            workspace_slug = workspace["slug"]
+            async for repositories in client.fetch_repositories(workspace_slug):
+                for repo in repositories:
+                    yield repo
 
-# Resync handler for projects
+
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_bitbucket_client()
-    projects = await client.fetch_projects()
-    for project in projects:
-        yield project
+    async for workspaces in client.fetch_workspaces():
+        for workspace in workspaces:
+            workspace_slug = workspace["slug"]
+            async for projects in client.fetch_projects(workspace_slug):
+                for project in projects:
+                    yield project
 
-# Resync handler for pull requests
+
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_bitbucket_client()
-    repositories = await client.fetch_repositories()
-    for repo in repositories:
-        repo_slug = repo["slug"]
-        pull_requests = await client.fetch_pull_requests(repo_slug)
-        for pr in pull_requests:
-            yield pr
+    async for workspaces in client.fetch_workspaces():
+        for workspace in workspaces:
+            workspace_slug = workspace["slug"]
+            async for repositories in client.fetch_repositories(workspace_slug):
+                for repo in repositories:
+                    repo_slug = repo["slug"]
+                    async for pull_requests in client.fetch_pull_requests(
+                        workspace_slug, repo_slug
+                    ):
+                        for pr in pull_requests:
+                            yield pr
 
-# Resync handler for components
+
 @ocean.on_resync(ObjectKind.COMPONENT)
 async def on_resync_components(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_bitbucket_client()
-    repositories = await client.fetch_repositories()
-    for repo in repositories:
-        repo_slug = repo["slug"]
-        components = await client.fetch_components(repo_slug)
-        for component in components:
-            yield component
+    async for workspaces in client.fetch_workspaces():
+        for workspace in workspaces:
+            workspace_slug = workspace["slug"]
+            async for repositories in client.fetch_repositories(workspace_slug):
+                for repo in repositories:
+                    repo_slug = repo["slug"]
+                    async for components in client.fetch_components(
+                        workspace_slug, repo_slug
+                    ):
+                        for component in components:
+                            yield component
+
+
+async def setup_application() -> None:
+    """Set up the application by registering webhooks."""
+    integration_config = ocean.integration_config
+
+    app_host = integration_config.get("app_host", None)
+    webhook_secret = integration_config.get("webhook_secret")
+
+    if not app_host:
+        logger.error("Missing required configuration: app_host or webhook_secret")
+        return
+
+    client = get_bitbucket_client()
+    webhook_url = f"{app_host}/webhook"
+
+    try:
+        async for workspaces in client.fetch_workspaces():
+            for workspace in workspaces:
+                workspace_slug = workspace["slug"]
+                try:
+                    await client.register_webhook(
+                        workspace_slug, webhook_url, webhook_secret
+                    )
+                    logger.info(
+                        f"Successfully registered Bitbucket webhook for workspace: {workspace_slug}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to register Bitbucket webhook for workspace {workspace_slug}: {e}"
+                    )
+    except Exception as e:
+        logger.error(f"Failed to fetch workspaces: {e}")
+
 
 @ocean.router.post("/webhook")
 async def handle_webhook(request: Request) -> dict:
     """Handle incoming webhook events from Bitbucket."""
-    secret = ocean.integration_config.get("webhook_secret")
-    if not await validate_webhook_payload(request, secret):
-        return {"ok": False, "error": "Unauthorized"}
-
-    event = await request.json()
-    event_type = request.headers.get("X-Event-Key")
-    logger.info(f"Received Bitbucket webhook event: {event_type}")
-
-    try:
-        if event_type == "repo:push":
-            await process_repo_push_event(event)
-        elif event_type == "pullrequest:created":
-            await process_pull_request_event(event)
-
-        return {"ok": True}
-    except Exception as e:
-        logger.error(f"Failed to handle webhook event: {e}")
-        return {"ok": False, "error": str(e)}
-
+    return await webhook_handler.handle_webhook(request)

@@ -1,6 +1,6 @@
 type: bitbucket-cloud
 description: Bitbucket Cloud integration for Port Ocean
-icon: bitbuckets
+icon: bitbucket
 features:
   - type: exporter
     section: Git Providers
@@ -10,11 +10,6 @@ features:
       - kind: pull-request
       - kind: component
 configurations:
-  - name: bitbucketToken
-    required: true
-    type: string
-    description: "Bitbucket API token for authentication"
-    sensitive: true
   - name: bitbucketWorkspace
     required: true
     type: string
@@ -33,3 +28,13 @@ configurations:
     required: false
     type: url
     description: The host of the Port Ocean app. Used for setting up the webhooks against Bitbucket.
+  - name: username
+    required: true
+    type: string
+    description: "Bitbucket username"
+    sensitive: true
+  - name: appPassword
+    required: true
+    type: string
+    description: "App password for Bitbucket authentication"
+    sensitive: true

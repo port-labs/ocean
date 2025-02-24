@@ -3,6 +3,7 @@ import hashlib
 from starlette.requests import Request
 from loguru import logger
 
+
 async def validate_webhook_payload(request: Request, secret: str) -> bool:
     """Validate the Bitbucket webhook payload using the secret."""
     payload = await request.body()
