@@ -27,10 +27,10 @@ inputs:
     required: false
     default: ''
   docker-user:
-    required: true
+    required: false
     description: Docker Hub User
   docker-password:
-    required: true
+    required: false
     description: Docker Hub User
   skip-push:
     required: false
@@ -39,6 +39,10 @@ inputs:
   load-created-image:
     required: false
     description: Optionally load created docker image
+    default: ''
+  skip-login:
+    required: false
+    description: Optionally skip docker login
     default: ''
 
 runs:
@@ -54,7 +58,7 @@ runs:
 
     - name: Login to Docker Hub
       uses: docker/login-action@v3
-      if: ${{ inputs.skip-init == '' }}
+      if: ${{ inputs.skip-init == '' && inputs.skip-login == '' }}
       with:
         registry: ghcr.io
         username: ${{ inputs.docker-user }}
