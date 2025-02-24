@@ -1,1 +1,0 @@
-Fixed `ocean new` on Unix-like systems failing with `FileNotFoundError`
