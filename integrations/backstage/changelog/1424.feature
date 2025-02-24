@@ -1,1 +1,0 @@
-Made the Backstage authentication token optional. When not provided, requests will be made without authentication.

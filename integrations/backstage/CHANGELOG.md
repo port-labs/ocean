@@ -1,3 +1,11 @@
+## 0.1.48-beta (2025-02-24)
+
+
+### Features
+
+- Made the Backstage authentication token optional. When not provided, requests will be made without authentication. (#1424)
+
+
 ## 0.1.47-beta (2025-02-23)
 
 
