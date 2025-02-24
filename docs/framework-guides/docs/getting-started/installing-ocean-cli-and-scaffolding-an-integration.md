@@ -15,67 +15,9 @@ You should have Python 3.12 installed on your machine as stated in the previous 
 ## Setting up the environment
 While integrations are usually developed within the [Ocean monorepo](https://github.com/port-labs/ocean/), you can also develop integrations standalone. If you plan to publish your integration to the Port catalog, you should develop it within the Ocean monorepo. Go to the [Monorepo development](#monorepo-development) section to learn how to set up the Ocean monorepo.
 
-### Standalone Development
-#### Installing the Ocean CLI
-Run the following command to install the Ocean framework and its CLI tool:
-
-```console showLineNumbers title="bash"
-$ pip install "port-ocean[cli]"
-```
-
-Once this is done, verify the installation by running the `ocean version` command; you should see output that displays the version of the Ocean CLI.
-
-```console showLineNumbers title="bash"
-$ ocean version
-🌊 Ocean version: 0.18.9
-```
-
-#### Scaffolding Your First Integration
-Next, you will scaffold the GitHub integration for ingesting Organizations, Repositories and Pull Requests. Run the `ocean new` command in your CLI to scaffold a new integration:
-
-<details>
-<summary><b>Scaffolding a standalone integration (Click to expand)</b></summary>
-
-```console showLineNumbers title="bash"
-$ ocean new
-=====================================================================================
-          ::::::::       ::::::::       ::::::::::           :::        ::::    :::
-        :+:    :+:     :+:    :+:      :+:                :+: :+:      :+:+:   :+:
-       +:+    +:+     +:+             +:+               +:+   +:+     :+:+:+  +:+
-      +#+    +:+     +#+             +#++:++#         +#++:++#++:    +#+ +:+ +#+
-     +#+    +#+     +#+             +#+              +#+     +#+    +#+  +#+#+#
-    #+#    #+#     #+#    #+#      #+#              #+#     #+#    #+#   #+#+#
-    ########       ########       ##########       ###     ###    ###    ####
-=====================================================================================
-By: Port.io
-🚢 Unloading cargo... Setting up your integration at the dock.
-  [1/10] integration_name (Name of the integration): github
-  [2/10] integration_slug (github): github
-  [3/10] integration_short_description (A short description of the project): Ingest organizations, repositories and pull requests into Port
-  [4/10] full_name (Your name): Mlarmlor Dugson
-  [5/10] email (Your address email <you@example.com>): mlarmlor.dugson@organization.com
-  [6/10] release_date (2025-02-11):
-  [7/10] is_private_integration [y/n] (y): n
-  [8/10] port_client_id (you can find it using:
-https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials): <your-port-client-id>
-  [9/10] port_client_secret (you can find it using:
-https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials): <your-port-client-secret>
-  [10/10] is_us_region [y/n] (n): n
-
-🌊 Ahoy, Captain! Your project is ready to set sail into the vast ocean of possibilities!
-Here are your next steps:
-
-⚓️ Install necessary packages: Run cd ./github && make install && . .venv/bin/activate to install all required packages for your project.
-⚓️ Copy example env file: Run cp .env.example .env  and update your integration's configuration in the .env file.
-⚓️ Set sail with Ocean: Run ocean sail to run the project using Ocean.
-⚓️ Smooth sailing with Make: Alternatively, you can run make run ./github to launch your project using Make.
-```
-
-</details>
-
 ### Monorepo Development
 Choosing to develop an integration within the Ocean monorepo has some advantages:
-- Publishing an integration to the Port catalog requires it to be developed within the Ocean monorepo. Hence, if you plan to publish your integration, you should develop it within the Ocean monorepo.
+- Contributing an integration to the Port catalog requires it to be developed within the Ocean monorepo. Hence, if you plan to contribute to Port's catalog of integrations, you should develop it within the Ocean monorepo.
 
 - The Ocean monorepo provides a set of automations on GitHub CI environment including testing, linting, and building the integration Docker image that are not available in standalone development, or you would have to set up yourself.
 
@@ -132,6 +74,66 @@ project.
 ⚓️ Copy example env file: Run cp .env.example .env  and update your integration's configuration in the .env file.
 ⚓️ Set sail with Ocean: Run ocean sail to run the project using Ocean.
 ⚓️ Smooth sailing with Make: Alternatively, you can run make run ./integrations/github to launch your project using Make.
+```
+
+</details>
+
+
+### Standalone Development
+This option is often chosen for developing integrations that are not intended to be contributed to the Port catalog, or for testing purposes. In some cases, you may also choose to develop an integration standalone and use it internally before contributing it to the Port catalog.
+#### Installing the Ocean CLI
+Run the following command to install the Ocean framework and its CLI tool:
+
+```console showLineNumbers title="bash"
+$ pip install "port-ocean[cli]"
+```
+
+Once this is done, verify the installation by running the `ocean version` command; you should see output that displays the version of the Ocean CLI.
+
+```console showLineNumbers title="bash"
+$ ocean version
+🌊 Ocean version: 0.18.9
+```
+
+#### Scaffolding Your First Integration
+Next, you will scaffold the GitHub integration for ingesting Organizations, Repositories and Pull Requests. Run the `ocean new` command in your CLI to scaffold a new integration:
+
+<details>
+<summary><b>Scaffolding a standalone integration (Click to expand)</b></summary>
+
+```console showLineNumbers title="bash"
+$ ocean new
+=====================================================================================
+          ::::::::       ::::::::       ::::::::::           :::        ::::    :::
+        :+:    :+:     :+:    :+:      :+:                :+: :+:      :+:+:   :+:
+       +:+    +:+     +:+             +:+               +:+   +:+     :+:+:+  +:+
+      +#+    +:+     +#+             +#++:++#         +#++:++#++:    +#+ +:+ +#+
+     +#+    +#+     +#+             +#+              +#+     +#+    +#+  +#+#+#
+    #+#    #+#     #+#    #+#      #+#              #+#     #+#    #+#   #+#+#
+    ########       ########       ##########       ###     ###    ###    ####
+=====================================================================================
+By: Port.io
+🚢 Unloading cargo... Setting up your integration at the dock.
+  [1/10] integration_name (Name of the integration): github
+  [2/10] integration_slug (github): github
+  [3/10] integration_short_description (A short description of the project): Ingest organizations, repositories and pull requests into Port
+  [4/10] full_name (Your name): Mlarmlor Dugson
+  [5/10] email (Your address email <you@example.com>): mlarmlor.dugson@organization.com
+  [6/10] release_date (2025-02-11):
+  [7/10] is_private_integration [y/n] (y): n
+  [8/10] port_client_id (you can find it using:
+https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials): <your-port-client-id>
+  [9/10] port_client_secret (you can find it using:
+https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials): <your-port-client-secret>
+  [10/10] is_us_region [y/n] (n): n
+
+🌊 Ahoy, Captain! Your project is ready to set sail into the vast ocean of possibilities!
+Here are your next steps:
+
+⚓️ Install necessary packages: Run cd ./github && make install && . .venv/bin/activate to install all required packages for your project.
+⚓️ Copy example env file: Run cp .env.example .env  and update your integration's configuration in the .env file.
+⚓️ Set sail with Ocean: Run ocean sail to run the project using Ocean.
+⚓️ Smooth sailing with Make: Alternatively, you can run make run ./github to launch your project using Make.
 ```
 
 </details>
