@@ -6,6 +6,7 @@ from .queries import TEMPLATE_QUERY, RESOURCE_QUERY, ALERTS_QUERY
 
 import httpx
 
+
 class AmplicationClient:
     def __init__(self, api_url: str, api_token: str):
         self.api_url = api_url
