@@ -20,7 +20,6 @@ class BitbucketClient:
         self.http_client = http_async_client
         self.username = username
         self.app_password = app_password
-        self.token = None
         self.base_url = ocean.integration_config["bitbucket_base_url"]
         self.headers = {}
         self._generate_token()
@@ -42,7 +41,9 @@ class BitbucketClient:
             response = await self.http_client.get(url, headers=self.headers)
             response.raise_for_status()
             data = response.json()
-            yield data.get("values", [])
+            values = data.get("values", [])
+            logger.info(f"Retrieved {len(values)} items from {url}")
+            yield values
             url = data.get("next", None)
 
     @cache_iterator_result()

@@ -20,10 +20,6 @@ configurations:
     type: string
     description: "App password for Bitbucket authentication"
     sensitive: true
-  - name: bitbucketWorkspace
-    required: true
-    type: string
-    description: "Bitbucket workspace name"
   - name: bitbucketBaseUrl
     required: false
     type: string
