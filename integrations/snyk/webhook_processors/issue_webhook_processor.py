@@ -21,7 +21,7 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         signature = event.headers.get("x-hub-signature", "")
         hmac_obj = hmac.new(
             ocean.integration_config["webhook_secret"].encode("utf-8"),
-            json.dumps(event.payload, separators=(",", ":")).encode('utf-8'),
+            json.dumps(event.payload, separators=(",", ":")).encode("utf-8"),
             hashlib.sha256,
         )
         expected_signature = f"sha256={hmac_obj.hexdigest()}"
