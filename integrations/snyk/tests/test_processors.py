@@ -2,6 +2,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, patch
+from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
@@ -58,43 +59,92 @@ def resource_config() -> ResourceConfig:
         ),
     )
 
+@pytest.fixture
+def mock_context(monkeypatch: Any) -> PortOceanContext:
+    mock_context = AsyncMock()
+    monkeypatch.setattr(PortOceanContext, "app", mock_context)
+    return mock_context
+
 
 def test_shouldProcessEvent_project(
     projectWebhookProcessor: ProjectWebhookProcessor,
+    mock_context: PortOceanContext,
 ) -> None:
-    event = WebhookEvent(
-        trace_id="test-trace-id",
-        payload={
-            "event": "project.created",
-        },
-        headers={},
-    )
-    assert projectWebhookProcessor.should_process_event(event) is True
+    with patch('webhook_processors.project_webhook_processor.hmac') as mock_hmac:
+        mock_hmac_obj = mock_hmac.new.return_value
+        mock_hmac_obj.hexdigest.return_value = "1234567890"
+        event = WebhookEvent(
+            trace_id="test-trace-id",
+            payload={
+                "event": "project.created",
+            },
+            headers={"x-hub-signature": "sha256=1234567890"},
+        )
+        assert projectWebhookProcessor.should_process_event(event) is True
 
-    event = WebhookEvent(
-        trace_id="test-trace-id",
-        payload={
-            "event": "project.updated",
-        },
-        headers={},
-    )
-    assert projectWebhookProcessor.should_process_event(event) is True
-
-    event = WebhookEvent(
-        trace_id="test-trace-id",
-        payload={
-            "event": "org.created",
-        },
-        headers={},
-    )
-    assert projectWebhookProcessor.should_process_event(event) is False
+        mock_hmac_obj.hexdigest.return_value = "1"
+        assert projectWebhookProcessor.should_process_event(event) is False
 
 
-def test_getMatchingKinds_project(
+def test_shouldProcessEvent_target(
+    targetWebhookProcessor: TargetWebhookProcessor,
+    mock_context: PortOceanContext,
+) -> None:
+    with patch('webhook_processors.target_webhook_processor.hmac') as mock_hmac:
+        mock_hmac_obj = mock_hmac.new.return_value
+        mock_hmac_obj.hexdigest.return_value = "1234567890"
+        event = WebhookEvent(
+            trace_id="test-trace-id",
+            payload={
+                "event": "project.created",
+            },
+            headers={"x-hub-signature": "sha256=1234567890"},
+        )
+        assert targetWebhookProcessor.should_process_event(event) is True
+
+        mock_hmac_obj.hexdigest.return_value = "1"
+        assert targetWebhookProcessor.should_process_event(event) is False
+
+
+def test_shouldProcessEvent_issue(
+    issueWebhookProcessor: IssueWebhookProcessor,
+    mock_context: PortOceanContext,
+) -> None:
+    with patch('webhook_processors.issue_webhook_processor.hmac') as mock_hmac:
+        mock_hmac_obj = mock_hmac.new.return_value
+        mock_hmac_obj.hexdigest.return_value = "1234567890"
+        event = WebhookEvent(
+            trace_id="test-trace-id",
+            payload={
+                "event": "project.created",
+            },
+            headers={"x-hub-signature": "sha256=1234567890"},
+        )
+        assert issueWebhookProcessor.should_process_event(event) is True
+
+        mock_hmac_obj.hexdigest.return_value = "1"
+        assert issueWebhookProcessor.should_process_event(event) is False
+
+
+def test_getMatchingKinds_projectReturned(
     projectWebhookProcessor: ProjectWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     assert projectWebhookProcessor.get_matching_kinds(event) == ["project"]
+
+
+def test_getMatchingKinds_issueReturned(
+    issueWebhookProcessor: IssueWebhookProcessor,
+) -> None:
+    event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
+    assert issueWebhookProcessor.get_matching_kinds(event) == ["issue"]
+
+
+def test_getMatchingKinds_targetReturned(
+    targetWebhookProcessor: TargetWebhookProcessor,
+) -> None:
+    event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
+    assert targetWebhookProcessor.get_matching_kinds(event) == ["target"]
 
 
 @pytest.mark.asyncio
@@ -106,11 +156,52 @@ async def test_authenticate_project(
 
 
 @pytest.mark.asyncio
+async def test_authenticate_issue(
+    issueWebhookProcessor: IssueWebhookProcessor,
+) -> None:
+    result = await issueWebhookProcessor.authenticate({}, {})
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_authenticate_target(
+    targetWebhookProcessor: TargetWebhookProcessor,
+) -> None:
+    result = await targetWebhookProcessor.authenticate({}, {})
+    assert result is True
+
+
+@pytest.mark.asyncio
 async def test_validatePayload_project(
     projectWebhookProcessor: ProjectWebhookProcessor,
 ) -> None:
-    result = await projectWebhookProcessor.validate_payload({})
+    result = await projectWebhookProcessor.validate_payload({"project": {}})
     assert result is True
+
+    result = await projectWebhookProcessor.validate_payload({})
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_validatePayload_issue(
+    issueWebhookProcessor: IssueWebhookProcessor,
+) -> None:
+    result = await issueWebhookProcessor.validate_payload({"project": {}})
+    assert result is True
+
+    result = await issueWebhookProcessor.validate_payload({})
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_validatePayload_target(
+    targetWebhookProcessor: TargetWebhookProcessor,
+) -> None:
+    result = await targetWebhookProcessor.validate_payload({"project": {}})
+    assert result is True
+
+    result = await targetWebhookProcessor.validate_payload({})
+    assert result is False
 
 
 @pytest.mark.asyncio
@@ -121,6 +212,7 @@ async def test_handleEvent_projectUpdated_projectReturnedFromClient_updatedRawRe
     payload: dict[str, Any] = {
         "event": "project.updated",
         "project": {"id": "test-project-id"},
+        "org": {"id": "test-org-id"},
     }
     mock_project: dict[str, Any] = {
         "id": "test-project-id",
@@ -129,15 +221,16 @@ async def test_handleEvent_projectUpdated_projectReturnedFromClient_updatedRawRe
     }
 
     with patch(
-        "webhook_processors.project_webhook_processor.create_snyk_client"
+        "webhook_processors.project_webhook_processor.init_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
 
         async def mock_get_project(*args: Any, **kwargs: Any) -> dict[str, Any]:
-            assert args[0] == "test-project-id"
+            assert args[0] == "test-org-id"
+            assert args[1] == "test-project-id"
             return mock_project
 
-        mock_client.get_project = mock_get_project
+        mock_client.get_single_project = mock_get_project
         mock_create_client.return_value = mock_client
 
         result = await projectWebhookProcessor.handle_event(payload, resource_config)
@@ -148,82 +241,74 @@ async def test_handleEvent_projectUpdated_projectReturnedFromClient_updatedRawRe
 
 
 @pytest.mark.asyncio
-async def test_handleEvent_projectDeleted_deletedRawResultsReturnedCorrectly(
-    projectWebhookProcessor: ProjectWebhookProcessor,
+async def test_handleEvent_projectUpdated_targetReturnedFromClient_updatedRawResultsReturnedCorrectly(
+    targetWebhookProcessor: TargetWebhookProcessor,
     resource_config: ResourceConfig,
 ) -> None:
-    payload = {"event": "project.deleted", "project": {"id": "test-project-id"}}
+    payload: dict[str, Any] = {
+        "event": "project.updated",
+        "project": {"id": "test-project-id"},
+        "org": {"id": "test-org-id"},
+    }
+    mock_target: dict[str, Any] = {
+        "id": "test-target-id",
+        "name": "Test Target",
+        "url": "https://example.com",
+    }
 
     with patch(
-        "webhook_processors.project_webhook_processor.create_snyk_client"
+        "webhook_processors.target_webhook_processor.init_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
+
+        async def mock_get_target(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            assert args[0] == "test-org-id"
+            assert args[1] == "test-project-id"
+            return mock_target
+
+        mock_client.get_single_target_by_project_id = mock_get_target
         mock_create_client.return_value = mock_client
 
-        result = await projectWebhookProcessor.handle_event(payload, resource_config)
+        result = await targetWebhookProcessor.handle_event(payload, resource_config)
 
-        assert len(result.updated_raw_results) == 0
-        assert len(result.deleted_raw_results) == 1
-        assert result.deleted_raw_results[0] == payload["project"]
+        assert len(result.updated_raw_results) == 1
+        assert len(result.deleted_raw_results) == 0
+        assert result.updated_raw_results[0] == mock_target
 
 
-def test_shouldProcessEvent_issue(
+@pytest.mark.asyncio
+async def test_handleEvent_projectUpdated_issuesReturnedFromClient_updatedRawResultsReturnedCorrectly(
     issueWebhookProcessor: IssueWebhookProcessor,
+    resource_config: ResourceConfig,
 ) -> None:
-    event = WebhookEvent(
-        trace_id="test-trace-id",
-        payload={
-            "event": "org.created",
-        },
-        headers={},
-    )
-    assert issueWebhookProcessor.should_process_event(event) is True
+    payload: dict[str, Any] = {
+        "event": "project.updated",
+        "project": {"id": "test-project-id"},
+        "org": {"id": "test-org-id"},
+    }
+    mock_issues: list[dict[str, Any]] = [
+        {
+            "id": "test-issue-id",
+            "title": "Test Issue",
+            "severity": "high",
+        }
+    ]
 
-    event = WebhookEvent(
-        trace_id="test-trace-id",
-        payload={
-            "event": "org.updated",
-        },
-        headers={},
-    )
-    assert issueWebhookProcessor.should_process_event(event) is True
+    with patch(
+        "webhook_processors.issue_webhook_processor.init_client"
+    ) as mock_create_client:
+        mock_client = AsyncMock()
 
-    event = WebhookEvent(
-        trace_id="test-trace-id",
-        payload={
-            "event": "project.created",
-        },
-        headers={},
-    )
-    assert issueWebhookProcessor.should_process_event(event) is False
+        async def mock_get_issues(*args: Any, **kwargs: Any) -> list[dict[str, Any]]:
+            assert args[0] == "test-org-id"
+            assert args[1] == "test-project-id"
+            return mock_issues
 
+        mock_client.get_issues = mock_get_issues
+        mock_create_client.return_value = mock_client
 
-def test_shouldProcessEvent_target(
-    targetWebhookProcessor: TargetWebhookProcessor,
-) -> None:
-    event = WebhookEvent(
-        trace_id="test-trace-id",
-        payload={
-            "event": "vulnerability.disclosed",
-        },
-        headers={},
-    )
-    assert targetWebhookProcessor.should_process_event(event) is True
+        result = await issueWebhookProcessor.handle_event(payload, resource_config)
 
-    event = WebhookEvent(
-        trace_id="test-trace-id",
-        payload={
-            "event": "vulnerability.updated",
-        },
-        headers={},
-    )
-    assert targetWebhookProcessor.should_process_event(event) is True
-
-    event = WebhookEvent(
-        trace_id="test-trace-id",
-        payload={
-            "event": "project.created",
-        },
-        headers={},
-    )
-    assert targetWebhookProcessor.should_process_event(event) is False
+        assert len(result.updated_raw_results) == 1
+        assert len(result.deleted_raw_results) == 0
+        assert result.updated_raw_results[0] == mock_issues[0]
