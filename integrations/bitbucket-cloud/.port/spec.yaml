@@ -24,10 +24,6 @@ configurations:
     type: string
     description: "Secret for validating Bitbucket webhook payloads"
     sensitive: true
-  - name: appHost
-    required: false
-    type: url
-    description: The host of the Port Ocean app. Used for setting up the webhooks against Bitbucket.
   - name: username
     required: true
     type: string

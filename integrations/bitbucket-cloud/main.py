@@ -80,11 +80,14 @@ async def setup_application() -> None:
     """Set up the application by registering webhooks."""
     integration_config = ocean.integration_config
 
-    app_host = integration_config.get("app_host", None)
+    app_host = ocean.config("base_url", None)
     webhook_secret = integration_config.get("webhook_secret")
 
     if not app_host:
-        logger.error("Missing required configuration: app_host or webhook_secret")
+        logger.warning(
+            "No app host provided, skipping webhook creation. "
+            "Without setting up the webhook, the integration will not export live changes from Bitbucket cloud"
+        )
         return
 
     client = get_bitbucket_client()
