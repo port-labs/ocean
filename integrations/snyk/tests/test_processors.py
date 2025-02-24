@@ -9,9 +9,9 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from integrations.snyk.webhook_processors.project_webhook_processor import ProjectWebhookProcessor  # type: ignore
-from integrations.snyk.webhook_processors.issue_webhook_processor import IssueWebhookProcessor  # type: ignore
-from integrations.snyk.webhook_processors.target_webhook_processor import TargetWebhookProcessor  # type: ignore
+from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
+from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
+from webhook_processors.target_webhook_processor import TargetWebhookProcessor
 from typing import Any
 
 from snyk.overrides import ProjectSelector
