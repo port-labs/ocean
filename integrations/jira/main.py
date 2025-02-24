@@ -1,36 +1,22 @@
 import typing
-from enum import StrEnum
-from typing import Any, cast
+from typing import cast
 
 from loguru import logger
+from initialize_client import create_jira_client
+from kinds import Kinds
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from jira.client import JiraClient
 from jira.overrides import (
     JiraIssueConfig,
-    JiraIssueSelector,
-    JiraPortAppConfig,
     JiraProjectResourceConfig,
     TeamResourceConfig,
 )
-
-
-class ObjectKind(StrEnum):
-    PROJECT = "project"
-    ISSUE = "issue"
-    USER = "user"
-    TEAM = "team"
-
-
-def create_jira_client() -> JiraClient:
-    """Create JiraClient with current configuration."""
-    return JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
+from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
+from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
+from webhook_processors.user_webhook_processor import UserWebhookProcessor
 
 
 async def setup_application() -> None:
@@ -42,7 +28,7 @@ async def setup_application() -> None:
     await client.create_events_webhook(base_url)
 
 
-@ocean.on_resync(ObjectKind.PROJECT)
+@ocean.on_resync(Kinds.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
@@ -54,7 +40,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
-@ocean.on_resync(ObjectKind.ISSUE)
+@ocean.on_resync(Kinds.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
@@ -75,7 +61,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
-@ocean.on_resync(ObjectKind.TEAM)
+@ocean.on_resync(Kinds.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
     org_id = ocean.integration_config.get("atlassian_organization_id")
@@ -94,102 +80,13 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield teams
 
 
-@ocean.on_resync(ObjectKind.USER)
+@ocean.on_resync(Kinds.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
     async for users_batch in client.get_paginated_users():
         logger.info(f"Received users batch with {len(users_batch)} users")
         yield users_batch
-
-
-@ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    client = create_jira_client()
-
-    webhook_event = data.get("webhookEvent")
-    if not webhook_event:
-        logger.error("Missing webhook event")
-        return {"ok": False, "error": "Missing webhook event"}
-
-    logger.info(f"Processing webhook event: {webhook_event}")
-
-    match webhook_event:
-        case event_data if event_data.startswith("user_"):
-            account_id = data["user"]["accountId"]
-            logger.debug(f"Fetching user with accountId: {account_id}")
-            item = await client.get_single_user(account_id)
-            kind = ObjectKind.USER
-        case event_data if event_data.startswith("project_"):
-            project_key = data["project"]["key"]
-            logger.debug(f"Fetching project with key: {project_key}")
-            item = await client.get_single_project(project_key)
-            kind = ObjectKind.PROJECT
-        case event_data if event_data.startswith("jira:issue_"):
-            issue_key = data["issue"]["key"]
-            logger.info(
-                f"Fetching issue with key: {issue_key} and applying specified JQL filter"
-            )
-            resource_configs = cast(JiraPortAppConfig, event.port_app_config).resources
-
-            matching_resource_configs: list[JiraIssueConfig] = [
-                resource_config  # type: ignore
-                for resource_config in resource_configs
-                if (
-                    resource_config.kind == ObjectKind.ISSUE
-                    and isinstance(resource_config.selector, JiraIssueSelector)
-                )
-            ]
-
-            for config in matching_resource_configs:
-
-                params = {}
-
-                if config.selector.jql:
-                    params["jql"] = (
-                        f"{config.selector.jql} AND key = {data['issue']['key']}"
-                    )
-                else:
-                    params["jql"] = f"key = {data['issue']['key']}"
-
-                issues: list[dict[str, Any]] = []
-                async for issues in client.get_paginated_issues(params):
-                    issues.extend(issues)
-
-                if not issues:
-                    logger.warning(
-                        f"Issue {data['issue']['key']} not found"
-                        f" using the following query: {params['jql']},"
-                        " trying to remove..."
-                    )
-                    await ocean.unregister_raw(ObjectKind.ISSUE, [data["issue"]])
-                else:
-                    await ocean.register_raw(ObjectKind.ISSUE, issues)
-
-                return {"ok": True}
-        case _:
-            logger.warning(f"Unknown webhook event type: {webhook_event}")
-            return {
-                "ok": False,
-                "error": f"Unknown webhook event type: {webhook_event}",
-            }
-
-    if not item:
-        error_msg = f"Failed to retrieve {kind}"
-        logger.warning(error_msg)
-        return {"ok": False, "error": error_msg}
-
-    logger.debug(f"Retrieved {kind} item: {item}")
-
-    if "deleted" in webhook_event:
-        logger.info(f"Unregistering {kind} item")
-        await ocean.unregister_raw(kind, [item])
-    else:
-        logger.info(f"Registering {kind} item")
-        await ocean.register_raw(kind, [item])
-
-    logger.info(f"Webhook event '{webhook_event}' processed successfully")
-    return {"ok": True}
 
 
 # Called once when the integration starts.
@@ -202,3 +99,8 @@ async def on_start() -> None:
         return
 
     await setup_application()
+
+
+ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", UserWebhookProcessor)

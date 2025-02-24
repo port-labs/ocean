@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.20.2 (2025-02-23)
+
+### Bug Fixes
+
+- Validate feature flag for get config in new integrations - outside of mixin
+
+## 0.20.1 (2025-02-23)
+
+### Bug Fixes
+
+- Validate feature flag for get config in new integrations
+
 ## 0.20.0 (2025-02-20)
 
 ### Features

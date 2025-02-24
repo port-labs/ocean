@@ -58,11 +58,14 @@ async def _initialize_required_integration_settings(
     port_client: PortClient,
     integration_config: IntegrationConfiguration,
     default_mapping: PortAppConfig | None = None,
+    has_provision_feature_flag: bool = False,
 ) -> None:
     try:
         logger.info("Initializing integration at port")
         integration = await port_client.get_current_integration(
-            should_log=False, should_raise=False
+            should_log=False,
+            should_raise=False,
+            has_provision_feature_flag=has_provision_feature_flag,
         )
         if not integration:
             logger.info(
@@ -219,6 +222,10 @@ async def _initialize_defaults(
         )
     )
 
+    has_provision_feature_flag = ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG in (
+        await port_client.get_organization_feature_flags()
+    )
+
     if (
         not integration_config.create_port_resources_origin
         and is_integration_provision_enabled
@@ -236,11 +243,7 @@ async def _initialize_defaults(
         logger.info(
             "Resources origin is set to be Port, verifying integration is supported"
         )
-        org_feature_flags = await port_client.get_organization_feature_flags()
-        if (
-            not is_integration_provision_enabled
-            or ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG not in org_feature_flags
-        ):
+        if not is_integration_provision_enabled or not has_provision_feature_flag:
             logger.info(
                 "Port origin for Integration is not supported, changing resources origin to use Ocean"
             )
@@ -265,6 +268,7 @@ async def _initialize_defaults(
             port_client,
             integration_config,
             defaults.port_app_config if defaults else None,
+            has_provision_feature_flag=has_provision_feature_flag,
         )
 
     if (
