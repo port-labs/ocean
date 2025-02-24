@@ -10,10 +10,15 @@ features:
       - kind: project
       # - kind: <ResourceName2>
 configurations:
-  - name: bitbucketToken
+  - name: username
     required: true
     type: string
-    description: "Bitbucket API token for authentication"
+    description: "Bitbucket username"
+    sensitive: true
+  - name: appPassword
+    required: true
+    type: string
+    description: "App password for Bitbucket authentication"
     sensitive: true
   - name: bitbucketWorkspace
     required: true
@@ -29,7 +34,3 @@ configurations:
     type: string
     description: "Secret for validating Bitbucket webhook payloads"
     sensitive: true
-  - name: appHost
-    required: false
-    type: url
-    description: The host of the Port Ocean app. Used for setting up the webhooks against Bitbucket.
