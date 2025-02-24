@@ -1,5 +1,4 @@
 resources:
-  # Repository kind
   - kind: repository
     selector:
       query: 'true'
@@ -17,7 +16,6 @@ resources:
           relations:
             project: .project.key
 
-  # Project kind
   - kind: project
     selector:
       query: 'true'
@@ -30,7 +28,6 @@ resources:
           properties:
             url: .links.html.href
 
-  # Pull Request kind
   - kind: pull-request
     selector:
       query: 'true'
@@ -44,4 +41,19 @@ resources:
             state: .state
             author: .author.display_name
           relations:
-            repository: .source.repository.uuid
+            repository: .source.repository.uuid[1:-1]
+
+  - kind: component
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"bitbucketComponent"'
+          properties:
+            description: .description
+            createdOn: .created_on
+          relations:
+            repository: .repository.uuid[1:-1]

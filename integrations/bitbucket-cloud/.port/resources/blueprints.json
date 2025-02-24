@@ -73,5 +73,32 @@
       "many": false
     }
   }
+},
+{
+  "identifier": "bitbucketComponent",
+  "title": "Component",
+  "icon": "Component",
+  "schema": {
+    "properties": {
+      "description": {
+        "title": "Description",
+        "type": "string"
+      },
+      "createdOn": {
+        "title": "Created On",
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "required": []
+  },
+  "relations": {
+    "repository": {
+      "title": "Repository",
+      "target": "bitbucketRepository",
+      "required": true,
+      "many": false
+    }
+  }
 }
 ]
