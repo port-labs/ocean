@@ -1,6 +1,8 @@
 import asyncio
 import typing
-from typing import Any, Dict
+import json
+import yaml
+from typing import Any, Dict, List, Union
 
 from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
@@ -79,6 +81,69 @@ class PushHookListener(HookListener):
             {"before": old_entities, "after": new_entities},
             UserAgentType.gitops,
         )
+
+        await self.handle_file_changes(repo_id, new_commit)
+
+    async def handle_file_changes(self, repo_id: str, commit_id: str) -> None:
+        """Fetch and process file changes for a given commit."""
+        logger.info(f"Fetching file changes for commit {commit_id}")
+        
+        try:
+            repo_info = await self._client.get_repository(repo_id)
+            project_id = repo_info['project']['id']
+            
+            # Get file changes from commit
+            url = f"{self._client._organization_base_url}/{project_id}/_apis/git/repositories/{repo_id}/commits/{commit_id}/changes"
+            response = await self._client.send_request("GET", url, params={"api-version": "7.1"})
+            changes = response.json().get("changes", [])
+
+            for change in changes:
+                file_path = change.get("item", {}).get("path", "")
+                if file_path.endswith((".yaml", ".yml", ".json")):
+                    await self.process_file_change(repo_info, commit_id, file_path)
+
+        except Exception as e:
+            logger.error(f"Error fetching file changes: {e}")
+
+    async def process_file_change(
+        self,
+        repo_info: dict,
+        commit_id: str,
+        file_path: str,
+    ) -> None:
+        """Process a single file change and register it with Port."""
+        logger.info(f"Processing file change for {file_path}")
+        try:
+            file_content = await self._client.get_file_by_commit(file_path, repo_info['id'], commit_id)
+            if not file_content:
+                logger.warning(f"No content found for file {file_path}")
+                return
+
+            content_str = file_content.decode('utf-8')
+            parsed_content = None
+            if file_path.endswith((".yaml", ".yml")):
+                parsed_content = yaml.safe_load(content_str)
+            elif file_path.endswith(".json"):
+                parsed_content = json.loads(content_str)
+
+            if parsed_content:
+                file_data = {
+                    "file": {
+                        "path": file_path,
+                        "content": {
+                            "raw": content_str,
+                            "parsed": parsed_content
+                        },
+                        "link": f"{repo_info['webUrl']}/blob/{commit_id}/{file_path.lstrip('/')}",
+                        "size": len(file_content)
+                    },
+                    "repo": repo_info
+                }
+                await ocean.register_raw(Kind.FILE, [file_data])
+                logger.info(f"Successfully registered file {file_path} with Port")
+
+        except Exception as e:
+            logger.error(f"Error processing file {file_path}: {e}")
 
     async def register_repository(self, push_data: Dict[str, Any]) -> None:
         await ocean.register_raw(

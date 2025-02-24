@@ -1,13 +1,13 @@
 from enum import StrEnum
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Optional, List
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
-from pydantic import Field
-from typing import List, Literal
+from pydantic import Field, BaseModel
+from typing import Literal
 
 
 class Kind(StrEnum):
@@ -22,6 +22,7 @@ class Kind(StrEnum):
     BOARD = "board"
     COLUMN = "column"
     RELEASE = "release"
+    FILE = "file"
 
 
 PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
@@ -67,6 +68,19 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
     selector: AzureDevopsSelector
 
 
+class AzureDevopsFileResourceConfig(ResourceConfig):
+    class AzureDevopsSelector(Selector):
+        query: str
+        files: dict[str, Any] = {
+            "path": "",
+            "repos": None,
+            "max_depth": None
+        }
+
+    kind: Literal["file"]
+    selector: AzureDevopsSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -83,9 +97,11 @@ class GitPortAppConfig(PortAppConfig):
     resources: list[
         AzureDevopsProjectResourceConfig
         | AzureDevopsWorkItemResourceConfig
+        | AzureDevopsFileResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
 
 def extract_branch_name_from_ref(ref: str) -> str:
     return "/".join(ref.split("/")[2:])
+

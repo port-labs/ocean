@@ -1,3 +1,4 @@
+import time
 from typing import Any, cast
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -11,6 +12,7 @@ from azure_devops.misc import (
     Kind,
     PULL_REQUEST_SEARCH_CRITERIA,
     AzureDevopsProjectResourceConfig,
+    AzureDevopsFileResourceConfig,
 )
 
 from azure_devops.misc import AzureDevopsWorkItemResourceConfig
@@ -140,6 +142,29 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield releases
 
 
+@ocean.on_resync(Kind.FILE)
+async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    config = cast(AzureDevopsFileResourceConfig, event.resource_config)
+    logger.info(f"Resyncing files for {config.selector.files}")
+    total_files = 0
+    start_time = time.time()
+    
+    if not config.selector.files.get("path"):
+        logger.warning("No path provided in the selector, skipping fetching files")
+        return
+        
+    async for files in azure_devops_client.generate_files(
+        path=config.selector.files["path"],
+        repos=config.selector.files.get("repos"),
+        max_depth=config.selector.files.get("max_depth")
+    ):
+        logger.info(f"Resyncing {len(files)} files")
+        total_files += len(files)
+        yield files
+    logger.info(f"Total files resynced: {total_files}")
+    logger.info(f"Total time taken: {time.time() - start_time:.2f} seconds")
+    
 @ocean.router.post("/webhook")
 async def webhook(request: Request) -> dict[str, Any]:
     body = await request.json()
