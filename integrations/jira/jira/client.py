@@ -181,9 +181,9 @@ class JiraClient(OAuthClient):
 
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
-        webhooks = (await self._send_api_request("GET", url=self.webhooks_url))[
+        webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
             "values"
-        ]
+        )
 
         if webhooks:
             logger.info("Ocean real time reporting webhook already exists")
