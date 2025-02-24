@@ -4,8 +4,8 @@ from aiolimiter import AsyncLimiter
 from snyk.client import SnykClient
 from port_ocean.context.ocean import ocean
 
-SNYK_LIMIT = 1320
-RATELIMITER = AsyncLimiter(SNYK_LIMIT)
+SNYK_MAX_REQUESTS_LIMIT_PER_HOUR = 1320
+RATELIMITER = AsyncLimiter(SNYK_MAX_REQUESTS_LIMIT_PER_HOUR)
 
 
 def init_client() -> SnykClient:
