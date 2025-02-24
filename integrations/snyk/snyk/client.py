@@ -180,19 +180,6 @@ class SnykClient:
                 )
                 yield projects_to_yield
 
-    async def _get_target_details(self, org_id: str, target_id: str) -> dict[str, Any]:
-        target_cache_key = f"{CacheKeys.TARGET}-{target_id}"
-        cached_details = event.attributes.get(target_cache_key)
-        if cached_details:
-            return cached_details
-
-        target_details = await self._send_api_request(
-            url=f"{self.rest_api_url}/orgs/{org_id}/targets/{target_id}",
-            version=f"{self.snyk_api_version}",
-        )
-        event.attributes[target_cache_key] = target_details
-        return target_details
-
     async def get_single_target_by_project_id(
         self, org_id: str, project_id: str
     ) -> dict[str, Any]:
@@ -200,8 +187,6 @@ class SnykClient:
         target_id = (
             project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
         )
-        target_details = await self._get_target_details(org_id, target_id)
-        target_id = target_details["data"]["id"]
 
         url = f"{self.rest_api_url}/orgs/{org_id}/targets/{target_id}"
 
