@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.1 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.2
+
+
+## 0.3.0 (2025-02-23)
+
+
+### Improvements
+
+- Introduced a standardized abstraction for Jira integration
+- Added dedicated webhook processors for issues, projects, and users
+- Refactored and modularized code for better maintainability
+- Enhanced error handling and logging for webhook events
+
+
+## 0.2.41 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.1
+
+
 ## 0.2.40 (2025-02-19)
 
 
