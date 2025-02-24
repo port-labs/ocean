@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.3 (2025-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.3
+
+
+## 0.3.2 (2025-02-24)
+
+
+### Improvements
+
+- Added support for OAuth live events for Jira using the webhooks api.
+  - https://developer.atlassian.com/cloud/jira/platform/webhooks/#registering-a-webhook-using-the-rest-api--for-connect-and-oauth-2-0-apps-
+
+
 ## 0.3.1 (2025-02-23)
 
 
