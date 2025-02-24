@@ -21,7 +21,7 @@ class ProjectWebhookProcessor(AbstractWebhookProcessor):
         signature = event.headers.get("x-hub-signature", "")
         hmac_obj = hmac.new(
             ocean.integration_config["webhook_secret"].encode("utf-8"),
-            json.dumps(event.payload).encode("utf-8"),
+            json.dumps(event.payload, separators=(",", ":")).encode('utf-8'),
             hashlib.sha256,
         )
         expected_signature = f"sha256={hmac_obj.hexdigest()}"
@@ -34,10 +34,7 @@ class ProjectWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        data = json.dumps(payload)
-        if "project" in data:
-            return True
-        return False
+        return "project" in payload
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
