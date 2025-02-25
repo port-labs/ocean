@@ -3,10 +3,6 @@ import asyncio
 from typing import Any, AsyncGenerator, Optional, List, Union
 from httpx import HTTPStatusError
 from loguru import logger
-import yaml
-import fnmatch
-from glob2 import fnmatch as glob2_fnmatch
-from braceexpand import braceexpand
 
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -20,6 +16,7 @@ from .file_processing import (
     get_base_paths,
     process_file_content
 )
+from port_ocean.utils.queue_utils import process_in_queue
 
 
 API_URL_PREFIX = "_apis"
@@ -29,6 +26,8 @@ WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 MAX_WORK_ITEMS_PER_REQUEST = 200
 MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 19999
 MAX_ALLOWED_FILE_SIZE_IN_BYTES = 10 * 1024 * 1024  # 10MB
+MAX_CONCURRENT_FILE_DOWNLOADS = 100
+MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 20
 
 class AzureDevopsClient(HTTPBaseClient):
     def __init__(self, organization_url: str, personal_access_token: str) -> None:
@@ -446,6 +445,10 @@ class AzureDevopsClient(HTTPBaseClient):
         branch: str,
         repository: dict[str, Any]
     ) -> Optional[dict[str, Any]]:
+        # Skip large files early
+        if file.get('size', 0) > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
+            logger.warning(f"Skipping large file {file['path']} ({file['size']} bytes)")
+            return None
         try:
             content = await self._get_item_content(
                 file['path'],
@@ -458,9 +461,6 @@ class AzureDevopsClient(HTTPBaseClient):
             logger.error(f"Failed to process file {file['path']}: {str(e)}")
             return None
 
-    def _get_base_paths(self, patterns: List[str]) -> List[str]:
-        return get_base_paths(patterns)
-
     async def generate_files(
         self, 
         path: str | List[str], 
@@ -469,14 +469,14 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Iterates through repositories and returns files matching the path pattern with optimized retrieval.
-        Uses concurrent fetching for both repositories and files.
+        Uses process_in_queue for efficient concurrent processing.
         
         Args:
             path: Glob pattern(s) to match files (e.g., '**/package.json')
             repos: Optional list of repository names to filter by
             max_depth: Optional maximum directory depth to search (None for unlimited)
         """
-        patterns = self.convert_glob_to_patterns(path)
+        patterns = expand_patterns(path)
         
         async for repositories in self.generate_repositories(include_disabled_repositories=False):
             repositories_to_process = [
@@ -488,27 +488,20 @@ class AzureDevopsClient(HTTPBaseClient):
                 continue
 
             logger.info(f"Processing {len(repositories_to_process)} repositories")
-                
-            batch_size = 10 
-            for i in range(0, len(repositories_to_process), batch_size):
-                repo_batch = repositories_to_process[i:i + batch_size]
-                
-                repo_tasks = [
-                    self._process_repository(
-                        repository,
-                        patterns,
-                        max_depth
-                    )
-                    for repository in repo_batch
-                ]
-                
-                repo_results = await asyncio.gather(*repo_tasks, return_exceptions=True)
-                
-                for result in repo_results:
-                    if result and not isinstance(result, Exception):
-                        for file_batch in result:
-                            if file_batch:
-                                yield file_batch
+            
+            repo_results = await process_in_queue(
+                repositories_to_process,
+                self._process_repository,
+                patterns,
+                max_depth,
+                concurrency=MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+            )
+            
+            for result in repo_results:
+                if result:
+                    for file_batch in result:
+                        if file_batch:
+                            yield file_batch
 
     async def _process_repository(
         self,
@@ -529,7 +522,7 @@ class AzureDevopsClient(HTTPBaseClient):
             repository_id = repository['id']
             results = []
             
-            base_paths = self._get_base_paths(patterns)
+            base_paths = get_base_paths(patterns)
             for base_path in base_paths:
                 matching_files = await self._process_repository_path(
                     repository=repository,
@@ -597,7 +590,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 if max_depth is not None and file_path.count('/') > max_depth:
                     continue
                     
-                if any(self.does_pattern_apply(pattern, file_path) for pattern in patterns):
+                if any(match_pattern(pattern, file_path) for pattern in patterns):
                     matching_files.append(item)
                     seen_paths.add(file_path)
             
@@ -614,30 +607,19 @@ class AzureDevopsClient(HTTPBaseClient):
         repository_id: str,
         branch: str,
     ) -> List[List[dict[str, Any]]]:
-        """Process matching files in batches."""
-        results = []
-        file_batch_size = 50
+        """Process matching files using process_in_queue for efficient concurrency."""
+        if not matching_files:
+            return []
+            
+        processed_files = await process_in_queue(
+            matching_files,
+            self._fetch_and_process_file,
+            repository_id,
+            branch,
+            repository,
+            concurrency=MAX_CONCURRENT_FILE_DOWNLOADS
+        )
         
-        for i in range(0, len(matching_files), file_batch_size):
-            batch_files = matching_files[i:i + file_batch_size]
-            
-            fetch_tasks = [
-                self._fetch_and_process_file(
-                    file=file,
-                    repository_id=repository_id,
-                    branch=branch,
-                    repository=repository
-                )
-                for file in batch_files
-            ]
-            
-            batch_results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
-            valid_results = [
-                result for result in batch_results 
-                if result is not None and not isinstance(result, Exception)
-            ]
-            
-            if valid_results:
-                results.append(valid_results)
-        
-        return results
+        # Filter out None results and return as a single batch
+        valid_files = [f for f in processed_files if f is not None]
+        return [valid_files] if valid_files else []
