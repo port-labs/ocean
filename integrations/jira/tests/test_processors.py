@@ -58,7 +58,8 @@ def resource_config() -> ResourceConfig:
     )
 
 
-def test_should_process_event(
+@pytest.mark.asyncio
+async def test_should_process_event(
     jiraIssueWebhookProcessor: IssueWebhookProcessor,
 ) -> None:
     event = WebhookEvent(
@@ -68,7 +69,7 @@ def test_should_process_event(
         },
         headers={},
     )
-    assert jiraIssueWebhookProcessor.should_process_event(event) is True
+    assert await jiraIssueWebhookProcessor.should_process_event(event) is True
 
     event = WebhookEvent(
         trace_id="test-trace-id",
@@ -77,7 +78,7 @@ def test_should_process_event(
         },
         headers={},
     )
-    assert jiraIssueWebhookProcessor.should_process_event(event) is True
+    assert await jiraIssueWebhookProcessor.should_process_event(event) is True
 
     event = WebhookEvent(
         trace_id="test-trace-id",
@@ -86,14 +87,15 @@ def test_should_process_event(
         },
         headers={},
     )
-    assert jiraIssueWebhookProcessor.should_process_event(event) is False
+    assert await jiraIssueWebhookProcessor.should_process_event(event) is False
 
 
-def test_get_matching_kinds(
+@pytest.mark.asyncio
+async def test_get_matching_kinds(
     jiraIssueWebhookProcessor: IssueWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
-    assert jiraIssueWebhookProcessor.get_matching_kinds(event) == ["issue"]
+    assert await jiraIssueWebhookProcessor.get_matching_kinds(event) == ["issue"]
 
 
 @pytest.mark.asyncio
@@ -269,7 +271,8 @@ async def test_handleEvent_issueDeleted_deletedRawResultsReturnedCorrectly(
         assert result.deleted_raw_results[0] == payload["issue"]
 
 
-def test_should_process_event_user(
+@pytest.mark.asyncio
+async def test_should_process_event_user(
     jiraUserWebhookProcessor: UserWebhookProcessor,
 ) -> None:
     event = WebhookEvent(
@@ -279,7 +282,7 @@ def test_should_process_event_user(
         },
         headers={},
     )
-    assert jiraUserWebhookProcessor.should_process_event(event) is True
+    assert await jiraUserWebhookProcessor.should_process_event(event) is True
 
     event = WebhookEvent(
         trace_id="test-trace-id",
@@ -288,7 +291,7 @@ def test_should_process_event_user(
         },
         headers={},
     )
-    assert jiraUserWebhookProcessor.should_process_event(event) is True
+    assert await jiraUserWebhookProcessor.should_process_event(event) is True
 
     event = WebhookEvent(
         trace_id="test-trace-id",
@@ -297,14 +300,15 @@ def test_should_process_event_user(
         },
         headers={},
     )
-    assert jiraUserWebhookProcessor.should_process_event(event) is False
+    assert await jiraUserWebhookProcessor.should_process_event(event) is False
 
 
-def test_get_matching_kinds_user(
+@pytest.mark.asyncio
+async def test_get_matching_kinds_user(
     jiraUserWebhookProcessor: UserWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
-    assert jiraUserWebhookProcessor.get_matching_kinds(event) == ["user"]
+    assert await jiraUserWebhookProcessor.get_matching_kinds(event) == ["user"]
 
 
 @pytest.mark.asyncio
@@ -411,7 +415,8 @@ async def test_handleEvent_userDeleted_noRawResultsReturned(
         assert result.deleted_raw_results[0] == mock_user
 
 
-def test_should_process_event_project(
+@pytest.mark.asyncio
+async def test_should_process_event_project(
     jiraProjectWebhookProcessor: ProjectWebhookProcessor,
 ) -> None:
     event = WebhookEvent(
@@ -421,7 +426,7 @@ def test_should_process_event_project(
         },
         headers={},
     )
-    assert jiraProjectWebhookProcessor.should_process_event(event) is True
+    assert await jiraProjectWebhookProcessor.should_process_event(event) is True
 
     event = WebhookEvent(
         trace_id="test-trace-id",
@@ -430,7 +435,7 @@ def test_should_process_event_project(
         },
         headers={},
     )
-    assert jiraProjectWebhookProcessor.should_process_event(event) is True
+    assert await jiraProjectWebhookProcessor.should_process_event(event) is True
 
     event = WebhookEvent(
         trace_id="test-trace-id",
@@ -439,14 +444,15 @@ def test_should_process_event_project(
         },
         headers={},
     )
-    assert jiraProjectWebhookProcessor.should_process_event(event) is False
+    assert await jiraProjectWebhookProcessor.should_process_event(event) is False
 
 
-def test_get_matching_kinds_project(
+@pytest.mark.asyncio
+async def test_get_matching_kinds_project(
     jiraProjectWebhookProcessor: ProjectWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
-    assert jiraProjectWebhookProcessor.get_matching_kinds(event) == ["project"]
+    assert await jiraProjectWebhookProcessor.get_matching_kinds(event) == ["project"]
 
 
 @pytest.mark.asyncio

@@ -1,3 +1,11 @@
+## 0.1.2 (2025-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
 # Changelog - Ocean - amplication
 
 All notable changes to this project will be documented in this file.

@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.20.4 (2025-02-25)
+
+### Bug Fixes
+- Converted should_process_event and get_matching_kinds methods to async.
+- Enhanced error handling to process successful results even if some processors fail.
+- Updated tests to validate async methods and error handling improvements.
+- Added a new integration test for webhook processing with mixed processor outcomes.
+
+
+
 ## 0.20.3 (2025-02-24)
 
 ### Improvements
