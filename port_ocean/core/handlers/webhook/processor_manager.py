@@ -47,7 +47,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             except Exception as e:
                 logger.exception(f"Error starting queue processor for {path}: {str(e)}")
 
-    def _extract_matching_processors(
+    async def _extract_matching_processors(
         self, webhook_event: WebhookEvent, path: str
     ) -> list[tuple[ResourceConfig, AbstractWebhookProcessor]]:
         """Find and extract the matching processor for an event"""
@@ -56,8 +56,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
         for processor_class in self._processors_classes[path]:
             processor = processor_class(webhook_event.clone())
-            if processor.should_process_event(webhook_event):
-                kinds = processor.get_matching_kinds(webhook_event)
+            if await processor.should_process_event(webhook_event):
+                kinds = await processor.get_matching_kinds(webhook_event)
                 for kind in kinds:
                     for resource in event.port_app_config.resources:
                         if resource.kind == kind:
@@ -92,26 +92,30 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                         parent_override=webhook_event.event_context,
                     ):
                         matching_processors_with_resource = (
-                            self._extract_matching_processors(webhook_event, path)
+                            await self._extract_matching_processors(webhook_event, path)
                         )
                         webhook_event_raw_results_for_all_resources = await asyncio.gather(
                             *(
                                 self._process_single_event(processor, path, resource)
                                 for resource, processor in matching_processors_with_resource
-                            )
+                            ),
+                            return_exceptions=True,
                         )
-                        if webhook_event_raw_results_for_all_resources and all(
-                            webhook_event_raw_results_for_all_resources
-                        ):
+
+                        successful_raw_results: list[WebhookEventRawResults] = [
+                            result
+                            for result in webhook_event_raw_results_for_all_resources
+                            if isinstance(result, WebhookEventRawResults)
+                        ]
+
+                        if successful_raw_results:
                             logger.info(
                                 "Exporting raw event results to entities",
                                 webhook_event_raw_results_for_all_resources_length=len(
-                                    webhook_event_raw_results_for_all_resources
+                                    successful_raw_results
                                 ),
                             )
-                            await self.sync_raw_results(
-                                webhook_event_raw_results_for_all_resources
-                            )
+                            await self.sync_raw_results(successful_raw_results)
             except asyncio.CancelledError:
                 logger.info(f"Queue processor for {path} is shutting down")
                 for _, processor in matching_processors_with_resource:

@@ -32,7 +32,7 @@ class ConcreteWebhookProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(updated_raw_results=[{}], deleted_raw_results=[])
 
-    def should_process_event(self, webhook_event: WebhookEvent) -> bool:
+    async def should_process_event(self, webhook_event: WebhookEvent) -> bool:
         return True
 
     async def before_processing(self) -> None:
@@ -47,7 +47,7 @@ class ConcreteWebhookProcessor(AbstractWebhookProcessor):
         await super().cancel()
         self.cancel_called = True
 
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["test"]
 
 

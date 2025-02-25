@@ -1,0 +1,132 @@
+[
+    {
+        "identifier": "amplication_service_from_template",
+        "title": "Scaffold a Service",
+        "icon": "Amplication",
+        "description": "Create a new service from template (using [Amplication](https://amplication.com))",
+        "trigger": {
+            "type": "self-service",
+            "operation": "CREATE",
+            "userInputs": {
+                "properties": {
+                    "template": {
+                        "type": "string",
+                        "title": "Template",
+                        "blueprint": "AmplicationTemplate",
+                        "icon": "Amplication",
+                        "format": "entity"
+                    },
+                    "service_name": {
+                        "type": "string",
+                        "icon": "DefaultProperty",
+                        "title": "Service Name"
+                    }
+                },
+                "required": [
+                    "template",
+                    "service_name"
+                ],
+                "order": [
+                    "template",
+                    "service_name"
+                ]
+            }
+        },
+        "invocationMethod": {
+            "type": "WEBHOOK",
+            "url": "https://server.amplication.com/graphql",
+            "agent": false,
+            "synchronized": true,
+            "method": "POST",
+            "headers": {
+                "RUN_ID": "{{ .run.id }}",
+                "authorization": "Bearer {{ .secrets._AMPLICATION_AMPLICATION_TOKEN }}"
+            },
+            "body": {
+                "operationName": "createServiceFromTemplate",
+                "variables": {
+                    "data": {
+                        "name": "{{ .inputs.service_name }}",
+                        "description": "",
+                        "project": {
+                            "connect": {
+                                "id": "{{ .inputs.template.properties.project_id }}"
+                            }
+                        },
+                        "serviceTemplate": {
+                            "id": "{{ .inputs.template.identifier }}"
+                        },
+                        "buildAfterCreation": true
+                    }
+                },
+                "query": "mutation createServiceFromTemplate($data: ResourceFromTemplateCreateInput!) {\n  createResourceFromTemplate(data: $data) {\n    id\n    name\n    description\n    __typename\n  }\n}"
+            }
+        },
+        "requiredApproval": false
+    },
+    {
+        "identifier": "amplication_rebuild_code",
+        "title": "Code Re-build",
+        "icon": "Amplication",
+        "trigger": {
+            "type": "self-service",
+            "operation": "DAY-2",
+            "userInputs": {
+                "properties": {
+                    "resource": {
+                        "title": "Resource",
+                        "icon": "Amplication",
+                        "type": "string",
+                        "blueprint": "AmplicationResource",
+                        "format": "entity"
+                    },
+                    "message": {
+                        "title": "Message",
+                        "icon": "DefaultProperty",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "resource",
+                    "message"
+                ],
+                "order": [
+                    "resource",
+                    "message"
+                ]
+            }
+        },
+        "invocationMethod": {
+            "type": "WEBHOOK",
+            "url": "https://server.amplication.com/graphql",
+            "agent": false,
+            "synchronized": true,
+            "method": "POST",
+            "headers": {
+                "RUN_ID": "{{ .run.id }}",
+                "authorization": "Bearer {{ .secrets._AMPLICATION_AMPLICATION_TOKEN }}"
+            },
+            "body": {
+                "operationName": "commit",
+                "variables": {
+                    "data": {
+                        "message": "{{ .inputs.message }}",
+                        "project": {
+                            "connect": {
+                                "id": "{{ .inputs.resource.properties.project_id }}"
+                            }
+                        },
+                        "resourceIds": [
+                            "{{ .inputs.resource.identifier }}"
+                        ],
+                        "bypassLimitations": true,
+                        "commitStrategy": "Specific",
+                        "resourceTypeGroup": "Services"
+                    }
+                },
+                "query": "mutation commit($data: CommitCreateInput!) {\n  commit(data: $data) {\n    id\n    builds {\n      id\n      resourceId\n      status\n      __typename\n    }\n    __typename\n  }\n}"
+            }
+        },
+        "requiredApproval": false
+    }
+]

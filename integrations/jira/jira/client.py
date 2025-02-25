@@ -1,12 +1,12 @@
 import asyncio
+import uuid
 from typing import Any, AsyncGenerator, Generator
 
 import httpx
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
-from port_ocean.clients.auth.oauth_client import (
-    OAuthClient,
-)
+
+from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
@@ -30,6 +30,12 @@ WEBHOOK_EVENTS = [
     "user_deleted",
 ]
 
+OAUTH2_WEBHOOK_EVENTS = [
+    "jira:issue_created",
+    "jira:issue_updated",
+    "jira:issue_deleted",
+]
+
 
 class BearerAuth(Auth):
     def __init__(self, token: str):
@@ -51,19 +57,23 @@ class JiraClient(OAuthClient):
         self.jira_token = jira_token
 
         # If the Jira URL is directing to api.atlassian.com, we use OAuth2 Bearer Auth
-        if "api.atlassian.com" in self.jira_url:
+        if self.is_oauth_host():
             self.jira_api_auth = self._get_bearer()
+            self.webhooks_url = f"{self.jira_rest_url}/api/3/webhook"
         else:
             self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
+            self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.teams_base_url = f"{self.jira_url}/gateway/api/public/teams/v1/org"
-        self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
         self.client = http_async_client
         self.client.auth = self.jira_api_auth
         self.client.timeout = Timeout(30)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+
+    def is_oauth_host(self) -> bool:
+        return "api.atlassian.com" in self.jira_url
 
     def _get_bearer(self) -> BearerAuth:
         try:
@@ -169,12 +179,41 @@ class JiraClient(OAuthClient):
             "startAt": startAt,
         }
 
-    async def _get_webhooks(self) -> list[dict[str, Any]]:
-        return await self._send_api_request("GET", url=self.webhooks_url)
-
-    async def create_events_webhook(self, app_host: str) -> None:
+    async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
-        webhooks = await self._get_webhooks()
+        webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
+            "values"
+        )
+
+        if webhooks:
+            logger.info("Ocean real time reporting webhook already exists")
+            return
+
+        # We search a random project to get data from all projects
+        random_project = str(uuid.uuid4())
+
+        body = {
+            "url": webhook_target_app_host,
+            "webhooks": [
+                {
+                    "jqlFilter": f"project not in ({random_project})",
+                    "events": OAUTH2_WEBHOOK_EVENTS,
+                }
+            ],
+        }
+
+        await self._send_api_request("POST", self.webhooks_url, json=body)
+        logger.info("Ocean real time reporting webhook created")
+
+    async def create_webhooks(self, app_host: str) -> None:
+        if self.is_oauth_host():
+            await self._create_events_webhook_oauth(app_host)
+        else:
+            await self._create_events_webhook(app_host)
+
+    async def _create_events_webhook(self, app_host: str) -> None:
+        webhook_target_app_host = f"{app_host}/integration/webhook"
+        webhooks = await self._send_api_request("GET", url=self.webhooks_url)
 
         for webhook in webhooks:
             if webhook.get("url") == webhook_target_app_host:
