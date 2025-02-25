@@ -77,6 +77,7 @@ class AzureDevopsFileResourceConfig(ResourceConfig):
     kind: Literal["file"]
     selector: AzureDevopsSelector
 
+
 class TeamSelector(Selector):
     include_members: bool = Field(
         alias="includeMembers",
