@@ -108,6 +108,7 @@ class GitPortAppConfig(PortAppConfig):
         AzureDevopsProjectResourceConfig
         | AzureDevopsWorkItemResourceConfig
         | AzureDevopsTeamResourceConfig
+        | AzureDevopsFileResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

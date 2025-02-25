@@ -12,6 +12,7 @@ from port_ocean.context.ocean import ocean
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
 from azure_devops.misc import GitPortAppConfig, Kind, extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_event import WebhookEvent
+from azure_devops.client.file_processing import parse_content
 
 from .listener import HookListener
 
@@ -82,10 +83,10 @@ class PushHookListener(HookListener):
             UserAgentType.gitops,
         )
 
-        await self.handle_file_changes(repo_id, new_commit)
+        await self.sync_changed_files_in_commit(repo_id, new_commit)
 
-    async def handle_file_changes(self, repo_id: str, commit_id: str) -> None:
-        """Fetch and process file changes for a given commit."""
+    async def sync_changed_files_in_commit(self, repo_id: str, commit_id: str) -> None:
+        """Fetches changed files from a commit and ingests them into Port."""
         logger.info(f"Fetching file changes for commit {commit_id}")
 
         try:
@@ -102,19 +103,19 @@ class PushHookListener(HookListener):
             for change in changes:
                 file_path = change.get("item", {}).get("path", "")
                 if file_path.endswith((".yaml", ".yml", ".json")):
-                    await self.process_file_change(repo_info, commit_id, file_path)
+                    await self.ingest_file_to_port(repo_info, commit_id, file_path)
 
         except Exception as e:
             logger.error(f"Error fetching file changes: {e}")
 
-    async def process_file_change(
+    async def ingest_file_to_port(
         self,
         repo_info: dict[str, Any],
         commit_id: str,
         file_path: str,
     ) -> None:
-        """Process a single file change and register it with Port."""
-        logger.info(f"Processing file change for {file_path}")
+        """Retrieves, parses, and registers a file with Port."""
+        logger.info(f"Ingesting file {file_path} to Port")
         try:
             file_content = await self._client.get_file_by_commit(
                 file_path, repo_info["id"], commit_id
@@ -123,28 +124,25 @@ class PushHookListener(HookListener):
                 logger.warning(f"No content found for file {file_path}")
                 return
 
-            content_str = file_content.decode("utf-8")
-            parsed_content = None
-            if file_path.endswith((".yaml", ".yml")):
-                parsed_content = yaml.safe_load(content_str)
-            elif file_path.endswith(".json"):
-                parsed_content = json.loads(content_str)
-
-            if parsed_content:
+            # Use the existing parse_content function
+            parsed_content = await parse_content(file_content)
+            
+            # Only proceed if the file is a structured format we can parse
+            if file_path.endswith((".yaml", ".yml", ".json")):
                 file_data = {
                     "file": {
                         "path": file_path,
-                        "content": {"raw": content_str, "parsed": parsed_content},
+                        "content": {"raw": file_content.decode("utf-8"), "parsed": parsed_content},
                         "link": f"{repo_info['webUrl']}/blob/{commit_id}/{file_path.lstrip('/')}",
                         "size": len(file_content),
                     },
                     "repo": repo_info,
                 }
                 await ocean.register_raw(Kind.FILE, [file_data])
-                logger.info(f"Successfully registered file {file_path} with Port")
+                logger.info(f"Successfully ingested file {file_path} to Port")
 
         except Exception as e:
-            logger.error(f"Error processing file {file_path}: {e}")
+            logger.error(f"Error ingesting file {file_path}: {e}")
 
     async def register_repository(self, push_data: Dict[str, Any]) -> None:
         await ocean.register_raw(

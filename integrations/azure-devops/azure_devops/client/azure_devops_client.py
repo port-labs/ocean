@@ -495,7 +495,6 @@ class AzureDevopsClient(HTTPBaseClient):
         branch: str,
         repository: dict[str, Any],
     ) -> Optional[dict[str, Any]]:
-        # Skip large files early
         if file.get("size", 0) > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
             logger.warning(f"Skipping large file {file['path']} ({file['size']} bytes)")
             return None

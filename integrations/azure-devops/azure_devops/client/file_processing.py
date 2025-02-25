@@ -10,9 +10,6 @@ import yaml
 from braceexpand import braceexpand
 import fnmatch
 
-# Constants
-MAX_ALLOWED_FILE_SIZE_IN_BYTES = 10 * 1024 * 1024  # 10MB
-
 
 def match_pattern(pattern: Union[str, List[str]], string: str) -> bool:
     """
@@ -94,25 +91,18 @@ async def process_file_content(
     Returns:
         Processed file object or None if processing fails
     """
-    if len(content) > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
-        logger.warning(
-            f"File {file['path']} exceeds size limit of "
-            f"{MAX_ALLOWED_FILE_SIZE_IN_BYTES} bytes"
-        )
-        return None
-
     try:
-        parsed_content = await parse_content(content)
+        parsed_content = await parse_content(file_content)
         return {
             "file": {
-                **file,
-                "content": {"raw": content.decode("utf-8"), "parsed": parsed_content},
-                "size": len(content),
+                **file_metadata,
+                "content": {"raw": file_content.decode("utf-8"), "parsed": parsed_content},
+                "size": file_metadata.get("size", 0),
             },
-            "repo": repository,
+            "repo": repository_metadata,
         }
     except Exception as e:
-        logger.error(f"Failed to process file {file['path']}: {str(e)}")
+        logger.error(f"Failed to process file {file_metadata['path']}: {str(e)}")
         return None
 
 
