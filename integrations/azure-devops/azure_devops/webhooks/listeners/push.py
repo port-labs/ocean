@@ -1,7 +1,5 @@
 import asyncio
 import typing
-import json
-import yaml
 from typing import Any, Dict
 
 from loguru import logger
@@ -126,13 +124,16 @@ class PushHookListener(HookListener):
 
             # Use the existing parse_content function
             parsed_content = await parse_content(file_content)
-            
+
             # Only proceed if the file is a structured format we can parse
             if file_path.endswith((".yaml", ".yml", ".json")):
                 file_data = {
                     "file": {
                         "path": file_path,
-                        "content": {"raw": file_content.decode("utf-8"), "parsed": parsed_content},
+                        "content": {
+                            "raw": file_content.decode("utf-8"),
+                            "parsed": parsed_content,
+                        },
                         "link": f"{repo_info['webUrl']}/blob/{commit_id}/{file_path.lstrip('/')}",
                         "size": len(file_content),
                     },

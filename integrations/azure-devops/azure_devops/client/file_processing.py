@@ -79,7 +79,9 @@ def get_base_paths(patterns: List[str]) -> List[str]:
 
 
 async def process_file_content(
-    file_metadata: dict[str, Any], file_content: bytes, repository_metadata: dict[str, Any]
+    file_metadata: dict[str, Any],
+    file_content: bytes,
+    repository_metadata: dict[str, Any],
 ) -> Optional[dict[str, Any]]:
     """
     Process a file's content and create a file object.
@@ -96,7 +98,10 @@ async def process_file_content(
         return {
             "file": {
                 **file_metadata,
-                "content": {"raw": file_content.decode("utf-8"), "parsed": parsed_content},
+                "content": {
+                    "raw": file_content.decode("utf-8"),
+                    "parsed": parsed_content,
+                },
                 "size": file_metadata.get("size", 0),
             },
             "repo": repository_metadata,
