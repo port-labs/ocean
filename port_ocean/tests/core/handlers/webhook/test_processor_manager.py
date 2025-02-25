@@ -54,10 +54,10 @@ class MockProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
-    def should_process_event(self, event: WebhookEvent) -> bool:
+    async def should_process_event(self, event: WebhookEvent) -> bool:
         return True
 
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["repository"]
 
 
@@ -75,10 +75,10 @@ class MockProcessorFalse(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
-    def should_process_event(self, event: WebhookEvent) -> bool:
+    async def should_process_event(self, event: WebhookEvent) -> bool:
         return False
 
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["repository"]
 
 
@@ -110,10 +110,10 @@ class MockWebhookProcessor(AbstractWebhookProcessor):
     async def cancel(self) -> None:
         self.cancel_called = True
 
-    def should_process_event(self, event: WebhookEvent) -> bool:
+    async def should_process_event(self, event: WebhookEvent) -> bool:
         return True
 
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["test"]
 
 
@@ -155,10 +155,10 @@ class MockWebhookHandlerForProcessWebhookRequest(AbstractWebhookProcessor):
         self.handled = True
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["repository"]
 
-    def should_process_event(self, event: WebhookEvent) -> bool:
+    async def should_process_event(self, event: WebhookEvent) -> bool:
         """Filter the event data before processing."""
         return True
 
@@ -329,16 +329,16 @@ async def test_extractMatchingProcessors_processorMatch(
 
     async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
         event.port_app_config = mock_port_app_config
-        processors = processor_manager._extract_matching_processors(
+        processors = await processor_manager._extract_matching_processors(
             webhook_event, test_path
         )
 
-    assert len(processors) == 1
-    config, processor = processors[0]
-    assert isinstance(processor, MockProcessor)
-    assert config.kind == "repository"
-    assert processor.event != webhook_event
-    assert processor.event.payload == webhook_event.payload
+        assert len(processors) == 1
+        config, processor = processors[0]
+        assert isinstance(processor, MockProcessor)
+        assert config.kind == "repository"
+        assert processor.event != webhook_event
+        assert processor.event.payload == webhook_event.payload
 
 
 @pytest.mark.asyncio
@@ -355,7 +355,9 @@ async def test_extractMatchingProcessors_noMatch(
             EventType.HTTP_REQUEST, trigger_type="request"
         ) as event:
             event.port_app_config = mock_port_app_config
-            processor_manager._extract_matching_processors(webhook_event, test_path)
+            await processor_manager._extract_matching_processors(
+                webhook_event, test_path
+            )
 
 
 @pytest.mark.asyncio
@@ -370,7 +372,7 @@ async def test_extractMatchingProcessors_multipleMatches(
 
     async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
         event.port_app_config = mock_port_app_config
-        processors = processor_manager._extract_matching_processors(
+        processors = await processor_manager._extract_matching_processors(
             webhook_event, test_path
         )
 
@@ -391,7 +393,7 @@ async def test_extractMatchingProcessors_onlyOneMatches(
 
     async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
         event.port_app_config = mock_port_app_config
-        processors = processor_manager._extract_matching_processors(
+        processors = await processor_manager._extract_matching_processors(
             webhook_event, test_path
         )
 
@@ -542,10 +544,10 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
             processed_events.append(event_data)
             return event_data
 
-        def should_process_event(self, event: WebhookEvent) -> bool:
+        async def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
             return ["repository"]
 
     processing_complete = asyncio.Event()
@@ -649,10 +651,10 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        def should_process_event(self, event: WebhookEvent) -> bool:
+        async def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
             return ["repository"]
 
     processing_complete = asyncio.Event()
@@ -766,20 +768,20 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
             )
             return event_data
 
-        def should_process_event(self, event: WebhookEvent) -> bool:
+        async def should_process_event(self, event: WebhookEvent) -> bool:
             return False
 
-        def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
             return ["repository"]
 
     processing_complete = asyncio.Event()
     original_process_data = LiveEventsProcessorManager._extract_matching_processors
 
-    def patched_extract_matching_processors(
+    async def patched_extract_matching_processors(
         self: LiveEventsProcessorManager, event: WebhookEvent, path: str
     ) -> list[tuple[ResourceConfig, AbstractWebhookProcessor]]:
         try:
-            return original_process_data(self, event, path)
+            return await original_process_data(self, event, path)
         except Exception as e:
             test_state["exception_thrown"] = e  # type: ignore
             return []
@@ -882,10 +884,10 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
             processed_events.append(event_data)
             return event_data
 
-        def should_process_event(self, event: WebhookEvent) -> bool:
+        async def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
             return ["repository"]
 
     class TestProcessorB(AbstractWebhookProcessor):
@@ -913,10 +915,10 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
             processed_events.append(event_data)
             return event_data
 
-        def should_process_event(self, event: WebhookEvent) -> bool:
+        async def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
             return ["repository"]
 
     class TestProcessorFiltersOut(AbstractWebhookProcessor):
@@ -944,10 +946,10 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
             processed_events.append(event_data)
             return event_data
 
-        def should_process_event(self, event: WebhookEvent) -> bool:
+        async def should_process_event(self, event: WebhookEvent) -> bool:
             return False
 
-        def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
             return ["repository"]
 
     processing_complete = asyncio.Event()
@@ -1071,10 +1073,10 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
             processed_events.append(event_data)
             return event_data
 
-        def should_process_event(self, event: WebhookEvent) -> bool:
+        async def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
             return ["repository"]
 
     processing_complete = asyncio.Event()
@@ -1195,10 +1197,10 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
             processed_events.append(event_data)
             return event_data
 
-        def should_process_event(self, event: WebhookEvent) -> bool:
+        async def should_process_event(self, event: WebhookEvent) -> bool:
             return True
 
-        def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
             return ["repository"]
 
     processing_complete = asyncio.Event()
@@ -1259,6 +1261,142 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     assert test_state["retry"] is True
     assert test_state["exception"] is True
     mock_upsert.assert_not_called()
+    mock_delete.assert_not_called()
+
+    await mock_context.app.webhook_manager.shutdown()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
+)
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
+)
+async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlySuccessfulResultsProcessed(
+    mock_delete: AsyncMock,
+    mock_upsert: AsyncMock,
+    mock_context: PortOceanContext,
+    mock_port_app_config: PortAppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Integration test for webhook processing where one processor throws an exception"""
+
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.handler.ocean", mock_context
+    )
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
+    )
+    processed_events: list[WebhookEventRawResults] = []
+    mock_upsert.return_value = [entity]
+
+    class SuccessfulProcessor(AbstractWebhookProcessor):
+        async def authenticate(
+            self, payload: Dict[str, Any], headers: Dict[str, str]
+        ) -> bool:
+            return True
+
+        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+            return True
+
+        async def handle_event(
+            self, payload: EventPayload, resource: ResourceConfig
+        ) -> WebhookEventRawResults:
+            event_data = WebhookEventRawResults(
+                updated_raw_results=[
+                    {
+                        "name": "repo-one",
+                        "links": {"html": {"href": "https://example.com/repo-one"}},
+                        "main_branch": "main",
+                    }
+                ],
+                deleted_raw_results=[],
+            )
+            processed_events.append(event_data)
+            return event_data
+
+        async def should_process_event(self, event: WebhookEvent) -> bool:
+            return True
+
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+            return ["repository"]
+
+    class FailingProcessor(AbstractWebhookProcessor):
+        async def authenticate(
+            self, payload: Dict[str, Any], headers: Dict[str, str]
+        ) -> bool:
+            return True
+
+        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+            return True
+
+        async def handle_event(
+            self, payload: EventPayload, resource: ResourceConfig
+        ) -> WebhookEventRawResults:
+            raise ValueError("Simulated failure in processor")
+
+        async def should_process_event(self, event: WebhookEvent) -> bool:
+            return True
+
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+            return ["repository"]
+
+    processing_complete = asyncio.Event()
+    original_process_data = LiveEventsMixin.sync_raw_results
+
+    async def patched_export_single_resource(
+        self: LiveEventsMixin, webhookEventRawResults: list[WebhookEventRawResults]
+    ) -> None:
+        try:
+            await original_process_data(self, webhookEventRawResults)
+        except Exception as e:
+            raise e
+        finally:
+            processing_complete.set()
+
+    monkeypatch.setattr(
+        LiveEventsMixin,
+        "sync_raw_results",
+        patched_export_single_resource,
+    )
+    test_path = "/webhook-test"
+    mock_context.app.integration = BaseIntegration(ocean)
+    mock_context.app.webhook_manager = LiveEventsProcessorManager(
+        mock_context.app.integration_router, SignalHandler()
+    )
+
+    # Register both processors
+    mock_context.app.webhook_manager.register_processor(test_path, SuccessfulProcessor)
+    mock_context.app.webhook_manager.register_processor(test_path, FailingProcessor)
+    await mock_context.app.webhook_manager.start_processing_event_messages()
+    mock_context.app.fast_api_app.include_router(
+        mock_context.app.webhook_manager._router
+    )
+    client = TestClient(mock_context.app.fast_api_app)
+
+    test_payload = {"test": "data"}
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
+        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)  # type: ignore
+        event.port_app_config = (
+            await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
+        )
+
+        response = client.post(
+            test_path, json=test_payload, headers={"Content-Type": "application/json"}
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+    try:
+        await asyncio.wait_for(processing_complete.wait(), timeout=10.0)
+    except asyncio.TimeoutError:
+        pytest.fail("Event processing timed out")
+
+    assert len(processed_events) == 1
+    assert mock_upsert.call_count == 1
     mock_delete.assert_not_called()
 
     await mock_context.app.webhook_manager.shutdown()

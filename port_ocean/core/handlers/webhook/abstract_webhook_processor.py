@@ -109,9 +109,9 @@ class AbstractWebhookProcessor(ABC):
         pass
 
     @abstractmethod
-    def should_process_event(self, event: WebhookEvent) -> bool:
+    async def should_process_event(self, event: WebhookEvent) -> bool:
         pass
 
     @abstractmethod
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         pass
