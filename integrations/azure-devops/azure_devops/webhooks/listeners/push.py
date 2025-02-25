@@ -2,7 +2,7 @@ import asyncio
 import typing
 import json
 import yaml
-from typing import Any, Dict, List, Union
+from typing import Any, Dict
 
 from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
@@ -87,14 +87,16 @@ class PushHookListener(HookListener):
     async def handle_file_changes(self, repo_id: str, commit_id: str) -> None:
         """Fetch and process file changes for a given commit."""
         logger.info(f"Fetching file changes for commit {commit_id}")
-        
+
         try:
             repo_info = await self._client.get_repository(repo_id)
-            project_id = repo_info['project']['id']
-            
+            project_id = repo_info["project"]["id"]
+
             # Get file changes from commit
             url = f"{self._client._organization_base_url}/{project_id}/_apis/git/repositories/{repo_id}/commits/{commit_id}/changes"
-            response = await self._client.send_request("GET", url, params={"api-version": "7.1"})
+            response = await self._client.send_request(
+                "GET", url, params={"api-version": "7.1"}
+            )
             changes = response.json().get("changes", [])
 
             for change in changes:
@@ -107,19 +109,21 @@ class PushHookListener(HookListener):
 
     async def process_file_change(
         self,
-        repo_info: dict,
+        repo_info: dict[str, Any],
         commit_id: str,
         file_path: str,
     ) -> None:
         """Process a single file change and register it with Port."""
         logger.info(f"Processing file change for {file_path}")
         try:
-            file_content = await self._client.get_file_by_commit(file_path, repo_info['id'], commit_id)
+            file_content = await self._client.get_file_by_commit(
+                file_path, repo_info["id"], commit_id
+            )
             if not file_content:
                 logger.warning(f"No content found for file {file_path}")
                 return
 
-            content_str = file_content.decode('utf-8')
+            content_str = file_content.decode("utf-8")
             parsed_content = None
             if file_path.endswith((".yaml", ".yml")):
                 parsed_content = yaml.safe_load(content_str)
@@ -130,14 +134,11 @@ class PushHookListener(HookListener):
                 file_data = {
                     "file": {
                         "path": file_path,
-                        "content": {
-                            "raw": content_str,
-                            "parsed": parsed_content
-                        },
+                        "content": {"raw": content_str, "parsed": parsed_content},
                         "link": f"{repo_info['webUrl']}/blob/{commit_id}/{file_path.lstrip('/')}",
-                        "size": len(file_content)
+                        "size": len(file_content),
                     },
-                    "repo": repo_info
+                    "repo": repo_info,
                 }
                 await ocean.register_raw(Kind.FILE, [file_data])
                 logger.info(f"Successfully registered file {file_path} with Port")

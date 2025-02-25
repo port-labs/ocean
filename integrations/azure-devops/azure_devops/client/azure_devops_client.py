@@ -14,7 +14,7 @@ from .file_processing import (
     match_pattern,
     expand_patterns,
     get_base_paths,
-    process_file_content
+    process_file_content,
 )
 from port_ocean.utils.queue_utils import process_in_queue
 
@@ -28,6 +28,7 @@ MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 19999
 MAX_ALLOWED_FILE_SIZE_IN_BYTES = 10 * 1024 * 1024  # 10MB
 MAX_CONCURRENT_FILE_DOWNLOADS = 100
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 20
+
 
 class AzureDevopsClient(HTTPBaseClient):
     def __init__(self, organization_url: str, personal_access_token: str) -> None:
@@ -443,18 +444,15 @@ class AzureDevopsClient(HTTPBaseClient):
         file: dict[str, Any],
         repository_id: str,
         branch: str,
-        repository: dict[str, Any]
+        repository: dict[str, Any],
     ) -> Optional[dict[str, Any]]:
         # Skip large files early
-        if file.get('size', 0) > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
+        if file.get("size", 0) > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
             logger.warning(f"Skipping large file {file['path']} ({file['size']} bytes)")
             return None
         try:
             content = await self._get_item_content(
-                file['path'],
-                repository_id,
-                "Branch",
-                branch
+                file["path"], repository_id, "Branch", branch
             )
             return await process_file_content(file, content, repository)
         except Exception as e:
@@ -462,41 +460,42 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
 
     async def generate_files(
-        self, 
-        path: str | List[str], 
+        self,
+        path: str | List[str],
         repos: Optional[list[str]] = None,
-        max_depth: Optional[int] = None
+        max_depth: Optional[int] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Iterates through repositories and returns files matching the path pattern with optimized retrieval.
         Uses process_in_queue for efficient concurrent processing.
-        
+
         Args:
             path: Glob pattern(s) to match files (e.g., '**/package.json')
             repos: Optional list of repository names to filter by
             max_depth: Optional maximum directory depth to search (None for unlimited)
         """
         patterns = expand_patterns(path)
-        
-        async for repositories in self.generate_repositories(include_disabled_repositories=False):
+
+        async for repositories in self.generate_repositories(
+            include_disabled_repositories=False
+        ):
             repositories_to_process = [
-                repo for repo in repositories 
-                if not repos or repo['name'] in repos
+                repo for repo in repositories if not repos or repo["name"] in repos
             ]
-            
+
             if not repositories_to_process:
                 continue
 
             logger.info(f"Processing {len(repositories_to_process)} repositories")
-            
+
             repo_results = await process_in_queue(
                 repositories_to_process,
                 self._process_repository,
                 patterns,
                 max_depth,
-                concurrency=MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+                concurrency=MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING,
             )
-            
+
             for result in repo_results:
                 if result:
                     for file_batch in result:
@@ -504,24 +503,23 @@ class AzureDevopsClient(HTTPBaseClient):
                             yield file_batch
 
     async def _process_repository(
-        self,
-        repository: dict[str, Any],
-        patterns: List[str],
-        max_depth: Optional[int]
+        self, repository: dict[str, Any], patterns: List[str], max_depth: Optional[int]
     ) -> List[List[dict[str, Any]]]:
         """Process a single repository and return its matching files."""
         try:
             logger.info(f"Processing repository {repository['name']}")
-            
-            if not (branch := repository.get('defaultBranch')):
-                logger.warning(f"Repository {repository['name']} has no default branch. Skipping.")
+
+            if not (branch := repository.get("defaultBranch")):
+                logger.warning(
+                    f"Repository {repository['name']} has no default branch. Skipping."
+                )
                 return []
-            
-            branch = branch.replace('refs/heads/', '')
-            project_id = repository['project']['id']
-            repository_id = repository['id']
+
+            branch = branch.replace("refs/heads/", "")
+            project_id = repository["project"]["id"]
+            repository_id = repository["id"]
             results = []
-            
+
             base_paths = get_base_paths(patterns)
             for base_path in base_paths:
                 matching_files = await self._process_repository_path(
@@ -531,19 +529,19 @@ class AzureDevopsClient(HTTPBaseClient):
                     base_path=base_path,
                     branch=branch,
                     patterns=patterns,
-                    max_depth=max_depth
+                    max_depth=max_depth,
                 )
                 if matching_files:
                     batch_results = await self._process_matching_files(
                         matching_files=matching_files,
                         repository=repository,
                         repository_id=repository_id,
-                        branch=branch
+                        branch=branch,
                     )
                     results.extend(batch_results)
-            
+
             return results
-            
+
         except Exception as e:
             logger.error(f"Failed to process repository {repository['name']}: {str(e)}")
             return []
@@ -556,13 +554,15 @@ class AzureDevopsClient(HTTPBaseClient):
         base_path: str,
         branch: str,
         patterns: List[str],
-        max_depth: Optional[int]
+        max_depth: Optional[int],
     ) -> List[dict[str, Any]]:
         """Get matching files from a repository path."""
         try:
             recursion_level = "OneLevel" if max_depth == 1 else "Full"
-            logger.info(f"Processing base path {base_path} for repository {repository['name']}")
-            
+            logger.info(
+                f"Processing base path {base_path} for repository {repository['name']}"
+            )
+
             items_url = f"{self._organization_base_url}/{project_id}/_apis/git/repositories/{repository_id}/items"
             params = {
                 "recursionLevel": recursion_level,
@@ -570,34 +570,36 @@ class AzureDevopsClient(HTTPBaseClient):
                 "includeContentMetadata": "true",
                 "versionDescriptor.version": branch,
                 "versionDescriptor.versionType": "branch",
-                "api-version": "7.1"
+                "api-version": "7.1",
             }
-            
+
             response = await self.send_request("GET", items_url, params=params)
             items = response.json().get("value", [])
-            
+
             matching_files = []
             seen_paths = set()
-            
+
             for item in items:
                 if item.get("isFolder", False):
                     continue
-                    
-                file_path = item.get("path", "").lstrip('/')
+
+                file_path = item.get("path", "").lstrip("/")
                 if file_path in seen_paths:
                     continue
-                    
-                if max_depth is not None and file_path.count('/') > max_depth:
+
+                if max_depth is not None and file_path.count("/") > max_depth:
                     continue
-                    
+
                 if any(match_pattern(pattern, file_path) for pattern in patterns):
                     matching_files.append(item)
                     seen_paths.add(file_path)
-            
+
             return matching_files
-            
+
         except Exception as e:
-            logger.warning(f"Failed to process path {base_path} in {repository['name']}: {str(e)}")
+            logger.warning(
+                f"Failed to process path {base_path} in {repository['name']}: {str(e)}"
+            )
             return []
 
     async def _process_matching_files(
@@ -610,16 +612,16 @@ class AzureDevopsClient(HTTPBaseClient):
         """Process matching files using process_in_queue for efficient concurrency."""
         if not matching_files:
             return []
-            
+
         processed_files = await process_in_queue(
             matching_files,
             self._fetch_and_process_file,
             repository_id,
             branch,
             repository,
-            concurrency=MAX_CONCURRENT_FILE_DOWNLOADS
+            concurrency=MAX_CONCURRENT_FILE_DOWNLOADS,
         )
-        
+
         # Filter out None results and return as a single batch
         valid_files = [f for f in processed_files if f is not None]
         return [valid_files] if valid_files else []
