@@ -3,7 +3,7 @@
 
 ### Improvements
 
-- Bumped ocean version to ^0.20.3
+- Bumped ocean version to ^0.20.4
 
 
 # Changelog - Ocean - amplication
