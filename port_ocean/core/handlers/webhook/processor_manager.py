@@ -102,13 +102,13 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                             return_exceptions=True,
                         )
 
-                        successful_raw_results = [
+                        successful_raw_results: list[WebhookEventRawResults] = [
                             result
                             for result in webhook_event_raw_results_for_all_resources
-                            if not isinstance(result, Exception)
+                            if isinstance(result, WebhookEventRawResults)
                         ]
 
-                        if successful_raw_results and all(successful_raw_results):
+                        if successful_raw_results:
                             logger.info(
                                 "Exporting raw event results to entities",
                                 webhook_event_raw_results_for_all_resources_length=len(
