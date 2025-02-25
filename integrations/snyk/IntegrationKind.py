@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class Kinds(StrEnum):
+class IntegrationKind(StrEnum):
     ORGANIZATION = "organization"
     PROJECT = "project"
     ISSUE = "issue"

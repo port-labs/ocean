@@ -1,8 +1,8 @@
 import hashlib
 import hmac
 import json
+from IntegrationKind import IntegrationKind
 from initialize_client import init_client
-from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -28,7 +28,7 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         return signature == expected_signature
 
     def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [Kinds.ISSUE]
+        return [IntegrationKind.ISSUE]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
