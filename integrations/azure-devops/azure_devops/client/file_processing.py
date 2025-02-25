@@ -82,7 +82,7 @@ def get_base_paths(patterns: List[str]) -> List[str]:
 
 
 async def process_file_content(
-    file: dict[str, Any], content: bytes, repository: dict[str, Any]
+    file_metadata: dict[str, Any], file_content: bytes, repository_metadata: dict[str, Any]
 ) -> Optional[dict[str, Any]]:
     """
     Process a file's content and create a file object.
