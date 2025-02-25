@@ -16,6 +16,7 @@ class ProjectWebhookProcessor(SnykBaseWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
+        #no deletion in snyk events https://docs.snyk.io/snyk-api/how-to-use-snyk-webhooks-apis/webhooks
         snyk_client = init_client()
 
         project_id = payload["project"]["id"]
