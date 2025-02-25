@@ -37,6 +37,9 @@ class ArgocdClient:
         self.api_auth_header = {"Authorization": f"Bearer {self.token}"}
         if self.allow_insecure:
             # This is not recommended for production use
+            logger.warning(
+                "Insecure mode is enabled. This will disable SSL verification for the ArgoCD API client, which is not recommended for production use."
+            )
             self.http_client = httpx.AsyncClient(verify=False)
         else:
             self.http_client = http_async_client
@@ -79,7 +82,7 @@ class ArgocdClient:
         url = f"{self.api_url}/{resource_kind}s"
         try:
             response_data = await self._send_api_request(url=url)
-            return response_data["items"]
+            return response_data["items"] or []
         except Exception as e:
             logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
             if self.ignore_server_error:

@@ -20,7 +20,7 @@ class ObjectKind(StrEnum):
 def init_client() -> BackstageClient:
     return BackstageClient(
         backstage_host=ocean.integration_config["backstage_url"],
-        backstage_token=ocean.integration_config["backstage_token"],
+        backstage_token=ocean.integration_config.get("backstage_token"),
     )
 
 

@@ -1,12 +1,12 @@
 from typing import Any, Literal, Type, cast
 
-from pydantic import Extra, AnyHttpUrl, parse_obj_as, parse_raw_as
+from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
-from pydantic.env_settings import InitSettingsSource, EnvSettingsSource, BaseSettings
+from pydantic.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
 from pydantic.fields import Field
 from pydantic.main import BaseModel
 
-from port_ocean.config.base import BaseOceanSettings, BaseOceanModel
+from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
 from port_ocean.core.models import CreatePortResourcesOrigin, Runtime
 from port_ocean.utils.misc import get_integration_name, get_spec_file
@@ -71,6 +71,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     # Determines if Port should generate resources such as blueprints and pages instead of ocean
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
+    oauth_access_token_file_path: str | None = None
+    base_url: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
         default=cast(EventListenerSettingsType, {"type": "POLLING"})

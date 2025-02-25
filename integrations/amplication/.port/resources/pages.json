@@ -1,0 +1,144 @@
+[
+  {
+    "icon": "Amplication",
+    "title": "Amplication Dashboard",
+    "description": "Dashboard for Amplication data",
+    "protected": false,
+    "widgets": [
+      {
+        "id": "1",
+        "type": "dashboard-widget",
+        "layout": [
+          {
+            "height": 400,
+            "columns": [
+              {
+                "id": "amplicationAlert",
+                "size": 8
+              },
+              {
+                "id": "amplicationSelfServiceAction",
+                "size": 4
+              }
+            ]
+          },
+          {
+            "height": 400,
+            "columns": [
+              {
+                "id": "amplicationResource",
+                "size": 6
+              },
+              {
+                "id": "amplicationTemplate",
+                "size": 6
+              }
+            ]
+          }
+        ],
+        "widgets": [
+          {
+            "id": "amplicationSelfServiceAction",
+            "type": "action-card-widget",
+            "title": "Self-service action",
+            "icon": "Bolt",
+            "actions": [
+              {
+                "action": "amplication_service_from_template"
+              }
+            ]
+          },
+          {
+            "id": "amplicationAlert",
+            "type": "table-entities-explorer",
+            "title": "Outdated Version Alerts",
+            "icon": "Alert",
+            "blueprintConfig": {
+              "service": {
+                "groupSettings": {
+                  "groupBy": []
+                },
+                "propertiesSettings": {
+                  "hidden": [],
+                  "order": []
+                }
+              }
+            },
+            "displayMode": "widget",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "AmplicationAlert"
+                }
+              ]
+            }
+          },
+          {
+            "id": "amplicationResource",
+            "type": "table-entities-explorer",
+            "title": "Resources",
+            "icon": "Amplication",
+            "blueprintConfig": {
+              "service": {
+                "groupSettings": {
+                  "groupBy": []
+                },
+                "propertiesSettings": {
+                  "hidden": [],
+                  "order": []
+                }
+              }
+            },
+            "displayMode": "widget",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "AmplicationResource"
+                }
+              ]
+            }
+          },
+          {
+            "id": "amplicationTemplate",
+            "type": "table-entities-explorer",
+            "title": "Templates",
+            "icon": "Amplication",
+            "blueprintConfig": {
+              "service": {
+                "groupSettings": {
+                  "groupBy": []
+                },
+                "propertiesSettings": {
+                  "hidden": [],
+                  "order": []
+                }
+              }
+            },
+            "displayMode": "widget",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "AmplicationTemplate"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "identifier": "amplication-dashboard",
+    "showInSidebar": true,
+    "requiredQueryParams": [],
+    "section": "software_catalog",
+    "type": "dashboard"
+  }
+]

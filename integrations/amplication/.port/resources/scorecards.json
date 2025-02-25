@@ -1,0 +1,76 @@
+[
+  {
+    "blueprint": "AmplicationResource",
+    "data": [
+      {
+        "identifier": "resource_alerts",
+        "title": "Alert Level",
+        "levels": [
+          {
+            "color": "red",
+            "title": "Severe"
+          },
+          {
+            "color": "orange",
+            "title": "High"
+          },
+          {
+            "color": "yellow",
+            "title": "Elevated"
+          },
+          {
+            "color": "green",
+            "title": "Low"
+          }
+        ],
+        "rules": [
+          {
+            "identifier": "res_alerts_high",
+            "title": "A Few Alerts",
+            "level": "High",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "property": "new_alerts_count",
+                  "operator": "<=",
+                  "value": 2
+                }
+              ]
+            }
+          },
+          {
+            "identifier": "res_alerts_elevated",
+            "title": "One Alert",
+            "level": "Elevated",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "property": "new_alerts_count",
+                  "operator": "<=",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          {
+            "identifier": "res_alerts_low",
+            "title": "No Alerts",
+            "level": "Low",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "property": "new_alerts_count",
+                  "operator": "=",
+                  "value": 0
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

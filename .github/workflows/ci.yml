@@ -102,3 +102,4 @@ jobs:
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
           skip-push: 'true'
+          skip-login: ${{ github.event_name == 'pull_request' }}

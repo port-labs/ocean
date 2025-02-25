@@ -23,6 +23,7 @@ class Kind(StrEnum):
     COLUMN = "column"
     RELEASE = "release"
     FILE = "file"
+    USER = "user"
 
 
 PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
@@ -76,6 +77,18 @@ class AzureDevopsFileResourceConfig(ResourceConfig):
     kind: Literal["file"]
     selector: AzureDevopsSelector
 
+class TeamSelector(Selector):
+    include_members: bool = Field(
+        alias="includeMembers",
+        default=False,
+        description="Whether to include the members of the team, defaults to false",
+    )
+
+
+class AzureDevopsTeamResourceConfig(ResourceConfig):
+    kind: Literal["team"]
+    selector: TeamSelector
+
 
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
@@ -93,7 +106,7 @@ class GitPortAppConfig(PortAppConfig):
     resources: list[
         AzureDevopsProjectResourceConfig
         | AzureDevopsWorkItemResourceConfig
-        | AzureDevopsFileResourceConfig
+        | AzureDevopsTeamResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
