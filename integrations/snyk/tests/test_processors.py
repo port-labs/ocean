@@ -69,7 +69,7 @@ def test_shouldProcessEvent_project(
     projectWebhookProcessor: ProjectWebhookProcessor,
     mock_context: PortOceanContext,
 ) -> None:
-    with patch("webhook_processors.project_webhook_processor.hmac") as mock_hmac:
+    with patch("webhook_processors.snyk_base_webhook_processor.hmac") as mock_hmac:
         mock_hmac_obj = mock_hmac.new.return_value
         mock_hmac_obj.hexdigest.return_value = "1234567890"
         event = WebhookEvent(
@@ -89,7 +89,7 @@ def test_shouldProcessEvent_target(
     targetWebhookProcessor: TargetWebhookProcessor,
     mock_context: PortOceanContext,
 ) -> None:
-    with patch("webhook_processors.target_webhook_processor.hmac") as mock_hmac:
+    with patch("webhook_processors.snyk_base_webhook_processor.hmac") as mock_hmac:
         mock_hmac_obj = mock_hmac.new.return_value
         mock_hmac_obj.hexdigest.return_value = "1234567890"
         event = WebhookEvent(
@@ -109,7 +109,7 @@ def test_shouldProcessEvent_issue(
     issueWebhookProcessor: IssueWebhookProcessor,
     mock_context: PortOceanContext,
 ) -> None:
-    with patch("webhook_processors.issue_webhook_processor.hmac") as mock_hmac:
+    with patch("webhook_processors.snyk_base_webhook_processor.hmac") as mock_hmac:
         mock_hmac_obj = mock_hmac.new.return_value
         mock_hmac_obj.hexdigest.return_value = "1234567890"
         event = WebhookEvent(
