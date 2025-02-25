@@ -1,3 +1,27 @@
+## 0.1.49-beta (2025-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.3
+
+
+## 0.1.48-beta (2025-02-24)
+
+
+### Features
+
+- Made the Backstage authentication token optional. When not provided, requests will be made without authentication. (#1424)
+
+
+## 0.1.47-beta (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.2
+
+
 ## 0.1.46-beta (2025-02-23)
 
 
