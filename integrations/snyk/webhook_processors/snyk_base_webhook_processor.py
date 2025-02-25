@@ -13,11 +13,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 
 class SnykBaseWebhookProcessor(AbstractWebhookProcessor):
-    def should_process_event(self, event: WebhookEvent) -> bool:
+    async def should_process_event(self, event: WebhookEvent) -> bool:
         signature = event.headers.get("x-hub-signature", "")
+        body = await event._original_request.body()
         hmac_obj = hmac.new(
             ocean.integration_config["webhook_secret"].encode("utf-8"),
-            json.dumps(event.payload, separators=(",", ":")).encode("utf-8"),
+            body,
             hashlib.sha256,
         )
         expected_signature = f"sha256={hmac_obj.hexdigest()}"
