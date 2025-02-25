@@ -170,7 +170,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
 
     async for files in azure_devops_client.generate_files(
-        path=config.selector.files["path"],
+        path=config.selector.files.get("path"),
         repos=config.selector.files.get("repos"),
         max_depth=config.selector.files.get("max_depth"),
     ):
