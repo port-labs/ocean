@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import json
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -15,6 +14,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class SnykBaseWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         signature = event.headers.get("x-hub-signature", "")
+        if event._original_request is None:
+            return False
         body = await event._original_request.body()
         hmac_obj = hmac.new(
             ocean.integration_config["webhook_secret"].encode("utf-8"),
