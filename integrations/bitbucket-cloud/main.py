@@ -1,6 +1,7 @@
 from loguru import logger
 from bitbucket_integration.client import BitbucketClient
 from bitbucket_integration.webhooks.handler import BitbucketWebhookHandler
+from bitbucket_integration.constants.bitbucket import RATE_LIMITER
 from bitbucket_integration.models.main import ObjectKind
 from starlette.requests import Request
 from port_ocean.context.ocean import ocean
@@ -17,7 +18,7 @@ async def on_start() -> None:
 def get_bitbucket_client() -> BitbucketClient:
     bitbucket_username = ocean.integration_config["bitbucket_username"]
     bitbucket_app_password = ocean.integration_config["bitbucket_app_password"]
-    return BitbucketClient(bitbucket_username, bitbucket_app_password)
+    return BitbucketClient(bitbucket_username, bitbucket_app_password, RATE_LIMITER)
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)

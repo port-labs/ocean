@@ -1,5 +1,6 @@
 import base64
 from typing import Any, AsyncGenerator, Dict, List
+from aiolimiter import AsyncLimiter
 
 import httpx
 from port_ocean.utils import http_async_client
@@ -18,12 +19,13 @@ BITBUCKET_EVENTS = [
 
 
 class BitbucketClient:
-    def __init__(self, username: str, app_password: str):
+    def __init__(self, username: str, app_password: str, rate_limiter: AsyncLimiter):
         self.http_client = http_async_client
         self.username = username
         self.app_password = app_password
         self.base_url = ocean.integration_config["bitbucket_base_url"]
         self.headers = {}
+        self.rate_limiter = rate_limiter
         self._generate_token()
 
     def _generate_token(self) -> None:
@@ -42,14 +44,15 @@ class BitbucketClient:
 
         while url:
             try:
-                logger.debug(f"Fetching data from URL: {url}")
-                response = await self.http_client.get(url, headers=self.headers)
-                response.raise_for_status()
-                data = response.json()
-                values = data.get("values", [])
-                logger.info(f"Retrieved {len(values)} items from {url}")
-                yield values
-                url = data.get("next", None)
+                async with self.rate_limiter:
+                    logger.debug(f"Fetching data from URL: {url}")
+                    response = await self.http_client.get(url, headers=self.headers)
+                    response.raise_for_status()
+                    data = response.json()
+                    values = data.get("values", [])
+                    logger.info(f"Retrieved {len(values)} items from {url}")
+                    yield values
+                    url = data.get("next", None)
 
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 404:
@@ -59,9 +62,10 @@ class BitbucketClient:
                     logger.error("Unauthorized access (401). Check authentication.")
                     return
                 else:
-                    logger.error(f"HTTP error {e.response.status_code}: {e.response.text}")
+                    logger.error(
+                        f"HTTP error {e.response.status_code}: {e.response.text}"
+                    )
                     return
-
 
     @cache_iterator_result()
     async def fetch_workspaces(self) -> AsyncGenerator[List[Dict[str, Any]], None]:

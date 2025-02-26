@@ -1,5 +1,6 @@
 from loguru import logger
-from bitbucket_integration.utils import validate_webhook_payload
+from bitbucket_integration.utils.helpers import validate_webhook_payload
+from bitbucket_integration.constants.bitbucket import RATE_LIMITER
 from bitbucket_integration.models.main import ObjectKind
 from bitbucket_integration.client import BitbucketClient
 from starlette.requests import Request
@@ -29,6 +30,7 @@ class BitbucketWebhookHandler:
         bitbucket_client = BitbucketClient(
             ocean.integration_config["bitbucket_username"],
             ocean.integration_config["bitbucket_app_password"],
+            RATE_LIMITER,
         )
         webhook_url = f"{self.app_host}/integration/webhook"
 
