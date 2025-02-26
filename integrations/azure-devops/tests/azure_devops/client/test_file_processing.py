@@ -230,4 +230,3 @@ class TestFileProcessing:
         assert (
             result["file"]["size"] == 100
         )  # Should use the metadata size, not len(file_content)
-
