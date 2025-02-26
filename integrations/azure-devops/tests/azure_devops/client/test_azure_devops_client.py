@@ -68,12 +68,22 @@ EXPECTED_MEMBERS = [
 ]
 
 EXPECTED_REPOSITORIES = [
-    {"id": "repo1", "name": "Repo One", "isDisabled": False, "project": {
-        "state": "wellFormed",
-    }},
-    {"id": "repo2", "name": "Repo Two", "isDisabled": False, "project": {
-        "state": "wellFormed",
-    }},
+    {
+        "id": "repo1",
+        "name": "Repo One",
+        "isDisabled": False,
+        "project": {
+            "state": "wellFormed",
+        },
+    },
+    {
+        "id": "repo2",
+        "name": "Repo Two",
+        "isDisabled": False,
+        "project": {
+            "state": "wellFormed",
+        },
+    },
 ]
 
 EXPECTED_PULL_REQUESTS = [

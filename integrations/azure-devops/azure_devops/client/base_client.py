@@ -1,8 +1,9 @@
+from typing import Any, AsyncGenerator, Optional
+
 import httpx
 from httpx import BasicAuth, Response
-from typing import Any, AsyncGenerator, Optional
-from port_ocean.utils import http_async_client
 from loguru import logger
+from port_ocean.utils import http_async_client
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"

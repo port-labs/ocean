@@ -1,17 +1,16 @@
-import json
 import asyncio
-
+import json
 from typing import Any, AsyncGenerator, Optional
+
 from httpx import HTTPStatusError
 from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
+
 from azure_devops.webhooks.webhook_event import WebhookEvent
 
 from .base_client import HTTPBaseClient
-
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -162,13 +161,11 @@ class AzureDevopsClient(HTTPBaseClient):
                     yield repositories
                 else:
                     yield [
-                        repo for repo in repositories
+                        repo
+                        for repo in repositories
                         if (not repo.get("isDisabled"))
-                        and repo.get("project", {}).get("state") in (
-                            "all",
-                            "unchanged",
-                            "wellFormed"
-                        )
+                        and repo.get("project", {}).get("state")
+                        in ("all", "unchanged", "wellFormed")
                     ]
 
     async def generate_pull_requests(
