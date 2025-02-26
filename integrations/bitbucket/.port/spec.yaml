@@ -1,0 +1,35 @@
+description: bitbucket integration for Port Ocean
+icon: BitBucket  # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Git Providers # Should be one of the available sections in Port
+    resources:
+      - kind: repository
+      - kind: project
+      - kind: pullRequest
+      - kind: component
+configurations:
+  - name: username
+    description: "Bitbucket Username"
+    required: true
+    type: string
+    sensitive: true
+  - name: appPassword
+    description: "Bitbucket App Password"
+    required: true
+    type: string
+    sensitive: true
+  - name: bitbucketBaseUrl
+    default: "https://api.bitbucket.org/2.0"
+    description: "Bitbucket URL"
+    required: false
+    type: string
+  - name: bitbucketWorkspace
+    description: "Bitbucket Workspace"
+    required: true
+    type: string
+  - name: webhookSecret
+    required: false
+    type: string
+    description: "Bitbucket webhook secrets"
+    sensitive: true

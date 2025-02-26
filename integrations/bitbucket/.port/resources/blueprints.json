@@ -1,0 +1,107 @@
+[{
+    "identifier": "bitbucketProject",
+    "title": "Project",
+    "icon": "BitBucket",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "identifier": "bitbucketRepository",
+    "title": "Repository",
+    "icon": "BitBucket",
+    "schema": {
+      "properties": {
+        "readme": {
+          "title": "README",
+          "type": "string",
+          "format": "markdown"
+        },
+        "url": {
+          "title": "Service URL",
+          "type": "string",
+          "format": "url"
+        },
+        "defaultBranch": {
+          "title": "Default branch",
+          "type": "string"
+        },
+        "last_activity": {
+          "type": "string",
+          "title": "Last Activity",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "bitbucketProject",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "bitbucketPullRequest",
+    "title": "Pull Request",
+    "icon": "GitPullRequest",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "author": {
+          "title": "Author",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "bitbucketRepository",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "bitbucketComponent",
+    "title": "Component",
+    "icon": "Component",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "createdOn": {
+          "title": "Created On",
+          "type": "date-time"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "bitbucketRepository",
+        "required": true,
+        "many": false
+      }
+    }
+}]
