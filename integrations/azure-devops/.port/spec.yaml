@@ -10,9 +10,14 @@ features:
 configurations:
   - name: organizationUrl
     description: The URL of your Azure DevOps organization (e.g., "https://dev.azure.com/{your-organization}"). To find your organization URL, refer to the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http">Azure DevOps documentation</a>.
-    required: true
+    required: false
     type: url
     sensitive: true
+  - name: organization
+    description: The name of your Azure DevOps organization (e.g., "my-organizations"). To find your organization, refer to the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http">Azure DevOps documentation</a>.
+    required: false
+    type: string
+    sensitive: false
   - name: personalAccessToken
     description: A personal access token (PAT) with read permissions for the resources you want to sync. To create a PAT, see the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops">Azure DevOps documentation</a>.
     required: true

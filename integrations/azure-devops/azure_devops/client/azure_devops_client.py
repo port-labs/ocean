@@ -26,14 +26,35 @@ class AzureDevopsClient(HTTPBaseClient):
         super().__init__(personal_access_token)
         self._organization_base_url = organization_url
 
+    @staticmethod
+    def create_organization_url(organization: str) -> str:
+        return f"https://dev.azure.com/{organization}"
+
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
         if cache := event.attributes.get("azure_devops_client"):
             return cache
-        azure_devops_client = cls(
-            ocean.integration_config["organization_url"],
-            ocean.integration_config["personal_access_token"],
-        )
+
+        if organization_url := ocean.integration_config.get("organization_url"):
+            logger.warning(
+                "Usage of `organization_url` has "
+                "been deprecated. Use `organization` instead"
+            )
+            azure_devops_client = cls(
+                ocean.integration_config["organization_url"],
+                ocean.integration_config["personal_access_token"],
+            )
+        elif organization := ocean.integration_config.get("organization"):
+            organization_url = cls.create_organization_url(organization)
+            azure_devops_client = cls(
+                organization_url,
+                ocean.integration_config["personal_access_token"],
+            )
+        else:
+            raise ValueError(
+                "Organization or organization_url "
+                "must be provided in the integration config"
+            )
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
 
@@ -140,7 +161,15 @@ class AzureDevopsClient(HTTPBaseClient):
                 if include_disabled_repositories:
                     yield repositories
                 else:
-                    yield [repo for repo in repositories if not repo.get("isDisabled")]
+                    yield [
+                        repo for repo in repositories
+                        if (not repo.get("isDisabled"))
+                        and repo.get("project", {}).get("state") in (
+                            "all",
+                            "unchanged",
+                            "wellFormed"
+                        )
+                    ]
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
