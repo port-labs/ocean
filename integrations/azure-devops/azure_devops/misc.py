@@ -1,12 +1,12 @@
 from enum import StrEnum
 from datetime import datetime, timedelta
-from typing import Any, List
+from typing import Any, List, Optional, Union
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
-from pydantic import Field
+from pydantic import Field, BaseModel
 from typing import Literal
 
 
@@ -69,13 +69,36 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
     selector: AzureDevopsSelector
 
 
-class AzureDevopsFileResourceConfig(ResourceConfig):
-    class AzureDevopsSelector(Selector):
-        query: str
-        files: dict[str, Any] = {"path": "", "repos": None, "max_depth": None}
+class FileSelector(BaseModel):
+    """Configuration for file selection in Azure DevOps repositories."""
 
+    path: Union[str, List[str]] = Field(
+        default="",
+        description="Glob pattern(s) to match files (e.g., '**/*.yaml' or ['**/*.json', '**/*.yaml'])",
+    )
+    repos: Optional[List[str]] = Field(
+        default=None,
+        description="List of repository names to scan. If None, scans all repositories.",
+    )
+    max_depth: Optional[int] = Field(
+        default=None,
+        description="Maximum directory depth to traverse. If None, no depth limit is applied.",
+    )
+
+
+class AzureDevopsFileSelector(Selector):
+    """Selector for Azure DevOps file resources."""
+
+    query: str
+    files: FileSelector = Field(
+        default_factory=FileSelector,
+        description="Configuration for file selection and scanning",
+    )
+
+
+class AzureDevopsFileResourceConfig(ResourceConfig):
     kind: Literal["file"]
-    selector: AzureDevopsSelector
+    selector: AzureDevopsFileSelector
 
 
 class TeamSelector(Selector):

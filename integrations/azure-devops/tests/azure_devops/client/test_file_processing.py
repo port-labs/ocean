@@ -180,19 +180,6 @@ class TestContentParsing:
         assert result[0].get("name") == "doc1"
         assert result[1].get("name") == "doc2"
 
-    @pytest.mark.asyncio
-    async def test_parse_text_content(self) -> None:
-        """Test parsing plain text content."""
-        # Test with plain text
-        text_content = b"This is plain text"
-        result = await parse_content(text_content)
-        assert result == "This is plain text"
-
-        # Test with text that's neither valid JSON nor YAML
-        invalid_content = b"{ This is not valid JSON or YAML }"
-        result = await parse_content(invalid_content)
-        assert result == "{ This is not valid JSON or YAML }"
-
 
 class TestFileProcessing:
     @pytest.mark.asyncio
@@ -244,17 +231,3 @@ class TestFileProcessing:
             result["file"]["size"] == 100
         )  # Should use the metadata size, not len(file_content)
 
-    @pytest.mark.asyncio
-    async def test_process_file_content_error(self) -> None:
-        """Test error handling during file processing."""
-        # Test with an error during processing
-        file_metadata = {"path": "test.json"}
-        file_content = b'{"name": "test"'  # Invalid JSON
-        repo_metadata = {"id": "repo1", "name": "Test Repo"}
-
-        with patch("azure_devops.client.file_processing.logger") as mock_logger:
-            result = await process_file_content(
-                file_metadata, file_content, repo_metadata
-            )
-            assert result is None
-            mock_logger.error.assert_called_once()

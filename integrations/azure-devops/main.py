@@ -165,14 +165,14 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsFileResourceConfig, event.resource_config)
     logger.info(f"Resyncing files for {config.selector.files}")
 
-    if not config.selector.files.get("path"):
+    if not config.selector.files.path:
         logger.warning("No path provided in the selector, skipping fetching files")
         return
 
     async for files in azure_devops_client.generate_files(
-        path=config.selector.files.get("path", "**/*"),
-        repos=config.selector.files.get("repos"),
-        max_depth=config.selector.files.get("max_depth"),
+        path=config.selector.files.path,
+        repos=config.selector.files.repos,
+        max_depth=config.selector.files.max_depth,
     ):
         logger.info(f"Resyncing {len(files)} files")
         yield files

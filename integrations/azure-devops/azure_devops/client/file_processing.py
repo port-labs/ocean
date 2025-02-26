@@ -96,13 +96,6 @@ async def process_file_content(
         Processed file object or None if processing fails
     """
     try:
-        # Special case for test_process_file_content_error
-        if (
-            file_metadata.get("path") == "test.json"
-            and file_content == b'{"name": "test"'
-        ):
-            raise ValueError("Invalid JSON content in test.json")
-
         parsed_content = await parse_content(file_content)
         return {
             "file": {
@@ -125,10 +118,6 @@ async def process_file_content(
 async def parse_content(content: bytes) -> Union[dict[str, Any], list[Any], str]:
     """Parse file content as JSON, YAML, or raw text."""
     content_str = content.decode("utf-8")
-
-    # Special case for the test with invalid content
-    if content_str == "{ This is not valid JSON or YAML }":
-        return content_str
 
     # First try JSON parsing
     try:
