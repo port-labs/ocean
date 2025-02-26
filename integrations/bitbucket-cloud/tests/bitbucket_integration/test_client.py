@@ -40,7 +40,9 @@ async def test_generate_token(mock_bitbucket_client: BitbucketClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_fetch_paginated_data_success(mock_bitbucket_client: BitbucketClient) -> None:
+async def test_fetch_paginated_data_success(
+    mock_bitbucket_client: BitbucketClient,
+) -> None:
     """Test successful paginated data fetching."""
     mock_data = {"values": [{"id": 1}, {"id": 2}], "next": None}
 
@@ -58,7 +60,9 @@ async def test_fetch_paginated_data_success(mock_bitbucket_client: BitbucketClie
 
 
 @pytest.mark.asyncio
-async def test_fetch_paginated_data_pagination(mock_bitbucket_client: BitbucketClient) -> None:
+async def test_fetch_paginated_data_pagination(
+    mock_bitbucket_client: BitbucketClient,
+) -> None:
     """Test paginated data fetching with multiple pages."""
     page1_data = {"values": [{"id": 1}, {"id": 2}], "next": "http://example.com/page2"}
     page2_data = {"values": [{"id": 3}], "next": None}
@@ -67,8 +71,12 @@ async def test_fetch_paginated_data_pagination(mock_bitbucket_client: BitbucketC
         mock_bitbucket_client.http_client, "get", new_callable=AsyncMock
     ) as mock_get:
         mock_get.side_effect = [
-            Response(200, request=Request("GET", "http://example.com"), json=page1_data),
-            Response(200, request=Request("GET", "http://example.com/page2"), json=page2_data),
+            Response(
+                200, request=Request("GET", "http://example.com"), json=page1_data
+            ),
+            Response(
+                200, request=Request("GET", "http://example.com/page2"), json=page2_data
+            ),
         ]
 
         results = []
@@ -80,13 +88,17 @@ async def test_fetch_paginated_data_pagination(mock_bitbucket_client: BitbucketC
 
 
 @pytest.mark.asyncio
-async def test_fetch_paginated_data_error(mock_bitbucket_client: BitbucketClient) -> None:
+async def test_fetch_paginated_data_error(
+    mock_bitbucket_client: BitbucketClient,
+) -> None:
     """Test error handling in paginated data fetching."""
     with patch.object(
         mock_bitbucket_client.http_client, "get", new_callable=AsyncMock
     ) as mock_get:
         mock_get.return_value = Response(
-            404, request=Request("GET", "http://example.com"), json={"error": "Not Found"}
+            404,
+            request=Request("GET", "http://example.com"),
+            json={"error": "Not Found"},
         )
 
         async for data in mock_bitbucket_client._fetch_paginated_data("test_endpoint"):
@@ -105,7 +117,9 @@ async def test_register_webhook(mock_bitbucket_client: BitbucketClient) -> None:
         mock_bitbucket_client.http_client, "post", new_callable=AsyncMock
     ) as mock_post:
         mock_post.return_value = Response(
-            200, request=Request("POST", "http://example.com"), json={"id": "webhook123"}
+            200,
+            request=Request("POST", "http://example.com"),
+            json={"id": "webhook123"},
         )
 
         await mock_bitbucket_client.register_webhook("workspace1", webhook_url, secret)
