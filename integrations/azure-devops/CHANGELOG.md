@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.131 (2025-02-26)
+
+
+### Improvements
+
+- Added support for specifying organization name instead of organization URL in integration configuration
+
+### Bug Fixes
+
+- Fixed bug causing repositories of disabled projects to be fetched, causing failure to retrieve child objects of the repositories
+
+
 ## 0.1.130 (2025-02-25)
 
 
