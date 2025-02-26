@@ -10,9 +10,6 @@ However, if you would like your integration to be available to other users on Po
 
 In this guide, we will learn how to publish your integration to the Port Ocean repository.
 
-## Standalone Development (Skip if you have been developing in the Ocean repository)
-If you have been developing your integration in a standalone environment, you will need to fork the [Port Ocean repository](https://github.com/port-labs/ocean) and copy your integration into the `integrations` directory.
-
 
 ## Creating a Changelog
 Before you publish your integration, you need to create a changelog. A changelog is a file that contains a curated, chronologically ordered list of notable changes for each version of a project. This file is used to keep track of changes to the project and to communicate these changes to users.
