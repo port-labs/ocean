@@ -10,7 +10,7 @@ from webhook_processors.snyk_base_webhook_processor import SnykBaseWebhookProces
 
 
 class TargetWebhookProcessor(SnykBaseWebhookProcessor):
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [IntegrationKind.TARGET]
 
     async def handle_event(

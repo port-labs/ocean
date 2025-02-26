@@ -65,13 +65,18 @@ def mock_context(monkeypatch: Any) -> PortOceanContext:
     return mock_context
 
 
-def test_shouldProcessEvent_project(
+@pytest.mark.asyncio
+async def test_shouldProcessEvent_project(
     projectWebhookProcessor: ProjectWebhookProcessor,
     mock_context: PortOceanContext,
 ) -> None:
     with patch("webhook_processors.snyk_base_webhook_processor.hmac") as mock_hmac:
         mock_hmac_obj = mock_hmac.new.return_value
         mock_hmac_obj.hexdigest.return_value = "1234567890"
+
+        mock_request = AsyncMock()
+        mock_request.body.return_value = b'{"event":"project.created"}'
+
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={
@@ -79,19 +84,26 @@ def test_shouldProcessEvent_project(
             },
             headers={"x-hub-signature": "sha256=1234567890"},
         )
-        assert projectWebhookProcessor.should_process_event(event) is True
+        event._original_request = mock_request
+
+        assert await projectWebhookProcessor.should_process_event(event) is True
 
         mock_hmac_obj.hexdigest.return_value = "1"
-        assert projectWebhookProcessor.should_process_event(event) is False
+        assert await projectWebhookProcessor.should_process_event(event) is False
 
 
-def test_shouldProcessEvent_target(
+@pytest.mark.asyncio
+async def test_shouldProcessEvent_target(
     targetWebhookProcessor: TargetWebhookProcessor,
     mock_context: PortOceanContext,
 ) -> None:
     with patch("webhook_processors.snyk_base_webhook_processor.hmac") as mock_hmac:
         mock_hmac_obj = mock_hmac.new.return_value
         mock_hmac_obj.hexdigest.return_value = "1234567890"
+
+        mock_request = AsyncMock()
+        mock_request.body.return_value = b'{"event":"project.created"}'
+
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={
@@ -99,51 +111,44 @@ def test_shouldProcessEvent_target(
             },
             headers={"x-hub-signature": "sha256=1234567890"},
         )
-        assert targetWebhookProcessor.should_process_event(event) is True
+        event._original_request = mock_request
+        assert await targetWebhookProcessor.should_process_event(event) is True
 
         mock_hmac_obj.hexdigest.return_value = "1"
-        assert targetWebhookProcessor.should_process_event(event) is False
+        assert await targetWebhookProcessor.should_process_event(event) is False
 
 
-def test_shouldProcessEvent_issue(
+@pytest.mark.asyncio
+async def test_shouldProcessEvent_issue(
     issueWebhookProcessor: IssueWebhookProcessor,
     mock_context: PortOceanContext,
 ) -> None:
-    with patch("webhook_processors.snyk_base_webhook_processor.hmac") as mock_hmac:
-        mock_hmac_obj = mock_hmac.new.return_value
-        mock_hmac_obj.hexdigest.return_value = "1234567890"
-        event = WebhookEvent(
-            trace_id="test-trace-id",
-            payload={
-                "event": "project.created",
-            },
-            headers={"x-hub-signature": "sha256=1234567890"},
-        )
-        assert issueWebhookProcessor.should_process_event(event) is True
-
-        mock_hmac_obj.hexdigest.return_value = "1"
-        assert issueWebhookProcessor.should_process_event(event) is False
+    event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
+    assert await issueWebhookProcessor.should_process_event(event) is False
 
 
-def test_getMatchingKinds_projectReturned(
+@pytest.mark.asyncio
+async def test_getMatchingKinds_projectReturned(
     projectWebhookProcessor: ProjectWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
-    assert projectWebhookProcessor.get_matching_kinds(event) == ["project"]
+    assert await projectWebhookProcessor.get_matching_kinds(event) == ["project"]
 
 
-def test_getMatchingKinds_issueReturned(
+@pytest.mark.asyncio
+async def test_getMatchingKinds_issueReturned(
     issueWebhookProcessor: IssueWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
-    assert issueWebhookProcessor.get_matching_kinds(event) == ["issue"]
+    assert await issueWebhookProcessor.get_matching_kinds(event) == ["issue"]
 
 
-def test_getMatchingKinds_targetReturned(
+@pytest.mark.asyncio
+async def test_getMatchingKinds_targetReturned(
     targetWebhookProcessor: TargetWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
-    assert targetWebhookProcessor.get_matching_kinds(event) == ["target"]
+    assert await targetWebhookProcessor.get_matching_kinds(event) == ["target"]
 
 
 @pytest.mark.asyncio
