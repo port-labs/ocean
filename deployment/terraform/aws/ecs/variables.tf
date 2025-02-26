@@ -128,6 +128,12 @@ variable "initialize_port_resources" {
   default = false
 }
 
+variable "scheduled_resync_interval" {
+  type        = number
+  default     = 1440
+  description = "The interval to resync the integration (in minutes)"
+}
+
 variable "integration" {
   type = object({
     identifier = optional(string)
@@ -140,6 +146,7 @@ variable "lb_targ_group_arn" {
   type    = string
   default = ""
 }
+
 variable "additional_policy_statements" {
   type = list(object({
     actions   = list(string)

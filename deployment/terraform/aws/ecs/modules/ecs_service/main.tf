@@ -14,6 +14,10 @@ locals {
       value = var.initialize_port_resources ? "true" : "false"
     },
     {
+      name  = "OCEAN__SCHEDULED_RESYNC_INTERVAL",
+      value = tostring(var.scheduled_resync_interval)
+    },
+    {
       name  = upper("OCEAN__EVENT_LISTENER")
       value = jsonencode({
         for key, value in var.event_listener : key => value if value != null
