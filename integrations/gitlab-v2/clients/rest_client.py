@@ -10,14 +10,16 @@ class RestClient:
 
     def __init__(self, base_url: str, auth_client: AuthClient):
         self.base_url = f"{base_url}/api/v4"
-        self.auth_client = auth_client
+        self._headers = auth_client.get_headers()
         self._client = http_async_client
 
     async def get_resource(
         self, resource_type: str, params: Optional[dict] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
         try:
-            async for batch in self._make_paginated_request(resource_type, params=params):
+            async for batch in self._make_paginated_request(
+                resource_type, params=params
+            ):
                 yield batch
         except Exception as e:
             logger.error(f"Failed to fetch {resource_type}: {str(e)}")
@@ -48,7 +50,10 @@ class RestClient:
             raise
 
     async def _make_paginated_request(
-        self, path: str, params: Optional[dict[str, Any]] = None, page_size: int = DEFAULT_PAGE_SIZE
+        self,
+        path: str,
+        params: Optional[dict[str, Any]] = None,
+        page_size: int = DEFAULT_PAGE_SIZE,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         page = 1
         params = params or {}
@@ -85,7 +90,7 @@ class RestClient:
             response = await self._client.request(
                 method=method,
                 url=url,
-                headers=self.auth_client.get_headers(),
+                headers=self._headers,
                 params=params,
                 json=data,
             )

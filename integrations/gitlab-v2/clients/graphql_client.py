@@ -12,51 +12,47 @@ class GraphQLClient:
 
     def __init__(self, base_url: str, auth_client: AuthClient):
         self.base_url = f"{base_url}/api/graphql"
-        self.auth_client = auth_client
+        self._headers = auth_client.get_headers()
         self._client = http_async_client
 
     async def get_resource(
-        self, 
-        resource_type: str,
-        variables: Optional[dict[str, Any]] = None
+        self, resource_type: str, variables: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
         query = self.RESOURCE_QUERIES.get(resource_type)
         if not query:
             raise ValueError(f"Unsupported resource type for GraphQL: {resource_type}")
-            
+
         async for batch in self._execute_paginated_query(
-            query=str(query),
-            resource_field=resource_type,
-            variables=variables
+            query=str(query), resource_field=resource_type, variables=variables
         ):
             yield batch
 
     async def _execute_paginated_query(
-        self, 
-        query: str, 
+        self,
+        query: str,
         resource_field: str,
-        variables: Optional[dict[str, Any]] = None
+        variables: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         cursor = None
-        
+
         while True:
             data = await self._execute_query(
                 query,
                 variables={"cursor": cursor, **(variables or {})},
             )
-            
+
             resource_data = data.get(resource_field, {})
             nodes = resource_data.get("nodes", [])
-            
+
             if not nodes:
                 break
-                
+
             yield nodes
-            
+
             page_info = resource_data.get("pageInfo", {})
             if not page_info.get("hasNextPage", False):
                 break
-                
+
             cursor = page_info.get("endCursor")
 
     async def _execute_query(
@@ -65,7 +61,7 @@ class GraphQLClient:
         try:
             response = await self._client.post(
                 self.base_url,
-                headers=self.auth_client.get_headers(),
+                headers=self._headers,
                 json={
                     "query": query,
                     "variables": variables or {},

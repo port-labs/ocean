@@ -17,16 +17,19 @@ class GitLabClient:
             yield batch
 
     async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
-        async for batch in self.rest.get_resource("groups", params={
-            "min_access_level": 30, 
-            "all_available": True
-        }):
+        async for batch in self.rest.get_resource(
+            "groups", params={"min_access_level": 30, "all_available": True}
+        ):
             yield batch
 
     async def get_issues(self) -> AsyncIterator[list[dict[str, Any]]]:
-        async for batch in self.rest.get_resource("issues", params={"scope": "all", "state": "closed"}):
+        async for batch in self.rest.get_resource(
+            "issues", params={"scope": "all", "state": "closed"}
+        ):
             yield batch
 
-    async def get_group_resource(self, group: dict, resource_type: str) -> AsyncIterator[list[dict[str, Any]]]:
+    async def get_group_resource(
+        self, group: dict, resource_type: str
+    ) -> AsyncIterator[list[dict[str, Any]]]:
         async for batch in self.rest.get_group_resource(group["id"], resource_type):
             yield batch
