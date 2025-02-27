@@ -13,6 +13,15 @@ class GitLabClient:
         self.rest = RestClient(base_url, auth_client)
 
     async def get_projects(self) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch all accessible projects using GraphQL.
+        
+        Note: GraphQL is preferred over REST for projects as it allows efficient
+        fetching of extendable fields (like members, labels) in a single query
+        when needed, avoiding multiple API calls.
+        
+        Returns:
+            AsyncIterator yielding batches of project data
+        """
         async for batch in self.graphql.get_resource("projects"):
             yield batch
 
