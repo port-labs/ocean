@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Enabled live events for Jira Ocean SaaS installation
+- Enabled live events for Snyk Ocean SaaS installation
 
 
 ## 0.2.0 (2025-02-24)
