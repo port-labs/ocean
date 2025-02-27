@@ -13,49 +13,20 @@ class GitLabClient:
         self.rest = RestClient(base_url, auth_client)
 
     async def get_projects(self) -> AsyncIterator[list[dict[str, Any]]]:
-        cursor = None
-
-        while True:
-            try:
-                data = await self.graphql.execute_query(
-                    str(ProjectQueries.LIST),
-                    variables={"cursor": cursor},
-                )
-
-                projects_data = data.get("projects", {})
-                nodes = projects_data.get("nodes", [])
-
-                if not nodes:
-                    break
-
-                yield nodes
-
-                page_info = projects_data.get("pageInfo", {})
-                if not page_info.get("hasNextPage", False):
-                    break
-
-                cursor = page_info.get("endCursor")
-
-            except Exception as e:
-                logger.error(f"Failed to fetch projects: {str(e)}")
-                raise
+        async for batch in self.graphql.get_resource("projects"):
+            yield batch
 
     async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
-        try:
-            async for groups_batch in self.rest.make_paginated_request(
-                "groups",
-                params={"min_access_level": 30},
-                page_size=100,
-            ):
-                logger.info(f"Processing batch of {len(groups_batch)} groups.")
-                yield groups_batch
+        async for batch in self.rest.get_resource("groups", params={
+            "min_access_level": 30, 
+            "all_available": True
+        }):
+            yield batch
 
-        except Exception as e:
-            logger.error(f"Failed to fetch groups: {str(e)}")
-            raise
+    async def get_issues(self) -> AsyncIterator[list[dict[str, Any]]]:
+        async for batch in self.rest.get_resource("issues", params={"scope": "all", "state": "closed"}):
+            yield batch
 
-    async def get_group_resource(
-        self, group: dict[str, Any], resource_type: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_group_resource(self, group: dict, resource_type: str) -> AsyncIterator[list[dict[str, Any]]]:
         async for batch in self.rest.get_group_resource(group["id"], resource_type):
             yield batch
