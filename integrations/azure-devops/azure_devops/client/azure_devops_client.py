@@ -36,6 +36,18 @@ class AzureDevopsClient(HTTPBaseClient):
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
 
+    @classmethod
+    def _repository_is_healthy(cls, repository: dict[str, Any]) -> bool:
+        UNHEALTHY_PROJECT_STATES = {
+            "deleted",
+            "deleting",
+            "new",
+            "createPending",
+        }
+        return repository.get("project", {}).get(
+            "state"
+        ) not in UNHEALTHY_PROJECT_STATES and not repository.get("isDisabled")
+
     async def get_single_project(self, project_id: str) -> dict[str, Any]:
         project_url = (
             f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}"
@@ -68,7 +80,9 @@ class AzureDevopsClient(HTTPBaseClient):
     @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
-        async for teams in self._get_paginated_by_top_and_skip(teams_url):
+        async for teams in self._get_paginated_by_top_and_skip(
+            teams_url, skip_404s=False
+        ):
             yield teams
 
     async def get_team_members(self, team: dict[str, Any]) -> list[dict[str, Any]]:
@@ -142,9 +156,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     yield [
                         repo
                         for repo in repositories
-                        if (not repo.get("isDisabled"))
-                        and repo.get("project", {}).get("state")
-                        in ("all", "unchanged", "wellFormed")
+                        if self._repository_is_healthy(repo)
                     ]
 
     async def generate_pull_requests(
@@ -360,7 +372,9 @@ class AzureDevopsClient(HTTPBaseClient):
         self, project_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
-        async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
+        async for teams_in_project in self._get_paginated_by_top_and_skip(
+            teams_url, skip_404s=False
+        ):
             for team in teams_in_project:
                 get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
                 response = await self.send_request("GET", get_boards_url)
