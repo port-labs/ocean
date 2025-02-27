@@ -55,7 +55,7 @@ class GitLabClient:
             raise
 
     async def get_group_resource(
-        self, group: dict, resource_type: str
-    ) -> AsyncGenerator[list[dict], None]:
+        self, group: dict[str, Any], resource_type: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for batch in self.rest.get_group_resource(group["id"], resource_type):
             yield batch

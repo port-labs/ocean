@@ -61,7 +61,7 @@ class RestClient:
             page += 1
 
     async def get_group_resource(
-        self, group_id: str, resource_type: str, params: Optional[dict] = None
+        self, group_id: str, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
         if resource_type not in ["issues", "merge_requests"]:
             raise ValueError(f"Unsupported resource type: {resource_type}")
