@@ -15,7 +15,7 @@ def init_client() -> SnykClient:
     return SnykClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
-        ocean.integration_config.get("app_host"),
+        ocean.app.base_url or ocean.integration_config.get("app_host"),
         parse_list(ocean.integration_config.get("organization_id", "")),
         parse_list(ocean.integration_config.get("groups", "")),
         ocean.integration_config.get("webhook_secret"),

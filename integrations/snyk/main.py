@@ -100,8 +100,12 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    ## check if user provided webhook secret or app_host. These variable are required to create webhook subscriptions. If the user did not provide them, we ignore creating webhook subscriptions
-    if ocean.integration_config.get("app_host") and ocean.integration_config.get(
+    ## check if user provided webhook secret and base_url.
+    #  These variable are required to create webhook subscriptions.
+    #  If the user did not provide them, we ignore creating webhook subscriptions
+    base_url = ocean.app.base_url
+    local_url = base_url or ocean.integration_config.get("app_host")
+    if local_url and ocean.integration_config.get(
         "webhook_secret"
     ):
         logger.info("Subscribing to Snyk webhooks")
