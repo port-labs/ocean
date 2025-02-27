@@ -75,17 +75,25 @@ async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
-    async for issues in client.get_issues():
-        logger.info(f"Received issue batch with {len(issues)} issues")
-        yield issues
+    async for groups_batch in client.get_groups():
+        logger.info(f"Processing batch of {len(groups_batch)} groups for issues")
+
+        for group in groups_batch:
+            async for issues_batch in client.get_group_resource(group, "issues"):
+                logger.info(f"Received issue batch with {len(issues_batch)} issues")
+                yield issues_batch
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
-    async for merge_requests in client.get_merge_requests():
+    async for groups_batch in client.get_groups():
         logger.info(
-            f"Received merge request batch with {len(merge_requests)} merge requests"
+            f"Processing batch of {len(groups_batch)} groups for merge requests"
         )
-        yield merge_requests
+
+        for group in groups_batch:
+            async for mrs_batch in client.get_group_resource(group, "merge_requests"):
+                logger.info(f"Received mrs_batch with {len(mrs_batch)} mrs")
+                yield mrs_batch
