@@ -5,24 +5,13 @@ class Fragments:
             webUrl
             description
             fullPath
-            languages {
-                name 
-                share
-            }
             repository {
-                blobs(paths: ["README.md"]) {
-                    nodes {
-                        rawBlob
-                    }
-                }
                 rootRef
             }
-            labels {
-                nodes {
-                    color
-                    title
-                }
-            } 
+            group{
+                id
+                fullPath            
+            }
         }
     """
 
