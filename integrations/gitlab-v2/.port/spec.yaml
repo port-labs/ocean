@@ -5,7 +5,9 @@ features:
     section: Git Providers
     resources:
       - kind: projects
-      # - kind: <ResourceName2>
+      - kind: groups
+      - kind: issues
+      - kind: merge-request
 configurations:
   - name: gitlabToken
     required: true
