@@ -36,6 +36,8 @@ configurations:
     sensitive: false
 saas:
   enabled: true
+  liveEvents:
+    enabled: true
   oauthConfiguration:
     requiredSecrets:
       - name: atlassianUserEmail
