@@ -184,7 +184,9 @@ class SnykClient:
         self, org_id: str, project_id: str
     ) -> dict[str, Any]:
         project = await self.get_single_project(org_id, project_id)
-        target_id = project["__target"]["data"]["id"]
+        target_id = (
+            project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
+        )
 
         url = f"{self.rest_api_url}/orgs/{org_id}/targets/{target_id}"
 
