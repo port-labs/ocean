@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.6 (2025-02-27)
+
+
+### Improvements
+
+- Enabled live events for Jira Ocean SaaS installation
+
+
 ## 0.3.5 (2025-02-26)
 
 
