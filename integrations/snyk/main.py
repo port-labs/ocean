@@ -103,11 +103,7 @@ async def on_start() -> None:
     ## check if user provided webhook secret and base_url.
     #  These variable are required to create webhook subscriptions.
     #  If the user did not provide them, we ignore creating webhook subscriptions
-    base_url = ocean.app.base_url
-    local_url = base_url or ocean.integration_config.get("app_host")
-    if local_url and ocean.integration_config.get(
-        "webhook_secret"
-    ):
+    if ocean.app.base_url and ocean.integration_config.get("webhook_secret"):
         logger.info("Subscribing to Snyk webhooks")
 
         snyk_client = init_client()
