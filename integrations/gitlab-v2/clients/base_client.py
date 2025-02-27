@@ -14,11 +14,11 @@ class GitLabClient:
 
     async def get_projects(self) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all accessible projects using GraphQL.
-        
+
         Note: GraphQL is preferred over REST for projects as it allows efficient
         fetching of extendable fields (like members, labels) in a single query
         when needed, avoiding multiple API calls.
-        
+
         Returns:
             AsyncIterator yielding batches of project data
         """
@@ -28,12 +28,6 @@ class GitLabClient:
     async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
         async for batch in self.rest.get_resource(
             "groups", params={"min_access_level": 30, "all_available": True}
-        ):
-            yield batch
-
-    async def get_issues(self) -> AsyncIterator[list[dict[str, Any]]]:
-        async for batch in self.rest.get_resource(
-            "issues", params={"scope": "all", "state": "closed"}
         ):
             yield batch
 
