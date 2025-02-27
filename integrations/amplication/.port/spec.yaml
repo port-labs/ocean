@@ -1,0 +1,24 @@
+description: Amplication integration for Port Ocean
+icon: Amplication
+features:
+  - type: exporter
+    section: Other
+    resources:
+      - kind: amplication_template
+      - kind: amplication_resource
+      - kind: amplication_alert
+saas:
+  enabled: true
+configurations:
+  - name: amplicationHost
+    required: false
+    type: url
+    description: "The URL of Amplication's server"
+    default: "https://server.amplication.com/graphql"
+  - name: amplicationToken
+    required: true
+    type: string
+    description: "Your user authorization token from Amplication"
+    sensitive: true
+provider:
+  type: community
