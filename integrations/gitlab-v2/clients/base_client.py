@@ -44,7 +44,7 @@ class GitLabClient:
         try:
             async for groups_batch in self.rest.make_paginated_request(
                 "groups",
-                params={"min_access_level": 30, "all_available": True},
+                params={"min_access_level": 30},
                 page_size=100,
             ):
                 logger.info(f"Processing batch of {len(groups_batch)} groups.")
