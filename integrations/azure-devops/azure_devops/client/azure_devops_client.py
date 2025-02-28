@@ -1,7 +1,6 @@
 import asyncio
 import json
-from typing import Any, AsyncGenerator, Optional
-
+from typing import Any, AsyncGenerator, Optional, List, Union
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
@@ -11,6 +10,13 @@ from port_ocean.utils.cache import cache_iterator_result
 from azure_devops.webhooks.webhook_event import WebhookEvent
 
 from .base_client import HTTPBaseClient
+from .file_processing import (
+    match_pattern,
+    expand_patterns,
+    get_base_paths,
+    process_file_content,
+)
+from port_ocean.utils.queue_utils import process_in_queue
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -18,6 +24,9 @@ WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 # (based on Azure DevOps API limitations) https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/list?view=azure-devops-rest-7.1&tabs=HTTP
 MAX_WORK_ITEMS_PER_REQUEST = 200
 MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 19999
+MAX_ALLOWED_FILE_SIZE_IN_BYTES = 10 * 1024 * 1024  # 10MB
+MAX_CONCURRENT_FILE_DOWNLOADS = 100
+MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 20
 
 
 class AzureDevopsClient(HTTPBaseClient):
@@ -491,3 +500,195 @@ class AzureDevopsClient(HTTPBaseClient):
         return await self._get_item_content(
             file_path, repository_id, "Commit", commit_id
         )
+
+    def does_pattern_apply(self, pattern: Union[str, List[str]], string: str) -> bool:
+        return match_pattern(pattern, string)
+
+    def convert_glob_to_patterns(self, pattern: Union[str, List[str]]) -> List[str]:
+        return expand_patterns(pattern)
+
+    async def _fetch_and_process_file(
+        self,
+        file: dict[str, Any],
+        repository_id: str,
+        branch: str,
+        repository: dict[str, Any],
+    ) -> Optional[dict[str, Any]]:
+        if file.get("size", 0) > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
+            logger.warning(f"Skipping large file {file['path']} ({file['size']} bytes)")
+            return None
+        try:
+            content = await self._get_item_content(
+                file["path"], repository_id, "Branch", branch
+            )
+            return await process_file_content(file, content, repository)
+        except Exception as e:
+            logger.error(f"Failed to process file {file['path']}: {str(e)}")
+            return None
+
+    async def generate_files(
+        self,
+        path: str | List[str],
+        repos: Optional[list[str]] = None,
+        max_depth: Optional[int] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Iterates through repositories and returns files matching the path pattern with optimized retrieval.
+        Uses process_in_queue for efficient concurrent processing.
+
+        Args:
+            path: Glob pattern(s) to match files (e.g., '**/package.json')
+            repos: Optional list of repository names to filter by
+            max_depth: Optional maximum directory depth to search (None for unlimited)
+        """
+        patterns = expand_patterns(path)
+
+        async for repositories in self.generate_repositories(
+            include_disabled_repositories=False
+        ):
+            repositories_to_process = [
+                repo for repo in repositories if not repos or repo["name"] in repos
+            ]
+
+            if not repositories_to_process:
+                continue
+
+            logger.info(f"Processing {len(repositories_to_process)} repositories")
+
+            repo_results = await process_in_queue(
+                repositories_to_process,
+                self._process_repository,
+                patterns,
+                max_depth,
+                concurrency=MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING,
+            )
+
+            for result in repo_results:
+                if result:
+                    for file_batch in result:
+                        if file_batch:
+                            yield file_batch
+
+    async def _process_repository(
+        self, repository: dict[str, Any], patterns: List[str], max_depth: Optional[int]
+    ) -> List[List[dict[str, Any]]]:
+        """Process a single repository and return its matching files."""
+        try:
+            logger.info(f"Processing repository {repository['name']}")
+
+            if not (branch := repository.get("defaultBranch")):
+                logger.warning(
+                    f"Repository {repository['name']} has no default branch. Skipping."
+                )
+                return []
+
+            branch = branch.replace("refs/heads/", "")
+            project_id = repository["project"]["id"]
+            repository_id = repository["id"]
+            results = []
+
+            base_paths = get_base_paths(patterns)
+            for base_path in base_paths:
+                matching_files = await self._process_repository_path(
+                    repository=repository,
+                    project_id=project_id,
+                    repository_id=repository_id,
+                    base_path=base_path,
+                    branch=branch,
+                    patterns=patterns,
+                    max_depth=max_depth,
+                )
+                if matching_files:
+                    batch_results = await self._process_matching_files(
+                        matching_files=matching_files,
+                        repository=repository,
+                        repository_id=repository_id,
+                        branch=branch,
+                    )
+                    results.extend(batch_results)
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Failed to process repository {repository['name']}: {str(e)}")
+            return []
+
+    async def _process_repository_path(
+        self,
+        repository: dict[str, Any],
+        project_id: str,
+        repository_id: str,
+        base_path: str,
+        branch: str,
+        patterns: List[str],
+        max_depth: Optional[int],
+    ) -> List[dict[str, Any]]:
+        """Get matching files from a repository path."""
+        try:
+            recursion_level = "OneLevel" if max_depth == 1 else "Full"
+            logger.info(
+                f"Processing base path {base_path} for repository {repository['name']}"
+            )
+
+            items_url = f"{self._organization_base_url}/{project_id}/_apis/git/repositories/{repository_id}/items"
+            params = {
+                "recursionLevel": recursion_level,
+                "scopePath": base_path if base_path != "**" else "/",
+                "includeContentMetadata": "true",
+                "versionDescriptor.version": branch,
+                "versionDescriptor.versionType": "branch",
+                "api-version": "7.1",
+            }
+
+            response = await self.send_request("GET", items_url, params=params)
+            items = response.json().get("value", [])
+
+            matching_files = []
+            seen_paths = set()
+
+            for item in items:
+                if item.get("isFolder", False):
+                    continue
+
+                file_path = item.get("path", "").lstrip("/")
+                if file_path in seen_paths:
+                    continue
+
+                if max_depth is not None and file_path.count("/") > max_depth:
+                    continue
+
+                if any(match_pattern(pattern, file_path) for pattern in patterns):
+                    matching_files.append(item)
+                    seen_paths.add(file_path)
+
+            return matching_files
+
+        except Exception as e:
+            logger.warning(
+                f"Failed to process path {base_path} in {repository['name']}: {str(e)}"
+            )
+            return []
+
+    async def _process_matching_files(
+        self,
+        matching_files: List[dict[str, Any]],
+        repository: dict[str, Any],
+        repository_id: str,
+        branch: str,
+    ) -> List[List[dict[str, Any]]]:
+        """Process matching files using process_in_queue for efficient concurrency."""
+        if not matching_files:
+            return []
+
+        processed_files = await process_in_queue(
+            matching_files,
+            self._fetch_and_process_file,
+            repository_id,
+            branch,
+            repository,
+            concurrency=MAX_CONCURRENT_FILE_DOWNLOADS,
+        )
+
+        # Filter out None results and return as a single batch
+        valid_files = [f for f in processed_files if f is not None]
+        return [valid_files] if valid_files else []

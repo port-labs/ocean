@@ -45,3 +45,65 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        path: '**/*.yaml'
+        max_depth: 1
+    port:
+      entity:
+        mappings:
+          identifier: .file.path | gsub(" "; "")
+          title: .file.path
+          blueprint: '"file"'
+          properties:
+            path: .file.path
+            size: .file.size
+            content: .file.content
+            link: .repo.remoteUrl + "?path=" + (.file.path)
+          relations:
+            repository: >-
+              "\(.repo.project.name | ascii_downcase | gsub("[ ();]";
+              ""))/\(.repo.name | ascii_downcase | gsub("[ ();]"; ""))"
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        path: '**/*.yml'
+        max_depth: 1
+    port:
+      entity:
+        mappings:
+          identifier: .file.path | gsub(" "; "")
+          title: .file.path
+          blueprint: '"file"'
+          properties:
+            path: .file.path
+            size: .file.size
+            content: .file.content
+            link: .repo.remoteUrl + "?path=" + (.file.path)
+          relations:
+            repository: >-
+              "\(.repo.project.name | ascii_downcase | gsub("[ ();]";
+              ""))/\(.repo.name | ascii_downcase | gsub("[ ();]"; ""))"
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        path: '**/*.json'
+    port:
+      entity:
+        mappings:
+          identifier: .file.path | gsub(" "; "")
+          title: .file.path
+          blueprint: '"file"'
+          properties:
+            path: .file.path
+            size: .file.size
+            content: .file.content
+            link: .repo.remoteUrl + "?path=" + (.file.path)
+          relations:
+            repository: >-
+              "\(.repo.project.name | ascii_downcase | gsub("[ ();]";
+              ""))/\(.repo.name | ascii_downcase | gsub("[ ();]"; ""))"
