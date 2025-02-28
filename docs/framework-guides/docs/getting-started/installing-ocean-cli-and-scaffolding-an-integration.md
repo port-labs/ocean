@@ -15,7 +15,7 @@ Ensure Python 3.12 is installed on your computer, as mentioned in the previous s
 ## Setting up the environment
 Integrations for Port are developed using the Ocean framework. The Ocean framework provides a set of tools and libraries to help you develop, test, and deploy integrations to Port. In addition, integrations are usually developed within the [Ocean monorepo](https://github.com/port-labs/ocean/), which provides a set of automations on GitHub CI environment including testing, linting, and a Docker image build.
 
-Private integrations are [not fully supported yet](../faq.md#can-i-create-a-private-integration-exclusively-for-my-organization), but you can still develop integrations and use them privately without necessarily contributing them to Port's Ocean integration. This guide will focus on developing integrations within the Ocean monorepo.
+Private integrations are [not fully supported yet](../faq.md#can-i-create-a-private-integration-exclusively-for-my-organization), but you can still develop integrations and use them privately without necessarily contributing them to Port's Ocean integration catalog. This guide will focus on developing integrations within the Ocean monorepo.
 
 Choosing to develop an integration within the Ocean monorepo has some advantages:
 - Contributing an integration to the Port catalog requires it to be developed within the Ocean monorepo. Hence, if you plan to contribute to Port's Ocean integration catalog, you should develop it within the Ocean monorepo.
