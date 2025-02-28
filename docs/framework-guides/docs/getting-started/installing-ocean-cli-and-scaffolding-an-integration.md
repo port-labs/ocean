@@ -7,20 +7,20 @@ import CodeBlock from '@theme/CodeBlock';
 
 # 🚀 Installing Ocean CLI and Scaffolding an Integration
 
-In this part of the guide, you'll learn how to **install** the Ocean CLI and **scaffold** a new integration
+In this section of the guide, you'll discover how to **install** the Ocean CLI and **scaffold** a new integration
 
 ## Requirements
-You should have Python 3.12 installed on your machine as stated in the previous section. If you don't have Python installed, you can download it from the [official Python website](https://www.python.org/downloads/).
+Ensure Python 3.12 is installed on your computer, as mentioned in the previous section. If it's not yet installed, you can download it from the [official Python website](https://www.python.org/downloads/).
 
 ## Setting up the environment
 Integrations for Port are developed using the Ocean framework. The Ocean framework provides a set of tools and libraries to help you develop, test, and deploy integrations to Port. In addition, integrations are usually developed within the [Ocean monorepo](https://github.com/port-labs/ocean/), which provides a set of automations on GitHub CI environment including testing, linting, and a Docker image build.
 
-Standalone development for integrations (private integrations) are not fully supported yet, but you can still develop integrations standalone and use them internally before contributing them to the Port catalog. This guide will focus on developing integrations within the Ocean monorepo.
+Private integrations are [not fully supported yet](../faq.md#can-i-create-a-private-integration-exclusively-for-my-organization), but you can still develop integrations and use them privately without necessarily contributing them to Port's Ocean integration. This guide will focus on developing integrations within the Ocean monorepo.
 
 Choosing to develop an integration within the Ocean monorepo has some advantages:
-- Contributing an integration to the Port catalog requires it to be developed within the Ocean monorepo. Hence, if you plan to contribute to Port's catalog of integrations, you should develop it within the Ocean monorepo.
+- Contributing an integration to the Port catalog requires it to be developed within the Ocean monorepo. Hence, if you plan to contribute to Port's Ocean integration catalog, you should develop it within the Ocean monorepo.
 
-- The Ocean monorepo provides a set of automations on GitHub CI environment including testing, linting, and building the integration Docker image that are not available in standalone development, or you would have to set up yourself.
+- The Ocean monorepo provides a set of automations on GitHub CI environment including testing, linting, and building the integration Docker image. This ensures that your integration is well-tested and ready for deployment.
 
 ### Cloning the Ocean Monorepo
 To develop an integration, you need to fork the [Port Ocean monorepo](https://github.com/port-labs/ocean), clone it to your local machine, and install the dependencies from the root directory.
