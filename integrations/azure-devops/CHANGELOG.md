@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.133 (2025-02-28)
+
+
+### Features
+
+- Added support for ingesting files from Azure DevOps repositories with optimized concurrent processing and pattern matching
+
+
 ## 0.1.132 (2025-02-26)
 
 
