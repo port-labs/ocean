@@ -1,12 +1,11 @@
-import json
 import asyncio
 from typing import Any, AsyncGenerator, Optional, List, Union
 from httpx import HTTPStatusError
 from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
+
 from azure_devops.webhooks.webhook_event import WebhookEvent
 
 from .base_client import HTTPBaseClient
@@ -17,7 +16,6 @@ from .file_processing import (
     process_file_content,
 )
 from port_ocean.utils.queue_utils import process_in_queue
-
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -40,11 +38,23 @@ class AzureDevopsClient(HTTPBaseClient):
         if cache := event.attributes.get("azure_devops_client"):
             return cache
         azure_devops_client = cls(
-            ocean.integration_config["organization_url"],
+            ocean.integration_config["organization_url"].strip("/"),
             ocean.integration_config["personal_access_token"],
         )
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
+
+    @classmethod
+    def _repository_is_healthy(cls, repository: dict[str, Any]) -> bool:
+        UNHEALTHY_PROJECT_STATES = {
+            "deleted",
+            "deleting",
+            "new",
+            "createPending",
+        }
+        return repository.get("project", {}).get(
+            "state"
+        ) not in UNHEALTHY_PROJECT_STATES and not repository.get("isDisabled")
 
     async def get_single_project(self, project_id: str) -> dict[str, Any]:
         project_url = (
@@ -78,7 +88,9 @@ class AzureDevopsClient(HTTPBaseClient):
     @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
-        async for teams in self._get_paginated_by_top_and_skip(teams_url):
+        async for teams in self._get_paginated_by_top_and_skip(
+            teams_url, skip_404s=False
+        ):
             yield teams
 
     async def get_team_members(self, team: dict[str, Any]) -> list[dict[str, Any]]:
@@ -149,7 +161,11 @@ class AzureDevopsClient(HTTPBaseClient):
                 if include_disabled_repositories:
                     yield repositories
                 else:
-                    yield [repo for repo in repositories if not repo.get("isDisabled")]
+                    yield [
+                        repo
+                        for repo in repositories
+                        if self._repository_is_healthy(repo)
+                    ]
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
@@ -364,7 +380,9 @@ class AzureDevopsClient(HTTPBaseClient):
         self, project_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
-        async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
+        async for teams_in_project in self._get_paginated_by_top_and_skip(
+            teams_url, skip_404s=False
+        ):
             for team in teams_in_project:
                 get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
                 response = await self.send_request("GET", get_boards_url)

@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.132 (2025-02-26)
 
-### Features
 
-- Added support for ingesting files from Azure DevOps repositories with optimized concurrent processing and pattern matching
+### Bug Fixes
+
+- Fixed bug causing repositories of disabled projects to be fetched, causing failure to retrieve child objects of the repositories
 
 
 ## 0.1.131 (2025-02-26)
