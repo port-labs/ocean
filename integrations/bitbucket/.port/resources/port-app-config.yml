@@ -1,0 +1,46 @@
+resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.uuid | gsub("[{}]"; "")'
+          title: ".name"
+          blueprint: '"bitbucketProject"'
+          properties:
+            private: .is_private
+            description: ".description"
+            type: .type
+            url: ".links.html.href"
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          title: ".name"
+          blueprint: '"bitbucketRepository"'
+          properties:
+            readme: file://README.md
+            url: ".links.html.href"
+            defaultBranch: .mainbranch.name
+  - kind: pull-request
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".destination.repository.name + (.id|tostring)"
+          title: ".title"
+          blueprint: '"bitbucketPullRequest"'
+          properties:
+            creator: ".author.display_name"
+            status: ".state"
+            createdAt: ".created_on"
+            updatedAt: ".updated_on"
+            link: ".links.html.href"
+          relations:
+            repository: ".destination.repository.name"
+  
