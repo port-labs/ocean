@@ -1,8 +1,9 @@
+from typing import Any, AsyncGenerator, Optional
+
 import httpx
 from httpx import BasicAuth, Response
-from typing import Any, AsyncGenerator, Optional
-from port_ocean.utils import http_async_client
 from loguru import logger
+from port_ocean.utils import http_async_client
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
@@ -78,14 +79,17 @@ class HTTPBaseClient:
             continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)
 
     async def _get_paginated_by_top_and_skip(
-        self, url: str, params: Optional[dict[str, Any]] = None
+        self, url: str, params: Optional[dict[str, Any]] = None, skip_404s: bool = True
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
         while True:
-            objects_page = (await self.send_request("GET", url, params=params)).json()[
-                "value"
-            ]
+            response = await self.send_request("GET", url, params=params)
+            if skip_404s and response.status_code == 404:
+                logger.error(f"Couldn't access url {url}")
+                break
+
+            objects_page = response.json()["value"]
             if objects_page:
                 logger.info(
                     f"Found {len(objects_page)} objects in url {url} with params: {params}"
