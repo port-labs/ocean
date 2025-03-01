@@ -12,6 +12,8 @@ from port_ocean.core.ocean_types import (
     START_EVENT_LISTENER,
     RawEntityDiff,
     EntityDiff,
+    BEFORE_RESYNC_EVENT_LISTENER,
+    AFTER_RESYNC_EVENT_LISTENER,
 )
 from port_ocean.exceptions.context import (
     PortOceanContextNotFoundError,
@@ -90,6 +92,40 @@ class PortOceanContext:
     def on_start(self) -> Callable[[START_EVENT_LISTENER], START_EVENT_LISTENER]:
         def wrapper(function: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
             return self.integration.on_start(function)
+
+        return wrapper
+
+    def on_resync_start(
+        self,
+    ) -> Callable[
+        [BEFORE_RESYNC_EVENT_LISTENER | None], BEFORE_RESYNC_EVENT_LISTENER | None
+    ]:
+        def wrapper(
+            function: BEFORE_RESYNC_EVENT_LISTENER | None,
+        ) -> BEFORE_RESYNC_EVENT_LISTENER | None:
+            if not self.app.config.event_listener.should_resync:
+                logger.debug(
+                    "Webhook only event listener is used, resync events are ignored"
+                )
+                return None
+            return self.integration.on_resync_start(function)
+
+        return wrapper
+
+    def on_resync_complete(
+        self,
+    ) -> Callable[
+        [AFTER_RESYNC_EVENT_LISTENER | None], AFTER_RESYNC_EVENT_LISTENER | None
+    ]:
+        def wrapper(
+            function: AFTER_RESYNC_EVENT_LISTENER | None,
+        ) -> AFTER_RESYNC_EVENT_LISTENER | None:
+            if not self.app.config.event_listener.should_resync:
+                logger.debug(
+                    "Webhook only event listener is used, resync events are ignored"
+                )
+                return None
+            return self.integration.on_resync_complete(function)
 
         return wrapper
 
