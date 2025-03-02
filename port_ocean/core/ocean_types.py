@@ -47,3 +47,5 @@ class CalculationResult(NamedTuple):
 class IntegrationEventsCallbacks(TypedDict):
     start: list[START_EVENT_LISTENER]
     resync: dict[str | None, list[RESYNC_EVENT_LISTENER]]
+    resync_start: list[BEFORE_RESYNC_EVENT_LISTENER]
+    resync_complete: list[AFTER_RESYNC_EVENT_LISTENER]

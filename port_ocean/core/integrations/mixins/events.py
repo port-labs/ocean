@@ -23,11 +23,11 @@ class EventsMixin:
     """
 
     def __init__(self) -> None:
-        self.event_strategy: dict[str, Any] = {
+        self.event_strategy: IntegrationEventsCallbacks = {
             "start": [],
             "resync": defaultdict(list),
-            "resync_start": [],  # Renamed from before_resync
-            "resync_complete": [],   # Renamed from after_resync
+            "resync_start": [],
+            "resync_complete": [],
         }
 
     @property
