@@ -16,6 +16,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Fixed `ocean new` on Unix-like systems failing with `FileNotFoundError` (#1402)
+- Fixed cancelled error handling while running resync
 
 ## 0.20.4 (2025-02-25)
 
