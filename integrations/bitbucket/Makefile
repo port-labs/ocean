@@ -1,1 +1,1 @@
-../_infra/Makefile
+include ../_infra/Makefile

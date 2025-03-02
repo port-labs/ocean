@@ -5,7 +5,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.uuid | gsub("[{}]"; "")'
+          identifier: '.uuid | gsub("[{-}]"; "")'
           title: ".name"
           blueprint: '"bitbucketProject"'
           properties:

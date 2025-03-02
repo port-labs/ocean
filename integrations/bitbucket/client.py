@@ -1,6 +1,5 @@
 from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPStatusError, Timeout
-from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 import base64

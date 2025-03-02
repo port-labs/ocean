@@ -1,21 +1,21 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import HTTPStatusError, Response
+from httpx import AsyncClient, HTTPStatusError, Response
 from port_ocean.context.event import event_context
-
+from typing import Any, AsyncIterator, Iterator
 from client import BitbucketClient
 
 
 class AsyncIteratorMock:
     """Helper class to mock async iterators."""
 
-    def __init__(self, items):
+    def __init__(self, items: Iterator[Any]) -> None:
         self.items = items
 
-    def __aiter__(self):
+    def __aiter__(self) -> "AsyncIteratorMock":
         return self
 
-    async def __anext__(self):
+    async def __anext__(self) -> Any:
         try:
             return next(self.items)
         except StopIteration:
@@ -23,7 +23,7 @@ class AsyncIteratorMock:
 
 
 @pytest.fixture
-def mock_client(mock_http_client):
+def mock_client(mock_http_client: AsyncClient) -> BitbucketClient:
     """Create BitbucketClient with mocked HTTP client."""
     return BitbucketClient(
         workspace="test_workspace", username="test_user", app_password="test_password"
@@ -31,14 +31,14 @@ def mock_client(mock_http_client):
 
 
 @pytest.mark.asyncio
-async def test_client_init_with_token():
+async def test_client_init_with_token() -> None:
     """Test client initialization with token auth."""
     client = BitbucketClient(workspace="test_workspace", workspace_token="test_token")
     assert "Bearer test_token" in client.headers["Authorization"]
 
 
 @pytest.mark.asyncio
-async def test_client_init_with_app_password():
+async def test_client_init_with_app_password() -> None:
     """Test client initialization with app password auth."""
     client = BitbucketClient(
         workspace="test_workspace", username="test_user", app_password="test_password"
@@ -47,7 +47,7 @@ async def test_client_init_with_app_password():
 
 
 @pytest.mark.asyncio
-async def test_client_init_no_auth():
+async def test_client_init_no_auth() -> None:
     """Test client initialization with no auth raises error."""
     with pytest.raises(ValueError) as exc_info:
         BitbucketClient(workspace="test_workspace")
@@ -58,7 +58,7 @@ async def test_client_init_no_auth():
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_success(mock_client):
+async def test_send_api_request_success(mock_client: BitbucketClient) -> None:
     """Test successful API request."""
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
@@ -80,7 +80,7 @@ async def test_send_api_request_success(mock_client):
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_with_params(mock_client):
+async def test_send_api_request_with_params(mock_client: BitbucketClient) -> None:
     """Test API request with query parameters."""
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
@@ -104,7 +104,7 @@ async def test_send_api_request_with_params(mock_client):
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_error(mock_client):
+async def test_send_api_request_error(mock_client: BitbucketClient) -> None:
     """Test API request with error response."""
     error_response = Response(400, json={"error": {"message": "Test error"}})
     mock_error = HTTPStatusError(
@@ -123,7 +123,7 @@ async def test_send_api_request_error(mock_client):
 
 
 @pytest.mark.asyncio
-async def test_send_paginated_api_request(mock_client):
+async def test_send_paginated_api_request(mock_client: BitbucketClient) -> None:
     """Test paginated API request."""
     page1 = {
         "values": [{"id": 1}, {"id": 2}],
@@ -146,14 +146,14 @@ async def test_send_paginated_api_request(mock_client):
 
 
 @pytest.mark.asyncio
-async def test_get_projects(mock_client):
+async def test_get_projects(mock_client: BitbucketClient) -> None:
     """Test getting projects."""
     mock_data = {"values": [{"key": "TEST", "name": "Test Project"}]}
 
     async with event_context("test_event"):
         with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
 
-            async def mock_generator():
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
                 yield mock_data["values"]
 
             mock_paginated.return_value = mock_generator()
@@ -165,14 +165,14 @@ async def test_get_projects(mock_client):
 
 
 @pytest.mark.asyncio
-async def test_get_repositories(mock_client):
+async def test_get_repositories(mock_client: BitbucketClient) -> None:
     """Test getting repositories."""
     mock_data = {"values": [{"slug": "test-repo", "name": "Test Repo"}]}
 
     async with event_context("test_event"):
         with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
 
-            async def mock_generator():
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
                 yield mock_data["values"]
 
             mock_paginated.return_value = mock_generator()
@@ -184,13 +184,13 @@ async def test_get_repositories(mock_client):
 
 
 @pytest.mark.asyncio
-async def test_get_directory_contents(mock_client):
+async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
     """Test getting directory contents."""
     mock_data = {"values": [{"type": "directory", "path": "src"}]}
 
     with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
 
-        async def mock_generator():
+        async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
             yield mock_data["values"]
 
         mock_paginated.return_value = mock_generator()
@@ -206,13 +206,13 @@ async def test_get_directory_contents(mock_client):
 
 
 @pytest.mark.asyncio
-async def test_get_pull_requests(mock_client):
+async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
     """Test getting pull requests."""
     mock_data = {"values": [{"id": 1, "title": "Test PR"}]}
 
     with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
 
-        async def mock_generator():
+        async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
             yield mock_data["values"]
 
         mock_paginated.return_value = mock_generator()
