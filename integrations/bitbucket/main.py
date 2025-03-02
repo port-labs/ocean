@@ -1,13 +1,15 @@
 from enum import StrEnum
-from typing import Any, Dict
 import fnmatch
+from typing import Any, Union, cast
 
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from client import BitbucketClient
+from overrides import BitbucketFolderResourceConfig, BitbucketFolderSelector
 
 
 class ObjectKind(StrEnum):
@@ -35,32 +37,28 @@ async def init_client() -> BitbucketClient:
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync folders based on configuration."""
-    selector = event.resource_config.get("selector", {})
-    folder_patterns = selector.get("folders", [])
-
+    config = cast(
+        Union[ResourceConfig, BitbucketFolderResourceConfig], event.resource_config
+    )
+    selector = cast(BitbucketFolderSelector, config.selector)
+    folder_patterns = selector.folders
     if not folder_patterns:
         logger.info("No folder patterns found in config, skipping folder sync")
         return
-
     repo_names = {
-        repo_name
-        for pattern in folder_patterns
-        for repo_name in pattern.get("repos", [])
+        repo_name for pattern in folder_patterns for repo_name in pattern.repos
     }
-
     if not repo_names:
         logger.info("No repository names found in patterns, skipping folder sync")
         return
-
     client = await init_client()
     repositories = {}
-    pattern_by_repo = {}
-
+    pattern_by_repo: dict[str, Any] = {}
     for pattern in folder_patterns:
-        for repo_name in pattern.get("repos", []):
+        for repo_name in pattern.repos:
             if repo_name not in pattern_by_repo:
                 pattern_by_repo[repo_name] = []
-            pattern_by_repo[repo_name].append(pattern.get("path", ""))
+            pattern_by_repo[repo_name].append(pattern.path)
 
     async for repos_batch in client.get_repositories():
         for repo in repos_batch:
