@@ -111,12 +111,8 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests from all repositories."""
     client = await init_client()
-
-    repos = []
     async for repositories in client.get_repositories():
-        repos.extend(repositories)
-
-    for repo in repos:
-        repo_slug = repo.get("slug", repo["name"].lower())
-        async for pull_requests in client.get_pull_requests(repo_slug):
-            yield pull_requests
+        for repo in repositories:
+            repo_slug = repo.get("slug", repo["name"].lower())
+            async for pull_requests in client.get_pull_requests(repo_slug):
+                yield pull_requests
