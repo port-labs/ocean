@@ -21,7 +21,6 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
-        skip_404s: bool = True,
     ) -> Response:
         self._client.auth = BasicAuth("", self._personal_access_token)
         self._client.follow_redirects = True
@@ -36,8 +35,8 @@ class HTTPBaseClient:
             )
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            if skip_404s and response.status_code == 404:
-                logger.error(f"Couldn't access url {url}, skipping...")
+            if response.status_code == 404:
+                logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
             else:
                 if response.status_code == 401:
                     logger.error(
@@ -82,15 +81,15 @@ class HTTPBaseClient:
             continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)
 
     async def _get_paginated_by_top_and_skip(
-        self, url: str, params: Optional[dict[str, Any]] = None, skip_404s: bool = True
+        self, url: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
         while True:
             response = await self.send_request(
-                "GET", url, params=params, skip_404s=skip_404s
+                "GET", url, params=params
             )
-            if skip_404s and response.status_code == 404:
+            if response.status_code == 404:
                 logger.error(f"Couldn't access url {url}")
                 break
 
