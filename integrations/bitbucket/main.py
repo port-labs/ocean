@@ -34,6 +34,33 @@ async def init_client() -> BitbucketClient:
     return client
 
 
+@ocean.on_resync(ObjectKind.PROJECT)
+async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all projects in the workspace."""
+    client = await init_client()
+    async for projects in client.get_projects():
+        yield projects
+
+
+@ocean.on_resync(ObjectKind.REPOSITORY)
+async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all repositories in the workspace."""
+    client = await init_client()
+    async for repositories in client.get_repositories():
+        yield repositories
+
+
+@ocean.on_resync(ObjectKind.PULL_REQUEST)
+async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all pull requests from all repositories."""
+    client = await init_client()
+    async for repositories in client.get_repositories():
+        for repo in repositories:
+            repo_slug = repo.get("slug", repo["name"].lower())
+            async for pull_requests in client.get_pull_requests(repo_slug):
+                yield pull_requests
+
+
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync folders based on configuration."""
@@ -68,52 +95,35 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     for repo_name, patterns in pattern_by_repo.items():
         if repo_name not in repositories:
-            logger.warning(f"Repository {repo_name} not found, skipping")
             continue
 
         repo = repositories[repo_name]
         repo_slug = repo.get("slug", repo_name.lower())
         default_branch = repo.get("mainbranch", {}).get("name", "master")
+        max_pattern_depth = max(
+            (folder_pattern.path.count("/") + 1 for folder_pattern in folder_patterns),
+            default=1,
+        )
 
         async for contents in client.get_directory_contents(
-            repo_slug, default_branch, ""
+            repo_slug, default_branch, "", max_depth=max_pattern_depth
         ):
             matching_folders = []
-            for pattern in patterns:
+            for pattern_str in patterns:
+                is_wildcard_pattern = any(c in pattern_str for c in "*?[]")
                 matching = [
-                    {"folder": folder, "repo": repo, "pattern": pattern}
+                    {"folder": folder, "repo": repo, "pattern": pattern_str}
                     for folder in contents
                     if folder["type"] == "commit_directory"
-                    and fnmatch.fnmatch(folder["path"], pattern)
+                    and (
+                        (
+                            is_wildcard_pattern
+                            and folder["path"].count("/") == pattern_str.count("/")
+                        )
+                        or (not is_wildcard_pattern and folder["path"] == pattern_str)
+                    )
+                    and fnmatch.fnmatch(folder["path"], pattern_str)
                 ]
                 matching_folders.extend(matching)
-
             if matching_folders:
                 yield matching_folders
-
-
-@ocean.on_resync(ObjectKind.PROJECT)
-async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all projects in the workspace."""
-    client = await init_client()
-    async for projects in client.get_projects():
-        yield projects
-
-
-@ocean.on_resync(ObjectKind.REPOSITORY)
-async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all repositories in the workspace."""
-    client = await init_client()
-    async for repositories in client.get_repositories():
-        yield repositories
-
-
-@ocean.on_resync(ObjectKind.PULL_REQUEST)
-async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all pull requests from all repositories."""
-    client = await init_client()
-    async for repositories in client.get_repositories():
-        for repo in repositories:
-            repo_slug = repo.get("slug", repo["name"].lower())
-            async for pull_requests in client.get_pull_requests(repo_slug):
-                yield pull_requests

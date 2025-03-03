@@ -63,13 +63,11 @@ async def test_send_api_request_success(mock_client: BitbucketClient) -> None:
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
     mock_response.json.return_value = {"data": "test"}
-
     with patch.object(
         mock_client.client, "request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.return_value = mock_response
         result = await mock_client._send_api_request("test/endpoint")
-
         assert result == {"data": "test"}
         mock_request.assert_called_once_with(
             method="GET",
@@ -85,15 +83,12 @@ async def test_send_api_request_with_params(mock_client: BitbucketClient) -> Non
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
     mock_response.json.return_value = {"data": "test"}
-
     params = {"page": 1, "pagelen": 100}
-
     with patch.object(
         mock_client.client, "request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.return_value = mock_response
         result = await mock_client._send_api_request("test/endpoint", params=params)
-
         assert result == {"data": "test"}
         mock_request.assert_called_once_with(
             method="GET",
@@ -110,15 +105,12 @@ async def test_send_api_request_error(mock_client: BitbucketClient) -> None:
     mock_error = HTTPStatusError(
         "Test error", request=MagicMock(), response=error_response
     )
-
     with patch.object(
         mock_client.client, "request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = mock_error
-
         with pytest.raises(HTTPStatusError) as exc_info:
             await mock_client._send_api_request("test/endpoint")
-
         assert "Test error" in str(exc_info.value)
 
 
@@ -130,16 +122,13 @@ async def test_send_paginated_api_request(mock_client: BitbucketClient) -> None:
         "next": "https://api.bitbucket.org/2.0/test/endpoint?page=2",
     }
     page2 = {"values": [{"id": 3}], "next": None}
-
     with patch.object(
         mock_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [page1, page2]
-
         results = []
         async for batch in mock_client._send_paginated_api_request("test/endpoint"):
             results.extend(batch)
-
         assert len(results) == 3
         assert [item["id"] for item in results] == [1, 2, 3]
         assert mock_request.call_count == 2
@@ -149,7 +138,6 @@ async def test_send_paginated_api_request(mock_client: BitbucketClient) -> None:
 async def test_get_projects(mock_client: BitbucketClient) -> None:
     """Test getting projects."""
     mock_data = {"values": [{"key": "TEST", "name": "Test Project"}]}
-
     async with event_context("test_event"):
         with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
 
@@ -157,10 +145,8 @@ async def test_get_projects(mock_client: BitbucketClient) -> None:
                 yield mock_data["values"]
 
             mock_paginated.return_value = mock_generator()
-
             async for projects in mock_client.get_projects():
                 assert projects == mock_data["values"]
-
             mock_paginated.assert_called_once_with("workspaces/test_workspace/projects")
 
 
@@ -168,7 +154,6 @@ async def test_get_projects(mock_client: BitbucketClient) -> None:
 async def test_get_repositories(mock_client: BitbucketClient) -> None:
     """Test getting repositories."""
     mock_data = {"values": [{"slug": "test-repo", "name": "Test Repo"}]}
-
     async with event_context("test_event"):
         with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
 
@@ -176,33 +161,38 @@ async def test_get_repositories(mock_client: BitbucketClient) -> None:
                 yield mock_data["values"]
 
             mock_paginated.return_value = mock_generator()
-
             async for repos in mock_client.get_repositories():
                 assert repos == mock_data["values"]
-
             mock_paginated.assert_called_once_with("repositories/test_workspace")
 
 
 @pytest.mark.asyncio
 async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
     """Test getting directory contents."""
-    mock_data = {"values": [{"type": "directory", "path": "src"}]}
+    mock_dir_data = {"values": [{"type": "commit_directory", "path": "src"}]}
 
     with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
 
         async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
-            yield mock_data["values"]
+            yield mock_dir_data["values"]
 
         mock_paginated.return_value = mock_generator()
-
         async for contents in mock_client.get_directory_contents(
             "test-repo", "main", ""
         ):
-            assert contents == mock_data["values"]
-
+            assert contents == mock_dir_data["values"]
         mock_paginated.assert_called_once_with(
             f"repositories/{mock_client.workspace}/test-repo/src/main/",
-            params={"max_depth": 3, "pagelen": 100},
+            params={"max_depth": 2, "pagelen": 100},
+        )
+        mock_paginated.reset_mock()
+        async for contents in mock_client.get_directory_contents(
+            "test-repo", "main", "", max_depth=4
+        ):
+            assert contents == mock_dir_data["values"]
+        mock_paginated.assert_called_once_with(
+            f"repositories/{mock_client.workspace}/test-repo/src/main/",
+            params={"max_depth": 4, "pagelen": 100},
         )
 
 
