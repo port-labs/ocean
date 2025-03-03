@@ -21,6 +21,7 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
+        skip_404s: bool = False,
     ) -> Response:
         self._client.auth = BasicAuth("", self._personal_access_token)
         self._client.follow_redirects = True
@@ -35,15 +36,17 @@ class HTTPBaseClient:
             )
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            if response.status_code == 401:
-                logger.error(
-                    f"Couldn't access url {url} . Make sure the PAT (Personal Access Token) is valid!"
-                )
+            if skip_404s and response.status_code == 404:
+                logger.error(f"Couldn't access url {url}, skipping...")
             else:
+                if response.status_code == 401:
+                    logger.error(
+                        f"Couldn't access url {url} . Make sure the PAT (Personal Access Token) is valid!"
+                    )
                 logger.error(
                     f"Request with bad status code {response.status_code}: {method} to url {url}"
                 )
-            raise e
+                raise e
         except httpx.HTTPError as e:
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
@@ -79,12 +82,17 @@ class HTTPBaseClient:
             continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)
 
     async def _get_paginated_by_top_and_skip(
-        self, url: str, params: Optional[dict[str, Any]] = None, skip_404s: bool = True
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        skip_404s: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
         while True:
-            response = await self.send_request("GET", url, params=params)
+            response = await self.send_request(
+                "GET", url, params=params, skip_404s=skip_404s
+            )
             if skip_404s and response.status_code == 404:
                 logger.error(f"Couldn't access url {url}")
                 break

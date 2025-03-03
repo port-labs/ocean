@@ -80,9 +80,7 @@ class AzureDevopsClient(HTTPBaseClient):
     @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
-        async for teams in self._get_paginated_by_top_and_skip(
-            teams_url, skip_404s=False
-        ):
+        async for teams in self._get_paginated_by_top_and_skip(teams_url):
             yield teams
 
     async def get_team_members(self, team: dict[str, Any]) -> list[dict[str, Any]]:
@@ -168,7 +166,7 @@ class AzureDevopsClient(HTTPBaseClient):
             for repository in repositories:
                 pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
                 async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
-                    pull_requests_url, search_filters
+                    pull_requests_url, search_filters, skip_404s=True
                 ):
                     yield filtered_pull_requests
 
@@ -372,9 +370,7 @@ class AzureDevopsClient(HTTPBaseClient):
         self, project_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
-        async for teams_in_project in self._get_paginated_by_top_and_skip(
-            teams_url, skip_404s=False
-        ):
+        async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
             for team in teams_in_project:
                 get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
                 response = await self.send_request("GET", get_boards_url)
