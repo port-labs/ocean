@@ -3,10 +3,22 @@ import enum
 
 from port_ocean.context.ocean import ocean
 from utils.overrides import AWSResourceConfig
-from typing import List, Literal, Protocol, Dict, Any, Optional
+from typing import (
+    List,
+    Literal,
+    Protocol,
+    Dict,
+    Any,
+    Optional,
+    TYPE_CHECKING,
+    AsyncGenerator,
+)
 import asyncio
 from collections import deque
 from loguru import logger
+
+if TYPE_CHECKING:
+    from aioboto3.client import AioBaseClient  # type: ignore
 
 
 class CloudControlClientProtocol(Protocol):
@@ -114,12 +126,12 @@ class AsyncPaginator:
     _RESYNC_BATCH_SIZE = 100
     __slots__ = ("client", "method_name", "list_param")
 
-    def __init__(self, client, method_name, list_param):
+    def __init__(self, client: "AioBaseClient", method_name: str, list_param: str):
         self.client = client
         self.method_name = method_name
         self.list_param = list_param
 
-    async def paginate(self, **kwargs):
+    async def paginate(self, **kwargs: Any) -> AsyncGenerator[List[Any], None]:
         """
         Asynchronously iterates over API pages.
         Each iteration yields the list of items extracted from the API page.
@@ -128,13 +140,15 @@ class AsyncPaginator:
         async for page in paginator.paginate(**kwargs):
             yield page.get(self.list_param, [])
 
-    async def batch_paginate(self, batch_size: Optional[int] = None, **kwargs):
+    async def batch_paginate(
+        self, batch_size: Optional[int] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Any], None]:
         """
         Aggregates items from all pages and yields them in batches of 'batch_size'.
         Items are buffered in a deque to avoid repeated list slicing.
         """
         batch_size = batch_size or self._RESYNC_BATCH_SIZE
-        buffer = deque()
+        buffer: deque[Any] = deque()
         page = 1
         async for items in self.paginate(**kwargs):
             logger.debug(

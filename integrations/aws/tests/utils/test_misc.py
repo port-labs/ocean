@@ -4,7 +4,7 @@ from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     AsyncPaginator,
 )
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, AsyncGenerator, List
 import unittest
 from utils.overrides import AWSResourceConfig, AWSDescribeResourcesSelector
 from port_ocean.core.handlers.port_app_config.models import (
@@ -13,7 +13,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 
 
 class MockException(Exception):
@@ -117,7 +117,7 @@ class TestGetMatchingKindsAndBlueprintsFromConfig(unittest.TestCase):
 
 @pytest.mark.asyncio
 class TestAsyncPaginator:
-    async def test_async_paginator(self, mock_session) -> None:
+    async def test_async_paginator(self, mock_session: AsyncMock) -> None:
         async with mock_session.client("cloudcontrol") as client:
             paginator = AsyncPaginator(client, "list_resources", "ResourceDescriptions")
             results = []
@@ -128,7 +128,9 @@ class TestAsyncPaginator:
             assert len(results) == 1
             assert results[0]["Identifier"] == "test-id"
 
-    async def test_async_paginator_with_batch_size(self, mock_session) -> None:
+    async def test_async_paginator_with_batch_size(
+        self, mock_session: AsyncMock
+    ) -> None:
         async with mock_session.client("cloudcontrol") as client:
             paginator = AsyncPaginator(client, "list_resources", "ResourceDescriptions")
             batches = []
@@ -142,11 +144,15 @@ class TestAsyncPaginator:
             assert len(batches[0]) == 1
             assert batches[0][0]["Identifier"] == "test-id"
 
-    async def test_async_paginator_empty_response(self, mock_session) -> None:
+    async def test_async_paginator_empty_response(
+        self, mock_session: AsyncMock
+    ) -> None:
         async with mock_session.client("cloudcontrol") as client:
             # Override the paginator for this specific test
             class EmptyPaginatorMock:
-                async def paginate(self, **kwargs):
+                async def paginate(
+                    self, **kwargs: Any
+                ) -> AsyncGenerator[Dict[str, Any], None]:
                     yield {"ResourceDescriptions": []}
 
             client.get_paginator = MagicMock(return_value=EmptyPaginatorMock())

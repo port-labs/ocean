@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Any, Literal
+from typing import Any, Literal, List, Dict
 import typing
 
 from aiolimiter import AsyncLimiter
@@ -253,7 +253,7 @@ async def resync_custom_kind(
 
 async def resync_cloudcontrol(
     kind: str, session: aioboto3.Session, resource_config: AWSResourceConfig
-) -> typing.AsyncGenerator[list, None]:
+) -> typing.AsyncGenerator[List[Dict[str, Any]], None]:
     resource_config_selector = resource_config.selector
     use_get_resource_api = resource_config_selector.use_get_resource_api
 
@@ -336,17 +336,18 @@ async def resync_cloudcontrol(
                             continue
                         raise instance
 
-                    serialized = instance.copy()
-                    serialized.update(
-                        {
-                            CustomProperties.KIND.value: kind,
-                            CustomProperties.ACCOUNT_ID.value: account_id,
-                            CustomProperties.REGION.value: region,
-                        }
-                    )
-                    page_resources.append(
-                        fix_unserializable_date_properties(serialized)
-                    )
+                    else:
+                        serialized = typing.cast(Dict[str, Any], instance).copy()
+                        serialized.update(
+                            {
+                                CustomProperties.KIND.value: kind,
+                                CustomProperties.ACCOUNT_ID.value: account_id,
+                                CustomProperties.REGION.value: region,
+                            }
+                        )
+                        page_resources.append(
+                            fix_unserializable_date_properties(serialized)
+                        )
 
                 logger.info(
                     f"Fetched batch of {len(page_resources)} from {kind} in region {region}"
