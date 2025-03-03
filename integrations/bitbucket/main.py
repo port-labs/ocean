@@ -9,7 +9,7 @@ from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from client import BitbucketClient
-from overrides import BitbucketFolderResourceConfig, BitbucketFolderSelector
+from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
 
 
 class ObjectKind(StrEnum):
@@ -42,11 +42,14 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = cast(BitbucketFolderSelector, config.selector)
     folder_patterns = selector.folders
+
     if not folder_patterns:
         logger.info("No folder patterns found in config, skipping folder sync")
         return
     repo_names = {
-        repo_name for pattern in folder_patterns for repo_name in pattern.repos
+        repo_name
+        for pattern in folder_patterns
+        for repo_name in pattern.repos
     }
     if not repo_names:
         logger.info("No repository names found in patterns, skipping folder sync")
@@ -82,7 +85,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 matching = [
                     {"folder": folder, "repo": repo, "pattern": pattern}
                     for folder in contents
-                    if folder["type"] == "directory"
+                    if folder["type"] == "commit_directory"
                     and fnmatch.fnmatch(folder["path"], pattern)
                 ]
                 matching_folders.extend(matching)

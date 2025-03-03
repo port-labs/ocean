@@ -1,3 +1,6 @@
+from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
+from port_ocean.core.integrations.base import BaseIntegration
+
 from typing import Literal
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
@@ -42,3 +45,8 @@ class BitbucketAppConfig(PortAppConfig):
         alias="resources",
         description="Specify the resources to include in the sync",
     )
+
+
+class BitbucketIntegration(BaseIntegration):
+    class AppConfigHandlerClass(APIPortAppConfig):
+        CONFIG_CLASS = BitbucketAppConfig
