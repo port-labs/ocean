@@ -1,4 +1,4 @@
-from typing import Optional, AsyncIterator, Any, Dict, Callable
+from typing import Optional, AsyncIterator, Any
 from loguru import logger
 from .auth_client import AuthClient
 from port_ocean.utils import http_async_client
@@ -14,7 +14,7 @@ class RestClient:
         self._client = http_async_client
 
     async def get_resource(
-        self, resource_type: str, params: Optional[dict] = None
+        self, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
         try:
             async for batch in self._make_paginated_request(
@@ -26,7 +26,7 @@ class RestClient:
             raise
 
     async def get_group_resource(
-        self, group_id: str, resource_type: str, params: Optional[dict] = None
+        self, group_id: str, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
         if resource_type not in self.VALID_GROUP_RESOURCES:
             raise ValueError(f"Unsupported resource type: {resource_type}")

@@ -47,10 +47,9 @@ async def setup_application() -> None:
     if not base_url:
         logger.warning("No base URL provided, skipping webhook setup")
         return
-
-    client = create_gitlab_client()
-
+    
     # Setup webhooks
+    # client = create_gitlab_client()
 
 
 @ocean.on_resync(ObjectKind.PROJECT)

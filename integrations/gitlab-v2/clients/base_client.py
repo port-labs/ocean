@@ -1,9 +1,7 @@
-from typing import AsyncIterator, Any, AsyncGenerator
+from typing import AsyncIterator, Any
 from .graphql_client import GraphQLClient
 from .rest_client import RestClient
 from .auth_client import AuthClient
-from .queries import ProjectQueries
-from loguru import logger
 
 
 class GitLabClient:
@@ -32,7 +30,7 @@ class GitLabClient:
             yield batch
 
     async def get_group_resource(
-        self, group: dict, resource_type: str
+        self, group: dict[str, Any], resource_type: str
     ) -> AsyncIterator[list[dict[str, Any]]]:
         async for batch in self.rest.get_group_resource(group["id"], resource_type):
             yield batch
