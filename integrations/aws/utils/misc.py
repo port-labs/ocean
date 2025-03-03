@@ -3,8 +3,10 @@ import enum
 
 from port_ocean.context.ocean import ocean
 from utils.overrides import AWSResourceConfig
-from typing import List, Literal, Protocol, Dict, Any
+from typing import List, Literal, Protocol, Dict, Any, Optional
 import asyncio
+from collections import deque
+from loguru import logger
 
 
 class CloudControlClientProtocol(Protocol):
@@ -18,7 +20,7 @@ class CloudControlClientProtocol(Protocol):
 
 
 class CloudControlThrottlingConfig(enum.Enum):
-    MAX_RATE: int = 50
+    MAX_RATE: int = 10
     TIME_PERIOD: float = 1  # in seconds
     SEMAPHORE: int = 10
     MAX_RETRY_ATTEMPTS: int = 100
@@ -46,6 +48,7 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     CLOUDFORMATION_STACK = "AWS::CloudFormation::Stack"
     ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
     ELBV2_LOAD_BALANCER = "AWS::ELBV2::LoadBalancer"
+    SQS_QUEUE = "AWS::SQS::Queue"
 
 
 def is_access_denied_exception(e: Exception) -> bool:
@@ -104,3 +107,51 @@ def get_matching_kinds_and_blueprints_from_config(
                 allowed_kinds[kind] = [blueprint]
 
     return allowed_kinds, disallowed_kinds
+
+
+class AsyncPaginator:
+
+    _RESYNC_BATCH_SIZE = 100
+    __slots__ = ("client", "method_name", "list_param")
+
+    def __init__(self, client, method_name, list_param):
+        self.client = client
+        self.method_name = method_name
+        self.list_param = list_param
+
+    async def paginate(self, **kwargs):
+        """
+        Asynchronously iterates over API pages.
+        Each iteration yields the list of items extracted from the API page.
+        """
+        paginator = self.client.get_paginator(self.method_name)
+        async for page in paginator.paginate(**kwargs):
+            yield page.get(self.list_param, [])
+
+    async def batch_paginate(self, batch_size: Optional[int] = None, **kwargs):
+        """
+        Aggregates items from all pages and yields them in batches of 'batch_size'.
+        Items are buffered in a deque to avoid repeated list slicing.
+        """
+        batch_size = batch_size or self._RESYNC_BATCH_SIZE
+        buffer = deque()
+        page = 1
+        async for items in self.paginate(**kwargs):
+            logger.debug(
+                f"Fetched {len(items)} items from page {page} for resource with args: {kwargs}"
+            )
+            buffer.extend(items)
+            while len(buffer) >= batch_size:
+                batch = [buffer.popleft() for _ in range(batch_size)]
+                logger.debug(
+                    f"Yielding a batch of {len(batch)}/{len(items)} items from page {page} for resource with args: {kwargs}"
+                )
+                yield batch
+            page += 1
+
+        if buffer:
+            final_batch = list(buffer)
+            logger.debug(
+                f"Yielding the final batch of {len(final_batch)} items from page {page}"
+            )
+            yield final_batch

@@ -13,6 +13,7 @@ from utils.misc import (
     is_resource_not_found_exception,
     CloudControlThrottlingConfig,
     CloudControlClientProtocol,
+    AsyncPaginator,
 )
 from utils.aws import get_sessions
 
@@ -126,6 +127,60 @@ async def describe_single_resource_cloudcontrol(
             return serialized
 
 
+async def resync_sqs_queue(
+    kind: str,
+    session: aioboto3.Session,
+    resource_config: AWSResourceConfig,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    region = session.region_name
+    account_id = await _session_manager.find_account_id_by_session(session)
+    resource_config_selector = resource_config.selector
+    if not resource_config_selector.is_region_allowed(region):
+        logger.info(
+            f"Skipping resyncing {kind} in region {region} in account {account_id} because it's not allowed"
+        )
+        return
+
+    semaphore = asyncio.BoundedSemaphore(CloudControlThrottlingConfig.SEMAPHORE.value)
+    rate_limiter = AsyncLimiter(
+        CloudControlThrottlingConfig.MAX_RATE.value,
+        CloudControlThrottlingConfig.TIME_PERIOD.value,
+    )
+    async with session.client("sqs") as sqs_client:
+        paginator = AsyncPaginator(
+            client=sqs_client,
+            method_name="list_queues",
+            list_param="QueueUrls",
+        )
+        try:
+            async with session.client("cloudcontrol") as cloudcontrol:
+                async for page in paginator.batch_paginate(MaxResults=1000):
+                    page_resources = []
+                    for queue_url in page:
+                        response = await describe_single_resource_cloudcontrol(
+                            kind, queue_url, cloudcontrol, semaphore, rate_limiter
+                        )
+                        response |= {
+                            CustomProperties.KIND.value: kind,
+                            CustomProperties.ACCOUNT_ID.value: account_id,
+                            CustomProperties.REGION.value: region,
+                        }
+                        page_resources.append(
+                            fix_unserializable_date_properties(response)
+                        )
+                    logger.info(
+                        f"Fetched batch of {len(page_resources)} from {kind} in region {region}"
+                    )
+                    yield page_resources
+        except sqs_client.exceptions.ClientError as e:
+            if is_access_denied_exception(e):
+                logger.warning(
+                    f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
+                )
+            else:
+                raise e
+
+
 async def resync_custom_kind(
     kind: str,
     session: aioboto3.Session,
@@ -198,7 +253,7 @@ async def resync_custom_kind(
 
 async def resync_cloudcontrol(
     kind: str, session: aioboto3.Session, resource_config: AWSResourceConfig
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
+) -> typing.AsyncGenerator[list, None]:
     resource_config_selector = resource_config.selector
     use_get_resource_api = resource_config_selector.use_get_resource_api
 
@@ -209,8 +264,9 @@ async def resync_cloudcontrol(
             f"Skipping resyncing {kind} in region {region} in account {account_id} because it's not allowed"
         )
         return
+
     logger.info(f"Resyncing {kind} in account {account_id} in region {region}")
-    next_token = None
+
     if use_get_resource_api:
         semaphore = asyncio.BoundedSemaphore(
             CloudControlThrottlingConfig.SEMAPHORE.value
@@ -219,20 +275,23 @@ async def resync_cloudcontrol(
             CloudControlThrottlingConfig.MAX_RATE.value,
             CloudControlThrottlingConfig.TIME_PERIOD.value,
         )
-    async with session.client("cloudcontrol") as cloudcontrol:
-        while True:
-            try:
-                params = {
-                    "TypeName": kind,
-                }
-                if next_token:
-                    params["NextToken"] = next_token
 
-                response = await cloudcontrol.list_resources(**params)
-                next_token = response.get("NextToken")
-                resources = response.get("ResourceDescriptions", [])
-                if not resources:
-                    break
+    async with session.client("cloudcontrol") as cloudcontrol:
+        paginator = AsyncPaginator(
+            client=cloudcontrol,
+            method_name="list_resources",
+            list_param="ResourceDescriptions",
+        )
+        paginate_kwargs = {
+            "TypeName": kind,
+        }
+        try:
+            async for resources_batch in paginator.batch_paginate(
+                batch_size=100, **paginate_kwargs
+            ):
+                if not resources_batch:
+                    continue
+
                 page_resources = []
                 if use_get_resource_api:
                     async with session.client(
@@ -253,7 +312,7 @@ async def resync_cloudcontrol(
                                     semaphore=semaphore,
                                     rate_limiter=rate_limiter,
                                 )
-                                for instance in resources
+                                for instance in resources_batch
                             ),
                             return_exceptions=True,
                         )
@@ -263,7 +322,7 @@ async def resync_cloudcontrol(
                             "Identifier": instance.get("Identifier"),
                             "Properties": json.loads(instance.get("Properties")),
                         }
-                        for instance in resources
+                        for instance in resources_batch
                     ]
 
                 for instance in resources:
@@ -271,10 +330,10 @@ async def resync_cloudcontrol(
                         if is_resource_not_found_exception(instance):
                             error = typing.cast(ClientError, instance)
                             logger.info(
-                                f"Skipping resyncing {kind} resource in region {region} in account {account_id}; {error.response['Error']['Message']}"
+                                f"Skipping resyncing {kind} resource in region {region} in account {account_id}; "
+                                f"{error.response['Error']['Message']}"
                             )
                             continue
-
                         raise instance
 
                     serialized = instance.copy()
@@ -288,18 +347,16 @@ async def resync_cloudcontrol(
                     page_resources.append(
                         fix_unserializable_date_properties(serialized)
                     )
+
                 logger.info(
                     f"Fetched batch of {len(page_resources)} from {kind} in region {region}"
                 )
                 yield page_resources
-
-                if not next_token:
-                    break
-            except Exception as e:
-                if is_access_denied_exception(e):
-                    logger.warning(
-                        f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
-                    )
-                else:
-                    logger.error(f"Error resyncing {kind} in region {region}, {e}")
-                raise e
+        except Exception as e:
+            if is_access_denied_exception(e):
+                logger.warning(
+                    f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
+                )
+            else:
+                logger.error(f"Error resyncing {kind} in region {region}, {e}")
+            raise e

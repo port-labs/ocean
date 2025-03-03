@@ -15,6 +15,7 @@ from utils.resources import (
     describe_single_resource,
     fix_unserializable_date_properties,
     resync_cloudcontrol,
+    resync_sqs_queue,
 )
 
 from utils.aws import (
@@ -245,6 +246,28 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "describe_stacks",
                 "Stacks",
                 "NextToken",
+                aws_resource_config,
+            ),
+        )
+        async for session in get_sessions()
+    ]
+
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.SQS_QUEUE)
+async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    tasks = [
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_sqs_queue,
+                kind,
+                session,
                 aws_resource_config,
             ),
         )
