@@ -77,6 +77,24 @@ def mock_session() -> AsyncMock:
                         ],
                     }
 
+                def get_paginator(self, method_name: str) -> Any:
+                    class AsyncPaginatorMock:
+                        async def paginate(
+                            self, **kwargs: Any
+                        ) -> AsyncGenerator[Dict[str, Any], None]:
+                            yield {
+                                "ResourceDescriptions": [
+                                    {
+                                        "Properties": json.dumps(
+                                            {"Name": "test-resource"}
+                                        ),
+                                        "Identifier": "test-id",
+                                    }
+                                ]
+                            }
+
+                    return AsyncPaginatorMock()
+
             yield MockCloudControlClient()
 
         else:

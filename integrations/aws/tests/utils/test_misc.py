@@ -2,6 +2,7 @@ from utils.misc import (
     is_access_denied_exception,
     is_resource_not_found_exception,
     get_matching_kinds_and_blueprints_from_config,
+    AsyncPaginator,
 )
 from typing import Optional, Dict, Any
 import unittest
@@ -11,6 +12,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
+import pytest
+from unittest.mock import MagicMock
 
 
 class MockException(Exception):
@@ -110,3 +113,48 @@ class TestGetMatchingKindsAndBlueprintsFromConfig(unittest.TestCase):
 
         self.assertEqual(allowed_kinds, {})
         self.assertEqual(disallowed_kinds, {})
+
+
+@pytest.mark.asyncio
+class TestAsyncPaginator:
+    async def test_async_paginator(self, mock_session) -> None:
+        async with mock_session.client("cloudcontrol") as client:
+            paginator = AsyncPaginator(client, "list_resources", "ResourceDescriptions")
+            results = []
+
+            async for items in paginator.paginate(TypeName="AWS::S3::Bucket"):
+                results.extend(items)
+
+            assert len(results) == 1
+            assert results[0]["Identifier"] == "test-id"
+
+    async def test_async_paginator_with_batch_size(self, mock_session) -> None:
+        async with mock_session.client("cloudcontrol") as client:
+            paginator = AsyncPaginator(client, "list_resources", "ResourceDescriptions")
+            batches = []
+
+            async for batch in paginator.batch_paginate(
+                batch_size=1, TypeName="AWS::S3::Bucket"
+            ):
+                batches.append(batch)
+
+            assert len(batches) == 1
+            assert len(batches[0]) == 1
+            assert batches[0][0]["Identifier"] == "test-id"
+
+    async def test_async_paginator_empty_response(self, mock_session) -> None:
+        async with mock_session.client("cloudcontrol") as client:
+            # Override the paginator for this specific test
+            class EmptyPaginatorMock:
+                async def paginate(self, **kwargs):
+                    yield {"ResourceDescriptions": []}
+
+            client.get_paginator = MagicMock(return_value=EmptyPaginatorMock())
+
+            paginator = AsyncPaginator(client, "list_resources", "ResourceDescriptions")
+            results = []
+
+            async for items in paginator.paginate(TypeName="AWS::S3::Bucket"):
+                results.extend(items)
+
+            assert len(results) == 0
