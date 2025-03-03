@@ -182,9 +182,14 @@ async def event_context(
                 f"Skipping resync due to empty mapping: {str(e)}", exc_info=True
             )
             raise
-        except Exception as e:
+        except BaseException as e:
             success = False
-            logger.error(f"Event failed with error: {str(e)}", exc_info=True)
+            if isinstance(e, KeyboardInterrupt):
+                logger.warning("Operation interrupted by user", exc_info=True)
+            elif isinstance(e, asyncio.CancelledError):
+                logger.warning("Operation was cancelled", exc_info=True)
+            else:
+                logger.error(f"Event failed with error: {repr(e)}", exc_info=True)
             raise
         else:
             success = True
