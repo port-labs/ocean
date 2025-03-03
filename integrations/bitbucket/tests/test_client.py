@@ -201,7 +201,8 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
             assert contents == mock_data["values"]
 
         mock_paginated.assert_called_once_with(
-            f"repositories/{mock_client.workspace}/test-repo/src/main/"
+            f"repositories/{mock_client.workspace}/test-repo/src/main/",
+            params={"max_depth": 3, "pagelen": 100},
         )
 
 

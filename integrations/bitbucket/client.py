@@ -113,11 +113,11 @@ class BitbucketClient:
         """Get contents of a directory."""
         params = {
             "max_depth": 3,  # Get nested directories up to depth 20
-            "pagelen": 100    # Maximum items per page
+            "pagelen": 100,  # Maximum items per page
         }
         async for contents in self._send_paginated_api_request(
             f"repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
-            params=params
+            params=params,
         ):
             yield contents
 
