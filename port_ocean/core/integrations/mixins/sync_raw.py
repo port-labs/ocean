@@ -550,6 +550,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
 
+            # Execute resync_start hooks
+            for resync_start_fn in self.event_strategy["resync_start"]:
+                await resync_start_fn()
+
             try:
                 did_fetched_current_state = True
             except httpx.HTTPError as e:
@@ -598,7 +602,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 if errors:
                     message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"
                     error_group = ExceptionGroup(
-                        f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state",
+                        message,
                         errors,
                     )
                     if not silent:
@@ -618,3 +622,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
 
                     logger.info("Resync finished successfully")
+
+                    # Execute resync_complete hooks
+                    if "resync_complete" in self.event_strategy:
+                        logger.info("Executing resync_complete hooks")
+
+                        for resync_complete_fn in self.event_strategy["resync_complete"]:
+                            await resync_complete_fn()
+
+                        logger.info("Finished executing resync_complete hooks")
