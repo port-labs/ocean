@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.46 (2025-03-04)
+===================
+
+### Bug Fixes
+
+- Fixed incorrect logging in `search_files_in_project` that would show "No files found ..." message even when files were found
+
+
 0.2.45 (2025-03-03)
 ===================
 
