@@ -21,7 +21,7 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
-        skip_404s: bool = False,
+        skip_404s: bool = True,
     ) -> Response:
         self._client.auth = BasicAuth("", self._personal_access_token)
         self._client.follow_redirects = True
@@ -85,7 +85,7 @@ class HTTPBaseClient:
         self,
         url: str,
         params: Optional[dict[str, Any]] = None,
-        skip_404s: bool = False,
+        skip_404s: bool = True
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}

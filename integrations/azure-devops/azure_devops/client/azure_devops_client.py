@@ -166,7 +166,7 @@ class AzureDevopsClient(HTTPBaseClient):
             for repository in repositories:
                 pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
                 async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
-                    pull_requests_url, search_filters, skip_404s=True
+                    pull_requests_url, search_filters
                 ):
                     yield filtered_pull_requests
 
