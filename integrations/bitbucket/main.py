@@ -47,9 +47,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info("No folder patterns found in config, skipping folder sync")
         return
     repo_names = {
-        repo_name
-        for pattern in folder_patterns
-        for repo_name in pattern.repos
+        repo_name for pattern in folder_patterns for repo_name in pattern.repos
     }
     if not repo_names:
         logger.info("No repository names found in patterns, skipping folder sync")
