@@ -82,7 +82,7 @@ class PortOceanContext:
         ) -> RESYNC_EVENT_LISTENER | None:
             if not self.app.config.event_listener.should_resync:
                 logger.debug(
-                    f"Using event listener {self.app.config.event_listener.kind}, which shouldn't perform any resyncs. Skipping resyncs setup..."
+                    f"Using event listener {self.app.config.event_listener.type}, which shouldn't perform any resyncs. Skipping resyncs setup..."
                 )
                 return None
             return self.integration.on_resync(function, kind)
@@ -105,7 +105,7 @@ class PortOceanContext:
         ) -> BEFORE_RESYNC_EVENT_LISTENER | None:
             if not self.app.config.event_listener.should_resync:
                 logger.debug(
-                    f"Using event listener {self.app.config.event_listener.kind}, which shouldn't perform any resyncs. Skipping resyncs setup..."
+                    f"Using event listener {self.app.config.event_listener.type}, which shouldn't perform any resyncs. Skipping resyncs setup..."
                 )
                 return None
             return self.integration.on_resync_start(function)
@@ -122,7 +122,7 @@ class PortOceanContext:
         ) -> AFTER_RESYNC_EVENT_LISTENER | None:
             if not self.app.config.event_listener.should_resync:
                 logger.debug(
-                    f"Using event listener {self.app.config.event_listener.kind}, which shouldn't perform any resyncs. Skipping resyncs setup..."
+                    f"Using event listener {self.app.config.event_listener.type}, which shouldn't perform any resyncs. Skipping resyncs setup..."
                 )
                 return None
             return self.integration.on_resync_complete(function)
