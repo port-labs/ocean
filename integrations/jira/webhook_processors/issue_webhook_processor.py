@@ -16,10 +16,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 
 class IssueWebhookProcessor(AbstractWebhookProcessor):
-    def should_process_event(self, event: WebhookEvent) -> bool:
+    async def should_process_event(self, event: WebhookEvent) -> bool:
         return event.payload.get("webhookEvent", "").startswith("jira:issue_")
 
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kinds.ISSUE]
 
     async def handle_event(
