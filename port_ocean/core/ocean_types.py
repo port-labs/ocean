@@ -19,6 +19,9 @@ LISTENER_RESULT = Awaitable[RAW_RESULT] | ASYNC_GENERATOR_RESYNC_TYPE
 RESYNC_EVENT_LISTENER = Callable[[str], LISTENER_RESULT]
 START_EVENT_LISTENER = Callable[[], Awaitable[None]]
 
+BEFORE_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
+AFTER_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
+
 
 class RawEntityDiff(TypedDict):
     before: list[RAW_ITEM]
@@ -44,3 +47,5 @@ class CalculationResult(NamedTuple):
 class IntegrationEventsCallbacks(TypedDict):
     start: list[START_EVENT_LISTENER]
     resync: dict[str | None, list[RESYNC_EVENT_LISTENER]]
+    resync_start: list[BEFORE_RESYNC_EVENT_LISTENER]
+    resync_complete: list[AFTER_RESYNC_EVENT_LISTENER]

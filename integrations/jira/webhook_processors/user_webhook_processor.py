@@ -14,10 +14,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 
 class UserWebhookProcessor(AbstractWebhookProcessor):
-    def should_process_event(self, event: WebhookEvent) -> bool:
+    async def should_process_event(self, event: WebhookEvent) -> bool:
         return event.payload.get("webhookEvent", "").startswith("user_")
 
-    def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kinds.USER]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
