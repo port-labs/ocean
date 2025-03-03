@@ -82,10 +82,7 @@ class HTTPBaseClient:
             continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)
 
     async def _get_paginated_by_top_and_skip(
-        self,
-        url: str,
-        params: Optional[dict[str, Any]] = None,
-        skip_404s: bool = True
+        self, url: str, params: Optional[dict[str, Any]] = None, skip_404s: bool = True
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
