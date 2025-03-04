@@ -5,7 +5,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.context.event import EventContext, event_context
-from httpx import Response
+from httpx import Response, Request
 from azure_devops.webhooks.webhook_event import WebhookEvent
 
 MOCK_ORG_URL = "https://your_organization_url.com"
@@ -221,6 +221,99 @@ def mock_azure_client() -> AzureDevopsClient:
     return AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
 
+@pytest.mark.parametrize(
+    "repository,is_healthy",
+    [
+        ({"id": "repo1", "name": "Repo One", "isDisabled": False}, True),
+        ({"id": "repo2", "name": "Repo Two", "isDisabled": True}, False),
+        (
+            {
+                "id": "repo2",
+                "name": "Repo Two",
+                "isDisabled": False,
+                "project": {
+                    "state": "wellFormed",
+                },
+            },
+            True,
+        ),
+        (
+            {
+                "id": "repo2",
+                "name": "Repo Two",
+                "isDisabled": False,
+                "project": {
+                    "state": "deleted",
+                },
+            },
+            False,
+        ),
+        (
+            {
+                "id": "repo2",
+                "name": "Repo Two",
+                "isDisabled": False,
+                "project": {
+                    "state": "deleting",
+                },
+                "defaultBranch": "refs/heads/main",
+            },
+            False,
+        ),
+        (
+            {
+                "id": "repo2",
+                "name": "Repo Two",
+                "isDisabled": False,
+                "project": {
+                    "state": "new",
+                },
+                "defaultBranch": "refs/heads/main",
+            },
+            False,
+        ),
+        (
+            {
+                "id": "repo2",
+                "name": "Repo Two",
+                "isDisabled": False,
+                "project": {
+                    "state": "createPending",
+                },
+                "defaultBranch": "refs/heads/main",
+            },
+            False,
+        ),
+        (
+            {
+                "id": "repo2",
+                "name": "Repo Two",
+                "isDisabled": True,
+                "project": {
+                    "state": "wellFormed",
+                },
+                "defaultBranch": "refs/heads/main",
+            },
+            False,
+        ),
+        (
+            {
+                "id": "repo2",
+                "name": "Repo Two",
+                "isDisabled": False,
+                "project": {
+                    "state": "wellFormed",
+                },
+                "defaultBranch": "refs/heads/main",
+            },
+            True,
+        ),
+    ],
+)
+def test_repository_is_healthy(repository: Dict[str, Any], is_healthy: bool) -> None:
+    assert AzureDevopsClient._repository_is_healthy(repository) == is_healthy
+
+
 @pytest.mark.asyncio
 async def test_get_single_project() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
@@ -422,6 +515,41 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
 
                 # ASSERT
                 assert pull_requests == EXPECTED_PULL_REQUESTS
+
+
+@pytest.mark.asyncio
+async def test_generate_pull_requests_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": "repo1",
+                "name": "Repository One",
+                "project": {"id": "proj1", "name": "Project One"},
+            }
+        ]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_repositories", side_effect=mock_generate_repositories
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            pull_requests: List[Dict[str, Any]] = []
+            async for pr_batch in client.generate_pull_requests():
+                pull_requests.extend(pr_batch)
+
+            # ASSERT
+            assert not pull_requests
 
 
 @pytest.mark.asyncio
