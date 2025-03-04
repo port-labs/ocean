@@ -84,10 +84,14 @@ class HTTPBaseClient:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
         while True:
-            response = await self.send_request("GET", url, params=params)
-            if skip_404s and response.status_code == 404:
-                logger.error(f"Couldn't access url {url}")
-                break
+            try:
+                response = await self.send_request("GET", url, params=params)
+            except httpx.HTTPError as e:
+                if getattr(e, "response", None) and e.response.status_code == 404 and skip_404s:
+                    logger.error(f"Couldn't access url {url}")
+                    break
+                else:
+                    raise e
 
             objects_page = response.json()["value"]
             if objects_page:
