@@ -1,0 +1,27 @@
+description: bitbucket integration for Port Ocean
+icon: bitbucket
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: project
+      - kind: repository
+      - kind: pull-request
+configurations:
+  - name: bitbucketWorkspaceToken
+    type: string
+    sensitive: true
+    description: Bitbucket access token
+  - name: appHost
+    type: url
+    description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Bitbucket.
+  - name: bitbucketUsername
+    type: string
+    description: The username of the Bitbucket account.
+  - name: bitbucketWorkspace
+    description: The slug of the workspace the integration will handle
+    type: string
+  - name: bitbucketAppPassword
+    type: string
+    sensitive: true
+    description: Bitbucket access token
