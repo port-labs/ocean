@@ -1,6 +1,5 @@
 from enum import StrEnum
-import fnmatch
-from typing import Any, Union, cast
+from typing import Union, cast
 
 from loguru import logger
 
@@ -10,6 +9,11 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from client import BitbucketClient
 from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
+from helpers.folder import (
+    extract_repo_names_from_patterns,
+    create_pattern_mapping,
+    find_matching_folders,
+)
 
 
 class ObjectKind(StrEnum):
@@ -69,61 +73,29 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = cast(BitbucketFolderSelector, config.selector)
     folder_patterns = selector.folders
-
-    if not folder_patterns:
-        logger.info("No folder patterns found in config, skipping folder sync")
-        return
-    repo_names = {
-        repo_name for pattern in folder_patterns for repo_name in pattern.repos
-    }
+    repo_names = extract_repo_names_from_patterns(folder_patterns)
     if not repo_names:
-        logger.info("No repository names found in patterns, skipping folder sync")
         return
     client = await init_client()
-    repositories = {}
-    pattern_by_repo: dict[str, Any] = {}
-    for pattern in folder_patterns:
-        for repo_name in pattern.repos:
-            if repo_name not in pattern_by_repo:
-                pattern_by_repo[repo_name] = []
-            pattern_by_repo[repo_name].append(pattern.path)
-
+    pattern_by_repo = create_pattern_mapping(folder_patterns)
     async for repos_batch in client.get_repositories():
         for repo in repos_batch:
-            if repo["name"] in repo_names:
-                repositories[repo["name"]] = repo
-
-    for repo_name, patterns in pattern_by_repo.items():
-        if repo_name not in repositories:
-            continue
-
-        repo = repositories[repo_name]
-        repo_slug = repo.get("slug", repo_name.lower())
-        default_branch = repo.get("mainbranch", {}).get("name", "master")
-        max_pattern_depth = max(
-            (folder_pattern.path.count("/") + 1 for folder_pattern in folder_patterns),
-            default=1,
-        )
-
-        async for contents in client.get_directory_contents(
-            repo_slug, default_branch, "", max_depth=max_pattern_depth
-        ):
-            matching_folders = []
-            for pattern_str in patterns:
-                is_wildcard_pattern = any(c in pattern_str for c in "*?[]")
-                matching = [
-                    {"folder": folder, "repo": repo, "pattern": pattern_str}
-                    for folder in contents
-                    if folder["type"] == "commit_directory"
-                    and (
-                        (
-                            is_wildcard_pattern
-                            and folder["path"].count("/") == pattern_str.count("/")
-                        )
-                        or (not is_wildcard_pattern and folder["path"] == pattern_str)
-                    )
-                    and fnmatch.fnmatch(folder["path"], pattern_str)
-                ]
-                matching_folders.extend(matching)
-            if matching_folders:
-                yield matching_folders
+            repo_name = repo["name"]
+            if repo_name not in repo_names or repo_name not in pattern_by_repo:
+                continue
+            patterns = pattern_by_repo[repo_name]
+            repo_slug = repo.get("slug", repo_name.lower())
+            default_branch = repo.get("mainbranch", {}).get("name", "master")
+            max_pattern_depth = max(
+                (
+                    folder_pattern.path.count("/") + 1
+                    for folder_pattern in folder_patterns
+                ),
+                default=1,
+            )
+            async for contents in client.get_directory_contents(
+                repo_slug, default_branch, "", max_depth=max_pattern_depth
+            ):
+                matching_folders = find_matching_folders(contents, patterns, repo)
+                if matching_folders:
+                    yield matching_folders
