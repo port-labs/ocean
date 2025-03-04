@@ -94,13 +94,13 @@ async def search_all_resources_in_project(
                 ):
                     yield assets
 
-            except PermissionDenied:
+            except PermissionDenied as e:
                 logger.error(
-                    f"Service account doesn't have permissions to search all resources within project {project_name} for kind {asset_type}"
+                    f"Service account doesn't have permissions to search all resources within project {project_name} for kind {asset_type}. Error: {str(e)}"
                 )
-            except NotFound:
+            except NotFound as e:
                 logger.info(
-                    f"Couldn't perform search_all_resources on project {project_name} since it's deleted."
+                    f"Couldn't perform search_all_resources on project {project_name} since it's deleted. Error: {str(e)}"
                 )
             else:
                 logger.info(
@@ -132,13 +132,13 @@ async def list_all_topics_per_project(
                 for topic in topics:
                     topic[EXTRA_PROJECT_FIELD] = project
                 yield topics
-        except PermissionDenied:
+        except PermissionDenied as e:
             logger.error(
-                f"Service account doesn't have permissions to list topics from project {project_name}"
+                f"Service account doesn't have permissions to list topics from project {project_name}. Error: {str(e)}"
             )
-        except NotFound:
+        except NotFound as e:
             logger.info(
-                f"Couldn't perform list_topics on project {project_name} since it's deleted."
+                f"Couldn't perform list_topics on project {project_name} since it's deleted. Error: {str(e)}"
             )
         else:
             logger.info(f"Successfully listed all topics within project {project_name}")
@@ -168,13 +168,13 @@ async def list_all_subscriptions_per_project(
                 for subscription in subscriptions:
                     subscription[EXTRA_PROJECT_FIELD] = project
                 yield subscriptions
-        except PermissionDenied:
+        except PermissionDenied as e:
             logger.error(
-                f"Service account doesn't have permissions to list subscriptions from project {project_name}"
+                f"Service account doesn't have permissions to list subscriptions from project {project_name}. Error: {str(e)}"
             )
-        except NotFound:
+        except NotFound as e:
             logger.info(
-                f"Couldn't perform list_subscriptions on project {project_name} since it's deleted."
+                f"Couldn't perform list_subscriptions on project {project_name} since it's deleted. Error: {str(e)}"
             )
         else:
             logger.info(
