@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed bug causing repositories of disabled projects to be fetched, causing failure to retrieve child objects of the repositories (0.1.134)
+- Fixed bug causing repositories of disabled projects to be fetched, causing failure to retrieve child objects of the repositories
 
 
 ## 0.1.133 (2025-03-03)
