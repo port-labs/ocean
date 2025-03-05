@@ -1,13 +1,13 @@
 from enum import StrEnum
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, List, Optional, Union
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
-from pydantic import Field
-from typing import List, Literal
+from pydantic import Field, BaseModel, validator
+from typing import Literal
 
 
 class Kind(StrEnum):
@@ -22,6 +22,7 @@ class Kind(StrEnum):
     BOARD = "board"
     COLUMN = "column"
     RELEASE = "release"
+    FILE = "file"
     USER = "user"
 
 
@@ -68,6 +69,91 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
     selector: AzureDevopsSelector
 
 
+class FileSelector(BaseModel):
+    """Configuration for file selection in Azure DevOps repositories."""
+
+    path: Union[str, List[str]] = Field(
+        ...,  # Make path required
+        description="""
+        Explicit file path(s) to fetch. Can be a single pattern or list of patterns.
+        
+        Examples of valid patterns:
+        - Root level files:
+          - "*" : all files in root folder only
+          - "*.yaml" : all YAML files in root folder only
+          - "*.{json,yaml}" : all JSON and YAML files in root folder only
+        
+        - Specific directories:
+          - "src/*.js" : all JS files in src folder only
+          - "deployment-script/*" : all files in deployment-script folder
+          - "config/**/*.yaml" : all YAML files in config folder and subfolders
+        
+        Invalid patterns:
+        - "**/*" : too broad, specify directories instead
+        - "**" : too broad, specify target paths
+        """,
+    )
+    repos: Optional[List[str]] = Field(
+        default=None,
+        description="List of repository names to scan. If None, scans all repositories.",
+    )
+    max_depth: Optional[int] = Field(
+        default=None,
+        description="Maximum directory depth to traverse. Use 0 for root directory only.",
+    )
+
+    @validator("path")
+    def validate_path_patterns(cls, v: Union[str, List[str]]) -> Union[str, List[str]]:
+        patterns = [v] if isinstance(v, str) else v
+
+        if not patterns:
+            raise ValueError("At least one path pattern must be specified")
+
+        for pattern in patterns:
+            # Skip validation for empty or None patterns
+            if not pattern:
+                continue
+
+            # Allow root-level patterns
+            if pattern == "*" or pattern.startswith("*."):
+                continue
+
+            # Allow specific directory patterns
+            if pattern.endswith("/*") or pattern.endswith("/*.{json,yaml,yml}"):
+                continue
+
+            # Allow specific subdirectory patterns with explicit paths
+            if pattern.startswith("*/") or "/" in pattern:
+                if not pattern.startswith("**/*"):  # Avoid overly broad patterns
+                    continue
+
+            # Reject overly broad patterns
+            if pattern in ("**", "**/*") or pattern.startswith("**/*"):
+                raise ValueError(
+                    f"Pattern '{pattern}' is too broad. Please specify targeted paths instead. "
+                    "Examples:\n"
+                    "- For root files: '*' or '*.{json,yaml}'\n"
+                    "- For specific folders: 'deployment-script/*' or 'src/**/*.js'"
+                )
+
+        return v
+
+
+class AzureDevopsFileSelector(Selector):
+    """Selector for Azure DevOps file resources."""
+
+    query: str
+    files: FileSelector = Field(
+        default=FileSelector(path="*.{json,yaml,yml}"),  # Changed from default_factory
+        description="Configuration for file selection and scanning",
+    )
+
+
+class AzureDevopsFileResourceConfig(ResourceConfig):
+    kind: Literal["file"]
+    selector: AzureDevopsFileSelector
+
+
 class TeamSelector(Selector):
     include_members: bool = Field(
         alias="includeMembers",
@@ -98,6 +184,7 @@ class GitPortAppConfig(PortAppConfig):
         AzureDevopsProjectResourceConfig
         | AzureDevopsWorkItemResourceConfig
         | AzureDevopsTeamResourceConfig
+        | AzureDevopsFileResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
