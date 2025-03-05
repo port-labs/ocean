@@ -4,10 +4,16 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 import base64
-
+from enum import StrEnum
 
 PAGE_SIZE = 100
 CLIENT_TIMEOUT = 30
+
+class ObjectKind(StrEnum):
+    PROJECT = "project"
+    FOLDER = "folder"
+    REPOSITORY = "repository"
+    PULL_REQUEST = "pull-request"
 
 
 class BitbucketClient:
@@ -128,3 +134,73 @@ class BitbucketClient:
             f"repositories/{self.workspace}/{repo_slug}/pullrequests"
         ):
             yield pull_requests
+
+    async def get_pull_request(self, repo_slug: str, pull_request_id: str) -> dict[str, Any]:
+        """Get a specific pull request by ID."""
+        return await self._send_api_request(
+            f"repositories/{self.workspace}/{repo_slug}/pullrequests/{pull_request_id}"
+        )
+
+    async def get_repository(self, repo_slug: str) -> dict[str, Any]:
+        """Get a specific repository by slug."""
+        return await self._send_api_request(
+            f"repositories/{self.workspace}/{repo_slug}"
+        )
+
+    async def create_webhooks(self, callback_url: str) -> None:
+        """Create webhooks for all repositories in the workspace."""
+        logger.info("Setting up Bitbucket webhooks")
+        
+        # Define the webhook configuration
+        webhook_config = {
+            "description": "Port DevPortal Integration",
+            "url": callback_url,
+            "active": True,
+            "events": [
+                "pullrequest:created",
+                "pullrequest:updated",
+                "pullrequest:approved",
+                "pullrequest:unapproved",
+                "pullrequest:fulfilled",
+                "pullrequest:rejected",
+                "pullrequest:deleted",
+                "pullrequest:comment_created",
+                "pullrequest:comment_updated",
+                "pullrequest:comment_deleted"
+            ]
+        }
+
+        # Get all repositories and create webhooks for each
+        async for repositories in self.get_repositories():
+            for repo in repositories:
+                repo_slug = repo.get("slug", repo["name"].lower())
+                
+                try:
+                    # Check if webhook already exists
+                    existing_webhooks = await self._send_api_request(
+                        f"repositories/{self.workspace}/{repo_slug}/hooks"
+                    )
+                    
+                    webhook_exists = any(
+                        hook.get("url") == callback_url 
+                        for hook in existing_webhooks.get("values", [])
+                    )
+                    
+                    if webhook_exists:
+                        logger.info(
+                            f"Webhook already exists for repository {repo_slug}, skipping"
+                        )
+                        continue
+
+                    # Create webhook if it doesn't exist
+                    await self._send_api_request(
+                        f"repositories/{self.workspace}/{repo_slug}/hooks",
+                        method="POST",
+                        json_data=webhook_config
+                    )
+                    logger.info(f"Successfully created webhook for repository {repo_slug}")
+                    
+                except Exception as e:
+                    logger.error(
+                        f"Failed to create webhook for repository {repo_slug}: {str(e)}"
+                    )
