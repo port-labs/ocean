@@ -57,9 +57,7 @@ def incident_webhook_processor(
 
 @pytest.fixture
 def mock_client() -> Generator[MagicMock, None, None]:
-    with patch(
-        "webhook_processors.services.PagerDutyClient"
-    ) as mock:
+    with patch("webhook_processors.services.PagerDutyClient") as mock:
         client = MagicMock()
         client.service_upsert_events = ["service.created", "service.updated"]
         client.service_delete_events = ["service.deleted"]
