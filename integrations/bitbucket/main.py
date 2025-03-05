@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Union, cast
 
 from loguru import logger
@@ -14,7 +13,8 @@ from helpers.folder import (
     create_pattern_mapping,
     find_matching_folders,
 )
-
+from webhook.events.pull_request import PullRequestWebhookProcessor
+from initialize_client import init_client
 
 class ObjectKind(StrEnum):
     PROJECT = "project"
@@ -26,16 +26,19 @@ class ObjectKind(StrEnum):
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean Bitbucket integration")
+    
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
 
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning("No base URL configured, skipping webhook creation")
+        return
 
-async def init_client() -> BitbucketClient:
-    client = BitbucketClient(
-        workspace=ocean.integration_config["bitbucket_workspace"],
-        username=ocean.integration_config.get("bitbucket_username"),
-        app_password=ocean.integration_config.get("bitbucket_app_password"),
-        workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
-    )
-    return client
+    client = await init_client()
+    await client.create_webhooks(base_url)
+
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -99,3 +102,6 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 matching_folders = find_matching_folders(contents, patterns, repo)
                 if matching_folders:
                     yield matching_folders
+
+
+ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
