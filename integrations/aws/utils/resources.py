@@ -13,7 +13,7 @@ from utils.misc import (
     CloudControlThrottlingConfig,
     CloudControlClientProtocol,
     AsyncPaginator,
-    chunked_list,
+    process_list_in_chunks,
 )
 from utils.aws import get_sessions
 
@@ -223,7 +223,7 @@ async def resync_sqs_queue(
                     queues_in_batch = len(page)
                     processed_count = 0
                     # For SQS, each item is a string (the queue URL), so our extractor returns it as is.
-                    for chunk in chunked_list(
+                    for chunk in process_list_in_chunks(
                         page, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
                     ):
                         processed_chunk = await process_resources_chunk(
@@ -363,7 +363,7 @@ async def resync_cloudcontrol(
                     ) as cloudcontrol_get_resource_client:
                         total_resources = len(resources_batch)
                         processed_count = 0
-                        for chunk in chunked_list(
+                        for chunk in process_list_in_chunks(
                             resources_batch, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
                         ):
                             processed_chunk = await process_resources_chunk(
