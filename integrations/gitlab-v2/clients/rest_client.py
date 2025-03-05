@@ -16,12 +16,10 @@ class RestClient:
             "with_counts": True,
             "include_descendant_groups": True,
             "only_group_labels": False,
-        },
-        "issues": {"state": "all"},
-        "merge_requests": {"state": "all"},
+        }
     }
 
-    def __init__(self, base_url: str, auth_client: AuthClient):
+    def __init__(self, base_url: str, auth_client: AuthClient) -> None:
         self.base_url = f"{base_url}/api/v4"
         self._headers = auth_client.get_headers()
         self._client = http_async_client
@@ -39,21 +37,22 @@ class RestClient:
             raise
 
     async def get_group_resource(
-        self, group_id: str, resource_type: str, params: Optional[dict[str, Any]] = None
+        self, group_id: str, resource_type: str
     ) -> AsyncIterator[list[dict[str, Any]]]:
         if resource_type not in self.VALID_GROUP_RESOURCES:
             raise ValueError(f"Unsupported resource type: {resource_type}")
 
         path = f"groups/{group_id}/{resource_type}"
 
-        # Get default params for the resource type
-        default_params = self.RESOURCE_PARAMS.get(resource_type, {})
-        merged_params = {**default_params, **(params or {})}
+        # Use a simple but type-safe approach
+        request_params: dict[str, Any] = {}
+        if resource_type in self.RESOURCE_PARAMS:
+            request_params = self.RESOURCE_PARAMS[resource_type]
 
         try:
             async for batch in self._make_paginated_request(
                 path,
-                params=merged_params,
+                params=request_params,
                 page_size=self.DEFAULT_PAGE_SIZE,
             ):
                 if batch:
@@ -71,10 +70,10 @@ class RestClient:
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         page = 1
-        params = params or {}
+        params_dict: dict[str, Any] = params or {}
 
         while True:
-            request_params = {**params, "per_page": page_size, "page": page}
+            request_params = {**params_dict, "per_page": page_size, "page": page}
             logger.debug(f"Fetching page {page} from {path}")
 
             response = await self._send_api_request("GET", path, params=request_params)
