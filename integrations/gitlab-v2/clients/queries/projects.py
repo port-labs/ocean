@@ -12,6 +12,11 @@ class Fragments:
                 id
                 fullPath            
             }
+            labels {
+                nodes {
+                    id
+                }
+            }
         }
     """
 

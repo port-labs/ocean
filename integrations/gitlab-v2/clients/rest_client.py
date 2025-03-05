@@ -6,7 +6,18 @@ from port_ocean.utils import http_async_client
 
 class RestClient:
     DEFAULT_PAGE_SIZE = 100
-    VALID_GROUP_RESOURCES = ["issues", "merge_requests"]
+    VALID_GROUP_RESOURCES = ["issues", "merge_requests", "labels"]
+
+    # Define resource-specific default parameters
+    RESOURCE_PARAMS = {
+        "labels": {
+            "with_counts": True,
+            "include_descendant_groups": True,
+            "only_group_labels": False,
+        },
+        "issues": {"state": "all"},
+        "merge_requests": {"state": "all"},
+    }
 
     def __init__(self, base_url: str, auth_client: AuthClient):
         self.base_url = f"{base_url}/api/v4"
@@ -32,7 +43,9 @@ class RestClient:
             raise ValueError(f"Unsupported resource type: {resource_type}")
 
         path = f"groups/{group_id}/{resource_type}"
-        default_params = {"state": "all"}
+
+        # Get default params for the resource type
+        default_params = self.RESOURCE_PARAMS.get(resource_type, {})
         merged_params = {**default_params, **(params or {})}
 
         try:
