@@ -15,7 +15,7 @@ from .file_processing import (
     match_pattern,
     expand_patterns,
     get_base_paths,
-    process_file_content,
+    create_enriched_file_object,
 )
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
@@ -520,7 +520,7 @@ class AzureDevopsClient(HTTPBaseClient):
             content = await self._get_item_content(
                 file["path"], repository_id, "Branch", branch
             )
-            return await process_file_content(file, content, repository)
+            return await create_enriched_file_object(file, content, repository)
         except Exception as e:
             logger.error(f"Failed to process file {file['path']}: {str(e)}")
             return None
@@ -542,7 +542,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 or pattern.endswith("**")
             )
 
-        # Expand and validate patterns
         all_patterns = expand_patterns(path)
         patterns = []
         for pattern in all_patterns:
@@ -609,9 +608,7 @@ class AzureDevopsClient(HTTPBaseClient):
                             if processed_file := await self._fetch_and_process_file(
                                 file, repository_id, branch, repository
                             ):
-                                yield [
-                                    processed_file
-                                ]  # Yield single-item list for consistency
+                                yield [processed_file]
                         except Exception as e:
                             logger.error(
                                 f"Error processing file {file.get('path')}: {str(e)}"
@@ -711,6 +708,7 @@ class AzureDevopsClient(HTTPBaseClient):
             "recursionLevel": recursion_level,
             "scopePath": base_path,
             "includeContentMetadata": "true",
+            "includeContent": "false",
             "versionDescriptor.version": branch,
             "versionDescriptor.versionType": "branch",
             "api-version": "7.1",

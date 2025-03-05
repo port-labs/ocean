@@ -4,7 +4,7 @@ from azure_devops.client.file_processing import (
     match_pattern,
     expand_patterns,
     get_base_paths,
-    process_file_content,
+    create_enriched_file_object,
     parse_file_content,
 )
 
@@ -166,14 +166,14 @@ class TestContentParsing:
 
 class TestFileProcessing:
     @pytest.mark.asyncio
-    async def test_process_file_content_json(self) -> None:
+    async def test_create_enriched_file_object_json(self) -> None:
         """Test processing JSON file content."""
         # Test with JSON file
         file_metadata = {"path": "test.json", "size": 30}
         file_content = b'{"name": "test", "value": 123}'
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
-        result = await process_file_content(file_metadata, file_content, repo_metadata)
+        result = await create_enriched_file_object(file_metadata, file_content, repo_metadata)
 
         assert result is not None
         assert result["file"]["path"] == "test.json"
@@ -183,14 +183,14 @@ class TestFileProcessing:
         assert result["repo"] == repo_metadata
 
     @pytest.mark.asyncio
-    async def test_process_file_content_yaml(self) -> None:
+    async def test_create_enriched_file_object_yaml(self) -> None:
         """Test processing YAML file content."""
         # Test with YAML file
         file_metadata = {"path": "test.yaml", "size": 21}
         file_content = b"name: test\nvalue: 123"
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
-        result = await process_file_content(file_metadata, file_content, repo_metadata)
+        result = await create_enriched_file_object(file_metadata, file_content, repo_metadata)
 
         assert result is not None
         assert result["file"]["path"] == "test.yaml"
@@ -200,14 +200,14 @@ class TestFileProcessing:
         assert result["repo"] == repo_metadata
 
     @pytest.mark.asyncio
-    async def test_process_file_content_size_fallback(self) -> None:
+    async def test_create_enriched_file_object_size_fallback(self) -> None:
         """Test that size falls back to content length."""
         # Test with size in metadata
         file_metadata = {"path": "test.json", "size": 100}
         file_content = b'{"name": "test"}'
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
-        result = await process_file_content(file_metadata, file_content, repo_metadata)
+        result = await create_enriched_file_object(file_metadata, file_content, repo_metadata)
 
         assert result is not None
         assert result["file"]["size"] == 16

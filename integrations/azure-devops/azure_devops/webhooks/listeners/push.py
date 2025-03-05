@@ -84,8 +84,7 @@ class PushHookListener(HookListener):
         await self.sync_changed_files_in_commit(repo_id, new_commit)
 
     async def sync_changed_files_in_commit(self, repo_id: str, commit_id: str) -> None:
-        """Fetches changed files from a commit and ingests them into Port."""
-        logger.info(f"Fetching file changes for commit {commit_id}")
+        logger.info(f"Fetching file changes for commit {commit_id} in repo {repo_id}")
 
         try:
             repo_info = await self._client.get_repository(repo_id)

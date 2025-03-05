@@ -52,9 +52,7 @@ def get_base_paths(patterns: List[str]) -> List[str]:
     return list(base_paths)
 
 
-async def parse_file_content(
-    content: bytes, file_path: str = ""
-) -> Union[dict[str, Any], list[Any], str]:
+async def parse_file_content(content: bytes) -> Union[dict[str, Any], list[Any], str]:
     """
     Parse file content based on file type. Matches GitLab's implementation.
     """
@@ -87,16 +85,14 @@ async def parse_file_content(
             return content_str
 
 
-async def process_file_content(
+async def create_enriched_file_object(
     file_metadata: dict[str, Any],
     file_content: bytes,
     repository_metadata: dict[str, Any],
 ) -> Optional[dict[str, Any]]:
     """Process a file's content and create a file object."""
     try:
-        parsed_content = await parse_file_content(
-            file_content, file_metadata.get("path", "")
-        )
+        parsed_content = await parse_file_content(file_content)
         return {
             "file": {
                 **file_metadata,
