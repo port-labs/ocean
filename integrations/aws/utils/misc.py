@@ -119,9 +119,9 @@ def get_matching_kinds_and_blueprints_from_config(
     return allowed_kinds, disallowed_kinds
 
 
-def chunked_list(lst: List[Any], batch_size: int) -> Iterator[List[Any]]:
-    """Yield successive batch-sized chunks from lst."""
-    for i in range(0, len(lst), batch_size):
+def process_list_in_chunks(_list: List[Any], batch_size: int) -> Iterator[List[Any]]:
+    """Yield successive batch-sized chunks from list."""
+    for i in range(0, len(_list), batch_size):
         yield lst[i : i + batch_size]
 
 
