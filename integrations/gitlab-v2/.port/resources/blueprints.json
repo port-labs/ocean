@@ -25,6 +25,23 @@
         "defaultBranch": {
           "title": "Default Branch",
           "type": "string"
+        },
+        "languages": {
+          "title": "Languages",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "title": "Language Name",
+                "type": "string"
+              },
+              "share": {
+                "title": "Language Share",
+                "type": "number"
+              }
+            }
+          }
         }
       },
       "required": []

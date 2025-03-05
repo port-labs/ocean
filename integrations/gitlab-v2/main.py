@@ -60,8 +60,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(ProjectResourceConfig, event.resource_config).selector
 
     async for projects_batch in client.get_projects():
-        logger.info(f"Received project batch with {len(projects)} projects")
-
+        logger.info(f"Received project batch with {len(projects_batch)} projects")
         if selector.include_labels:
             for project in projects_batch:
                 if labels := project.get("labels", {}).get("nodes"):

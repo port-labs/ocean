@@ -17,6 +17,10 @@ class Fragments:
                     id
                 }
             }
+            languages {
+                name 
+                share
+            }
         }
     """
 
