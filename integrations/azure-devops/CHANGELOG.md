@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.134 (2025-03-04)
+
+
+### Bug Fixes
+
+- Fixed bug causing repositories of disabled projects to be fetched, causing failure to retrieve child objects of the repositories
+
+
+## 0.1.133 (2025-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.0
+
+
 ## 0.1.132 (2025-02-26)
 
 
