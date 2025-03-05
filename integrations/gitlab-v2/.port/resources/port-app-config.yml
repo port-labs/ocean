@@ -1,19 +1,7 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
 resources:
-  - kind: group
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .full_path
-          title: .name
-          blueprint: '"gitlabGroup"'
-          properties:
-            url: .web_url
-            visibility: .visibility
-            description: .description
+
   - kind: project
     selector:
       query: 'true'
@@ -27,51 +15,4 @@ resources:
             url: .webUrl
             description: .description
             defaultBranch: .repository.rootRef
-          relations:
-            group: .group.fullPath
-  - kind: merge-request
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .id | tostring
-          title: .title
-          blueprint: '"gitlabMergeRequest"'
-          properties:
-            creator: .author.name
-            status: .state
-            createdAt: .created_at
-            updatedAt: .updated_at
-            mergedAt: .merged_at
-            link: .web_url
-            leadTimeHours: >-
-              (.created_at as $createdAt | .merged_at as $mergedAt | ($createdAt
-              | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)
-              as $createdTimestamp | ($mergedAt | if . == null then null else
-              sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end)
-              as $mergedTimestamp | if $mergedTimestamp == null then null else
-              (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) /
-              100) end)
-            reviewers: .reviewers | map(.name)
-          relations:
-            project: .references.full | gsub("!.+"; "")
-  - kind: issue
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .id | tostring
-          title: .title
-          blueprint: '"gitlabIssue"'
-          properties:
-            creator: .author.name
-            status: .state
-            createdAt: .created_at
-            closedAt: .closed_at
-            updatedAt: .updated_at
-            description: .description
-            link: .webUrl
-          relations:
-            project: .references.full | gsub("#.+"; "")
+
