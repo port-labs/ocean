@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.115 (2025-03-04)
+
+
+### Improvements
+
+- Improved logs for handled exceptions by adding the stringified version of such exception
+
+
 ## 0.1.114 (2025-03-03)
 
 
