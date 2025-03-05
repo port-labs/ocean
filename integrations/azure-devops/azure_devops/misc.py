@@ -6,7 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, validator
 from typing import Literal
 
 
@@ -73,8 +73,25 @@ class FileSelector(BaseModel):
     """Configuration for file selection in Azure DevOps repositories."""
 
     path: Union[str, List[str]] = Field(
-        default="",
-        description="Glob pattern(s) to match files (e.g., '**/*.yaml' or ['**/*.json', '**/*.yaml'])",
+        ...,  # Make path required
+        description="""
+        Explicit file path(s) to fetch. Can be a single pattern or list of patterns.
+        
+        Examples of valid patterns:
+        - Root level files:
+          - "*" : all files in root folder only
+          - "*.yaml" : all YAML files in root folder only
+          - "*.{json,yaml}" : all JSON and YAML files in root folder only
+        
+        - Specific directories:
+          - "src/*.js" : all JS files in src folder only
+          - "deployment-script/*" : all files in deployment-script folder
+          - "config/**/*.yaml" : all YAML files in config folder and subfolders
+        
+        Invalid patterns:
+        - "**/*" : too broad, specify directories instead
+        - "**" : too broad, specify target paths
+        """,
     )
     repos: Optional[List[str]] = Field(
         default=None,
@@ -82,8 +99,44 @@ class FileSelector(BaseModel):
     )
     max_depth: Optional[int] = Field(
         default=None,
-        description="Maximum directory depth to traverse. If None, no depth limit is applied.",
+        description="Maximum directory depth to traverse. Use 0 for root directory only.",
     )
+
+    @validator("path")
+    def validate_path_patterns(cls, v: Union[str, List[str]]) -> Union[str, List[str]]:
+        patterns = [v] if isinstance(v, str) else v
+
+        if not patterns:
+            raise ValueError("At least one path pattern must be specified")
+
+        for pattern in patterns:
+            # Skip validation for empty or None patterns
+            if not pattern:
+                continue
+
+            # Allow root-level patterns
+            if pattern == "*" or pattern.startswith("*."):
+                continue
+
+            # Allow specific directory patterns
+            if pattern.endswith("/*") or pattern.endswith("/*.{json,yaml,yml}"):
+                continue
+
+            # Allow specific subdirectory patterns with explicit paths
+            if pattern.startswith("*/") or "/" in pattern:
+                if not pattern.startswith("**/*"):  # Avoid overly broad patterns
+                    continue
+
+            # Reject overly broad patterns
+            if pattern in ("**", "**/*") or pattern.startswith("**/*"):
+                raise ValueError(
+                    f"Pattern '{pattern}' is too broad. Please specify targeted paths instead. "
+                    "Examples:\n"
+                    "- For root files: '*' or '*.{json,yaml}'\n"
+                    "- For specific folders: 'deployment-script/*' or 'src/**/*.js'"
+                )
+
+        return v
 
 
 class AzureDevopsFileSelector(Selector):
@@ -91,7 +144,7 @@ class AzureDevopsFileSelector(Selector):
 
     query: str
     files: FileSelector = Field(
-        default_factory=FileSelector,
+        default=FileSelector(path="*.{json,yaml,yml}"),  # Changed from default_factory
         description="Configuration for file selection and scanning",
     )
 

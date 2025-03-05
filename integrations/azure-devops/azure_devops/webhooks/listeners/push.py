@@ -10,7 +10,7 @@ from port_ocean.context.ocean import ocean
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
 from azure_devops.misc import GitPortAppConfig, Kind, extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_event import WebhookEvent
-from azure_devops.client.file_processing import parse_content
+from azure_devops.client.file_processing import parse_file_content
 
 from .listener import HookListener
 
@@ -123,7 +123,7 @@ class PushHookListener(HookListener):
                 return
 
             # Use the existing parse_content function
-            parsed_content = await parse_content(file_content)
+            parsed_content = await parse_file_content(file_content)
 
             # Only proceed if the file is a structured format we can parse
             if file_path.endswith((".yaml", ".yml", ".json")):

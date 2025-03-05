@@ -19,7 +19,7 @@
         },
         "content": {
           "title": "Content",
-          "type": "string",
+          "type": "object",
           "icon": "DefaultProperty",
           "description": "The content of the file"
         },

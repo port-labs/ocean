@@ -91,11 +91,11 @@ resources:
     selector:
       query: 'true'
       files:
-        path: '**/*.json'
+        path: '*.{json,yaml,yml}'
     port:
       entity:
         mappings:
-          identifier: .file.path | gsub(" "; "")
+          identifier: .file.objectId
           title: .file.path
           blueprint: '"file"'
           properties:

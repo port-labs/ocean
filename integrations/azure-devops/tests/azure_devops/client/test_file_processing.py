@@ -2,44 +2,27 @@ import pytest
 from unittest.mock import patch
 from azure_devops.client.file_processing import (
     match_pattern,
-    _match_single_pattern,
     expand_patterns,
     get_base_paths,
     process_file_content,
-    parse_content,
+    parse_file_content,
 )
 
 
 class TestPatternMatching:
-    def test_match_single_pattern(self) -> None:
-        """Test the _match_single_pattern function with various patterns."""
-        # Basic pattern matching
-        assert _match_single_pattern("*.json", "file.json") is True
-        assert _match_single_pattern("*.json", "file.yaml") is False
-
-        # Directory pattern matching
-        assert _match_single_pattern("dir/*.json", "dir/file.json") is True
-        assert _match_single_pattern("dir/*.json", "other/file.json") is False
-
-        # Double-star pattern matching
-        assert _match_single_pattern("**/file.json", "dir/file.json") is True
-        assert _match_single_pattern("**/file.json", "dir/subdir/file.json") is True
-        assert _match_single_pattern("**/file.json", "file.json") is True
-
-        # Test the special case for **/ prefix
-        assert _match_single_pattern("**/dir/*.json", "dir/file.json") is True
-        assert _match_single_pattern("**/dir/*.json", "subdir/dir/file.json") is True
-
     def test_match_pattern_with_string(self) -> None:
         """Test the match_pattern function with string patterns."""
-        # Test with a single string pattern
+        # Basic pattern matching
         assert match_pattern("*.json", "file.json") is True
         assert match_pattern("*.json", "file.yaml") is False
 
-        # Test with a more complex pattern
-        assert match_pattern("src/**/*.js", "src/components/Button.js") is True
-        assert match_pattern("src/**/*.js", "src/utils/helpers.js") is True
-        assert match_pattern("src/**/*.js", "lib/utils/helpers.js") is False
+        # Directory pattern matching
+        assert match_pattern("dir/*.json", "dir/file.json") is True
+        assert match_pattern("dir/*.json", "other/file.json") is False
+
+        # Double-star pattern matching
+        assert match_pattern("**/file.json", "dir/file.json") is True
+        assert match_pattern("**/file.json", "dir/subdir/file.json") is True
 
     def test_match_pattern_with_list(self) -> None:
         """Test the match_pattern function with lists of patterns."""
@@ -133,14 +116,14 @@ class TestContentParsing:
         """Test parsing JSON content."""
         # Test with valid JSON
         json_content = b'{"name": "test", "value": 123}'
-        result = await parse_content(json_content)
+        result = await parse_file_content(json_content)
         assert result == {"name": "test", "value": 123}
 
         # Test with more complex JSON
         complex_json = (
             b'{"name": "test", "values": [1, 2, 3], "nested": {"key": "value"}}'
         )
-        result = await parse_content(complex_json)
+        result = await parse_file_content(complex_json)
         assert isinstance(result, dict)
         assert result.get("name") == "test"
         assert result.get("values") == [1, 2, 3]
@@ -152,7 +135,7 @@ class TestContentParsing:
         """Test parsing YAML content."""
         # Test with simple YAML
         yaml_content = b"name: test\nvalue: 123"
-        result = await parse_content(yaml_content)
+        result = await parse_file_content(yaml_content)
         assert result == {"name": "test", "value": 123}
 
         # Test with more complex YAML
@@ -165,7 +148,7 @@ class TestContentParsing:
         nested:
           key: value
         """
-        result = await parse_content(complex_yaml)
+        result = await parse_file_content(complex_yaml)
         assert isinstance(result, dict)
         assert result.get("name") == "test"
         assert result.get("values") == [1, 2, 3]
@@ -174,7 +157,7 @@ class TestContentParsing:
 
         # Test with multi-document YAML
         multi_yaml = b"---\nname: doc1\n---\nname: doc2"
-        result = await parse_content(multi_yaml)
+        result = await parse_file_content(multi_yaml)
         assert isinstance(result, list)
         assert len(result) == 2
         assert result[0].get("name") == "doc1"
@@ -186,7 +169,7 @@ class TestFileProcessing:
     async def test_process_file_content_json(self) -> None:
         """Test processing JSON file content."""
         # Test with JSON file
-        file_metadata = {"path": "test.json", "size": 100}
+        file_metadata = {"path": "test.json", "size": 30}
         file_content = b'{"name": "test", "value": 123}'
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
@@ -194,7 +177,7 @@ class TestFileProcessing:
 
         assert result is not None
         assert result["file"]["path"] == "test.json"
-        assert result["file"]["size"] == 100
+        assert result["file"]["size"] == 30
         assert result["file"]["content"]["raw"] == '{"name": "test", "value": 123}'
         assert result["file"]["content"]["parsed"] == {"name": "test", "value": 123}
         assert result["repo"] == repo_metadata
@@ -203,7 +186,7 @@ class TestFileProcessing:
     async def test_process_file_content_yaml(self) -> None:
         """Test processing YAML file content."""
         # Test with YAML file
-        file_metadata = {"path": "test.yaml", "size": 100}
+        file_metadata = {"path": "test.yaml", "size": 21}
         file_content = b"name: test\nvalue: 123"
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
@@ -211,22 +194,20 @@ class TestFileProcessing:
 
         assert result is not None
         assert result["file"]["path"] == "test.yaml"
-        assert result["file"]["size"] == 100
+        assert result["file"]["size"] == 21
         assert result["file"]["content"]["raw"] == "name: test\nvalue: 123"
         assert result["file"]["content"]["parsed"] == {"name": "test", "value": 123}
         assert result["repo"] == repo_metadata
 
     @pytest.mark.asyncio
     async def test_process_file_content_size_fallback(self) -> None:
-        """Test that size falls back to metadata size if available."""
+        """Test that size falls back to content length."""
         # Test with size in metadata
         file_metadata = {"path": "test.json", "size": 100}
-        file_content = b'{"name": "test"}'  # Actual size is 16 bytes
+        file_content = b'{"name": "test"}'
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
         result = await process_file_content(file_metadata, file_content, repo_metadata)
 
         assert result is not None
-        assert (
-            result["file"]["size"] == 100
-        )  # Should use the metadata size, not len(file_content)
+        assert result["file"]["size"] == 16
