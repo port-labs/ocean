@@ -42,10 +42,10 @@ class PagerDutyClient(OAuthClient):
 
     def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
         try:
-            token = self.external_access_token
+            auth_token = self.external_access_token
         except ValueError:
-            token = self.token
-        request.headers["Authorization"] = self._get_auth_header(token)
+            auth_token = self.token
+        request.headers["Authorization"] = self._get_auth_header(auth_token)
         return request
 
     @property
