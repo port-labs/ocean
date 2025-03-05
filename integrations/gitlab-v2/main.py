@@ -57,7 +57,6 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(ProjectResourceConfig, event.resource_config).selector
 
-
     async for projects_batch in client.get_projects():
         logger.info(f"Received project batch with {len(projects)} projects")
 
