@@ -1,0 +1,21 @@
+description: gitlab-v2 integration for Port Ocean
+icon: Gitlab
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: projects
+      - kind: groups
+      - kind: issues
+      - kind: merge-request
+configurations:
+  - name: gitlabToken
+    required: true
+    type: string
+    description: 'The Gitlab token to authenticate with the Gitlab API.'
+    sensitive: true
+  - name: gitlabHost
+    required: false
+    type: url
+    default: https://gitlab.com
+    description: The host of the Gitlab instance. If not specified, the default will be https://gitlab.com.

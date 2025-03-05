@@ -1,0 +1,19 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .fullPath
+          title: .name
+          blueprint: '"service"'
+          properties:
+            url: .webUrl
+            description: .description
+            defaultBranch: .repository.rootRef
+            languages: .languages
+
