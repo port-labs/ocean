@@ -1,7 +1,8 @@
-from typing import AsyncIterator, Any
+from typing import Any, AsyncIterator
+
+from .auth_client import AuthClient
 from .graphql_client import GraphQLClient
 from .rest_client import RestClient
-from .auth_client import AuthClient
 
 
 class GitLabClient:

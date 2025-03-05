@@ -1,8 +1,10 @@
-from typing import AsyncIterator, Optional, Any
+from typing import Any, AsyncIterator, Optional
+
 from loguru import logger
+from port_ocean.utils import http_async_client
+
 from .auth_client import AuthClient
 from .queries import ProjectQueries
-from port_ocean.utils import http_async_client
 
 
 class GraphQLClient:

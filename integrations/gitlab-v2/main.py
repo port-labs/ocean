@@ -1,9 +1,11 @@
 from enum import StrEnum
 from typing import Any, Optional, cast
+
 from loguru import logger
-from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
 from clients.base_client import GitLabClient
 from integration import ProjectResourceConfig
 

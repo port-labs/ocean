@@ -1,7 +1,9 @@
-from typing import Optional, AsyncIterator, Any
+from typing import Any, AsyncIterator, Optional
+
 from loguru import logger
-from .auth_client import AuthClient
 from port_ocean.utils import http_async_client
+
+from .auth_client import AuthClient
 
 
 class RestClient:
