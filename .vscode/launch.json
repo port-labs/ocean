@@ -25,6 +25,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/fake-integration",
+      "envFile": "${workspaceFolder}/integrations/fake-integration/.env",
+      "justMyCode": true,
+      "name": "Run fake-integration integration",
+      "program": "${workspaceFolder}/integrations/fake-integration/debug.py",
+      "python": "${workspaceFolder}/integrations/fake-integration/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/pagerduty",
       "envFile": "${workspaceFolder}/integrations/pagerduty/.env",
       "justMyCode": true,
