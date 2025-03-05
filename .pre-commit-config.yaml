@@ -11,6 +11,7 @@ repos:
       - id: check-executables-have-shebangs
       - id: check-symlinks
       - id: detect-aws-credentials
+        args: [--allow-missing-credentials]
   - repo: local
     hooks:
       - id: fix lint

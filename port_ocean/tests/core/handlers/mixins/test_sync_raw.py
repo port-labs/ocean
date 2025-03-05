@@ -799,3 +799,177 @@ async def test_register_resource_raw_skip_event_type_http_request_upsert_called_
         mock_sync_raw_mixin._calculate_raw.assert_called_once()
         mock_sync_raw_mixin._map_entities_compared_with_port.assert_not_called()
         mock_sync_raw_mixin.entities_state_applier.upsert.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_on_resync_start_hooks_are_called(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    # Setup
+    resync_start_called = False
+
+    async def on_resync_start() -> None:
+        nonlocal resync_start_called
+        resync_start_called = True
+
+    mock_sync_raw_mixin.on_resync_start(on_resync_start)
+
+    # Execute
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config
+        await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
+
+    # Verify
+    assert resync_start_called, "on_resync_start hook was not called"
+
+
+@pytest.mark.asyncio
+async def test_on_resync_complete_hooks_are_called_on_success(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    # Setup
+    resync_complete_called = False
+
+    async def on_resync_complete() -> None:
+        nonlocal resync_complete_called
+        resync_complete_called = True
+
+    mock_sync_raw_mixin.on_resync_complete(on_resync_complete)
+    mock_ocean.port_client.search_entities.return_value = []  # type: ignore
+
+    # Execute
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config
+        await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
+
+    # Verify
+    assert resync_complete_called, "on_resync_complete hook was not called"
+
+
+@pytest.mark.asyncio
+async def test_on_resync_complete_hooks_not_called_on_error(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    # Setup
+    resync_complete_called = False
+
+    async def on_resync_complete() -> None:
+        nonlocal resync_complete_called
+        resync_complete_called = True
+
+    mock_sync_raw_mixin.on_resync_complete(on_resync_complete)
+    mock_sync_raw_mixin._get_resource_raw_results.side_effect = Exception("Test error")  # type: ignore
+
+    # Execute
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config
+        with pytest.raises(Exception):
+            await mock_sync_raw_mixin.sync_raw_all(
+                trigger_type="machine",
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    # Verify
+    assert (
+        not resync_complete_called
+    ), "on_resync_complete hook should not have been called on error"
+
+
+@pytest.mark.asyncio
+async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    # Setup
+    call_order: list[str] = []
+
+    async def on_resync_start1() -> None:
+        call_order.append("on_resync_start1")
+
+    async def on_resync_start2() -> None:
+        call_order.append("on_resync_start2")
+
+    async def on_resync_complete1() -> None:
+        call_order.append("on_resync_complete1")
+
+    async def on_resync_complete2() -> None:
+        call_order.append("on_resync_complete2")
+
+    mock_sync_raw_mixin.on_resync_start(on_resync_start1)
+    mock_sync_raw_mixin.on_resync_start(on_resync_start2)
+    mock_sync_raw_mixin.on_resync_complete(on_resync_complete1)
+    mock_sync_raw_mixin.on_resync_complete(on_resync_complete2)
+    mock_ocean.port_client.search_entities.return_value = []  # type: ignore
+
+    # Execute
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config
+        await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
+
+    # Verify
+    assert call_order == [
+        "on_resync_start1",
+        "on_resync_start2",
+        "on_resync_complete1",
+        "on_resync_complete2",
+    ], "Hooks were not called in the correct order"
+
+
+@pytest.mark.asyncio
+async def test_on_resync_start_hook_error_prevents_resync(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    # Setup
+    resync_complete_called = False
+    resync_proceeded = False
+
+    async def on_resync_start() -> None:
+        raise Exception("Before resync error")
+
+    async def on_resync_complete() -> None:
+        nonlocal resync_complete_called
+        resync_complete_called = True
+
+    mock_sync_raw_mixin.on_resync_start(on_resync_start)
+    mock_sync_raw_mixin.on_resync_complete(on_resync_complete)
+
+    original_get_resource_raw_results = mock_sync_raw_mixin._get_resource_raw_results
+
+    async def track_resync(*args: Any, **kwargs: Any) -> Any:
+        nonlocal resync_proceeded
+        resync_proceeded = True
+        return await original_get_resource_raw_results(*args, **kwargs)
+
+    mock_sync_raw_mixin._get_resource_raw_results = track_resync  # type: ignore
+
+    # Execute
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config
+        with pytest.raises(Exception, match="Before resync error"):
+            await mock_sync_raw_mixin.sync_raw_all(
+                trigger_type="machine",
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    # Verify
+    assert (
+        not resync_proceeded
+    ), "Resync should not have proceeded after before_resync hook error"
+    assert (
+        not resync_complete_called
+    ), "on_resync_complete hook should not have been called after error"

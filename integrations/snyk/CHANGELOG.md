@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.2 (2025-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.0
+
+
+## 0.2.1 (2025-02-27)
+
+### Improvements
+
+- Enabled live events for Snyk Ocean SaaS installation
+
+
 ## 0.2.0 (2025-02-24)
 
 ### Improvements
