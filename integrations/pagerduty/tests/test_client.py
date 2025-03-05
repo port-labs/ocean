@@ -48,12 +48,15 @@ def mock_ocean_context() -> None:
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
         mock_ocean_app.base_url = TEST_INTEGRATION_CONFIG["app_host"]
+
         def get_mock_external_access_token() -> str:
             return "pd_test_external_access_token"
-        mock_ocean_app.load_external_oauth_access_token=  get_mock_external_access_token
+
+        mock_ocean_app.load_external_oauth_access_token = get_mock_external_access_token
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
         pass
+
 
 @pytest.fixture
 def client() -> PagerDutyClient:
@@ -139,7 +142,9 @@ class TestPagerDutyClient:
 
         # Scenario 3: No app host
         client_no_host = PagerDutyClient(
-            token=TEST_INTEGRATION_CONFIG["token"], api_url=TEST_INTEGRATION_CONFIG["api_url"], app_host=None
+            token=TEST_INTEGRATION_CONFIG["token"],
+            api_url=TEST_INTEGRATION_CONFIG["api_url"],
+            app_host=None,
         )
         await client_no_host.create_webhooks_if_not_exists()
 
@@ -292,7 +297,10 @@ class TestPagerDutyClient:
         request = httpx.Request("GET", "https://api.pagerduty.com/test")
         request.headers = httpx.Headers()
         refreshed_request = client.refresh_request_auth_creds(request)
-        assert refreshed_request.headers["Authorization"] == "Bearer pd_test_external_access_token"
+        assert (
+            refreshed_request.headers["Authorization"]
+            == "Bearer pd_test_external_access_token"
+        )
 
     def test_headers_property(self) -> None:
         # Test with OAuth token
@@ -316,3 +324,20 @@ class TestPagerDutyClient:
         assert regular_headers["Content-Type"] == "application/json"
         assert regular_headers["Authorization"] == "Token token=test_token"
         assert "Accept" not in regular_headers
+
+    async def test_refresh_request_auth_creds_fallback_to_token(
+        self, client: PagerDutyClient
+    ) -> None:
+        # Setup
+        request = httpx.Request("GET", "https://api.pagerduty.com")
+        request.headers = httpx.Headers()
+
+        # Execute
+        with patch(
+            "port_ocean.context.ocean.ocean.app.load_external_oauth_access_token",
+            return_value=None,
+        ):
+            result = client.refresh_request_auth_creds(request)
+
+        # Assert
+        assert result.headers["Authorization"] == "Token token=mock-token"
