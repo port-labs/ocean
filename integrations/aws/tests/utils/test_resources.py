@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Any, Dict, List
 from utils.misc import CustomProperties
 from utils.resources import (
     resync_custom_kind,
@@ -48,17 +47,7 @@ async def test_resync_cloudcontrol(
 ) -> None:
     """Test that resync_cloudcontrol produces valid output."""
 
-    async def mock_gather(*args: Any, **kwargs: Any) -> List[Dict[str, Any]]:
-        return [
-            {
-                "Identifier": "test-id",
-                "Properties": {"Name": "mocked-resource"},
-                "AdditionalInfo": "mocked-info",
-            }
-        ]
-
     with (
-        patch("utils.resources.asyncio.gather", return_value=mock_gather()),
         patch(
             "utils.resources._session_manager.find_account_id_by_session",
             return_value=mock_account_id,
