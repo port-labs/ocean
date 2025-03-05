@@ -69,9 +69,7 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         if selector.incident_analytics:
             yield (
-                await pager_duty_client.enrich_incidents_with_analytics_data(
-                    pager_duty_client, incidents
-                )
+                await pager_duty_client.enrich_incidents_with_analytics_data(incidents)
             )
         else:
             yield incidents
