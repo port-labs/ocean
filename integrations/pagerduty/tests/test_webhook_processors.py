@@ -13,9 +13,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from integrations.pagerduty.webhook_processors.services import ServiceWebhookProcessor
-from integrations.pagerduty.webhook_processors.incidents import IncidentWebhookProcessor
-from integrations.pagerduty.kinds import Kinds
+from webhook_processors.services import ServiceWebhookProcessor
+from webhook_processors.incidents import IncidentWebhookProcessor
+from kinds import Kinds
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 
