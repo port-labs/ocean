@@ -6,7 +6,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 
 
 @pytest.fixture(autouse=True)
-def mock_ocean_context():
+def mock_ocean_context() -> None:
     """Initialize mock Ocean context for all tests"""
     try:
         mock_app = MagicMock()
@@ -19,7 +19,7 @@ def mock_ocean_context():
         pass
 
 
-def test_auth_client_headers():
+def test_auth_client_headers() -> None:
     """Test authentication header generation"""
     # Arrange
     token = "test-token"

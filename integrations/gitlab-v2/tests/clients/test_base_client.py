@@ -1,12 +1,13 @@
 import pytest
-from unittest.mock import MagicMock
+from typing import Any, AsyncGenerator
+from unittest.mock import MagicMock, patch
 from clients.base_client import GitLabClient
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 
 @pytest.fixture(autouse=True)
-def mock_ocean_context():
+def mock_ocean_context() -> None:
     """Initialize mock Ocean context for all tests"""
     try:
         mock_app = MagicMock()
@@ -20,7 +21,7 @@ def mock_ocean_context():
 
 
 # Simple async generator function for mocking
-async def async_mock_generator(items):
+async def async_mock_generator(items: list[Any]) -> AsyncGenerator[Any, None]:
     for item in items:
         yield item
 
@@ -28,63 +29,63 @@ async def async_mock_generator(items):
 @pytest.mark.asyncio
 class TestGitLabClient:
     @pytest.fixture
-    def client(self):
+    def client(self) -> GitLabClient:
         """Initialize GitLab client with test configuration"""
         return GitLabClient("https://gitlab.example.com", "test-token")
 
-    async def test_get_projects(self, client):
+    async def test_get_projects(self, client: GitLabClient) -> None:
         """Test project fetching delegates to GraphQL client"""
         # Arrange
-        mock_projects = [{"id": 1, "name": "Test Project"}]
-        client.graphql.get_resource = MagicMock(
-            return_value=async_mock_generator([mock_projects])
-        )
+        mock_projects: list[dict[str, Any]] = [{"id": 1, "name": "Test Project"}]
+        
+        # Use a context manager for patching
+        with patch.object(client.graphql, 'get_resource', 
+                         return_value=async_mock_generator([mock_projects])) as mock_get_resource:
+            # Act
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_projects():
+                results.extend(batch)
 
-        # Act
-        results = []
-        async for batch in client.get_projects():
-            results.extend(batch)
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Project"
+            mock_get_resource.assert_called_once_with("projects")
 
-        # Assert
-        assert len(results) == 1
-        assert results[0]["name"] == "Test Project"
-        client.graphql.get_resource.assert_called_once_with("projects")
-
-    async def test_get_groups(self, client):
+    async def test_get_groups(self, client: GitLabClient) -> None:
         """Test group fetching delegates to REST client"""
         # Arrange
-        mock_groups = [{"id": 1, "name": "Test Group"}]
-        client.rest.get_resource = MagicMock(
-            return_value=async_mock_generator([mock_groups])
-        )
+        mock_groups: list[dict[str, Any]] = [{"id": 1, "name": "Test Group"}]
+        
+        # Use a context manager for patching
+        with patch.object(client.rest, 'get_resource',
+                         return_value=async_mock_generator([mock_groups])) as mock_get_resource:
+            # Act
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_groups():
+                results.extend(batch)
 
-        # Act
-        results = []
-        async for batch in client.get_groups():
-            results.extend(batch)
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Group"
+            mock_get_resource.assert_called_once_with(
+                "groups", params={"min_access_level": 30, "all_available": True}
+            )
 
-        # Assert
-        assert len(results) == 1
-        assert results[0]["name"] == "Test Group"
-        client.rest.get_resource.assert_called_once_with(
-            "groups", params={"min_access_level": 30, "all_available": True}
-        )
-
-    async def test_get_group_resource(self, client):
+    async def test_get_group_resource(self, client: GitLabClient) -> None:
         """Test group resource fetching delegates to REST client"""
         # Arrange
-        mock_issues = [{"id": 1, "title": "Test Issue"}]
-        group = {"id": "123"}
-        client.rest.get_group_resource = MagicMock(
-            return_value=async_mock_generator([mock_issues])
-        )
+        mock_issues: list[dict[str, Any]] = [{"id": 1, "title": "Test Issue"}]
+        group: dict[str, str] = {"id": "123"}
+        
+        # Use a context manager for patching
+        with patch.object(client.rest, 'get_group_resource',
+                         return_value=async_mock_generator([mock_issues])) as mock_get_group_resource:
+            # Act
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_group_resource(group, "issues"):
+                results.extend(batch)
 
-        # Act
-        results = []
-        async for batch in client.get_group_resource(group, "issues"):
-            results.extend(batch)
-
-        # Assert
-        assert len(results) == 1
-        assert results[0]["title"] == "Test Issue"
-        client.rest.get_group_resource.assert_called_once_with("123", "issues")
+            # Assert
+            assert len(results) == 1
+            assert results[0]["title"] == "Test Issue"
+            mock_get_group_resource.assert_called_once_with("123", "issues")
