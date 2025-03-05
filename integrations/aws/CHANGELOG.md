@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.107 (2025-03-03)
+## 0.2.108 (2025-03-05)
 
 
 ### Bug Fixes
@@ -17,8 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Improved logs
 - Introduced resource buffering to improve performance and reduce latency when using `use_get_resource_api`
+- Improved logs for better visibility
+
+
+## 0.2.107 (2025-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.0
 
 
 ## 0.2.106 (2025-02-26)

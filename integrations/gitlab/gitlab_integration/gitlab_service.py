@@ -179,11 +179,15 @@ class GitlabService:
             f"Searching project {project.path_with_namespace} for files with path pattern {path}"
         )
         gitlab_patterns = convert_glob_to_gitlab_patterns(path)
+
+        files_found = False
         async for matched_files in self._process_search_patterns(
             project, gitlab_patterns
         ):
             yield matched_files
-        else:
+            files_found = True
+
+        if not files_found:
             logger.info(
                 f"No files with content found for project {project.path_with_namespace} for path {path}"
             )
