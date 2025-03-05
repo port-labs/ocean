@@ -345,9 +345,8 @@ async def resync_cloudcontrol(
             method_name="list_resources",
             list_param="ResourceDescriptions",
         )
-        paginate_kwargs = {"TypeName": kind}
         try:
-            async for resources_batch in paginator.paginate(**paginate_kwargs):
+            async for resources_batch in paginator.paginate(TypeName=kind):
                 if not resources_batch:
                     continue
 

@@ -229,7 +229,7 @@ class AsyncPaginator:
             page_count += 1
 
     async def paginate(
-        self, batch_size: Optional[int] = None, **kwargs: Any
+        self, *, batch_size: Optional[int] = None, **kwargs: Any
     ) -> AsyncGenerator[List[Any], None]:
         """
         Guarantees that resources are paginated with consistent batch sizes.
