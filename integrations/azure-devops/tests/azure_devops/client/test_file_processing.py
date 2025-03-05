@@ -173,7 +173,9 @@ class TestFileProcessing:
         file_content = b'{"name": "test", "value": 123}'
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
-        result = await create_enriched_file_object(file_metadata, file_content, repo_metadata)
+        result = await create_enriched_file_object(
+            file_metadata, file_content, repo_metadata
+        )
 
         assert result is not None
         assert result["file"]["path"] == "test.json"
@@ -190,7 +192,9 @@ class TestFileProcessing:
         file_content = b"name: test\nvalue: 123"
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
-        result = await create_enriched_file_object(file_metadata, file_content, repo_metadata)
+        result = await create_enriched_file_object(
+            file_metadata, file_content, repo_metadata
+        )
 
         assert result is not None
         assert result["file"]["path"] == "test.yaml"
@@ -207,7 +211,9 @@ class TestFileProcessing:
         file_content = b'{"name": "test"}'
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
-        result = await create_enriched_file_object(file_metadata, file_content, repo_metadata)
+        result = await create_enriched_file_object(
+            file_metadata, file_content, repo_metadata
+        )
 
         assert result is not None
         assert result["file"]["size"] == 16
