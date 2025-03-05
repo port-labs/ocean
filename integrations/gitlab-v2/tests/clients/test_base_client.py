@@ -37,10 +37,13 @@ class TestGitLabClient:
         """Test project fetching delegates to GraphQL client"""
         # Arrange
         mock_projects: list[dict[str, Any]] = [{"id": 1, "name": "Test Project"}]
-        
+
         # Use a context manager for patching
-        with patch.object(client.graphql, 'get_resource', 
-                         return_value=async_mock_generator([mock_projects])) as mock_get_resource:
+        with patch.object(
+            client.graphql,
+            "get_resource",
+            return_value=async_mock_generator([mock_projects]),
+        ) as mock_get_resource:
             # Act
             results: list[dict[str, Any]] = []
             async for batch in client.get_projects():
@@ -55,10 +58,13 @@ class TestGitLabClient:
         """Test group fetching delegates to REST client"""
         # Arrange
         mock_groups: list[dict[str, Any]] = [{"id": 1, "name": "Test Group"}]
-        
+
         # Use a context manager for patching
-        with patch.object(client.rest, 'get_resource',
-                         return_value=async_mock_generator([mock_groups])) as mock_get_resource:
+        with patch.object(
+            client.rest,
+            "get_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
             # Act
             results: list[dict[str, Any]] = []
             async for batch in client.get_groups():
@@ -76,10 +82,13 @@ class TestGitLabClient:
         # Arrange
         mock_issues: list[dict[str, Any]] = [{"id": 1, "title": "Test Issue"}]
         group: dict[str, str] = {"id": "123"}
-        
+
         # Use a context manager for patching
-        with patch.object(client.rest, 'get_group_resource',
-                         return_value=async_mock_generator([mock_issues])) as mock_get_group_resource:
+        with patch.object(
+            client.rest,
+            "get_group_resource",
+            return_value=async_mock_generator([mock_issues]),
+        ) as mock_get_group_resource:
             # Act
             results: list[dict[str, Any]] = []
             async for batch in client.get_group_resource(group, "issues"):
