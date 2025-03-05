@@ -2,8 +2,8 @@ import typing
 from typing import Any
 
 from loguru import logger
-from integrations.pagerduty.webhook_processors.incidents import IncidentWebhookProcessor
-from integrations.pagerduty.webhook_processors.services import ServiceWebhookProcessor
+from webhook_processors.incidents import IncidentWebhookProcessor
+from webhook_processors.services import ServiceWebhookProcessor
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
