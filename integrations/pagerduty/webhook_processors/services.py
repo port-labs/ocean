@@ -1,6 +1,6 @@
-from integrations.pagerduty.clients.pagerduty import PagerDutyClient
-from integrations.pagerduty.kinds import Kinds
-from integrations.pagerduty.webhook_processors.abstract import (
+from clients.pagerduty import PagerDutyClient
+from kinds import Kinds
+from webhook_processors.abstract import (
     PagerdutyAbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig

@@ -58,7 +58,7 @@ def incident_webhook_processor(
 @pytest.fixture
 def mock_client() -> Generator[MagicMock, None, None]:
     with patch(
-        "integrations.pagerduty.webhook_processors.services.PagerDutyClient"
+        "webhook_processors.services.PagerDutyClient"
     ) as mock:
         client = MagicMock()
         client.service_upsert_events = ["service.created", "service.updated"]
@@ -267,7 +267,7 @@ class TestIncidentWebhookProcessor:
             "event": {"event_type": "incident.triggered", "data": {"id": incident_id}}
         }
         with patch(
-            "integrations.pagerduty.clients.pagerduty.PagerDutyClient.from_ocean_configuration",
+            "clients.pagerduty.PagerDutyClient.from_ocean_configuration",
             return_value=mock_client,
         ):
             result = await incident_webhook_processor.handle_event(
@@ -282,5 +282,5 @@ class TestIncidentWebhookProcessor:
             object_type=Kinds.INCIDENTS, identifier=incident_id
         )
         mock_client.enrich_incidents_with_analytics_data.assert_called_once_with(
-            mock_client, [incident_data]
+            [incident_data]
         )
