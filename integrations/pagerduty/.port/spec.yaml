@@ -28,6 +28,8 @@ configurations:
     description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in PagerDuty
 saas:
   enabled: true
+  liveEvents:
+    enabled: true
   oauthConfiguration:
     requiredSecrets:
       - name: token
