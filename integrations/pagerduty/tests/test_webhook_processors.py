@@ -256,14 +256,23 @@ class TestIncidentWebhookProcessor:
         }
 
         # Mock the API responses
-        mock_client.get_singular_from_pager_duty = AsyncMock(return_value={"incident": incident_data})
-        mock_client.enrich_incidents_with_analytics_data = AsyncMock(return_value=[incident_data])
+        mock_client.get_singular_from_pager_duty = AsyncMock(
+            return_value={"incident": incident_data}
+        )
+        mock_client.enrich_incidents_with_analytics_data = AsyncMock(
+            return_value=[incident_data]
+        )
 
         payload = {
             "event": {"event_type": "incident.triggered", "data": {"id": incident_id}}
         }
-        with patch("integrations.pagerduty.clients.pagerduty.PagerDutyClient.from_ocean_configuration", return_value=mock_client):
-            result = await incident_webhook_processor.handle_event(payload, resource_config)
+        with patch(
+            "integrations.pagerduty.clients.pagerduty.PagerDutyClient.from_ocean_configuration",
+            return_value=mock_client,
+        ):
+            result = await incident_webhook_processor.handle_event(
+                payload, resource_config
+            )
             assert isinstance(result, WebhookEventRawResults)
             assert result.updated_raw_results == [incident_data]
             assert result.deleted_raw_results == []
