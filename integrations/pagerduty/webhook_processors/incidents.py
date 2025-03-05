@@ -31,7 +31,7 @@ class IncidentWebhookProcessor(PagerdutyAbstractWebhookProcessor):
             object_type=Kinds.INCIDENTS, identifier=incident_id
         )
         enriched_incident = await client.enrich_incidents_with_analytics_data(
-            client, [incident["incident"]] if incident.get("incident") else []
+            [incident["incident"]] if incident.get("incident") else []
         )
         return WebhookEventRawResults(
             updated_raw_results=enriched_incident,
