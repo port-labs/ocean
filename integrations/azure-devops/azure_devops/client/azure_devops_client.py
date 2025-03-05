@@ -1,11 +1,12 @@
 import asyncio
 import json
-from typing import Any, AsyncGenerator, Optional, List, Union
+from typing import Any, AsyncGenerator, Optional, List
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
+from enum import StrEnum
 
 from azure_devops.webhooks.webhook_event import WebhookEvent
 
@@ -17,6 +18,14 @@ from .file_processing import (
     process_file_content,
 )
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+
+
+class RecursionLevel(StrEnum):
+    """Azure DevOps API recursion level options."""
+
+    ONE_LEVEL = "OneLevel"
+    FULL = "Full"
+
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -497,12 +506,6 @@ class AzureDevopsClient(HTTPBaseClient):
             file_path, repository_id, "Commit", commit_id
         )
 
-    def does_pattern_apply(self, pattern: Union[str, List[str]], string: str) -> bool:
-        return match_pattern(pattern, string)
-
-    def convert_glob_to_patterns(self, pattern: Union[str, List[str]]) -> List[str]:
-        return expand_patterns(pattern)
-
     async def _fetch_and_process_file(
         self,
         file: dict[str, Any],
@@ -528,15 +531,7 @@ class AzureDevopsClient(HTTPBaseClient):
         repos: Optional[list[str]] = None,
         max_depth: Optional[int] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """
-        Iterates through repositories and returns files matching the path pattern with optimized retrieval.
-        Uses process_in_queue for efficient concurrent processing.
-
-        Args:
-            path: Glob pattern(s) to match files (e.g., '**/package.json')
-            repos: Optional list of repository names to filter by
-            max_depth: Optional maximum directory depth to search (None for unlimited)
-        """
+        """Main entry point for file discovery and processing."""
 
         def is_invalid_pattern(pattern: str) -> bool:
             """Returns True if the pattern is considered overly broad."""
@@ -572,21 +567,21 @@ class AzureDevopsClient(HTTPBaseClient):
 
             tasks = []
             for repo in repositories_to_process:
-                tasks.append(self._process_repository(repo, patterns, max_depth))
+                tasks.append(self._stream_repository_files(repo, patterns, max_depth))
 
             async for batch in stream_async_iterators_tasks(*tasks):
                 if batch:
                     yield batch
 
-    async def _process_repository(
+    async def _stream_repository_files(
         self,
         repository: dict[str, Any],
         patterns: List[str],
         max_depth: Optional[int],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Process a single repository and yield its matching files in batches."""
+        """Streams matching files from a repository."""
         try:
-            logger.info(f"Processing repository {repository['name']}")
+            logger.info(f"Streaming files from repository {repository['name']}")
 
             if not (branch := repository.get("defaultBranch")):
                 logger.warning(
@@ -597,12 +592,11 @@ class AzureDevopsClient(HTTPBaseClient):
             branch = branch.replace("refs/heads/", "")
             project_id = repository["project"]["id"]
             repository_id = repository["id"]
-            current_batch = []
 
             base_paths = get_base_paths(patterns)
             for base_path in base_paths:
                 try:
-                    matching_files = await self._process_repository_path(
+                    async for file in self._stream_matching_files_in_path(
                         repository=repository,
                         project_id=project_id,
                         repository_id=repository_id,
@@ -610,18 +604,14 @@ class AzureDevopsClient(HTTPBaseClient):
                         branch=branch,
                         patterns=patterns,
                         max_depth=max_depth,
-                    )
-
-                    for file in matching_files:
+                    ):
                         try:
-                            processed_file = await self._fetch_and_process_file(
+                            if processed_file := await self._fetch_and_process_file(
                                 file, repository_id, branch, repository
-                            )
-                            if processed_file:
-                                current_batch.append(processed_file)
-                                if len(current_batch) >= MAX_CONCURRENT_FILE_DOWNLOADS:
-                                    yield current_batch
-                                    current_batch = []
+                            ):
+                                yield [
+                                    processed_file
+                                ]  # Yield single-item list for consistency
                         except Exception as e:
                             logger.error(
                                 f"Error processing file {file.get('path')}: {str(e)}"
@@ -632,13 +622,10 @@ class AzureDevopsClient(HTTPBaseClient):
                     logger.error(f"Error processing base path {base_path}: {str(e)}")
                     continue
 
-            if current_batch:
-                yield current_batch
-
         except Exception as e:
             logger.error(f"Failed to process repository {repository['name']}: {str(e)}")
 
-    async def _process_repository_path(
+    async def _stream_matching_files_in_path(
         self,
         repository: dict[str, Any],
         project_id: str,
@@ -647,74 +634,70 @@ class AzureDevopsClient(HTTPBaseClient):
         branch: str,
         patterns: List[str],
         max_depth: Optional[int],
-    ) -> List[dict[str, Any]]:
-        """Get matching files from a repository path."""
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Streams files matching the given patterns in a specific repository path."""
         try:
-
-            def process_items(
-                items: List[dict[str, Any]],
-                patterns: List[str],
-                seen_paths: set[str],
-                allow_nested: bool = True,
-            ) -> List[dict[str, Any]]:
-                """Helper function to process items against patterns."""
-                result = []
-                for item in items:
-                    if item.get("isFolder"):
-                        continue
-
-                    file_path = item.get("path", "").lstrip("/")
-                    if (
-                        file_path in seen_paths
-                        or (not allow_nested and "/" in file_path)
-                        or not file_path.lower().endswith((".json", ".yaml", ".yml"))
-                    ):
-                        continue
-
-                    if any(match_pattern(p, file_path) for p in patterns):
-                        result.append(item)
-                        seen_paths.add(file_path)
-                return result
-
-            matching_files = []
             seen_paths: set[str] = set()
 
             # Process root-level files
             root_patterns = [p for p in patterns if p.startswith("*.") or p == "*"]
             if root_patterns:
-                root_items = await self._get_repository_items(
-                    project_id, repository_id, "/", branch, "OneLevel"
+                items = await self._list_repository_items(
+                    project_id, repository_id, "/", branch, RecursionLevel.ONE_LEVEL
                 )
-                matching_files.extend(
-                    process_items(
-                        root_items, root_patterns, seen_paths, allow_nested=False
-                    )
-                )
+                async for item in self._filter_matching_files(
+                    items, root_patterns, seen_paths, allow_nested=False
+                ):
+                    yield item
 
             # Process directory patterns
             dir_patterns = [p for p in patterns if not (p.startswith("*.") or p == "*")]
             if dir_patterns:
-                items = await self._get_repository_items(
-                    project_id,
-                    repository_id,
-                    base_path,
-                    branch,
-                    "Full" if max_depth is None or max_depth > 0 else "OneLevel",
+                recursion_level = (
+                    RecursionLevel.ONE_LEVEL if max_depth == 1 else RecursionLevel.FULL
                 )
-                matching_files.extend(process_items(items, dir_patterns, seen_paths))
+                items = await self._list_repository_items(
+                    project_id, repository_id, base_path, branch, recursion_level
+                )
+                async for item in self._filter_matching_files(
+                    items, dir_patterns, seen_paths
+                ):
+                    yield item
 
             logger.info(
-                f"Found {len(matching_files)} matching files in {repository['name']} at path {base_path}"
+                f"Completed streaming files from {repository['name']} at path {base_path}"
             )
-            return matching_files
 
         except Exception as e:
             logger.warning(
                 f"Failed to process path {base_path} in {repository['name']}: {str(e)}"
             )
-            return []
 
-    async def _get_repository_items(
+    async def _filter_matching_files(
+        self,
+        items: List[dict[str, Any]],
+        patterns: List[str],
+        seen_paths: set[str],
+        allow_nested: bool = True,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Filter and yield matching files based on patterns and constraints."""
+        for item in items:
+            if item.get("isFolder"):
+                continue
+
+            file_path = item.get("path", "").lstrip("/")
+            if (
+                file_path in seen_paths
+                or (not allow_nested and "/" in file_path)
+                or not file_path.lower().endswith((".json", ".yaml", ".yml"))
+            ):
+                continue
+
+            if any(match_pattern(p, file_path) for p in patterns):
+                seen_paths.add(file_path)
+                yield item
+
+    async def _list_repository_items(
         self,
         project_id: str,
         repository_id: str,
@@ -722,7 +705,7 @@ class AzureDevopsClient(HTTPBaseClient):
         branch: str,
         recursion_level: str,
     ) -> List[dict[str, Any]]:
-        """Helper method to get repository items."""
+        """Lists items in a repository path with specified recursion level."""
         items_url = f"{self._organization_base_url}/{project_id}/_apis/git/repositories/{repository_id}/items"
         params = {
             "recursionLevel": recursion_level,
