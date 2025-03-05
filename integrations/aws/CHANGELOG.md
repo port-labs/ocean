@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Introduced a custom pagination utility `AsyncPaginator` to resolve issue where paginated requests return an uncontrollable large number resources
 - Detached SQS from cloudcontrol API to resolve bug where the cloudcontrol fails to return `NextToken` to facilitate pagination for the SQS kind
 
+### Improvements
+
+- Improved logs
+- Introduced resource buffering to improve performance and reduce latency when using `use_get_resource_api`
+
 
 ## 0.2.106 (2025-02-26)
 

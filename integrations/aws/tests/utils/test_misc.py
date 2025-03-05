@@ -4,7 +4,7 @@ from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     AsyncPaginator,
 )
-from typing import Optional, Dict, Any, AsyncGenerator, List
+from typing import Optional, Dict, Any, AsyncGenerator
 import unittest
 from utils.overrides import AWSResourceConfig, AWSDescribeResourcesSelector
 from port_ocean.core.handlers.port_app_config.models import (
@@ -135,7 +135,7 @@ class TestAsyncPaginator:
             paginator = AsyncPaginator(client, "list_resources", "ResourceDescriptions")
             batches = []
 
-            async for batch in paginator.batch_paginate(
+            async for batch in paginator.paginate(
                 batch_size=1, TypeName="AWS::S3::Bucket"
             ):
                 batches.append(batch)
