@@ -96,7 +96,7 @@ async def search_all_resources_in_project(
 
             except PermissionDenied as e:
                 logger.error(
-                    f"Service account doesn't have permissions to search all resources within project {project_name} for kind {asset_type}. Error: {str(e)}"
+                    f"Service account doesn't have permissions to search all resources within project {project_name} for kind {asset_type}. Error: {str(e.message)}"
                 )
             except NotFound as e:
                 logger.info(
@@ -134,7 +134,7 @@ async def list_all_topics_per_project(
                 yield topics
         except PermissionDenied as e:
             logger.error(
-                f"Service account doesn't have permissions to list topics from project {project_name}. Error: {str(e)}"
+                f"Service account doesn't have permissions to list topics from project {project_name}. Error: {str(e.message)}"
             )
         except NotFound as e:
             logger.info(
@@ -170,7 +170,7 @@ async def list_all_subscriptions_per_project(
                 yield subscriptions
         except PermissionDenied as e:
             logger.error(
-                f"Service account doesn't have permissions to list subscriptions from project {project_name}. Error: {str(e)}"
+                f"Service account doesn't have permissions to list subscriptions from project {project_name}. Error: {str(e.message)}"
             )
         except NotFound as e:
             logger.info(
