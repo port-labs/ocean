@@ -151,17 +151,3 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-
-# Pycharm
-.idea
-!.idea/watcherTasks.xml
-
-# VSCode
-.vscode/*
-!.vscode/launch.json
-
-# Junit
-
-junit/*
-**/junit/*
-config.yaml
