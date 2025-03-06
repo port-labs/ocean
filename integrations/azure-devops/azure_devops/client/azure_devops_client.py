@@ -580,7 +580,7 @@ class AzureDevopsClient(HTTPBaseClient):
         all_patterns = root_patterns + directory_patterns
 
         async for repositories in self.generate_repositories(
-            include_disabled_repositories=False
+            include_disabled_repositories=True
         ):
             if not repositories:
                 logger.warning("No repositories found. Skipping file discovery.")
