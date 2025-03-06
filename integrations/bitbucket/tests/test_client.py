@@ -1,44 +1,82 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Generator
 from client import BitbucketClient
 
 
 @pytest.fixture
-def mock_client(mock_http_client: AsyncClient) -> BitbucketClient:
-    """Create BitbucketClient with mocked HTTP client."""
-    return BitbucketClient(
-        workspace="test_workspace", username="test_user", app_password="test_password"
-    )
+def mock_http_client() -> AsyncClient:
+    """Create a mock HTTP client."""
+    return AsyncMock(spec=AsyncClient)
+
+
+@pytest.fixture
+def mock_integration_config() -> Generator[dict[str, str], None, None]:
+    """Mock the ocean integration config."""
+    config = {
+        "bitbucket_workspace": "test_workspace",
+        "bitbucket_username": "test_user",
+        "bitbucket_app_password": "test_password",
+    }
+    with patch(
+        "port_ocean.context.ocean.PortOceanContext.integration_config",
+        new_callable=PropertyMock,
+    ) as mock_config:
+        mock_config.return_value = config
+        yield config
+
+
+@pytest.fixture
+async def mock_client(
+    mock_integration_config: dict[str, str], mock_http_client: AsyncClient
+) -> BitbucketClient:
+    """Create BitbucketClient using create_from_ocean_config."""
+    with patch("client.http_async_client", mock_http_client):
+        return BitbucketClient.create_from_ocean_config()
 
 
 @pytest.mark.asyncio
 async def test_client_init_with_token() -> None:
     """Test client initialization with token auth."""
-    client = BitbucketClient(workspace="test_workspace", workspace_token="test_token")
-    assert "Bearer test_token" in client.headers["Authorization"]
+    config = {
+        "bitbucket_workspace": "test_workspace",
+        "bitbucket_workspace_token": "test_token",
+    }
+    with patch(
+        "port_ocean.context.ocean.PortOceanContext.integration_config",
+        new_callable=PropertyMock,
+    ) as mock_config:
+        mock_config.return_value = config
+        client = BitbucketClient.create_from_ocean_config()
+        assert "Bearer test_token" in client.headers["Authorization"]
 
 
 @pytest.mark.asyncio
-async def test_client_init_with_app_password() -> None:
+async def test_client_init_with_app_password(
+    mock_integration_config: dict[str, str]
+) -> None:
     """Test client initialization with app password auth."""
-    client = BitbucketClient(
-        workspace="test_workspace", username="test_user", app_password="test_password"
-    )
+    client = BitbucketClient.create_from_ocean_config()
     assert "Basic" in client.headers["Authorization"]
 
 
 @pytest.mark.asyncio
 async def test_client_init_no_auth() -> None:
     """Test client initialization with no auth raises error."""
-    with pytest.raises(ValueError) as exc_info:
-        BitbucketClient(workspace="test_workspace")
-    assert (
-        "Either workspace_token or both username and app_password must be provided"
-        in str(exc_info.value)
-    )
+    config = {"bitbucket_workspace": "test_workspace"}
+    with patch(
+        "port_ocean.context.ocean.PortOceanContext.integration_config",
+        new_callable=PropertyMock,
+    ) as mock_config:
+        mock_config.return_value = config
+        with pytest.raises(ValueError) as exc_info:
+            BitbucketClient.create_from_ocean_config()
+        assert (
+            "Either workspace_token or both username and app_password must be provided"
+            in str(exc_info.value)
+        )
 
 
 @pytest.mark.asyncio

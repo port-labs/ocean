@@ -20,20 +20,14 @@ async def on_start() -> None:
     logger.info("Starting Port Ocean Bitbucket integration")
 
 
-async def init_client() -> BitbucketClient:
-    client = BitbucketClient(
-        workspace=ocean.integration_config["bitbucket_workspace"],
-        username=ocean.integration_config.get("bitbucket_username"),
-        app_password=ocean.integration_config.get("bitbucket_app_password"),
-        workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
-    )
-    return client
+def init_client() -> BitbucketClient:
+    return BitbucketClient.create_from_ocean_config()
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all projects in the workspace."""
-    client = await init_client()
+    client = init_client()
     async for projects in client.get_projects():
         yield projects
 
@@ -41,7 +35,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the workspace."""
-    client = await init_client()
+    client = init_client()
     async for repositories in client.get_repositories():
         yield repositories
 
@@ -49,7 +43,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests from all repositories."""
-    client = await init_client()
+    client = init_client()
     async for repositories in client.get_repositories():
         for repo in repositories:
             repo_slug = repo.get("slug", repo["name"].lower())
@@ -68,7 +62,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_names = extract_repo_names_from_patterns(folder_patterns)
     if not repo_names:
         return
-    client = await init_client()
+    client = init_client()
     pattern_by_repo = create_pattern_mapping(folder_patterns)
     async for repos_batch in client.get_repositories():
         for repo in repos_batch:

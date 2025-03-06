@@ -4,6 +4,7 @@ from httpx import HTTPStatusError, Timeout
 from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.context.ocean import ocean
 import base64
 
 
@@ -53,6 +54,16 @@ class BitbucketClient:
                 "Either workspace_token or both username and app_password must be provided"
             )
         self.client.headers.update(self.headers)
+
+    @classmethod
+    def create_from_ocean_config(cls) -> "BitbucketClient":
+        bitbucket_client = cls(
+            workspace=ocean.integration_config["bitbucket_workspace"],
+            username=ocean.integration_config.get("bitbucket_username"),
+            app_password=ocean.integration_config.get("bitbucket_app_password"),
+            workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
+        )
+        return bitbucket_client
 
     async def _send_api_request(
         self,
