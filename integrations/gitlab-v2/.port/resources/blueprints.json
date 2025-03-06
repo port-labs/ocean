@@ -14,14 +14,6 @@
           "title": "Description",
           "type": "string"
         },
-        "namespace": {
-          "title": "Namespace",
-          "type": "string"
-        },
-        "fullPath": {
-          "title": "Full Path",
-          "type": "string"
-        },
         "defaultBranch": {
           "title": "Default Branch",
           "type": "string"
