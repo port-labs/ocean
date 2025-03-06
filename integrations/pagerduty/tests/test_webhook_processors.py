@@ -158,7 +158,7 @@ class TestServiceWebhookProcessor:
         }
 
         # Mock the API responses
-        mock_client.get_singular_from_pager_duty = AsyncMock(
+        mock_client.get_single_resource = AsyncMock(
             return_value={"service": service_data}
         )
         mock_client.update_oncall_users = AsyncMock(return_value=[service_data])
@@ -173,7 +173,7 @@ class TestServiceWebhookProcessor:
         assert result.deleted_raw_results == []
 
         # Verify the client methods were called correctly
-        mock_client.get_singular_from_pager_duty.assert_called_once_with(
+        mock_client.get_single_resource.assert_called_once_with(
             object_type=Kinds.SERVICES, identifier=service_id
         )
         mock_client.update_oncall_users.assert_called_once_with([service_data])
@@ -254,7 +254,7 @@ class TestIncidentWebhookProcessor:
         }
 
         # Mock the API responses
-        mock_client.get_singular_from_pager_duty = AsyncMock(
+        mock_client.get_single_resource = AsyncMock(
             return_value={"incident": incident_data}
         )
         mock_client.enrich_incidents_with_analytics_data = AsyncMock(
@@ -276,7 +276,7 @@ class TestIncidentWebhookProcessor:
             assert result.deleted_raw_results == []
 
         # Verify the client methods were called correctly
-        mock_client.get_singular_from_pager_duty.assert_called_once_with(
+        mock_client.get_single_resource.assert_called_once_with(
             object_type=Kinds.INCIDENTS, identifier=incident_id
         )
         mock_client.enrich_incidents_with_analytics_data.assert_called_once_with(

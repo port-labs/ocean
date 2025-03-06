@@ -27,7 +27,7 @@ class IncidentWebhookProcessor(PagerdutyAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         client = PagerDutyClient.from_ocean_configuration()
         incident_id = payload.get("event", {}).get("data", {}).get("id")
-        incident = await client.get_singular_from_pager_duty(
+        incident = await client.get_single_resource(
             object_type=Kinds.INCIDENTS, identifier=incident_id
         )
         enriched_incident = await client.enrich_incidents_with_analytics_data(

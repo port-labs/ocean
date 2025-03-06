@@ -130,7 +130,7 @@ class PagerDutyClient(OAuthClient):
                 )
                 raise
 
-    async def get_singular_from_pager_duty(
+    async def get_single_resource(
         self, object_type: str, identifier: str
     ) -> dict[str, Any]:
         try:

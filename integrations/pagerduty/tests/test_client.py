@@ -91,14 +91,14 @@ class TestPagerDutyClient:
 
             assert collected_data == TEST_DATA["users"]
 
-    async def test_get_singular_from_pager_duty(self, client: PagerDutyClient) -> None:
+    async def test_get_single_resource(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {"user": TEST_DATA["users"][0]}
 
         with patch(
             "port_ocean.utils.http_async_client.request", return_value=mock_response
         ):
-            result = await client.get_singular_from_pager_duty("users", "PU123")
+            result = await client.get_single_resource("users", "PU123")
             assert result == {"user": TEST_DATA["users"][0]}
 
     async def test_create_webhooks_if_not_exists(self, client: PagerDutyClient) -> None:

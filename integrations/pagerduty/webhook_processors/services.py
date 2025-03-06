@@ -34,7 +34,7 @@ class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
                 deleted_raw_results=[payload.get("event", {}).get("data")],
             )
         service_id = payload.get("event", {}).get("data", {}).get("id")
-        response = await client.get_singular_from_pager_duty(
+        response = await client.get_single_resource(
             object_type=Kinds.SERVICES, identifier=service_id
         )
         services = await client.update_oncall_users([response["service"]])
