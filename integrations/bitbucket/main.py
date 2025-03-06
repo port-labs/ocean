@@ -36,14 +36,14 @@ async def on_start() -> None:
         logger.warning("No base URL configured, skipping webhook creation")
         return
 
-    webhook_client = await init_webhook_client()
-    await webhook_client.create_webhooks(base_url)
+    webhook_client = init_webhook_client()
+    await webhook_client.create_webhook(base_url)
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all projects in the workspace."""
-    client = await init_client()
+    client = init_client()
     async for projects in client.get_projects():
         yield projects
 
@@ -51,7 +51,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the workspace."""
-    client = await init_client()
+    client = init_client()
     async for repositories in client.get_repositories():
         yield repositories
 
@@ -59,7 +59,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests from all repositories."""
-    client = await init_client()
+    client = init_client()
     async for repositories in client.get_repositories():
         for repo in repositories:
             repo_slug = repo.get("slug", repo["name"].lower())
@@ -78,7 +78,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_names = extract_repo_names_from_patterns(folder_patterns)
     if not repo_names:
         return
-    client = await init_client()
+    client = init_client()
     pattern_by_repo = create_pattern_mapping(folder_patterns)
     async for repos_batch in client.get_repositories():
         for repo in repos_batch:
