@@ -16,10 +16,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         return (
-            event.payload.get("event", {}).get("event_type")
-            in SERVICE_UPSERT_EVENTS
-            or event.payload.get("event", {}).get("event_type")
-            in SERVICE_DELETE_EVENTS
+            event.payload.get("event", {}).get("event_type") in SERVICE_UPSERT_EVENTS
+            or event.payload.get("event", {}).get("event_type") in SERVICE_DELETE_EVENTS
         )
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
