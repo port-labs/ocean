@@ -1,3 +1,4 @@
+from loguru import logger
 from clients.pagerduty import PagerDutyClient
 from consts import SERVICE_DELETE_EVENTS, SERVICE_UPSERT_EVENTS
 from kinds import Kinds
@@ -28,12 +29,16 @@ class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         client = PagerDutyClient.from_ocean_configuration()
+        service_id = payload.get("event", {}).get("data", {}).get("id")
         if payload.get("event", {}).get("event_type") in SERVICE_DELETE_EVENTS:
+            logger.info(f"Service {service_id} was deleted")
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[payload.get("event", {}).get("data")],
             )
-        service_id = payload.get("event", {}).get("data", {}).get("id")
+        logger.info(
+            f"Got event for service {service_id}: {payload.get('event', {}).get('event_type')}"
+        )
         response = await client.get_single_resource(
             object_type=Kinds.SERVICES, identifier=service_id
         )
