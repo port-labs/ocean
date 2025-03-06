@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import AsyncClient, HTTPStatusError, Response
 from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Iterator
-from client import BitbucketClient
+from bitbucket_integration.client import BitbucketClient
 
 
 class AsyncIteratorMock:
