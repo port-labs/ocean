@@ -1,4 +1,5 @@
 from clients.pagerduty import PagerDutyClient
+from consts import INCIDENT_UPSERT_EVENTS
 from kinds import Kinds
 from webhook_processors.abstract import (
     PagerdutyAbstractWebhookProcessor,
@@ -13,10 +14,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 class IncidentWebhookProcessor(PagerdutyAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        client = PagerDutyClient.from_ocean_configuration()
         return (
             event.payload.get("event", {}).get("event_type")
-            in client.incident_upsert_events
+            in INCIDENT_UPSERT_EVENTS
         )
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:

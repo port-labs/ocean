@@ -59,13 +59,6 @@ def incident_webhook_processor(
 def mock_client() -> Generator[MagicMock, None, None]:
     with patch("webhook_processors.services.PagerDutyClient") as mock:
         client = MagicMock()
-        client.service_upsert_events = ["service.created", "service.updated"]
-        client.service_delete_events = ["service.deleted"]
-        client.incident_upsert_events = [
-            "incident.triggered",
-            "incident.acknowledged",
-            "incident.resolved",
-        ]
         mock.from_ocean_configuration.return_value = client
         yield client
 

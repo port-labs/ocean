@@ -1,4 +1,5 @@
 from clients.pagerduty import PagerDutyClient
+from consts import SERVICE_DELETE_EVENTS, SERVICE_UPSERT_EVENTS
 from kinds import Kinds
 from webhook_processors.abstract import (
     PagerdutyAbstractWebhookProcessor,
@@ -13,12 +14,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        client = PagerDutyClient.from_ocean_configuration()
         return (
             event.payload.get("event", {}).get("event_type")
-            in client.service_upsert_events
+            in SERVICE_UPSERT_EVENTS
             or event.payload.get("event", {}).get("event_type")
-            in client.service_delete_events
+            in SERVICE_DELETE_EVENTS
         )
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -28,7 +28,7 @@ class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         client = PagerDutyClient.from_ocean_configuration()
-        if payload.get("event", {}).get("event_type") in client.service_delete_events:
+        if payload.get("event", {}).get("event_type") in SERVICE_DELETE_EVENTS:
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[payload.get("event", {}).get("data")],

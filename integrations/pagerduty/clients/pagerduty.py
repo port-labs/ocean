@@ -3,6 +3,7 @@ from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
 from loguru import logger
+from consts import ALL_EVENTS
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
@@ -47,45 +48,6 @@ class PagerDutyClient(OAuthClient):
             auth_token = self.token
         request.headers["Authorization"] = self._get_auth_header(auth_token)
         return request
-
-    @property
-    def incident_upsert_events(self) -> list[str]:
-        return [
-            "incident.acknowledged",
-            "incident.annotated",
-            "incident.delegated",
-            "incident.escalated",
-            "incident.priority_updated",
-            "incident.reassigned",
-            "incident.reopened",
-            "incident.resolved",
-            "incident.status_update_published",
-            "incident.responder.added",
-            "incident.responder.replied",
-            "incident.triggered",
-            "incident.unacknowledged",
-        ]
-
-    @property
-    def service_upsert_events(self) -> list[str]:
-        return [
-            "service.created",
-            "service.updated",
-        ]
-
-    @property
-    def service_delete_events(self) -> list[str]:
-        return [
-            "service.deleted",
-        ]
-
-    @property
-    def all_events(self) -> list[str]:
-        return (
-            self.incident_upsert_events
-            + self.service_upsert_events
-            + self.service_delete_events
-        )
 
     @property
     def headers(self) -> dict[str, Any]:
@@ -167,7 +129,7 @@ class PagerDutyClient(OAuthClient):
                     "url": invoke_url,
                 },
                 "description": "Port Ocean Integration",
-                "events": self.all_events,
+                "events": ALL_EVENTS,
                 "filter": {"type": "account_reference"},
                 "type": "webhook_subscription",
             }

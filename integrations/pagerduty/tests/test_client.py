@@ -264,18 +264,6 @@ class TestPagerDutyClient:
                 assert transformed[0]["users"][0]["__email"] == "user1@example.com"
                 assert transformed[0]["users"][1]["__email"] == "user2@example.com"
 
-    def test_client_properties(self, client: PagerDutyClient) -> None:
-        # Test events lists
-        assert len(client.incident_upsert_events) > 0
-        assert len(client.service_upsert_events) > 0
-        assert len(client.service_delete_events) > 0
-
-        # Verify all_events combines all event types
-        all_events = client.all_events
-        assert set(client.incident_upsert_events).issubset(set(all_events))
-        assert set(client.service_upsert_events).issubset(set(all_events))
-        assert set(client.service_delete_events).issubset(set(all_events))
-
     def test_from_ocean_configuration(self) -> None:
         client = PagerDutyClient.from_ocean_configuration()
 
