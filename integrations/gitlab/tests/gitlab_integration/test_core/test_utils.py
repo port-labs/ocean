@@ -30,8 +30,7 @@ from gitlab_integration.core.utils import (
         (["", "foo*"], "food", True),
         (["**/port.yml", "**/port.yaml"], "port.yml", True),
         ("**/port.yml", "port.yml", True),
-        # an important test case we need to pass but doesn't
-        ("**port.yaml", "port.yml", False),
+        ("**port.yaml", "port.yaml", True),
     ],
 )
 def test_does_pattern_apply(
