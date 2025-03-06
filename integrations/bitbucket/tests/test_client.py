@@ -1,25 +1,9 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import AsyncClient, HTTPStatusError, Response
+from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
-from typing import Any, AsyncIterator, Iterator
+from typing import Any, AsyncIterator
 from client import BitbucketClient
-
-
-class AsyncIteratorMock:
-    """Helper class to mock async iterators."""
-
-    def __init__(self, items: Iterator[Any]) -> None:
-        self.items = items
-
-    def __aiter__(self) -> "AsyncIteratorMock":
-        return self
-
-    async def __anext__(self) -> Any:
-        try:
-            return next(self.items)
-        except StopIteration:
-            raise StopAsyncIteration
 
 
 @pytest.fixture
@@ -100,18 +84,36 @@ async def test_send_api_request_with_params(mock_client: BitbucketClient) -> Non
 
 @pytest.mark.asyncio
 async def test_send_api_request_error(mock_client: BitbucketClient) -> None:
-    """Test API request with error response."""
-    error_response = Response(400, json={"error": {"message": "Test error"}})
-    mock_error = HTTPStatusError(
-        "Test error", request=MagicMock(), response=error_response
+    """Test API request with error response and error message extraction."""
+    # Create a mock response with a 400 status code and error message
+    mock_response = MagicMock()
+    mock_response.status_code = 400
+    mock_response.json.return_value = {"error": {"message": "Test error message"}}
+
+    original_error = HTTPStatusError(
+        "400 Client Error", request=MagicMock(), response=mock_response
     )
-    with patch.object(
-        mock_client.client, "request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.side_effect = mock_error
+    mock_response.raise_for_status.side_effect = original_error
+
+    with (
+        patch.object(
+            mock_client.client, "request", new_callable=AsyncMock
+        ) as mock_request,
+        patch("client.logger.error") as mock_logger,
+    ):
+        mock_request.return_value = mock_response
+
         with pytest.raises(HTTPStatusError) as exc_info:
             await mock_client._send_api_request("test/endpoint")
-        assert "Test error" in str(exc_info.value)
+
+        assert exc_info.value == original_error
+        mock_logger.assert_called_once_with("Bitbucket API error: Test error message")
+        mock_request.assert_called_once_with(
+            method="GET",
+            url="https://api.bitbucket.org/2.0/test/endpoint",
+            params=None,
+            json=None,
+        )
 
 
 @pytest.mark.asyncio
@@ -126,11 +128,18 @@ async def test_send_paginated_api_request(mock_client: BitbucketClient) -> None:
         mock_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [page1, page2]
-        results = []
+        batches = []
         async for batch in mock_client._send_paginated_api_request("test/endpoint"):
-            results.extend(batch)
-        assert len(results) == 3
-        assert [item["id"] for item in results] == [1, 2, 3]
+            batches.append(batch)
+
+        assert batches[0] == [{"id": 1}, {"id": 2}]
+        assert batches[1] == [{"id": 3}]
+        assert len(batches) == 2
+
+        all_results = [item for batch in batches for item in batch]
+        assert len(all_results) == 3
+        assert [item["id"] for item in all_results] == [1, 2, 3]
+
         assert mock_request.call_count == 2
 
 

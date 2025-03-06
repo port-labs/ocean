@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Union, cast
 
 from loguru import logger
@@ -7,20 +6,13 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from client import BitbucketClient
+from client import BitbucketClient, ObjectKind
 from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
 from helpers.folder import (
     extract_repo_names_from_patterns,
     create_pattern_mapping,
     find_matching_folders,
 )
-
-
-class ObjectKind(StrEnum):
-    PROJECT = "project"
-    FOLDER = "folder"
-    REPOSITORY = "repository"
-    PULL_REQUEST = "pull-request"
 
 
 @ocean.on_start()

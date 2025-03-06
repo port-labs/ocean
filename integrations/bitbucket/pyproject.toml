@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bitbucket"
-version = "0.1.0-beta"
+version = "0.1.0-dev"
 description = "This integration ingest data from bitbucket"
 authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>"]
 

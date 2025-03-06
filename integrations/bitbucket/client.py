@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPStatusError, Timeout
 from loguru import logger
@@ -8,6 +9,13 @@ import base64
 
 PAGE_SIZE = 100
 CLIENT_TIMEOUT = 30
+
+
+class ObjectKind(StrEnum):
+    PROJECT = "project"
+    FOLDER = "folder"
+    REPOSITORY = "repository"
+    PULL_REQUEST = "pull-request"
 
 
 class BitbucketClient:
@@ -65,6 +73,7 @@ class BitbucketClient:
             error_data = e.response.json()
             error_message = error_data.get("error", {}).get("message", str(e))
             logger.error(f"Bitbucket API error: {error_message}")
+            raise e
 
     async def _send_paginated_api_request(
         self,
@@ -80,7 +89,7 @@ class BitbucketClient:
             response = await self._send_api_request(
                 endpoint, params=params, method=method
             )
-            values = response.get("values", [])
+            values = response["values"]
             if values:
                 yield values
             next_page = response.get("next")
@@ -88,7 +97,6 @@ class BitbucketClient:
                 break
             endpoint = next_page.replace(self.base_url + "/", "")
 
-    # Project endpoints
     @cache_iterator_result()
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all projects in the workspace."""
@@ -97,7 +105,6 @@ class BitbucketClient:
         ):
             yield projects
 
-    # Repository endpoints
     @cache_iterator_result()
     async def get_repositories(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the workspace."""
