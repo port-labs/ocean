@@ -26,5 +26,7 @@ def mock_ocean_context() -> None | MagicMock:
 @pytest.fixture
 def mock_http_client() -> Generator[AsyncClient, None, None]:
     """Mock HTTP client for API requests."""
-    with patch("client.http_async_client", new=AsyncClient()) as mock_client:
+    with patch(
+        "bitbucket_integration.client.http_async_client", new=AsyncClient()
+    ) as mock_client:
         yield mock_client
