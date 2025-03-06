@@ -109,4 +109,3 @@ async def create_enriched_file_object(
             f"Failed to process file {file_metadata.get('path', 'unknown')}: {str(e)}"
         )
         return None
-

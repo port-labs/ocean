@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import json
+import os
 from typing import Any, AsyncGenerator, Optional, List
 from httpx import HTTPStatusError
 from loguru import logger
@@ -18,8 +19,12 @@ from .file_processing import (
     get_base_paths,
     create_enriched_file_object,
 )
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks, semaphore_async_iterator
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+    semaphore_async_iterator,
+)
 from port_ocean.utils.queue_utils import process_in_queue
+
 
 class RecursionLevel(StrEnum):
     """Azure DevOps API recursion level options."""
@@ -526,22 +531,30 @@ class AzureDevopsClient(HTTPBaseClient):
         except Exception as e:
             logger.error(f"Failed to process file {file['path']}: {str(e)}")
             return None
-        
-    def validate_patterns(self, path: str) -> List[str]:
+
+    def validate_patterns(self, path: str | list[str]) -> list[str]:
         """Validate patterns and return valid patterns."""
         broad_patterns = {"**/*", "**/.*", "**"}
-        
-        patterns = [
-            pattern for pattern in expand_patterns(path)
-            if not (pattern in broad_patterns or pattern.endswith(("**/*", "**")))
+
+        # Expand patterns based on input type
+        if isinstance(path, str):
+            all_patterns = expand_patterns(path)
+        else:
+            all_patterns = [pattern for p in path for pattern in expand_patterns(p)]
+
+        # Filter out patterns that are too broad
+        valid_patterns = [
+            pattern
+            for pattern in all_patterns
+            if pattern not in broad_patterns and not pattern.endswith(("**/*", "**"))
         ]
 
-        invalid_patterns = set(expand_patterns(path)) - set(patterns)
+        # Log warnings for patterns that were excluded
+        invalid_patterns = set(all_patterns) - set(valid_patterns)
         for pattern in invalid_patterns:
             logger.warning(f"Pattern '{pattern}' is too broad and will be ignored")
 
-        return patterns
-
+        return valid_patterns
 
     async def generate_files(
         self,
@@ -551,7 +564,7 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Main entry point for file discovery and processing."""
 
-        patterns = self.validate_patterns(path) 
+        patterns = self.validate_patterns(path)
 
         if not patterns:
             logger.warning("No valid patterns provided. Skipping file discovery.")
@@ -560,7 +573,9 @@ class AzureDevopsClient(HTTPBaseClient):
         logger.info(f"Processing files with patterns: {patterns}")
 
         root_patterns = [p for p in patterns if p.startswith("*.") or p == "*"]
-        directory_patterns = [p for p in patterns if not p.startswith("*.") and p != "*"]
+        directory_patterns = [
+            p for p in patterns if not p.startswith("*.") and p != "*"
+        ]
 
         all_patterns = root_patterns + directory_patterns
 
@@ -570,40 +585,44 @@ class AzureDevopsClient(HTTPBaseClient):
             if not repositories:
                 logger.warning("No repositories found. Skipping file discovery.")
                 return
-            
+
             if repos:
-                filtered_repositories = [repo for repo in repositories if repo["name"] in repos]
+                filtered_repositories = [
+                    repo for repo in repositories if repo["name"] in repos
+                ]
             else:
                 filtered_repositories = repositories
-            
+
             for pattern in all_patterns:
-                semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING)
+                semaphore = asyncio.BoundedSemaphore(
+                    MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+                )
                 tasks = [
                     semaphore_async_iterator(
-                        semaphore, 
-                        functools.partial(self._get_repository_files, repository, pattern, max_depth)
-                    ) 
+                        semaphore,
+                        functools.partial(
+                            self._get_repository_files, repository, pattern, max_depth
+                        ),
+                    )
                     for repository in filtered_repositories
                 ]
                 async for batch in stream_async_iterators_tasks(*tasks):
                     yield batch
 
-
     async def _get_repository_files(
-            self, 
-            repository: dict[str, Any], 
-            pattern: str, 
-            max_depth: Optional[int] = None
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        self, repository: dict[str, Any], pattern: str, max_depth: Optional[int] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Processing repository {repository['name']}")
 
-        if not (branch := repository.get('defaultBranch')):
-            logger.warning(f"Repository {repository['name']} has no default branch. Skipping.")
+        if not (branch := repository.get("defaultBranch")):
+            logger.warning(
+                f"Repository {repository['name']} has no default branch. Skipping."
+            )
             return
-        
-        branch = branch.replace('refs/heads/', '')
-        project_id = repository['project']['id']
-        repository_id = repository['id']
+
+        branch = branch.replace("refs/heads/", "")
+        project_id = repository["project"]["id"]
+        repository_id = repository["id"]
         recursion_level = (
             RecursionLevel.ONE_LEVEL if max_depth == 1 else RecursionLevel.FULL
         )
@@ -617,38 +636,40 @@ class AzureDevopsClient(HTTPBaseClient):
             "includeContentMetadata": "true",
             "versionDescriptor.version": branch,
             "versionDescriptor.versionType": "branch",
-            "api-version": "7.1"
+            "api-version": "7.1",
         }
 
         response = await self.send_request("GET", items_url, params=params)
         items = response.json().get("value", [])
 
-        files_to_download = [item for item in items if self._should_download_file(item, pattern)]
+        files_to_download = [
+            item for item in items if self._should_download_file(item, pattern)
+        ]
 
         matching_files = await process_in_queue(
             files_to_download,
             self._fetch_and_process_file,
             repository,
             branch,
-            concurrency=MAX_CONCURRENT_FILE_DOWNLOADS
+            concurrency=MAX_CONCURRENT_FILE_DOWNLOADS,
         )
 
-        yield matching_files
-    
+        filtered_files = [file for file in matching_files if file is not None]
+        yield filtered_files
+
     def _should_download_file(self, item: dict[str, Any], pattern: str) -> bool:
         if item.get("isFolder", False):
             return False
-        
+
         file_path = item.get("path")
-        
+        if not file_path:
+            return False
+
         if item.get("size", 0) > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
             return False
-        
-        # check file extension
-        import os
+
         file_extension = os.path.splitext(file_path)[1]
         if file_extension not in (".yaml", ".yml", ".json", ".md"):
             return False
-        
+
         return match_pattern(pattern, file_path)
-            
