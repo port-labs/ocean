@@ -7,16 +7,8 @@ from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
 import base64
 
-
 PAGE_SIZE = 100
 CLIENT_TIMEOUT = 30
-
-
-class ObjectKind(StrEnum):
-    PROJECT = "project"
-    FOLDER = "folder"
-    REPOSITORY = "repository"
-    PULL_REQUEST = "pull-request"
 
 
 class BitbucketClient:
