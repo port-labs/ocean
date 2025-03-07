@@ -6,21 +6,21 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from client import BitbucketClient
 from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
-from helpers.folder import (
+from bitbucket_integration.helpers.folder import (
     extract_repo_names_from_patterns,
     create_pattern_mapping,
     find_matching_folders,
 )
-from bitbucket_integration.utils import ObjectKind
 from bitbucket_integration.webhook.processors.pull_request import (
     PullRequestWebhookProcessor,
 )
 from bitbucket_integration.webhook.processors.repository import (
     RepositoryWebhookProcessor,
 )
+
 from initialize_client import init_client, init_webhook_client
+from bitbucket_integration.utils import ObjectKind
 
 
 @ocean.on_start()
