@@ -10,7 +10,6 @@ class RestClient:
     DEFAULT_PAGE_SIZE = 100
     VALID_GROUP_RESOURCES = ["issues", "merge_requests", "labels"]
 
-    # Define resource-specific default parameters
     RESOURCE_PARAMS = {
         "labels": {
             "with_counts": True,
