@@ -13,11 +13,21 @@ from helpers.folder import (
     create_pattern_mapping,
     find_matching_folders,
 )
+from webhook_processors.push_webhook_processor import PushWebhookProcessor
 
 
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean Bitbucket integration")
+
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning("No base URL configured, skipping webhook creation")
+        return
 
 
 def init_client() -> BitbucketClient:
@@ -71,7 +81,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 continue
             patterns = pattern_by_repo[repo_name]
             repo_slug = repo.get("slug", repo_name.lower())
-            default_branch = repo.get("mainbranch", {}).get("name", "master")
+            default_branch = repo.get("mainbranch", {}).get("name", "main")
             max_pattern_depth = max(
                 (
                     folder_pattern.path.count("/") + 1
@@ -85,3 +95,6 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 matching_folders = find_matching_folders(contents, patterns, repo)
                 if matching_folders:
                     yield matching_folders
+
+
+ocean.add_webhook_processor("/webhook", PushWebhookProcessor)

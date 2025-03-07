@@ -9,6 +9,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from gitops.file_entity_handler import GitManipulationHandler
 
 
 class FolderPattern(BaseModel):
@@ -40,6 +41,8 @@ class BitbucketFolderResourceConfig(ResourceConfig):
 
 
 class BitbucketAppConfig(PortAppConfig):
+    spec_path: str | list[str] = Field(alias="specPath", default="**/port.yml")
+    branch: str | None
     resources: list[BitbucketFolderResourceConfig | ResourceConfig] = Field(
         default_factory=list,
         alias="resources",
@@ -48,5 +51,7 @@ class BitbucketAppConfig(PortAppConfig):
 
 
 class BitbucketIntegration(BaseIntegration):
+    EntityProcessorClass = GitManipulationHandler
+
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = BitbucketAppConfig

@@ -5,11 +5,15 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
+from aiolimiter import AsyncLimiter
 import base64
 
 
 PAGE_SIZE = 100
 CLIENT_TIMEOUT = 30
+MAX_RATE_LIMIT = 800
+THROTTLE_PERIOD = 3600
+REPOSITORY_ASYNC_LIMITER = AsyncLimiter(MAX_RATE_LIMIT, THROTTLE_PERIOD)
 
 
 class ObjectKind(StrEnum):
@@ -71,14 +75,23 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
+        return_full_response: bool = False,
     ) -> Any:
         """Send request to Bitbucket API with error handling."""
         url = f"{self.base_url}/{endpoint}"
-        response = await self.client.request(
-            method=method, url=url, params=params, json=json_data
-        )
+        if endpoint.startswith("repositories"):
+            async with REPOSITORY_ASYNC_LIMITER:
+                response = await self.client.request(
+                    method=method, url=url, params=params, json=json_data
+                )
+        else:
+            response = await self.client.request(
+                method=method, url=url, params=params, json=json_data
+            )
         try:
             response.raise_for_status()
+            if return_full_response:
+                return response
             return response.json()
         except HTTPStatusError as e:
             error_data = e.response.json()
@@ -146,3 +159,24 @@ class BitbucketClient:
             f"repositories/{self.workspace}/{repo_slug}/pullrequests"
         ):
             yield pull_requests
+
+    async def retrieve_diff_stat(
+        self, workspace: str, repo: str, old_hash: str, new_hash: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Retrieve diff statistics between two commits using Bitbucket API
+        """
+        async for diff_stat in self._send_paginated_api_request(
+            f"repositories/{workspace}/{repo}/diffstat/{old_hash}..{new_hash}",
+            params={"pagelen": 500},
+        ):
+            yield diff_stat
+
+    async def get_file_content(self, repo: str, branch: str, path: str) -> str:
+        """Get the content of a file."""
+        response = await self._send_api_request(
+            f"repositories/{self.workspace}/{repo}/src/{branch}/{path}",
+            method="GET",
+            return_full_response=True,
+        )
+        return response.text
