@@ -40,7 +40,7 @@ class BitbucketWebhookClient(BitbucketClient):
         if not self.secret:
             return True
 
-        signature = headers.get("X-Hub-Signature")
+        signature = headers.get("x-hub-signature")
 
         if not signature:
             logger.error("Missing X-Hub-Signature header")
@@ -101,7 +101,7 @@ class BitbucketWebhookClient(BitbucketClient):
             "url": webhook_url,
             "active": True,
             "secret": self.secret,
-            "events": PullRequestEvents + RepositoryEvents,
+            "events": list(PullRequestEvents + RepositoryEvents),
         }
 
         try:

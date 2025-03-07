@@ -13,7 +13,7 @@ class RepositoryWebhookProcessor(_BaseWebhookProcessorConfig):
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
-            return bool(RepositoryEvents(event.headers["X-Event-Key"]))
+            return bool(RepositoryEvents(event.headers["x-event-key"]))
         except ValueError:
             return False
 
@@ -24,7 +24,7 @@ class RepositoryWebhookProcessor(_BaseWebhookProcessorConfig):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
 
-        repository_id = payload["repository"]["id"]
+        repository_id = payload["repository"]["uuid"]
         repository_details = await self._webhook_client.get_repository(repository_id)
         return WebhookEventRawResults(
             updated_raw_results=[repository_details],
@@ -33,4 +33,4 @@ class RepositoryWebhookProcessor(_BaseWebhookProcessorConfig):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         required_field = "repository"
-        return required_field in payloadgit 
+        return required_field in payload

@@ -14,7 +14,7 @@ class PullRequestWebhookProcessor(_BaseWebhookProcessorConfig):
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
-            return bool(PullRequestEvents(event.headers["X-Event-Key"]))
+            return bool(PullRequestEvents(event.headers["x-event-key"]))
         except ValueError:
             return False
 
