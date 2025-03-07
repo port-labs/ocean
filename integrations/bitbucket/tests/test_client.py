@@ -214,3 +214,29 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
         mock_paginated.assert_called_once_with(
             f"repositories/{mock_client.workspace}/test-repo/pullrequests"
         )
+
+
+@pytest.mark.asyncio
+async def test_get_pull_request(mock_client: BitbucketClient) -> None:
+    """Test getting a pull request."""
+    mock_data = {"values": {"id": 1, "title": "Test PR"}}
+    with patch.object(mock_client, "_send_api_request") as mock_request:
+        mock_request.return_value = mock_data
+        pr = await mock_client.get_pull_request("test-repo", 1)
+        assert pr["values"] == mock_data["values"]
+        mock_request.assert_called_once_with(
+            f"repositories/{mock_client.workspace}/test-repo/pullrequests/1"
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_repository(mock_client: BitbucketClient) -> None:
+    """Test getting a repository."""
+    mock_data = {"values": {"id": 1, "title": "Test Repo"}}
+    with patch.object(mock_client, "_send_api_request") as mock_request:
+        mock_request.return_value = mock_data
+        repo = await mock_client.get_repository("test-repo")
+        assert repo["values"] == mock_data["values"]
+        mock_request.assert_called_once_with(
+            f"repositories/{mock_client.workspace}/test-repo"
+        )
