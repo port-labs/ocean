@@ -20,6 +20,7 @@ from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
 from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
 )
+from webhook_processors.push_webhook_processor import PushWebhookProcessor
 
 
 @ocean.on_start()
@@ -81,3 +82,4 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PushWebhookProcessor)
