@@ -20,6 +20,7 @@ from bitbucket_integration.webhook.processors.repository import (
     RepositoryWebhookProcessor,
 )
 from initialize_client import init_client, init_webhook_client
+from webhook_processors.push_webhook_processor import PushWebhookProcessor
 
 
 @ocean.on_start()
@@ -104,3 +105,4 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PushWebhookProcessor)
