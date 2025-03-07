@@ -69,6 +69,9 @@ class HTTPBaseClient:
                 params["continuationToken"] = continuation_token
 
             response = await self.send_request("GET", url, params=params)
+            if response.status_code == 404:
+                logger.error(f"Couldn't access url {url}")
+                break
             response_json = response.json()
             items = response_json[data_key]
 
