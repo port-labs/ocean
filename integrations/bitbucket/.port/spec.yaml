@@ -25,3 +25,8 @@ configurations:
     type: string
     sensitive: true
     description: Bitbucket access token
+  - name: bitbucketWebhookSecret
+    description: Secret token to validate live events
+    sensitive: true
+    type: string
+    required: false
