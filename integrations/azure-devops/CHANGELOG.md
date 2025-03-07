@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.135 (2025-03-07)
+
+
+### Bug Fixes
+
+- Fixed bug where other resource types fail JSON decoding due to lack of response body in 404 errors (0.1.135)
+
+
 ## 0.1.134 (2025-03-04)
 
 
