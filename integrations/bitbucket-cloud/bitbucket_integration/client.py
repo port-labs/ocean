@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPStatusError, Timeout
 from loguru import logger
