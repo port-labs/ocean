@@ -4,6 +4,8 @@ from httpx import AsyncClient
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from typing import Generator
+from unittest.mock import MagicMock, patch
+from bitbucket_integration.webhook.webhook_client import BitbucketWebhookClient
 
 
 @pytest.fixture(autouse=True)
@@ -30,3 +32,13 @@ def mock_http_client() -> Generator[AsyncClient, None, None]:
         "bitbucket_integration.client.http_async_client", new=AsyncClient()
     ) as mock_client:
         yield mock_client
+
+
+@pytest.fixture
+def webhook_client_mock() -> BitbucketWebhookClient:
+    """Create a mocked webhook client."""
+    client = BitbucketWebhookClient(
+        workspace="test-workspace", username="test-user", app_password="test-password"
+    )
+    client = MagicMock(spec=BitbucketWebhookClient)
+    return client
