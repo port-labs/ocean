@@ -20,6 +20,7 @@ from bitbucket_integration.webhook.processors.repository import (
     RepositoryWebhookProcessor,
 )
 from initialize_client import init_client, init_webhook_client
+from webhook_processors.push_webhook_processor import PushWebhookProcessor
 
 
 @ocean.on_start()
@@ -86,7 +87,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 continue
             patterns = pattern_by_repo[repo_name]
             repo_slug = repo.get("slug", repo_name.lower())
-            default_branch = repo.get("mainbranch", {}).get("name", "master")
+            default_branch = repo.get("mainbranch", {}).get("name", "main")
             max_pattern_depth = max(
                 (
                     folder_pattern.path.count("/") + 1
@@ -104,3 +105,4 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PushWebhookProcessor)
