@@ -146,3 +146,17 @@ class BitbucketClient:
             f"repositories/{self.workspace}/{repo_slug}/pullrequests"
         ):
             yield pull_requests
+
+    async def get_pull_request(
+         self, repo_slug: str, pull_request_id: str
+     ) -> dict[str, Any]:
+         """Get a specific pull request by ID."""
+         return await self._send_api_request(
+             f"repositories/{self.workspace}/{repo_slug}/pullrequests/{pull_request_id}"
+         )
+
+    async def get_repository(self, repo_slug: str) -> dict[str, Any]:
+        """Get a specific repository by slug."""
+        return await self._send_api_request(
+            f"repositories/{self.workspace}/{repo_slug}"
+        )

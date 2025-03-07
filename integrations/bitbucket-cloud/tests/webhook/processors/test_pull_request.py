@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
@@ -9,8 +9,6 @@ from bitbucket_integration.utils import ObjectKind
 
 # Patch the module before importing the class
 with patch("initialize_client.init_webhook_client") as mock_init_client:
-    mock_client = MagicMock()
-    mock_init_client.return_value = mock_client
     from bitbucket_integration.webhook.webhook_client import BitbucketWebhookClient
     from bitbucket_integration.webhook.processors.pull_request import (
         PullRequestWebhookProcessor,
@@ -23,29 +21,7 @@ def event() -> WebhookEvent:
 
 
 @pytest.fixture
-def webhook_client_mock():
-    """Create a mocked webhook client."""
-    client = AsyncMock(spec=BitbucketWebhookClient)
-    client.get_pull_request = AsyncMock()
-    return client
-
-
-@pytest.fixture
-def mock_event_context():
-    """Create a mocked event context."""
-    context = MagicMock()
-    return context
-
-
-@pytest.fixture
-def mock_ocean_context():
-    """Create a mocked ocean context."""
-    context = MagicMock()
-    return context
-
-
-@pytest.fixture
-def pull_request_webhook_processor(mock_ocean_context, webhook_client_mock, event: WebhookEvent):
+def pull_request_webhook_processor(webhook_client_mock, event: WebhookEvent):
     """Create a PullRequestWebhookProcessor with mocked webhook client."""
     pull_request_webhook_processor = PullRequestWebhookProcessor(event)
     pull_request_webhook_processor._webhook_client = webhook_client_mock
@@ -70,7 +46,7 @@ class TestPullRequestWebhookProcessor:
         ],
     )
     @pytest.mark.asyncio
-    async def test_should_process_event(self, pull_request_webhook_processor, event_key, expected, mock_event_context):
+    async def test_should_process_event(self, pull_request_webhook_processor: PullRequestWebhookProcessor, event_key: str, expected: bool):
         """Test that should_process_event correctly identifies valid PR events."""
         event = WebhookEvent(
             trace_id="test-trace-id", headers={"x-event-key": event_key}, payload={}
@@ -79,7 +55,7 @@ class TestPullRequestWebhookProcessor:
         assert result == expected
 
     @pytest.mark.asyncio
-    async def test_get_matching_kinds(self, pull_request_webhook_processor, mock_event_context):
+    async def test_get_matching_kinds(self, pull_request_webhook_processor):
         """Test that get_matching_kinds returns the PULL_REQUEST kind."""
         event = WebhookEvent(
             trace_id="test-trace-id",
@@ -90,7 +66,7 @@ class TestPullRequestWebhookProcessor:
         assert result == [ObjectKind.PULL_REQUEST]
 
     @pytest.mark.asyncio
-    async def test_handle_event(self, pull_request_webhook_processor, webhook_client_mock, mock_event_context):
+    async def test_handle_event(self, pull_request_webhook_processor, webhook_client_mock):
         """Test handling a pull request event."""
         # Arrange
         payload = {"repository": {"uuid": "repo-123"}, "pullrequest": {"id": "pr-456"}}
@@ -128,7 +104,7 @@ class TestPullRequestWebhookProcessor:
         ],
     )
     @pytest.mark.asyncio
-    async def test_validate_payload(self, pull_request_webhook_processor, payload, expected, mock_event_context, mock_ocean_context):
+    async def test_validate_payload(self, pull_request_webhook_processor, payload, expected):
         """Test payload validation with various input scenarios."""
         result = await pull_request_webhook_processor.validate_payload(payload)
         assert result == expected
