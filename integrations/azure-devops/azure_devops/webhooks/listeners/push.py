@@ -81,7 +81,12 @@ class PushHookListener(HookListener):
         )
 
     async def register_repository(self, push_data: Dict[str, Any]) -> None:
+        repository_id = push_data["repository"]["id"]
+        repository = await self._client.get_repository(repository_id)
+        if not repository:
+            logger.warning(f"Repository with ID {repository_id} not found")
+            return
         await ocean.register_raw(
             Kind.REPOSITORY,
-            [await self._client.get_repository(push_data["repository"]["id"])],
+            [],
         )

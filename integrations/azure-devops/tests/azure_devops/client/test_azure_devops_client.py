@@ -1,11 +1,13 @@
-import pytest
-from unittest.mock import patch, MagicMock
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
-from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from azure_devops.client.azure_devops_client import AzureDevopsClient
-from port_ocean.context.ocean import initialize_port_ocean_context
+from unittest.mock import MagicMock, patch
+
+import pytest
+from httpx import Request, Response
 from port_ocean.context.event import EventContext, event_context
-from httpx import Response, Request
+from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.webhooks.webhook_event import WebhookEvent
 
 MOCK_ORG_URL = "https://your_organization_url.com"
@@ -58,8 +60,8 @@ EXPECTED_PROJECTS = [
 ]
 
 EXPECTED_TEAMS = [
-    {"id": "team1", "name": "Team One"},
-    {"id": "team2", "name": "Team Two"},
+    {"id": "team1", "name": "Team One", "projectId": "proj1"},
+    {"id": "team2", "name": "Team Two", "projectId": "proj2"},
 ]
 
 EXPECTED_MEMBERS = [
@@ -518,6 +520,116 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_projects_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            projects: List[Dict[str, Any]] = []
+            async for project_batch in client.generate_projects():
+                projects.extend(project_batch)
+
+            # ASSERT
+            assert not projects
+
+
+@pytest.mark.asyncio
+async def test_generate_teams_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            teams: List[Dict[str, Any]] = []
+            async for team_batch in client.generate_teams():
+                teams.extend(team_batch)
+
+            # ASSERT
+            assert not teams
+
+
+@pytest.mark.asyncio
+async def test_generate_repositories_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(client._client, "request", side_effect=mock_make_request):
+                repositories: List[Dict[str, Any]] = []
+                async for repo_batch in client.generate_repositories():
+                    repositories.extend(repo_batch)
+
+                # ASSERT
+                assert not repositories
+
+
+@pytest.mark.asyncio
+async def test_generate_members_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async def mock_get_teams(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        for team in EXPECTED_TEAMS:
+            yield [team]
+
+    async with event_context("test_event"):
+        with (
+            patch.object(client, "generate_teams", side_effect=mock_get_teams),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            members: List[Dict[str, Any]] = []
+            async for member_batch in client.generate_members():
+                members.extend(member_batch)
+
+            # ASSERT
+            assert not members
+
+
+@pytest.mark.asyncio
+async def test_generate_users_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            users: List[Dict[str, Any]] = []
+            async for user_batch in client.generate_users():
+                users.extend(user_batch)
+
+            # ASSERT
+            assert not users
+
+
+@pytest.mark.asyncio
 async def test_generate_pull_requests_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
@@ -550,6 +662,191 @@ async def test_generate_pull_requests_will_skip_404(
 
             # ASSERT
             assert not pull_requests
+
+
+@pytest.mark.asyncio
+async def test_generate_pipelines_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            pipelines: List[Dict[str, Any]] = []
+            async for pipeline_batch in client.generate_pipelines():
+                pipelines.extend(pipeline_batch)
+
+            # ASSERT
+            assert not pipelines
+
+
+@pytest.mark.asyncio
+async def test_generate_repository_policies_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": "repo1",
+                "name": "Repository One",
+                "project": {"id": "proj1", "name": "Project One"},
+            }
+        ]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_repositories", side_effect=mock_generate_repositories
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            policies: List[Dict[str, Any]] = []
+            async for policy_batch in client.generate_repository_policies():
+                policies.extend(policy_batch)
+
+            # ASSERT
+            assert not policies
+
+
+@pytest.mark.asyncio
+async def test_generate_releases_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            releases: List[Dict[str, Any]] = []
+            async for release_batch in client.generate_releases():
+                releases.extend(release_batch)
+
+            # ASSERT
+            assert not releases
+
+
+@pytest.mark.asyncio
+async def test_generate_work_items_will_skip_404(mock_event_context: MagicMock) -> None:
+    """
+    Tests that if a 404 is encountered anywhere in the pipeline (e.g. retrieving the WIQL
+    or fetching work items), the client logs a warning and yields no items.
+    """
+    client = AzureDevopsClient("https://fake_org_url.com", "fake_pat")
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        # Return a 404 every time
+        return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
+
+    async with event_context("test_event"):
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            collected_items: List[Dict[str, Any]] = []
+            async for item_batch in client.generate_work_items(wiql=None, expand="all"):
+                collected_items.extend(item_batch)
+
+            # Since 404 is hit, we expect an empty result (skip).
+            assert not collected_items
+
+
+@pytest.mark.asyncio
+async def test_get_columns_will_skip_404(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
+
+    async with event_context("test_event"):
+        columns_collected = []
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            async for col_batch in client.get_columns():
+                columns_collected.extend(col_batch)
+
+        assert columns_collected == []
+
+
+@pytest.mark.asyncio
+async def test_get_boards_in_organization_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
+
+    boards_collected = []
+    async with event_context("test_event"):
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            async for board_batch in client.get_boards_in_organization():
+                boards_collected.extend(board_batch)
+
+        assert boards_collected == []
+
+
+@pytest.mark.asyncio
+async def test_generate_subscriptions_webhook_events_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    """
+    generate_subscriptions_webhook_events fetches a single endpoint and returns a list of WebhookEvent.
+    On 404, it should skip and return [].
+    """
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async with event_context("test_event"):
+        with patch.object(client, "send_request") as mock_send_request:
+            # Return a 404 plus minimal JSON to avoid JSONDecodeError
+            mock_send_request.return_value = Response(
+                status_code=404,
+                json={},
+                request=Request("GET", "https://fake_url.com"),
+            )
+
+            events = await client.generate_subscriptions_webhook_events()
+            # If we follow the same pattern, that means no exceptions, returns []:
+            assert events == []
+
+
+@pytest.mark.asyncio
+async def test_get_file_by_branch_will_skip_404(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
+
+    async with event_context("test_event"):
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            content = await client.get_file_by_branch(
+                MOCK_FILE_PATH, MOCK_REPOSITORY_ID, MOCK_BRANCH_NAME
+            )
+            # The code warns on 404 and returns empty bytes
+            assert content == b""
 
 
 @pytest.mark.asyncio

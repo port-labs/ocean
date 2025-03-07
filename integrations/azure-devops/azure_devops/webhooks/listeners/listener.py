@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any
-from azure_devops.webhooks.webhook_event import WebhookEvent
+
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.webhooks.webhook_event import WebhookEvent
 
 
 class HookListener(ABC):

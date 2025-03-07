@@ -1,13 +1,13 @@
-from enum import StrEnum
 from datetime import datetime, timedelta
-from typing import Any
+from enum import StrEnum
+from typing import Any, List, Literal
+
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
 from pydantic import Field
-from typing import List, Literal
 
 
 class Kind(StrEnum):
