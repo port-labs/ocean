@@ -78,10 +78,11 @@ class AzureDevopsClient(HTTPBaseClient):
             if sync_default_team:
                 logger.info("Adding default team to projects")
                 tasks = [self.get_single_project(project["id"]) for project in projects]
-                project_batch: list[dict[str, Any] | None] = await asyncio.gather(
+                projects_batch: list[dict[str, Any] | None] = await asyncio.gather(
                     *tasks
                 )
-            yield [project for project in project_batch if project]
+                projects = [project for project in projects_batch if project]
+            yield projects
 
     @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
