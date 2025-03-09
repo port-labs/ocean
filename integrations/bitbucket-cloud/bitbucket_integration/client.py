@@ -52,13 +52,12 @@ class BitbucketClient:
 
     @classmethod
     def create_from_ocean_config(cls) -> "BitbucketClient":
-        bitbucket_client = cls(
+        return cls(
             workspace=ocean.integration_config["bitbucket_workspace"],
             username=ocean.integration_config.get("bitbucket_username"),
             app_password=ocean.integration_config.get("bitbucket_app_password"),
             workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
         )
-        return bitbucket_client
 
     async def _send_api_request(
         self,
@@ -164,20 +163,23 @@ class BitbucketClient:
         return await self._send_api_request(
             f"repositories/{self.workspace}/{repo_slug}"
         )
-        
+
     async def retrieve_diff_stat(
-        self, workspace: str, repo: str, old_hash: str, new_hash: str
+        self, repo: str, old_hash: str, new_hash: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve diff statistics between two commits using Bitbucket API
         """
+        logger.debug(
+            f"Retrieving diff stat for workspace: {self.workspace}, repo: {repo}, old_hash: {old_hash}, new_hash: {new_hash}; retrieve_diff_stat"
+        )
         async for diff_stat in self._send_paginated_api_request(
-            f"repositories/{workspace}/{repo}/diffstat/{old_hash}..{new_hash}",
+            f"repositories/{self.workspace}/{repo}/diffstat/{new_hash}..{old_hash}",
             params={"pagelen": 500},
         ):
             yield diff_stat
 
-    async def get_file_content(self, repo: str, branch: str, path: str) -> str:
+    async def get_file_content(self, repo: str, branch: str, path: str) -> Any:
         """Get the content of a file."""
         response = await self._send_api_request(
             f"repositories/{self.workspace}/{repo}/src/{branch}/{path}",

@@ -15,6 +15,9 @@ from bitbucket_cloud.webhook.processors.pull_request import (
 from bitbucket_cloud.webhook.processors.repository import (
     RepositoryWebhookProcessor,
 )
+from bitbucket_integration.webhook.processors.push import (
+    PushWebhookProcessor,
+)
 from initialize_client import init_client, init_webhook_client
 from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
 from bitbucket_cloud.helpers.folder import (

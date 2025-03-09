@@ -1,7 +1,8 @@
+import json
 from typing import Any, Dict, Type
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
-from client import BitbucketClient
+from bitbucket_integration.client import BitbucketClient
 
 FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"
@@ -12,9 +13,11 @@ class FileEntityProcessor(JQEntityProcessor):
 
     async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         repo_slug = data.get("name", "")
-        default_branch = data.get("mainbranch", {}).get("name", "master")
+        default_branch = data.get("mainbranch", {}).get("name", "")
+        if not default_branch:
+            logger.info(f"No default branch found for repository {repo_slug}")
+            return None
         client = BitbucketClient.create_from_ocean_config()
-
         file_path = pattern.replace(self.prefix, "")
         if not repo_slug:
             return None
@@ -27,8 +30,6 @@ class FileEntityProcessor(JQEntityProcessor):
                 repo_slug, default_branch, file_path
             )
             if file_path.endswith(JSON_SUFFIX):
-                import json
-
                 return json.loads(file_content)
             return file_content
         except Exception as e:
