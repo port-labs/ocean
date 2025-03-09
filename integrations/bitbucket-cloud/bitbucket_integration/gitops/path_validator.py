@@ -10,20 +10,19 @@ def match_spec_paths(
     matching_paths = []
     if isinstance(spec_paths, list):
         for spec_path in spec_paths:
-            if _is_matching_path(file_path, spec_path):
+            if match_path_pattern(file_path, spec_path):
                 matching_paths.append(file_path)
-            elif _is_matching_path(target_path, spec_path):
+            elif match_path_pattern(target_path, spec_path):
                 matching_paths.append(target_path)
-        return matching_paths
     else:
-        if _is_matching_path(file_path, spec_paths):
+        if match_path_pattern(file_path, spec_paths):
             matching_paths.append(file_path)
-        if _is_matching_path(target_path, spec_paths):
+        if match_path_pattern(target_path, spec_paths):
             matching_paths.append(target_path)
-        return matching_paths
+    return matching_paths
 
 
-def _is_matching_path(file_path: str, spec_path: str) -> bool:
+def match_path_pattern(file_path: str, spec_path: str) -> bool:
     return (
         fnmatch.fnmatch(file_path, spec_path)
         or fnmatch.fnmatch(file_path, spec_path.replace("**/", ""))
