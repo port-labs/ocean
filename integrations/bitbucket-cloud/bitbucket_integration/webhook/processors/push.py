@@ -1,8 +1,7 @@
 from typing import cast, List, Any
 from loguru import logger
 from integration import BitbucketAppConfig
-from bitbucket_integration.gitops.generate_entities import get_commit_hash_from_payload
-from bitbucket_integration.client import BitbucketClient
+from bitbucket_integration.gitops.entity_generator import get_commit_hash_from_payload
 from bitbucket_integration.utils import ObjectKind
 from port_ocean.context.ocean import ocean
 from port_ocean.clients.port.types import UserAgentType
@@ -35,7 +34,7 @@ class PushWebhookProcessor(_BaseWebhookProcessorConfig):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         config = cast(BitbucketAppConfig, event.port_app_config)
-        old_entities, new_entities = await self._process_commits(payload, config)
+        old_entities, new_entities = await self.process_commit_changes(payload, config)
         logger.info(
             f"Processing push event with old_entities: {old_entities} and new_entities: {new_entities}"
         )
@@ -46,13 +45,13 @@ class PushWebhookProcessor(_BaseWebhookProcessorConfig):
         logger.debug("Completed diff upadte")
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
-    async def _process_commits(
+    async def process_commit_changes(
         self,
         payload: EventPayload,
         config: BitbucketAppConfig,
     ) -> tuple[List[Any], List[Any]]:
         repo = payload.get("repository", {}).get("name", "")
-        client = self._webhook_client
+        bitbucket_client = self._webhook_client
 
         all_old_entities = []
         all_new_entities = []
@@ -71,7 +70,7 @@ class PushWebhookProcessor(_BaseWebhookProcessorConfig):
                 continue
 
             old_entities, new_entities = await process_diff_stats(
-                client=client,
+                client=bitbucket_client,
                 repo=repo,
                 spec_paths=config.spec_path,
                 old_hash=old_commit_hash,
