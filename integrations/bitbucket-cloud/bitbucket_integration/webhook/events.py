@@ -56,3 +56,7 @@ class RepositoryEvents(EventEnum):
     REPOSITORY_CREATED = "repo:created"
     REPOSITORY_UPDATED = "repo:updated"
     REPOSITORY_DELETED = "repo:deleted"
+
+
+class PushEvents(EventEnum):
+    REPOSITORY_PUSH = "repo:push"

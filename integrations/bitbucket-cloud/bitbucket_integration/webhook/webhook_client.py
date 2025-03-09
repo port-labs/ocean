@@ -3,7 +3,11 @@ import json
 
 from bitbucket_integration.client import BitbucketClient
 from loguru import logger
-from bitbucket_integration.webhook.events import RepositoryEvents, PullRequestEvents
+from bitbucket_integration.webhook.events import (
+    RepositoryEvents,
+    PullRequestEvents,
+    PushEvents,
+)
 from httpx import HTTPStatusError  # Importing for specific HTTP error handling
 import hashlib
 import hmac
@@ -71,6 +75,7 @@ class BitbucketWebhookClient(BitbucketClient):
         async for webhook_config_batch in self._send_paginated_api_request(
             self._workspace_webhook_url
         ):
+            webhook_url = f"{webhook_url}/integration/webhook"
             if any(
                 existing_webhook_config.get("url") == webhook_url
                 for existing_webhook_config in webhook_config_batch
@@ -101,7 +106,7 @@ class BitbucketWebhookClient(BitbucketClient):
             "url": webhook_url,
             "active": True,
             "secret": self.secret,
-            "events": list(PullRequestEvents + RepositoryEvents),
+            "events": list(PullRequestEvents + RepositoryEvents + PushEvents),
         }
 
         try:

@@ -26,3 +26,8 @@ configurations:
     type: string
     sensitive: true
     description: Bitbucket app password, it can be created in the Bitbucket by visiting <a href="https://bitbucket.org/account/settings/app-passwords/" target="_blank">Bitbucket personal account settings</a>
+  - name: bitbucketWebhookSecret
+    description: Secret token to validate live events
+    sensitive: true
+    type: string
+    required: false
