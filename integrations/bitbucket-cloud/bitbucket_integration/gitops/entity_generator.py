@@ -1,6 +1,7 @@
+import asyncio
 import json
 from pathlib import Path
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator
 from loguru import logger
 import yaml
 from bitbucket_integration.client import BitbucketClient
@@ -18,7 +19,6 @@ async def get_commit_hash_from_payload(
     try:
         push_changes = payload.get("push", {}).get("changes", [])
         for change in push_changes:
-            commits = change.get("commits", [])
             new = change.get("new", {})
             old = change.get("old", {})
             old_commit = old.get("target", {}).get("hash", "")
@@ -32,13 +32,13 @@ async def get_commit_hash_from_payload(
 
 
 async def _generate_entity_from_port_yaml(
-    raw_entity: Entity,
+    entity_template: Entity,
     client: BitbucketClient,
     commit_id: str,
     repository_id: str,
 ) -> Entity:
     properties = {}
-    for key, value in raw_entity.properties.items():
+    for key, value in entity_template.properties.items():
         if isinstance(value, str) and value.startswith(FILE_PROPERTY_PREFIX):
             file_meta = Path(value.replace(FILE_PROPERTY_PREFIX, ""))
             file_content: Any = await client.get_file_content(
@@ -54,7 +54,7 @@ async def _generate_entity_from_port_yaml(
             properties[key] = value
     return Entity(
         **{
-            **raw_entity.dict(exclude_unset=True),
+            **entity_template.dict(exclude_unset=True),
             "properties": properties,
         }
     )
@@ -77,12 +77,13 @@ async def generate_entities_from_yaml_file(
             )
         ]
         logger.debug(f"Raw entities: {raw_entities}")
-        return [
-            await _generate_entity_from_port_yaml(
+        tasks = [
+            _generate_entity_from_port_yaml(
                 entity_data, client, commit_id, repository_id
             )
             for entity_data in raw_entities
         ]
+        return await asyncio.gather(*tasks)
     except Exception as e:
         logger.info(f"Failed to get gitops entities file {file_name} - {str(e)}")
     return []

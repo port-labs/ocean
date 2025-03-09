@@ -1,8 +1,9 @@
-from typing import List, Any, Dict, Tuple, Optional
+import asyncio
+from typing import List, Any, Dict, Tuple
 from loguru import logger
 from bitbucket_integration.client import BitbucketClient
-from bitbucket_integration.gitops.match_path import match_spec_paths
-from bitbucket_integration.gitops.process_modified_files import (
+from bitbucket_integration.gitops.path_validator import match_spec_paths
+from bitbucket_integration.gitops.file_processor import (
     determine_file_action,
     process_file,
 )
@@ -36,19 +37,23 @@ async def process_diff_stats(
     old_hash: str,
     new_hash: str,
 ) -> Tuple[List[Any], List[Any]]:
-    all_old_entities = []
-    all_new_entities = []
     logger.debug(
         f"Processing diff stats for repo: {repo}, old_hash: {old_hash}, new_hash: {new_hash}"
     )
+    all_old_entities = []
+    all_new_entities = []
+    results = []
     async for diff_stats in client.retrieve_diff_stat(
         repo=repo, old_hash=old_hash, new_hash=new_hash
     ):
         logger.debug(f"Diff stats: {diff_stats}")
-        for diff_stat in diff_stats:
-            old_entities, new_entities = await process_single_file(
-                client, repo, diff_stat, spec_paths, old_hash, new_hash
-            )
+        tasks = [
+            process_single_file(client, repo, diff_stat, spec_paths, old_hash, new_hash)
+            for diff_stat in diff_stats
+        ]
+        results = await asyncio.gather(*tasks)
+
+        for old_entities, new_entities in results:
             all_old_entities.extend(old_entities)
             all_new_entities.extend(new_entities)
             logger.debug(
