@@ -83,6 +83,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     runtime: Runtime = Runtime.OnPrem
     resources_path: str = Field(default=".port/resources")
+    max_event_processing_seconds: float = 90.0
+    max_wait_seconds_before_shutdown: float = 5.0
 
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
