@@ -19,8 +19,10 @@ from bitbucket_integration.webhook.processors.pull_request import (
 from bitbucket_integration.webhook.processors.repository import (
     RepositoryWebhookProcessor,
 )
+from bitbucket_integration.webhook.processors.push import (
+    PushWebhookProcessor,
+)
 from initialize_client import init_client, init_webhook_client
-from webhook_processors.push_webhook_processor import PushWebhookProcessor
 
 
 @ocean.on_start()
