@@ -24,8 +24,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         self,
         router: APIRouter,
         signal_handler: SignalHandler,
-        max_event_processing_seconds: float = 90.0,
-        max_wait_seconds_before_shutdown: float = 5.0,
+        max_event_processing_seconds: float,
+        max_wait_seconds_before_shutdown: float,
     ) -> None:
         self._router = router
         self._processors_classes: Dict[str, list[Type[AbstractWebhookProcessor]]] = {}

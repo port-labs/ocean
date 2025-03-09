@@ -57,7 +57,10 @@ class Ocean:
         self.integration_router = integration_router or APIRouter()
 
         self.webhook_manager = LiveEventsProcessorManager(
-            self.integration_router, signal_handler
+            self.integration_router,
+            signal_handler,
+            max_event_processing_seconds=self.config.max_event_processing_seconds,
+            max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
         )
 
         self.port_client = PortClient(
