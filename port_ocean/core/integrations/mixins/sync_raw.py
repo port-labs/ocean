@@ -169,6 +169,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         MIN_ENTITIES_TO_MAP = 10
         if len(entities) <= MIN_ENTITIES_TO_MAP:
+            logger.info("Avoid searching in port since entities amount is low", port_entities=len(entities))
             return entities
 
         BATCH_SIZE = 50
