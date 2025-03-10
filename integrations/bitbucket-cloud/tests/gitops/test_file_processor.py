@@ -1,12 +1,12 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 from bitbucket_integration.gitops.file_processor import (
     determine_file_action,
     process_file,
 )
 
 
-def test_determine_file_action():
+def test_determine_file_action() -> None:
     """Test determining file action from diff stats."""
     result = determine_file_action(
         {"old": {"path": "old.yaml"}, "new": {"path": "new.yaml"}}
@@ -27,7 +27,7 @@ def test_determine_file_action():
 
 
 @pytest.mark.asyncio
-async def test_process_file_deleted():
+async def test_process_file_deleted() -> None:
     """Test processing a deleted file."""
     mock_client = AsyncMock()
     mock_client.get_file_content.return_value = "old content"
@@ -55,7 +55,7 @@ async def test_process_file_deleted():
 
 
 @pytest.mark.asyncio
-async def test_process_file_added():
+async def test_process_file_added() -> None:
     """Test processing an added file."""
     mock_client = AsyncMock()
     mock_client.get_file_content.return_value = "new content"
@@ -83,7 +83,7 @@ async def test_process_file_added():
 
 
 @pytest.mark.asyncio
-async def test_process_file_modified():
+async def test_process_file_modified() -> None:
     """Test processing a modified file."""
     mock_client = AsyncMock()
     mock_client.get_file_content.side_effect = ["old content", "new content"]

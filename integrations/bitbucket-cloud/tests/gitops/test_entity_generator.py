@@ -1,12 +1,12 @@
 import pytest
-from typing import AsyncGenerator, Any
+from typing import Dict, Any
 from bitbucket_integration.gitops.entity_generator import get_commit_hash_from_payload
 
 
 @pytest.mark.asyncio
-async def test_get_commit_hash_from_payload_single_change():
+async def test_get_commit_hash_from_payload_single_change() -> None:
     """Test extracting commit hashes from payload with a single change."""
-    payload = {
+    payload: Dict[str, Any] = {
         "push": {
             "changes": [
                 {
@@ -25,9 +25,9 @@ async def test_get_commit_hash_from_payload_single_change():
 
 
 @pytest.mark.asyncio
-async def test_get_commit_hash_from_payload_multiple_changes():
+async def test_get_commit_hash_from_payload_multiple_changes() -> None:
     """Test extracting commit hashes from payload with multiple changes."""
-    payload = {
+    payload: Dict[str, Any] = {
         "push": {
             "changes": [
                 {
@@ -53,9 +53,9 @@ async def test_get_commit_hash_from_payload_multiple_changes():
 
 
 @pytest.mark.asyncio
-async def test_get_commit_hash_from_payload_empty_changes():
+async def test_get_commit_hash_from_payload_empty_changes() -> None:
     """Test handling payload with empty changes."""
-    payload = {"push": {"changes": []}}
+    payload: Dict[str, Any] = {"push": {"changes": []}}
 
     result = []
     async for new_hash, old_hash, branch in get_commit_hash_from_payload(payload):
@@ -65,9 +65,9 @@ async def test_get_commit_hash_from_payload_empty_changes():
 
 
 @pytest.mark.asyncio
-async def test_get_commit_hash_from_payload_invalid_payload():
+async def test_get_commit_hash_from_payload_invalid_payload() -> None:
     """Test handling invalid payload structure."""
-    payload = {"push": {}}  # Missing changes key
+    payload: Dict[str, Any] = {"push": {}}  # Missing changes key
 
     result = []
     async for new_hash, old_hash, branch in get_commit_hash_from_payload(payload):
