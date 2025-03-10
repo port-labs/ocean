@@ -22,13 +22,14 @@ class PushWebhookProcessor(_BaseWebhookProcessorConfig):
         return [ObjectKind.REPOSITORY]
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return True
+        return event.headers.get("x-event-key") == "repo:push"
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return True
+        required_fields = ["repository", "push"]
+        return all(field in payload for field in required_fields)
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

@@ -92,7 +92,7 @@ class BitbucketWebhookClient(BitbucketClient):
         :param webhook_url: The URL to which the webhook should send events.
         """
         logger.info("Setting up Bitbucket webhooks for workspace: {}", self.workspace)
-
+        webhook_url = f"{webhook_url}/integration/webhook"
         if await self._webhook_exist(webhook_url):
             logger.info(
                 "Webhook already exists for workspace {} (webhook URL: {}), skipping creation.",
