@@ -9,12 +9,16 @@ from port_ocean.core.models import Entity
 
 def determine_file_action(updated_file: Dict[str, Any]) -> Tuple[str, str, str]:
     logger.debug(f"Determining file action for updated file: {updated_file}")
-    new_file_path = updated_file.get("old", {}).get("path", "")
-    old_file_path = updated_file.get("new", {}).get("path", "")
-    if not new_file_path:
-        return "deleted", old_file_path, new_file_path
-    elif not old_file_path:
+    old = updated_file.get("old", {})
+    new = updated_file.get("new", {})
+
+    old_file_path = old.get("path", "") if old is not None else ""
+    new_file_path = new.get("path", "") if new is not None else ""
+
+    if old is None:
         return "added", old_file_path, new_file_path
+    elif new is None:
+        return "deleted", old_file_path, new_file_path
     return "modified", old_file_path, new_file_path
 
 
