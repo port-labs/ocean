@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.21.3 (2025-03-09)
+
+### Improvements
+
+- add minimum entities to map before searching
+
 ## 0.21.2 (2025-03-09)
 
 ### Improvements
