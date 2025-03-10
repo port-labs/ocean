@@ -1,0 +1,28 @@
+description: Ocean integration for Bitbucket Cloud
+icon: bitbucket
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: project
+      - kind: repository
+      - kind: pull-request
+      - kind: folder
+  - type: gitops
+    section: GitOps
+configurations:
+  - name: bitbucketWorkspaceToken
+    type: string
+    sensitive: true
+    description: Bitbucket Workspace access token, it can be created in the Bitbucket by visiting Bitbucket Workspace Settings page.
+  - name: bitbucketUsername
+    type: string
+    description: The username of the Bitbucket account.
+  - name: bitbucketWorkspace
+    description: The slug of the workspace the integration will work with
+    type: string
+    required: true
+  - name: bitbucketAppPassword
+    type: string
+    sensitive: true
+    description: Bitbucket app password, it can be created in the Bitbucket by visiting <a href="https://bitbucket.org/account/settings/app-passwords/" target="_blank">Bitbucket personal account settings</a>
