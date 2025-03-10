@@ -5,7 +5,7 @@ from bitbucket_integration.gitops.path_validator import (
 )
 
 
-def test_match_spec_paths_with_list():
+def test_match_spec_paths_with_list() -> None:
     """Test matching spec paths with a list of patterns."""
     file_path = "specs/port.yml"
     target_path = "specs/port.yaml"
@@ -16,7 +16,7 @@ def test_match_spec_paths_with_list():
     assert target_path in result
 
 
-def test_match_spec_paths_with_string():
+def test_match_spec_paths_with_string() -> None:
     """Test matching spec paths with a single string pattern."""
     file_path = "specs/port.yml"
     target_path = "specs/other.yml"  # Not a port config file
@@ -27,7 +27,7 @@ def test_match_spec_paths_with_string():
     assert target_path not in result
 
 
-def test_match_spec_paths_no_match():
+def test_match_spec_paths_no_match() -> None:
     """Test when no paths match the patterns."""
     file_path = "src/port.yml"
     target_path = "src/port.yaml"
@@ -37,7 +37,7 @@ def test_match_spec_paths_no_match():
     assert not result
 
 
-def test_match_path_pattern():
+def test_match_path_pattern() -> None:
     """Test matching individual path patterns."""
     # Test valid port config files
     assert match_path_pattern("specs/port.yml", "specs/*.yml")
@@ -68,6 +68,6 @@ def test_match_path_pattern():
 )
 def test_match_path_pattern_parametrized(
     file_path: str, spec_path: str, expected: bool
-):
+) -> None:
     """Test path pattern matching with various combinations."""
     assert match_path_pattern(file_path, spec_path) == expected
