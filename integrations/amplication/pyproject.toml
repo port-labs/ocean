@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "amplication"
-version = "0.1.5"
+version = "0.1.6"
 description = "Allowing Amplication users to integrate with Port"
 authors = ["Itai Nathaniel <itai@amplication.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.21.1", extras = ["cli"]}
+port_ocean = {version = "^0.21.3", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
