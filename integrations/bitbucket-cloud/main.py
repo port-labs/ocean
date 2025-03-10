@@ -100,7 +100,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for contents in client.get_directory_contents(
                 repo_slug, default_branch, "", max_depth=max_pattern_depth
             ):
-                matching_folders = find_matching_folders(contents, patterns, repo)
+                matching_folders = await find_matching_folders(contents, patterns, repo)
                 if matching_folders:
                     yield matching_folders
 
