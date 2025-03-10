@@ -61,7 +61,7 @@ class IntegrationClientMixin:
         return response.json().get("integrations", [])
 
     async def _get_current_integration(self) -> httpx.Response:
-        logger.info(f"Fetching integration with id: {self.integration_identifier}")
+        logger.debug(f"Fetching integration with id: {self.integration_identifier}")
         response = await self.client.get(
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
             headers=await self.auth.headers(),
