@@ -50,12 +50,22 @@ class OpsGenieClient:
                 )
                 raise
 
+    async def _should_add_suffix(self, resource_type: ObjectKind) -> bool:
+        # Some OpsGenie endpoints don't use plural form
+        # Default to True for backward compatibility
+        if resource_type == ObjectKind.ALERT_POLICY:
+            return False
+        if resource_type == ObjectKind.NOTIFICATION_POLICY:
+            return False
+        return True
+
     @cache_iterator_result()
     async def get_paginated_resources(
         self, resource_type: ObjectKind, query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         api_version = await self.get_resource_api_version(resource_type)
-        url = f"{self.api_url}/{api_version}/{resource_type.value}s"
+        suffix = "s" if await self._should_add_suffix(resource_type) else ""
+        url = f"{self.api_url}/{api_version}/{resource_type.value}{suffix}"
 
         pagination_params: dict[str, Any] = {"limit": PAGE_SIZE, **(query_params or {})}
         while url:
