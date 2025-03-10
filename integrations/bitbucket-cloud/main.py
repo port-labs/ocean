@@ -6,22 +6,37 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from client import BitbucketClient, ObjectKind
 from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
 from helpers.folder import (
     extract_repo_names_from_patterns,
     create_pattern_mapping,
     find_matching_folders,
 )
+from bitbucket_integration.utils import ObjectKind
+from bitbucket_integration.webhook.processors.pull_request import (
+    PullRequestWebhookProcessor,
+)
+from bitbucket_integration.webhook.processors.repository import (
+    RepositoryWebhookProcessor,
+)
+from initialize_client import init_client, init_webhook_client
 
 
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean Bitbucket integration")
 
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
 
-def init_client() -> BitbucketClient:
-    return BitbucketClient.create_from_ocean_config()
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning("No base URL configured, skipping webhook creation")
+        return
+
+    webhook_client = init_webhook_client()
+    await webhook_client.create_webhook(base_url)
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -85,3 +100,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 matching_folders = find_matching_folders(contents, patterns, repo)
                 if matching_folders:
                     yield matching_folders
+
+
+ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
+ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
