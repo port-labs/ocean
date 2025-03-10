@@ -1,12 +1,10 @@
 import pytest
-import sys
-import types
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 from bitbucket_integration.gitops.commit_processor import process_single_file
 
 
 @pytest.mark.asyncio
-async def test_process_single_file():
+async def test_process_single_file() -> None:
     """Test processing a single file."""
     # Arrange
     mock_client = AsyncMock()
@@ -43,7 +41,7 @@ async def test_process_single_file():
 
 
 @pytest.mark.asyncio
-async def test_process_single_file_no_matching_paths():
+async def test_process_single_file_no_matching_paths() -> None:
     """Test processing a single file with no matching paths."""
     # Arrange
     mock_client = AsyncMock()

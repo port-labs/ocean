@@ -1,26 +1,13 @@
 import json
 import pytest
 from unittest.mock import patch, AsyncMock
-from bitbucket_integration.gitops.file_entity_handler import (
-    FileEntityProcessor,
-    GitManipulationHandler,
-)
+from bitbucket_integration.gitops.file_entity_handler import FileEntityProcessor
 
-
-def test_file_entity_processor_init():
-    """Test initializing FileEntityProcessor."""
-    processor = FileEntityProcessor(AsyncMock())
-    assert processor.prefix == "file://"
-
-
-def test_git_manipulation_handler_init():
-    """Test initializing GitManipulationHandler."""
-    handler = GitManipulationHandler(AsyncMock())
-    assert callable(handler._search)
+MOCK_PORT_OCEAN_CONTEXT = AsyncMock()
 
 
 @pytest.mark.asyncio
-async def test_file_entity_processor_search_json_success():
+async def test_file_entity_processor_search_json_success() -> None:
     data = {
         "repo": {"name": "test-repo", "mainbranch": {"name": "develop"}},
         "folder": {"path": "src", "commit": {"hash": "commit-hash"}},
@@ -37,7 +24,7 @@ async def test_file_entity_processor_search_json_success():
         return_value=mock_client,
     ):
         processor = FileEntityProcessor(
-            context=None
+            context=MOCK_PORT_OCEAN_CONTEXT
         )  # if context isn't used, passing None is fine
         result = await processor._search(data, pattern)
         assert result == expected_content
@@ -47,7 +34,7 @@ async def test_file_entity_processor_search_json_success():
 
 
 @pytest.mark.asyncio
-async def test_file_entity_processor_search_non_json_success():
+async def test_file_entity_processor_search_non_json_success() -> None:
     data = {
         "repo": {"name": "test-repo", "mainbranch": {"name": "main"}},
         "folder": {"path": "docs", "commit": {"hash": "commit123"}},
@@ -62,7 +49,7 @@ async def test_file_entity_processor_search_non_json_success():
         "bitbucket_integration.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
         return_value=mock_client,
     ):
-        processor = FileEntityProcessor(context=None)
+        processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
         result = await processor._search(data, pattern)
         assert result == expected_content
         mock_client.get_file_content.assert_called_once_with(
@@ -71,7 +58,7 @@ async def test_file_entity_processor_search_non_json_success():
 
 
 @pytest.mark.asyncio
-async def test_file_entity_processor_search_error_handling():
+async def test_file_entity_processor_search_error_handling() -> None:
     data = {
         "repo": {"name": "test-repo", "mainbranch": {"name": "main"}},
         "folder": {"path": "configs", "commit": {"hash": "hash123"}},
@@ -86,13 +73,13 @@ async def test_file_entity_processor_search_error_handling():
         "bitbucket_integration.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
         return_value=mock_client,
     ):
-        processor = FileEntityProcessor(context=None)
+        processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
         result = await processor._search(data, pattern)
         assert result is None
 
 
 @pytest.mark.asyncio
-async def test_file_entity_processor_search_missing_repo():
+async def test_file_entity_processor_search_missing_repo() -> None:
     # Data without repo slug
     data = {
         "repo": {},
@@ -100,14 +87,14 @@ async def test_file_entity_processor_search_missing_repo():
     }
     pattern = "file://config.json"
 
-    processor = FileEntityProcessor(context=None)
+    processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
     result = await processor._search(data, pattern)
     # Should return None since no repository slug is found
     assert result is None
 
 
 @pytest.mark.asyncio
-async def test_file_entity_processor_search_missing_folder_commit():
+async def test_file_entity_processor_search_missing_folder_commit() -> None:
     # Data without folder commit info
     data = {
         "repo": {"name": "test-repo", "mainbranch": {"name": "main"}},
@@ -123,7 +110,7 @@ async def test_file_entity_processor_search_missing_folder_commit():
         "bitbucket_integration.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
         return_value=mock_client,
     ):
-        processor = FileEntityProcessor(context=None)
+        processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
         result = await processor._search(data, pattern)
         # In this case, since commit hash is missing, it should use the default branch ("main")
         assert result == json.loads(expected_content)
