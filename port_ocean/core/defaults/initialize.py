@@ -208,9 +208,6 @@ async def _create_resources(
 async def _initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
-    if not integration_config.initialize_port_resources:
-        return
-
     port_client = ocean.port_client
     defaults = get_port_integration_defaults(
         config_class, integration_config.resources_path
@@ -274,9 +271,10 @@ async def _initialize_defaults(
     if (
         integration_config.create_port_resources_origin
         == CreatePortResourcesOrigin.Port
+        or not integration_config.initialize_port_resources
     ):
         logger.info(
-            "Skipping creating defaults resources due to `create_port_resources_origin` being `Port`"
+            "Skipping creating defaults resources due to `create_port_resources_origin` being `Port` or `initialize_port_resources` being `false`"
         )
         return
     try:
