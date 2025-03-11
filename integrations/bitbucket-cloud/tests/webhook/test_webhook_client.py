@@ -141,7 +141,7 @@ class TestBitbucketWebhookClient:
         async def fake_paginated_response(
             api_url: str,
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield [{"url": "https://example.com/webhook", "id": "hook-123"}]
+            yield [{"url": "https://example.com/integration/webhook", "id": "hook-123"}]
 
         with patch.object(
             webhook_client_with_secret,
@@ -149,7 +149,7 @@ class TestBitbucketWebhookClient:
             new=fake_paginated_response,
         ):
             result = await webhook_client_with_secret._webhook_exist(
-                "https://example.com/webhook"
+                "https://example.com"
             )
             assert result is True
 

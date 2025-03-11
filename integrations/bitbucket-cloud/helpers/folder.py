@@ -37,7 +37,7 @@ def create_pattern_mapping(
     return pattern_by_repo
 
 
-def find_matching_folders(
+async def find_matching_folders(
     contents: List[Dict[str, Any]], patterns: List[str], repo: Dict[str, Any]
 ) -> List[Dict[str, Any]]:
     """Find folders that match the given patterns."""
