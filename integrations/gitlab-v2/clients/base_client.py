@@ -6,10 +6,10 @@ from .rest_client import RestClient
 from loguru import logger
 import urllib.parse
 from .utils import convert_glob_to_gitlab_patterns, parse_file_content
+import anyio
 
 
 class GitLabClient:
-    PARSEABLE_EXTENSIONS = {".json", ".yml", ".yaml"}
 
     def __init__(self, base_url: str, token: str) -> None:
         auth_client = AuthClient(token)
@@ -63,20 +63,19 @@ class GitLabClient:
         ):
             yield batch
 
-    def _process_batch(
+    async def _process_batch(
         self,
         batch: list[dict[str, Any]],
         context: str,
     ) -> list[dict[str, Any]]:
-        """Process a batch of files, parsing json, yaml, and yml content automatically."""
-        PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")  # Define parseable extensions
+        PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
         for file in batch:
             file_path = file.get("path", "")
             if file_path.endswith(PARSEABLE_EXTENSIONS):
                 try:
-                    file["data"] = parse_file_content(
-                        file.get("data", ""), file_path, context
+                    file["data"] = await anyio.to_thread.run_sync(
+                        parse_file_content, file.get("data", ""), file_path, context
                     )
                 except Exception as e:
                     logger.error(f"Failed to parse {file_path} in {context}: {str(e)}")
@@ -94,7 +93,7 @@ class GitLabClient:
             try:
                 async for batch in self.get_project_resource(repo, "search", params):
                     if batch:
-                        yield self._process_batch(batch, repo)
+                        yield await self._process_batch(batch, repo)
             except Exception as e:
                 logger.error(f"Error searching in {repo}: {str(e)}")
 
@@ -111,7 +110,7 @@ class GitLabClient:
             try:
                 async for batch in self.get_group_resource(group, "search", params):
                     if batch:
-                        yield self._process_batch(batch, group_context)
+                        yield await self._process_batch(batch, group_context)
             except Exception as e:
                 logger.error(f"Error searching in {group_context}: {str(e)}")
 
