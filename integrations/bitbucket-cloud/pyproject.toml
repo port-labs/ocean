@@ -6,7 +6,7 @@ authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {extras = ["cli"], version = "^0.21.2"}
+port_ocean = {extras = ["cli"], version = "^0.21.3"}
 aiolimiter = "^1.2.1"
 pyyaml = "^6.0.2"
 types-pyyaml = "^6.0.12.20241230"
