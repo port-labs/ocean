@@ -125,7 +125,9 @@ class TestGitLabClient:
     async def test_search_files_in_repos(self, client: GitLabClient) -> None:
         """Test file search in specific repositories"""
         # Arrange
-        raw_files: list[dict[str, Any]] = [{"path": "test.json", "data": '{"key": "value"}'}]
+        raw_files: list[dict[str, Any]] = [
+            {"path": "test.json", "data": '{"key": "value"}'}
+        ]
         repos = ["group/project"]
         pattern = "*.json"
 

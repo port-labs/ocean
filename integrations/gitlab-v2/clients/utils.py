@@ -1,5 +1,5 @@
 from typing import Any, Union, cast
-from braceexpand import braceexpand  
+from braceexpand import braceexpand
 
 import json
 import yaml
