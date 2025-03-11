@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.110 (2025-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.3
+
+
+## 0.2.109 (2025-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.1
+
+
+## 0.2.108 (2025-03-05)
+
+
+### Bug Fixes
+
+- Introduced a custom pagination utility `AsyncPaginator` to resolve issue where paginated requests return an uncontrollable large number resources
+- Detached SQS from cloudcontrol API to resolve bug where the cloudcontrol fails to return `NextToken` to facilitate pagination for the SQS kind
+
+### Improvements
+
+- Introduced resource buffering to improve performance and reduce latency when using `use_get_resource_api`
+- Improved logs for better visibility
+
+
 ## 0.2.107 (2025-03-03)
 
 
