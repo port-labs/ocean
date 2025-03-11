@@ -6,7 +6,6 @@ from port_ocean.utils import http_async_client
 from .auth_client import AuthClient
 import base64
 import urllib.parse
-from typing import Optional
 
 
 class RestClient:

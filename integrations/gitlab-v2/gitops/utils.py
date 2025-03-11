@@ -1,4 +1,4 @@
-from typing import Any, Dict, cast
+from typing import Any
 from loguru import logger
 
 FILE_PROPERTY_PREFIX = "file://"
@@ -20,7 +20,7 @@ def get_file_paths(entity_mapping: object) -> list[str]:
     file_paths: list[str] = []
 
     # Use a dict with Any values to allow for the various types in the object
-    mapping_dict: Dict[str, Any] = vars(entity_mapping)
+    mapping_dict: dict[str, Any] = vars(entity_mapping)
 
     # Process direct attributes
     for key, value in mapping_dict.items():
