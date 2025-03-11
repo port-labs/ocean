@@ -7,7 +7,8 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients.base_client import GitLabClient
-from integration import ProjectResourceConfig
+from integration import ProjectResourceConfig, GitLabFilesResourceConfig
+from gitops.utils import get_file_paths
 
 
 class ObjectKind(StrEnum):
@@ -16,6 +17,7 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
     LABELS = "labels"
+    FILE = "file"
 
 
 _gitlab_client: Optional[GitLabClient] = None
@@ -59,7 +61,18 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(ProjectResourceConfig, event.resource_config).selector
 
-    async for projects_batch in client.get_projects():
+    # Extract file paths from resource_config
+
+    if event.resource_config:
+        mappings = event.resource_config.port.entity.mappings
+        file_paths = get_file_paths(mappings)
+
+    params = {}
+
+    if file_paths:
+        params["filePaths"] = file_paths
+
+    async for projects_batch in client.get_projects(params=params):
         logger.info(f"Received project batch with {len(projects_batch)} projects")
         if selector.include_labels:
             for project in projects_batch:
@@ -117,3 +130,27 @@ async def on_resync_labels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for labels_batch in client.get_group_resource(group, "labels"):
                 logger.info(f"Received labels batch with {len(labels_batch)} labels")
                 yield labels_batch
+
+
+@ocean.on_resync(ObjectKind.FILE)
+async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+
+    selector = cast(GitLabFilesResourceConfig, event.resource_config).selector
+
+    if not selector.files or not selector.files.path:
+        logger.warning("No path provided in the selector, skipping fetching files")
+        return
+
+    search_path = selector.files.path
+
+    repos = (
+        selector.files.repos
+        if hasattr(selector.files, "repos") and selector.files.repos
+        else None
+    )
+
+    async for files_batch in client.search_files(search_path, repos):
+        if files_batch:
+            logger.info(f"Found batch of {len(files_batch)} matching files")
+            yield files_batch
