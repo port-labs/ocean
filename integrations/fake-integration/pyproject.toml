@@ -11,7 +11,7 @@ faker = "^28.0.0"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
-# port_ocean = { path = '../../', develop = true, extras = ['all'] }
+port_ocean = { path = '../../', develop = true, extras = ['all'] }
 black = "^24.4.2"
 mypy = "^1.3.0"
 pre-commit = "^3.7.1"
