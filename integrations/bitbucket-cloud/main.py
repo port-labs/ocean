@@ -9,9 +9,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from client import BitbucketClient, ObjectKind
 from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
 from helpers.folder import (
-    extract_repo_names_from_patterns,
-    create_pattern_mapping,
-    find_matching_folders,
+    process_folder_patterns,
 )
 
 
@@ -58,29 +56,6 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         Union[ResourceConfig, BitbucketFolderResourceConfig], event.resource_config
     )
     selector = cast(BitbucketFolderSelector, config.selector)
-    folder_patterns = selector.folders
-    repo_names = extract_repo_names_from_patterns(folder_patterns)
-    if not repo_names:
-        return
     client = init_client()
-    pattern_by_repo = create_pattern_mapping(folder_patterns)
-    async for repos_batch in client.get_repositories():
-        for repo in repos_batch:
-            repo_name = repo["name"]
-            if repo_name not in repo_names or repo_name not in pattern_by_repo:
-                continue
-            patterns = pattern_by_repo[repo_name]
-            repo_slug = repo.get("slug", repo_name.lower())
-            default_branch = repo.get("mainbranch", {}).get("name", "main")
-            max_pattern_depth = max(
-                (
-                    folder_pattern.path.count("/") + 1
-                    for folder_pattern in folder_patterns
-                ),
-                default=1,
-            )
-            async for contents in client.get_directory_contents(
-                repo_slug, default_branch, "", max_depth=max_pattern_depth
-            ):
-                if matching_folders := find_matching_folders(contents, patterns, repo):
-                    yield matching_folders
+    async for matching_folders in process_folder_patterns(selector.folders, client):
+        yield matching_folders

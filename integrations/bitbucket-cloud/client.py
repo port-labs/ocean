@@ -121,10 +121,12 @@ class BitbucketClient:
             yield projects
 
     @cache_iterator_result()
-    async def get_repositories(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_repositories(
+        self, params: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the workspace."""
         async for repos in self._send_paginated_api_request(
-            f"repositories/{self.workspace}"
+            f"repositories/{self.workspace}", params=params
         ):
             yield repos
 

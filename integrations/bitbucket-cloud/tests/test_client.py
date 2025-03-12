@@ -216,7 +216,9 @@ async def test_get_repositories(mock_client: BitbucketClient) -> None:
             mock_paginated.return_value = mock_generator()
             async for repos in mock_client.get_repositories():
                 assert repos == mock_data["values"]
-            mock_paginated.assert_called_once_with("repositories/test_workspace")
+            mock_paginated.assert_called_once_with(
+                "repositories/test_workspace", params=None
+            )
 
 
 @pytest.mark.asyncio
