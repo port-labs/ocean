@@ -75,77 +75,91 @@ class FileSelector(BaseModel):
     path: Union[str, List[str]] = Field(
         ...,  # Make path required
         description="""
-        Explicit file path(s) to fetch. Can be a single pattern or list of patterns.
+        Explicit file path(s) to fetch. Can be a single path or list of paths.
         
-        Examples of valid patterns:
-        - Root level files:
-          - "*" : all files in root folder only
-          - "*.yaml" : all YAML files in root folder only
-          - "*.{json,yaml}" : all JSON and YAML files in root folder only
+        Examples of valid paths:
+        - "src/config.yaml"
+        - "deployment/helm/values.yaml"
+        - "config/settings.json"
+        - ".github/workflows/ci.yml"
+        - "docs/README.md"
+        - "src/main.py"
+        - "images/logo.png"
         
-        - Specific directories:
-          - "src/*.js" : all JS files in src folder only
-          - "deployment-script/*" : all files in deployment-script folder
-          - "config/**/*.yaml" : all YAML files in config folder and subfolders
+        Invalid paths:
+        - "*" : glob patterns not allowed
+        - "*.yaml" : glob patterns not allowed
+        - "src/*.js" : glob patterns not allowed
+        - "config/**/*.yaml" : glob patterns not allowed
+        - "**/*" : glob patterns not allowed
+        - "**" : glob patterns not allowed
         
-        Invalid patterns:
-        - "**/*" : too broad, specify directories instead
-        - "**" : too broad, specify target paths
+        Each path must be an explicit file path relative to the repository root.
+        Glob patterns are not supported to prevent overly broad file fetching.
         """,
     )
     repos: Optional[List[str]] = Field(
         default=None,
         description="List of repository names to scan. If None, scans all repositories.",
     )
-    max_depth: Optional[int] = Field(
-        default=None,
-        description="Maximum directory depth to traverse. Use 0 for root directory only.",
-    )
 
-    @validator("path")
+    @validator("path", allow_reuse=True)
     def validate_path_patterns(cls, v: Union[str, List[str]]) -> Union[str, List[str]]:
         patterns = [v] if isinstance(v, str) else v
 
         if not patterns:
-            raise ValueError("At least one path pattern must be specified")
+            raise ValueError("At least one file path must be specified")
 
-        for pattern in patterns:
-            # Skip validation for empty or None patterns
-            if not pattern:
+        invalid_chars = {"*", "?", "[", "]", "{", "}", "**"}
+        valid_paths = []
+
+        for path in patterns:
+            # Skip empty paths
+            if not path or not path.strip():
                 continue
 
-            # Allow root-level patterns
-            if pattern == "*" or pattern.startswith("*."):
-                continue
+            # Remove leading/trailing slashes and spaces
+            cleaned_path = path.strip().strip("/")
 
-            # Allow specific directory patterns
-            if pattern.endswith("/*") or pattern.endswith("/*.{json,yaml,yml}"):
-                continue
-
-            # Allow specific subdirectory patterns with explicit paths
-            if pattern.startswith("*/") or "/" in pattern:
-                if not pattern.startswith("**/*"):  # Avoid overly broad patterns
-                    continue
-
-            # Reject overly broad patterns
-            if pattern in ("**", "**/*") or pattern.startswith("**/*"):
+            # Check for invalid glob characters
+            if any(char in cleaned_path for char in invalid_chars):
                 raise ValueError(
-                    f"Pattern '{pattern}' is too broad. Please specify targeted paths instead. "
-                    "Examples:\n"
-                    "- For root files: '*' or '*.{json,yaml}'\n"
-                    "- For specific folders: 'deployment-script/*' or 'src/**/*.js'"
+                    f"Path '{path}' contains glob patterns which are not allowed. "
+                    "Please provide explicit file paths like 'src/config.yaml' or 'docs/README.md'"
                 )
 
-        return v
+            valid_paths.append(cleaned_path)
+
+        if not valid_paths:
+            raise ValueError(
+                "No valid file paths provided. Please provide explicit file paths "
+                "like 'src/config.yaml' or 'docs/README.md'"
+            )
+
+        return valid_paths
 
 
 class AzureDevopsFileSelector(Selector):
     """Selector for Azure DevOps file resources."""
 
-    query: str
     files: FileSelector = Field(
-        default=FileSelector(path="*.{json,yaml,yml}"),  # Changed from default_factory
-        description="Configuration for file selection and scanning",
+        default=FileSelector(path="port.yml"),  # Changed to a specific default file
+        description="""Configuration for file selection and scanning.
+        
+        Specify explicit file paths to fetch from repositories.
+        Example:
+        ```yaml
+        selector:
+          files:
+            path: 
+              - "port.yml"
+              - "config/settings.json"
+              - ".github/workflows/ci.yml"
+            repos:  # optional, if not specified will scan all repositories
+              - "my-repo-1"
+              - "my-repo-2"
+        ```
+        """,
     )
 
 

@@ -85,7 +85,7 @@ async def parse_file_content(content: bytes) -> Union[dict[str, Any], list[Any],
             return content_str
 
 
-async def create_enriched_file_object(
+async def generate_file_object_from_repository_file(
     file_metadata: dict[str, Any],
     file_content: bytes,
     repository_metadata: dict[str, Any],

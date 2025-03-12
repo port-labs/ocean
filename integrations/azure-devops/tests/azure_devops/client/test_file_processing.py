@@ -4,7 +4,7 @@ from azure_devops.client.file_processing import (
     match_pattern,
     expand_patterns,
     get_base_paths,
-    create_enriched_file_object,
+    generate_file_object_from_repository_file,
     parse_file_content,
 )
 
@@ -166,14 +166,14 @@ class TestContentParsing:
 
 class TestFileProcessing:
     @pytest.mark.asyncio
-    async def test_create_enriched_file_object_json(self) -> None:
+    async def test_generate_file_object_from_repository_file_json(self) -> None:
         """Test processing JSON file content."""
         # Test with JSON file
         file_metadata = {"path": "test.json", "size": 30}
         file_content = b'{"name": "test", "value": 123}'
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
-        result = await create_enriched_file_object(
+        result = await generate_file_object_from_repository_file(
             file_metadata, file_content, repo_metadata
         )
 
@@ -185,14 +185,14 @@ class TestFileProcessing:
         assert result["repo"] == repo_metadata
 
     @pytest.mark.asyncio
-    async def test_create_enriched_file_object_yaml(self) -> None:
+    async def test_generate_file_object_from_repository_file_yaml(self) -> None:
         """Test processing YAML file content."""
         # Test with YAML file
         file_metadata = {"path": "test.yaml", "size": 21}
         file_content = b"name: test\nvalue: 123"
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
-        result = await create_enriched_file_object(
+        result = await generate_file_object_from_repository_file(
             file_metadata, file_content, repo_metadata
         )
 
@@ -204,14 +204,16 @@ class TestFileProcessing:
         assert result["repo"] == repo_metadata
 
     @pytest.mark.asyncio
-    async def test_create_enriched_file_object_size_fallback(self) -> None:
+    async def test_generate_file_object_from_repository_file_size_fallback(
+        self,
+    ) -> None:
         """Test that size falls back to content length."""
         # Test with size in metadata
         file_metadata = {"path": "test.json", "size": 100}
         file_content = b'{"name": "test"}'
         repo_metadata = {"id": "repo1", "name": "Test Repo"}
 
-        result = await create_enriched_file_object(
+        result = await generate_file_object_from_repository_file(
             file_metadata, file_content, repo_metadata
         )
 

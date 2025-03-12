@@ -164,16 +164,11 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     config = cast(AzureDevopsFileResourceConfig, event.resource_config)
 
-    if not config.selector.files.path:
-        logger.warning("No path provided in the selector, skipping fetching files")
-        return
-
-    logger.info(f"Starting file resync for patterns: {config.selector.files.path}")
+    logger.info(f"Starting file resync for paths: {config.selector.files.path}")
 
     async for files_batch in azure_devops_client.generate_files(
         path=config.selector.files.path,
         repos=config.selector.files.repos,
-        max_depth=config.selector.files.max_depth,
     ):
         if files_batch:
             logger.info(f"Resyncing batch of {len(files_batch)} files")

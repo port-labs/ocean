@@ -10,7 +10,9 @@ from port_ocean.context.ocean import ocean
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
 from azure_devops.misc import GitPortAppConfig, Kind, extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_event import WebhookEvent
-from azure_devops.client.file_processing import parse_file_content
+from azure_devops.client.file_processing import (
+    generate_file_object_from_repository_file,
+)
 
 from .listener import HookListener
 
@@ -95,12 +97,10 @@ class PushHookListener(HookListener):
             response = await self._client.send_request(
                 "GET", url, params={"api-version": "7.1"}
             )
-            changes = response.json().get("changes", [])
+            changed_files = response.json().get("changes", [])
 
-            for change in changes:
-                file_path = change.get("item", {}).get("path", "")
-                if file_path.endswith((".yaml", ".yml", ".json")):
-                    await self.ingest_file_to_port(repo_info, commit_id, file_path)
+            for changed_file in changed_files:
+                await self.ingest_file_to_port(repo_info, commit_id, changed_file)
 
         except Exception as e:
             logger.error(f"Error fetching file changes: {e}")
@@ -109,11 +109,14 @@ class PushHookListener(HookListener):
         self,
         repo_info: dict[str, Any],
         commit_id: str,
-        file_path: str,
+        changed_file: dict[str, Any],
     ) -> None:
         """Retrieves, parses, and registers a file with Port."""
-        logger.info(f"Ingesting file {file_path} to Port")
+        logger.info(
+            f"Ingesting file {changed_file.get('item', {}).get('path')} to Port"
+        )
         try:
+            file_path = changed_file["item"]["path"]
             file_content = await self._client.get_file_by_commit(
                 file_path, repo_info["id"], commit_id
             )
@@ -121,28 +124,21 @@ class PushHookListener(HookListener):
                 logger.warning(f"No content found for file {file_path}")
                 return
 
-            # Use the existing parse_content function
-            parsed_content = await parse_file_content(file_content)
+            file_metadata = {
+                **changed_file.get("item", {}),
+                "size": len(file_content),
+            }
+            logger.debug(f"File metadata: {file_metadata}")
 
-            # Only proceed if the file is a structured format we can parse
-            if file_path.endswith((".yaml", ".yml", ".json")):
-                file_data = {
-                    "file": {
-                        "path": file_path,
-                        "content": {
-                            "raw": file_content.decode("utf-8"),
-                            "parsed": parsed_content,
-                        },
-                        "link": f"{repo_info['webUrl']}/blob/{commit_id}/{file_path.lstrip('/')}",
-                        "size": len(file_content),
-                    },
-                    "repo": repo_info,
-                }
+            file_data = await generate_file_object_from_repository_file(
+                file_metadata, file_content, repo_info
+            )
+            if file_data:
                 await ocean.register_raw(Kind.FILE, [file_data])
                 logger.info(f"Successfully ingested file {file_path} to Port")
 
         except Exception as e:
-            logger.error(f"Error ingesting file {file_path}: {e}")
+            logger.error(f"Error ingesting file {changed_file['item']['path']}: {e}")
 
     async def register_repository(self, push_data: Dict[str, Any]) -> None:
         await ocean.register_raw(
