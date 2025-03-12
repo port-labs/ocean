@@ -150,12 +150,17 @@ class GitLabClient:
         if repositories:
             logger.info(f"Searching in {len(repositories)} specific repositories")
             for repo in repositories:
+                logger.debug(f"Searching repo '{repo}' for pattern '{path_pattern}'")
                 async for batch in self._search_in_repository(repo, patterns):
                     yield batch
         else:
             logger.info("Searching across all accessible groups")
             async for groups in self.get_groups():
                 for group in groups:
+                    group_id = group.get("name", str(group["id"]))
+                    logger.debug(
+                        f"Searching group '{group_id}' for pattern '{path_pattern}'"
+                    )
                     async for batch in self._search_in_group(group, patterns):
                         yield batch
 
