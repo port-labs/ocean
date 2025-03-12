@@ -4,7 +4,7 @@ FROM ${BASE_PYTHON_IMAGE}
 
 LABEL org.opencontainers.image.source=https://github.com/port-labs/ocean
 
-ENV LIBRDKAFKA_VERSION=1.9.2 \
+ENV LIBRDKAFKA_VERSION=2.8.2 \
     PYTHONUNBUFFERED=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=1 \
     PIP_ROOT_USER_ACTION=ignore
