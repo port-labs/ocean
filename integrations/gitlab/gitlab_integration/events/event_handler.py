@@ -28,41 +28,45 @@ class BaseEventHandler(ABC):
     async def _start_event_processor(self) -> None:
         logger.info(f"Started {self.__class__.__name__} worker")
         while True:
-            event_ctx, event_id, body = await self.webhook_tasks_queue.get()
-            logger.debug(f"Retrieved event: {event_id} from Queue, notifying observers")
-            try:
-                async with event_context(
-                    "gitlab_http_event_async_worker", parent_override=event_ctx
-                ):
-                    await self._notify(event_id, body)
-            except Exception as e:
-                logger.error(
-                    f"Error notifying observers for event: {event_id}, error: {e}"
+            event_ctx, event, body = await self.webhook_tasks_queue.get()
+            with logger.contextualize(
+                event_context=event_ctx.id,
+                event_type=event_ctx.event_type,
+                event_id=event_ctx.id,
+                event=event,
+            ):
+                logger.debug(
+                    f"Retrieved event: {event} from Queue, notifying observers",
+                    queue_size=self.webhook_tasks_queue.qsize(),
                 )
-            finally:
-                logger.info(
-                    f"Processed event {event_id}",
-                    event_id=event_id,
-                    event_context=event_ctx.id,
-                )
-                self.webhook_tasks_queue.task_done()
+                try:
+                    async with event_context(
+                        "gitlab_http_event_async_worker", parent_override=event_ctx
+                    ):
+                        await self._notify(event, body)
+                except Exception as e:
+                    logger.error(
+                        f"Error notifying observers for event: {event}, error: {e}"
+                    )
+                finally:
+                    logger.info(
+                        f"Processed event {event}",
+                    )
+                    self.webhook_tasks_queue.task_done()
 
     async def start_event_processor(self) -> None:
         asyncio.create_task(self._start_event_processor())
 
     @abstractmethod
-    async def _notify(self, event_id: str, body: dict[str, Any]) -> None:
+    async def _notify(self, event: str, body: dict[str, Any]) -> None:
         pass
 
-    async def notify(self, event_id: str, body: dict[str, Any]) -> None:
-        logger.debug(
-            f"Received event: {event_id}, putting it in Queue for processing",
-            event_context=current_event_context.id,
-        )
+    async def notify(self, event: str, body: dict[str, Any]) -> None:
+        logger.debug(f"Received event: {event}, putting it in Queue for processing")
         await self.webhook_tasks_queue.put(
             (
                 deepcopy(current_event_context),
-                event_id,
+                event,
                 body,
             )
         )
@@ -77,28 +81,24 @@ class EventHandler(BaseEventHandler):
         for event in events:
             self._observers[event].append(observer)
 
-    async def _notify(self, event_id: str, body: dict[str, Any]) -> None:
-        observers_list = self._observers.get(event_id, [])
+    async def _notify(self, event: str, body: dict[str, Any]) -> None:
+        observers_list = self._observers.get(event, [])
+
         if not observers_list:
             logger.info(
-                f"event: {event_id} has no matching handler. the handlers available are for events: {self._observers.keys()}"
+                f"event: {event} has no matching handler. the handlers available are for events: {self._observers.keys()}"
             )
             return
         for observer in observers_list:
-            try:
-                if asyncio.iscoroutinefunction(observer):
-                    if inspect.ismethod(observer):
-                        handler = observer.__self__.__class__.__name__
-                        logger.debug(
-                            f"Notifying observer: {handler}, for event: {event_id}",
-                            event_id=event_id,
-                            handler=handler,
-                        )
-                    await observer(event_id, body)  # Sequentially call each observer
-            except Exception as e:
-                logger.error(
-                    f"Error processing event {event_id} with observer {observer}: {str(e)}"
-                )
+            if asyncio.iscoroutinefunction(observer):
+                if inspect.ismethod(observer):
+                    handler = observer.__self__.__class__.__name__
+                    logger.debug(
+                        f"Notifying observer: {handler}, for event: {event}",
+                        event=event,
+                        handler=handler,
+                    )
+                asyncio.create_task(observer(event, body))  # type: ignore
 
 
 class SystemEventHandler(BaseEventHandler):
@@ -114,17 +114,20 @@ class SystemEventHandler(BaseEventHandler):
     def add_client(self, client: GitlabService) -> None:
         self._clients.append(client)
 
-    async def _notify(self, event_id: str, body: dict[str, Any]) -> None:
+    async def _notify(self, event: str, body: dict[str, Any]) -> None:
         # best effort to notify using all clients, as we don't know which one of the clients have the permission to
         # access the project
-        for client in self._clients:
-            for hook_handler_class in self._hook_handlers.get(event_id, []):
-                try:
-                    hook_handler_instance = hook_handler_class(client)
-                    await hook_handler_instance.on_hook(
-                        event_id, body
-                    )  # Sequentially process handlers
-                except Exception as e:
-                    logger.error(
-                        f"Error processing event {event_id} with handler {hook_handler_class.__name__} for client {client}: {str(e)}"
-                    )
+        results = await asyncio.gather(
+            *(
+                hook_handler(client).on_hook(event, body)
+                for client in self._clients
+                for hook_handler in self._hook_handlers.get(event, [])
+            ),
+            return_exceptions=True,
+        )
+
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(
+                    f"Failed to notify observer for event: {event}, error: {result}"
+                )

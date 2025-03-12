@@ -19,6 +19,7 @@ from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.context.resource import resource
+from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.exceptions.context import (
     EventContextNotFoundError,
     ResourceContextNotFoundError,
@@ -177,8 +178,19 @@ async def event_context(
         logger.info("Event started")
         try:
             yield event
-        except:
+        except EmptyPortAppConfigError as e:
+            logger.error(
+                f"Skipping resync due to empty mapping: {str(e)}", exc_info=True
+            )
+            raise
+        except BaseException as e:
             success = False
+            if isinstance(e, KeyboardInterrupt):
+                logger.warning("Operation interrupted by user", exc_info=True)
+            elif isinstance(e, asyncio.CancelledError):
+                logger.warning("Operation was cancelled", exc_info=True)
+            else:
+                logger.error(f"Event failed with error: {repr(e)}", exc_info=True)
             raise
         else:
             success = True

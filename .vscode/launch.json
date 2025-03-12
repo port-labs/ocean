@@ -3,12 +3,34 @@
   "configurations": [
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jira",
+      "envFile": "${workspaceFolder}/integrations/jira/.env",
+      "justMyCode": true,
+      "name": "Run jira integration",
+      "program": "${workspaceFolder}/integrations/jira/debug.py",
+      "python": "${workspaceFolder}/integrations/jira/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/snyk",
       "envFile": "${workspaceFolder}/integrations/snyk/.env",
       "justMyCode": true,
       "name": "Run snyk integration",
       "program": "${workspaceFolder}/integrations/snyk/debug.py",
       "python": "${workspaceFolder}/integrations/snyk/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/fake-integration",
+      "envFile": "${workspaceFolder}/integrations/fake-integration/.env",
+      "justMyCode": true,
+      "name": "Run fake-integration integration",
+      "program": "${workspaceFolder}/integrations/fake-integration/debug.py",
+      "python": "${workspaceFolder}/integrations/fake-integration/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },
@@ -74,6 +96,17 @@
       "name": "Run AWS integration",
       "program": "${workspaceFolder}/integrations/aws/debug.py",
       "python": "${workspaceFolder}/integrations/aws/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/datadog",
+      "envFile": "${workspaceFolder}/integrations/datadog/.env",
+      "justMyCode": false,
+      "name": "Run Datadog integration",
+      "program": "${workspaceFolder}/integrations/datadog/debug.py",
+      "python": "${workspaceFolder}/integrations/datadog/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },

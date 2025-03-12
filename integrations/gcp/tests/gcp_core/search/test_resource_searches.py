@@ -7,6 +7,9 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from google.pubsub_v1.types import pubsub
 from google.cloud.resourcemanager_v3.types import Project
+from gcp_core.overrides import (
+    ProtoConfig,
+)
 
 
 async def mock_subscription_pages(
@@ -97,7 +100,10 @@ async def test_get_single_subscription(
 
     # Act within event context
     async with event_context("test_event"):
-        actual_subscription = await get_single_subscription("subscription_name")
+        config = ProtoConfig(
+            preserving_proto_field_name=mock_resource_config.selector.preserve_api_response_case_style
+        )
+        actual_subscription = await get_single_subscription("subscription_name", config)
 
     # Assert
     assert actual_subscription == expected_subscription
@@ -106,7 +112,8 @@ async def test_get_single_subscription(
 @pytest.mark.asyncio
 @patch("gcp_core.utils.get_current_resource_config")
 async def test_feed_to_resource(
-    get_current_resource_config_mock: MagicMock, monkeypatch: Any
+    get_current_resource_config_mock: MagicMock,
+    monkeypatch: Any,
 ) -> None:
     # Arrange
     projects_async_client_mock = AsyncMock
@@ -135,6 +142,9 @@ async def test_feed_to_resource(
     get_current_resource_config_mock.return_value = mock_resource_config
 
     from gcp_core.search.resource_searches import feed_event_to_resource
+
+    # Mock resolve_request_controllers
+    mock_rate_limiter = AsyncMock()
 
     mock_asset_name = "projects/project_name/topics/topic_name"
     mock_asset_type = "pubsub.googleapis.com/Topic"
@@ -167,11 +177,17 @@ async def test_feed_to_resource(
 
     # Act within event context
     async with event_context("test_event"):
+        config = ProtoConfig(
+            preserving_proto_field_name=mock_resource_config.selector.preserve_api_response_case_style
+        )
         actual_resource = await feed_event_to_resource(
             asset_type=mock_asset_type,
             asset_name=mock_asset_name,
+            project_rate_limiter=mock_rate_limiter,
             project_id=mock_asset_project_name,
             asset_data=mock_asset_data,
+            config=config,
+            project_semaphore=AsyncMock(),
         )
 
     # Assert
@@ -231,7 +247,12 @@ async def test_preserve_case_style_combined(
 
     # Act within event context for preserve_case_style = True
     async with event_context("test_event"):
-        actual_subscription_true = await get_single_subscription("subscription_name")
+        config = ProtoConfig(
+            preserving_proto_field_name=mock_resource_config_true.selector.preserve_api_response_case_style
+        )
+        actual_subscription_true = await get_single_subscription(
+            "subscription_name", config
+        )
 
     # Assert for preserve_case_style = True
     assert actual_subscription_true == expected_subscription_true
@@ -258,7 +279,12 @@ async def test_preserve_case_style_combined(
 
     # Act within event context for preserve_case_style = False
     async with event_context("test_event"):
-        actual_subscription_false = await get_single_subscription("subscription_name")
+        config = ProtoConfig(
+            preserving_proto_field_name=mock_resource_config_false.selector.preserve_api_response_case_style
+        )
+        actual_subscription_false = await get_single_subscription(
+            "subscription_name", config
+        )
 
     # Assert for preserve_case_style = False
     assert actual_subscription_false == expected_subscription_false

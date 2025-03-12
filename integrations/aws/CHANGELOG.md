@@ -7,6 +7,309 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.111 (2025-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.4
+
+
+## 0.2.110 (2025-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.3
+
+
+## 0.2.109 (2025-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.1
+
+
+## 0.2.108 (2025-03-05)
+
+
+### Bug Fixes
+
+- Introduced a custom pagination utility `AsyncPaginator` to resolve issue where paginated requests return an uncontrollable large number resources
+- Detached SQS from cloudcontrol API to resolve bug where the cloudcontrol fails to return `NextToken` to facilitate pagination for the SQS kind
+
+### Improvements
+
+- Introduced resource buffering to improve performance and reduce latency when using `use_get_resource_api`
+- Improved logs for better visibility
+
+
+## 0.2.107 (2025-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.0
+
+
+## 0.2.106 (2025-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+## 0.2.105 (2025-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+## 0.2.104 (2025-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.3
+
+
+## 0.2.103 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.2
+
+
+## 0.2.102 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.1
+
+
+## 0.2.101 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.0
+
+
+## 0.2.100 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.3
+
+
+## 0.2.99 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.2
+
+
+## 0.2.98 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.1
+
+
+## 0.2.97 (2025-02-13)
+
+
+### Improvements
+
+- Bumped cryptography version to ^44.0.1
+
+
+## 0.2.96 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
+
+
+## 0.2.95 (2025-01-24)
+
+
+### Bug Fixes
+
+- Fixed invalid token errors by implementing an auto-retry strategy using botocore's AioRefreshable Credentials
+
+
+## 0.2.94 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.2.93 (2025-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.2.92 (2025-01-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+
+## 0.2.91 (2025-01-24)
+
+
+### Bug Fixes
+
+- Handled the `AWSOrganizationsNotInUseException` properly to avoid breaking the sync process when using accounts that does not belong to an organization.
+
+
+## 0.2.90 (2025-01-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+## 0.2.89 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+## 0.2.88 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+## 0.2.87 (2025-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+## 0.2.86 (2025-01-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+## 0.2.85 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.2.84 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
+## 0.2.83 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+## 0.2.82 (2025-01-10)
+
+
+### Improvements
+
+- Added rate limiting and concurrency management in resync_cloudcontrol function to handle AWS throttling more effectively.
+- Improved memory issues by reducing calls to create new boto3 clients.
+
+
+## 0.2.81 (2025-01-08)
+
+
+### Bug Fixes
+
+- Updated the serialized response to include valid custom property json key by accessing the StrEnum value properly.
+
+
+## 0.2.80 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.2.79 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+## 0.2.78 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.2.77 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.2.76 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.75 (2024-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
 ## 0.2.74 (2024-12-26)
 
 

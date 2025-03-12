@@ -7,6 +7,347 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.10 (2025-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.4
+
+
+## 0.3.9 (2025-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.3
+
+
+## 0.3.8 (2025-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.1
+
+
+## 0.3.7 (2025-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.0
+
+
+## 0.3.6 (2025-02-27)
+
+
+### Improvements
+
+- Enabled live events for Jira Ocean SaaS installation
+
+
+## 0.3.5 (2025-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+## 0.3.4 (2025-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+## 0.3.3 (2025-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.3
+
+
+## 0.3.2 (2025-02-24)
+
+
+### Improvements
+
+- Added support for OAuth live events for Jira using the webhooks api.
+  - https://developer.atlassian.com/cloud/jira/platform/webhooks/#registering-a-webhook-using-the-rest-api--for-connect-and-oauth-2-0-apps-
+
+
+## 0.3.1 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.2
+
+
+## 0.3.0 (2025-02-23)
+
+
+### Improvements
+
+- Introduced a standardized abstraction for Jira integration
+- Added dedicated webhook processors for issues, projects, and users
+- Refactored and modularized code for better maintainability
+- Enhanced error handling and logging for webhook events
+
+
+## 0.2.41 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.1
+
+
+## 0.2.40 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.0
+
+
+## 0.2.39 (2025-02-19)
+
+
+### Improvements
+
+- Added base_url reference instead of app_host
+- Made JiraClient inherit OAuthClient, and implement external access token prior to local jira token
+
+
+## 0.2.38 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.3
+
+
+## 0.2.37 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.2
+
+
+## 0.2.36 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.1
+
+
+## 0.2.35 (2025-02-13)
+
+
+### Improvements
+
+- Bumped cryptography version to ^44.0.1
+
+
+## 0.2.34 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
+
+
+## 0.2.33 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.2.32 (2025-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.2.31 (2025-01-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+
+## 0.2.30 (2025-01-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+## 0.2.29 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+## 0.2.28 (2025-01-22)
+
+
+### Improvements
+
+- Updated mappings to have typed array items
+
+
+## 0.2.27 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+## 0.2.26 (2025-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+## 0.2.25 (2025-01-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+## 0.2.24 (2025-01-16)
+
+
+### Bug Fixes
+
+- Updated default mapping for Jira Issue to use by removing `""` to prevent `parentIssue` error spam
+
+
+## 0.2.23 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.2.22 (2025-01-15)
+
+
+### Improvements
+
+- Added rate limit support to avoid failures due to 429 errors
+
+
+
+## 0.2.21 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
+## 0.2.20 (2025-1-13)
+
+
+### Improvements
+
+- Added support to sync Jira teams to Port
+
+## 0.2.19 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+## 0.2.18 (2025-01-08)
+
+
+### Bug Fixes
+
+- Fixed a bug where webhook processes issues that are not allowed in a user's integration due to JQL filters
+
+
+## 0.2.17 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.2.16 (2025-01-07)
+
+
+### Features
+
+- Added support for ingesting other fields apart from the default fields (Jira Sprint support)
+
+
+## 0.2.15 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+## 0.2.14 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.2.13 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.2.12 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.11 (2025-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
 ## 0.2.10 (2024-12-26)
 
 

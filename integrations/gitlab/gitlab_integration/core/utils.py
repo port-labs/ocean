@@ -1,34 +1,43 @@
-import fnmatch
+from typing import List, Union
+
+from braceexpand import braceexpand  # type: ignore
+from glob2 import fnmatch  # type: ignore
 
 
-def _match(pattern_parts: list[str], string_parts: list[str]) -> bool:
-    if not pattern_parts:  # Reached the end of the pattern
-        return not string_parts
-    if not string_parts:  # Reached the end of the string
-        return False
+def does_pattern_apply(patterns: Union[str, List[str]], string: str) -> bool:
+    """
+    Returns True if `pathname` matches at least one of the patterns in `patterns`.
+    We handle the special case where a pattern starts with '**/' by also
+    checking the bare pattern (e.g. '**/file.yml' => 'file.yml').
+    """
+    if isinstance(patterns, str):
+        patterns = [patterns]
 
-    if pattern_parts[0] == "**":
-        if len(pattern_parts) == 1:
-            return True
-        else:  # Recursive matching
-            return _match(pattern_parts[1:], string_parts) or _match(
-                pattern_parts, string_parts[1:]
-            )
+    for pattern in patterns:
+        if pattern.startswith("**/"):
+            # Also try the pattern without '**/' to allow matching a bare filename.
+            bare_pattern = pattern.replace("**/", "", 1)
+            if fnmatch.fnmatch(string, pattern) or fnmatch.fnmatch(
+                string, bare_pattern
+            ):
+                return True
+        else:
+            if fnmatch.fnmatch(string, pattern):
+                return True
 
-    if fnmatch.fnmatch(string_parts[0], pattern_parts[0]):  # Regular matching
-        return _match(pattern_parts[1:], string_parts[1:])
     return False
 
 
-def does_pattern_apply(pattern: str | list[str], string: str) -> bool:
+def convert_glob_to_gitlab_patterns(pattern: Union[str, List[str]]) -> List[str]:
+    """Converts glob patterns into GitLab-compatible patterns."""
     if isinstance(pattern, list):
-        return any(
-            does_pattern_apply(single_pattern, string) for single_pattern in pattern
-        )
+        expanded_patterns: list[str] = []
+        for glob_pattern in pattern:
+            expanded_patterns.extend(braceexpand(glob_pattern))
+        return expanded_patterns
 
-    pattern_parts = pattern.split("/")
-    string_parts = string.split("/")
-    return _match(pattern_parts, string_parts)
+    # Handle case where the input is a single pattern
+    return list(braceexpand(pattern))
 
 
 def generate_ref(branch_name: str) -> str:

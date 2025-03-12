@@ -7,6 +7,305 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.3 (2025-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.4
+
+
+## 0.3.2 (2025-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.3
+
+
+## 0.3.1 (2025-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.1
+
+
+## 0.3.0 (2025-03-06)
+
+
+### Improvements
+
+- Added live event webhook processors to incidents and services, which replaces the former direct router function.
+- Aded OAuthClient dependency to load secrets while ongoing integration run
+- QOL name changes and code placements
+
+## 0.2.31 (2025-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.0
+
+
+## 0.2.30 (2025-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+## 0.2.29 (2025-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+## 0.2.28 (2025-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.3
+
+
+## 0.2.27 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.2
+
+
+## 0.2.26 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.1
+
+
+## 0.2.25 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.0
+
+
+## 0.2.24 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.3
+
+
+## 0.2.23 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.2
+
+
+## 0.2.22 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.1
+
+
+## 0.2.21 (2025-02-14)
+
+
+### Bug Fix
+
+- Fixed rate limiting by changing analytics fetch from per-incident API calls to service-based batch retrieval
+
+### Improvements
+
+- Added cursor-based pagination for analytics batch retrieval
+
+
+## 0.2.20 (2025-02-13)
+
+
+### Improvements
+
+- Bumped cryptography version to ^44.0.1
+
+
+## 0.2.19 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
+
+
+## 0.2.18 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.2.17 (2025-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.2.16 (2025-01-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+
+## 0.2.15 (2025-01-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+## 0.2.14 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+## 0.2.13 (2025-01-22)
+
+
+### Improvements
+
+- Updated mappings to have typed array items
+
+
+## 0.2.12 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+## 0.2.11 (2025-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+## 0.2.10 (2025-01-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+## 0.2.9 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.2.8 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
+## 0.2.7 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+## 0.2.6 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.2.5 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+## 0.2.4 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.2.3 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.2.2 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.1 (2024-12-30)
+
+- Fixed apiUrl typo in spec
+
+
+## 0.2.0 (2024-12-30)
+
+
+### Improvements
+
+- Added support for OAuth2.0 token
+- Added OAuth installation specification for Port
+
+
+## 0.1.132 (2026-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
 ## 0.1.131 (2024-12-26)
 
 

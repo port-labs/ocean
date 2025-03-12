@@ -1,4 +1,3 @@
-import asyncio
 from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 
@@ -14,7 +13,6 @@ class CacheKeys(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
     TARGET = "target"
-    USER = "user"
     GROUP = "group"
     ORGANIZATION = "organization"
 
@@ -174,16 +172,11 @@ class SnykClient:
             async for projects in self._get_paginated_resources(
                 url_path=url, query_params=query_params
             ):
-                all_projects = []
 
-                for project in projects:
-                    enriched_project = await self.enrich_project(project)
-                    all_projects.append(enriched_project)
-
-                event.attributes.setdefault(CacheKeys.PROJECT, []).extend(all_projects)
+                event.attributes.setdefault(CacheKeys.PROJECT, []).extend(projects)
 
                 projects_to_yield = self._get_projects_by_target(
-                    all_projects, target_id=target_id
+                    projects, target_id=target_id
                 )
                 yield projects_to_yield
 
@@ -191,7 +184,9 @@ class SnykClient:
         self, org_id: str, project_id: str
     ) -> dict[str, Any]:
         project = await self.get_single_project(org_id, project_id)
-        target_id = project["__target"]["data"]["id"]
+        target_id = (
+            project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
+        )
 
         url = f"{self.rest_api_url}/orgs/{org_id}/targets/{target_id}"
 
@@ -255,96 +250,8 @@ class SnykClient:
             query_params=query_params,
             version=self.snyk_api_version,
         )
-
-        project = await self.enrich_project(response.get("data", {}))
-
+        project = response.get("data", {})
         event.attributes.setdefault(CacheKeys.PROJECT, []).append(project)
-
-        return project
-
-    async def _get_user_details(self, user_reference: str | None) -> dict[str, Any]:
-        if (
-            not user_reference
-        ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
-            return {}
-
-        # The user_reference is in the format of /rest/orgs/{org_id}/users/{user_id}. Some users may not be associated with the organization that the integration is configured with. In this instance, we can return an empty dict
-        reference_parts = user_reference.split("/")
-        org_id = reference_parts[3]
-        user_id = reference_parts[-1]
-
-        if self.organization_ids and org_id not in self.organization_ids:
-            logger.debug(
-                f"User {user_id} in organization {org_id} is not associated with any of the organizations provided to the integration org_id. Skipping..."
-            )
-            return {}
-
-        user_cache_key = f"{CacheKeys.USER}-{user_id}"
-        user_reference = user_reference.replace("/rest", "")
-        cached_details = event.attributes.get(user_cache_key)
-        if cached_details:
-            return cached_details
-
-        try:
-            user_details = await self._send_api_request(
-                url=f"{self.rest_api_url}{user_reference}",
-                query_params={"version": f"{self.snyk_api_version}~beta"},
-            )
-
-            if not user_details:
-                return {}
-
-            event.attributes[user_cache_key] = user_details
-            return user_details["data"]
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.debug(f"user {user_id} not was not found, skipping...")
-                return {}
-            else:
-                raise
-
-    async def _get_target_details(self, org_id: str, target_id: str) -> dict[str, Any]:
-        target_cache_key = f"{CacheKeys.TARGET}-{target_id}"
-        cached_details = event.attributes.get(target_cache_key)
-        if cached_details:
-            return cached_details
-
-        target_details = await self._send_api_request(
-            url=f"{self.rest_api_url}/orgs/{org_id}/targets/{target_id}",
-            version=f"{self.snyk_api_version}",
-        )
-        event.attributes[target_cache_key] = target_details
-        return target_details
-
-    async def enrich_project(self, project: dict[str, Any]) -> dict[str, Any]:
-        owner_reference = (
-            project.get("relationships", {})
-            .get("owner", {})
-            .get("links", {})
-            .get("related")
-        )
-        importer_reference = (
-            project.get("relationships", {})
-            .get("importer", {})
-            .get("links", {})
-            .get("related")
-        )
-        target_id = (
-            project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
-        )
-        organization_id = project["relationships"]["organization"]["data"]["id"]
-
-        tasks = [
-            self._get_user_details(owner_reference),
-            self._get_user_details(importer_reference),
-            self._get_target_details(organization_id, target_id),
-        ]
-
-        owner_details, importer_details, target_details = await asyncio.gather(*tasks)
-
-        project["__owner"] = owner_details
-        project["__importer"] = importer_details
-        project["__target"] = target_details
 
         return project
 

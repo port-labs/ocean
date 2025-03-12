@@ -7,6 +7,324 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.50 (2025-03-12)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.21.4
+
+
+0.2.49 (2025-03-10)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.21.3
+
+
+0.2.48 (2025-03-09)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.21.1
+
+
+0.2.47 (2025-03-06)
+===================
+
+### Bug Fixes
+
+- Fixed bug where glob patterns aren't matched for bare file names such as 'file.yml' against patter '**/file.yml'
+
+
+0.2.46 (2025-03-04)
+===================
+
+### Bug Fixes
+
+- Fixed incorrect logging in `search_files_in_project` that would show "No files found ..." message even when files were found
+
+
+0.2.45 (2025-03-03)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.21.0
+
+
+0.2.44 (2025-02-26)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+0.2.43 (2025-02-25)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+0.2.42 (2025-02-24)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.20.3
+
+
+0.2.41 (2025-02-23)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.20.2
+
+
+0.2.40 (2025-02-23)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.20.1
+
+
+0.2.39 (2025-02-19)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.20.0
+
+
+0.2.38 (2025-02-19)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.19.3
+
+
+0.2.37 (2025-02-19)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.19.2
+
+
+0.2.36 (2025-02-19)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.19.1
+
+
+0.2.35 (2025-02-13)
+===================
+
+### Improvements
+
+- Bumped cryptography version to ^44.0.1
+
+
+0.2.34 (2025-02-11)
+===================
+
+### Improvements
+
+- Removed the need for sending a deepcopy of the event body to all listeners, which previously led to a memory leak
+
+
+0.2.33 (2025-02-09)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
+
+
+0.2.32 (2025-02-05)
+===================
+
+### Improvements
+
+- Fixed glob pattern matching by utilizing GitLab's glob path search capabilities with pattern matching.
+
+
+0.2.31 (2025-02-04)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+0.2.30 (2025-01-29)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+0.2.29 (2025-01-28)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+
+0.2.28 (2025-01-27)
+===================
+
+### Bug Fixes
+
+- Revert changes made in 0.2.1
+
+
+0.2.27 (2025-01-23)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+0.2.26 (2025-01-22)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+0.2.25 (2025-01-22)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+0.2.24 (2025-01-21)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+0.2.23 (2025-01-19)
+===================
+
+### Bug Fixes
+
+- Deleted `description` from the default mapping
+
+0.2.22 (2025-01-19)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+0.2.21 (2025-01-16)
+===================
+
+### Bug Fixes
+
+- Fixed UserWarning log caused by not setting the `get_all` parameter for `project.label.list` request
+
+
+0.2.20 (2025-01-16)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+0.2.19 (2025-01-15)
+===================
+
+### Improvements
+
+- Event handler now retries handling events if it takes too long to complete
+
+0.2.18 (2025-01-15)
+===================
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
+0.2.17 (2025-01-12)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+0.2.16 (2025-01-08)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+0.2.15 (2025-01-07)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+0.2.14 (2025-01-02)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+0.2.13 (2025-01-02)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+0.2.12 (2024-12-31)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.11 (2025-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
 0.2.10 (2024-12-26)
 ==================
 

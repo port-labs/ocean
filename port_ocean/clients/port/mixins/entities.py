@@ -27,7 +27,9 @@ class EntityClientMixin:
         # Semaphore is used to limit the number of concurrent requests to port, to avoid overloading it.
         # The number of concurrent requests is set to 90% of the max connections limit, to leave some room for other
         # requests that are not related to entities.
-        self.semaphore = asyncio.Semaphore(round(0.9 * PORT_HTTP_MAX_CONNECTIONS_LIMIT))
+        self.semaphore = asyncio.Semaphore(
+            round(0.5 * PORT_HTTP_MAX_CONNECTIONS_LIMIT)
+        )  # 50% of the max connections limit in order to avoid overloading port
 
     async def upsert_entity(
         self,
@@ -111,10 +113,22 @@ class EntityClientMixin:
                 ).inc()
             return None
 
-        # In order to save memory we'll keep only the identifier, blueprint and relations of the
-        # upserted entity result for later calculations
+        return self._reduce_entity(result_entity)
+
+    @staticmethod
+    def _reduce_entity(entity: Entity) -> Entity:
+        """
+        Reduces an entity to only keep identifier, blueprint and processed relations.
+        This helps save memory by removing unnecessary data.
+
+        Args:
+            entity: The entity to reduce
+
+        Returns:
+            Entity: A new entity with only the essential data
+        """
         reduced_entity = Entity(
-            identifier=result_entity.identifier, blueprint=result_entity.blueprint
+            identifier=entity.identifier, blueprint=entity.blueprint
         )
 
         # Turning dict typed relations (raw search relations) is required
@@ -122,7 +136,7 @@ class EntityClientMixin:
         # and ignore the ones that don't as they weren't upserted
         reduced_entity.relations = {
             key: None if isinstance(relation, dict) else relation
-            for key, relation in result_entity.relations.items()
+            for key, relation in entity.relations.items()
         }
 
         port_ocean.context.ocean.ocean.metrics.get_metric(
@@ -232,7 +246,10 @@ class EntityClientMixin:
         )
 
     async def search_entities(
-        self, user_agent_type: UserAgentType, query: dict[Any, Any] | None = None
+        self,
+        user_agent_type: UserAgentType,
+        query: dict[Any, Any] | None = None,
+        parameters_to_include: list[str] | None = None,
     ) -> list[Entity]:
         default_query = {
             "combinator": "and",
@@ -262,7 +279,7 @@ class EntityClientMixin:
             headers=await self.auth.headers(user_agent_type),
             params={
                 "exclude_calculated_properties": "true",
-                "include": ["blueprint", "identifier"],
+                "include": parameters_to_include or ["blueprint", "identifier"],
             },
             extensions={"retryable": True},
         )

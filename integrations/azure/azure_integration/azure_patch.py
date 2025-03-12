@@ -105,8 +105,13 @@ async def list_resources(
         Those params will result the following request:
         (https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{storageAccountName}/blobServices/{blobService}/containers?api-version={apiVersion})
     """
-    # override the default version in the client to the version that we want to query
+    # Override the default API version in the client configuration.
+    # This ensures that the specified API version is used for operations like subscription and resource group queries.
     resources_client.resources._config.api_version = api_version
+
+    # Override the API version used in constructing requests during pagination.
+    # This ensures consistency in the API version for resource listing operations across paginated requests.
+    resources_client.resources._api_version = api_version
     if resource_type and resource_url:
         raise ValueError("Only one of resource_type and resource_url can be passed")
 

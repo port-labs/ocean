@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 import typing
 
 from google.api_core.exceptions import NotFound, PermissionDenied
@@ -24,8 +24,14 @@ from gcp_core.utils import (
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
 )
+from aiolimiter import AsyncLimiter
 from gcp_core.search.paginated_query import paginated_query, DEFAULT_REQUEST_TIMEOUT
-from gcp_core.helpers.ratelimiter.base import MAXIMUM_CONCURRENT_REQUESTS
+from gcp_core.helpers.ratelimiter.base import (
+    MAXIMUM_CONCURRENT_REQUESTS,
+    PersistentAsyncLimiter,
+)
+from gcp_core.helpers.retry.async_retry import async_retry
+
 from asyncio import BoundedSemaphore
 from gcp_core.overrides import ProtoConfig
 
@@ -88,13 +94,13 @@ async def search_all_resources_in_project(
                 ):
                     yield assets
 
-            except PermissionDenied:
+            except PermissionDenied as e:
                 logger.error(
-                    f"Service account doesn't have permissions to search all resources within project {project_name} for kind {asset_type}"
+                    f"Service account doesn't have permissions to search all resources within project {project_name} for kind {asset_type}. Error: {str(e.message)}"
                 )
-            except NotFound:
+            except NotFound as e:
                 logger.info(
-                    f"Couldn't perform search_all_resources on project {project_name} since it's deleted."
+                    f"Couldn't perform search_all_resources on project {project_name} since it's deleted. Error: {str(e)}"
                 )
             else:
                 logger.info(
@@ -126,13 +132,13 @@ async def list_all_topics_per_project(
                 for topic in topics:
                     topic[EXTRA_PROJECT_FIELD] = project
                 yield topics
-        except PermissionDenied:
+        except PermissionDenied as e:
             logger.error(
-                f"Service account doesn't have permissions to list topics from project {project_name}"
+                f"Service account doesn't have permissions to list topics from project {project_name}. Error: {str(e.message)}"
             )
-        except NotFound:
+        except NotFound as e:
             logger.info(
-                f"Couldn't perform list_topics on project {project_name} since it's deleted."
+                f"Couldn't perform list_topics on project {project_name} since it's deleted. Error: {str(e)}"
             )
         else:
             logger.info(f"Successfully listed all topics within project {project_name}")
@@ -162,13 +168,13 @@ async def list_all_subscriptions_per_project(
                 for subscription in subscriptions:
                     subscription[EXTRA_PROJECT_FIELD] = project
                 yield subscriptions
-        except PermissionDenied:
+        except PermissionDenied as e:
             logger.error(
-                f"Service account doesn't have permissions to list subscriptions from project {project_name}"
+                f"Service account doesn't have permissions to list subscriptions from project {project_name}. Error: {str(e.message)}"
             )
-        except NotFound:
+        except NotFound as e:
             logger.info(
-                f"Couldn't perform list_subscriptions on project {project_name} since it's deleted."
+                f"Couldn't perform list_subscriptions on project {project_name} since it's deleted. Error: {str(e)}"
             )
         else:
             logger.info(
@@ -214,20 +220,26 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 async def get_single_project(
-    project_name: str, config: Optional[ProtoConfig] = None
+    project_name: str,
+    rate_limiter: AsyncLimiter,
+    semaphore: BoundedSemaphore,
+    config: ProtoConfig,
 ) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
-        return parse_protobuf_message(
-            await projects_client.get_project(
-                name=project_name, timeout=DEFAULT_REQUEST_TIMEOUT
-            ),
-            config,
-        )
+        async with semaphore:
+            async with rate_limiter:
+                logger.debug(
+                    f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
+                )
+                return parse_protobuf_message(
+                    await projects_client.get_project(
+                        name=project_name, retry=async_retry
+                    ),
+                    config,
+                )
 
 
-async def get_single_folder(
-    folder_name: str, config: Optional[ProtoConfig] = None
-) -> RAW_ITEM:
+async def get_single_folder(folder_name: str, config: ProtoConfig) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
         return parse_protobuf_message(
             await folders_client.get_folder(
@@ -238,7 +250,7 @@ async def get_single_folder(
 
 
 async def get_single_organization(
-    organization_name: str, config: Optional[ProtoConfig] = None
+    organization_name: str, config: ProtoConfig
 ) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
@@ -251,7 +263,7 @@ async def get_single_organization(
 
 async def get_single_topic(
     topic_id: str,
-    config: Optional[ProtoConfig] = None,
+    config: ProtoConfig,
 ) -> RAW_ITEM:
     """
     The Topics are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
@@ -268,7 +280,7 @@ async def get_single_topic(
 
 async def get_single_subscription(
     subscription_id: str,
-    config: Optional[ProtoConfig] = None,
+    config: ProtoConfig,
 ) -> RAW_ITEM:
     """
     Subscriptions are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
@@ -308,25 +320,29 @@ async def feed_event_to_resource(
     asset_name: str,
     project_id: str,
     asset_data: dict[str, Any],
-    config: Optional[ProtoConfig] = None,
+    project_rate_limiter: PersistentAsyncLimiter,
+    project_semaphore: BoundedSemaphore,
+    config: ProtoConfig,
 ) -> RAW_ITEM:
     resource = None
     if asset_data.get("deleted") is True:
         resource = asset_data["priorAsset"]["resource"]["data"]
-        resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id, config)
+        resource[EXTRA_PROJECT_FIELD] = await get_single_project(
+            project_id, project_rate_limiter, project_semaphore, config
+        )
     else:
         match asset_type:
             case AssetTypesWithSpecialHandling.TOPIC:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
                 resource = await get_single_topic(topic_name, config)
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, config
+                    project_id, project_rate_limiter, project_semaphore, config
                 )
             case AssetTypesWithSpecialHandling.SUBSCRIPTION:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
                 resource = await get_single_subscription(topic_name, config)
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, config
+                    project_id, project_rate_limiter, project_semaphore, config
                 )
             case AssetTypesWithSpecialHandling.FOLDER:
                 folder_id = asset_name.replace(
@@ -339,10 +355,12 @@ async def feed_event_to_resource(
                 )
                 resource = await get_single_organization(organization_id, config)
             case AssetTypesWithSpecialHandling.PROJECT:
-                resource = await get_single_project(project_id, config)
+                resource = await get_single_project(
+                    project_id, project_rate_limiter, project_semaphore, config
+                )
             case _:
                 resource = asset_data["asset"]["resource"]["data"]
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, config
+                    project_id, project_rate_limiter, project_semaphore, config
                 )
     return resource

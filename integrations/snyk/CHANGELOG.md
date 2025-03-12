@@ -7,6 +7,296 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.5 (2025-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.4
+
+
+## 0.2.4 (2025-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.3
+
+
+## 0.2.3 (2025-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.1
+
+
+## 0.2.2 (2025-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.0
+
+
+## 0.2.1 (2025-02-27)
+
+### Improvements
+
+- Enabled live events for Snyk Ocean SaaS installation
+
+
+## 0.2.0 (2025-02-24)
+
+### Improvements
+
+- Implemented Snyk integration with standardized abstraction.
+- Added webhook processors for project, issue, and target events.
+- Refactored and modularized Snyk client initialization and kinds enumeration.
+- Developed extensive unit tests for webhook processors.
+
+
+
+## 0.1.146 (2025-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+## 0.1.145 (2025-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+## 0.1.144 (2025-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.3
+
+
+## 0.1.143 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.2
+
+
+## 0.1.142 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.1
+
+
+## 0.1.141 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.0
+
+
+## 0.1.140 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.3
+
+
+## 0.1.139 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.2
+
+
+## 0.1.138 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.1
+
+
+## 0.1.137 (2025-02-14)
+
+
+### Improvements
+
+- Removed API calls that enriches Snyk project with user details
+
+
+## 0.1.136 (2025-02-12)
+
+
+### Improvements
+
+- Bumped cryptography version to ^44.0.1
+
+
+## 0.1.135 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
+
+
+## 0.1.134 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.1.133 (2025-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.1.132 (2025-01-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+
+## 0.1.131 (2025-01-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+## 0.1.130 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+## 0.1.129 (2025-01-22)
+
+
+### Improvements
+
+- Updated mappings to have typed array items
+
+
+## 0.1.128 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+## 0.1.127 (2025-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+## 0.1.126 (2025-01-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+## 0.1.125 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.1.124 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
+## 0.1.123 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+## 0.1.122 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.1.121 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+## 0.1.120 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.1.119 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.1.118 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.1.117 (2026-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
 ## 0.1.116 (2024-12-26)
 
 
@@ -453,7 +743,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ###  Improvements
 
 - Utilizing the latest Targets API (2024-05-23~beta): Updated the integration to leverage the latest version of Snyk's Targets API. This change is crucial because it introduces a relationships attribute, containing the essential organisation id needed to accurately link each target to its parent organization. (#1)
-- Updated the default blueprints to the following structure: Vuln -> Project -> Target -> Organization. 
+- Updated the default blueprints to the following structure: Vuln -> Project -> Target -> Organization.
 
 
 ## 0.1.60 (2024-06-23)

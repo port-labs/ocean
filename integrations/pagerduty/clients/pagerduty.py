@@ -3,6 +3,9 @@ from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
 from loguru import logger
+from consts import ALL_EVENTS
+from port_ocean.clients.auth.oauth_client import OAuthClient
+from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
@@ -12,64 +15,47 @@ USER_KEY = "users"
 
 MAX_CONCURRENT_REQUESTS = 10
 PAGE_SIZE = 100
+OAUTH_TOKEN_PREFIX = "pd"
 
 
-class PagerDutyClient:
+class PagerDutyClient(OAuthClient):
     def __init__(self, token: str, api_url: str, app_host: str | None):
+        super().__init__()
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
         self.http_client = http_async_client
-        self.http_client.headers.update(self.api_auth_param["headers"])
+        self.http_client.headers.update(self.headers)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
-    @property
-    def incident_upsert_events(self) -> list[str]:
-        return [
-            "incident.acknowledged",
-            "incident.annotated",
-            "incident.delegated",
-            "incident.escalated",
-            "incident.priority_updated",
-            "incident.reassigned",
-            "incident.reopened",
-            "incident.resolved",
-            "incident.status_update_published",
-            "incident.responder.added",
-            "incident.responder.replied",
-            "incident.triggered",
-            "incident.unacknowledged",
-        ]
-
-    @property
-    def service_upsert_events(self) -> list[str]:
-        return [
-            "service.created",
-            "service.updated",
-        ]
-
-    @property
-    def service_delete_events(self) -> list[str]:
-        return [
-            "service.deleted",
-        ]
-
-    @property
-    def all_events(self) -> list[str]:
-        return (
-            self.incident_upsert_events
-            + self.service_upsert_events
-            + self.service_delete_events
+    @classmethod
+    def from_ocean_configuration(cls) -> "PagerDutyClient":
+        return cls(
+            ocean.integration_config["token"],
+            ocean.integration_config["api_url"],
+            ocean.app.base_url,
         )
 
+    def _get_auth_header(self, token: str) -> str:
+        if token.startswith(OAUTH_TOKEN_PREFIX):
+            return f"Bearer {token}"
+        return f"Token token={token}"
+
+    def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
+        try:
+            auth_token = self.external_access_token
+        except ValueError:
+            auth_token = self.token
+        request.headers["Authorization"] = self._get_auth_header(auth_token)
+        return request
+
     @property
-    def api_auth_param(self) -> dict[str, Any]:
-        return {
-            "headers": {
-                "Authorization": f"Token token={self.token}",
-                "Content-Type": "application/json",
-            }
-        }
+    def headers(self) -> dict[str, Any]:
+        headers = {"Content-Type": "application/json"}
+        headers["Authorization"] = self._get_auth_header(self.token)
+        if self.token.startswith(OAUTH_TOKEN_PREFIX):
+            headers["Accept"] = "application/vnd.pagerduty+json;version=2"
+        return headers
 
     async def paginate_request_to_pager_duty(
         self, resource: str, params: dict[str, Any] | None = None
@@ -106,7 +92,7 @@ class PagerDutyClient:
                 )
                 raise
 
-    async def get_singular_from_pager_duty(
+    async def get_single_resource(
         self, object_type: str, identifier: str
     ) -> dict[str, Any]:
         try:
@@ -143,7 +129,7 @@ class PagerDutyClient:
                     "url": invoke_url,
                 },
                 "description": "Port Ocean Integration",
-                "events": self.all_events,
+                "events": ALL_EVENTS,
                 "filter": {"type": "account_reference"},
                 "type": "webhook_subscription",
             }
@@ -214,6 +200,49 @@ class PagerDutyClient:
             else:
                 logger.error(f"Error fetching incident analytics data: {e}")
                 return {}
+
+    async def paginate_cursor_request(
+        self, endpoint: str, json_data: dict[str, Any], method: str = "POST"
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        starting_after = None
+        page = 1
+
+        while True:
+            request_data = {**json_data, "starting_after": starting_after}
+
+            data = await self.send_api_request(
+                endpoint=endpoint,
+                method=method,
+                json_data=request_data,
+                extensions={"retryable": True},
+            )
+
+            yield data["data"]
+
+            if not data.get("more", False):
+                break
+
+            starting_after = data.get("last")
+            if not starting_after:
+                break
+
+            page += 1
+
+    async def get_incident_analytics_by_services(
+        self, service_ids: list[str]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+
+        logger.info(f"Fetching analytics for services: {service_ids} for period")
+
+        request_data = {
+            "filters": {"service_ids": service_ids},
+            "limit": 100,
+        }
+
+        async for analytics in self.paginate_cursor_request(
+            endpoint="analytics/raw/incidents", json_data=request_data
+        ):
+            yield analytics
 
     async def get_service_analytics(
         self, service_ids: list[str], months_period: int = 3
@@ -300,3 +329,25 @@ class PagerDutyClient:
                 else:
                     logger.debug(f"User ID {user['id']} not found in user cache")
         return schedules
+
+    async def enrich_incidents_with_analytics_data(
+        self, incidents: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        if not incidents:
+            return incidents
+        logger.info(f"Enriching batch of {len(incidents)} incidents with analytics")
+        service_ids = list({incident["service"]["id"] for incident in incidents})
+
+        analytics_map = {}
+        async for analytics_batch in self.get_incident_analytics_by_services(
+            service_ids
+        ):
+            logger.info(f"Received analytics batch with {len(analytics_batch)} entries")
+            analytics_map.update(
+                {analytic["id"]: analytic for analytic in analytics_batch}
+            )
+
+        for incident in incidents:
+            incident["__analytics"] = analytics_map.get(incident["id"])
+
+        return incidents

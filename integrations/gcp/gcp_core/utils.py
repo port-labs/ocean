@@ -7,6 +7,7 @@ from typing import Any, TypedDict, Tuple, Optional
 from gcp_core.errors import ResourceNotFoundError
 from loguru import logger
 import proto  # type: ignore
+from gcp_core.helpers.ratelimiter.base import PersistentAsyncLimiter
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
@@ -14,13 +15,16 @@ from gcp_core.overrides import GCPCloudResourceConfig, ProtoConfig
 from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path
+from aiolimiter import AsyncLimiter
 from gcp_core.helpers.ratelimiter.overrides import (
     SearchAllResourcesQpmPerProject,
     PubSubAdministratorPerMinutePerProject,
+    ProjectGetRequestsPerMinutePerProject,
 )
 
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
 pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
+project_get_requests_per_minute_per_project = ProjectGetRequestsPerMinutePerProject()
 
 EXTRA_PROJECT_FIELD = "__project"
 DEFAULT_CREDENTIALS_FILE_PATH = (
@@ -28,7 +32,6 @@ DEFAULT_CREDENTIALS_FILE_PATH = (
 )
 
 if typing.TYPE_CHECKING:
-    from aiolimiter import AsyncLimiter
     from asyncio import BoundedSemaphore
 
 
@@ -181,10 +184,19 @@ def get_service_account_project_id() -> str:
 
 
 async def get_quotas_for_project(
-    project_id: str, kind: str
+    project_id: str,
+    kind: str,
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
     try:
         match kind:
+            case AssetTypesWithSpecialHandling.PROJECT:
+                project_rate_limiter = await project_get_requests_per_minute_per_project.persistent_rate_limiter(
+                    project_id
+                )
+                project_semaphore = await project_get_requests_per_minute_per_project.semaphore_for_real_time_event(
+                    project_id
+                )
+                return project_rate_limiter, project_semaphore
             case (
                 AssetTypesWithSpecialHandling.TOPIC
                 | AssetTypesWithSpecialHandling.SUBSCRIPTION
@@ -223,6 +235,6 @@ async def get_quotas_for_project(
 
 async def resolve_request_controllers(
     kind: str,
-) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
+) -> Tuple[(AsyncLimiter | PersistentAsyncLimiter), "BoundedSemaphore"]:
     service_account_project_id = get_service_account_project_id()
     return await get_quotas_for_project(service_account_project_id, kind)

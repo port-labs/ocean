@@ -3,7 +3,6 @@ from asyncio import Task
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Optional
-
 import jq  # type: ignore
 from loguru import logger
 
@@ -65,6 +64,22 @@ class JQEntityProcessor(BaseEntityProcessor):
                 return None
 
         return inner
+
+    @staticmethod
+    def _notify_mapping_issues(
+        entity_misconfigurations: dict[str, str],
+        missing_required_fields: bool,
+        entity_mapping_fault_counter: int,
+    ) -> None:
+
+        if len(entity_misconfigurations) > 0:
+            logger.info(
+                f"Unable to find valid data for: {entity_misconfigurations} (null, missing, or misconfigured)"
+            )
+        if missing_required_fields:
+            logger.info(
+                f"{entity_mapping_fault_counter} transformations of batch failed due to empty, null or missing values"
+            )
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
@@ -252,9 +267,12 @@ class JQEntityProcessor(BaseEntityProcessor):
         examples_to_send: list[dict[str, Any]] = []
         entity_misconfigurations: dict[str, str] = {}
         missing_required_fields: bool = False
+        entity_mapping_fault_counter: int = 0
+
         for result in calculated_entities_results:
             if len(result.misconfigurations) > 0:
                 entity_misconfigurations |= result.misconfigurations
+
             if result.entity.get("identifier") and result.entity.get("blueprint"):
                 parsed_entity = Entity.parse_obj(result.entity)
                 if result.did_entity_pass_selector:
@@ -268,10 +286,14 @@ class JQEntityProcessor(BaseEntityProcessor):
                     failed_entities.append(parsed_entity)
             else:
                 missing_required_fields = True
-        if len(entity_misconfigurations) > 0:
-            logger.info(
-                f"The mapping resulted with invalid values for{" identifier, blueprint," if missing_required_fields else " "} properties. Mapping result: {entity_misconfigurations}"
-            )
+                entity_mapping_fault_counter += 1
+
+        self._notify_mapping_issues(
+            entity_misconfigurations,
+            missing_required_fields,
+            entity_mapping_fault_counter,
+        )
+
         if (
             not calculated_entities_results
             and raw_results

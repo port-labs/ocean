@@ -1,4 +1,5 @@
-description: gcp integration for Port Ocean
+title: GCP
+description: GCP integration for Port Ocean
 icon: GoogleCloud
 features:
   - type: exporter

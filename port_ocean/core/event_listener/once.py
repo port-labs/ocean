@@ -23,9 +23,6 @@ class OnceEventListenerSettings(EventListenerSettings):
 
     type: Literal["ONCE"]
 
-    def to_request(self) -> dict[str, Any]:
-        return {}
-
 
 class OnceEventListener(BaseEventListener):
     """

@@ -1,33 +1,37 @@
 import asyncio
 import sys
-import threading
 from contextlib import asynccontextmanager
-from typing import Callable, Any, Dict, AsyncIterator, Type
+import threading
+from typing import Any, AsyncIterator, Callable, Dict, Type
 
 import port_ocean.helpers.metric.metric
 
 from fastapi import FastAPI, APIRouter
+
 from loguru import logger
 from pydantic import BaseModel
-from starlette.types import Scope, Receive, Send
+from starlette.types import Receive, Scope, Send
 
-from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
     IntegrationConfiguration,
 )
 from port_ocean.context.ocean import (
     PortOceanContext,
-    ocean,
     initialize_port_ocean_context,
+    ocean,
 )
+from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
+from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
-from port_ocean.utils.misc import IntegrationStateStatus
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
 
 
 class Ocean:
@@ -55,6 +59,13 @@ class Ocean:
         self.integration_router = integration_router or APIRouter()
         self.metrics = port_ocean.helpers.metric.metric.Metrics(
             enabled=self.config.metrics
+        )
+
+        self.webhook_manager = LiveEventsProcessorManager(
+            self.integration_router,
+            signal_handler,
+            max_event_processing_seconds=self.config.max_event_processing_seconds,
+            max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
         )
 
         self.port_client = PortClient(
@@ -117,6 +128,29 @@ class Ocean:
             )
             await repeated_function()
 
+    @property
+    def base_url(self) -> str:
+        integration_config = self.config.integration.config
+        if isinstance(integration_config, BaseModel):
+            integration_config = integration_config.dict()
+        if integration_config.get("app_host"):
+            logger.warning(
+                "The OCEAN__INTEGRATION__CONFIG__APP_HOST field is deprecated. Please use the OCEAN__BASE_URL field instead."
+            )
+        return self.config.base_url or integration_config.get("app_host")
+
+    def load_external_oauth_access_token(self) -> str | None:
+        if self.config.oauth_access_token_file_path is not None:
+            try:
+                with open(self.config.oauth_access_token_file_path, "r") as f:
+                    return f.read()
+            except Exception:
+                logger.debug(
+                    "Failed to load external oauth access token from file",
+                    file_path=self.config.oauth_access_token_file_path,
+                )
+        return None
+
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
         self.fast_api_app.include_router(
@@ -127,6 +161,10 @@ class Ocean:
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
+                if self.base_url:
+                    await self.webhook_manager.start_processing_event_messages()
+                else:
+                    logger.warning("No base URL provided, skipping webhook processing")
                 await self._setup_scheduled_resync()
                 yield None
             except Exception:
@@ -134,7 +172,7 @@ class Ocean:
                 logger.complete()
                 sys.exit("Server stopped")
             finally:
-                signal_handler.exit()
+                await signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
         self.app_initialized = True

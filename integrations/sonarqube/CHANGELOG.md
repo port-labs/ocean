@@ -7,6 +7,278 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.159 (2025-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.4
+
+
+## 0.1.158 (2025-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.3
+
+
+## 0.1.157 (2025-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.1
+
+
+## 0.1.156 (2025-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.0
+
+
+## 0.1.155 (2025-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+## 0.1.154 (2025-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.4
+
+
+## 0.1.153 (2025-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.3
+
+
+## 0.1.152 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.2
+
+
+## 0.1.151 (2025-02-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.1
+
+
+## 0.1.150 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.20.0
+
+
+## 0.1.149 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.3
+
+
+## 0.1.148 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.2
+
+
+## 0.1.147 (2025-02-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.19.1
+
+
+## 0.1.146 (2025-02-13)
+
+
+### Improvements
+
+- Bumped cryptography version to ^44.0.1
+
+
+## 0.1.145 (2025-02-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.9
+
+
+## 0.1.144 (2025-02-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.8
+
+
+## 0.1.143 (2025-02-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.6
+
+
+## 0.1.142 (2025-01-29)
+
+
+### Bug Fixes
+
+- Fixed a bug where the global sonar_client loses its HTTP header context during scheduled resyncs, triggering 403 errors that ultimately leads to the unintended deletion of ingested entities
+
+
+## 0.1.141 (2025-01-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.5
+
+
+## 0.1.140 (2025-01-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.4
+
+
+## 0.1.139 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.3
+
+
+## 0.1.138 (2025-01-22)
+
+
+### Improvements
+
+- Updated mappings to have typed array items
+
+
+## 0.1.137 (2025-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.2
+
+
+## 0.1.136 (2025-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.1
+
+
+## 0.1.135 (2025-01-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.18.0
+
+
+## 0.1.134 (2025-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.8
+
+
+## 0.1.133 (2025-01-15)
+
+
+### Improvements
+
+- Bumped jinja version to 3.1.5
+
+
+## 0.1.132 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+## 0.1.131 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.1.130 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+## 0.1.129 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.1.128 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.1.127 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.1.126 (2026-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
 ## 0.1.125 (2024-12-26)
 
 

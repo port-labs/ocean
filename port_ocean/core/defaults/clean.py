@@ -18,10 +18,11 @@ def clean_defaults(
     integration_config: IntegrationConfiguration,
     force: bool,
     wait: bool,
+    destroy: bool,
 ) -> None:
     try:
         asyncio.new_event_loop().run_until_complete(
-            _clean_defaults(config_class, integration_config, force, wait)
+            _clean_defaults(config_class, integration_config, force, wait, destroy)
         )
 
     except Exception as e:
@@ -33,6 +34,7 @@ async def _clean_defaults(
     integration_config: IntegrationConfiguration,
     force: bool,
     wait: bool,
+    destroy: bool,
 ) -> None:
     port_client = ocean.port_client
     is_exists = await is_integration_exists(port_client)
@@ -54,9 +56,9 @@ async def _clean_defaults(
             )
         )
 
-        if not force:
+        if not force and not destroy:
             logger.info(
-                "Finished deleting blueprints and configurations! ⚓️",
+                "Finished deleting blueprints! ⚓️",
             )
             return None
 
@@ -73,6 +75,19 @@ async def _clean_defaults(
                     for migration_id in migration_ids
                 )
             )
+        if not destroy:
+            logger.info(
+                "Migrations completed successfully! ⚓️",
+            )
+            return None
+
+        result = await ocean.port_client.delete_current_integration()
+        if result.get("ok"):
+            logger.info(
+                "Blueprints deleted, migrations completed, and integration destroyed successfully! ⚓️",
+            )
+            return None
+
     except httpx.HTTPStatusError as e:
         logger.error(f"Failed to delete blueprints: {e.response.text}.")
         raise e
