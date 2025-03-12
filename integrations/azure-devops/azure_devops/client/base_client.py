@@ -21,7 +21,7 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
-    ) -> Response:
+    ) -> Response | None:
         self._client.auth = BasicAuth("", self._personal_access_token)
         self._client.follow_redirects = True
 
@@ -37,6 +37,7 @@ class HTTPBaseClient:
         except httpx.HTTPStatusError as e:
             if response.status_code == 404:
                 logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
+                return None
             else:
                 if response.status_code == 401:
                     logger.error(
@@ -69,7 +70,7 @@ class HTTPBaseClient:
                 params["continuationToken"] = continuation_token
 
             response = await self.send_request("GET", url, params=params)
-            if response.status_code == 404:
+            if not response:
                 logger.error(f"Couldn't access url {url}")
                 break
             response_json = response.json()
@@ -90,7 +91,7 @@ class HTTPBaseClient:
         params = {**default_params, **(params or {})}
         while True:
             response = await self.send_request("GET", url, params=params)
-            if response.status_code == 404:
+            if not response:
                 logger.error(f"Couldn't access url {url}")
                 break
 

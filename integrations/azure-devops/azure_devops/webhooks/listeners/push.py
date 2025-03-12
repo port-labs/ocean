@@ -22,9 +22,11 @@ class PushHookListener(HookListener):
         config: GitPortAppConfig = typing.cast(GitPortAppConfig, event.port_app_config)
         push_url = data["resource"]["url"]
         push_params = {"includeRefUpdates": True}
-        push_data = (
-            await self._client.send_request("GET", push_url, params=push_params)
-        ).json()
+        response = await self._client.send_request("GET", push_url, params=push_params)
+        if not response:
+            logger.warning(f"Couldn't get push data from url {push_url}")
+            return
+        push_data = response.json()
         updates: list[dict[str, Any]] = push_data["refUpdates"]
 
         ref_update_tasks = []

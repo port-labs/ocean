@@ -53,7 +53,7 @@ class AzureDevopsClient(HTTPBaseClient):
             f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}"
         )
         response = await self.send_request("GET", project_url)
-        if response.status_code == 404:
+        if not response:
             logger.warning(f"Couldn't access url {project_url} due to 404 error")
             return None
         project = response.json()
@@ -153,7 +153,7 @@ class AzureDevopsClient(HTTPBaseClient):
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
                 response = await self.send_request("GET", repos_url)
-                if response.status_code == 404:
+                if not response:
                     logger.warning(f"Couldn't access url {repos_url} due to 404 error")
                     continue
                 repositories = response.json()["value"]
@@ -217,7 +217,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
                 response = await self.send_request("GET", policies_url, params=params)
-                if response.status_code == 404:
+                if not response:
                     logger.warning(
                         f"Couldn't access url {policies_url} due to 404 error"
                     )
@@ -285,7 +285,7 @@ class AzureDevopsClient(HTTPBaseClient):
             data=json.dumps({"query": wiql_query}),
             headers={"Content-Type": "application/json"},
         )
-        if wiql_response.status_code == 404:
+        if not wiql_response:
             logger.warning(f"Couldn't access url {wiql_url} due to 404 error")
             return []
         return [item["id"] for item in wiql_response.json()["workItems"]]
@@ -326,7 +326,7 @@ class AzureDevopsClient(HTTPBaseClient):
             work_items_response = await self.send_request(
                 "GET", work_items_url, params=params
             )
-            if work_items_response.status_code == 404:
+            if not work_items_response:
                 logger.warning(f"Couldn't access url {work_items_url} due to 404 error")
                 continue
             yield work_items_response.json()["value"]
@@ -348,7 +348,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any] | None:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
         response = await self.send_request("GET", get_single_pull_request_url)
-        if response.status_code == 404:
+        if not response:
             logger.warning(
                 f"Couldn't access url {get_single_pull_request_url}, is the pull request ID correct?"
             )
@@ -359,7 +359,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
         response = await self.send_request("GET", get_single_repository_url)
-        if response.status_code == 404:
+        if not response:
             logger.warning(
                 f"Couldn't access url {get_single_repository_url}, is the repository ID correct?"
             )
@@ -391,7 +391,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 "GET",
                 url,
             )
-            if response.status_code == 404:
+            if not response:
                 logger.warning(f"Couldn't access url {url}, is the board ID correct?")
                 continue
             board.update(response.json())
@@ -405,7 +405,7 @@ class AzureDevopsClient(HTTPBaseClient):
             for team in teams_in_project:
                 get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
                 response = await self.send_request("GET", get_boards_url)
-                if response.status_code == 404:
+                if not response:
                     logger.warning(
                         f"Couldn't access url {get_boards_url}, is the project ID correct?"
                     )
@@ -435,20 +435,16 @@ class AzureDevopsClient(HTTPBaseClient):
             response = await self.send_request(
                 "GET", get_subscriptions_url, headers=headers
             )
-            if response.status_code == 404:
+            if not response:
                 logger.warning(
                     f"Couldn't access url {get_subscriptions_url}, is the organization URL correct?"
                 )
                 return []
-            subscriptions_raw = response.json()["value"]
+            subscriptions_raw = response.json().get("value", [])
         except json.decoder.JSONDecodeError:
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
             logger.warning(err_str)
             raise Exception(err_str)
-        except Exception as e:
-            logger.warning(
-                f"Failed to get all existing subscriptions:{type(e)} {str(e)}"
-            )
         return [WebhookEvent(**subscription) for subscription in subscriptions_raw]
 
     async def create_subscription(self, webhook_event: WebhookEvent) -> None:
@@ -465,7 +461,7 @@ class AzureDevopsClient(HTTPBaseClient):
             headers=headers,
             data=webhook_event_json,
         )
-        if response.status_code == 404:
+        if not response:
             logger.warning(
                 f"Couldn't access url {create_subscription_url}, is the organization URL correct?"
             )
@@ -503,9 +499,10 @@ class AzureDevopsClient(HTTPBaseClient):
             response = await self.send_request(
                 method="GET", url=items_url, params=items_params
             )
-            if response.status_code == 404:
+            if not response:
                 logger.warning(
-                    f"Couldn't access url {items_url}. Failed due to 404 error"
+                    f"Couldn't access url {items_url}. Failed due to 404 error."
+                    f"This may be because the repo {repository_id} is disabled."
                 )
                 return bytes()
             file_content = response.content
