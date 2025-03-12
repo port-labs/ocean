@@ -342,9 +342,6 @@ class AzureDevopsClient(HTTPBaseClient):
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
         response = await self.send_request("GET", get_single_pull_request_url)
         if not response:
-            logger.warning(
-                f"Couldn't access url {get_single_pull_request_url}, is the pull request ID correct?"
-            )
             return None
         pull_request_data = response.json()
         return pull_request_data
@@ -353,9 +350,6 @@ class AzureDevopsClient(HTTPBaseClient):
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
         response = await self.send_request("GET", get_single_repository_url)
         if not response:
-            logger.warning(
-                f"Couldn't access url {get_single_repository_url}, is the repository ID correct?"
-            )
             return None
         repository_data = response.json()
         return repository_data
@@ -385,7 +379,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 url,
             )
             if not response:
-                logger.warning(f"Couldn't access url {url}, is the board ID correct?")
                 continue
             board.update(response.json())
         return boards
@@ -399,9 +392,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
                 response = await self.send_request("GET", get_boards_url)
                 if not response:
-                    logger.warning(
-                        f"Couldn't access url {get_boards_url}, is the project ID correct?"
-                    )
                     continue
                 board_data = response.json().get("value", [])
                 logger.info(f"Found {len(board_data)} boards for project {project_id}")
@@ -429,9 +419,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 "GET", get_subscriptions_url, headers=headers
             )
             if not response:
-                logger.warning(
-                    f"Couldn't access url {get_subscriptions_url}, is the organization URL correct?"
-                )
                 return []
             subscriptions_raw = response.json().get("value", [])
         except json.decoder.JSONDecodeError:
@@ -455,9 +442,6 @@ class AzureDevopsClient(HTTPBaseClient):
             data=webhook_event_json,
         )
         if not response:
-            logger.warning(
-                f"Couldn't access url {create_subscription_url}, is the organization URL correct?"
-            )
             return
         response_content = response.json()
         logger.info(
@@ -500,12 +484,7 @@ class AzureDevopsClient(HTTPBaseClient):
             file_content = response.content
         except HTTPStatusError as e:
             general_err_msg = f"Couldn't fetch file {file_path} from repo id {repository_id}: {str(e)}. Returning empty file."
-            if e.response.status_code == 404:
-                logger.warning(
-                    f"{general_err_msg} This may be because the repo {repository_id} is disabled."
-                )
-            else:
-                logger.warning(general_err_msg)
+            logger.warning(general_err_msg)
             return bytes()
         except Exception as e:
             logger.warning(

@@ -71,7 +71,6 @@ class HTTPBaseClient:
 
             response = await self.send_request("GET", url, params=params)
             if not response:
-                logger.error(f"Couldn't access url {url}")
                 break
             response_json = response.json()
             items = response_json[data_key]
@@ -92,7 +91,6 @@ class HTTPBaseClient:
         while True:
             response = await self.send_request("GET", url, params=params)
             if not response:
-                logger.error(f"Couldn't access url {url}")
                 break
 
             objects_page = response.json()["value"]
