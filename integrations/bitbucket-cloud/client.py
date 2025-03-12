@@ -1,15 +1,14 @@
 from enum import StrEnum
-from typing import Any, AsyncGenerator, Optional
-from httpx import HTTPStatusError, Timeout
+from typing import Any, AsyncGenerator, Optional, List
+from httpx import HTTPStatusError
 from loguru import logger
-from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
-import base64
-
+from helpers.multiple_token_handler import MultiTokenBitbucketClient, TokenType
 
 PAGE_SIZE = 100
-CLIENT_TIMEOUT = 30
+REQUESTS_PER_HOUR = 2
+WINDOW = 30
 
 
 class ObjectKind(StrEnum):
@@ -19,51 +18,59 @@ class ObjectKind(StrEnum):
     PULL_REQUEST = "pull-request"
 
 
-class BitbucketClient:
+class BitbucketClient(MultiTokenBitbucketClient):
     """Client for interacting with Bitbucket Cloud API v2.0."""
 
     def __init__(
         self,
         workspace: str,
-        username: Optional[str] = None,
-        app_password: Optional[str] = None,
-        workspace_token: Optional[str] = None,
+        credentials: List[TokenType],
+        requests_per_hour: int = REQUESTS_PER_HOUR,
+        window: int = WINDOW,
     ) -> None:
-        self.base_url = "https://api.bitbucket.org/2.0"
+        super().__init__(
+            credentials=credentials, requests_per_hour=requests_per_hour, window=window
+        )
         self.workspace = workspace
-        self.client = http_async_client
-        self.client.timeout = Timeout(CLIENT_TIMEOUT)
-
-        if workspace_token:
-            self.headers = {
-                "Authorization": f"Bearer {workspace_token}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            }
-        elif app_password and username:
-            self.encoded_credentials = base64.b64encode(
-                f"{username}:{app_password}".encode()
-            ).decode()
-            self.headers = {
-                "Authorization": f"Basic {self.encoded_credentials}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            }
-        else:
-            raise ValueError(
-                "Either workspace_token or both username and app_password must be provided"
-            )
-        self.client.headers.update(self.headers)
 
     @classmethod
     def create_from_ocean_config(cls) -> "BitbucketClient":
-        bitbucket_client = cls(
-            workspace=ocean.integration_config["bitbucket_workspace"],
-            username=ocean.integration_config.get("bitbucket_username"),
-            app_password=ocean.integration_config.get("bitbucket_app_password"),
-            workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
+        """Create BitbucketClient from ocean config."""
+        workspace = ocean.integration_config["bitbucket_workspace"]
+        credentials: List[TokenType] = []
+
+        # Collect workspace tokens
+        if tokens := ocean.integration_config.get("bitbucket_workspace_token", ""):
+            credentials.extend(
+                token.strip() for token in tokens.split(",") if token.strip()
+            )
+
+        # Collect username/password pairs
+        usernames = ocean.integration_config.get("bitbucket_username", "").split(",")
+        passwords = ocean.integration_config.get("bitbucket_app_password", "").split(
+            ","
         )
-        return bitbucket_client
+
+        if any(usernames) and any(passwords):
+            username_list = [u.strip() for u in usernames if u.strip()]
+            password_list = [p.strip() for p in passwords if p.strip()]
+
+            if len(username_list) != len(password_list):
+                raise ValueError(
+                    "Number of usernames does not match number of passwords"
+                )
+
+            credentials.extend(zip(username_list, password_list))
+
+        if not credentials:
+            raise ValueError(
+                "No valid credentials found in config. Provide either:\n"
+                "- bitbucket_workspace_token: comma-separated tokens\n"
+                "- or both bitbucket_username and bitbucket_app_password"
+            )
+
+        logger.info(f"Initializing BitbucketClient with {len(credentials)} credentials")
+        return cls(workspace=workspace, credentials=credentials)
 
     async def _send_api_request(
         self,
@@ -72,19 +79,38 @@ class BitbucketClient:
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
     ) -> Any:
-        """Send request to Bitbucket API with error handling."""
+        """Send request to Bitbucket API with rate limiting."""
         url = f"{self.base_url}/{endpoint}"
-        response = await self.client.request(
-            method=method, url=url, params=params, json=json_data
-        )
-        try:
-            response.raise_for_status()
-            return response.json()
-        except HTTPStatusError as e:
-            error_data = e.response.json()
-            error_message = error_data.get("error", {}).get("message", str(e))
-            logger.error(f"Bitbucket API error: {error_message}")
-            raise e
+
+        while True:  # Keep trying until request succeeds
+            current_client = self.get_current_client()
+
+            try:
+                async with super().rate_limit(endpoint) as should_rotate:
+                    # Even if we should rotate, make the request within this rate limit context
+                    logger.debug(f"Making request to {endpoint}")
+                    response = await current_client.client.request(
+                        method=method, url=url, params=params, json=json_data
+                    )
+                    response.raise_for_status()
+                    return response.json()
+
+            except HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    logger.warning(f"Rate limit hit, rotating client")
+                    self._rotate_client()
+                    continue
+                error_data = e.response.json()
+                error_message = error_data.get("error", {}).get("message", str(e))
+                logger.error(f"Bitbucket API error: {error_message}")
+                raise
+            except Exception as e:
+                logger.warning(f"Request failed, trying next client: {str(e)}")
+                self._rotate_client()
+
+            # If we should rotate after a successful request
+            if should_rotate and len(self.token_clients) > 1:
+                self._rotate_client()
 
     async def _send_paginated_api_request(
         self,
@@ -95,7 +121,6 @@ class BitbucketClient:
         """Handle Bitbucket's pagination for API requests."""
         if params is None:
             params = {}
-
         while True:
             response = await self._send_api_request(
                 endpoint, params=params, method=method
@@ -128,13 +153,9 @@ class BitbucketClient:
         self, repo_slug: str, branch: str, path: str, max_depth: int = 2
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get contents of a directory."""
-        params = {
-            "max_depth": max_depth,
-            "pagelen": PAGE_SIZE,
-        }
         async for contents in self._send_paginated_api_request(
             f"repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
-            params=params,
+            params={"max_depth": max_depth},
         ):
             yield contents
 
