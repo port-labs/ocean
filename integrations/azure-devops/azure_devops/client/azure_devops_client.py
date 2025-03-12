@@ -54,7 +54,6 @@ class AzureDevopsClient(HTTPBaseClient):
         )
         response = await self.send_request("GET", project_url)
         if not response:
-            logger.warning(f"Couldn't access url {project_url} due to 404 error")
             return None
         project = response.json()
         return project
@@ -154,7 +153,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
                 response = await self.send_request("GET", repos_url)
                 if not response:
-                    logger.warning(f"Couldn't access url {repos_url} due to 404 error")
                     continue
                 repositories = response.json()["value"]
                 if include_disabled_repositories:
@@ -218,9 +216,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
                 response = await self.send_request("GET", policies_url, params=params)
                 if not response:
-                    logger.warning(
-                        f"Couldn't access url {policies_url} due to 404 error"
-                    )
                     continue
                 repo_policies = response.json()["value"]
 
@@ -286,7 +281,6 @@ class AzureDevopsClient(HTTPBaseClient):
             headers={"Content-Type": "application/json"},
         )
         if not wiql_response:
-            logger.warning(f"Couldn't access url {wiql_url} due to 404 error")
             return []
         return [item["id"] for item in wiql_response.json()["workItems"]]
 
@@ -327,7 +321,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 "GET", work_items_url, params=params
             )
             if not work_items_response:
-                logger.warning(f"Couldn't access url {work_items_url} due to 404 error")
                 continue
             yield work_items_response.json()["value"]
 
@@ -501,8 +494,7 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             if not response:
                 logger.warning(
-                    f"Couldn't access url {items_url}. Failed due to 404 error."
-                    f"This may be because the repo {repository_id} is disabled."
+                    f"Couldn't access url {items_url}. This may be because the repo {repository_id} is disabled."
                 )
                 return bytes()
             file_content = response.content
