@@ -4,7 +4,10 @@ from contextlib import asynccontextmanager
 import threading
 from typing import Any, AsyncIterator, Callable, Dict, Type
 
-from fastapi import APIRouter, FastAPI
+import port_ocean.helpers.metric.metric
+
+from fastapi import FastAPI, APIRouter
+
 from loguru import logger
 from pydantic import BaseModel
 from starlette.types import Receive, Scope, Send
@@ -49,12 +52,14 @@ class Ocean:
             _integration_config_model=config_factory,
             **(config_override or {}),
         )
-
         # add the integration sensitive configuration to the sensitive patterns to mask out
         sensitive_log_filter.hide_sensitive_strings(
             *self.config.get_sensitive_fields_data()
         )
         self.integration_router = integration_router or APIRouter()
+        self.metrics = port_ocean.helpers.metric.metric.Metrics(
+            enabled=self.config.metrics
+        )
 
         self.webhook_manager = LiveEventsProcessorManager(
             self.integration_router,
@@ -148,6 +153,9 @@ class Ocean:
 
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
+        self.fast_api_app.include_router(
+            self.metrics.create_mertic_router(), prefix="/metrics"
+        )
 
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:

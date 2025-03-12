@@ -47,7 +47,9 @@ docker run --rm -i \
     -e OCEAN__INTEGRATION__CONFIG__ENTITY_KB_SIZE="${OCEAN__INTEGRATION__CONFIG__ENTITY_KB_SIZE:--1}" \
     -e OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_BATCH_SIZE="${OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_BATCH_SIZE:--1}" \
     -e OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS="${OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS:--1}" \
+    -e OCEAN__METRICS="${OCEAN__METRICS:--1}" \
     -e OCEAN__RESOURCES_PATH="/opt/port-resources" \
+    -e APPLICATION__LOG_LEVEL="DEBUG" \
     --name=ZOMG-TEST \
     "ghcr.io/port-labs/port-ocean-fake-integration:${FAKE_INTEGRATION_VERSION}" \
     -c "source ./.venv/bin/activate && pip install --root-user-action=ignore /opt/dist/${TAR_FILE}[cli] && ocean sail -O"

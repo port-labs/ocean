@@ -83,6 +83,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     runtime: Runtime = Runtime.OnPrem
     resources_path: str = Field(default=".port/resources")
+    metrics: bool = Field(default=True)
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
 
@@ -106,6 +107,12 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         )
 
         return values
+
+    @validator("metrics")
+    def validate_metrics(cls, value: str | bool) -> bool:
+        if value == "1" or value is True:
+            return True
+        return False
 
     @validator("create_port_resources_origin")
     def validate_create_port_resources_origin(

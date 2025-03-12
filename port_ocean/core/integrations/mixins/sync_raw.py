@@ -30,6 +30,8 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.helpers.metric.metric import MetricPhase
+from port_ocean.helpers.metric.utils import TimeMetric, timed_generator
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 
@@ -84,6 +86,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         return fns
 
+    @TimeMetric(MetricPhase.EXTRACT)
     async def _execute_resync_tasks(
         self,
         fns: list[Callable[[str], Awaitable[RAW_RESULT]]],
@@ -307,7 +310,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         for generator in async_generators:
             try:
-                async for items in generator:
+                async for items in timed_generator(generator):
                     if send_raw_data_examples_amount > 0:
                         send_raw_data_examples_amount = max(
                             0, send_raw_data_examples_amount - len(passed_entities)
@@ -510,6 +513,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 {"before": entities_before_flatten, "after": entities_after_flatten},
                 user_agent_type,
             )
+
+    @TimeMetric(MetricPhase.TOP_SORT)
     async def sort_and_upsert_failed_entities(self,user_agent_type: UserAgentType)->None:
         try:
             if not event.entity_topological_sorter.should_execute():
@@ -524,6 +529,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             if isinstance(ocean_abort.__cause__,CycleError):
                 for entity in event.entity_topological_sorter.get_entities(False):
                     await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
+
     async def sync_raw_all(
         self,
         _: dict[Any, Any] | None = None,
@@ -574,10 +580,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
 
             try:
-                for resource in app_config.resources:
+                for index,resource in enumerate(app_config.resources):
                     # create resource context per resource kind, so resync method could have access to the resource
                     # config as we might have multiple resources in the same event
-                    async with resource_context(resource):
+                    async with resource_context(resource,index):
                         task = asyncio.get_event_loop().create_task(
                             self._register_in_batches(resource, user_agent_type)
                         )
@@ -586,6 +592,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         creation_results.append(await task)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
+
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise
@@ -614,6 +621,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                     logger.error(message, exc_info=error_group)
                 else:
+                    await ocean.metrics.flush()
                     logger.info(
                         f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
                     )

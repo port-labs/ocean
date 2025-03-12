@@ -5,9 +5,11 @@ from datetime import datetime
 from functools import partial
 from http import HTTPStatus
 from typing import Any, Callable, Coroutine, Iterable, Mapping, Union
-
+from urllib.parse import urlparse, urlunparse
 import httpx
 from dateutil.parser import isoparse
+from port_ocean.helpers.metric.metric import MetricType, MetricPhase
+import port_ocean.context.ocean
 
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
 
@@ -78,6 +80,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         retryable_methods: Iterable[str] | None = None,
         retry_status_codes: Iterable[int] | None = None,
         logger: Any | None = None,
+        mode: str = MetricPhase.LOAD,
     ) -> None:
         """
         Initializes the instance of RetryTransport class with the given parameters.
@@ -130,6 +133,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         self._jitter_ratio = jitter_ratio
         self._max_backoff_wait = max_backoff_wait
         self._logger = logger
+        self.mode = mode
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         """
@@ -172,6 +176,15 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response = await self._retry_operation_async(request, send_method)
             else:
                 response = await transport.handle_async_request(request)
+                port_ocean.context.ocean.ocean.metrics.get_metric(
+                    MetricType.REQUESTS[0],
+                    [
+                        self.mode,
+                        str(response.status_code),
+                        self.normalize_url(request.url),
+                    ],
+                ).inc()
+
             return response
         except Exception as e:
             # Retyable methods are logged via _log_error
@@ -281,6 +294,46 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         total_backoff = backoff + jitter
         return min(total_backoff, self._max_backoff_wait)
 
+    def normalize_url(self, url: str | httpx.URL) -> str:
+        # Convert httpx.URL object to string if needed
+        url_str = str(url) if not isinstance(url, str) else url
+
+        parsed = urlparse(url_str)
+        path = parsed.path
+        # Remove trailing IDs to improve Prometheus metrics aggregation
+        # Match patterns like /path/to/resource/123456 and normalize to /path/to/resource
+        parts = path.rstrip("/").split("/")
+
+        # Check if the last part is numeric or looks like an ID (alphanumeric with certain patterns)
+        if parts and (
+            parts[-1].isdigit()
+            or (
+                len(parts[-1]) > 8  # Likely an ID if longer than 8 chars
+                and any(c.isdigit() for c in parts[-1])  # Contains at least one digit
+                and any(c.isalpha() for c in parts[-1])  # Contains at least one letter
+            )
+        ):
+            # Remove the ID part
+            path = "/".join(parts[:-1])
+
+        # Ensure path ends with a slash for consistency
+        if not path.endswith("/"):
+            path += "/"
+
+        # Reconstruct the URL without the ID
+        normalized = urlunparse(
+            (
+                parsed.scheme,
+                parsed.netloc,
+                path,
+                parsed.params,
+                parsed.query,
+                parsed.fragment,
+            )
+        )
+
+        return normalized
+
     async def _retry_operation_async(
         self,
         request: httpx.Request,
@@ -295,11 +348,25 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 sleep_time = self._calculate_sleep(attempts_made, {})
                 self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
+                if response and response.status_code == 429:
+                    port_ocean.context.ocean.ocean.metrics.get_metric(
+                        MetricType.RATE_LIMIT_WAIT[0],
+                        [self.mode, MetricPhase.LOAD, self.normalize_url(request.url)],
+                    ).inc(sleep_time)
 
             error = None
             response = None
             try:
                 response = await send_method(request)
+                port_ocean.context.ocean.ocean.metrics.get_metric(
+                    MetricType.REQUESTS[0],
+                    [
+                        self.mode,
+                        str(response.status_code),
+                        self.normalize_url(request.url),
+                    ],
+                ).inc()
+
                 response.request = request
                 if remaining_attempts < 1 or not (
                     await self._should_retry_async(response)
@@ -340,6 +407,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
+
         while True:
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})

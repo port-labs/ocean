@@ -1121,6 +1121,20 @@ pyyaml = ">=5.1"
 virtualenv = ">=20.10.0"
 
 [[package]]
+name = "prometheus-client"
+version = "0.21.1"
+description = "Python client for the Prometheus monitoring system."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "prometheus_client-0.21.1-py3-none-any.whl", hash = "sha256:594b45c410d6f4f8888940fe80b5cc2521b305a1fafe1c58609ef715a001f301"},
+    {file = "prometheus_client-0.21.1.tar.gz", hash = "sha256:252505a722ac04b0456be05c05f75f45d760c2911ffc45f2a06bcaed9f3ae3fb"},
+]
+
+[package.extras]
+twisted = ["twisted"]
+
+[[package]]
 name = "pycparser"
 version = "2.22"
 description = "C parser in Python"
@@ -1797,13 +1811,13 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 
 [[package]]
 name = "yamllint"
-version = "1.35.1"
+version = "1.36.0"
 description = "A linter for YAML files."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "yamllint-1.35.1-py3-none-any.whl", hash = "sha256:2e16e504bb129ff515b37823b472750b36b6de07963bd74b307341ef5ad8bdc3"},
-    {file = "yamllint-1.35.1.tar.gz", hash = "sha256:7a003809f88324fd2c877734f2d575ee7881dd9043360657cc8049c809eba6cd"},
+    {file = "yamllint-1.36.0-py3-none-any.whl", hash = "sha256:22ab6a7db9d5f0954bd7a50ef70a41c1465c61f955893070b0767c0ec6693b7b"},
+    {file = "yamllint-1.36.0.tar.gz", hash = "sha256:3835a65994858679ea06fd998dd968c3f71935cd93742990405999d888e21130"},
 ]
 
 [package.dependencies]
@@ -1819,4 +1833,4 @@ cli = ["click", "cookiecutter", "jinja2-time", "rich"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "389dc82cb3749d72942733009bc0d92ebcb5b2e6b47837d0f01736d1b5f1960c"
+content-hash = "b08c1aafcaa414a090bde92b8654338c55d584cd3a089748f7ee67d88607868d"

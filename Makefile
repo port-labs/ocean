@@ -159,7 +159,7 @@ bump/single-integration:
 
 # run a mock port api server for perf / smoke tests
 smoke/start-mock-api:
-	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./port_ocean/tests/helpers/fake_port_api.py &
+	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./port_ocean/tests/helpers/fake_port_api.py > /dev/null &
 
 smoke/stop-mock-api:
 	ps aux | grep fake_port_api | egrep -v grep | awk '{print $$2};' | xargs kill -9

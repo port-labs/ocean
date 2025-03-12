@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 from loguru import logger
+from port_ocean.helpers.metric.metric import MetricPhase
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.clients.port.retry_transport import TokenRetryTransport
@@ -43,6 +44,7 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
             },
             timeout=PORT_HTTPX_TIMEOUT,
             limits=PORT_HTTPX_LIMITS,
+            mode=MetricPhase.LOAD,
         )
         _http_client.push(client)
 

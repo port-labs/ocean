@@ -181,7 +181,7 @@ def mock_sync_raw_mixin(
     sync_raw_mixin._entities_state_applier = mock_entities_state_applier
     sync_raw_mixin._port_app_config_handler = mock_port_app_config_handler
     sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([{}], []))  # type: ignore
-    sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=MagicMock())  # type: ignore
+    sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=MagicMock())
 
     return sync_raw_mixin
 
@@ -224,7 +224,9 @@ async def test_sync_raw_mixin_self_dependency(
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
+        return_value=calc_result_mock
+    )
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -279,7 +281,9 @@ async def test_sync_raw_mixin_circular_dependency(
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
+        return_value=calc_result_mock
+    )
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -360,7 +364,9 @@ async def test_sync_raw_mixin_dependency(
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
+        return_value=calc_result_mock
+    )
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
