@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Dict, Type, Set
 from fastapi import APIRouter, Request
 from loguru import logger
@@ -250,7 +249,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             try:
                 webhook_event = await WebhookEvent.from_request(request)
                 webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
-                webhook_event.set_event_context(deepcopy(event))
                 await self._event_queues[path].put(webhook_event)
                 return {"status": "ok"}
             except Exception as e:
