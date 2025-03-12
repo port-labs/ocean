@@ -7,6 +7,7 @@ from loguru import logger
 import urllib.parse
 from .utils import convert_glob_to_gitlab_patterns, parse_file_content
 import anyio
+import asyncio
 
 
 class GitLabClient:
@@ -63,37 +64,56 @@ class GitLabClient:
         ):
             yield batch
 
+    async def process_file(
+        self,
+        file: dict[str, Any],
+        context: str,
+    ) -> dict[str, Any]:
+        file_path = file.get("path", "")
+        try:
+            file["data"] = await anyio.to_thread.run_sync(
+                parse_file_content, file.get("data", ""), file_path, context
+            )
+        except Exception as e:
+            logger.error(f"Failed to parse {file_path} in {context}: {str(e)}")
+        return file
+
     async def _process_batch(
         self,
         batch: list[dict[str, Any]],
         context: str,
-    ) -> list[dict[str, Any]]:
+    ) -> AsyncIterator[dict[str, Any]]:
         PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
-        for file in batch:
-            file_path = file.get("path", "")
-            if file_path.endswith(PARSEABLE_EXTENSIONS):
-                try:
-                    file["data"] = await anyio.to_thread.run_sync(
-                        parse_file_content, file.get("data", ""), file_path, context
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to parse {file_path} in {context}: {str(e)}")
-        return batch
+        tasks = [
+            (
+                self.process_file(file, context)
+                if file.get("path", "").endswith(PARSEABLE_EXTENSIONS)
+                else asyncio.create_task(asyncio.sleep(0, result=file))
+            )
+            for file in batch
+        ]
+
+        # Process all files through as_completed
+        for completed in asyncio.as_completed(tasks):
+            yield await completed
 
     async def _search_in_repository(
         self,
         repo: str,
         patterns: list[str],
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search for files in a specific repository."""
         params = {"scope": "blobs", "search_type": "advanced"}
         for pattern in patterns:
             params["search"] = f"path:{pattern}"
             try:
                 async for batch in self.get_project_resource(repo, "search", params):
                     if batch:
-                        yield await self._process_batch(batch, repo)
+                        processed_batch = []
+                        async for processed_file in self._process_batch(batch, repo):
+                            processed_batch.append(processed_file)
+                        if processed_batch:
+                            yield processed_batch
             except Exception as e:
                 logger.error(f"Error searching in {repo}: {str(e)}")
 
@@ -102,7 +122,6 @@ class GitLabClient:
         group: dict[str, Any],
         patterns: list[str],
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search for files in a specific group."""
         group_context = group.get("name", str(group["id"]))
         params = {"scope": "blobs", "search_type": "advanced"}
         for pattern in patterns:
@@ -110,7 +129,13 @@ class GitLabClient:
             try:
                 async for batch in self.get_group_resource(group, "search", params):
                     if batch:
-                        yield await self._process_batch(batch, group_context)
+                        processed_batch = []
+                        async for processed_file in self._process_batch(
+                            batch, group_context
+                        ):
+                            processed_batch.append(processed_file)
+                        if processed_batch:
+                            yield processed_batch
             except Exception as e:
                 logger.error(f"Error searching in {group_context}: {str(e)}")
 
@@ -119,10 +144,6 @@ class GitLabClient:
         path_pattern: str,
         repositories: Optional[list[str]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """
-        Search for files matching a path pattern in GitLab repositories or groups.
-        Automatically parses content for json, yaml, and yml files.
-        """
         logger.info(f"Searching for files matching pattern: '{path_pattern}'")
         patterns = convert_glob_to_gitlab_patterns(path_pattern)
 

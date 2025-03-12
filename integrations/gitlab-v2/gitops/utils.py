@@ -19,17 +19,14 @@ def get_file_paths(entity_mapping: object) -> list[str]:
     """
     file_paths: list[str] = []
 
-    # Use a dict with Any values to allow for the various types in the object
     mapping_dict: dict[str, Any] = vars(entity_mapping)
 
-    # Process direct attributes
     for key, value in mapping_dict.items():
         if isinstance(value, str) and value.startswith(FILE_PROPERTY_PREFIX):
             path = value[len(FILE_PROPERTY_PREFIX) :]
             file_paths.append(path)
             logger.debug(f"Found file reference in '{key}': {value}")
 
-    # Process nested properties dictionary if it exists
     properties = mapping_dict.get("properties")
     if isinstance(properties, dict):
         for prop_key, prop_value in properties.items():

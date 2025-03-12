@@ -11,7 +11,6 @@ def convert_glob_to_gitlab_patterns(pattern: Union[str, list[str]]) -> list[str]
     if isinstance(pattern, list):
         expanded_patterns: list[str] = []
         for glob_pattern in pattern:
-            # Cast the result to help mypy understand the return type
             expanded_patterns.extend(cast(list[str], braceexpand(glob_pattern)))
         return expanded_patterns
 
