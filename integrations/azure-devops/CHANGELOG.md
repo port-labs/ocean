@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.137 (2025-03-12)
+## 0.1.138 (2025-03-12)
 
 
 ### Bug Fixes
 
 - Fixed bug where other resource types fail JSON decoding due to lack of response body in 404 errors
+
+
+## 0.1.137 (2025-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.21.4
 
 
 ## 0.1.136 (2025-03-10)
