@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.21.4 (2025-03-12)
+
+### Improvements
+
+- Updated core dependencies (jinja 3.1.6, confluent-kafka 2.8.2 and cryptography =43.0.1,<45.0.0)
+
+## 0.21.3 (2025-03-09)
+
+### Improvements
+
+- Add minimum entities to map before searching
+
+## 0.21.2 (2025-03-09)
+
+### Improvements
+
+- Add configurable event processing timeouts to Ocean
+
+## 0.21.1 (2025-03-09)
+
+### Bug Fixes
+
+- fixed wrong integration version showing in UI and API by moving the check of OCEAN__INITIALIZE_PORT_RESOURCES=false to after the patch
+
 ## 0.21.0 (2025-03-01)
 
 ### Features

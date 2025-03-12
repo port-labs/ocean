@@ -175,7 +175,10 @@ def processor_manager() -> LiveEventsProcessorManager:
     router = APIRouter()
     signal_handler = SignalHandler()
     return LiveEventsProcessorManager(
-        router, signal_handler, max_event_processing_seconds=3
+        router,
+        signal_handler,
+        max_event_processing_seconds=3,
+        max_wait_seconds_before_shutdown=3,
     )
 
 
@@ -195,7 +198,7 @@ def webhook_event_for_process_webhook_request() -> WebhookEvent:
 
 @pytest.fixture
 def processor_manager_for_process_webhook_request() -> LiveEventsProcessorManager:
-    return LiveEventsProcessorManager(APIRouter(), SignalHandler())
+    return LiveEventsProcessorManager(APIRouter(), SignalHandler(), 3, 3)
 
 
 @pytest.fixture
@@ -571,7 +574,10 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        max_event_processing_seconds=3,
+        max_wait_seconds_before_shutdown=3,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
@@ -682,7 +688,10 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler(), 2
+        mock_context.app.integration_router,
+        SignalHandler(),
+        2,
+        2,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
@@ -796,7 +805,10 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        3,
+        3,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
@@ -973,7 +985,10 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        3,
+        3,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessorA)
@@ -1100,7 +1115,10 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        3,
+        3,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
@@ -1227,7 +1245,10 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        90.0,
+        5.0,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
@@ -1363,7 +1384,10 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        3,
+        3,
     )
 
     # Register both processors
