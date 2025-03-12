@@ -25,6 +25,8 @@ resources:
           properties:
             url: ".links.html.href"
             defaultBranch: .mainbranch.name
+          relations:
+            project: '.project.uuid | gsub("[{-}]"; "")'
   - kind: pull-request
     selector:
       query: "true"
@@ -42,4 +44,3 @@ resources:
             link: ".links.html.href"
           relations:
             repository: ".destination.repository.name"
-  

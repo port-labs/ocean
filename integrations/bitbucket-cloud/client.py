@@ -1,15 +1,14 @@
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
-from httpx import HTTPStatusError, Timeout
+from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.utils import http_async_client
+from helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
 import base64
 
-
 PAGE_SIZE = 100
-CLIENT_TIMEOUT = 30
 
 
 class ObjectKind(StrEnum):
@@ -25,14 +24,14 @@ class BitbucketClient:
     def __init__(
         self,
         workspace: str,
+        host: str,
         username: Optional[str] = None,
         app_password: Optional[str] = None,
         workspace_token: Optional[str] = None,
     ) -> None:
-        self.base_url = "https://api.bitbucket.org/2.0"
+        self.base_url = host
         self.workspace = workspace
         self.client = http_async_client
-        self.client.timeout = Timeout(CLIENT_TIMEOUT)
 
         if workspace_token:
             self.headers = {
@@ -50,30 +49,31 @@ class BitbucketClient:
                 "Content-Type": "application/json",
             }
         else:
-            raise ValueError(
+            raise MissingIntegrationCredentialException(
                 "Either workspace_token or both username and app_password must be provided"
             )
         self.client.headers.update(self.headers)
 
     @classmethod
     def create_from_ocean_config(cls) -> "BitbucketClient":
-        bitbucket_client = cls(
+        return cls(
             workspace=ocean.integration_config["bitbucket_workspace"],
+            host=ocean.integration_config["bitbucket_host_url"],
             username=ocean.integration_config.get("bitbucket_username"),
             app_password=ocean.integration_config.get("bitbucket_app_password"),
             workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
         )
-        return bitbucket_client
 
     async def _send_api_request(
         self,
         endpoint: str,
         params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
+        url: Optional[str] = None,
         method: str = "GET",
     ) -> Any:
         """Send request to Bitbucket API with error handling."""
-        url = f"{self.base_url}/{endpoint}"
+        url = url or f"{self.base_url}/{endpoint}"
         response = await self.client.request(
             method=method, url=url, params=params, json=json_data
         )
@@ -83,6 +83,11 @@ class BitbucketClient:
         except HTTPStatusError as e:
             error_data = e.response.json()
             error_message = error_data.get("error", {}).get("message", str(e))
+            if e.response.status_code == 404:
+                logger.error(
+                    f"Requested resource not found: {url}; message: {error_message}"
+                )
+                return {}
             logger.error(f"Bitbucket API error: {error_message}")
             raise e
 
@@ -95,18 +100,17 @@ class BitbucketClient:
         """Handle Bitbucket's pagination for API requests."""
         if params is None:
             params = {}
+        next_page = None
 
         while True:
             response = await self._send_api_request(
-                endpoint, params=params, method=method
+                endpoint, params=params, method=method, url=next_page
             )
-            values = response["values"]
-            if values:
+            if values := response.get("values", []):
                 yield values
             next_page = response.get("next")
             if not next_page:
                 break
-            endpoint = next_page.replace(self.base_url + "/", "")
 
     @cache_iterator_result()
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:

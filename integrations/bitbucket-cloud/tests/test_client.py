@@ -4,6 +4,7 @@ from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Generator
 from client import BitbucketClient
+from helpers.exceptions import MissingIntegrationCredentialException
 
 
 @pytest.fixture
@@ -17,6 +18,7 @@ def mock_integration_config() -> Generator[dict[str, str], None, None]:
     """Mock the ocean integration config."""
     config = {
         "bitbucket_workspace": "test_workspace",
+        "bitbucket_host_url": "https://api.bitbucket.org/2.0",
         "bitbucket_username": "test_user",
         "bitbucket_app_password": "test_password",
     }
@@ -42,6 +44,7 @@ async def test_client_init_with_token() -> None:
     """Test client initialization with token auth."""
     config = {
         "bitbucket_workspace": "test_workspace",
+        "bitbucket_host_url": "https://api.bitbucket.org/2.0",
         "bitbucket_workspace_token": "test_token",
     }
     with patch(
@@ -65,13 +68,16 @@ async def test_client_init_with_app_password(
 @pytest.mark.asyncio
 async def test_client_init_no_auth() -> None:
     """Test client initialization with no auth raises error."""
-    config = {"bitbucket_workspace": "test_workspace"}
+    config = {
+        "bitbucket_workspace": "test_workspace",
+        "bitbucket_host_url": "https://api.bitbucket.org/2.0",
+    }
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
         new_callable=PropertyMock,
     ) as mock_config:
         mock_config.return_value = config
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(MissingIntegrationCredentialException) as exc_info:
             BitbucketClient.create_from_ocean_config()
         assert (
             "Either workspace_token or both username and app_password must be provided"
@@ -93,7 +99,7 @@ async def test_send_api_request_success(mock_client: BitbucketClient) -> None:
         assert result == {"data": "test"}
         mock_request.assert_called_once_with(
             method="GET",
-            url="https://api.bitbucket.org/2.0/test/endpoint",
+            url=f"{mock_client.base_url}/test/endpoint",
             params=None,
             json=None,
         )
@@ -114,7 +120,7 @@ async def test_send_api_request_with_params(mock_client: BitbucketClient) -> Non
         assert result == {"data": "test"}
         mock_request.assert_called_once_with(
             method="GET",
-            url="https://api.bitbucket.org/2.0/test/endpoint",
+            url=f"{mock_client.base_url}/test/endpoint",
             params=params,
             json=None,
         )
@@ -148,7 +154,7 @@ async def test_send_api_request_error(mock_client: BitbucketClient) -> None:
         mock_logger.assert_called_once_with("Bitbucket API error: Test error message")
         mock_request.assert_called_once_with(
             method="GET",
-            url="https://api.bitbucket.org/2.0/test/endpoint",
+            url=f"{mock_client.base_url}/test/endpoint",
             params=None,
             json=None,
         )
