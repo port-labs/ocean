@@ -9,9 +9,10 @@ from typing import (
     Callable,
     TypeVar,
     Coroutine,
-    Generic,
-    List,
     Deque,
+    Tuple,
+    Type,
+    Generic,
 )
 from contextlib import AbstractAsyncContextManager
 
@@ -23,7 +24,7 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
-class RollingWindowLimiter(AbstractAsyncContextManager):
+class RollingWindowLimiter(AbstractAsyncContextManager[None], Generic[T]):
     """
     A rolling window rate limiter that allows up to `limit` operations per `window` seconds.
 
@@ -114,11 +115,11 @@ class RollingWindowLimiter(AbstractAsyncContextManager):
         self._condition = asyncio.Condition(self._lock)
 
         # Replace deque with asyncio.Queue for better synchronization
-        self._queue: asyncio.Queue = asyncio.Queue()
+        self._queue: asyncio.Queue[Tuple[asyncio.Future[None], float]] = asyncio.Queue()
 
         # Processing state
         self._processing = False
-        self._next_wake_task: Optional[asyncio.Task] = None
+        self._next_wake_task: Optional[asyncio.Task[None]] = None
 
         # Performance optimization
         self._timestamp_last_purged = time.monotonic()
@@ -148,7 +149,7 @@ class RollingWindowLimiter(AbstractAsyncContextManager):
             f"purge_interval={purge_interval}s, request_timeout={request_timeout}s"
         )
 
-    async def _safe_cancel_task(self, task: Optional[asyncio.Task]) -> None:
+    async def _safe_cancel_task(self, task: Optional[asyncio.Task[None]]) -> None:
         """
         Safely cancel a task handling potential exceptions.
 
@@ -340,7 +341,7 @@ class RollingWindowLimiter(AbstractAsyncContextManager):
                 self._logger.debug("Request processed immediately")
                 return True
 
-            future = asyncio.Future()
+            future: asyncio.Future[None] = asyncio.Future()
 
             await self._queue.put((future, start_time))
 
@@ -354,7 +355,7 @@ class RollingWindowLimiter(AbstractAsyncContextManager):
 
         # Start queue processing if not already running
         if not self._processing:
-            processor_task = asyncio.create_task(self._process_queue())
+            asyncio.create_task(self._process_queue())
 
         try:
             if effective_timeout is not None:
@@ -382,20 +383,25 @@ class RollingWindowLimiter(AbstractAsyncContextManager):
             )
             raise
 
-    async def __aenter__(self) -> "RollingWindowLimiter":
+    async def __aenter__(self) -> None:
         """
         Enter the async context manager, acquiring a slot for an operation.
 
         Returns:
-            The RollingWindowLimiter instance.
+            None
 
         Raises:
             asyncio.TimeoutError: If no slot could be acquired within the timeout.
         """
         await self.acquire()
-        return self
+        return None
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[Any],
+    ) -> bool:
         """
         Exit the async context manager. No explicit release is needed.
 
@@ -425,7 +431,7 @@ class RollingWindowLimiter(AbstractAsyncContextManager):
                 return await some_external_api(arg1, arg2)
         """
 
-        async def wrapper(*args: Any, **kwargs: Any) -> R:
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             start_time = time.monotonic()
             try:
                 async with self:
@@ -511,3 +517,4 @@ class RollingWindowLimiter(AbstractAsyncContextManager):
 
         # Remove the expired timestamp
         self._timestamps.popleft()
+        return None

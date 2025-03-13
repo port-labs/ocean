@@ -1,12 +1,14 @@
-from typing import Union, Tuple, List, Optional
+from typing import Union, Tuple, List, Optional, AsyncIterator
 from loguru import logger
 from contextlib import asynccontextmanager
-from httpx import AsyncClient, Timeout
+from httpx import Timeout
 from port_ocean.utils import http_async_client
+import logging
 
 import base64
 from .rate_limiter import RollingWindowLimiter
 import time
+import asyncio
 
 TIMEOUT = 30
 TokenType = Union[str, Tuple[str, str]]
@@ -23,6 +25,16 @@ class TokenClient:
         window: float,
         timeout: int = TIMEOUT,
     ):
+        """
+        Initialize a token client with an HTTP client and rate limiter.
+
+        Args:
+            token: Either a token string or (username, app_password) tuple
+            base_url: The base URL for API requests
+            requests_per_hour: Rate limit per hour
+            window: Time window in seconds
+            timeout: Request timeout in seconds
+        """
         self.token = token
         self.client = http_async_client
         self.client.timeout = Timeout(timeout)
@@ -32,10 +44,11 @@ class TokenClient:
                 "Content-Type": "application/json",
             }
         )
+
         self.base_url = base_url
         self._setup_auth()
 
-        self.rate_limiter = RollingWindowLimiter(
+        self.rate_limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
             limit=requests_per_hour, window=window, logger=logger
         )
 
@@ -49,8 +62,19 @@ class TokenClient:
             self.client.headers["Authorization"] = f"Basic {auth}"
 
     async def close(self) -> None:
-        """Close the client."""
-        await self.client.aclose()
+        """Close the client and clean up resources."""
+        try:
+            await self.rate_limiter.shutdown(timeout=1.0)
+        except asyncio.TimeoutError:
+            logger.warning("Rate limiter shutdown timed out")
+        except Exception as e:
+            logger.warning(f"Error during rate limiter shutdown: {e}")
+
+        # Close the HTTP client
+        try:
+            await self.client.aclose()
+        except Exception as e:
+            logger.warning(f"Error closing HTTP client: {e}")
 
 
 class MultiTokenBitbucketClient:
@@ -62,7 +86,17 @@ class MultiTokenBitbucketClient:
         requests_per_hour: int = 1000,
         window: int = 3600,
     ) -> None:
-        """Initialize with multiple credentials."""
+        """
+        Initialize with multiple credentials.
+
+        Args:
+            credentials: List of token strings or (username, password) tuples
+            requests_per_hour: Rate limit per hour for each token
+            window: Time window in seconds
+
+        Raises:
+            ValueError: If no credentials are provided
+        """
         if not credentials:
             raise ValueError("At least one credential is required")
 
@@ -72,7 +106,7 @@ class MultiTokenBitbucketClient:
                 token=token,
                 base_url=self.base_url,
                 requests_per_hour=requests_per_hour,
-                window=window,
+                window=float(window),  # Convert to float for compatibility
             )
             for token in credentials
         ]
@@ -92,7 +126,12 @@ class MultiTokenBitbucketClient:
         logger.debug("Rotated to next client")
 
     async def _find_available_client(self) -> Optional[TokenClient]:
-        """Find a client that can accept requests immediately."""
+        """
+        Find a client that can accept requests immediately.
+
+        Returns:
+            TokenClient: The first client with available capacity, or None if all are at capacity
+        """
         original_index = self.current_client_index
 
         # Try each client once
@@ -113,8 +152,17 @@ class MultiTokenBitbucketClient:
         return None
 
     @asynccontextmanager
-    async def rate_limit(self, endpoint: str):
-        """Context manager for rate limiting repository endpoints."""
+    async def rate_limit(self, endpoint: str) -> AsyncIterator[bool]:
+        """
+        Context manager for rate limiting repository endpoints.
+
+        Args:
+            endpoint: The API endpoint being accessed
+
+        Yields:
+            bool: True if client rotation occurred, False otherwise
+        """
+        # Only apply rate limiting to repository endpoints
         if not endpoint.startswith("repositories/"):
             yield False
             return
@@ -126,15 +174,15 @@ class MultiTokenBitbucketClient:
             if available_client:
                 # Use the available client's rate limiter without waiting
                 self.current_client_index = self.token_clients.index(available_client)
-                logger.debug(f"Using available client for immediate request")
+                logger.debug("Using available client for immediate request")
                 async with available_client.rate_limiter:
                     yield False
             else:
                 # No immediately available client, find the one that will be available soonest
                 min_wait_time = float("inf")
-                best_client = None
+                best_client_index = self.current_client_index
 
-                for client in self.token_clients:
+                for i, client in enumerate(self.token_clients):
                     if client.rate_limiter._timestamps:
                         # Calculate when this client's oldest request expires
                         oldest = client.rate_limiter._timestamps[0]
@@ -143,29 +191,36 @@ class MultiTokenBitbucketClient:
                         )
                         if wait_time < min_wait_time:
                             min_wait_time = wait_time
-                            best_client = client
+                            best_client_index = i
 
-                if best_client:
-                    # Switch to the client that will be available soonest
-                    self.current_client_index = self.token_clients.index(best_client)
-                    logger.debug(
-                        f"Switching to client with shortest wait time: {min_wait_time:.2f}s"
-                    )
+                # Switch to the client that will be available soonest
+                self.current_client_index = best_client_index
+                logger.debug(
+                    f"Switching to client with shortest wait time: {min_wait_time:.2f}s"
+                )
 
                 current_client = self.get_current_client()
-                logger.debug(
-                    f"All clients at capacity, waiting for next available slot"
-                )
+                logger.debug("All clients at capacity, waiting for next available slot")
                 async with current_client.rate_limiter:
-                    yield True
+                    yield True  # Indicate that client rotation occurred
 
         except Exception as e:
             logger.error(f"Error in rate limiting: {str(e)}")
             # Make sure to re-raise the exception
             raise
-            # No yield here, ensuring the generator stops
 
     async def close(self) -> None:
-        """Close all clients."""
+        """Close all clients and clean up resources."""
+        close_errors = []
+
+        # Close each token client
         for token_client in self.token_clients:
-            await token_client.close()
+            try:
+                await token_client.close()
+            except Exception as e:
+                close_errors.append(str(e))
+
+        if close_errors:
+            logger.warning(f"Errors during client cleanup: {', '.join(close_errors)}")
+
+        return None

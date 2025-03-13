@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, AsyncGenerator, Optional, List
+from typing import Any, AsyncGenerator, Optional, List, Dict
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.utils.cache import cache_iterator_result
@@ -7,8 +7,8 @@ from port_ocean.context.ocean import ocean
 from helpers.multiple_token_handler import MultiTokenBitbucketClient, TokenType
 
 PAGE_SIZE = 100
-REQUESTS_PER_HOUR = 2
-WINDOW = 30
+REQUESTS_PER_HOUR = 950
+WINDOW = 3600
 
 
 class ObjectKind(StrEnum):
@@ -75,66 +75,93 @@ class BitbucketClient(MultiTokenBitbucketClient):
     async def _send_api_request(
         self,
         endpoint: str,
-        params: Optional[dict[str, Any]] = None,
-        json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
+        url: Optional[str] = None,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Dict[str, Any]] = None,
     ) -> Any:
-        """Send request to Bitbucket API with rate limiting."""
-        url = f"{self.base_url}/{endpoint}"
+        """
+        Send a request to the Bitbucket API with automatic retries and rate limiting.
 
-        while True:  # Keep trying until request succeeds
+        Args:
+            endpoint: API endpoint (without base URL)
+            method: HTTP method
+            params: Query parameters
+            json: JSON body for POST/PUT requests
+
+        Returns:
+            Response data as JSON
+
+        Raises:
+            HTTPStatusError: If the request fails and cannot be retried
+        """
+        logger.debug(f"Making request to {endpoint}")
+
+        max_retries = len(self.token_clients)
+        for attempt in range(max_retries):
             current_client = self.get_current_client()
+            url = url or f"{self.base_url}/{endpoint}"
 
             try:
-                async with super().rate_limit(endpoint) as should_rotate:
-                    # Even if we should rotate, make the request within this rate limit context
-                    logger.debug(f"Making request to {endpoint}")
+                # Apply rate limiting if this is a repository endpoint
+                async with self.rate_limit(endpoint) as should_rotate:
+                    if should_rotate:
+                        self._rotate_client()
+                        current_client = self.get_current_client()
+
                     response = await current_client.client.request(
-                        method=method, url=url, params=params, json=json_data
+                        method=method,
+                        url=url,
+                        params=params,
+                        json=json,
                     )
                     response.raise_for_status()
                     return response.json()
 
             except HTTPStatusError as e:
                 if e.response.status_code == 429:
-                    logger.warning(f"Rate limit hit, rotating client")
+                    # Rate limit hit, rotate to next client
+                    logger.warning("Rate limit hit, rotating client")
                     self._rotate_client()
-                    continue
+                    if attempt < max_retries - 1:
+                        continue
                 error_data = e.response.json()
-                error_message = error_data.get("error", {}).get("message", str(e))
-                logger.error(f"Bitbucket API error: {error_message}")
+                error_msg = error_data.get("error", {}).get("message", str(e))
+                logger.error(f"Bitbucket API error: {error_msg}")
                 raise
-            except Exception as e:
-                logger.warning(f"Request failed, trying next client: {str(e)}")
-                self._rotate_client()
 
-            # If we should rotate after a successful request
-            if should_rotate and len(self.token_clients) > 1:
-                self._rotate_client()
+            except Exception as e:
+                logger.error(f"Request failed: {str(e)}")
+                raise
 
     async def _send_paginated_api_request(
-        self,
-        endpoint: str,
-        params: Optional[dict[str, Any]] = None,
-        method: str = "GET",
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Handle Bitbucket's pagination for API requests."""
+        self, endpoint: str, params: Optional[Dict[str, Any]] = None
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """
+        Send a paginated request to the Bitbucket API.
+
+        Args:
+            endpoint: API endpoint (without base URL)
+            params: Optional query parameters
+
+        Yields:
+            Batches of values from each page
+        """
         if params is None:
             params = {}
+        next_page = None
         while True:
             response = await self._send_api_request(
-                endpoint, params=params, method=method
+                endpoint, params=params, url=next_page
             )
-            values = response["values"]
-            if values:
+            if values := response.get("values", []):
                 yield values
             next_page = response.get("next")
             if not next_page:
                 break
-            endpoint = next_page.replace(self.base_url + "/", "")
 
     @cache_iterator_result()
-    async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_projects(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get all projects in the workspace."""
         async for projects in self._send_paginated_api_request(
             f"workspaces/{self.workspace}/projects"
@@ -142,7 +169,7 @@ class BitbucketClient(MultiTokenBitbucketClient):
             yield projects
 
     @cache_iterator_result()
-    async def get_repositories(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_repositories(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get all repositories in the workspace."""
         async for repos in self._send_paginated_api_request(
             f"repositories/{self.workspace}"
@@ -150,20 +177,48 @@ class BitbucketClient(MultiTokenBitbucketClient):
             yield repos
 
     async def get_directory_contents(
-        self, repo_slug: str, branch: str, path: str, max_depth: int = 2
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get contents of a directory."""
-        async for contents in self._send_paginated_api_request(
-            f"repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
-            params={"max_depth": max_depth},
-        ):
+        self, repo_slug: str, ref: str, path: str = "", max_depth: int = 2
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """
+        Get contents of a directory in a repository.
+
+        Args:
+            repo_slug: Repository slug
+            ref: Branch or commit reference
+            path: Directory path (empty for root)
+            max_depth: Maximum depth to recurse
+
+        Yields:
+            Batches of directory contents
+        """
+        # Clean up path
+        clean_path = path.strip("/")
+        if clean_path:
+            clean_path = f"{clean_path}/"
+
+        endpoint = f"repositories/{self.workspace}/{repo_slug}/src/{ref}/{clean_path}"
+        params = {"max_depth": max_depth, "pagelen": 100}
+
+        async for contents in self._send_paginated_api_request(endpoint, params=params):
             yield contents
 
     async def get_pull_requests(
-        self, repo_slug: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get pull requests for a repository."""
-        async for pull_requests in self._send_paginated_api_request(
-            f"repositories/{self.workspace}/{repo_slug}/pullrequests"
-        ):
-            yield pull_requests
+        self, repo_slug: str, state: str = "OPEN"
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """
+        Get pull requests for a repository.
+
+        Args:
+            repo_slug: Repository slug
+            state: Pull request state (OPEN, MERGED, DECLINED, etc.)
+
+        Yields:
+            Batches of pull requests
+        """
+        endpoint = f"repositories/{self.workspace}/{repo_slug}/pullrequests"
+        params = {}
+        if state:
+            params["state"] = state
+
+        async for prs in self._send_paginated_api_request(endpoint, params=params):
+            yield prs
