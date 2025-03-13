@@ -1,9 +1,9 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 
-# 🚀 Implementing an API Client
+# 🔗 Implementing an API Client
 
 ## Introduction
 
@@ -315,9 +315,8 @@ We want to **ingest Jira projects**. The method `get_paginated_projects` handles
 - **`get_paginated_projects`** is an **async generator**, so you can `async for batch in get_paginated_projects(): ...` to process and send them to Ocean as they arrive.
 - **`get\_single\_projects`** is a simpler case for retrieving one project by key. We will be needing this method when implementing webhooks.
 
----
 
-## 8. Retrieving Issues
+## Retrieving Issues
 
 Similarly, to **ingest Jira issues**, we provide:
 

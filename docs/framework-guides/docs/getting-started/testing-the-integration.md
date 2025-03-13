@@ -134,6 +134,14 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 
 Give it some time and it should sync the data from Jira to your Port dashboard.
 
+## Deploying the Integration
+If you are satisfied with the integration and would like to deploy it, you can follow the guides on deployment:
+
+- [Helm](../deployment/helm.md)
+- [Terraform](../deployment/terraform.md)
+- [Docker](../deployment/docker.md)
+- [ArgoCD](../deployment/argocd.md)
+
 ## Conclusion
 Having developed and tested your integration, you can decide to use it locally or contribute to the Port community by following the guide in the next section.
 

@@ -283,6 +283,28 @@ resources:
 - **`relations.project`**: Uses the project key `.fields.project.key` to link issues back to the `jiraProject` blueprint.
 
 
+## Modifying integration configurations (`blueprints.json` and `port-app-config.yml`)
+The `blueprints.json` and `port-app-config.yml` files are used to define the structure of the data that will be synced to Port. You can modify these files to include additional fields or relations as needed. Once the integration is run for the first time, these configurations will be synced to Port; any further modifications on the file will not take any effect on existing integrations. Instead, you can modify the configurations directly on Port.
+
+If you would like to update the mapping for an integration, you can do the following:
+- Delete existing mapping using the API endpoint `DELETE /api/v1/integrations/{integration_id}/configurations`
+- Use the CLI command:
+
+```console
+ocean defaults clean --force --destroy
+```
+
+Note that this command removes all default mappings and blueprints.
+
+Some best practices to keep in mind when modifying configurations are:
+- Verify existing mappings before expecting changes from `port-app-config.yml`.
+- Manual changes in the Portal UI may be lost when cleaning defaults.
+- Document manual modifications separately to avoid confusion.
+
+For more details, refer to the [Ocean configuration documentation](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#port-app-configyml-file). This section explains the structure of the .port folder and its different components.
+
+
+
 :::info Source Code
 You can find the source code for the integration in the [Jira integration directory on GitHub](https://github.com/port-labs/ocean/tree/main/integrations/jira)
 
