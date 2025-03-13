@@ -2,8 +2,8 @@ from typing import Literal
 from gitops.file_entity_processor import GitLabFileProcessor
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
     PortAppConfig,
+    ResourceConfig,
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration

@@ -1,6 +1,7 @@
 class Fragments:
     PROJECT_FIELDS = """
         fragment ProjectFields on Project {
+            id
             name
             webUrl
             description
@@ -18,9 +19,14 @@ class Fragments:
                 id
                 fullPath            
             }
-            labels {
+            labels(first: 100, after: $labelsCursor) {
+                pageInfo {
+                    hasNextPage
+                    endCursor
+                }
                 nodes {
                     id
+                    title
                 }
             }
             languages {
@@ -33,7 +39,7 @@ class Fragments:
 
 class ProjectQueries:
     LIST = f"""
-        query Projects($cursor: String, $filePaths: [String!]!) {{
+        query Projects($cursor: String, $filePaths: [String!]!, $labelsCursor: String) {{
             projects(
                 membership: true,
                 first: 100,
