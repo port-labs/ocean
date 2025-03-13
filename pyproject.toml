@@ -40,7 +40,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-pydantic = { version = "^1.10.8", extras = ["dotenv"] }
+pydantic = { version = ">=1.10.8,<3.0.0", extras = ["dotenv"] }
 loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = ">=2.3.4,<4.0.0"
