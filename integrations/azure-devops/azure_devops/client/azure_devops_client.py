@@ -48,11 +48,14 @@ class AzureDevopsClient(HTTPBaseClient):
             "state"
         ) not in UNHEALTHY_PROJECT_STATES and not repository.get("isDisabled")
 
-    async def get_single_project(self, project_id: str) -> dict[str, Any]:
+    async def get_single_project(self, project_id: str) -> dict[str, Any] | None:
         project_url = (
             f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}"
         )
-        project = (await self.send_request("GET", project_url)).json()
+        response = await self.send_request("GET", project_url)
+        if not response:
+            return None
+        project = response.json()
         return project
 
     @cache_iterator_result()
@@ -74,7 +77,10 @@ class AzureDevopsClient(HTTPBaseClient):
             if sync_default_team:
                 logger.info("Adding default team to projects")
                 tasks = [self.get_single_project(project["id"]) for project in projects]
-                projects = await asyncio.gather(*tasks)
+                projects_batch: list[dict[str, Any] | None] = await asyncio.gather(
+                    *tasks
+                )
+                projects = [project for project in projects_batch if project]
             yield projects
 
     @cache_iterator_result()
@@ -145,9 +151,10 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-                repositories = (await self.send_request("GET", repos_url)).json()[
-                    "value"
-                ]
+                response = await self.send_request("GET", repos_url)
+                if not response:
+                    continue
+                repositories = response.json()["value"]
                 if include_disabled_repositories:
                     yield repositories
                 else:
@@ -207,9 +214,10 @@ class AzureDevopsClient(HTTPBaseClient):
                     params["refName"] = default_branch
 
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
-                repo_policies = (
-                    await self.send_request("GET", policies_url, params=params)
-                ).json()["value"]
+                response = await self.send_request("GET", policies_url, params=params)
+                if not response:
+                    continue
+                repo_policies = response.json()["value"]
 
                 for policy in repo_policies:
                     policy["__repository"] = repo
@@ -272,7 +280,8 @@ class AzureDevopsClient(HTTPBaseClient):
             data=json.dumps({"query": wiql_query}),
             headers={"Content-Type": "application/json"},
         )
-        wiql_response.raise_for_status()
+        if not wiql_response:
+            return []
         return [item["id"] for item in wiql_response.json()["workItems"]]
 
     async def _fetch_work_items_in_batches(
@@ -311,7 +320,8 @@ class AzureDevopsClient(HTTPBaseClient):
             work_items_response = await self.send_request(
                 "GET", work_items_url, params=params
             )
-            work_items_response.raise_for_status()
+            if not work_items_response:
+                continue
             yield work_items_response.json()["value"]
 
     def _add_project_details_to_work_items(
@@ -328,15 +338,19 @@ class AzureDevopsClient(HTTPBaseClient):
             work_item["__project"] = project
         return work_items
 
-    async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any]:
+    async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any] | None:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
         response = await self.send_request("GET", get_single_pull_request_url)
+        if not response:
+            return None
         pull_request_data = response.json()
         return pull_request_data
 
-    async def get_repository(self, repository_id: str) -> dict[Any, Any]:
+    async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
         response = await self.send_request("GET", get_single_repository_url)
+        if not response:
+            return None
         repository_data = response.json()
         return repository_data
 
@@ -359,10 +373,13 @@ class AzureDevopsClient(HTTPBaseClient):
         self, boards: list[dict[str, Any]], project_id: str, team_id: str
     ) -> list[dict[str, Any]]:
         for board in boards:
+            url = f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/boards/{board['id']}"
             response = await self.send_request(
                 "GET",
-                f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/boards/{board['id']}",
+                url,
             )
+            if not response:
+                continue
             board.update(response.json())
         return boards
 
@@ -374,6 +391,8 @@ class AzureDevopsClient(HTTPBaseClient):
             for team in teams_in_project:
                 get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
                 response = await self.send_request("GET", get_boards_url)
+                if not response:
+                    continue
                 board_data = response.json().get("value", [])
                 logger.info(f"Found {len(board_data)} boards for project {project_id}")
                 yield await self._enrich_boards(board_data, project_id, team["id"])
@@ -396,17 +415,16 @@ class AzureDevopsClient(HTTPBaseClient):
             get_subscriptions_url = (
                 f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
             )
-            subscriptions_raw = (
-                await self.send_request("GET", get_subscriptions_url, headers=headers)
-            ).json()["value"]
+            response = await self.send_request(
+                "GET", get_subscriptions_url, headers=headers
+            )
+            if not response:
+                return []
+            subscriptions_raw = response.json().get("value", [])
         except json.decoder.JSONDecodeError:
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
             logger.warning(err_str)
             raise Exception(err_str)
-        except Exception as e:
-            logger.warning(
-                f"Failed to get all existing subscriptions:{type(e)} {str(e)}"
-            )
         return [WebhookEvent(**subscription) for subscription in subscriptions_raw]
 
     async def create_subscription(self, webhook_event: WebhookEvent) -> None:
@@ -423,6 +441,8 @@ class AzureDevopsClient(HTTPBaseClient):
             headers=headers,
             data=webhook_event_json,
         )
+        if not response:
+            return
         response_content = response.json()
         logger.info(
             f"Created subscription id: {response_content['id']} for eventType {response_content['eventType']}"
@@ -452,19 +472,19 @@ class AzureDevopsClient(HTTPBaseClient):
             logger.info(
                 f"Getting file {file_path} from repo id {repository_id} by {version_type}: {version}"
             )
-            file_content = (
-                await self.send_request(
-                    method="GET", url=items_url, params=items_params
+
+            response = await self.send_request(
+                method="GET", url=items_url, params=items_params
+            )
+            if not response:
+                logger.warning(
+                    f"Failed to access URL '{items_url}'. The repository '{repository_id}' might be disabled or inaccessible."
                 )
-            ).content
+                return bytes()
+            file_content = response.content
         except HTTPStatusError as e:
             general_err_msg = f"Couldn't fetch file {file_path} from repo id {repository_id}: {str(e)}. Returning empty file."
-            if e.response.status_code == 404:
-                logger.warning(
-                    f"{general_err_msg} This may be because the repo {repository_id} is disabled."
-                )
-            else:
-                logger.warning(general_err_msg)
+            logger.warning(general_err_msg)
             return bytes()
         except Exception as e:
             logger.warning(

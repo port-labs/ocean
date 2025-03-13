@@ -22,9 +22,11 @@ class PushHookListener(HookListener):
         config: GitPortAppConfig = typing.cast(GitPortAppConfig, event.port_app_config)
         push_url = data["resource"]["url"]
         push_params = {"includeRefUpdates": True}
-        push_data = (
-            await self._client.send_request("GET", push_url, params=push_params)
-        ).json()
+        response = await self._client.send_request("GET", push_url, params=push_params)
+        if not response:
+            logger.warning(f"Couldn't get push data from url {push_url}")
+            return
+        push_data = response.json()
         updates: list[dict[str, Any]] = push_data["refUpdates"]
 
         ref_update_tasks = []
@@ -81,7 +83,12 @@ class PushHookListener(HookListener):
         )
 
     async def register_repository(self, push_data: Dict[str, Any]) -> None:
+        repository_id = push_data["repository"]["id"]
+        repository = await self._client.get_repository(repository_id)
+        if not repository:
+            logger.warning(f"Repository with ID {repository_id} not found")
+            return
         await ocean.register_raw(
             Kind.REPOSITORY,
-            [await self._client.get_repository(push_data["repository"]["id"])],
+            [],
         )
