@@ -17,12 +17,16 @@ Before you publish your integration, you need to create a changelog. A changelog
 Run the following command to create a changelog draft:
 
 ```console showLineNumbers title="bash"
-$ poetry run towncrier create --content "Implemented Port integration for GitHub" 0.1.0-beta.feature.md
+$ poetry run towncrier create --content "Implemented Port integration for Jira" 0.1.0-beta.feature.md
 ```
 
 This command will create a new file named `0.1.0-beta.feature.md` in the `changelog` directory.
 
 Next, let's add this to the `CHANGELOG.md` file. Run the following command:
+
+<details>
+
+<summary><b>Adding the changelog to the CHANGELOG.md file (Click to expand)</b></summary>
 
 ```console showLineNumbers title="bash"
 $ poetry run towncrier build --yes --version 0.1.0-beta
@@ -32,8 +36,10 @@ Rendering news fragments...
 Writing to newsfile...
 Staging newsfile...
 Removing the following files:
-/home/lordsarcastic/Code/port/new-integration/github/changelog/0.1.0-beta.feature.md
+/home/lordsarcastic/Code/port/ocean/integrations/jira/changelog/0.1.0-beta.feature.md
 ```
+
+</details>
 
 Commit the changes to git and push them to your repository. The next step is to create a pull request to the Port Ocean repository.
 
@@ -42,8 +48,8 @@ To make your integration available to other users, you also need to document it.
 
 You can do this by forking the [Port Docs repository](https://github.com/port-labs/port-docs) and adding your integration documentation, following the same format used by other integrations.
 
-:::tip Source Code
-You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+:::info Source Code
+You can find the source code for the integration in the [Jira integration directory on GitHub](https://github.com/port-labs/ocean/tree/main/integrations/jira)
 
 :::
 

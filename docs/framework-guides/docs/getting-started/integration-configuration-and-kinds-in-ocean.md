@@ -3,246 +3,237 @@ sidebar_position: 3
 ---
 
 # 🏗️ Integration Configuration and Kinds in Ocean
-With the API client implemented, you will notice we are exporting three types of data, namely organizations, repositories and pull requests. In Ocean, these are referred to as kinds. Kinds are a way to categorize data in Ocean. They are used to define the structure of the data that is being exported.
+With the API client implemented, you will notice we are exporting two types of data, namely projects and issues. In Ocean, these are referred to as kinds. Kinds are a way to categorize data in Ocean. They are used to define the structure of the data that is being exported.
 
-In addition, some of these kinds require specific configurations to be set up. For example, the organizations kind requires the user to provide a list of organizations that they want to export data from. Similarly, the repositories kind requires the user to provide the same organizations, and the type of repositories they want to export data from. Lastly, the pull requests kind requires the user to provide the same organizations, repository type, and the type of pull requests they want to export data from.
+In addition, you often want users to specify certain **parameters** in the integration, such as JQL filters for issues or expansion parameters for projects. These configurations let users filter or refine the data they retrieve from Jira.
 
-In this guide, we will learn how to configure the integration and accept user-defined configurations for the kinds.
+In this guide, we will learn how to configure the integration and accept user-defined configurations for the kinds. We will:
+
+- Define **Selectors**: classes that store the user-defined parameters for each kind (e.g., JQL query, fields, expand parameters).
+- Define **ResourceConfigs**: classes that associate a Selector with a particular kind (“issue” or “project”).
+- Combine these into a **PortAppConfig**, which describes the overall integration configuration for Ocean.
 
 ## Integration Configuration
-Create an `integration.py` file in the same directory you defined the `client.py` file. This file will contain the configuration for the integration.
 
-Configurations are defined using Python types, backed with [Pydantic](https://docs.pydantic.dev/latest/). Pydantic is used for data validation and settings management with Python type annotations. In addition, Ocean already has a default configuration that is used to define the structure of the data that is being exported. We will inherit this class and add our custom configurations.
-
-For each of the kinds, we will define `Selector` subclasses that will hold the parameters we are passing to the kinds.
-
-<details>
-
-<summary><b>Selector subclasses</b></summary>
-
-```python showLineNumbers title="integration.py"
-from port_ocean.core.handlers.port_app_config.models import Selector
-from pydantic.fields import Field
-
-
-class OrganizationSelector(Selector):
-    organizations: list[str] = Field(
-        description="List of organizations to retrieve repositories from",
-        default_factory=list,
-    )
-
-
-class RepositorySelector(Selector):
-    organizations: list[str] = Field(
-        description="List of organizations to retrieve repositories from",
-        default_factory=list,
-    )
-    type: Literal["all", "public", "private", "forks", "sources", "member"] = Field(
-        description="Type of repositories to retrieve",
-        default="all",
-    )
-
-
-class PullRequestSelector(Selector):
-    organizations: list[str] = Field(
-        description="List of organizations to retrieve repositories from",
-        default_factory=list,
-    )
-    type: Literal["all", "public", "private", "forks", "sources", "member"] = Field(
-        alias="repositoryType",
-        description="Type of repositories to retrieve data from",
-        default="all",
-    )
-    state: Literal["open", "closed", "all"] = Field(
-        description="State of pull requests to retrieve",
-        default="open",
-    )
+Create an `overrides.py` file in the same directory as your `client.py`:
 
 ```
-
-</details>
-
-Having done this, we will define `ResourceConfig` subclasses that will associate the selectors with the kinds.
-
-
-<details>
-
-<summary><b>ResourceConfig subclasses</b></summary>
-
-```python showLineNumbers title="integration.py"
-from typing import Literal
-# highlight-next-line
-from port_ocean.core.handlers.port_app_config.models import Selector, ResourceConfig
-from pydantic.fields import Field
-
-
-# highlight-start
-class ObjectKind:
-    ORGANIZATION = "organization"
-    REPOSITORY = "repository"
-    PULL_REQUEST = "pull_request"
-# highlight-end
-
-
-# selector classes here
-
-# highlight-start
-class GitHubOrganizationResourceConfig(ResourceConfig):
-    selector: OrganizationSelector
-    kind: Literal["organization"]
-
-
-class GitHubRepositoryResourceConfig(ResourceConfig):
-    selector: RepositorySelector
-    kind: Literal["repository"]
-
-
-class GitHubPullRequestResourceConfig(ResourceConfig):
-    selector: PullRequestSelector
-    kind: Literal["pull_request"]
-# highlight-end
-
+$ touch jira/overrides.py
 ```
 
-</details>
+This file will:
 
-Finally, we will define `AppConfig` and `BaseIntegration` subclasses that will hold the resource configurations and define the total integration configuration.
+1. Contain **Selector** subclasses for issues and projects.
+2. Contain corresponding **ResourceConfig** classes, linking each Selector to a specific kind.
+3. Define a **PortAppConfig** to consolidate all resource configurations.
+
+Configurations in Ocean are powered by Python type-hints and [Pydantic](https://docs.pydantic.dev/latest/). This approach provides:
+
+- **Validation**: Ensuring user inputs (like JQL strings) are valid.
+- **Schema**: Defining how data is structured and stored.
+
+## Selector Subclasses
+
+A **Selector** class holds the parameters that a user can provide for a given kind. For Jira, the two major kinds we care about are **issues** and **projects**. Below, you’ll see how we capture a user’s JQL query or additional fields for issues, and the `expand` parameter for projects.
+
 
 <details>
 
-<summary><b>`AppConfig` and `BaseIntegration`</b></summary>
+<summary><b>Selectors (Click to expand)</b></summary>
 
-```python showLineNumbers title="integration.py"
-from typing import Literal
-# highlight-next-line
-from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
-# highlight-next-line
-from port_ocean.core.handlers.port_app_config.models import Selector, ResourceConfig, PortAppConfig
-from pydantic.fields import Field
-# highlight-next-line
-from port_ocean.core.integrations.base import BaseIntegration
-
-
-# rest of the code here
-
-# highlight-start
-class GitHubPortAppConfig(PortAppConfig):
-    resources: list[
-        GitHubOrganizationResourceConfig
-        | GitHubRepositoryResourceConfig
-        | GitHubPullRequestResourceConfig
-        | ResourceConfig
-    ] = Field(default_factory=list)
-
-
-class GitHubIntegration(BaseIntegration):
-    class AppConfigHandlerClass(APIPortAppConfig):
-        CONFIG_CLASS = GitHubPortAppConfig
-
-# highlight-end
-
-```
-
-</details>
-
-## Conclusion
-In this guide, we learned how to configure the integration and accept user-defined configurations for the kinds. We defined `Selector` subclasses that hold the parameters we are passing to the kinds, `ResourceConfig` subclasses that associate the selectors with the kinds, and `AppConfig` and `BaseIntegration` subclasses that hold the resource configurations and define the total integration configuration.
-
-Your `integration.py` file should look like this:
-
-<details>
-
-<summary><b>Integration Configuration</b></summary>
-
-```python showLineNumbers title="integration.py"
+```python showLineNumbers
 from typing import Literal
 
-from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
-from port_ocean.core.integrations.base import BaseIntegration
-from pydantic.fields import Field
+from pydantic import Field
 
 
-class ObjectKind:
-    ORGANIZATION = "organization"
-    REPOSITORY = "repository"
-    PULL_REQUEST = "pull_request"
-
-
-class OrganizationSelector(Selector):
-    organizations: list[str] = Field(
-        description="List of organizations to retrieve repositories from",
-        default_factory=list,
+class JiraIssueSelector(Selector):
+    jql: str | None = None
+    fields: str | None = Field(
+        description="Additional fields to be included in the API response",
+        default="*all",
     )
 
 
-class RepositorySelector(Selector):
-    organizations: list[str] = Field(
-        description="List of organizations to retrieve repositories from",
-        default_factory=list,
+class JiraProjectSelector(Selector):
+    expand: str = Field(
+        description="A comma-separated list of the parameters to expand.",
+        default="insight",
     )
-    type: Literal["all", "public", "private", "forks", "sources", "member"] = Field(
-        description="Type of repositories to retrieve",
-        default="all",
-    )
-
-
-class PullRequestSelector(Selector):
-    organizations: list[str] = Field(
-        description="List of organizations to retrieve repositories from",
-        default_factory=list,
-    )
-    type: Literal["all", "public", "private", "forks", "sources", "member"] = Field(
-        alias="repositoryType",
-        description="Type of repositories to retrieve data from",
-        default="all",
-    )
-    state: Literal["open", "closed", "all"] = Field(
-        description="State of pull requests to retrieve",
-        default="open",
-    )
-
-
-class GitHubOrganizationResourceConfig(ResourceConfig):
-    selector: OrganizationSelector
-    kind: Literal["organization"]
-
-
-class GitHubRepositoryResourceConfig(ResourceConfig):
-    selector: RepositorySelector
-    kind: Literal["repository"]
-
-
-class GitHubPullRequestResourceConfig(ResourceConfig):
-    selector: PullRequestSelector
-    kind: Literal["pull_request"]
-
-
-class GitHubPortAppConfig(PortAppConfig):
-    resources: list[
-        GitHubOrganizationResourceConfig
-        | GitHubRepositoryResourceConfig
-        | GitHubPullRequestResourceConfig
-        | ResourceConfig
-    ] = Field(default_factory=list)
-
-
-class GitHubIntegration(BaseIntegration):
-    class AppConfigHandlerClass(APIPortAppConfig):
-        CONFIG_CLASS = GitHubPortAppConfig
 
 ```
 
 </details>
 
+### Explanation
 
-:::tip Source Code
-You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+- **`JiraIssueSelector`**: Allows users to specify a JQL filter (`jql`) and which fields to retrieve (`fields`).
+- **`JiraProjectSelector`**: Lets users set an `expand` parameter if they want additional details (e.g., `insight`).
+
+## ResourceConfig Classes
+
+**ResourceConfig** ties a Selector to a particular **kind**. In Jira’s case, we have two kinds: `"issue"` and `"project"`.
+
+
+<details>
+
+<summary><b>ResourceConfigs (Click to expand)</b></summary>
+
+```python showLineNumbers
+class JiraIssueConfig(ResourceConfig):
+    selector: JiraIssueSelector
+    kind: Literal["issue"]
+
+
+class JiraProjectResourceConfig(ResourceConfig):
+    selector: JiraProjectSelector
+    kind: Literal["project"]
+
+```
+
+</details>
+
+### Explanation
+
+- **`JiraIssueConfig`**: Expects a `JiraIssueSelector` for user-defined parameters, and identifies the kind as `"issue"`.
+- **`JiraProjectResourceConfig`**: Expects a `JiraProjectSelector`, with kind `"project"`.
+
+## Defining the PortAppConfig
+
+The **`PortAppConfig`** class groups multiple resource configurations into a single config object. It’s where you specify all the possible ResourceConfigs that your integration supports.
+
+
+<details>
+
+<summary><b>PortAppConfig (Click to expand)</b></summary>
+
+```python showLineNumbers
+class JiraPortAppConfig(PortAppConfig):
+    resources: list[
+        JiraIssueConfig
+        | JiraProjectResourceConfig
+        | ResourceConfig
+    ]
+```
+
+</details>
+
+### Explanation
+
+- The `resources` field can include any combination of `JiraIssueConfig` or `JiraProjectResourceConfig`, as well as a generic `ResourceConfig` if you need to handle unexpected or fallback cases.
+
+## The `integration.py` file
+
+Having defined these configurations, we need to expose them to Ocean. Ocean automatically grabs configurations from a special file defined in the root folder of the integration itself, `integration.py`. This file should contain a class which subclasses `port_ocean.core.integrations.base.BaseIntegration` and ties the configurations together.
+
+
+<details>
+
+<summary><b>integration.py (Click to expand)</b></summary>
+
+```python showLineNumbers
+from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
+
+class JiraIntegration(BaseIntegration):
+    class AppConfigHandlerClass(APIPortAppConfig):
+        CONFIG_CLASS = JiraPortAppConfig
+```
+
+</details>
+
+This tells Ocean how to handle the config at runtime. Whenever users update the config from the UI, Ocean uses JiraPortAppConfig to validate and store those values.
+
+## Conclusion
+
+With this, you have:
+
+- Created **Selector** classes (`JiraIssueSelector`, `JiraProjectSelector`) to handle user-defined inputs for issues and projects.
+- Built **ResourceConfig** classes (`JiraIssueConfig`, `JiraProjectResourceConfig`) that define each kind in Ocean.
+- Combined them into a **`JiraPortAppConfig`** to hold all resources.
+
+With these configurations, you can now accept user-specific parameters (like JQL strings) and expansions for projects. This sets the stage for actually **retrieving** and **exporting** your Jira issues and projects into Ocean using the **API client** from the previous guide.
+
+Your `jira/overrides.py` file should look like this:
+
+
+<details>
+
+<summary><b>overrides.py (Click to expand)</b></summary>
+
+```python showLineNumbers
+from typing import Literal
+
+from port_ocean.core.handlers.port_app_config.models import (
+    PortAppConfig,
+    ResourceConfig,
+    Selector,
+)
+from pydantic import Field
+
+
+class JiraIssueSelector(Selector):
+    jql: str | None = None
+    fields: str | None = Field(
+        description="Additional fields to be included in the API response",
+        default="*all",
+    )
+
+
+class JiraProjectSelector(Selector):
+    expand: str = Field(
+        description="A comma-separated list of the parameters to expand.",
+        default="insight",
+    )
+
+
+class JiraIssueConfig(ResourceConfig):
+    selector: JiraIssueSelector
+    kind: Literal["issue"]
+
+
+class JiraProjectResourceConfig(ResourceConfig):
+    selector: JiraProjectSelector
+    kind: Literal["project"]
+
+
+class JiraPortAppConfig(PortAppConfig):
+    resources: list[
+        JiraIssueConfig
+        | JiraProjectResourceConfig
+        | ResourceConfig
+    ]
+```
+
+</details>
+
+and your `integration.py` file should look like so:
+
+
+<details>
+
+<summary><b>integration.py (Click to expand)</b></summary>
+
+```python showLineNumbers
+from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
+
+class JiraIntegration(BaseIntegration):
+    class AppConfigHandlerClass(APIPortAppConfig):
+        CONFIG_CLASS = JiraPortAppConfig
+
+```
+
+</details>
+
+:::info Source Code
+You can find the source code for the integration in the [Jira integration directory on GitHub](https://github.com/port-labs/ocean/tree/main/integrations/jira)
 
 :::
 
-Next, we will learn how to send data to Port using the API client we implemented.
+Next, we’ll learn how to **define important configurations** such as specs, blueprints and mapping configurations to help ingest data into Port.

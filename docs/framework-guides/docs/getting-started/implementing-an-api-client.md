@@ -1,675 +1,695 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
 ---
 
-# 🔗 Implementing an API Client
-One of the first steps to implementing an integration with Ocean is to create an API client. This client will be responsible for interacting with the third-party API and pulling in the data that you need to send to Port. In this case, our client, `GitHubClient`, will be interacting with the GitHub API.
 
-We are interested in three APIs respectively:
-- [GitHub Organization Detail API](https://docs.github.com/en/rest/orgs/orgs?apiVersion=2022-11-28#get-an-organization): This API will be used to get the details of a GitHub organization.
-- [GitHub Repositories API](https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-organization-repositories): This API will be used to get the repositories of a GitHub organization.
-- [GitHub Pull Requests API](https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#list-pull-requests): This API will be used to get the pull requests of a GitHub repository.
+# 🚀 Implementing an API Client
 
+## Introduction
 
-## GitHubClient
-We create a `client.py` file in the `github` directory. This file will contain the `GitHubClient` class, which will be responsible for interacting with the GitHub API.
+When building a Jira integration for Ocean, one of the first steps is to **create an API client**. This client must:
+
+- **Authenticate** with Jira (handling both Basic Auth and OAuth tokens). Oauth support is optional and could be ignored
+- **Fetch data** from Jira – in this case, **projects** and **issues** (though you can expand this to users, teams, boards, etc., as needed).
+- **Set up webhooks** so that relevant changes (e.g., new issues, updated projects) can be reported to Ocean in real-time.
+
+In this guide, we’ll walk through the process of creating a `JiraClient` class that encapsulates all the Jira API logic. This class will be used to interact with Jira’s REST API, fetch data, and set up webhooks. We are concerned with the following API endpoints:
+
+- [Jira Project API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-projects/#api-rest-api-3-project-search-get)
+- [Jira Issue API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-get)
+- [Jira Webhooks API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-webhooks/#api-group-webhooks)
+
+## Create the `JiraClient` File
+
+Create a `client.py` (or similarly named file) in your Jira integration directory. For example:
 
 ```console
-$ touch client.py
+$ mkdir jira && touch jira/client.py
 ```
 
-### The GitHubClient Constructor
-We will define the client to accept a few parameters in its constructor:
-- `base_url`: The base URL of the GitHub API. It is possible that the GitHub instance is self-hosted, so we need to be able to configure the base URL.
-- `access_token`: The access token to authenticate with the GitHub API. This is required for making requests to the GitHub API. Since tokens are only required when dealing with private repositories, we will make this parameter optional.
+This file will contain the `JiraClient` class, which encapsulates all the Jira API logic. Note that, the `client.py` file is created in another `jira` directory which is inside the Jira integration.
 
-In addition, we will add an attribute for the http client we will be using to make requests. Since Ocean integrations with speed and performance in mind, we will be using Python's async features which naturally leads us to use a robust async http client, [httpx](https://www.python-httpx.org/). Fortunately, the `httpx` library is already included in the Ocean framework with helper features such as exponential backoff retry mechanism and other sensible defaults so we don't need to install or configure it separately.
+## The `JiraClient` Constructor
+
+In the constructor, we need to handle:
+
+- **Jira URLs**: the base Jira URL (could be on Atlassian’s cloud or self-hosted).
+- **Auth details**: either Basic Auth or OAuth-based Bearer token.
+- **Concurrent Requests**: We’ll use an `asyncio.Semaphore` to limit the number of concurrent requests to avoid performance pitfalls or hitting Jira’s concurrency limits.
+
+Below, we implement the class constructor. Notice how we set up the base URLs and choose the authentication scheme depending on whether `api.atlassian.com` is detected. We assume that the presence of `api.atlassian.com` means this is an Oauth flow.
 
 
 <details>
 
 <summary><b>GitHub Client constructor (Click to expand)</b></summary>
 
-```python showLineNumbers title="client.py"
-
-from port_ocean.utils import http_async_client
-
-class GitHubClient:
-    def __init__(self, base_url: str ="https://api.github.com", access_token: str | None = None) -> None:
-        self.base_url = base_url
-        self.access_token = access_token
-        self.http_client = http_async_client
-
-    # Other methods will be added here
-
-```
-
-</details>
-
-One thing remains: we haven't yet added the headers required for authentication. We will do that with a `headers` property since the `access_token` is optional. If the `access_token` is provided, we will add the `Authorization` header to the request.
-
-
-<details>
-
-<summary><b>GitHub Client headers property (Click to expand)</b></summary>
-
-```python showLineNumbers title="client.py"
-from port_ocean.utils import http_async_client
-
-
-class GitHubClient:
-    def __init__(self, base_url: str ="https://api.github.com", access_token: str | None = None) -> None:
-        self.base_url = base_url
-        self.access_token = access_token
-        self.http_client = http_async_client
-# highlight-start
-        self.http_client.headers.update(self.headers)
-
-    @property
-    def headers(self) -> dict[str, str]:
-        initial_headers = {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28"
-        }
-        if self.access_token:
-            initial_headers["Authorization"] = f"Bearer {self.access_token}"
-
-        return initial_headers
-# highlight-end
-
-    # Other methods will be added here
-
-```
-
-</details>
-
-#### Rate Limiting
-When building an integration, it is important to be mindful of the rate limits of the API you are interacting with. GitHub has a rate limit of 5000 requests per hour for authenticated requests, and 60 requests per hours for unauthenticated requests. We could implement a `LeakyBucketRateLimiter` class to handle this, but there is a library specifically built to work with async code (or `asyncio` as it is called) called [`aiolimiter`](https://aiolimiter.readthedocs.io/).
-
-Let's install it with Poetry:
-
-```console
-$ poetry add aiolimiter
-```
-
-We will create a `rate_limiter` property that will contain an instance of the `aiolimiter.AsyncLimiter` class. The arguments passed to the `AsyncLimiter` depends on the authentication status of the client.
-
-
-<details>
-
-<summary><b>GitHub Client `rate_limiter` property (Click to expand)</b></summary>
-
-```python showLineNumbers title="client.py"
-# highlight-next-line
-from aiolimiter import AsyncLimiter
-from port_ocean.utils import http_async_client
-
-
-class GitHubClient:
-    # highlight-start
-    REQUEST_LIMIT_AUTHENTICATED = 5000
-    REQUEST_LIMIT_UNAUTHENTICATED = 60
-    # highlight-end
-
-    def __init__(
-        self, base_url: str ="https://api.github.com", access_token: str | None = None
-    ) -> None:
-        self.base_url = base_url
-        self.access_token = access_token
-        self.http_client = http_async_client
-        self.http_client.headers.update(self.headers)
-        # highlight-start
-        time_period = 60 * 60  # 1 hour in seconds
-        self.rate_limiter = AsyncLimiter((
-            self.REQUEST_LIMIT_AUTHENTICATED
-            if self.access_token
-            else self.REQUEST_LIMIT_UNAUTHENTICATED
-        ), time_period)
-        # highlight-end
-
-    @property
-    def headers(self) -> dict[str, str]:
-        initial_headers = {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-        if self.access_token:
-            initial_headers["Authorization"] = f"Bearer {self.access_token}"
-
-        return initial_headers
-
-    # Other methods will be added here
-
-```
-
-</details>
-
-
-### Implementing the method to retrieve organization details
-Since we are going to work with specific organizations input by the user, we will create a method to retrieve information on a specific organization so we can have data to export to Port. We could start by creating a method to retrieve the organization details:
-
-<details>
-
-<summary><b>GitHub Client get_organization method (Click to expand)</b></summary>
-
-```python showLineNumbers title="client.py"
-# highlight-next-line
-import httpx
-from aiolimiter import AsyncLimiter
-# highlight-next-line
-from loguru import logger
-from port_ocean.utils import http_async_client
-
-
-class GitHubClient:
-    # rest of the class
-
-    async def get_organization(self, organization: str) -> dict:
-        url = f"{self.base_url}/orgs/{organization}"
-        async with self.rate_limiter:
-            try:
-                response = await self.http_client.get(
-                    url
-                )
-                return response.json()
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"Got HTTP error when making reques to {url} with "
-                    f"status code: {e.response.status_code} and response:"
-                    f" {e.response.text}"
-                )
-                raise
-            except httpx.HTTPError as e:
-                logger.error(
-                    f"Got HTTP error when making request to {url} with "
-                    f"error: {e}"
-                )
-                raise
-```
-
-</details>
-
-But there are a few problems here:
-- We would have to loop through each of the organizations to get the details of each organization. This is not efficient since each iteration is synchronous and will block the event loop, therefore, having an async function makes little to no difference. To fix this, the caller would have to use `asyncio.gather` which would make the calling code complex.
-
-- Other methods added to the `GitHubClient` class will have to duplicate the same wrapper code including the rate limit context manager and the try-except block. This is not DRY (Don't Repeat Yourself) and is not maintainable.
-
-
-To remedy this, first, we will define a separate method to make API requests, handle rate limiting, and error handling. This method will be used by all other methods in the `GitHubClient` class. We will call this method `_send_api_request`. Secondly, the `get_organization` method will be renamed to `get_organizations` and refactored to accept a list of organizations and return a list of organization details.
-
-<details>
-
-<summary><b>Refactoring the `get_organization` method (Click to expand)</b></summary>
-
-```python showLineNumbers title="client.py"
+```python showLineNumbers
 import asyncio
-from typing import Any
-# remaining imports
+import uuid
+from typing import Any, AsyncGenerator, Generator
 
+import httpx
+from httpx import Auth, BasicAuth, Request, Response, Timeout
+from loguru import logger
 
-# highlight-start
-class Endpoints:
-    ORGANIZATION = "orgs/{}"
-# highlight-end
+# ocean-related imports
+from port_ocean.clients.auth.oauth_client import OAuthClient
+from port_ocean.context.ocean import ocean
+from port_ocean.utils import http_async_client
 
+PAGE_SIZE = 50
+WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
+MAX_CONCURRENT_REQUESTS = 10
 
-class GitHubClient:
-    # rest of the class
+WEBHOOK_EVENTS = [
+    "jira:issue_created",
+    "jira:issue_updated",
+    "jira:issue_deleted",
+    "project_created",
+    "project_updated",
+    "project_deleted",
+    "project_soft_deleted",
+    "project_restored_deleted",
+    "project_archived",
+    "project_restored_archived",
+]
 
-# highlight-start
-    async def _send_api_request(self, url: str) -> dict[str, Any]:
-        async with self.rate_limiter:
-            try:
-                response = await self.http_client.get(
-                    url
-                )
-                return response.json()
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"Got HTTP error when making reques to {url} with "
-                    f"status code: {e.response.status_code} and response:"
-                    f" {e.response.text}"
-                )
-                raise
-            except httpx.HTTPError as e:
-                logger.error(
-                    f"Got HTTP error when making request to {url} with "
-                    f"error: {e}"
-                )
-                raise
+OAUTH2_WEBHOOK_EVENTS = [
+    "jira:issue_created",
+    "jira:issue_updated",
+    "jira:issue_deleted",
+]
 
-    async def get_organizations(self, organizations: list[str]) -> list[dict[str, Any]]:
-        tasks = [
-            self._send_api_request(
-                f"{self.base_url}/{Endpoints.ORGANIZATION.format(org)}"
-            )
-            for org in organizations
-        ]
+class BearerAuth(Auth):
+    """
+    Simple custom Bearer token handler for OAuth.
+    """
+    def __init__(self, token: str):
+        self.token = token
 
-        return await asyncio.gather(*tasks)
+    def auth_flow(self, request: Request) -> Generator[Request, Response, None]:
+        request.headers["Authorization"] = f"Bearer {self.token}"
+        yield request
 
-# highlight-end
+class JiraClient(OAuthClient):
+    jira_api_auth: Auth
 
+    def __init__(self, jira_url: str, jira_email: str, jira_token: str) -> None:
+        # Initialize the OAuthClient base class from port_ocean
+        super().__init__()
+
+        self.jira_url = jira_url
+        self.jira_rest_url = f"{self.jira_url}/rest"
+        self.jira_email = jira_email
+        self.jira_token = jira_token
+
+        # Distinguish between OAuth (bearer) or Basic Auth:
+        if self.is_oauth_host():
+            self.jira_api_auth = self._get_bearer()
+            self.webhooks_url = f"{self.jira_rest_url}/api/3/webhook"
+        else:
+            self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
+            self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
+
+        # Additional endpoints relevant to Jira
+        self.api_url = f"{self.jira_rest_url}/api/3"
+        self.teams_base_url = f"{self.jira_url}/gateway/api/public/teams/v1/org"
+
+        # Configure httpx client
+        self.client = http_async_client
+        self.client.auth = self.jira_api_auth
+        self.client.timeout = Timeout(30)
+
+        # Use a semaphore to limit concurrent requests
+        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+
+    def is_oauth_host(self) -> bool:
+        """
+        If the Jira instance is at 'api.atlassian.com',
+        treat it as an OAuth-based host.
+        """
+        return "api.atlassian.com" in self.jira_url
+
+    def _get_bearer(self) -> BearerAuth:
+        """
+        Returns a BearerAuth if we have a valid external access token,
+        otherwise falls back to using the class's jira_token attribute.
+        """
+        try:
+            return BearerAuth(self.external_access_token)
+        except ValueError:
+            return BearerAuth(self.jira_token)
 ```
 
 </details>
 
-:::tip Modifying the returned data
-Despite the fact that we can modify the data returned by GitHub to fit a specific usecase, it is better to return the data as-is and rely on using the integration mapping to handle data transforms. This way, the integration is more flexible and can be reused for other usecases. If there is the pressing need to modify the data, opt to add a custom property to the returned data prefixed by a double underscore, `__`, to indicate that the data is not the original data returned by the API.
+A few things to take note of:
+
+- **self.client**: Since Ocean integrations are developed with speed and performance in mind, we will be using Python's async features which naturally leads us to use a robust async http client, [httpx](https://www.python-httpx.org/). Fortunately, the `httpx` library is already included in the Ocean framework with helper features such as exponential backoff retry mechanism and other sensible defaults so we don't need to install or configure it separately.
+- **`super().__init__()`**: We extend `OAuthClient` to leverage built-in capabilities for OAuth tokens.
+- **`_semaphore`**: Limits concurrency to `MAX_CONCURRENT_REQUESTS`.
+
+:::tip Special concurrency or rate-limit guidelines
+If there are special concurrency or rate-limit guidelines from the third-party API (e.g., cloud vs. on-prem)? You might want to tweak the use of semaphore or add additional retry logic.
+
 :::
 
+## Handling Basic Auth vs. OAuth2
 
+As shown in the constructor, we automatically detect if the Jira URL contains `"api.atlassian.com"`. If it does, we assume **OAuth**. Otherwise, we default to **BasicAuth**.
 
-### Retrieving repositories of an organization
-The endpoint for retrieving repositories of an organization is a paginaged endpoint.
-Since the we expect to use another endpoint which also requires pagination, it would be smart
-to implement a method that can handle pagination. We will create a method called `_get_paginated_data` that will be used by the `get_repositories` and `get_pull_requests` methods.
-This method will make use of the already existing `_send_api_request` method to make requests to the GitHub API.
+- **OAuth** scenario: We rely on `BearerAuth`, which is a simple custom class that sets the `Authorization` header with a Bearer token.
+- **BasicAuth** scenario: We pass the user’s **email** and a **token** (often an API token from Jira).
 
-However, GitHub's pagination is done using the `Link` header in the response. The `Link` header contains the URL to the next page of results. We will need to extract this URL and make a request to it to get the next page of results.
-Since the `_send_api_request` method returns only the data, we will modify it to return the response object itself and calling methods will extract the JSON data they need.
- We will also create a helper method called `_get_next_page_url` to extract the URL from the `Link` header.
+## Sending API Requests (`_send_api_request`)
+
+Like in the GitHub example, we want a single utility method that **all** request-making functions can call. This method handles:
+
+1. **Concurrency**: by awaiting `self._semaphore`.
+2. **Exceptions**: logging errors and re-raising them so we can handle them upstream.
+3. **HTTP status checks**: raising for non-2xx responses (via `response.raise_for_status()`).
+4. **Rate-limiting or throttling**: you could add additional logic if Jira imposes rate limits. In the snippet below, we show a small `_handle_rate_limit` method to check for `429` responses.
+
 
 <details>
 
-<summary><b>Retrieving repositories of an organization (Click to expand)</b></summary>
+<summary><b>GitHub Client `_send_api_request` method (Click to expand)</b></summary>
 
-```python showLineNumbers title="client.py"
-# remaining imports
-# highlight-start
-from typing import Any, AsyncGenerator
-
-type RepositoryType = Literal["all", "public", "private", "forks", "sources", "member"]
-# highlight-end
-
-class Endpoints:
-    ORGANIZATION = "orgs/{}"
-# highlight-next-line
-    REPOSITORY = "orgs/{}/repos"
-
-
-
-class GitHub:
-    # rest of the class
-
-# highlight-start
-    def _get_next_page_url(self, response: httpx.Headers) -> str | None:
-        link: str = response.get("Link", None)
-        if not link:
-            return None
-
-        links = link.split(",")
-        for link in links:
-            url, rel = link.split(";")
-            if "next" in rel:
-                return url.strip("<> ")
-
-        return None
-# highlight-end
-
-
-# highlight-next-line
-    async def _send_api_request(self, url: str, params: dict[str, Any] | None = None) -> httpx.Response:
-        async with self.rate_limiter:
-# highlight-next-line
-            logger.info(f"Making request to {url} with params: {params}")
-            try:
-                response = await self.http_client.get(
-                    url,
-# highlight-next-line
-                    params=params
-                )
-# highlight-next-line
-                return response
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"Got HTTP error when making reques to {url} with "
-                    f"status code: {e.response.status_code} and response:"
-                    f" {e.response.text}"
-                )
-                raise
-            except httpx.HTTPError as e:
-                logger.error(
-                    f"Got HTTP error when making request to {url} with "
-                    f"error: {e}"
-                )
-                raise
-
-# highlight-start
-    async def _get_paginated_data(self, url: str, params: dict[str, Any] | None = None) -> AsyncGenerator[list[dict[str, Any]], None]:
-        next_url: str | None = url
-
-        while next_url:
-            data = await self._send_api_request(next_url, params)
-            response = data.json()
-            yield response
-
-            next_url = self._get_next_page_url(data.headers)
-# highlight-end
-
-    async def get_organizations(self, organizations: list[str]) -> list[dict[str, Any]]:
-        tasks = [
-            self._send_api_request(
-                f"{self.base_url}/{Endpoints.ORGANIZATION.format(org)}"
+```python showLineNumbers
+    async def _handle_rate_limit(self, response: Response) -> None:
+        if response.status_code == 429:
+            logger.warning(
+                f"Jira API rate limit reached. Waiting for {response.headers['Retry-After']} seconds."
             )
-            for org in organizations
-        ]
+            await asyncio.sleep(int(response.headers["Retry-After"]))
 
-# highlight-next-line
-        return [res.json() for res in await asyncio.gather(*tasks)]
-
-# highlight-start
-    async def get_repositories(self, organizations: list[str], repo_type: RepositoryType) -> AsyncGenerator[list[dict[str, Any]], None]:
-        for org in organizations:
-            async for data in self._get_paginated_data(
-                f"{self.base_url}/{Endpoints.REPOSITORY.format(org)}",
-                {"type": repo_type}
-            ):
-                yield data
-# highlight-end
-
-```
-
-</details>
-
-
-We made a few changes to the `GitHubClient` class:
-
-- Since the headers are needed from the response object, we modified the `_send_api_request` method to return the response object instead of the JSON data.
-- We also add a `params` argument to the `_send_api_request` method to allow for passing query parameters to the request.
-- We modify the `get_organizations` method to return the JSON data from the response object.
-
-
-The `get_repositories` method is an asynchoronous generator that yields the repositories as soon as they are retrieved.
-This is useful when working with large datasets as it allows the caller to process the data as it is being retrieved.
-The caller can use the `async for` syntax to iterate over the data. However, we face a small problem as we did with the `get_organizations` method:
-despite using async code, each of the organizations will be retrieved sequentially. This is not efficient as we are not taking full advantage of the async features of Python.
-Also, using `async.gather` would be rather messy and complex. Thankfully, Ocean provides a helper utility function just for this purpose: `port_ocean.utils.async_iterators.stream_async_iterators_tasks`.
-
-
-<details>
-
-<summary><b>Using the `stream_async_iterators_tasks` function (Click to expand)</b></summary>
-
-```python showLineNumbers title="client.py"
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-# remaining imports
-
-# ... rest of code
-
-
-class GitHub:
-    # rest of the class
-
-# highlight-start
-    async def get_repositories(self, organizations: list[str], repo_type: RepositoryType) -> AsyncGenerator[list[dict[str, Any]], None]:
-        tasks = [
-            self._get_paginated_data(
-                f"{self.base_url}/{Endpoints.REPOSITORY.format(org)}",
-                {"type": repo_type}
-            )
-            for org in organizations
-        ]
-
-        async for repositories in stream_async_iterators_tasks(*tasks):
-            yield repositories
-
-# highlight-end
-```
-
-</details>
-
-The `stream_async_iterators_tasks` function takes in a list of async iterators and returns an async generator that yields the results of each async iterator as they are retrieved. This is a much cleaner and more efficient way to retrieve data from multiple async iterators.
-
-
-### Retrieving pull requests of a repository
-The endpoint for retrieving pull requests of a repository is also paginated. We will create a method called `get_pull_requests` that will be similar to the `get_repositories` method. The `get_pull_requests` method will also use the `_get_paginated_data` method to handle pagination.
-
-
-<details>
-
-<summary><b>Retrieving pull requests of a repository (Click to expand)</b></summary>
-
-```python showLineNumbers title="client.py"
-# rest of code
-
-# highlight-next-line
-type PullRequestState = Literal["open", "closed", "all"]
-
-
-class Endpoints:
-    ORGANIZATION = "orgs/{}"
-    REPOSITORY = "orgs/{}/repos"
-# highlight-next-line
-    PULL_REQUESTS = "repos/{}/pulls"
-
-class GitHub:
-    # rest of the class
-    async def get_pull_requests(self, organizations: list[str], repo_type: RepositoryType, state: PullRequestState) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for repositories in self.get_repositories(organizations, repo_type):
-            tasks = [
-                self._get_paginated_data(
-                    f"{self.base_url}/{Endpoints.PULL_REQUESTS.format(repository['full_name'])}",
-                    {"state": state}
+    async def _send_api_request(
+        self,
+        method: str,
+        url: str,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> Any:
+        try:
+            async with self._semaphore:
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json,
+                    headers=headers
                 )
-                for repository in repositories
-            ]
-
-            async for pull_requests in stream_async_iterators_tasks(*tasks):
-                yield pull_requests
-
-
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as e:
+            # If we hit a 429, handle it
+            await self._handle_rate_limit(e.response)
+            logger.error(
+                f"Jira API request failed with status {e.response.status_code}: {method} {url}"
+            )
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"Failed to connect to Jira API: {method} {url} - {str(e)}")
+            raise
 ```
 
 </details>
 
-### Caching the results of API calls
-We have successfully implemented the `GitHubClient` class with methods to retrieve organization details, repositories of an organization, and pull requests of a repository.
-We have also handled pagination and rate limiting. The `GitHubClient` class is now ready to be used to interact with the GitHub API.
-Just one thing is left: the `get_pull_requests` method calls the `get_repositories` method to retrieve repositories
-before retrieving the pull requests. This is not efficient as we are making two separate requests to the GitHub API.
-We can make things better by caching the repositories and reusing them when retrieving the pull requests. Ocean provides a
-helper function `port_ocean.utils.cache.cache_iterator_result` that can be used to cache the results of an async iterator.
-All we have to do is decorate the `get_repositories` method with the `cache_iterator_result` decorator and the results will be cached.
+## Pagination Helpers (`_get_paginated_data`)
+
+Jira’s APIs use two kinds of pagination:
+
+- **Offset-based**: A typical pattern where requests have parameters like `startAt` and `maxResults`.
+- **Cursor-based**: Some endpoints (like Teams) use a `cursor` param for subsequent pages.
+
+Since we are concerned with projects and teams which uses the offset pagination method, we can implement a helper method for that:
+
+### `_get_paginated_data`
+
+- Accepts an `extract_key` (e.g., `"values"` or `"issues"`) to pick which part of the response we’re interested in.
+- Yields data in **batches** (an async generator).
+- Updates `startAt` each iteration until we reach `total`.
 
 
 <details>
 
-<summary><b>Caching the results of the `get_repositories` method (Click to expand)</b></summary>
+<summary><b>GitHub Client `_get_paginated_data` method (Click to expand)</b></summary>
 
-```python showLineNumbers title="client.py"
-# rest of imports
-from port_ocean.utils.cache import cache_iterator_result
 
-# rest of code
+```python showLineNumbers
+    async def _get_paginated_data(
+        self,
+        url: str,
+        extract_key: str | None = None,
+        initial_params: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        params = initial_params or {}
+        params |= self._generate_base_req_params()
 
-class GitHub:
-    # rest of the class
+        start_at = 0
+        while True:
+            params["startAt"] = start_at
+            response_data = await self._send_api_request("GET", url, params=params)
+            items = response_data.get(extract_key, []) if extract_key else response_data
 
-# highlight-next-line
-    @cache_iterator_result()
-    async def get_repositories(self, organizations: list[str], repo_type: RepositoryType) -> AsyncGenerator[list[dict[str, Any]], None]:
-        tasks = [
-            self._get_paginated_data(
-                f"{self.base_url}/{Endpoints.REPOSITORY.format(org)}",
-                {"type": repo_type}
-            )
-            for org in organizations
-        ]
+            if not items:
+                break
 
-        async for repositories in stream_async_iterators_tasks(*tasks):
-            yield repositories
+            yield items
+            start_at += len(items)
 
+            # Stop if we've reached the total
+            if "total" in response_data and start_at >= response_data["total"]:
+                break
+
+    @staticmethod
+    def _generate_base_req_params(
+        maxResults: int = PAGE_SIZE, startAt: int = 0
+    ) -> dict[str, Any]:
+        return {
+            "maxResults": maxResults,
+            "startAt": startAt,
+        }
 
 ```
 
 </details>
 
+This approach ensures that other methods—like fetching projects or issues—can just call `_get_paginated_data(...)` without worrying about the iteration details.
 
-## Conclusion
+## Retrieving Projects
 
-We have successfully implemented the `GitHubClient` class with methods to retrieve organization details, repositories of an organization, and pull requests of a repository.
+We want to **ingest Jira projects**. The method `get_paginated_projects` handles it by:
 
-Your `client.py` file should look like this:
+- Logging an informational message.
+- Calling `_get_paginated_data` with `url=f"{self.api_url}/project/search"` and `extract_key="values"` (since Jira’s response nest projects in `["values"]`).
+- Yielding each page’s worth of projects.
+
+
+<details>
+
+<summary><b>GitHub Client `get_paginated_projects` method (Click to expand)</b></summary>
+
+
+```python showLineNumbers
+    async def get_paginated_projects(
+        self, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting projects from Jira")
+        async for projects in self._get_paginated_data(
+            f"{self.api_url}/project/search", "values", initial_params=params
+        ):
+            yield projects
+
+    async def get_single_project(self, project_key: str) -> dict[str, Any]:
+        return await self._send_api_request(
+            "GET", f"{self.api_url}/project/{project_key}"
+        )
+
+```
+
+</details>
+
+- **`get_paginated_projects`** is an **async generator**, so you can `async for batch in get_paginated_projects(): ...` to process and send them to Ocean as they arrive.
+- **`get\_single\_projects`** is a simpler case for retrieving one project by key. We will be needing this method when implementing webhooks.
+
+---
+
+## 8. Retrieving Issues
+
+Similarly, to **ingest Jira issues**, we provide:
+
+- **`get_paginated_issues`**: Yields issues in pages.
+- **`get_single_issue`**: Retrieves an individual issue by key.
+
+
+<details>
+
+<summary><b>GitHub Client `get_paginated_issues` and `get_single_issue` methods (Click to expand)</b></summary>
+
+```python showLineNumbers
+    async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
+        return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
+
+    async def get_paginated_issues(
+        self, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting issues from Jira")
+        params = params or {}
+        if "jql" in params:
+            logger.info(f"Using JQL filter: {params['jql']}")
+
+        async for issues in self._get_paginated_data(
+            f"{self.api_url}/search", "issues", initial_params=params
+        ):
+            yield issues
+```
+
+</details>
+
+- `params["jql"]`: This is used when we would like to specify criteria for retrieving issues based on the user's preference.
+
+## Implementing Real-Time Updates With Webhooks
+
+Keeping data updated in real-time in Ocean uses webhooks primarily. Third-party APIs with webhook support ensures this is possible. The `JiraClient` snippet includes `create_webhooks`, `_create_events_webhook`, and `_create_events_webhook_oauth` to handle it.
+
+### OAuth-Based Webhooks
+
+If the Jira instance is Atlassian Cloud (`api.atlassian.com`), we call `_create_events_webhook_oauth`. This method:
+
+1. Checks if any webhook is already registered (GET call).
+2. If none exist, creates one pointing to the Ocean integration route with the needed events (`OAUTH2_WEBHOOK_EVENTS`).
+
+
+<details>
+
+<summary><b>GitHub Client `_create_events_webhook_oauth` method (Click to expand)</b></summary>
+
+```python showLineNumbers
+    async def _create_events_webhook_oauth(self, app_host: str) -> None:
+        webhook_target_app_host = f"{app_host}/integration/webhook"
+        webhooks = (
+            await self._send_api_request("GET", url=self.webhooks_url)
+        ).get("values")
+
+        if webhooks:
+            logger.info("Ocean real time reporting webhook already exists")
+            return
+
+        # Use a random project in the jqlFilter to ensure we capture everything
+        random_project = str(uuid.uuid4())
+
+        body = {
+            "url": webhook_target_app_host,
+            "webhooks": [
+                {
+                    "jqlFilter": f"project not in ({random_project})",
+                    "events": OAUTH2_WEBHOOK_EVENTS,
+                }
+            ],
+        }
+
+        await self._send_api_request("POST", self.webhooks_url, json=body)
+        logger.info("Ocean real time reporting webhook created")
+
+```
+
+</details>
+
+The code uses a JQL filter with a random project to effectively subscribe to **all** projects. If you want a more direct approach, update that filter accordingly.
+
+### Basic Auth-Based Webhooks
+
+If not an OAuth host, `_create_events_webhook` is called. The logic is similar but uses the older `webhooks/1.0/webhook` endpoint and includes a different set of events.
+
+
+<details>
+
+<summary><b>GitHub Client `_create_events_webhook` method (Click to expand)</b></summary>
+
+```python showLineNumbers
+    async def create_webhooks(self, app_host: str) -> None:
+        if self.is_oauth_host():
+            await self._create_events_webhook_oauth(app_host)
+        else:
+            await self._create_events_webhook(app_host)
+
+    async def _create_events_webhook(self, app_host: str) -> None:
+        webhook_target_app_host = f"{app_host}/integration/webhook"
+        webhooks = await self._send_api_request("GET", url=self.webhooks_url)
+
+        for webhook in webhooks:
+            if webhook.get("url") == webhook_target_app_host:
+                logger.info("Ocean real time reporting webhook already exists")
+                return
+
+        body = {
+            "name": f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
+            "url": webhook_target_app_host,
+            "events": WEBHOOK_EVENTS,
+        }
+
+        await self._send_api_request("POST", self.webhooks_url, json=body)
+        logger.info("Ocean real time reporting webhook created")
+
+```
+
+</details>
+
+## Final `JiraClient` Code
+
+Bringing it all together, here’s what your `jira/client.py` file should look like **in full**.
+
 
 <details>
 
 <summary><b>GitHub Client (Click to expand)</b></summary>
 
-```python showLineNumbers title="client.py"
+```python
 import asyncio
-from typing import Any, AsyncGenerator, Literal
+import uuid
+from typing import Any, AsyncGenerator, Generator
 
 import httpx
-from aiolimiter import AsyncLimiter
+from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
+
+from port_ocean.clients.auth.oauth_client import OAuthClient
+from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-from port_ocean.utils.cache import cache_iterator_result
 
-type RepositoryType = Literal["all", "public", "private", "forks", "sources", "member"]
-type PullRequestState = Literal["open", "closed", "all"]
+PAGE_SIZE = 50
+WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
+MAX_CONCURRENT_REQUESTS = 10
 
+WEBHOOK_EVENTS = [
+    "jira:issue_created",
+    "jira:issue_updated",
+    "jira:issue_deleted",
+    "project_created",
+    "project_updated",
+    "project_deleted",
+    "project_soft_deleted",
+    "project_restored_deleted",
+    "project_archived",
+    "project_restored_archived",
+]
 
-class Endpoints:
-    ORGANIZATION = "orgs/{}"
-    REPOSITORY = "orgs/{}/repos"
-    PULL_REQUESTS = "repos/{}/pulls"
+OAUTH2_WEBHOOK_EVENTS = [
+    "jira:issue_created",
+    "jira:issue_updated",
+    "jira:issue_deleted",
+]
 
+class BearerAuth(Auth):
+    def __init__(self, token: str):
+        self.token = token
 
-class GitHubClient:
-    REQUEST_LIMIT_AUTHENTICATED = 5000
-    REQUEST_LIMIT_UNAUTHENTICATED = 60
+    def auth_flow(self, request: Request) -> Generator[Request, Response, None]:
+        request.headers["Authorization"] = f"Bearer {self.token}"
+        yield request
 
-    def __init__(
-        self, base_url: str = "https://api.github.com", access_token: str | None = None
-    ) -> None:
-        self.base_url = base_url
-        self.access_token = access_token
-        self.http_client = http_async_client
-        self.http_client.headers.update(self.headers)
-        time_period = 60 * 60  # 1 hour in seconds
-        self.rate_limiter = AsyncLimiter((
-            self.REQUEST_LIMIT_AUTHENTICATED
-            if self.access_token
-            else self.REQUEST_LIMIT_UNAUTHENTICATED
-        ), time_period)
+class JiraClient(OAuthClient):
+    jira_api_auth: Auth
 
-    @property
-    def headers(self) -> dict[str, str]:
-        initial_headers = {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-        if self.access_token:
-            initial_headers["Authorization"] = f"Bearer {self.access_token}"
+    def __init__(self, jira_url: str, jira_email: str, jira_token: str) -> None:
+        super().__init__()
 
-        return initial_headers
+        self.jira_url = jira_url
+        self.jira_rest_url = f"{self.jira_url}/rest"
+        self.jira_email = jira_email
+        self.jira_token = jira_token
 
-    def _get_next_page_url(self, response: httpx.Headers) -> str | None:
-        link: str = response.get("Link", None)
-        if not link:
-            return None
+        # Distinguish between OAuth or Basic Auth
+        if self.is_oauth_host():
+            self.jira_api_auth = self._get_bearer()
+            self.webhooks_url = f"{self.jira_rest_url}/api/3/webhook"
+        else:
+            self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
+            self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
-        links = link.split(",")
-        for link in links:
-            url, rel = link.split(";")
-            if "next" in rel:
-                return url.strip("<> ")
+        self.api_url = f"{self.jira_rest_url}/api/3"
+        self.teams_base_url = f"{self.jira_url}/gateway/api/public/teams/v1/org"
 
-        return None
+        self.client = http_async_client
+        self.client.auth = self.jira_api_auth
+        self.client.timeout = Timeout(30)
+
+        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+
+    def is_oauth_host(self) -> bool:
+        return "api.atlassian.com" in self.jira_url
+
+    def _get_bearer(self) -> Auth:
+        try:
+            return BearerAuth(self.external_access_token)
+        except ValueError:
+            return BearerAuth(self.jira_token)
+
+    def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
+        return next(self._get_bearer().auth_flow(request))
+
+    async def _handle_rate_limit(self, response: Response) -> None:
+        if response.status_code == 429:
+            logger.warning(
+                f"Jira API rate limit reached. Waiting for {response.headers['Retry-After']} seconds."
+            )
+            await asyncio.sleep(int(response.headers["Retry-After"]))
 
     async def _send_api_request(
-        self, url: str, params: dict[str, Any] | None = None
-    ) -> httpx.Response:
-        async with self.rate_limiter:
-            logger.info(f"Making request to {url} with params: {params}")
-            try:
-                response = await self.http_client.get(url, params=params)
-                return response
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"Got HTTP error when making reques to {url} with "
-                    f"status code: {e.response.status_code} and response:"
-                    f" {e.response.text}"
+        self,
+        method: str,
+        url: str,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> Any:
+        try:
+            async with self._semaphore:
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json,
+                    headers=headers
                 )
-                raise
-            except httpx.HTTPError as e:
-                logger.error(
-                    f"Got HTTP error when making request to {url} with " f"error: {e}"
-                )
-                raise
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as e:
+            await self._handle_rate_limit(e.response)
+            logger.error(
+                f"Jira API request failed with status {e.response.status_code}: {method} {url}"
+            )
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"Failed to connect to Jira API: {method} {url} - {str(e)}")
+            raise
 
     async def _get_paginated_data(
-        self, url: str, params: dict[str, Any] | None = None
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        next_url: str | None = url
-
-        while next_url:
-            data = await self._send_api_request(next_url, params)
-            response = data.json()
-            yield response
-
-            next_url = self._get_next_page_url(data.headers)
-
-    async def get_organizations(self, organizations: list[str]) -> list[dict[str, Any]]:
-        tasks = [
-            self._send_api_request(
-                f"{self.base_url}/{Endpoints.ORGANIZATION.format(org)}"
-            )
-            for org in organizations
-        ]
-
-        return [res.json() for res in await asyncio.gather(*tasks)]
-
-    @cache_iterator_result()
-    async def get_repositories(
-        self, organizations: list[str], repo_type: RepositoryType
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        tasks = [
-            self._get_paginated_data(
-                f"{self.base_url}/{Endpoints.REPOSITORY.format(org)}",
-                {"type": repo_type},
-            )
-            for org in organizations
-        ]
-
-        async for repositories in stream_async_iterators_tasks(*tasks):
-            yield repositories
-
-    async def get_pull_requests(
         self,
-        organizations: list[str],
-        repo_type: RepositoryType,
-        state: PullRequestState,
+        url: str,
+        extract_key: str | None = None,
+        initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for repositories in self.get_repositories(organizations, repo_type):
-            tasks = [
-                self._get_paginated_data(
-                    f"{self.base_url}/{Endpoints.PULL_REQUESTS.format(repository['full_name'])}",
-                    {"state": state},
-                )
-                for repository in repositories
-            ]
+        params = initial_params or {}
+        params |= self._generate_base_req_params()
 
-            async for pull_requests in stream_async_iterators_tasks(*tasks):
-                yield pull_requests
+        start_at = 0
+        while True:
+            params["startAt"] = start_at
+            response_data = await self._send_api_request("GET", url, params=params)
+            items = response_data.get(extract_key, []) if extract_key else response_data
+
+            if not items:
+                break
+
+            yield items
+            start_at += len(items)
+
+            if "total" in response_data and start_at >= response_data["total"]:
+                break
+
+    @staticmethod
+    def _generate_base_req_params(
+        maxResults: int = PAGE_SIZE, startAt: int = 0
+    ) -> dict[str, Any]:
+        return {
+            "maxResults": maxResults,
+            "startAt": startAt,
+        }
+
+    async def create_webhooks(self, app_host: str) -> None:
+        if self.is_oauth_host():
+            await self._create_events_webhook_oauth(app_host)
+        else:
+            await self._create_events_webhook(app_host)
+
+    async def _create_events_webhook_oauth(self, app_host: str) -> None:
+        webhook_target_app_host = f"{app_host}/integration/webhook"
+        webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
+            "values"
+        )
+        if webhooks:
+            logger.info("Ocean real time reporting webhook already exists")
+            return
+
+        random_project = str(uuid.uuid4())
+        body = {
+            "url": webhook_target_app_host,
+            "webhooks": [
+                {
+                    "jqlFilter": f"project not in ({random_project})",
+                    "events": OAUTH2_WEBHOOK_EVENTS,
+                }
+            ],
+        }
+        await self._send_api_request("POST", self.webhooks_url, json=body)
+        logger.info("Ocean real time reporting webhook created")
+
+    async def _create_events_webhook(self, app_host: str) -> None:
+        webhook_target_app_host = f"{app_host}/integration/webhook"
+        webhooks = await self._send_api_request("GET", url=self.webhooks_url)
+
+        for webhook in webhooks:
+            if webhook.get("url") == webhook_target_app_host:
+                logger.info("Ocean real time reporting webhook already exists")
+                return
+
+        body = {
+            "name": f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
+            "url": webhook_target_app_host,
+            "events": WEBHOOK_EVENTS,
+        }
+        await self._send_api_request("POST", self.webhooks_url, json=body)
+        logger.info("Ocean real time reporting webhook created")
+
+    async def get_single_project(self, project_key: str) -> dict[str, Any]:
+        return await self._send_api_request(
+            "GET", f"{self.api_url}/project/{project_key}"
+        )
+
+    async def get_paginated_projects(
+        self, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting projects from Jira")
+        async for projects in self._get_paginated_data(
+            f"{self.api_url}/project/search", "values", initial_params=params
+        ):
+            yield projects
+
+    async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
+        return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
+
+    async def get_paginated_issues(
+        self, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting issues from Jira")
+        params = params or {}
+        if "jql" in params:
+            logger.info(f"Using JQL filter: {params['jql']}")
+
+        async for issues in self._get_paginated_data(
+            f"{self.api_url}/search", "issues", initial_params=params
+        ):
+            yield issues
 
 ```
 
 </details>
 
-
 :::tip Formatting your code
-Remember to format your code using [`black`](https://black.readthedocs.io/en/stable/) and sort imports with [`isort`](https://pycqa.github.io/isort/) before proceeding. You can do this by running the following command:
+
+Ocean integrations include important development dependencies for formatting your code and sorting imports for consistency across several codebases. These dependencies include `black` and `isort`. You can run them to format your code:
 
 ```console
 $ poetry run black . && poetry run isort .
 ```
 
-:::tip Source Code
-You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
-
 :::
 
-Next, we will look at integration configurations, kinds and sending data to Port.
+:::info Source Code
+You can find the source code for the integration in the [Jira integration directory on GitHub](https://github.com/port-labs/ocean/tree/main/integrations/jira)
+
+:::

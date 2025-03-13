@@ -1,190 +1,116 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
-
 # 📡 Sending Data to Port using Resync Functions
 
-In this guide, we will learn how to send data to Port using resync functions. Resync functions are functions that are executed by Port to retrieve data from a source and send it to Port.
+In this guide, we will learn how to **send data to Port using resync functions**. Resync functions are methods triggered by Port to fetch data from Jira and submit it back to Port in near-real-time. We’ll focus on:
 
-Since this is the entry point of the integration, this will be done in `main.py` file. Delete the contents of the file.
+1. **Initializing the Jira client** (via a `create_jira_client` function)
+2. **Setting up webhooks** (so Jira events are automatically reported)
+3. **Defining resync functions** for Jira **projects** and **issues**.
 
-However, before we write resync functions, we need to set up a few things.
+---
 
+## Creating the `create_jira_client` Function
 
-## Initializing the `GitHubClient` class
-The `GitHubClient` class has two parameters that can be passed to its constructor:
-
-- `base_url`: The base URL of the GitHub API. This is set to `https://api.github.com` by default.
-- `access_token`: The access token to authenticate with the GitHub API. This is required if the resources you want to access are private.
-
-We expect users to pass these values via environment variables. Since Ocean loads these variables differently, we will use a globally accessible configuration dictionary with the values  populated by Ocean at runtime to access these values.
-
-
+Rather than instantiating our `JiraClient` inline, we create a dedicated function in its own file—say, `initialize_client.py`—so it can be easily reused across the integration:
 
 <details>
 
-<summary><b>Initializing the `GitHubClient` class</b></summary>
+<summary><b>`initialize_client.py` file (Click to expand)</b></summary>
 
-```python showLineNumbers title="main.py"
-# highlight-start
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
+from jira.jira_client import JiraClient  # or wherever JiraClient is defined
 
-from client import GitHubClient
-
-
-def initialize_github_client() -> GitHubClient:
-    return GitHubClient(
-        base_url=ocean.integration_config.get("base_url", "https://api.github.com"),
-        access_token=ocean.integration_config.get("access_token"),
+def create_jira_client() -> JiraClient:
+    return JiraClient(
+        jira_url=ocean.integration_config.get("jiraHost"),
+        jira_email=ocean.integration_config.get("atlassianUserEmail"),
+        jira_token=ocean.integration_config.get("atlassianUserToken"),
     )
-
-# highlight-end
 
 ```
 
 </details>
 
+- **`ocean.integration_config.get(...)`** reads credentials passed at runtime via environment variables. This is how Ocean supplies `jiraHost`, `atlassianUserEmail`, and `atlassianUserToken`.
+- **`JiraClient`** is the client class we previously defined, capable of retrieving projects, issues, etc.
+
+## Abstracting Kinds
+
+To ensure we don't have to deal with specifying the kinds as raw strings, we will define them in an enum we can call. To do this, create a `kinds.py` file:
+
+```console
+$ touch kinds.py
+```
+
+Next, we define the `Kinds` enum:
+
+
+<details>
+
+<summary><b>`kinds.py` file (Click to expand)</b></summary>
+
+```python showLineNumbers
+from enum import StrEnum
+
+
+class Kinds(StrEnum):
+    PROJECT = "project"
+    ISSUE = "issue"
+```
+
+</details>
+
+## Setting Up Webhooks
+
+Since we want live events from Jira, we will set up webhooks. Let’s define a small `setup_application` function for that. This will live in our main file:
+
+
+<details>
+
+<summary><b>Setting up webhooks in `main.py` (Click to expand)</b></summary>
+
+```python showLineNumbers
+from initialize_client import create_jira_client
+from port_ocean.context.ocean import ocean
+from loguru import logger
+
+async def setup_application() -> None:
+    base_url = ocean.app.base_url
+    if not base_url:
+        return
+
+    client = create_jira_client()
+    await client.create_webhooks(base_url)
+```
+
+</details>
 
 ## Writing Resync Functions
-### Syncing Organizations
-The first resync function we will write is to sync organizations. This function will retrieve a list of organizations from GitHub and send it to Port.
 
-<details>
+Resync functions run whenever Port requests them—this can be on a schedule, or triggered manually. Each function is decorated with `@ocean.on_resync(...)` specifying which **kind** we want to sync.
 
-<summary><b>Syncing Organizations</b></summary>
+Create a `main.py` file in the root folder of our integration:
 
-```python showLineNumbers title="main.py"
-# highlight-start
-from typing import cast
-
-from loguru import logger
-from port_ocean.context.event import event
-# highlight-end
-from port_ocean.context.ocean import ocean
-# highlight-next-line
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
-from client import GitHubClient
-# highlight-start
-from integration import (
-    ObjectKind,
-    GitHubOrganizationResourceConfig,
-)
-# highlight-end
-
-
-
-@ocean.on_resync(ObjectKind.ORGANIZATION)
-async def get_organizations(
-    kind: str
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_github_client()
-    selector = cast(GitHubOrganizationResourceConfig, event.resource_config).selector
-    logger.info(f"Retrieving organizations: {selector.organizations}")
-    organizations = await client.get_organizations(selector.organizations)
-    logger.info(f"Retrieved organization batch of size: {len(organizations)}")
-    yield organizations
-
+```console
+$ touch main.py
 ```
 
-</details>
+Here, we will
 
-The `@ocean.on_resync` decorator is used to register the function as a resync function. The function is called with the kind of object to sync. The function should return an asynchronous generator that yields the data to be sent to Port or a list of objects containing data to be sent to Port.
-
-In addition, the `event` object is used to access the resource configuration and other information about the event that triggered the resync function. Using this, we can retrieve the user-defined configuration for the resource and use it to fetch the data from the source.
-
-### Syncing Repositories
-Syncing repositories is similar to syncing organizations. The only difference is that we will be using the `GitHubRepositoryResourceConfig` class instead of the `GitHubOrganizationResourceConfig ` class.
-
-<details>
-
-<summary><b>Syncing Repositories</b></summary>
-
-```python showLineNumbers title="main.py"
-# rest of the imports
-from integration import (
-    ObjectKind,
-    GitHubOrganizationResourceConfig,
-# highlight-next-line
-    GitHubRepositoryResourceConfig,
-)
-
-
-# rest of the code
-
-
-# highlight-start
-@ocean.on_resync(ObjectKind.REPOSITORY)
-async def get_repositories(
-    kind: str
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_github_client()
-    selector = cast(GitHubRepositoryResourceConfig, event.resource_config).selector
-    logger.info(f"Retrieving {selector.type} repositories for organizations: {selector.organizations}")
-    async for repositories in client.get_repositories(
-        selector.organizations,
-        selector.type
-    ):
-        logger.info(f"Retrieved repository batch of size: {len(repositories)}")
-        yield repositories
-
-# highlight-end
-
-```
-
-</details>
-
-### Syncing Pull Requests
-Syncing pull requests is similar to syncing repositories. The only difference is that we will be using the `GitHubPullRequestResourceConfig` class instead of the `GitHubOrganizationResourceConfig ` class.
+- Sync **projects** via `on_resync_projects`
+- Sync **issues** via `on_resync_issues`
+- Call `setup_application` on start to configure webhooks.
 
 
 <details>
 
-<summary><b>Syncing Pull Requests</b></summary>
+<summary><b>Writing resync functions in `main.py` (Click to expand)</b></summary>
 
-```python showLineNumbers title="main.py"
-# rest of the imports
-from integration import (
-    ObjectKind,
-    GitHubOrganizationResourceConfig,
-    GitHubRepositoryResourceConfig,
-# highlight-next-line
-    GitHubPullRequestResourceConfig,
-)
-
-
-# rest of the code
-
-@ocean.on_resync(ObjectKind.PULL_REQUEST)
-async def get_pull_requests(
-    kind: str
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_github_client()
-    selector = cast(GitHubPullRequestResourceConfig, event.resource_config).selector
-    logger.info(f"Retrieving {selector.state} pull requests for organizations: {selector.organizations}")
-    async for pull_requests in client.get_pull_requests(
-        selector.organizations,
-        selector.type,
-        selector.state
-    ):
-        logger.info(f"Retrieved pull request batch of size: {len(pull_requests)}")
-        yield pull_requests
-
-```
-
-</details>
-
-
-## Conclusion
-In this guide, we learned how to send data to Port using resync functions. We initialized the `GitHubClient` class and wrote resync functions to sync organizations, repositories, and pull requests. These functions will be executed by Port to retrieve data from GitHub and send it to Port.
-
-At the end of this section, your `main.py` file` should look like this:
-
-<details>
-
-<summary><b>`main.py`</b></summary>
-
-```python showLineNumbers title="main.py"
+```python showLineNumbers
+import typing
 from typing import cast
 
 from loguru import logger
@@ -192,66 +118,91 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from client import GitHubClient
-from integration import (
-    GitHubOrganizationResourceConfig,
-    GitHubPullRequestResourceConfig,
-    GitHubRepositoryResourceConfig,
-    ObjectKind,
+from kinds import Kinds  # your local definition: e.g., Kinds.PROJECT, Kinds.ISSUE
+from initialize_client import create_jira_client
+
+# Import the typed resource configs, e.g., JiraProjectResourceConfig, JiraIssueConfig
+from jira.overrides import (
+    JiraIssueConfig,
+    JiraProjectResourceConfig,
 )
 
+async def setup_application() -> None:
+    base_url = ocean.app.base_url
+    if not base_url:
+        return
 
-def initialize_github_client() -> GitHubClient:
-    return GitHubClient(
-        base_url=ocean.integration_config.get("base_url", "https://api.github.com"),
-        access_token=ocean.integration_config.get("access_token"),
-    )
+    client = create_jira_client()
+    # create_webhooks helps subscribe to real-time Jira updates
+    await client.create_webhooks(base_url)
 
+@ocean.on_resync(Kinds.PROJECT)
+async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
 
-@ocean.on_resync(ObjectKind.ORGANIZATION)
-async def get_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_github_client()
-    selector = cast(GitHubOrganizationResourceConfig, event.resource_config).selector
-    logger.info(f"Retrieving organizations: {selector.organizations}")
-    organizations = await client.get_organizations(selector.organizations)
-    logger.info(f"Retrieved organization batch of size: {len(organizations)}")
-    yield organizations
+    # Retrieve the user’s config for the project kind.
+    selector = cast(JiraProjectResourceConfig, event.resource_config).selector
+    params = {"expand": selector.expand}
 
+    async for projects in client.get_paginated_projects(params):
+        logger.info(f"Received project batch with {len(projects)} projects")
+        yield projects
 
-@ocean.on_resync(ObjectKind.REPOSITORY)
-async def get_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_github_client()
-    selector = cast(GitHubRepositoryResourceConfig, event.resource_config).selector
-    logger.info(
-        f"Retrieving {selector.type} repositories for organizations: {selector.organizations}"
-    )
-    async for repositories in client.get_repositories(
-        selector.organizations, selector.type
-    ):
-        logger.info(f"Retrieved repository batch of size: {len(repositories)}")
-        yield repositories
+@ocean.on_resync(Kinds.ISSUE)
+async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
 
+    params = {}
+    config = typing.cast(JiraIssueConfig, event.resource_config)
 
-@ocean.on_resync(ObjectKind.PULL_REQUEST)
-async def get_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_github_client()
-    selector = cast(GitHubPullRequestResourceConfig, event.resource_config).selector
-    logger.info(
-        f"Retrieving {selector.state} pull requests for organizations: {selector.organizations}"
-    )
-    async for pull_requests in client.get_pull_requests(
-        selector.organizations, selector.type, selector.state
-    ):
-        logger.info(f"Retrieved pull request batch of size: {len(pull_requests)}")
-        yield pull_requests
+    # If a JQL filter is provided, add it to the request
+    if config.selector.jql:
+        params["jql"] = config.selector.jql
+        logger.info(f"Found JQL filter: {config.selector.jql}... Adding to request.")
+
+    # If specific fields are requested, add them
+    if config.selector.fields:
+        params["fields"] = config.selector.fields
+
+    async for issues in client.get_paginated_issues(params):
+        logger.info(f"Received issue batch with {len(issues)} issues")
+        yield issues
+
+# Called once when the integration starts.
+@ocean.on_start()
+async def on_start() -> None:
+    logger.info("Starting Port Ocean Jira integration")
+
+    # If we’re only running once and exiting, no need for webhooks.
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    await setup_application()
 
 ```
 
 </details>
 
-:::tip Source Code
-You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+### Explanation
+
+1. **`@ocean.on_resync(Kinds.PROJECT)`**: Ties each function to a particular **kind**—for example, when a "project" resync is requested, `on_resync_projects` is called.
+2. **Using `event.resource_config`**: We cast the resource config to the relevant selector class (e.g., `JiraProjectResourceConfig`) so we can parse user-defined parameters like `expand` or `jql`.
+3. **Async Generators**: Each function yields data in batches. Port collects and processes them into the `port-app-config.yml` mapping.
+
+
+## 4. Putting It All Together
+
+At the end of this guide, you should now have:
+
+- An `initialize_client.py` file with a `create_jira_client` function.
+- A `main.py` file that includes:
+  - **Resync functions** (`@ocean.on_resync`) for the relevant kinds (projects, issues).
+  - A `@ocean.on_start` function to set up webhooks
+
+With these components, your Jira integration is ready to fetch data and push it into Port!
+
+:::info Source Code
+You can find the source code for the integration in the [Jira integration directory on GitHub](https://github.com/port-labs/ocean/tree/main/integrations/jira)
 
 :::
-
-Next, we will define default blueprints and mappings for the resources we are syncing.

@@ -1,282 +1,291 @@
 ---
-sidebar_position: 5
+sidebar_position: 4
 ---
 
-
 # 📝 Defining Configuration Files
-The next step in our integration journey is to define the configurations for our integration. There are three configuration files:
 
-- `.port/spec.yaml`: A required file that provides the integration specification and acts as a validation layer for the inputs required during the integration startup process. For more details, see the [`spec.yaml` section](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#specyaml-file) of the Integration Spec and Defaults documentation.
-- `.port/resources/blueprints.json`: An optional file that is used to provide default resources that will be created when the integration is installed. For more details, see the [`blueprints.json` section](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#blueprintsjson-file) of the Integration Spec and Defaults documentation.
+The next step in our integration journey is to define the configurations for our Jira integration. There are three configuration files used by Ocean:
 
-- `.port/resources/port-app-config.yml`: An optional file that is used to specify the default integration resource mapping that will be created when the integration is installed. For more details, see the [`port-app-config.yml` section](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#port-app-configyml-file) of the Integration Spec and Defaults documentation..
+1. **`.port/spec.yaml`**: A required file providing the integration’s specification—defines which kinds exist (in this case, only **project** and **issue**) and which configuration variables are needed at startup.
+2. **`.port/resources/blueprints.json`** (optional): Defines default “blueprints” (i.e., entity templates in Port) that will be automatically created when the integration is installed.
+3. **`.port/resources/port-app-config.yml`** (optional): Defines the default resource mapping (i.e., how the fetched Jira data maps into Port entities).
 
+For more details on these files, see the [Integration Spec and Defaults documentation](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources).
 
 ## `spec.yaml` File
-For our `spec.yaml` file, we will specify the kinds and the configuration variables the user should provide
 
+In the `.port/spec.yaml` file, specify the **project** and **issue** kinds, plus any configuration variables that the user must provide (like `jiraHost`, `atlassianUserEmail`, etc.).
 
 <details>
 
-<summary><b>`spec.yaml` file</b></summary>
+<summary><b>`spec.yaml` file (Click to expand)</b></summary>
 
-```yaml showLineNumbers title="spec.yaml"
-title: Github
-description: GitHub integration for Port Ocean
-icon: GitHub
+```yaml showLineNumber
+title: Jira
+description: Jira integration for Port Ocean
+icon: Jira
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/jira
 features:
   - type: exporter
-    section: Git Providers
+    section: Project management
     resources:
-      - kind: organization
-      - kind: repository
-      - kind: pull_request
+      - kind: project
+      - kind: issue
+
 configurations:
-  - name: accessToken
+  - name: jiraHost
+    required: true
+    type: string
+    description: "The URL of your Jira, for example: https://example.atlassian.net"
+    sensitive: false
+
+  - name: atlassianUserEmail
+    required: true
+    type: string
+    description: "The email of the user used to query Jira"
+    sensitive: true
+
+  - name: atlassianUserToken
+    required: true
+    type: string
+    description: >-
+      You can configure the user token on the <a target="_blank" href="https://id.atlassian.com/manage-profile/security/api-tokens">Atlassian account page</a>
+    sensitive: true
+
+  - name: atlassianOrganizationId
     required: false
     type: string
-    sensitive: true
-    description: Access token for the GitHub API. If not provided, the GitHub API will be accessed anonymously. See the <a target="_blank" href= "https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api?apiVersion=2022-11-28">GitHub Authentication Documentation</a>
-  - name: baseUrl
-    type: url
-    required: false
-    default: https://api.github.com
-    description: Base URL for the GitHub API. If not provided, the default GitHub API URL, https://api.github.com will be used.
+    description: >-
+      To sync additional data such as teams, your Atlassian Organization ID is required.
+      Read
+      <a target="_blank" href="https://confluence.atlassian.com/jirakb/what-it-is-the-organization-id-and-where-to-find-it-1207189876.html">How to find your Atlassian Organization ID</a>
 
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: atlassianUserEmail
+        value: '.oauthData.profile.email'
+        description: '"Email for Jira OAuth2 integration"'
+      - name: atlassianUserToken
+        value: '.oauthData.accessToken'
+        description: '"Access Token for Jira OAuth2 integration"'
+    valuesOverride:
+      integrationSpec:
+        jiraHost: '"https://api.atlassian.com/ex/jira/" + .oauthData.profile.accessibleResources[0].id'
+      appSpec:
+        minimumScheduledResyncInterval: '2h'
 ```
 
 </details>
 
+**Key Points**
+
+- **`resources: [project, issue]`**: Only these two kinds will be synced.
+- **`configurations`**: Your Jira host, user email, and token are required to authenticate.
+- **`saas.oauthConfiguration`**: Additional instructions for using OAuth if you choose Atlassian’s newer `api.atlassian.com` approach.
 
 ## `blueprints.json` File
-In the `blueprints.json` file, we define the default blueprints that will be created upon integration installation.
+
+The **`.port/resources/blueprints.json`** file defines the **blueprints**—essentially the data structures for your **Jira project** and **Jira issue**.
 
 
 <details>
 
-<summary><b>`blueprints.json` file</b></summary>
+<summary><b>`blueprints.json` file (Click to expand)</b></summary>
 
-```json showLineNumbers title="spec.yaml"
+```json
 [
   {
-    "identifier": "githubOrganization",
-    "title": "Organization",
-    "icon": "Github",
+    "identifier": "jiraProject",
+    "title": "Jira Project",
+    "icon": "Jira",
+    "description": "A Jira project",
     "schema": {
       "properties": {
         "url": {
-          "title": "Organization URL",
+          "title": "Project URL",
           "type": "string",
-          "format": "url"
+          "format": "url",
+          "description": "URL to the project in Jira"
         },
-        "description": {
-          "title": "Description",
-          "type": "string"
-        },
-        "verified": {
-          "title": "Verified",
-          "type": "boolean"
+        "totalIssues": {
+          "title": "Total Issues",
+          "type": "number",
+          "description": "The total number of issues in the project"
         }
       }
     },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {}
+    "calculationProperties": {}
   },
   {
-    "identifier": "githubRepository",
-    "title": "Repository",
-    "icon": "Github",
+    "identifier": "jiraIssue",
+    "title": "Jira Issue",
+    "icon": "Jira",
     "schema": {
       "properties": {
-        "description": {
-          "title": "Description",
-          "type": "string"
-        },
         "url": {
-          "title": "Repository URL",
+          "title": "Issue URL",
           "type": "string",
-          "format": "url"
-        },
-        "defaultBranch": {
-          "title": "Default branch",
-          "type": "string"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {}
-  },
-  {
-    "identifier": "githubPullRequest",
-    "title": "Pull Request",
-    "icon": "Github",
-    "schema": {
-      "properties": {
-        "creator": {
-          "title": "Creator",
-          "type": "string"
-        },
-        "assignees": {
-          "title": "Assignees",
-          "type": "array"
-        },
-        "reviewers": {
-          "title": "Reviewers",
-          "type": "array"
+          "format": "url",
+          "description": "URL to the issue in Jira"
         },
         "status": {
           "title": "Status",
           "type": "string",
-          "enum": ["merged", "open", "closed"],
-          "enumColors": {
-            "merged": "purple",
-            "open": "green",
-            "closed": "red"
-          }
+          "description": "The status of the issue"
         },
-        "closedAt": {
-          "title": "Closed At",
+        "issueType": {
+          "title": "Type",
           "type": "string",
-          "format": "date-time"
+          "description": "The type of the issue"
         },
-        "updatedAt": {
-          "title": "Updated At",
+        "components": {
+          "title": "Components",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The components related to this issue"
+        },
+        "creator": {
+          "title": "Creator",
           "type": "string",
-          "format": "date-time"
+          "description": "The user that created the issue"
         },
-        "mergedAt": {
-          "title": "Merged At",
+        "priority": {
+          "title": "Priority",
           "type": "string",
-          "format": "date-time"
+          "description": "The priority of the issue"
         },
-        "createdAt": {
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "array"
+        },
+        "created": {
           "title": "Created At",
           "type": "string",
+          "description": "The created datetime of the issue",
           "format": "date-time"
         },
-        "link": {
-          "format": "url",
-          "type": "string"
+        "updated": {
+          "title": "Updated At",
+          "type": "string",
+          "description": "The updated datetime of the issue",
+          "format": "date-time"
         },
-        "leadTimeHours": {
-          "title": "Lead Time in hours",
-          "type": "number"
+        "resolutionDate": {
+          "title": "Resolved At",
+          "type": "string",
+          "description": "The datetime the issue changed to a resolved state",
+          "format": "date-time"
         }
-      },
-      "required": []
+      }
     },
-    "mirrorProperties": {},
     "calculationProperties": {
-      "days_old": {
-        "title": "Days Old",
-        "icon": "DefaultProperty",
-        "calculation": "(now / 86400) - (.properties.createdAt | capture(\"(?<date>\\\\d{4}-\\\\d{2}-\\\\d{2})\") | .date | strptime(\"%Y-%m-%d\") | mktime / 86400) | floor",
+      "handlingDuration": {
+        "title": "Handling Duration (Days)",
+        "icon": "Clock",
+        "description": "Time in days from issue creation to resolution",
+        "calculation": "if (.properties.resolutionDate != null and .properties.created != null) then ((.properties.resolutionDate[0:19] + \"Z\" | fromdateiso8601) - (.properties.created[0:19] + \"Z\" | fromdateiso8601)) / 86400 else null end",
         "type": "number"
       }
     },
     "relations": {
-      "repository": {
-        "title": "Repository",
-        "target": "githubRepository",
+      "project": {
+        "target": "jiraProject",
+        "title": "Project",
+        "description": "The Jira project containing this issue",
         "required": false,
         "many": false
       }
     }
   }
 ]
-
 ```
 
 </details>
+
+**Key Points**
+
+- **`identifier`**: The name for each blueprint in Port. Here we have `jiraProject` and `jiraIssue`.
+- **`schema.properties`**: The fields each entity can have (URL, status, etc.).
+- **`relations`**: An issue has a `project` relation, referencing the blueprint `"jiraProject"`.
 
 
 ## `port-app-config.yml` File
 
-In the `port-app-config.yml` file, we define the default integration resource mapping that will be applied when the integration is installed, along with specifying the default organizations from which data will be ingested
+This file specifies the **default resource mapping**. In other words, how your **Jira data** (retrieved by the integration) maps to the **blueprints** above. For instance:
+
+1. **`kind: project`**: Tells Ocean how to map a Jira project’s JSON fields into `.port/resources/blueprints.json` fields (like `identifier`, `title`, `url`, etc.).
+2. **`kind: issue`**: Tells Ocean how to map a Jira issue’s fields (`status`, `created`, etc.) and references back to `project` as a relation.
 
 
 <details>
 
-<summary><b>`port-app-config.yml` file</b></summary>
+<summary><b>`port-app-config.yml` file (Click to expand)</b></summary>
 
-```yaml showLineNumbers title="spec.yaml"
+```yaml showLineNumbers
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
 resources:
-  - kind: organization
+  - kind: project
     selector:
-      query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
-      organizations:
-        - "github"
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: ".name" # The Entity identifier will be the organization name.
-          title: ".name"
-          blueprint: '"githubOrganization"'
+          identifier: .key
+          title: .name
+          blueprint: '"jiraProject"'
           properties:
-            description: .description
-            url: .html_url
-            verified: .is_verified
-  - kind: repository
-    selector:
-      query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
-      organizations:
-        - "github"
-      type: "public" # all, public, private, forks, sources, member
-    port:
-      entity:
-        mappings:
-          identifier: ".name" # The Entity identifier will be the repository name.
-          title: ".name"
-          blueprint: '"githubRepository"'
-          properties:
-            description: .description # fetching the README.md file that is within the root folder of the repository and ingesting its contents as a markdown property
-            url: .html_url
-            defaultBranch: .default_branch
-  - kind: pull_request
-    selector:
-      query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
-      organizations:
-        - "github"
-      repositoryType: "public" # all, public, private, forks, sources, member
-      state: "all" # all, open, closed
-    port:
-      entity:
-        mappings:
-          identifier: ".head.repo.name + (.id|tostring)" # The Entity identifier will be the repository name + the pull request ID.
-          title: ".title"
-          blueprint: '"githubPullRequest"'
-          properties:
-            creator: ".user.login"
-            assignees: "[.assignees[].login]"
-            reviewers: "[.requested_reviewers[].login]"
-            status: ".state" # merged, closed, opened
-            closedAt: ".closed_at"
-            updatedAt: ".updated_at"
-            mergedAt: ".merged_at"
-            createdAt: ".created_at"
-            link: ".html_url"
-            leadTimeHours: >-
-                (.created_at as $createdAt | .merged_at as $mergedAt |
-                ($createdAt | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
-                ($mergedAt | if . == null then null else sub("\\..*Z$"; "Z") |
-                strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end) as $mergedTimestamp |
-                if $mergedTimestamp == null then null else
-                (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
+            url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
+            totalIssues: .insight.totalIssueCount
 
+  - kind: issue
+    selector:
+      query: "true"
+      jql: "(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .fields.summary
+          blueprint: '"jiraIssue"'
+          properties:
+            url: (.self | split("/") | .[:3] | join("/")) + "/browse/" + .key
+            status: .fields.status.name
+            issueType: .fields.issuetype.name
+            components: .fields.components
+            creator: .fields.creator.emailAddress
+            priority: .fields.priority.name
+            labels: .fields.labels
+            created: .fields.created
+            updated: .fields.updated
+            resolutionDate: .fields.resolutiondate
           relations:
-            repository: .head.repo.name
+            project: .fields.project.key
 
 ```
 
 </details>
 
+**Key Points**
 
-:::tip Source Code
-You can find the source code for the integration in the [Developing An Integration repository on GitHub](https://github.com/port-labs/developing-an-integration)
+- **`selector.query: \"true\"`**: A simple JQ filter that, if `false`, would skip syncing the item.
+- **`properties: ...`**: You can see how data from the Jira API (like `.fields.status.name`) maps to blueprint properties (like `status`).
+- **`relations.project`**: Uses the project key `.fields.project.key` to link issues back to the `jiraProject` blueprint.
+
+
+:::info Source Code
+You can find the source code for the integration in the [Jira integration directory on GitHub](https://github.com/port-labs/ocean/tree/main/integrations/jira)
 
 :::
 
-Having defined the configuration files, we can now proceed to the publishing our integration.
+With these configuration files in place, your integration is primed to publish, allowing Ocean to sync and display Jira **projects** and **issues**.
