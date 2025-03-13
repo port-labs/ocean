@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPStatusError
 from loguru import logger
@@ -9,13 +8,6 @@ from port_ocean.context.ocean import ocean
 import base64
 
 PAGE_SIZE = 100
-
-
-class ObjectKind(StrEnum):
-    PROJECT = "project"
-    FOLDER = "folder"
-    REPOSITORY = "repository"
-    PULL_REQUEST = "pull-request"
 
 
 class BitbucketClient:
@@ -50,7 +42,7 @@ class BitbucketClient:
             }
         else:
             raise MissingIntegrationCredentialException(
-                "Either workspace_token or both username and app_password must be provided"
+                "Either workspace token or both username and app password must be provided"
             )
         self.client.headers.update(self.headers)
 
@@ -66,14 +58,12 @@ class BitbucketClient:
 
     async def _send_api_request(
         self,
-        endpoint: str,
+        url: str,
         params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
-        url: Optional[str] = None,
         method: str = "GET",
     ) -> Any:
         """Send request to Bitbucket API with error handling."""
-        url = url or f"{self.base_url}/{endpoint}"
         response = await self.client.request(
             method=method, url=url, params=params, json=json_data
         )
@@ -93,30 +83,35 @@ class BitbucketClient:
 
     async def _send_paginated_api_request(
         self,
-        endpoint: str,
+        url: str,
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
+        data_key: str = "values",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Handle Bitbucket's pagination for API requests."""
+        """Handle Bitbucket's pagination for API requests with a flexible data key.
+        Args:
+            url: The API endpoint to request.
+            params: Optional dictionary of query parameters.
+            method: The HTTP method to use.
+            data_key: The key to use when extracting data from the API response.
+        Yields:
+            Lists of dictionaries containing the paginated data.
+        """
         if params is None:
             params = {}
-        next_page = None
-
         while True:
-            response = await self._send_api_request(
-                endpoint, params=params, method=method, url=next_page
-            )
-            if values := response.get("values", []):
+            response = await self._send_api_request(url, params=params, method=method)
+            if values := response.get(data_key, []):
                 yield values
-            next_page = response.get("next")
-            if not next_page:
+            url = response.get("next")
+            if not url:
                 break
 
     @cache_iterator_result()
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all projects in the workspace."""
         async for projects in self._send_paginated_api_request(
-            f"workspaces/{self.workspace}/projects"
+            f"{self.base_url}/workspaces/{self.workspace}/projects"
         ):
             yield projects
 
@@ -126,7 +121,7 @@ class BitbucketClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the workspace."""
         async for repos in self._send_paginated_api_request(
-            f"repositories/{self.workspace}", params=params
+            f"{self.base_url}/repositories/{self.workspace}", params=params
         ):
             yield repos
 
@@ -139,7 +134,7 @@ class BitbucketClient:
             "pagelen": PAGE_SIZE,
         }
         async for contents in self._send_paginated_api_request(
-            f"repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
+            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
             params=params,
         ):
             yield contents
@@ -149,6 +144,6 @@ class BitbucketClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get pull requests for a repository."""
         async for pull_requests in self._send_paginated_api_request(
-            f"repositories/{self.workspace}/{repo_slug}/pullrequests"
+            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests"
         ):
             yield pull_requests

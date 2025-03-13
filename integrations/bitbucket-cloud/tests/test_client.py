@@ -80,7 +80,7 @@ async def test_client_init_no_auth() -> None:
         with pytest.raises(MissingIntegrationCredentialException) as exc_info:
             BitbucketClient.create_from_ocean_config()
         assert (
-            "Either workspace_token or both username and app_password must be provided"
+            "Either workspace token or both username and app password must be provided"
             in str(exc_info.value)
         )
 
@@ -95,7 +95,9 @@ async def test_send_api_request_success(mock_client: BitbucketClient) -> None:
         mock_client.client, "request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.return_value = mock_response
-        result = await mock_client._send_api_request("test/endpoint")
+        result = await mock_client._send_api_request(
+            f"{mock_client.base_url}/test/endpoint"
+        )
         assert result == {"data": "test"}
         mock_request.assert_called_once_with(
             method="GET",
@@ -116,7 +118,9 @@ async def test_send_api_request_with_params(mock_client: BitbucketClient) -> Non
         mock_client.client, "request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.return_value = mock_response
-        result = await mock_client._send_api_request("test/endpoint", params=params)
+        result = await mock_client._send_api_request(
+            f"{mock_client.base_url}/test/endpoint", params=params
+        )
         assert result == {"data": "test"}
         mock_request.assert_called_once_with(
             method="GET",
@@ -148,7 +152,7 @@ async def test_send_api_request_error(mock_client: BitbucketClient) -> None:
         mock_request.return_value = mock_response
 
         with pytest.raises(HTTPStatusError) as exc_info:
-            await mock_client._send_api_request("test/endpoint")
+            await mock_client._send_api_request(f"{mock_client.base_url}/test/endpoint")
 
         assert exc_info.value == original_error
         mock_logger.assert_called_once_with("Bitbucket API error: Test error message")
@@ -173,7 +177,9 @@ async def test_send_paginated_api_request(mock_client: BitbucketClient) -> None:
     ) as mock_request:
         mock_request.side_effect = [page1, page2]
         batches = []
-        async for batch in mock_client._send_paginated_api_request("test/endpoint"):
+        async for batch in mock_client._send_paginated_api_request(
+            f"{mock_client.base_url}/test/endpoint"
+        ):
             batches.append(batch)
 
         assert batches[0] == [{"id": 1}, {"id": 2}]
@@ -200,7 +206,9 @@ async def test_get_projects(mock_client: BitbucketClient) -> None:
             mock_paginated.return_value = mock_generator()
             async for projects in mock_client.get_projects():
                 assert projects == mock_data["values"]
-            mock_paginated.assert_called_once_with("workspaces/test_workspace/projects")
+            mock_paginated.assert_called_once_with(
+                f"{mock_client.base_url}/workspaces/test_workspace/projects"
+            )
 
 
 @pytest.mark.asyncio
@@ -217,7 +225,7 @@ async def test_get_repositories(mock_client: BitbucketClient) -> None:
             async for repos in mock_client.get_repositories():
                 assert repos == mock_data["values"]
             mock_paginated.assert_called_once_with(
-                "repositories/test_workspace", params=None
+                f"{mock_client.base_url}/repositories/test_workspace", params=None
             )
 
 
@@ -237,7 +245,7 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
         ):
             assert contents == mock_dir_data["values"]
         mock_paginated.assert_called_once_with(
-            f"repositories/{mock_client.workspace}/test-repo/src/main/",
+            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
             params={"max_depth": 2, "pagelen": 100},
         )
         mock_paginated.reset_mock()
@@ -246,7 +254,7 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
         ):
             assert contents == mock_dir_data["values"]
         mock_paginated.assert_called_once_with(
-            f"repositories/{mock_client.workspace}/test-repo/src/main/",
+            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
             params={"max_depth": 4, "pagelen": 100},
         )
 
@@ -267,5 +275,5 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
             assert prs == mock_data["values"]
 
         mock_paginated.assert_called_once_with(
-            f"repositories/{mock_client.workspace}/test-repo/pullrequests"
+            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests"
         )

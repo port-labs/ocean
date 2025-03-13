@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Any, AsyncGenerator, Dict, List, Set
 
 from loguru import logger
@@ -28,13 +29,12 @@ async def create_pattern_mapping(
     folder_patterns: List[FolderPattern],
 ) -> Dict[str, List[str]]:
     """Create a mapping of repository names to their folder patterns."""
-    pattern_by_repo: Dict[str, List[str]] = {}
+    pattern_by_repo = defaultdict(list)
     for pattern in folder_patterns:
-        for repo_name in pattern.repos:
-            if repo_name not in pattern_by_repo:
-                pattern_by_repo[repo_name] = []
-            pattern_by_repo[repo_name].append(pattern.path)
-    return pattern_by_repo
+        p = pattern.path
+        for repo in pattern.repos:
+            pattern_by_repo[repo].append(p)
+    return dict(pattern_by_repo)
 
 
 async def find_matching_folders(
