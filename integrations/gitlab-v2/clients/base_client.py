@@ -21,7 +21,7 @@ class HTTPBaseClient:
         path: str,
         params: Optional[dict[str, Any]] = None,
         data: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any]:  # Reverted to dict[str, Any]
         url = f"{self.base_url}/{path}"
         logger.debug(f"Sending {method} request to {url}")
 
@@ -39,7 +39,7 @@ class HTTPBaseClient:
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 logger.debug(f"Resource not found at {url}: 404 Not Found")
-                return []  # Return empty list for 404, assuming caller expects a list
+                return {}
             logger.error(f"HTTP status error for {method} request to {path}: {e}")
             raise
 

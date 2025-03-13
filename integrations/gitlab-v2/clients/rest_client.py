@@ -70,13 +70,16 @@ class RestClient(HTTPBaseClient):
 
             response = await self.send_api_request("GET", path, params=request_params)
 
-            if not response:
+            # REST API returns a list directly, or empty dict for 404
+            batch: list[dict[str, Any]] = response if isinstance(response, list) else []
+
+            if not batch:
                 logger.debug(f"No more records to fetch for {path}.")
                 break
 
-            yield response
+            yield batch
 
-            if len(response) < page_size:
+            if len(batch) < page_size:
                 logger.debug(f"Last page reached for {path}, no more data.")
                 break
 
