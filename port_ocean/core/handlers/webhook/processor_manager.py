@@ -1,9 +1,9 @@
-from copy import deepcopy
 from typing import Dict, Type, Set
 from fastapi import APIRouter, Request
 from loguru import logger
 import asyncio
 
+from port_ocean.context.ocean import ocean
 from port_ocean.context.event import EventType, event_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
@@ -89,8 +89,11 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                     async with event_context(
                         EventType.HTTP_REQUEST,
                         trigger_type="machine",
-                        parent_override=webhook_event.event_context,
                     ):
+                        # This forces the Processor manager to fetch the latest port app config for each event
+                        await ocean.integration.port_app_config_handler.get_port_app_config(
+                            use_cache=False
+                        )
                         matching_processors_with_resource = (
                             await self._extract_matching_processors(webhook_event, path)
                         )
@@ -246,7 +249,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             try:
                 webhook_event = await WebhookEvent.from_request(request)
                 webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
-                webhook_event.set_event_context(deepcopy(event))
                 await self._event_queues[path].put(webhook_event)
                 return {"status": "ok"}
             except Exception as e:
