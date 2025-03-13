@@ -58,9 +58,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for groups_batch in client.get_groups():
         logger.info(f"Processing batch of {len(groups_batch)} groups for issues")
-        async for issues_batch in client.process_group_resources(
-            groups_batch, "issues"
-        ):
+        async for issues_batch in client.get_group_resource(groups_batch, "issues"):
             yield issues_batch
 
 
@@ -72,7 +70,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(
             f"Processing batch of {len(groups_batch)} groups for merge requests"
         )
-        async for mrs_batch in client.process_group_resources(
+        async for mrs_batch in client.get_group_resource(
             groups_batch, "merge_requests"
         ):
             yield mrs_batch
@@ -84,7 +82,5 @@ async def on_resync_labels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for groups_batch in client.get_groups():
         logger.info(f"Processing batch of {len(groups_batch)} groups for labels")
-        async for labels_batch in client.process_group_resources(
-            groups_batch, "labels"
-        ):
+        async for labels_batch in client.get_group_resource(groups_batch, "labels"):
             yield labels_batch

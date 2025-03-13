@@ -3,7 +3,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
-from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+from port_ocean.exceptions.context import \
+    PortOceanContextAlreadyInitializedError
 
 from clients.gitlab_client import GitLabClient
 
@@ -93,7 +94,9 @@ class TestGitLabClient:
         ) as mock_get_group_resource:
             # Act
             results: list[dict[str, Any]] = []
-            async for batch in client.get_group_resource(group, "issues"):
+            async for batch in client.get_group_resource(
+                [group], "issues"
+            ):  # Changed to pass list of groups
                 results.extend(batch)
 
             # Assert

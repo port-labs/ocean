@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, AsyncIterator, Optional
 
 from loguru import logger
@@ -32,6 +33,7 @@ class GraphQLClient(HTTPBaseClient):
         resource_field: str,
         variables: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
+
         cursor = None
 
         while True:
@@ -46,13 +48,89 @@ class GraphQLClient(HTTPBaseClient):
             if not nodes:
                 break
 
+            # Concurrently paginate paginated fields (e.g., labels, members, etc)
+            await asyncio.gather(
+                *(
+                    self._fetch_paginated_fields(node, query, variables or {})
+                    for node in nodes
+                )
+            )
+
             yield nodes
 
+            # Check if there are more pages
             page_info = resource_data.get("pageInfo", {})
             if not page_info.get("hasNextPage", False):
                 break
 
             cursor = page_info.get("endCursor")
+
+    async def _fetch_paginated_fields(
+        self, resource: dict[str, Any], query: str, variables: dict[str, Any]
+    ) -> Any:
+        tasks = [
+            self._paginate_field(resource, field, query, variables)
+            for field, value in resource.items()
+            if isinstance(value, dict) and "nodes" in value and "pageInfo" in value
+        ]
+
+        await asyncio.gather(*tasks)
+
+    async def _paginate_field(
+        self,
+        parent: dict[str, Any],
+        field_name: str,
+        query: str,
+        variables: dict[str, Any],
+    ) -> None:
+        field_data = parent.get(field_name, {})
+        nodes = field_data.get("nodes", [])
+        page_info = field_data.get("pageInfo", {})
+
+        cursor = page_info.get("endCursor")
+
+        while page_info.get("hasNextPage", False):
+            logger.info(
+                f"Fetching more '{field_name}' for {parent.get('id', 'unknown')} with cursor: {cursor}"
+            )
+
+            field_data_response = await self._execute_query(
+                query,
+                variables={f"{field_name}Cursor": cursor, **(variables or {})},
+            )
+
+            response_nodes = field_data_response.get("projects", {}).get("nodes", [])
+            matching_parent = next(
+                (p for p in response_nodes if p["id"] == parent["id"]), None
+            )
+
+            if not matching_parent:
+                logger.warning(
+                    f"No matching parent found for ID {parent.get('id', 'unknown')}"
+                )
+                break
+
+            new_field_data = matching_parent.get(field_name, {})
+            new_nodes = new_field_data.get("nodes", [])
+            new_page_info = new_field_data.get("pageInfo", {})
+
+            if not new_nodes:
+                logger.warning(
+                    f"No new {field_name} returned for {parent.get('id', 'unknown')}, stopping pagination."
+                )
+                break
+
+            nodes.extend(new_nodes)
+            cursor = new_page_info.get("endCursor")
+            page_info = new_page_info
+
+            if not cursor:
+                logger.warning(
+                    f"Cursor is None for {parent.get('id', 'unknown')}, stopping pagination."
+                )
+                break
+
+        parent[field_name]["nodes"] = nodes
 
     async def _execute_query(
         self, query: str, variables: Optional[dict[str, Any]] = None
@@ -67,13 +145,11 @@ class GraphQLClient(HTTPBaseClient):
                 },
             )
 
-            data = response
-            if "errors" in data:
-                logger.error(f"GraphQL query failed: {data['errors']}")
-                raise Exception(f"GraphQL query failed: {data['errors']}")
+            if "errors" in response:
+                logger.error(f"GraphQL query failed: {response['errors']}")
+                raise Exception(f"GraphQL query failed: {response['errors']}")
 
-            return data.get("data", {})
-
+            return response.get("data", {})
         except Exception as e:
             logger.error(f"Failed to execute GraphQL query: {str(e)}")
             raise
