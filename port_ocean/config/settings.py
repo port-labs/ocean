@@ -61,6 +61,11 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
         return values
 
 
+class MetricsSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = Field(default=False)
+    webhook_url: str | None = Field(default=None)
+
+
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     _integration_config_model: BaseModel | None = None
 
@@ -83,7 +88,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     runtime: Runtime = Runtime.OnPrem
     resources_path: str = Field(default=".port/resources")
-    metrics: bool = Field(default=True)
+    metrics: MetricsSettings = Field(
+        default_factory=lambda: MetricsSettings(enabled=False, webhook_url=None)
+    )
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
 
@@ -107,12 +114,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         )
 
         return values
-
-    @validator("metrics")
-    def validate_metrics(cls, value: str | bool) -> bool:
-        if value == "1" or value is True:
-            return True
-        return False
 
     @validator("create_port_resources_origin")
     def validate_create_port_resources_origin(

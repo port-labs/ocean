@@ -3,7 +3,6 @@ from typing import Any, Callable, Type
 import httpx
 from loguru import logger
 
-from port_ocean.helpers.metric.metric import MetricPhase
 from port_ocean.helpers.retry import RetryTransport
 
 
@@ -18,12 +17,10 @@ class OceanAsyncClient(httpx.AsyncClient):
         self,
         transport_class: Type[RetryTransport] = RetryTransport,
         transport_kwargs: dict[str, Any] | None = None,
-        mode: str = MetricPhase.LOAD,
         **kwargs: Any,
     ):
         self._transport_kwargs = transport_kwargs
         self._transport_class = transport_class
-        self.mode = mode
         super().__init__(**kwargs)
 
     def _init_transport(  # type: ignore[override]
@@ -40,7 +37,6 @@ class OceanAsyncClient(httpx.AsyncClient):
                 **kwargs,
             ),
             logger=logger,
-            mode=self.mode,
             **(self._transport_kwargs or {}),
         )
 

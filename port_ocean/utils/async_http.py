@@ -1,5 +1,4 @@
 import httpx
-from port_ocean.helpers.metric.metric import MetricPhase
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.context.ocean import ocean
@@ -15,7 +14,6 @@ def _get_http_client_context() -> httpx.AsyncClient:
         client = OceanAsyncClient(
             RetryTransport,
             timeout=ocean.config.client_timeout,
-            mode=MetricPhase.EXTRACT,
         )
         _http_client.push(client)
 

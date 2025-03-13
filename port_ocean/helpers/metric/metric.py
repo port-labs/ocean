@@ -2,6 +2,7 @@ from typing import Any
 from fastapi import APIRouter
 from port_ocean.exceptions.context import ResourceContextNotFoundError
 import prometheus_client
+from httpx import AsyncClient
 
 from loguru import logger
 from port_ocean.context import resource
@@ -16,6 +17,7 @@ class MetricPhase:
     TRANSFORM = "transform"
     LOAD = "load"
     TOP_SORT = "top_sort"
+    RESYNC = "resync"
 
 
 class MetricType:
@@ -46,17 +48,32 @@ class EmptyMetric:
     def inc(self, *args: Any) -> None:
         return None
 
+    def set(self, *args: Any) -> None:
+        return None
+
     def labels(self, *args: Any) -> None:
         return None
 
 
 class Metrics:
-    def __init__(self, enabled: bool) -> None:
-        self.enabled = enabled
-
+    def __init__(
+        self,
+        metrics_settings: any,
+        integration_configuration: any,
+        integration_version: str,
+        ocean_version: str,
+    ) -> None:
+        self.metrics_settings = metrics_settings
+        self.integration_configuration = integration_configuration
+        self.integration_version = integration_version
+        self.ocean_version = ocean_version
         self.registry = prometheus_client.CollectorRegistry()
         self.metrics: dict[str, Gauge] = {}
         self.load_metrics()
+
+    @property
+    def enabled(self) -> bool:
+        return self.metrics_settings.enabled
 
     def load_metrics(self) -> None:
         if not self.enabled:
@@ -93,7 +110,7 @@ class Metrics:
         try:
             return f"{resource.resource.kind}-{resource.resource.index}"
         except ResourceContextNotFoundError:
-            return "init"
+            return "__runtime__"
 
     def generate_latest(self) -> str:
         return prometheus_client.openmetrics.exposition.generate_latest(
@@ -101,6 +118,9 @@ class Metrics:
         ).decode()
 
     async def flush(self) -> None:
+        if not self.enabled:
+            return None
+
         latest_raw = self.generate_latest()
         metric_families = prometheus_client.parser.text_string_to_metric_families(
             latest_raw
@@ -108,10 +128,31 @@ class Metrics:
         metrics_dict = {}
         for family in metric_families:
             for sample in family.samples:
-                label_parts = [str(v) for _, v in sample.labels.items()]
-                label_str = "__".join(label_parts)
+                current_level = metrics_dict
+                if sample.labels:
+                    # Create nested dictionary structure based on labels
+                    for key, value in sample.labels.items():
+                        if key not in current_level:
+                            current_level[key] = {}
+                        current_level = current_level[key]
+                        if value not in current_level:
+                            current_level[value] = {}
+                        current_level = current_level[value]
 
-                dict_key = f"{sample.name}__{label_str}" if label_str else sample.name
+                current_level[sample.name] = sample.value
 
-                metrics_dict[dict_key] = sample.value
-        logger.bind(**metrics_dict).info("prometheus metrics")
+        if self.metrics_settings.webhook_url:
+            for kind, metrics in metrics_dict.get("kind", {}).items():
+                event = {
+                    "integration_type": self.integration_configuration.type,
+                    "integration_identifier": self.integration_configuration.identifier,
+                    "integration_version": self.integration_version,
+                    "ocean_version": self.ocean_version,
+                    "kind_identifier": kind,
+                    "kind": "-".join(kind.split("-")[:-1]),
+                    "metrics": metrics,
+                }
+                logger.debug(f"Sending metrics to webhook {kind}")
+                await AsyncClient().post(
+                    url=self.metrics_settings.webhook_url, json=event
+                )

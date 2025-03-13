@@ -3,6 +3,7 @@ from typing import Any, Literal
 from port_ocean.clients.port.client import PortClient
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.time import get_next_occurrence
+from port_ocean.context.ocean import ocean
 
 
 class ResyncStateUpdater:
@@ -82,3 +83,5 @@ class ResyncStateUpdater:
             self.last_integration_state_updated_at = integration["resyncState"][
                 "updatedAt"
             ]
+
+            await ocean.metrics.flush()
