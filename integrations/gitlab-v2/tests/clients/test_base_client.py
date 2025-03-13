@@ -1,9 +1,11 @@
-import pytest
 from typing import Any, AsyncGenerator
 from unittest.mock import MagicMock, patch
-from clients.base_client import GitLabClient
+
+import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+
+from clients.gitlab_client import GitLabClient
 
 
 @pytest.fixture(autouse=True)

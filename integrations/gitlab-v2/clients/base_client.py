@@ -1,37 +1,48 @@
-from typing import Any, AsyncIterator
+from typing import Any, Optional
+
+import httpx
+from loguru import logger
+from port_ocean.utils import http_async_client
 
 from .auth_client import AuthClient
-from .graphql_client import GraphQLClient
-from .rest_client import RestClient
 
 
-class GitLabClient:
-    def __init__(self, base_url: str, token: str) -> None:
+class HTTPBaseClient:
+    def __init__(self, base_url: str, token: str):
+        self.token = token
+        self._client = http_async_client
         auth_client = AuthClient(token)
-        self.graphql = GraphQLClient(base_url, auth_client)
-        self.rest = RestClient(base_url, auth_client)
+        self._headers = auth_client.get_headers()
+        self.base_url = base_url
 
-    async def get_projects(self) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch all accessible projects using GraphQL.
+    async def send_api_request(
+        self,
+        method: str,
+        path: str,
+        params: Optional[dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        url = f"{self.base_url}/{path}"
+        logger.debug(f"Sending {method} request to {url}")
 
-        Note: GraphQL is preferred over REST for projects as it allows efficient
-        fetching of extendable fields (like members, labels) in a single query
-        when needed, avoiding multiple API calls.
+        try:
+            response = await self._client.request(
+                method=method,
+                url=url,
+                headers=self._headers,
+                params=params,
+                json=data,
+            )
+            response.raise_for_status()
+            return response.json()
 
-        Returns:
-            AsyncIterator yielding batches of project data
-        """
-        async for batch in self.graphql.get_resource("projects"):
-            yield batch
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.debug(f"Resource not found at {url}: 404 Not Found")
+                return []  # Return empty list for 404, assuming caller expects a list
+            logger.error(f"HTTP status error for {method} request to {path}: {e}")
+            raise
 
-    async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
-        async for batch in self.rest.get_resource(
-            "groups", params={"min_access_level": 30, "all_available": True}
-        ):
-            yield batch
-
-    async def get_group_resource(
-        self, group: dict[str, Any], resource_type: str
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        async for batch in self.rest.get_group_resource(group["id"], resource_type):
-            yield batch
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error for {method} request to {path}: {e}")
+            raise

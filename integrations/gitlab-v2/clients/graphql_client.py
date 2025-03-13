@@ -1,21 +1,18 @@
 from typing import Any, AsyncIterator, Optional
 
 from loguru import logger
-from port_ocean.utils import http_async_client
 
-from .auth_client import AuthClient
+from .base_client import HTTPBaseClient
 from .queries import ProjectQueries
 
 
-class GraphQLClient:
+class GraphQLClient(HTTPBaseClient):
     RESOURCE_QUERIES = {
         "projects": ProjectQueries.LIST,
     }
 
-    def __init__(self, base_url: str, auth_client: AuthClient):
-        self.base_url = f"{base_url}/api/graphql"
-        self._headers = auth_client.get_headers()
-        self._client = http_async_client
+    def __init__(self, base_url: str, token: str):
+        super().__init__(f"{base_url}/api/graphql", token)
 
     async def get_resource(
         self, resource_type: str, variables: Optional[dict[str, Any]] = None
@@ -61,18 +58,16 @@ class GraphQLClient:
         self, query: str, variables: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
         try:
-            response = await self._client.post(
-                self.base_url,
-                headers=self._headers,
-                json={
+            response = await self.send_api_request(
+                "POST",
+                "",
+                data={
                     "query": query,
                     "variables": variables or {},
                 },
             )
-            response.raise_for_status()
 
-            data = response.json()
-
+            data = response
             if "errors" in data:
                 logger.error(f"GraphQL query failed: {data['errors']}")
                 raise Exception(f"GraphQL query failed: {data['errors']}")

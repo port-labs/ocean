@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
-from clients.auth_client import AuthClient
+
+import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+
+from clients.auth_client import AuthClient
 
 
 @pytest.fixture(autouse=True)

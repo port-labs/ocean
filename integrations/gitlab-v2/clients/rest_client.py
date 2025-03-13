@@ -1,12 +1,11 @@
 from typing import Any, AsyncIterator, Optional
 
 from loguru import logger
-from port_ocean.utils import http_async_client
 
-from .auth_client import AuthClient
+from .base_client import HTTPBaseClient
 
 
-class RestClient:
+class RestClient(HTTPBaseClient):
     DEFAULT_PAGE_SIZE = 100
     VALID_GROUP_RESOURCES = ["issues", "merge_requests", "labels"]
 
@@ -18,10 +17,8 @@ class RestClient:
         }
     }
 
-    def __init__(self, base_url: str, auth_client: AuthClient) -> None:
-        self.base_url = f"{base_url}/api/v4"
-        self._headers = auth_client.get_headers()
-        self._client = http_async_client
+    def __init__(self, base_url: str, token: str):
+        super().__init__(f"{base_url}/api/v4", token)
 
     async def get_resource(
         self, resource_type: str, params: Optional[dict[str, Any]] = None
@@ -42,11 +39,7 @@ class RestClient:
             raise ValueError(f"Unsupported resource type: {resource_type}")
 
         path = f"groups/{group_id}/{resource_type}"
-
-        # Use a simple but type-safe approach
-        request_params: dict[str, Any] = {}
-        if resource_type in self.RESOURCE_PARAMS:
-            request_params = self.RESOURCE_PARAMS[resource_type]
+        request_params = self.RESOURCE_PARAMS.get(resource_type, {})
 
         try:
             async for batch in self._make_paginated_request(
@@ -75,7 +68,7 @@ class RestClient:
             request_params = {**params_dict, "per_page": page_size, "page": page}
             logger.debug(f"Fetching page {page} from {path}")
 
-            response = await self._send_api_request("GET", path, params=request_params)
+            response = await self.send_api_request("GET", path, params=request_params)
 
             if not response:
                 logger.debug(f"No more records to fetch for {path}.")
@@ -88,29 +81,3 @@ class RestClient:
                 break
 
             page += 1
-
-    async def _send_api_request(
-        self,
-        method: str,
-        path: str,
-        params: Optional[dict[str, Any]] = None,
-        data: Optional[dict[str, Any]] = None,
-    ) -> list[dict[str, Any]]:
-        try:
-            url = f"{self.base_url}/{path}"
-            logger.debug(f"Sending {method} request to {url}")
-
-            response = await self._client.request(
-                method=method,
-                url=url,
-                headers=self._headers,
-                params=params,
-                json=data,
-            )
-
-            response.raise_for_status()
-            return response.json()
-
-        except Exception as e:
-            logger.error(f"Failed to make {method} request to {path}: {str(e)}")
-            raise
