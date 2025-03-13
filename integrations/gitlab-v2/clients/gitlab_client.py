@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any, AsyncIterator
 
 from loguru import logger
