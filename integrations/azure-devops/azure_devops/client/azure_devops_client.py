@@ -478,7 +478,7 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             if not response:
                 logger.warning(
-                    f"Couldn't access url {items_url}. This may be because the repo {repository_id} is disabled."
+                    f"Failed to access URL '{items_url}'. The repository '{repository_id}' might be disabled or inaccessible."
                 )
                 return bytes()
             file_content = response.content
