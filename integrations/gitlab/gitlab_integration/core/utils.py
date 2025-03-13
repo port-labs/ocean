@@ -1,12 +1,31 @@
+from typing import List, Union
+
+from braceexpand import braceexpand  # type: ignore
 from glob2 import fnmatch  # type: ignore
-from typing import Union, List
-from braceexpand import braceexpand
 
 
-def does_pattern_apply(pattern: Union[str, List[str]], string: str) -> bool:
-    if isinstance(pattern, list):
-        return any(does_pattern_apply(p, string) for p in pattern)
-    return fnmatch.fnmatch(string, pattern)
+def does_pattern_apply(patterns: Union[str, List[str]], string: str) -> bool:
+    """
+    Returns True if `pathname` matches at least one of the patterns in `patterns`.
+    We handle the special case where a pattern starts with '**/' by also
+    checking the bare pattern (e.g. '**/file.yml' => 'file.yml').
+    """
+    if isinstance(patterns, str):
+        patterns = [patterns]
+
+    for pattern in patterns:
+        if pattern.startswith("**/"):
+            # Also try the pattern without '**/' to allow matching a bare filename.
+            bare_pattern = pattern.replace("**/", "", 1)
+            if fnmatch.fnmatch(string, pattern) or fnmatch.fnmatch(
+                string, bare_pattern
+            ):
+                return True
+        else:
+            if fnmatch.fnmatch(string, pattern):
+                return True
+
+    return False
 
 
 def convert_glob_to_gitlab_patterns(pattern: Union[str, List[str]]) -> List[str]:

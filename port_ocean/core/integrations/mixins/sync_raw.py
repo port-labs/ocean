@@ -167,6 +167,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if entities[0].is_using_search_identifier or entities[0].is_using_search_relation:
             return entities
 
+        MIN_ENTITIES_TO_MAP = 10
+        if len(entities) <= MIN_ENTITIES_TO_MAP:
+            return entities
+
         BATCH_SIZE = 50
         entities_at_port_with_properties = []
 

@@ -12,6 +12,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
 )
 from fastapi import APIRouter
+from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import SignalHandler
 from typing import Dict, Any
 import asyncio
@@ -19,7 +20,7 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 from port_ocean.context.ocean import PortOceanContext
 from unittest.mock import AsyncMock
-from port_ocean.context.event import event_context, EventType
+from port_ocean.context.event import EventContext, event_context, EventType
 from port_ocean.context.ocean import ocean
 from unittest.mock import MagicMock, patch
 from httpx import Response
@@ -175,7 +176,10 @@ def processor_manager() -> LiveEventsProcessorManager:
     router = APIRouter()
     signal_handler = SignalHandler()
     return LiveEventsProcessorManager(
-        router, signal_handler, max_event_processing_seconds=3
+        router,
+        signal_handler,
+        max_event_processing_seconds=3,
+        max_wait_seconds_before_shutdown=3,
     )
 
 
@@ -195,7 +199,7 @@ def webhook_event_for_process_webhook_request() -> WebhookEvent:
 
 @pytest.fixture
 def processor_manager_for_process_webhook_request() -> LiveEventsProcessorManager:
-    return LiveEventsProcessorManager(APIRouter(), SignalHandler())
+    return LiveEventsProcessorManager(APIRouter(), SignalHandler(), 3, 3)
 
 
 @pytest.fixture
@@ -568,10 +572,23 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
         "sync_raw_results",
         patched_export_single_resource,
     )
+    monkeypatch.setattr(
+        HandlerMixin,
+        "port_app_config_handler",
+        AsyncMock(return_value=mock_port_app_config),
+    )
+    monkeypatch.setattr(
+        EventContext,
+        "port_app_config",
+        mock_port_app_config,
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        max_event_processing_seconds=3,
+        max_wait_seconds_before_shutdown=3,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
@@ -583,12 +600,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
 
     test_payload = {"test": "data"}
 
-    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
-        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)  # type: ignore
-        event.port_app_config = (
-            await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
-        )
-
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request"):
         response = client.post(
             test_path, json=test_payload, headers={"Content-Type": "application/json"}
         )
@@ -679,10 +691,23 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
         "_process_single_event",
         patched_process_single_event,
     )
+    monkeypatch.setattr(
+        HandlerMixin,
+        "port_app_config_handler",
+        AsyncMock(return_value=mock_port_app_config),
+    )
+    monkeypatch.setattr(
+        EventContext,
+        "port_app_config",
+        mock_port_app_config,
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler(), 2
+        mock_context.app.integration_router,
+        SignalHandler(),
+        2,
+        2,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
@@ -694,12 +719,7 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
 
     test_payload = {"test": "data"}
 
-    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
-        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)  # type: ignore
-        event.port_app_config = (
-            await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
-        )
-
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request"):
         response = client.post(
             test_path, json=test_payload, headers={"Content-Type": "application/json"}
         )
@@ -793,10 +813,23 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
         "_extract_matching_processors",
         patched_extract_matching_processors,
     )
+    monkeypatch.setattr(
+        HandlerMixin,
+        "port_app_config_handler",
+        AsyncMock(return_value=mock_port_app_config),
+    )
+    monkeypatch.setattr(
+        EventContext,
+        "port_app_config",
+        mock_port_app_config,
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        3,
+        3,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
@@ -807,13 +840,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
     client = TestClient(mock_context.app.fast_api_app)
 
     test_payload = {"test": "data"}
-
-    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
-        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)  # type: ignore
-        event.port_app_config = (
-            await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
-        )
-
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request"):
         response = client.post(
             test_path, json=test_payload, headers={"Content-Type": "application/json"}
         )
@@ -970,10 +997,23 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
         "sync_raw_results",
         patched_export_single_resource,
     )
+    monkeypatch.setattr(
+        HandlerMixin,
+        "port_app_config_handler",
+        AsyncMock(return_value=mock_port_app_config),
+    )
+    monkeypatch.setattr(
+        EventContext,
+        "port_app_config",
+        mock_port_app_config,
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        3,
+        3,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessorA)
@@ -989,12 +1029,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
 
     test_payload = {"test": "data"}
 
-    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
-        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)  # type: ignore
-        event.port_app_config = (
-            await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
-        )
-
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request"):
         response = client.post(
             test_path, json=test_payload, headers={"Content-Type": "application/json"}
         )
@@ -1097,10 +1132,23 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
         "sync_raw_results",
         patched_export_single_resource,
     )
+    monkeypatch.setattr(
+        HandlerMixin,
+        "port_app_config_handler",
+        AsyncMock(return_value=mock_port_app_config),
+    )
+    monkeypatch.setattr(
+        EventContext,
+        "port_app_config",
+        mock_port_app_config,
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        3,
+        3,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
@@ -1112,12 +1160,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
 
     test_payload = {"test": "data"}
 
-    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
-        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)  # type: ignore
-        event.port_app_config = (
-            await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
-        )
-
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request"):
         response = client.post(
             test_path, json=test_payload, headers={"Content-Type": "application/json"}
         )
@@ -1224,10 +1267,23 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
         "_process_webhook_request",
         patched_process_webhook_request,
     )
+    monkeypatch.setattr(
+        HandlerMixin,
+        "port_app_config_handler",
+        AsyncMock(return_value=mock_port_app_config),
+    )
+    monkeypatch.setattr(
+        EventContext,
+        "port_app_config",
+        mock_port_app_config,
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        90.0,
+        5.0,
     )
 
     mock_context.app.webhook_manager.register_processor(test_path, TestProcessor)
@@ -1239,12 +1295,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
 
     test_payload = {"test": "data"}
 
-    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
-        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)  # type: ignore
-        event.port_app_config = (
-            await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
-        )
-
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request"):
         response = client.post(
             test_path, json=test_payload, headers={"Content-Type": "application/json"}
         )
@@ -1360,10 +1411,23 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
         "sync_raw_results",
         patched_export_single_resource,
     )
+    monkeypatch.setattr(
+        HandlerMixin,
+        "port_app_config_handler",
+        AsyncMock(return_value=mock_port_app_config),
+    )
+    monkeypatch.setattr(
+        EventContext,
+        "port_app_config",
+        mock_port_app_config,
+    )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
-        mock_context.app.integration_router, SignalHandler()
+        mock_context.app.integration_router,
+        SignalHandler(),
+        3,
+        3,
     )
 
     # Register both processors
@@ -1377,12 +1441,7 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
 
     test_payload = {"test": "data"}
 
-    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
-        mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config = AsyncMock(return_value=mock_port_app_config)  # type: ignore
-        event.port_app_config = (
-            await mock_context.app.webhook_manager.port_app_config_handler.get_port_app_config()
-        )
-
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request"):
         response = client.post(
             test_path, json=test_payload, headers={"Content-Type": "application/json"}
         )

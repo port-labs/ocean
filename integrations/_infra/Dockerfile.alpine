@@ -5,7 +5,7 @@ FROM ${BASE_PYTHON_IMAGE} AS base
 ARG BUILD_CONTEXT
 ARG BUILDPLATFORM
 
-ENV LIBRDKAFKA_VERSION=1.9.2 \
+ENV LIBRDKAFKA_VERSION=2.8.2 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     POETRY_NO_INTERACTION=1 \
@@ -66,7 +66,7 @@ FROM ${BASE_PYTHON_IMAGE} AS prod
 ARG INTEGRATION_VERSION
 ARG BUILD_CONTEXT
 
-ENV LIBRDKAFKA_VERSION=1.9.2
+ENV LIBRDKAFKA_VERSION=2.8.2
 
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
 # Used to ensure that new integrations will be public, see https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility
