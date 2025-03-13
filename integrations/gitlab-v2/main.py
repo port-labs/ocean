@@ -27,7 +27,7 @@ def create_gitlab_client() -> GitLabClient:
         return _gitlab_client
 
     integration_config: dict[str, Any] = ocean.integration_config
-    base_url = integration_config.get("gitlab_host", "https://gitlab.com").rstrip("/")
+    base_url = integration_config["gitlab_host"].rstrip("/")
 
     if token := integration_config.get("gitlab_token"):
         _gitlab_client = GitLabClient(base_url, token)
