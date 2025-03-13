@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 6
 ---
 # 📡 Sending Data to Port using Resync Functions
 
@@ -191,7 +191,49 @@ async def on_start() -> None:
 3. **Async Generators**: Each function yields data in batches. Port collects and processes them into the `port-app-config.yml` mapping.
 
 
-## 4. Putting It All Together
+## Adding Webhook Handling
+Webhooks are represented in Port through FastAPI endpoints. When Jira sends a webhook to the predefined webhook route (usually `/webhook`), Port processes the event and sends it to the relevant webhook processor. We'll add the webhook processors we defined in the previous step to our `main.py` file:
+
+<details>
+
+<summary><b>Adding webhook handling to `main.py` (Click to expand)</b></summary>
+
+```python showLineNumbers
+... # Existing imports
+# highlight-start
+from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
+from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
+# highlight-end
+
+
+... # Existing code
+
+# Called once when the integration starts.
+@ocean.on_start()
+async def on_start() -> None:
+    logger.info("Starting Port Ocean Jira integration")
+
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    await setup_application()
+
+
+ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
+
+```
+
+</details>
+
+### Explanation
+
+- **`ocean.add_webhook_processor`**: Registers the webhook processors we defined in the previous step. This tells Port to call `IssueWebhookProcessor` when it receives an issue-related event, and `ProjectWebhookProcessor` for project-related events.
+
+
+## Putting It All Together
 
 At the end of this guide, you should now have:
 
@@ -199,6 +241,7 @@ At the end of this guide, you should now have:
 - A `main.py` file that includes:
   - **Resync functions** (`@ocean.on_resync`) for the relevant kinds (projects, issues).
   - A `@ocean.on_start` function to set up webhooks
+  - Webhook processors for handling incoming Jira events.
 
 With these components, your Jira integration is ready to fetch data and push it into Port!
 
