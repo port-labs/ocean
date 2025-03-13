@@ -1,8 +1,10 @@
 import asyncio
 from collections import defaultdict
 from typing import Any, Awaitable, Callable
-from .webhook_event import WebhookEvent
+
 from loguru import logger
+
+from .webhook_event import WebhookEvent
 
 Observer = Callable[[dict[str, Any]], Awaitable[Any]]
 
