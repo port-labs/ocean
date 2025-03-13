@@ -18,14 +18,14 @@ class GraphQLClient:
         self._client = http_async_client
 
     async def get_resource(
-        self, resource_type: str, variables: Optional[dict[str, Any]] = None
+        self, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
         query = self.RESOURCE_QUERIES.get(resource_type)
         if not query:
             raise ValueError(f"Unsupported resource type for GraphQL: {resource_type}")
 
         async for batch in self._execute_paginated_query(
-            query=str(query), resource_field=resource_type, variables=variables
+            query=str(query), resource_field=resource_type, params=params
         ):
             yield batch
 
@@ -33,14 +33,14 @@ class GraphQLClient:
         self,
         query: str,
         resource_field: str,
-        variables: Optional[dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         cursor = None
 
         while True:
             data = await self._execute_query(
                 query,
-                variables={"cursor": cursor, **(variables or {})},
+                params={"cursor": cursor, **(params or {})},
             )
 
             resource_data = data.get(resource_field, {})
@@ -58,7 +58,7 @@ class GraphQLClient:
             cursor = page_info.get("endCursor")
 
     async def _execute_query(
-        self, query: str, variables: Optional[dict[str, Any]] = None
+        self, query: str, params: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
         try:
             response = await self._client.post(
@@ -66,7 +66,7 @@ class GraphQLClient:
                 headers=self._headers,
                 json={
                     "query": query,
-                    "variables": variables or {},
+                    "variables": params or {},
                 },
             )
             response.raise_for_status()

@@ -5,8 +5,14 @@ class Fragments:
             webUrl
             description
             fullPath
-            repository {
+           repository {
                 rootRef
+                blobs(paths: $filePaths) {
+                    nodes {
+                        path
+                        rawBlob
+                    }
+                }
             }
             group{
                 id
@@ -27,7 +33,7 @@ class Fragments:
 
 class ProjectQueries:
     LIST = f"""
-        query Projects($cursor: String) {{
+        query Projects($cursor: String, $filePaths: [String!]!) {{
             projects(
                 membership: true,
                 first: 100,
