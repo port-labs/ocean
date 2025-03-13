@@ -1,6 +1,7 @@
-from enum import StrEnum
 from datetime import datetime, timedelta
-from typing import Any, List, Optional, Union
+from enum import StrEnum
+from typing import Any, List, Literal, Optional, Union
+
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,

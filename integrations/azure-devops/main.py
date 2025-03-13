@@ -1,21 +1,22 @@
 from typing import Any, cast
+
 from loguru import logger
-from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-from azure_devops.client.azure_devops_client import AzureDevopsClient
-from azure_devops.webhooks.webhook_event import WebhookEvent
+from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from bootstrap import setup_listeners, webhook_event_handler
 from starlette.requests import Request
+
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
-    Kind,
     PULL_REQUEST_SEARCH_CRITERIA,
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
     AzureDevopsTeamResourceConfig,
+    AzureDevopsWorkItemResourceConfig,
+    Kind,
 )
-
-from azure_devops.misc import AzureDevopsWorkItemResourceConfig
+from azure_devops.webhooks.webhook_event import WebhookEvent
+from bootstrap import setup_listeners, webhook_event_handler
 
 
 @ocean.on_start()
