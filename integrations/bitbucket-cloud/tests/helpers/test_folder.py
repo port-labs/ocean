@@ -83,7 +83,7 @@ async def test_find_matching_folders() -> None:
     patterns: List[str] = ["src/main"]
     repo: Dict[str, Any] = {"name": "test_repo"}
 
-    result = await find_matching_folders(contents, patterns, repo)
+    result = await find_matching_folders(contents, patterns, repo, "main")
     assert len(result) == 1
     assert result[0]["folder"]["path"] == "src/main"
     assert result[0]["repo"] == repo
@@ -98,7 +98,7 @@ async def test_find_matching_folders() -> None:
     patterns = ["docs/*"]
     repo = {"name": "test_repo"}
 
-    result = await find_matching_folders(contents, patterns, repo)
+    result = await find_matching_folders(contents, patterns, repo, "main")
     assert len(result) == 2
     assert {item["folder"]["path"] for item in result} == {"docs/api", "docs/guide"}
 

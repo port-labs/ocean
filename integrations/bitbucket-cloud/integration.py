@@ -17,8 +17,8 @@ class RepositoryBranchMapping(BaseModel):
         alias="name",
         description="Specify the repository name",
     )
-    branch: str | None = Field(
-        default=None,
+    branch: str = Field(
+        default="default",
         alias="branch",
         description="Specify the branch to bring the folders from",
     )

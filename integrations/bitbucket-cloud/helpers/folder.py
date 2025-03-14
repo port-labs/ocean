@@ -38,20 +38,22 @@ async def create_pattern_mapping(
         p = pattern.path
         for repo in pattern.repos:
             pattern_by_repo_branch[repo.name][repo.branch].append(p)
-
     # Convert defaultdicts to regular dicts
     return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
 
 
 async def find_matching_folders(
-    contents: List[Dict[str, Any]], patterns: List[str], repo: Dict[str, Any]
+    contents: List[Dict[str, Any]],
+    patterns: List[str],
+    repo: Dict[str, Any],
+    branch: str,
 ) -> List[Dict[str, Any]]:
     """Find folders that match the given patterns."""
     matching_folders = []
     for pattern_str in patterns:
         is_wildcard_pattern = any(c in pattern_str for c in "*?[]")
         matching = [
-            {"folder": folder, "repo": repo, "pattern": pattern_str}
+            {"folder": folder, "repo": repo, "pattern": pattern_str, "branch": branch}
             for folder in contents
             if folder["type"] == "commit_directory"
             and (
@@ -139,11 +141,10 @@ async def process_repo_folders(
     repo_name = repo["name"]
     if repo_name not in pattern_by_repo:
         return
-
     repo_branches = pattern_by_repo[repo_name]
     for branch, paths in repo_branches.items():
         repo_slug = repo.get("slug", repo_name.lower())
-        effective_branch = branch or repo["mainbranch"]["name"]
+        effective_branch = branch if branch != "default" else repo["mainbranch"]["name"]
         base_path, max_pattern_depth = await find_common_base_path(paths)
         logger.debug(
             f"Fetching {repo_name}/{effective_branch} from '{base_path}' with depth {max_pattern_depth}"
@@ -152,5 +153,7 @@ async def process_repo_folders(
         async for contents in client.get_directory_contents(
             repo_slug, effective_branch, base_path, max_depth=max_pattern_depth
         ):
-            if matching_folders := await find_matching_folders(contents, paths, repo):
+            if matching_folders := await find_matching_folders(
+                contents, paths, repo, effective_branch
+            ):
                 yield matching_folders
