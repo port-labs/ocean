@@ -152,5 +152,5 @@ async def process_repo_folders(
         async for contents in client.get_directory_contents(
             repo_slug, effective_branch, base_path, max_depth=max_pattern_depth
         ):
-            if matching_folders := await find_matching_folders(contents, paths, repo):      
+            if matching_folders := await find_matching_folders(contents, paths, repo):
                 yield matching_folders
