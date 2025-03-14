@@ -1,5 +1,5 @@
 from typing import Any, AsyncIterator
-
+import asyncio
 from loguru import logger
 
 from .graphql_client import GraphQLClient
@@ -19,9 +19,53 @@ class GitLabClient:
         self.rest = RestClient(base_url, token)
 
     async def get_projects(self) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch all accessible projects using GraphQL."""
-        async for batch in self.graphql.get_resource("projects"):
-            yield batch
+        """Fetch all accessible projects using GraphQL.
+        Note: GraphQL is preferred over REST for projects as it allows efficient
+        fetching of extendable fields (like members, labels) in a single query
+        when needed, avoiding multiple API calls.
+        """
+        async for projects_batch, field_iterators in self.graphql.get_resource(
+            "projects"
+        ):
+            if projects_batch:
+                yield projects_batch
+
+            async for updated_batch in self._process_nested_fields(
+                projects_batch, field_iterators
+            ):
+                yield updated_batch
+
+    async def _process_nested_fields(
+        self, projects: list[dict], field_iterators: list
+    ) -> AsyncIterator[list[dict]]:
+        """Process nested fields for a batch of projects, yielding after meaningful updates."""
+        project_field_nodes = [{} for _ in projects]
+        active_data = list(zip(projects, field_iterators, project_field_nodes))
+
+        while active_data:
+            updated = False
+            next_active = []
+
+            for project, field_iter, field_nodes in active_data:
+                try:
+                    field_name, nodes = await anext(field_iter)
+                    if nodes:
+                        # Initialize or extend field nodes collection
+                        if field_name not in field_nodes:
+                            field_nodes[field_name] = []
+                        field_nodes[field_name].extend(nodes)
+                        project[field_name]["nodes"] = field_nodes[field_name]
+                        updated = True
+
+                    next_active.append((project, field_iter, field_nodes))
+                except StopAsyncIteration:
+                    pass
+
+            active_data = next_active
+
+            if updated:
+                logger.info(f"Yielding batch with {len(projects)} projects")
+                yield projects
 
     async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user."""

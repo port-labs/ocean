@@ -39,7 +39,6 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for project in projects_batch:
                 if labels := project.get("labels", {}).get("nodes"):
                     project["__labels"] = labels
-
         yield projects_batch
 
 
