@@ -36,15 +36,25 @@ class GitLabClient:
                 yield updated_batch
 
     async def _process_nested_fields(
-        self, projects: list[dict], field_iterators: list
-    ) -> AsyncIterator[list[dict]]:
+        self,
+        projects: list[dict[str, Any]],
+        field_iterators: list[AsyncIterator[tuple[str, list[dict[str, Any]]]]],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
         """Process nested fields for a batch of projects, yielding after meaningful updates."""
-        project_field_nodes = [{} for _ in projects]
+        project_field_nodes: list[dict[str, list[dict[str, Any]]]] = [
+            {} for _ in projects
+        ]
         active_data = list(zip(projects, field_iterators, project_field_nodes))
 
         while active_data:
             updated = False
-            next_active = []
+            next_active: list[
+                tuple[
+                    dict[str, Any],
+                    AsyncIterator[tuple[str, list[dict[str, Any]]]],
+                    dict[str, list[dict[str, Any]]],
+                ]
+            ] = []
 
             for project, field_iter, field_nodes in active_data:
                 try:
