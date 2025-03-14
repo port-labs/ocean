@@ -1,0 +1,48 @@
+[
+  {
+    "identifier": "file",
+    "title": "File",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string",
+          "icon": "DefaultProperty",
+          "description": "The path of the file in the repository"
+        },
+        "size": {
+          "title": "Size",
+          "type": "number",
+          "icon": "DefaultProperty",
+          "description": "The size of the file in bytes"
+        },
+        "content": {
+          "title": "Content",
+          "type": "object",
+          "icon": "DefaultProperty",
+          "description": "The content of the file"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "Link",
+          "description": "Link to the file in Azure DevOps"
+        }
+      },
+      "required": ["path"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "service",
+        "required": true,
+        "many": false
+      }
+    }
+  }
+]

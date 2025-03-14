@@ -1,12 +1,13 @@
 [tool.poetry]
 name = "azure-devops"
-version = "0.1.139"
+version = "0.1.140"
 description = "An Azure Devops Ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
 port_ocean = {version = "^0.21.5", extras = ["cli"]}
+braceexpand = "^0.1.7"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
