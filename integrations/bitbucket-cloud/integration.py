@@ -11,16 +11,29 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 
 
+class RepositoryBranchMapping(BaseModel):
+    name: str = Field(
+        default="",
+        alias="name",
+        description="Specify the repository name",
+    )
+    branch: str | None = Field(
+        default=None,
+        alias="branch",
+        description="Specify the branch to bring the folders from",
+    )
+
+
 class FolderPattern(BaseModel):
     path: str = Field(
         default="",
         alias="path",
         description="Specify the repositories and folders to include under this relative path",
     )
-    repos: list[str] = Field(
+    repos: list[RepositoryBranchMapping] = Field(
         default_factory=list,
         alias="repos",
-        description="Specify the repositories to include under this relative path",
+        description="Specify the repositories and branches to include under this relative path",
     )
 
 
@@ -29,7 +42,7 @@ class BitbucketFolderSelector(Selector):
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
-        description="Specify the repositories and folders to include under this relative path",
+        description="Specify the repositories, branches and folders to include under this relative path",
     )
 
 
