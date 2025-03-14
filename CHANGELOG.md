@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.21.5 (2025-03-12)
+
+### Improvements
+
+- Updated LiveEventsProcessorManager to fetch the latest port app configuration for each event by calling `get_port_app_config(use_cache=False)`.
+- This change ensures that the processor manager always uses the most current configuration when handling events.
+
 ## 0.21.4 (2025-03-12)
 
 ### Improvements
