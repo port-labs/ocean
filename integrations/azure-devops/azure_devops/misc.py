@@ -8,7 +8,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from pydantic import Field, BaseModel, validator
-from typing import Literal
 
 
 class Kind(StrEnum):

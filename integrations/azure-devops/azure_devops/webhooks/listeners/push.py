@@ -92,6 +92,10 @@ class PushHookListener(HookListener):
 
         try:
             repo_info = await self._client.get_repository(repo_id)
+            if repo_info is None:
+                logger.warning(f"Could not find repository with ID {repo_id}")
+                return
+
             project_id = repo_info["project"]["id"]
 
             # Get file changes from commit
@@ -99,6 +103,13 @@ class PushHookListener(HookListener):
             response = await self._client.send_request(
                 "GET", url, params={"api-version": "7.1"}
             )
+
+            if response is None:
+                logger.warning(
+                    f"No response when fetching changes for commit {commit_id}"
+                )
+                return
+
             changed_files = response.json().get("changes", [])
 
             for changed_file in changed_files:

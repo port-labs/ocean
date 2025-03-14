@@ -603,6 +603,12 @@ class AzureDevopsClient(HTTPBaseClient):
                 headers={"Content-Type": "application/json"},
             )
 
+            if response is None:
+                logger.warning(
+                    f"No response from itemsbatch API for repository {repository['name']}"
+                )
+                return
+
             if response.status_code == 400:
                 logger.warning(
                     f"Bad request (400) for repository {repository['name']}: {response.json().get('message')}"
