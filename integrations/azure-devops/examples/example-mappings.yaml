@@ -49,8 +49,10 @@ resources:
     selector:
       query: 'true'
       files:
-        path: '**/*.yaml'
-        max_depth: 1
+        path: package.json
+        repos:
+          - my-node-app
+          - my-react-app
     port:
       entity:
         mappings:
@@ -70,8 +72,9 @@ resources:
     selector:
       query: 'true'
       files:
-        path: '**/*.yml'
-        max_depth: 1
+        path:
+          - deployment/helm/values.yaml
+          - docs/README.md
     port:
       entity:
         mappings:
@@ -91,7 +94,9 @@ resources:
     selector:
       query: 'true'
       files:
-        path: '*.{json,yaml,yml}'
+        path:
+          - package.json
+          - package-lock.json
     port:
       entity:
         mappings:
