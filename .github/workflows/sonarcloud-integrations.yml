@@ -26,27 +26,25 @@ jobs:
           filters: |
             integrations:
               - 'integrations/**'
+              - '!integrations/_infra/**'
           list-files: json
       - name: Process changed integrations
         id: process-changes
         run: |
-          # Extract dir names at depth 2 and count files
           FILES_JSON='${{ steps.changed-integrations.outputs.integrations_files }}'
           if [ -z "$FILES_JSON" ] || [ "$FILES_JSON" = '[]' ]; then
-            CHANGED_FILES='[]'
-            COUNT=0
+            echo "all_changed_files=[]" >> $GITHUB_OUTPUT
+            echo "count=0" >> $GITHUB_OUTPUT
           else
             CHANGED_FILES=$(echo "$FILES_JSON" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -s .)
-            COUNT=$(echo "$FILES_JSON" | jq '. | length')
+            COUNT=$(echo "$FILES_JSON" | jq -r 'length')
+            echo "all_changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+            echo "count=$COUNT" >> $GITHUB_OUTPUT
           fi
-          echo "all_changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
-          echo "count=$COUNT" >> $GITHUB_OUTPUT
       - name: Output changes integrations
         id: create-matrix
         run: |
-          echo ${{ steps.process-changes.outputs.all_changed_files }}
-          integrations_array=${{ steps.process-changes.outputs.all_changed_files }}
-          echo "INTEGRATIONS_MATRIX=$(jq -cn --argjson integArr $integrations_array '{integrations: $integArr}')" >> $GITHUB_OUTPUT
+          echo "INTEGRATIONS_MATRIX={ \"integrations\": ${{ steps.process-changes.outputs.all_changed_files }} }" >> $GITHUB_OUTPUT
 
   sonarcloud-scan:
     name: Sonarcloud scan changed integrations
@@ -64,9 +62,9 @@ jobs:
         run: |
           unsplit_integ="${{ matrix.integrations }}"
           integration=${unsplit_integ##*/}
-          integration=$(echo ${integration} | tr '-' '_')
-          integration=$(echo ${integration} | awk '{print toupper($0)}')
-          echo "INTEG_NAME=${integration}" >> $GITHUB_ENV
+          integration=$(echo "$integration" | tr '-' '_')
+          integration=$(echo "$integration" | awk '{print toupper($0)}')
+          echo "INTEG_NAME=$integration" >> $GITHUB_ENV
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:

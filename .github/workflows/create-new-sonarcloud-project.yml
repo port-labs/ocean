@@ -30,23 +30,20 @@ jobs:
       - name: Process changed integrations
         id: process-changes
         run: |
-          # Extract dir names at depth 2 and count files
           FILES_JSON='${{ steps.changed-integrations.outputs.integrations_files }}'
           if [ -z "$FILES_JSON" ] || [ "$FILES_JSON" = '[]' ]; then
-            CHANGED_FILES='[]'
-            COUNT=0
+            echo "all_changed_files=[]" >> $GITHUB_OUTPUT
+            echo "count=0" >> $GITHUB_OUTPUT
           else
             CHANGED_FILES=$(echo "$FILES_JSON" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -s .)
-            COUNT=$(echo "$FILES_JSON" | jq '. | length')
+            COUNT=$(echo "$FILES_JSON" | jq -r 'length')
+            echo "all_changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+            echo "count=$COUNT" >> $GITHUB_OUTPUT
           fi
-          echo "all_changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
-          echo "count=$COUNT" >> $GITHUB_OUTPUT
       - name: Output changes integrations
         id: create-matrix
         run: |
-          echo ${{ steps.process-changes.outputs.all_changed_files }}
-          integrations_array=${{ steps.process-changes.outputs.all_changed_files }}
-          echo "INTEGRATIONS_MATRIX=$(jq -cn --argjson integArr $integrations_array '{integrations: $integArr}')" >> $GITHUB_OUTPUT
+          echo "INTEGRATIONS_MATRIX={ \"integrations\": ${{ steps.process-changes.outputs.all_changed_files }} }" >> $GITHUB_OUTPUT
 
   setup-sonarcloud:
     if: ${{ needs.pre-run.outputs.count_changed_integrations > 0 }}
@@ -61,28 +58,25 @@ jobs:
         run: |
           unsplit_integ="${{ matrix.integrations }}"
           integration=${unsplit_integ##*/}
-          echo "INTEG_NAME=${integration}" >> $GITHUB_ENV
-          echo "INTEG_PROJECT_ID=port-labs_ocean_${integration}" >> $GITHUB_ENV
-          integration=$(echo ${integration} | tr '-' '_') # replace '-' with '_'
-          integration=$(echo ${integration} | awk '{print toupper($0)}') # Uppercase the string
-          echo "INTEG_SECRET_NAME=${integration}" >> $GITHUB_ENV
+          echo "INTEG_NAME=$integration" >> $GITHUB_ENV
+          echo "INTEG_PROJECT_ID=port-labs_ocean_$integration" >> $GITHUB_ENV
+          integration=$(echo "$integration" | tr '-' '_')
+          integration=$(echo "$integration" | awk '{print toupper($0)}')
+          echo "INTEG_SECRET_NAME=$integration" >> $GITHUB_ENV
       - name: Check if SonarCloud project exists
         id: check_project
         run: |
-          PROJECT_EXISTS=$(curl -u ${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}: -X GET "https://sonarcloud.io/api/projects/search?projects=${{ env.INTEG_PROJECT_ID }}&organization=port-labs" | jq '.components | length > 0')
+          PROJECT_EXISTS=$(curl -s -u "${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}:" "https://sonarcloud.io/api/projects/search?projects=${{ env.INTEG_PROJECT_ID }}&organization=port-labs" | jq -r '.components | length > 0')
           echo "PROJECT_EXISTS=$PROJECT_EXISTS" >> $GITHUB_ENV
       - name: Create SonarCloud project and token
-        if: env.PROJECT_EXISTS == 'false'
+        if: ${{ env.PROJECT_EXISTS == 'false' }}
         run: |
-          # Create Project
-          curl -u ${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}: -X POST "https://sonarcloud.io/api/projects/create?name=Ocean-${{env.INTEG_NAME}}&project=${{ env.INTEG_PROJECT_ID }}&visibility=public&organization=port-labs"
-          # Rename main branch to "main"
-          curl -u ${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}: -X POST "https://sonarcloud.io/api/project_branches/rename?name=main&project=${{ env.INTEG_PROJECT_ID }}"
-          # Generate Token
-          SONAR_TOKEN=$(curl -u ${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}: -X POST "https://sonarcloud.io/api/user_tokens/generate?name=${{env.INTEG_NAME}}-token" | jq -r '.token')
+          curl -s -u "${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}:" -X POST "https://sonarcloud.io/api/projects/create?name=Ocean-${{ env.INTEG_NAME }}&project=${{ env.INTEG_PROJECT_ID }}&visibility=public&organization=port-labs"
+          curl -s -u "${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}:" -X POST "https://sonarcloud.io/api/project_branches/rename?name=main&project=${{ env.INTEG_PROJECT_ID }}"
+          SONAR_TOKEN=$(curl -s -u "${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}:" -X POST "https://sonarcloud.io/api/user_tokens/generate?name=${{ env.INTEG_NAME }}-token" | jq -r '.token')
           echo "SONAR_TOKEN=$SONAR_TOKEN" >> $GITHUB_ENV
       - name: Create GitHub Repo Secret
-        if: env.SONAR_TOKEN != ''
+        if: ${{ env.SONAR_TOKEN != '' }}
         uses: gliech/create-github-secret-action@v1
         with:
           name: ${{ env.INTEG_SECRET_NAME }}

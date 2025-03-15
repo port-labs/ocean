@@ -28,7 +28,8 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0
       - name: Get list of changed files
         id: changed-files
         uses: dorny/paths-filter@v3
@@ -48,47 +49,65 @@ jobs:
       - name: Process changed files
         id: process-changes
         run: |
-          # Process files into dir names at depth 2 and set outputs
           CORE_FILES='${{ steps.changed-files.outputs.core_files }}'
           INTEGRATIONS_FILES='${{ steps.changed-files.outputs.integrations_files }}'
           INFRA_FILES='${{ steps.changed-files.outputs.infra_files }}'
 
-          # Handle core (no depth limit needed, just presence check)
+          # Core: Just check presence
           if [ -z "$CORE_FILES" ] || [ "$CORE_FILES" = '[]' ]; then
             CORE_JSON='[]'
+            CORE_COUNT=0
           else
             CORE_JSON="$CORE_FILES"
+            CORE_COUNT=$(echo "$CORE_FILES" | jq -r 'length')
           fi
 
-          # Handle integrations (depth 2)
+          # Integrations: Depth 2
           if [ -z "$INTEGRATIONS_FILES" ] || [ "$INTEGRATIONS_FILES" = '[]' ]; then
             INTEGRATIONS_JSON='[]'
+            INTEGRATIONS_COUNT=0
           else
             INTEGRATIONS_JSON=$(echo "$INTEGRATIONS_FILES" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -s .)
+            INTEGRATIONS_COUNT=$(echo "$INTEGRATIONS_FILES" | jq -r 'length')
           fi
 
-          # Handle infra (no depth limit needed, just presence check)
+          # Infra: Just check presence
           if [ -z "$INFRA_FILES" ] || [ "$INFRA_FILES" = '[]' ]; then
             INFRA_JSON='[]'
+            INFRA_COUNT=0
           else
             INFRA_JSON="$INFRA_FILES"
+            INFRA_COUNT=$(echo "$INFRA_FILES" | jq -r 'length')
           fi
 
           echo "core_all_changed_files=$CORE_JSON" >> $GITHUB_OUTPUT
           echo "integrations_all_changed_files=$INTEGRATIONS_JSON" >> $GITHUB_OUTPUT
           echo "infra_all_changed_files=$INFRA_JSON" >> $GITHUB_OUTPUT
+          echo "core_count=$CORE_COUNT" >> $GITHUB_OUTPUT
+          echo "integrations_count=$INTEGRATIONS_COUNT" >> $GITHUB_OUTPUT
+          echo "infra_count=$INFRA_COUNT" >> $GITHUB_OUTPUT
       - name: Set integrations and all matrix
         id: set-all-matrix
         run: |
-          INTEGRATIONS=$(node -e 'integrations=${{ steps.process-changes.outputs.integrations_all_changed_files }};console.log(JSON.stringify(integrations.map(integration => integration.split("/")[1])))')
-          HAS_CORE=${{ steps.process-changes.outputs.core_all_changed_files != '[]' }}
-          echo "Core changes : ${HAS_CORE}"
-          MATRIX=$(node -e "integrations=${INTEGRATIONS}; hasCore=${HAS_CORE}; console.log(JSON.stringify(hasCore ? integrations.concat(['.']) : integrations))")
-          HAS_INFRA=${{ steps.process-changes.outputs.infra_all_changed_files != '[]' }}
-          echo "Infra changes : ${HAS_INFRA}"
-          echo "Integration changes : ${INTEGRATIONS}"
-          echo "All changes : ${MATRIX}"
-          echo "core=${HAS_CORE}" >> $GITHUB_OUTPUT
-          echo "integrations=${INTEGRATIONS}" >> $GITHUB_OUTPUT
-          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
-          echo "infra=${HAS_INFRA}" >> $GITHUB_OUTPUT
+          # Extract integration names (e.g., ["gitlab-v2"])
+          if [ "${{ steps.process-changes.outputs.integrations_count }}" -eq 0 ]; then
+            INTEGRATIONS='[]'
+          else
+            INTEGRATIONS=$(echo '${{ steps.process-changes.outputs.integrations_all_changed_files }}' | jq -r 'map(split("/")[1])')
+          fi
+
+          # Check core and infra presence
+          HAS_CORE=${{ steps.process-changes.outputs.core_count > 0 }}
+          HAS_INFRA=${{ steps.process-changes.outputs.infra_count > 0 }}
+
+          # Build matrix: integrations + "." if core changes
+          if [ "$HAS_CORE" = "true" ]; then
+            MATRIX=$(echo "$INTEGRATIONS" | jq -r '. + ["."]')
+          else
+            MATRIX="$INTEGRATIONS"
+          fi
+
+          echo "core=$HAS_CORE" >> $GITHUB_OUTPUT
+          echo "integrations=$INTEGRATIONS" >> $GITHUB_OUTPUT
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "infra=$HAS_INFRA" >> $GITHUB_OUTPUT
