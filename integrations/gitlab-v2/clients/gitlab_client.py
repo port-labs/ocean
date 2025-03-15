@@ -1,4 +1,4 @@
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, cast
 import asyncio
 from loguru import logger
 
@@ -6,6 +6,7 @@ from .graphql_client import GraphQLClient
 from .rest_client import RestClient
 import asyncio
 from copy import deepcopy
+
 
 class GitLabClient:
     """Async client for interacting with GitLab API using both GraphQL and REST endpoints."""
@@ -20,7 +21,7 @@ class GitLabClient:
     async def get_projects(self) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all accessible projects using GraphQL.
         Note: GraphQL is preferred over REST for projects as it allows efficient
-        fetching of extendable fields (like members, labels) in a single query
+        fetching of extendable fields (like members, labels, files) in a single query
         when needed, avoiding multiple API calls.
         """
         async for projects_batch, field_iterators in self.graphql.get_resource(
@@ -64,7 +65,7 @@ class GitLabClient:
                     logger.error(f"Error in field iterator: {result}")
                     continue
 
-                field_name, nodes = result
+                field_name, nodes = cast(tuple[str, list[dict[str, Any]]], result)
                 if nodes:
                     if field_name not in project:
                         project[field_name] = {"nodes": []}
@@ -87,7 +88,7 @@ class GitLabClient:
             active_data = next_active
             if updated:
                 logger.info(f"Yielding batch with {len(projects)} projects")
-                yield [deepcopy(project) for project, _, _ in active_data]  # Fresh copy per yield
+                yield [deepcopy(project) for project, _, _ in active_data]
 
     async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user."""

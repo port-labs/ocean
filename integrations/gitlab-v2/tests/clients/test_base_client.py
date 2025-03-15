@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, AsyncIterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -44,9 +44,11 @@ class TestGitLabClient:
         mock_labels: list[dict[str, Any]] = [{"id": "label1", "title": "Bug"}]
 
         # Mock field iterator yielding labels
-        async def mock_field_iterator():
+        async def mock_field_iterator() -> (
+            AsyncIterator[tuple[str, list[dict[str, Any]]]]
+        ):
             yield "labels", mock_labels  # First page
-            yield "labels", []  # Empty page to simulate end
+            yield "labels", []
 
         # Mock get_resource to yield (projects, iterators)
         mock_iterators = [mock_field_iterator()]
