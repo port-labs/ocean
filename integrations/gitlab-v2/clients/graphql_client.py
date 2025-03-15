@@ -29,7 +29,7 @@ class GraphQLClient(HTTPBaseClient):
             Tuple of (nodes, nested_field_generators) where nodes is the resource list
             and nested_field_generators streams nested fields like labels.
         """
-        query = self.RESOURCE_QUERIES.get(resource_type)
+        query = self.RESOURCE_QUERIES[resource_type]
         async for nodes, generators in self._execute_paginated_query(
             query=str(query), resource_field=resource_type, variables=variables
         ):
