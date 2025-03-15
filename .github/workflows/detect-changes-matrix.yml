@@ -1,4 +1,5 @@
 name: Detect Changes
+
 on:
   workflow_call:
     outputs:
@@ -23,23 +24,18 @@ jobs:
       matrix: ${{ steps.set-all-matrix.outputs.matrix }}
       integrations: ${{ steps.set-all-matrix.outputs.integrations }}
       core: ${{ steps.set-all-matrix.outputs.core }}
-      infra: ${{ steps.set-all-matrix.outputs.infra}}
+      infra: ${{ steps.set-all-matrix.outputs.infra }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Get list of changed files
         id: changed-files
-        uses: tj-actions/changed-files@v45
+        uses: dorny/paths-filter@v3
         with:
-          dir_names: true
-          json: true
-          dir_names_max_depth: 2
-          escape_json: false
-          files_yaml: |
+          filters: |
             core:
               - '!integrations/**'
-              - '!scripts/*'
               - '!scripts/*'
               - '!./*.md'
             integrations:
@@ -48,15 +44,47 @@ jobs:
               - '!integrations/_infra/*'
             infra:
               - 'integrations/_infra/*'
+          list-files: json
+      - name: Process changed files
+        id: process-changes
+        run: |
+          # Process files into dir names at depth 2 and set outputs
+          CORE_FILES='${{ steps.changed-files.outputs.core_files }}'
+          INTEGRATIONS_FILES='${{ steps.changed-files.outputs.integrations_files }}'
+          INFRA_FILES='${{ steps.changed-files.outputs.infra_files }}'
 
+          # Handle core (no depth limit needed, just presence check)
+          if [ -z "$CORE_FILES" ] || [ "$CORE_FILES" = '[]' ]; then
+            CORE_JSON='[]'
+          else
+            CORE_JSON="$CORE_FILES"
+          fi
+
+          # Handle integrations (depth 2)
+          if [ -z "$INTEGRATIONS_FILES" ] || [ "$INTEGRATIONS_FILES" = '[]' ]; then
+            INTEGRATIONS_JSON='[]'
+          else
+            INTEGRATIONS_JSON=$(echo "$INTEGRATIONS_FILES" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -s .)
+          fi
+
+          # Handle infra (no depth limit needed, just presence check)
+          if [ -z "$INFRA_FILES" ] || [ "$INFRA_FILES" = '[]' ]; then
+            INFRA_JSON='[]'
+          else
+            INFRA_JSON="$INFRA_FILES"
+          fi
+
+          echo "core_all_changed_files=$CORE_JSON" >> $GITHUB_OUTPUT
+          echo "integrations_all_changed_files=$INTEGRATIONS_JSON" >> $GITHUB_OUTPUT
+          echo "infra_all_changed_files=$INFRA_JSON" >> $GITHUB_OUTPUT
       - name: Set integrations and all matrix
         id: set-all-matrix
         run: |
-          INTEGRATIONS=$(node -e 'integrations=${{ steps.changed-files.outputs.integrations_all_changed_files }};console.log(JSON.stringify(integrations.map(integration => integration.split("/")[1])))')
-          HAS_CORE=${{ steps.changed-files.outputs.core_all_changed_files != '[]' }}
+          INTEGRATIONS=$(node -e 'integrations=${{ steps.process-changes.outputs.integrations_all_changed_files }};console.log(JSON.stringify(integrations.map(integration => integration.split("/")[1])))')
+          HAS_CORE=${{ steps.process-changes.outputs.core_all_changed_files != '[]' }}
           echo "Core changes : ${HAS_CORE}"
           MATRIX=$(node -e "integrations=${INTEGRATIONS}; hasCore=${HAS_CORE}; console.log(JSON.stringify(hasCore ? integrations.concat(['.']) : integrations))")
-          HAS_INFRA=${{ steps.changed-files.outputs.infra_all_changed_files != '[]' }}
+          HAS_INFRA=${{ steps.process-changes.outputs.infra_all_changed_files != '[]' }}
           echo "Infra changes : ${HAS_INFRA}"
           echo "Integration changes : ${INTEGRATIONS}"
           echo "All changes : ${MATRIX}"
