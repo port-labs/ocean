@@ -1,0 +1,46 @@
+[
+  {
+    "identifier": "service",
+    "title": "Service",
+    "icon": "GitLab",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "defaultBranch": {
+          "title": "Default Branch",
+          "type": "string"
+        },
+        "languages": {
+          "title": "Languages",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "title": "Language Name",
+                "type": "string"
+              },
+              "share": {
+                "title": "Language Share",
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  }
+]
