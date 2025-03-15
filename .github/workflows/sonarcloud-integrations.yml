@@ -1,4 +1,5 @@
 name: Sonarcloud scan integrations
+
 on:
   push:
     branches:
@@ -11,7 +12,7 @@ jobs:
   pre-run:
     outputs:
       changed_integrations: ${{ steps.create-matrix.outputs.INTEGRATIONS_MATRIX }}
-      count_changed_integrations: ${{steps.changed-integrations.outputs.all_modified_files_count }}
+      count_changed_integrations: ${{ steps.process-changes.outputs.count }}
     name: Build Sonarcloud scan run
     runs-on: ubuntu-latest
     steps:
@@ -20,18 +21,31 @@ jobs:
           fetch-depth: 0
       - name: Get all changed integrations
         id: changed-integrations
-        uses: tj-actions/changed-files@v45
+        uses: dorny/paths-filter@v3
         with:
-          json: true
-          dir_names: true
-          dir_names_max_depth: 2
-          files: |
-            integrations/**
+          filters: |
+            integrations:
+              - 'integrations/**'
+          list-files: json
+      - name: Process changed integrations
+        id: process-changes
+        run: |
+          # Extract dir names at depth 2 and count files
+          FILES_JSON='${{ steps.changed-integrations.outputs.integrations_files }}'
+          if [ -z "$FILES_JSON" ] || [ "$FILES_JSON" = '[]' ]; then
+            CHANGED_FILES='[]'
+            COUNT=0
+          else
+            CHANGED_FILES=$(echo "$FILES_JSON" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -s .)
+            COUNT=$(echo "$FILES_JSON" | jq '. | length')
+          fi
+          echo "all_changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
       - name: Output changes integrations
         id: create-matrix
         run: |
-          echo ${{ steps.changed-integrations.outputs.all_changed_files }}
-          integrations_array=${{ steps.changed-integrations.outputs.all_changed_files }}
+          echo ${{ steps.process-changes.outputs.all_changed_files }}
+          integrations_array=${{ steps.process-changes.outputs.all_changed_files }}
           echo "INTEGRATIONS_MATRIX=$(jq -cn --argjson integArr $integrations_array '{integrations: $integArr}')" >> $GITHUB_OUTPUT
 
   sonarcloud-scan:
