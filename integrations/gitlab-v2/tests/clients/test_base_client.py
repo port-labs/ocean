@@ -36,24 +36,37 @@ class TestGitLabClient:
         return GitLabClient("https://gitlab.example.com", "test-token")
 
     async def test_get_projects(self, client: GitLabClient) -> None:
-        """Test project fetching delegates to GraphQL client"""
+        """Test project fetching delegates to GraphQL client and handles nested fields."""
         # Arrange
-        mock_projects: list[dict[str, Any]] = [{"id": 1, "name": "Test Project"}]
+        mock_projects: list[dict[str, Any]] = [
+            {"id": "1", "name": "Test Project", "labels": {}}
+        ]
+        mock_labels: list[dict[str, Any]] = [{"id": "label1", "title": "Bug"}]
 
-        # Use a context manager for patching
+        # Mock field iterator yielding labels
+        async def mock_field_iterator():
+            yield "labels", mock_labels  # First page
+            yield "labels", []  # Empty page to simulate end
+
+        # Mock get_resource to yield (projects, iterators)
+        mock_iterators = [mock_field_iterator()]
+        mock_response = [(mock_projects, mock_iterators)]  # Single batch with iterator
+
         with patch.object(
             client.graphql,
             "get_resource",
-            return_value=async_mock_generator([mock_projects]),
+            return_value=async_mock_generator(mock_response),
         ) as mock_get_resource:
             # Act
-            results: list[dict[str, Any]] = []
             async for batch in client.get_projects():
+                results: list[dict[str, Any]] = []
+
                 results.extend(batch)
 
             # Assert
-            assert len(results) == 1
+            assert len(results) == 1  # Only one project
             assert results[0]["name"] == "Test Project"
+            assert results[0]["labels"]["nodes"] == mock_labels  # Nested field updated
             mock_get_resource.assert_called_once_with("projects")
 
     async def test_get_groups(self, client: GitLabClient) -> None:

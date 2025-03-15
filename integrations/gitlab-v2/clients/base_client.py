@@ -8,12 +8,12 @@ from .auth_client import AuthClient
 
 
 class HTTPBaseClient:
-    def __init__(self, base_url: str, token: str):
+    def __init__(self, base_url: str, token: str, endpoint: str):
         self.token = token
         self._client = http_async_client
         auth_client = AuthClient(token)
         self._headers = auth_client.get_headers()
-        self.base_url = base_url
+        self.base_url = f"{base_url}/{endpoint.strip('/')}"
 
     async def send_api_request(
         self,
@@ -21,7 +21,7 @@ class HTTPBaseClient:
         path: str,
         params: Optional[dict[str, Any]] = None,
         data: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:  # Reverted to dict[str, Any]
+    ) -> dict[str, Any]:
         url = f"{self.base_url}/{path}"
         logger.debug(f"Sending {method} request to {url}")
 

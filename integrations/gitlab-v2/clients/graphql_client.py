@@ -12,9 +12,6 @@ class GraphQLClient(HTTPBaseClient):
         "projects": ProjectQueries.LIST,
     }
 
-    def __init__(self, base_url: str, token: str):
-        super().__init__(f"{base_url}/api/graphql", token)
-
     async def get_resource(
         self, resource_type: str, variables: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[
@@ -56,34 +53,41 @@ class GraphQLClient(HTTPBaseClient):
                 variables={"cursor": cursor, **(variables or {})},
             )
 
-            resource_data = data.get(resource_field, {})
+            resource_data = data[resource_field]
             nodes = resource_data.get("nodes", [])
 
             if not nodes:
                 break
 
             nested_field_generators = [
-                self._fetch_paginated_fields(node, query, variables or {})
+                self._fetch_paginated_fields(
+                    node, resource_field, query, variables or {}
+                )
                 for node in nodes
             ]
 
             yield nodes, nested_field_generators
 
-            page_info = resource_data.get("pageInfo", {})
-            if not page_info.get("hasNextPage", False):
+            page_info = resource_data["pageInfo"]
+            if not page_info["hasNextPage"]:
                 break
 
             cursor = page_info.get("endCursor")
 
     async def _fetch_paginated_fields(
-        self, resource: dict[str, Any], query: str, variables: dict[str, Any]
+        self,
+        resource: dict[str, Any],
+        resource_field: str,
+        query: str,
+        variables: dict[str, Any],
     ) -> AsyncIterator[tuple[str, list[dict[str, Any]]]]:
+
         field_generators = [
-            self._paginate_field(resource, field, query, variables)
+            self._paginate_field(resource, field, resource_field, query, variables)
             for field, value in resource.items()
             if isinstance(value, dict) and "nodes" in value and "pageInfo" in value
         ]
-        # Process generators directly without tasks
+
         for generator in field_generators:
             async for field_name, nodes in generator:
                 yield field_name, nodes
@@ -92,46 +96,46 @@ class GraphQLClient(HTTPBaseClient):
         self,
         parent: dict[str, Any],
         field_name: str,
+        resource_field: str,
         query: str,
         variables: dict[str, Any],
     ) -> AsyncIterator[tuple[str, list[dict[str, Any]]]]:
-        field_data = parent.get(field_name, {})
-        nodes = field_data.get("nodes", [])
-        page_info = field_data.get("pageInfo", {})
-        cursor = page_info.get("endCursor")
-        logger.info(f"Initial {field_name} for {parent.get('id')}: {len(nodes)} nodes")
+        """Stream paginated nodes for a field (e.g., labels) of a GitLab resource."""
+
+        parent_id: str = parent["id"]
+        field_data: dict[str, Any] = parent[field_name]
+        nodes: list[dict[str, Any]] = field_data["nodes"]
+        page_info: dict[str, Any] = field_data["pageInfo"]
+
         yield field_name, nodes
-        while page_info.get("hasNextPage", False):
-            logger.debug(
-                f"Fetching more '{field_name}' for {parent.get('id')} with cursor: {cursor}"
-            )
-            field_data_response = await self._execute_query(
+
+        cursor: str | None = page_info["endCursor"]
+        while page_info["hasNextPage"]:
+            if cursor is None:
+                logger.error(
+                    f"Missing cursor for {field_name} pagination on {parent_id}"
+                )
+                break
+
+            logger.debug(f"Fetching '{field_name}' for {parent_id}")
+            response = await self._execute_query(
                 query,
-                variables={f"{field_name}Cursor": cursor, **(variables or {})},
+                variables={f"{field_name}Cursor": cursor, **variables},
             )
-            response_nodes = field_data_response.get("projects", {}).get("nodes", [])
-            matching_parent = next(
-                (p for p in response_nodes if p["id"] == parent["id"]), None
+
+            resource_nodes: list[dict[str, Any]] = response[resource_field]["nodes"]
+            resource_field_data: dict[str, Any] = next(
+                resource[field_name]
+                for resource in resource_nodes
+                if resource["id"] == parent_id
             )
-            if not matching_parent:
-                logger.warning(
-                    f"No matching parent found for ID {parent.get('id', 'unknown')}"
-                )
-                break
-            new_field_data = matching_parent.get(field_name, {})
-            new_nodes = new_field_data.get("nodes", [])
-            new_page_info = new_field_data.get("pageInfo", {})
-            if not new_nodes:
-                logger.warning(
-                    f"No new {field_name} returned for {parent.get('id', 'unknown')}"
-                )
-                break
-            logger.debug(
-                f"Yielding {len(new_nodes)} new {field_name} nodes for {parent.get('id')}"
-            )
-            yield field_name, new_nodes
-            cursor = new_page_info.get("endCursor")
-            page_info = new_page_info
+            nodes = resource_field_data["nodes"]
+
+            logger.debug(f"Yielding {len(nodes)} {field_name} nodes for {parent_id}")
+            yield field_name, nodes
+
+            page_info = resource_field_data["pageInfo"]
+            cursor = page_info["endCursor"]
 
     async def _execute_query(
         self, query: str, variables: Optional[dict[str, Any]] = None
@@ -150,7 +154,7 @@ class GraphQLClient(HTTPBaseClient):
                 logger.error(f"GraphQL query failed: {response['errors']}")
                 raise Exception(f"GraphQL query failed: {response['errors']}")
 
-            return response.get("data", {})
+            return response["data"]
         except Exception as e:
             logger.error(f"Failed to execute GraphQL query: {str(e)}")
             raise

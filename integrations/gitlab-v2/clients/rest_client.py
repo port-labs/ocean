@@ -17,9 +17,6 @@ class RestClient(HTTPBaseClient):
         }
     }
 
-    def __init__(self, base_url: str, token: str):
-        super().__init__(f"{base_url}/api/v4", token)
-
     async def get_resource(
         self, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
