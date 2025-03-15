@@ -36,7 +36,7 @@ jobs:
             echo "all_changed_files=[]" >> $GITHUB_OUTPUT
             echo "count=0" >> $GITHUB_OUTPUT
           else
-            CHANGED_FILES=$(echo "$FILES_JSON" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -s .)
+            CHANGED_FILES=$(echo "$FILES_JSON" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -sc '.')
             COUNT=$(echo "$FILES_JSON" | jq -r 'length')
             echo "all_changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
             echo "count=$COUNT" >> $GITHUB_OUTPUT

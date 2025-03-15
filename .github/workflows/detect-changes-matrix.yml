@@ -41,8 +41,7 @@ jobs:
               - '!./*.md'
             integrations:
               - 'integrations/**'
-              - '!integrations/**/*.md'
-              - '!integrations/_infra/*'
+              - '!integrations/_infra/**'
             infra:
               - 'integrations/_infra/*'
           list-files: json
@@ -53,38 +52,32 @@ jobs:
           INTEGRATIONS_FILES='${{ steps.changed-files.outputs.integrations_files }}'
           INFRA_FILES='${{ steps.changed-files.outputs.infra_files }}'
 
-          # Core: Just check presence
+          # Core: Presence check
           if [ -z "$CORE_FILES" ] || [ "$CORE_FILES" = '[]' ]; then
-            CORE_JSON='[]'
             CORE_COUNT=0
           else
-            CORE_JSON="$CORE_FILES"
             CORE_COUNT=$(echo "$CORE_FILES" | jq -r 'length')
           fi
 
-          # Integrations: Depth 2
+          # Integrations: (depth-2 dirs, count)
           if [ -z "$INTEGRATIONS_FILES" ] || [ "$INTEGRATIONS_FILES" = '[]' ]; then
             INTEGRATIONS_JSON='[]'
             INTEGRATIONS_COUNT=0
           else
-            INTEGRATIONS_JSON=$(echo "$INTEGRATIONS_FILES" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -s .)
+            INTEGRATIONS_JSON=$(echo "$INTEGRATIONS_FILES" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -sc '.')
             INTEGRATIONS_COUNT=$(echo "$INTEGRATIONS_FILES" | jq -r 'length')
           fi
 
-          # Infra: Just check presence
+          # Infra: Presence check
           if [ -z "$INFRA_FILES" ] || [ "$INFRA_FILES" = '[]' ]; then
-            INFRA_JSON='[]'
             INFRA_COUNT=0
           else
-            INFRA_JSON="$INFRA_FILES"
             INFRA_COUNT=$(echo "$INFRA_FILES" | jq -r 'length')
           fi
 
-          echo "core_all_changed_files=$CORE_JSON" >> $GITHUB_OUTPUT
           echo "integrations_all_changed_files=$INTEGRATIONS_JSON" >> $GITHUB_OUTPUT
-          echo "infra_all_changed_files=$INFRA_JSON" >> $GITHUB_OUTPUT
-          echo "core_count=$CORE_COUNT" >> $GITHUB_OUTPUT
           echo "integrations_count=$INTEGRATIONS_COUNT" >> $GITHUB_OUTPUT
+          echo "core_count=$CORE_COUNT" >> $GITHUB_OUTPUT
           echo "infra_count=$INFRA_COUNT" >> $GITHUB_OUTPUT
       - name: Set integrations and all matrix
         id: set-all-matrix
