@@ -90,6 +90,8 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
         ocean_mock.port_client = mock_port_client
+        ocean_mock.metrics = MagicMock()
+        ocean_mock.metrics.get_metric = MagicMock(return_value=MagicMock())
 
         return ocean_mock
 
@@ -181,7 +183,7 @@ def mock_sync_raw_mixin(
     sync_raw_mixin._entities_state_applier = mock_entities_state_applier
     sync_raw_mixin._port_app_config_handler = mock_port_app_config_handler
     sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([{}], []))  # type: ignore
-    sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=MagicMock())
+    sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=MagicMock())  # type: ignore
 
     return sync_raw_mixin
 
