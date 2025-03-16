@@ -273,7 +273,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             return [], []
 
         objects_diff = await self._calculate_raw([(resource, results)])
-        entities_selector_diff, errors, _ = objects_diff[0]
+        entities_selector_diff, errors, _, _ = objects_diff[0]
 
         await self.entities_state_applier.delete(
             entities_selector_diff.passed, user_agent_type
