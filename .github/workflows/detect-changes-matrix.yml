@@ -72,7 +72,8 @@ jobs:
             INFRA_COUNT=0
           else
             INFRA_ARRAY=($(echo "$INFRA_FILES" | jq -r '.[]'))
-            INFRA_COUNT=${#INFRA_ARRAY[@]}          fi
+            INFRA_COUNT=${#INFRA_ARRAY[@]}          
+          fi
 
           echo "integrations_all_changed_files=$INTEGRATIONS_JSON" >> $GITHUB_OUTPUT
           echo "integrations_count=$INTEGRATIONS_COUNT" >> $GITHUB_OUTPUT
