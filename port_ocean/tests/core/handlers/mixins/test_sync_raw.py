@@ -90,6 +90,7 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
         ocean_mock.port_client = mock_port_client
+        ocean_mock.metrics = MagicMock()
 
         return ocean_mock
 
