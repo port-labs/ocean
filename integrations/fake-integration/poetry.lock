@@ -581,13 +581,13 @@ standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "htt
 
 [[package]]
 name = "filelock"
-version = "3.17.0"
+version = "3.18.0"
 description = "A platform independent file lock."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "filelock-3.17.0-py3-none-any.whl", hash = "sha256:533dc2f7ba78dc2f0f531fc6c4940addf7b70a481e269a5a3b93be94ffbe8338"},
-    {file = "filelock-3.17.0.tar.gz", hash = "sha256:ee4e77401ef576ebb38cd7f13b9b28893194acc20a8e68e18730ba9c0e54660e"},
+    {file = "filelock-3.18.0-py3-none-any.whl", hash = "sha256:c401f4f8377c4464e6db25fff06205fd89bdd83b65eb0488ed1b160f780e21de"},
+    {file = "filelock-3.18.0.tar.gz", hash = "sha256:adbc88eabb99d2fec8c9c1b229b171f18afa655400173ddc653d5d01501fb9f2"},
 ]
 
 [package.extras]
@@ -1167,42 +1167,39 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.21.4"
+version = "0.21.5"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
-python-versions = "^3.12"
-files = []
-develop = true
+python-versions = "<4.0,>=3.12"
+files = [
+    {file = "port_ocean-0.21.5-py3-none-any.whl", hash = "sha256:7eb8455e1f331f0da50f518e7b97160d8286bd624b940ed82a8dd3af09153bfb"},
+    {file = "port_ocean-0.21.5.tar.gz", hash = "sha256:546d5580487fa045e943290146d87570b3c88ce75e4626f645a7807e997645ca"},
+]
 
 [package.dependencies]
 aiostream = ">=0.5.2,<0.7.0"
 click = {version = ">=8.1.3,<9.0.0", optional = true, markers = "extra == \"cli\""}
-confluent-kafka = "^2.8.2"
+confluent-kafka = ">=2.8.2,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
-fastapi = "^0.115.3"
+fastapi = ">=0.115.3,<0.116.0"
 httpx = ">=0.24.1,<0.28.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
-jq = "^1.8.0"
-loguru = "^0.7.0"
-prometheus-client = "^0.21.1"
-pydantic = {version = "^1.10.8", extras = ["dotenv"]}
-pydispatcher = "^2.0.7"
-pyhumps = "^3.8.0"
-python-dateutil = "^2.9.0.post0"
-pyyaml = "^6.0"
+jq = ">=1.8.0,<2.0.0"
+loguru = ">=0.7.0,<0.8.0"
+pydantic = {version = ">=1.10.8,<2.0.0", extras = ["dotenv"]}
+pydispatcher = ">=2.0.7,<3.0.0"
+pyhumps = ">=3.8.0,<4.0.0"
+python-dateutil = ">=2.9.0.post0,<3.0.0"
+pyyaml = ">=6.0,<7.0"
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
-six = "^1.16.0"
-tomli = "^2.0.1"
+six = ">=1.16.0,<2.0.0"
+tomli = ">=2.0.1,<3.0.0"
 urllib3 = ">=1.26.16,<3.0.0"
 uvicorn = ">=0.22,<0.31"
 werkzeug = ">=2.3.4,<4.0.0"
 
 [package.extras]
 cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-time (>=0.2.0,<0.3.0)", "rich (>=13.4.1,<14.0.0)"]
-
-[package.source]
-type = "directory"
-url = "../.."
 
 [[package]]
 name = "pre-commit"
@@ -1221,20 +1218,6 @@ identify = ">=1.0.0"
 nodeenv = ">=0.11.1"
 pyyaml = ">=5.1"
 virtualenv = ">=20.10.0"
-
-[[package]]
-name = "prometheus-client"
-version = "0.21.1"
-description = "Python client for the Prometheus monitoring system."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "prometheus_client-0.21.1-py3-none-any.whl", hash = "sha256:594b45c410d6f4f8888940fe80b5cc2521b305a1fafe1c58609ef715a001f301"},
-    {file = "prometheus_client-0.21.1.tar.gz", hash = "sha256:252505a722ac04b0456be05c05f75f45d760c2911ffc45f2a06bcaed9f3ae3fb"},
-]
-
-[package.extras]
-twisted = ["twisted"]
 
 [[package]]
 name = "pycparser"
@@ -1965,4 +1948,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "3bf86aceeb75200d41b1a61d711056d9fe98463a06a602363fd806dddaab481a"
+content-hash = "b3d2daa2a24698dd29e172bd7f657fbb61608277a95f3ad6fc30ca085a2dc89f"
