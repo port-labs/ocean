@@ -784,7 +784,7 @@ async def test_register_resource_raw_skip_event_type_http_request_upsert_called_
     )
     mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[calculation_result])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock()  # type: ignore
-    mock_sync_raw_mixin._entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
     async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
@@ -800,7 +800,7 @@ async def test_register_resource_raw_skip_event_type_http_request_upsert_called_
         assert len(result.entity_selector_diff.passed) == 1
         mock_sync_raw_mixin._calculate_raw.assert_called_once()
         mock_sync_raw_mixin._map_entities_compared_with_port.assert_not_called()
-        mock_sync_raw_mixin.entities_state_applier.upsert.assert_called_once()  # type: ignore
+        mock_sync_raw_mixin.entities_state_applier.upsert.assert_called_once()
 
 
 @pytest.mark.asyncio
