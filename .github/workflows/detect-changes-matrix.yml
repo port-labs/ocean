@@ -57,7 +57,8 @@ jobs:
             CORE_COUNT=0
           else
             CORE_ARRAY=($(echo "$CORE_FILES" | jq -r '.[]'))
-            CORE_COUNT=${#CORE_ARRAY[@]}          fi
+            CORE_COUNT=${#CORE_ARRAY[@]}          
+          fi
           # Integrations: (depth-2 dirs, count)
           if [ -z "$INTEGRATIONS_FILES" ] || [ "$INTEGRATIONS_FILES" = '[]' ]; then
             INTEGRATIONS_JSON='[]'
