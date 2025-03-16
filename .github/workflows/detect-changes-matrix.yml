@@ -56,21 +56,21 @@ jobs:
           if [ -z "$CORE_FILES" ] || [ "$CORE_FILES" = '[]' ]; then
             CORE_COUNT=0
           else
-            CORE_COUNT=$(printf '%s' "$CORE_FILES" | jq -r 'length')
+            CORE_COUNT=$(jq -r 'length' <<< "$CORE_FILES")
           fi
           # Integrations: (depth-2 dirs, count)
           if [ -z "$INTEGRATIONS_FILES" ] || [ "$INTEGRATIONS_FILES" = '[]' ]; then
             INTEGRATIONS_JSON='[]'
             INTEGRATIONS_COUNT=0
           else
-            INTEGRATIONS_JSON=$(printf '%s' "$INTEGRATIONS_FILES" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -sc '.')
-            INTEGRATIONS_COUNT=$(printf '%s' "$INTEGRATIONS_FILES" | jq -r 'length')
+            INTEGRATIONS_JSON=$(jq -r '.[] | split("/")[0:2] | join("/")' <<< "$INTEGRATIONS_FILES" | sort -u | jq -sc '.')
+            INTEGRATIONS_COUNT=$(jq -r 'length' <<< "$INTEGRATIONS_FILES")
           fi
 
           if [ -z "$INFRA_FILES" ] || [ "$INFRA_FILES" = '[]' ]; then
             INFRA_COUNT=0
           else
-            INFRA_COUNT=$(printf '%s' "$INFRA_FILES" | jq -r 'length')
+            INFRA_COUNT=$(jq -r 'length' <<< "$INFRA_FILES")
           fi
 
           echo "integrations_all_changed_files=$INTEGRATIONS_JSON" >> $GITHUB_OUTPUT
