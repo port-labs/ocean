@@ -92,7 +92,7 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.port_client = mock_port_client
         ocean_mock.metrics = MagicMock()
         ocean_mock.metrics.get_metric = MagicMock(return_value=MagicMock())
-
+        ocean_mock.metrics.flush = AsyncMock()
         return ocean_mock
 
 
