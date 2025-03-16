@@ -58,8 +58,8 @@ class EmptyMetric:
 class Metrics:
     def __init__(
         self,
-        metrics_settings: any,
-        integration_configuration: any,
+        metrics_settings: Any,
+        integration_configuration: Any,
         integration_version: str,
         ocean_version: str,
     ) -> None:
@@ -125,7 +125,7 @@ class Metrics:
         metric_families = prometheus_client.parser.text_string_to_metric_families(
             latest_raw
         )
-        metrics_dict = {}
+        metrics_dict: dict[str, Any] = {}
         for family in metric_families:
             for sample in family.samples:
                 current_level = metrics_dict
