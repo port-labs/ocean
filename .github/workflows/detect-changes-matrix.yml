@@ -56,22 +56,23 @@ jobs:
           if [ -z "$CORE_FILES" ] || [ "$CORE_FILES" = '[]' ]; then
             CORE_COUNT=0
           else
-            CORE_COUNT=$(jq -r 'length' <<< "$CORE_FILES")
-          fi
+            CORE_ARRAY=($(echo "$CORE_FILES" | jq -r '.[]'))
+            CORE_COUNT=${#CORE_ARRAY[@]}          fi
           # Integrations: (depth-2 dirs, count)
           if [ -z "$INTEGRATIONS_FILES" ] || [ "$INTEGRATIONS_FILES" = '[]' ]; then
             INTEGRATIONS_JSON='[]'
             INTEGRATIONS_COUNT=0
           else
-            INTEGRATIONS_JSON=$(jq -r '.[] | split("/")[0:2] | join("/")' <<< "$INTEGRATIONS_FILES" | sort -u | jq -sc '.')
-            INTEGRATIONS_COUNT=$(jq -r 'length' <<< "$INTEGRATIONS_FILES")
+            INTEGRATIONS_JSON=$(echo "$INTEGRATIONS_FILES" | jq -r '.[] | split("/")[0:2] | join("/")' | sort -u | jq -sc '.')
+            INTEGRATIONS_ARRAY=($(echo "$INTEGRATIONS_FILES" | jq -r '.[]'))
+            INTEGRATIONS_COUNT=${#INTEGRATIONS_ARRAY[@]}
           fi
 
           if [ -z "$INFRA_FILES" ] || [ "$INFRA_FILES" = '[]' ]; then
             INFRA_COUNT=0
           else
-            INFRA_COUNT=$(jq -r 'length' <<< "$INFRA_FILES")
-          fi
+            INFRA_ARRAY=($(echo "$INFRA_FILES" | jq -r '.[]'))
+            INFRA_COUNT=${#INFRA_ARRAY[@]}          fi
 
           echo "integrations_all_changed_files=$INTEGRATIONS_JSON" >> $GITHUB_OUTPUT
           echo "integrations_count=$INTEGRATIONS_COUNT" >> $GITHUB_OUTPUT
