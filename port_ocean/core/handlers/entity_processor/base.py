@@ -50,8 +50,6 @@ class BaseEntityProcessor(BaseHandler):
         with logger.contextualize(kind=mapping.kind):
             if not raw_data:
                 return CalculationResult(EntitySelectorDiff([], []), [])
-            result = await self._parse_items(
+            return await self._parse_items(
                 mapping, raw_data, parse_all, send_raw_data_examples_amount
             )
-
-            return result

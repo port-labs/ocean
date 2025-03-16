@@ -90,9 +90,7 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
         ocean_mock.port_client = mock_port_client
-        ocean_mock.metrics = MagicMock()
-        ocean_mock.metrics.get_metric = MagicMock(return_value=MagicMock())
-        ocean_mock.metrics.flush = AsyncMock()
+
         return ocean_mock
 
 
@@ -183,7 +181,7 @@ def mock_sync_raw_mixin(
     sync_raw_mixin._entities_state_applier = mock_entities_state_applier
     sync_raw_mixin._port_app_config_handler = mock_port_app_config_handler
     sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([{}], []))  # type: ignore
-    sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=MagicMock())  # type: ignore
+    sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=MagicMock())
 
     return sync_raw_mixin
 
@@ -226,9 +224,9 @@ async def test_sync_raw_mixin_self_dependency(
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
+    mock_sync_raw_mixin._entity_processor.parse_items = AsyncMock(
         return_value=calc_result_mock
-    )
+    )  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -283,9 +281,9 @@ async def test_sync_raw_mixin_circular_dependency(
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
+    mock_sync_raw_mixin._entity_processor.parse_items = AsyncMock(
         return_value=calc_result_mock
-    )
+    )  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -366,9 +364,9 @@ async def test_sync_raw_mixin_dependency(
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
+    mock_sync_raw_mixin._entity_processor.parse_items = AsyncMock(
         return_value=calc_result_mock
-    )
+    )  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -461,7 +459,7 @@ async def test_register_raw(
     async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
         # Use patch to mock the method instead of direct assignment
         with patch.object(
-            mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
+            mock_sync_raw_mixin_with_jq_processor._port_app_config_handler,
             "get_port_app_config",
             return_value=PortAppConfig(
                 enable_merge_entity=True,
@@ -471,7 +469,7 @@ async def test_register_raw(
             ),
         ):
             # Ensure the event.port_app_config is set correctly
-            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor._port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
 
@@ -483,7 +481,7 @@ async def test_register_raw(
 
             # Patch the upsert method with the side effect
             with patch.object(
-                mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
+                mock_sync_raw_mixin_with_jq_processor._entities_state_applier,
                 "upsert",
                 side_effect=upsert_side_effect,
             ):
@@ -529,7 +527,7 @@ async def test_unregister_raw(
     async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
         # Use patch to mock the method instead of direct assignment
         with patch.object(
-            mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
+            mock_sync_raw_mixin_with_jq_processor._port_app_config_handler,
             "get_port_app_config",
             return_value=PortAppConfig(
                 enable_merge_entity=True,
@@ -539,7 +537,7 @@ async def test_unregister_raw(
             ),
         ):
             # Ensure the event.port_app_config is set correctly
-            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor._port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
 
@@ -697,7 +695,7 @@ async def test_register_resource_raw_no_changes_upsert_not_called_entitiy_is_ret
     entity = Entity(identifier="1", blueprint="service")
     mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_sync_raw_mixin._entities_state_applier.upsert = AsyncMock()  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
@@ -712,7 +710,7 @@ async def test_register_resource_raw_no_changes_upsert_not_called_entitiy_is_ret
         # Assertions
         assert len(result.entity_selector_diff.passed) == 1
         mock_sync_raw_mixin._calculate_raw.assert_called_once()
-        mock_sync_raw_mixin.entities_state_applier.upsert.assert_not_called()
+        mock_sync_raw_mixin._entities_state_applier.upsert.assert_not_called()
         mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
 
 
@@ -724,7 +722,7 @@ async def test_register_resource_raw_with_changes_upsert_called_and_entities_are
     entity = Entity(identifier="1", blueprint="service")
     mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity]))  # type: ignore
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
+    mock_sync_raw_mixin._entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
@@ -739,7 +737,7 @@ async def test_register_resource_raw_with_changes_upsert_called_and_entities_are
         # Assertions
         assert len(result.entity_selector_diff.passed) == 1
         mock_sync_raw_mixin._calculate_raw.assert_called_once()
-        mock_sync_raw_mixin.entities_state_applier.upsert.assert_called_once()
+        mock_sync_raw_mixin._entities_state_applier.upsert.assert_called_once()
         mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
 
 
@@ -751,7 +749,7 @@ async def test_register_resource_raw_with_errors(
     error = Exception("Test error")
     mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_sync_raw_mixin._entities_state_applier.upsert = AsyncMock()  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
@@ -770,7 +768,7 @@ async def test_register_resource_raw_with_errors(
         assert result.errors[0] == error
         mock_sync_raw_mixin._calculate_raw.assert_called_once()
         mock_sync_raw_mixin._map_entities_compared_with_port.assert_called_once()
-        mock_sync_raw_mixin.entities_state_applier.upsert.assert_not_called()
+        mock_sync_raw_mixin._entities_state_applier.upsert.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -790,7 +788,7 @@ async def test_register_resource_raw_skip_event_type_http_request_upsert_called_
     )
     mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[calculation_result])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock()  # type: ignore
-    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
+    mock_sync_raw_mixin._entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
     async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
@@ -806,7 +804,7 @@ async def test_register_resource_raw_skip_event_type_http_request_upsert_called_
         assert len(result.entity_selector_diff.passed) == 1
         mock_sync_raw_mixin._calculate_raw.assert_called_once()
         mock_sync_raw_mixin._map_entities_compared_with_port.assert_not_called()
-        mock_sync_raw_mixin.entities_state_applier.upsert.assert_called_once()
+        mock_sync_raw_mixin._entities_state_applier.upsert.assert_called_once()
 
 
 @pytest.mark.asyncio

@@ -329,14 +329,14 @@ async def test_parse_raw_event_results_to_entities_creation(
     mock_live_events_mixin: LiveEventsMixin,
 ) -> None:
     """Test parsing raw event results for entity creation"""
-    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
 
     calculation_result = CalculationResult(
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
         errors=[],
         misonfigured_entity_keys={},
     )
-    mock_live_events_mixin.entity_processor.parse_items.return_value = (
+    mock_live_events_mixin.entity_processor.parse_items.return_value = (  # type: ignore
         calculation_result
     )
 
@@ -356,7 +356,7 @@ async def test_parse_raw_event_results_to_entities_deletion(
     mock_live_events_mixin: LiveEventsMixin,
 ) -> None:
     """Test parsing raw event results for entity deletion"""
-    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
 
     calculation_result = CalculationResult(
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
