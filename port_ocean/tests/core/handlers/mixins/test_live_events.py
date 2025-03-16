@@ -336,7 +336,7 @@ async def test_parse_raw_event_results_to_entities_creation(
         errors=[],
         misonfigured_entity_keys={},
     )
-    mock_live_events_mixin.entity_processor.parse_items.return_value = (  # type: ignore
+    mock_live_events_mixin.entity_processor.parse_items.return_value = (
         calculation_result
     )
 

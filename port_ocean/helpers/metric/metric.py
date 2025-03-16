@@ -24,24 +24,13 @@ class MetricType:
     DURATION = ("duration_seconds", "duration description", ["kind", "phase"])
     OBJECT_COUNT = ("object_count", "object_count description", ["kind", "phase"])
     ERROR_COUNT = ("error_count", "error_count description", ["kind", "phase"])
+    SUCCESS = ("success", "success description", ["kind", "phase"])
     RATE_LIMIT_WAIT = (
         "rate_limit_wait_seconds",
         "rate_limit_wait description",
         ["kind", "phase", "endpoint"],
     )
-    FAILED_COUNT = ("failed_count", "failed_count description", ["kind", "phase"])
-    INPUT_COUNT = (
-        "input_count",
-        "input_count description",
-        ["kind", "phase"],
-    )
-    UPSERTED = ("upserted_count", "upserted description", ["kind", "phase"])
     DELETED = ("deleted_count", "deleted description", ["kind", "phase"])
-    REQUESTS = (
-        "http_requests_count",
-        "requests description",
-        ["kind", "phase", "status", "endpoint"],
-    )
 
 
 class EmptyMetric:
