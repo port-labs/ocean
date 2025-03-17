@@ -42,7 +42,7 @@ The following example illustrates the constructor. Note how it sets up the base 
 
 <details>
 
-<summary><b>GitHub Client constructor (Click to expand)</b></summary>
+<summary><b>Jira Client constructor (Click to expand)</b></summary>
 
 ```python showLineNumbers
 import asyncio
