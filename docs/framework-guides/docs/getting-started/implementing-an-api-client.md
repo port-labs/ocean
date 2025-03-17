@@ -326,7 +326,7 @@ Similarly, to **ingest Jira issues**, we provide:
 
 <details>
 
-<summary><b>GitHub Client `get_paginated_issues` and `get_single_issue` methods (Click to expand)</b></summary>
+<summary><b>Jira Client `get_paginated_issues` and `get_single_issue` methods (Click to expand)</b></summary>
 
 ```python showLineNumbers
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
