@@ -444,7 +444,7 @@ Bringing it all together, here’s what your `jira/client.py` file should look l
 
 <details>
 
-<summary><b>GitHub Client (Click to expand)</b></summary>
+<summary><b>Jira Client (Click to expand)</b></summary>
 
 ```python
 import asyncio
