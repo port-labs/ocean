@@ -7,13 +7,13 @@ sidebar_position: 2
 
 ## Introduction
 
-When building a Jira integration for Ocean, one of the first steps is to **create an API client**. This client must:
+When building a Jira integration for Ocean, the first step is to create an API client that:
 
-- **Authenticate** with Jira (handling both Basic Auth and OAuth tokens). Oauth support is optional and could be ignored
-- **Fetch data** from Jira – in this case, **projects** and **issues** (though you can expand this to users, teams, boards, etc., as needed).
-- **Set up webhooks** so that relevant changes (e.g., new issues, updated projects) can be reported to Ocean in real-time.
+- **Authenticates with Jira:** Use Basic Authentication or, optionally, OAuth tokens.
+- **Retrieves data from Jira:** Sends authenticated requests to fetch API resources. This guide focuses on projects and issues, though support can be extended to include additional resources like users, teams, or boards as needed.
+- **Configures webhooks:** Set up webhooks to report real-time updates, such as new issues or changes to projects, to Ocean.
 
-In this guide, we’ll walk through the process of creating a `JiraClient` class that encapsulates all the Jira API logic. This class will be used to interact with Jira’s REST API, fetch data, and set up webhooks. We are concerned with the following API endpoints:
+In this guide, we’ll walk through building a `JiraClient` class that encapsulates all interactions with Jira’s REST API. This class will handle data retrieval and webhook configuration. We will specifically focus on the following API endpoints:
 
 - [Jira Project API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-projects/#api-rest-api-3-project-search-get)
 - [Jira Issue API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-get)
@@ -31,13 +31,13 @@ This file will contain the `JiraClient` class, which would encapsulate all the l
 
 ## The `JiraClient` Constructor
 
-In the constructor, we need to handle:
+The constructor initializes:
 
-- **Jira URLs**: the base Jira URL (could be on Atlassian’s cloud or self-hosted).
-- **Auth details**: either Basic Auth or OAuth-based Bearer token.
-- **Concurrent Requests**: We’ll use an `asyncio.Semaphore` to limit the number of concurrent requests to avoid performance pitfalls or hitting Jira’s concurrency limits.
+- **Jira URLs**: Sets the base URL for Jira (whether on Atlassian’s cloud or a self-hosted instance).
+- **Authentication Details**: Chooses between Basic Authentication and OAuth-based Bearer tokens.
+- **Concurrent Request Management**: Uses an `asyncio.Semaphore` to limit concurrent requests and avoid performance issues or rate-limit problems.
 
-Below, we implement the class constructor. Notice how we set up the base URLs and choose the authentication scheme depending on whether `api.atlassian.com` is detected. We assume that the presence of `api.atlassian.com` means this is an Oauth flow.
+The following example illustrates the constructor. Note how it sets up the base URLs and selects the appropriate authentication method based on the presence of `"api.atlassian.com"` (indicating an OAuth flow)
 
 
 <details>
@@ -162,7 +162,7 @@ As shown in the constructor, we automatically detect if the Jira URL contains `"
 - **OAuth** scenario: We rely on `BearerAuth`, which is a simple custom class that sets the `Authorization` header with a Bearer token.
 - **BasicAuth** scenario: We pass the user’s **email** and a **token** (often an API token from Jira).
 
-## Sending API Requests (`_send_api_request`)
+## Sending API Requests
 
 We want a single utility method that **all** request-making functions can call. This method handles:
 
@@ -217,7 +217,7 @@ We want a single utility method that **all** request-making functions can call. 
 
 </details>
 
-## Pagination Helpers (`_get_paginated_data`)
+## Pagination
 
 Jira’s APIs use two kinds of pagination:
 
