@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator, Optional
-from httpx import HTTPStatusError
+from httpx import HTTPError, HTTPStatusError
 from loguru import logger
 from port_ocean.utils import http_async_client
 from helpers.exceptions import MissingIntegrationCredentialException
@@ -80,9 +80,10 @@ class BitbucketClient:
                 return {}
             logger.error(f"Bitbucket API error: {error_message}")
             raise e
-        except httpx.HTTPError as e:
+        except HTTPError as e:
             logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
             raise e
+
     async def _send_paginated_api_request(
         self,
         url: str,
