@@ -364,7 +364,7 @@ If the Jira instance is Atlassian Cloud (`api.atlassian.com`), we call `_create_
 
 <details>
 
-<summary><b>GitHub Client `_create_events_webhook_oauth` method (Click to expand)</b></summary>
+<summary><b>Jira Client `_create_events_webhook_oauth` method (Click to expand)</b></summary>
 
 ```python showLineNumbers
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
