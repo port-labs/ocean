@@ -95,7 +95,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     max_wait_seconds_before_shutdown: float = 5.0
 
     @validator("metrics", pre=True)
-    def validate_metrics(cls, v):
+    def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:
         if v is None:
             return MetricsSettings(enabled=False, webhook_url=None)
         if isinstance(v, dict):
