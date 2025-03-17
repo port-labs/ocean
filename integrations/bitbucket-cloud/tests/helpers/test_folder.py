@@ -41,21 +41,21 @@ def sample_folder_patterns() -> List[FolderPattern]:
 async def test_extract_repo_names_from_patterns(
     sample_folder_patterns: List[FolderPattern],
 ) -> None:
-    result = await extract_repo_names_from_patterns(sample_folder_patterns)
+    result = extract_repo_names_from_patterns(sample_folder_patterns)
     expected: Set[str] = {"repo1", "repo2", "repo3"}
     assert result == expected
 
 
 @pytest.mark.asyncio
 async def test_extract_repo_names_from_patterns_empty() -> None:
-    result = await extract_repo_names_from_patterns([])
+    result = extract_repo_names_from_patterns([])
     assert result == set()
 
 
 @pytest.mark.asyncio
 async def test_extract_repo_names_from_patterns_no_repos() -> None:
     patterns = [FolderPattern(path="src/main", repos=[])]
-    result = await extract_repo_names_from_patterns(patterns)
+    result = extract_repo_names_from_patterns(patterns)
     assert result == set()
 
 
@@ -63,7 +63,7 @@ async def test_extract_repo_names_from_patterns_no_repos() -> None:
 async def test_create_pattern_mapping(
     sample_folder_patterns: List[FolderPattern],
 ) -> None:
-    result = await create_pattern_mapping(sample_folder_patterns)
+    result = create_pattern_mapping(sample_folder_patterns)
     expected: Dict[str, Dict[str, List[str]]] = {
         "repo1": {"main": ["src/main", "tests/unit"]},
         "repo2": {"main": ["src/main", "docs/*"]},
@@ -83,7 +83,7 @@ async def test_find_matching_folders() -> None:
     patterns: List[str] = ["src/main"]
     repo: Dict[str, Any] = {"name": "test_repo"}
 
-    result = await find_matching_folders(contents, patterns, repo, "main")
+    result = find_matching_folders(contents, patterns, repo, "main")
     assert len(result) == 1
     assert result[0]["folder"]["path"] == "src/main"
     assert result[0]["repo"] == repo
@@ -98,7 +98,7 @@ async def test_find_matching_folders() -> None:
     patterns = ["docs/*"]
     repo = {"name": "test_repo"}
 
-    result = await find_matching_folders(contents, patterns, repo, "main")
+    result = find_matching_folders(contents, patterns, repo, "main")
     assert len(result) == 2
     assert {item["folder"]["path"] for item in result} == {"docs/api", "docs/guide"}
 

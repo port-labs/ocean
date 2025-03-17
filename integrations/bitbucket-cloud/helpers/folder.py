@@ -1,4 +1,3 @@
-import asyncio
 from collections import defaultdict
 from typing import Any, AsyncGenerator, Dict, List, Set, Tuple
 
@@ -8,7 +7,7 @@ from client import BitbucketClient
 from integration import FolderPattern
 
 
-async def extract_repo_names_from_patterns(
+def extract_repo_names_from_patterns(
     folder_patterns: List[FolderPattern],
 ) -> Set[str]:
     """Extract repository names from folder patterns."""
@@ -69,25 +68,24 @@ def find_matching_folders(
     return matching_folders
 
 
-async def find_common_base_path(paths: List[str]) -> Tuple[str, int]:
+def get_parts_before_wildcard(path: str) -> List[str]:
+    parts = path.split("/")
+    result = []
+    for part in parts:
+        if any(c in part for c in "*?[]"):
+            break
+        result.append(part)
+    return result
+
+
+def find_common_base_path_and_max_depth(paths: List[str]) -> Tuple[str, int]:
     """
-    Find the common base path and required depth for a list of glob patterns.
+    Find the common base path and max depth for a list of path patterns.
     """
     if not paths:
         return "", 1
 
-    async def get_parts_before_wildcard(path: str) -> List[str]:
-        parts = path.split("/")
-        result = []
-        for part in parts:
-            if any(c in part for c in "*?[]"):
-                break
-            result.append(part)
-        return result
-
-    all_path_parts = await asyncio.gather(
-        *[get_parts_before_wildcard(path) for path in paths]
-    )
+    all_path_parts = [get_parts_before_wildcard(path) for path in paths]
 
     common_parts = []
     if not all_path_parts or not all_path_parts[0]:
@@ -117,11 +115,11 @@ async def find_common_base_path(paths: List[str]) -> Tuple[str, int]:
 async def process_folder_patterns(
     folder_patterns: list[FolderPattern], client: BitbucketClient
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
-    repo_names = await extract_repo_names_from_patterns(folder_patterns)
+    repo_names = extract_repo_names_from_patterns(folder_patterns)
     if not repo_names:
         return
 
-    pattern_by_repo = await create_pattern_mapping(folder_patterns)
+    pattern_by_repo = create_pattern_mapping(folder_patterns)
     async for repos_batch in client.get_repositories(
         params={"q": f"name IN ({','.join(f'"{name}"' for name in repo_names)})"}
     ):
@@ -145,7 +143,7 @@ async def process_repo_folders(
     for branch, paths in repo_branches.items():
         repo_slug = repo.get("slug", repo_name.lower())
         effective_branch = branch if branch != "default" else repo["mainbranch"]["name"]
-        base_path, max_pattern_depth = await find_common_base_path(paths)
+        base_path, max_pattern_depth = find_common_base_path_and_max_depth(paths)
         logger.debug(
             f"Fetching {repo_name}/{effective_branch} from '{base_path}' with depth {max_pattern_depth}"
         )
@@ -153,7 +151,7 @@ async def process_repo_folders(
         async for contents in client.get_directory_contents(
             repo_slug, effective_branch, base_path, max_depth=max_pattern_depth
         ):
-            if matching_folders := await find_matching_folders(
+            if matching_folders := find_matching_folders(
                 contents, paths, repo, effective_branch
             ):
                 yield matching_folders
