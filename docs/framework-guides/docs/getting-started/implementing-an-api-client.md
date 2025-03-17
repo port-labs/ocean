@@ -31,13 +31,13 @@ This file will contain the `JiraClient` class, which would encapsulate all the l
 
 ## The `JiraClient` Constructor
 
-In the constructor, we need to handle:
+The constructor initializes:
 
-- **Jira URLs**: the base Jira URL (could be on Atlassian’s cloud or self-hosted).
-- **Auth details**: either Basic Auth or OAuth-based Bearer token.
-- **Concurrent Requests**: We’ll use an `asyncio.Semaphore` to limit the number of concurrent requests to avoid performance pitfalls or hitting Jira’s concurrency limits.
+- **Jira URLs**: Sets the base URL for Jira (whether on Atlassian’s cloud or a self-hosted instance).
+- **Authentication Details**: Chooses between Basic Authentication and OAuth-based Bearer tokens.
+- **Concurrent Request Management**: Uses an `asyncio.Semaphore` to limit concurrent requests and avoid performance issues or rate-limit problems.
 
-Below, we implement the class constructor. Notice how we set up the base URLs and choose the authentication scheme depending on whether `api.atlassian.com` is detected. We assume that the presence of `api.atlassian.com` means this is an Oauth flow.
+The following example illustrates the constructor. Note how it sets up the base URLs and selects the appropriate authentication method based on the presence of `"api.atlassian.com"` (indicating an OAuth flow)
 
 
 <details>
