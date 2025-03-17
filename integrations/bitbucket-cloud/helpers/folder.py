@@ -42,7 +42,7 @@ def create_pattern_mapping(
     return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
 
 
-async def find_matching_folders(
+def find_matching_folders(
     contents: List[Dict[str, Any]],
     patterns: List[str],
     repo: Dict[str, Any],
