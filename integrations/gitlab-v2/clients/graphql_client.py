@@ -12,28 +12,39 @@ class GraphQLClient(HTTPBaseClient):
         "projects": ProjectQueries.LIST,
     }
 
-    def __init__(self, base_url: str, token: str):
-        super().__init__(f"{base_url}/api/graphql", token)
-
     async def get_resource(
         self, resource_type: str, params: Optional[dict[str, Any]] = None
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        query = self.RESOURCE_QUERIES.get(resource_type)
-        if not query:
-            raise ValueError(f"Unsupported resource type for GraphQL: {resource_type}")
+    ) -> AsyncIterator[
+        tuple[
+            list[dict[str, Any]], list[AsyncIterator[tuple[str, list[dict[str, Any]]]]]
+        ]
+    ]:
+        """Fetch a paginated resource from the GraphQL API.
 
-        async for batch in self._execute_paginated_query(
+        Args:
+            resource_type: Type of resource to fetch (e.g., 'projects').
+            variables: Optional query variables (e.g., filters).
+
+        Yields:
+            Tuple of (nodes, nested_field_generators) where nodes is the resource list
+            and nested_field_generators streams nested fields like labels.
+        """
+        query = self.RESOURCE_QUERIES[resource_type]
+        async for nodes, generators in self._execute_paginated_query(
             query=str(query), resource_field=resource_type, params=params
         ):
-            yield batch
+            yield nodes, generators
 
     async def _execute_paginated_query(
         self,
         query: str,
         resource_field: str,
         params: Optional[dict[str, Any]] = None,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-
+    ) -> AsyncIterator[
+        tuple[
+            list[dict[str, Any]], list[AsyncIterator[tuple[str, list[dict[str, Any]]]]]
+        ]
+    ]:
         cursor = None
 
         while True:
@@ -42,95 +53,89 @@ class GraphQLClient(HTTPBaseClient):
                 params={"cursor": cursor, **(params or {})},
             )
 
-            resource_data = data.get(resource_field, {})
+            resource_data = data[resource_field]
             nodes = resource_data.get("nodes", [])
 
             if not nodes:
                 break
 
-            # Concurrently paginate paginated fields (e.g., labels, members, etc)
-            await asyncio.gather(
-                *(
-                    self._fetch_paginated_fields(node, query, variables or {})
-                    for node in nodes
+            nested_field_generators = [
+                self._fetch_paginated_fields(
+                    node, resource_field, query, variables or {}
                 )
-            )
+                for node in nodes
+            ]
 
-            yield nodes
+            yield nodes, nested_field_generators
 
-            # Check if there are more pages
-            page_info = resource_data.get("pageInfo", {})
-            if not page_info.get("hasNextPage", False):
+            page_info = resource_data["pageInfo"]
+            if not page_info["hasNextPage"]:
                 break
 
             cursor = page_info.get("endCursor")
 
     async def _fetch_paginated_fields(
-        self, resource: dict[str, Any], query: str, variables: dict[str, Any]
-    ) -> Any:
-        tasks = [
-            self._paginate_field(resource, field, query, variables)
+        self,
+        resource: dict[str, Any],
+        resource_field: str,
+        query: str,
+        variables: dict[str, Any],
+    ) -> AsyncIterator[tuple[str, list[dict[str, Any]]]]:
+
+        field_generators = [
+            self._paginate_field(resource, field, resource_field, query, variables)
             for field, value in resource.items()
             if isinstance(value, dict) and "nodes" in value and "pageInfo" in value
         ]
 
-        await asyncio.gather(*tasks)
+        for generator in field_generators:
+            async for field_name, nodes in generator:
+                yield field_name, nodes
 
     async def _paginate_field(
         self,
         parent: dict[str, Any],
         field_name: str,
+        resource_field: str,
         query: str,
         variables: dict[str, Any],
-    ) -> None:
-        field_data = parent.get(field_name, {})
-        nodes = field_data.get("nodes", [])
-        page_info = field_data.get("pageInfo", {})
+    ) -> AsyncIterator[tuple[str, list[dict[str, Any]]]]:
+        """Stream paginated nodes for a field (e.g., labels) of a GitLab resource."""
 
-        cursor = page_info.get("endCursor")
+        parent_id: str = parent["id"]
+        field_data: dict[str, Any] = parent[field_name]
+        nodes: list[dict[str, Any]] = field_data["nodes"]
+        page_info: dict[str, Any] = field_data["pageInfo"]
 
-        while page_info.get("hasNextPage", False):
-            logger.info(
-                f"Fetching more '{field_name}' for {parent.get('id', 'unknown')} with cursor: {cursor}"
-            )
+        yield field_name, nodes
 
-            field_data_response = await self._execute_query(
+        cursor: str | None = page_info["endCursor"]
+        while page_info["hasNextPage"]:
+            if cursor is None:
+                logger.error(
+                    f"Missing cursor for {field_name} pagination on {parent_id}"
+                )
+                break
+
+            logger.debug(f"Fetching '{field_name}' for {parent_id}")
+            response = await self._execute_query(
                 query,
-                variables={f"{field_name}Cursor": cursor, **(variables or {})},
+                variables={f"{field_name}Cursor": cursor, **variables},
             )
 
-            response_nodes = field_data_response.get("projects", {}).get("nodes", [])
-            matching_parent = next(
-                (p for p in response_nodes if p["id"] == parent["id"]), None
+            resource_nodes: list[dict[str, Any]] = response[resource_field]["nodes"]
+            resource_field_data: dict[str, Any] = next(
+                resource[field_name]
+                for resource in resource_nodes
+                if resource["id"] == parent_id
             )
+            nodes = resource_field_data["nodes"]
 
-            if not matching_parent:
-                logger.warning(
-                    f"No matching parent found for ID {parent.get('id', 'unknown')}"
-                )
-                break
+            logger.debug(f"Yielding {len(nodes)} {field_name} nodes for {parent_id}")
+            yield field_name, nodes
 
-            new_field_data = matching_parent.get(field_name, {})
-            new_nodes = new_field_data.get("nodes", [])
-            new_page_info = new_field_data.get("pageInfo", {})
-
-            if not new_nodes:
-                logger.warning(
-                    f"No new {field_name} returned for {parent.get('id', 'unknown')}, stopping pagination."
-                )
-                break
-
-            nodes.extend(new_nodes)
-            cursor = new_page_info.get("endCursor")
-            page_info = new_page_info
-
-            if not cursor:
-                logger.warning(
-                    f"Cursor is None for {parent.get('id', 'unknown')}, stopping pagination."
-                )
-                break
-
-        parent[field_name]["nodes"] = nodes
+            page_info = resource_field_data["pageInfo"]
+            cursor = page_info["endCursor"]
 
     async def _execute_query(
         self, query: str, params: Optional[dict[str, Any]] = None
@@ -149,7 +154,7 @@ class GraphQLClient(HTTPBaseClient):
                 logger.error(f"GraphQL query failed: {response['errors']}")
                 raise Exception(f"GraphQL query failed: {response['errors']}")
 
-            return response.get("data", {})
+            return response["data"]
         except Exception as e:
             logger.error(f"Failed to execute GraphQL query: {str(e)}")
             raise
