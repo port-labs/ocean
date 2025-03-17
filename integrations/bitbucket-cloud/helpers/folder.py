@@ -24,7 +24,7 @@ async def extract_repo_names_from_patterns(
     return repo_names
 
 
-async def create_pattern_mapping(
+def create_pattern_mapping(
     folder_patterns: List[FolderPattern],
 ) -> Dict[str, Dict[str, List[str]]]:
     """
