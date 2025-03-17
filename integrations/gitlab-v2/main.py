@@ -37,7 +37,11 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received project batch with {len(projects_batch)} projects")
         if selector.include_labels:
             for project in projects_batch:
-                project["__labels"] = project["labels"]["nodes"] if "labels" in project and "nodes" in project["labels"] else []
+                project["__labels"] = (
+                    project["labels"]["nodes"]
+                    if "labels" in project and "nodes" in project["labels"]
+                    else []
+                )
         yield projects_batch
 
 
