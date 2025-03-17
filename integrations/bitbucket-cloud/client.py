@@ -110,7 +110,6 @@ class BitbucketClient:
             if not url:
                 break
 
-    @cache_iterator_result()
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all projects in the workspace."""
         async for projects in self._send_paginated_api_request(
