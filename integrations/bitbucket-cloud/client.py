@@ -80,7 +80,9 @@ class BitbucketClient:
                 return {}
             logger.error(f"Bitbucket API error: {error_message}")
             raise e
-
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
+            raise e
     async def _send_paginated_api_request(
         self,
         url: str,
