@@ -290,7 +290,7 @@ We want to **ingest Jira projects**. The method `get_paginated_projects` handles
 
 <details>
 
-<summary><b>GitHub Client `get_paginated_projects` method (Click to expand)</b></summary>
+<summary><b>Jira Client `get_paginated_projects` method (Click to expand)</b></summary>
 
 
 ```python showLineNumbers
