@@ -12,8 +12,7 @@ from port_ocean.clients.port.utils import (
     handle_status_code,
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
 )
-from port_ocean.core.models import Entity
-from port_ocean.core.models import PortAPIErrorMessage
+from port_ocean.core.models import Entity, PortAPIErrorMessage
 from starlette import status
 
 
