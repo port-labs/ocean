@@ -217,7 +217,7 @@ Like in the GitHub example, we want a single utility method that **all** request
 
 </details>
 
-## Pagination Helpers (`_get_paginated_data`)
+## Pagination
 
 Jira’s APIs use two kinds of pagination:
 
