@@ -162,7 +162,7 @@ As shown in the constructor, we automatically detect if the Jira URL contains `"
 - **OAuth** scenario: We rely on `BearerAuth`, which is a simple custom class that sets the `Authorization` header with a Bearer token.
 - **BasicAuth** scenario: We pass the user’s **email** and a **token** (often an API token from Jira).
 
-## Sending API Requests (`_send_api_request`)
+## Sending API Requests
 
 Like in the GitHub example, we want a single utility method that **all** request-making functions can call. This method handles:
 
