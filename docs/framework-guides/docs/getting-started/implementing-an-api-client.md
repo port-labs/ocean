@@ -7,11 +7,11 @@ sidebar_position: 2
 
 ## Introduction
 
-When building a Jira integration for Ocean, one of the first steps is to **create an API client**. This client must:
+When building a Jira integration for Ocean, the first step is to create an API client that:
 
-- **Authenticate** with Jira (handling both Basic Auth and OAuth tokens). Oauth support is optional and could be ignored
-- **Fetch data** from Jira – in this case, **projects** and **issues** (though you can expand this to users, teams, boards, etc., as needed).
-- **Set up webhooks** so that relevant changes (e.g., new issues, updated projects) can be reported to Ocean in real-time.
+- **Authenticates with Jira:** Use Basic Authentication or, optionally, OAuth tokens.
+- **Retrieves data from Jira:** Sends authenticated requests to fetch API resources. This guide focuses on projects and issues, though support can be extended to include additional resources like users, teams, or boards as needed.
+- **Configures webhooks:** Set up webhooks to report real-time updates, such as new issues or changes to projects, to Ocean.
 
 In this guide, we’ll walk through the process of creating a `JiraClient` class that encapsulates all the Jira API logic. This class will be used to interact with Jira’s REST API, fetch data, and set up webhooks. We are concerned with the following API endpoints:
 
