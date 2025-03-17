@@ -34,9 +34,6 @@ class MetricType:
 
 
 class EmptyMetric:
-    def inc(self, *args: Any) -> None:
-        return None
-
     def set(self, *args: Any) -> None:
         return None
 

@@ -94,6 +94,20 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
 
+    @validator("metrics", pre=True)
+    def validate_metrics(cls, v):
+        if v is None:
+            return MetricsSettings(enabled=False, webhook_url=None)
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, MetricsSettings):
+            return v
+        # Try to convert to dict for other types
+        try:
+            return dict(v)
+        except (TypeError, ValueError):
+            return MetricsSettings(enabled=False, webhook_url=None)
+
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         if not (config_model := values.get("_integration_config_model")):
