@@ -235,7 +235,7 @@ Since we are concerned with projects and teams which uses the offset pagination 
 
 <details>
 
-<summary><b>GitHub Client `_get_paginated_data` method (Click to expand)</b></summary>
+<summary><b>Jira Client `_get_paginated_data` method (Click to expand)</b></summary>
 
 
 ```python showLineNumbers
