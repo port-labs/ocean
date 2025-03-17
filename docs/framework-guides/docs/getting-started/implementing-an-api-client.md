@@ -42,7 +42,7 @@ Below, we implement the class constructor. Notice how we set up the base URLs an
 
 <details>
 
-<summary><b>GitHub Client constructor (Click to expand)</b></summary>
+<summary><b>Jira Client constructor (Click to expand)</b></summary>
 
 ```python showLineNumbers
 import asyncio
@@ -164,7 +164,7 @@ As shown in the constructor, we automatically detect if the Jira URL contains `"
 
 ## Sending API Requests (`_send_api_request`)
 
-Like in the GitHub example, we want a single utility method that **all** request-making functions can call. This method handles:
+We want a single utility method that **all** request-making functions can call. This method handles:
 
 1. **Concurrency**: by awaiting `self._semaphore`.
 2. **Exceptions**: logging errors and re-raising them so we can handle them upstream.
@@ -174,7 +174,7 @@ Like in the GitHub example, we want a single utility method that **all** request
 
 <details>
 
-<summary><b>GitHub Client `_send_api_request` method (Click to expand)</b></summary>
+<summary><b>Jira Client `_send_api_request` method (Click to expand)</b></summary>
 
 ```python showLineNumbers
     async def _handle_rate_limit(self, response: Response) -> None:
@@ -235,7 +235,7 @@ Since we are concerned with projects and teams which uses the offset pagination 
 
 <details>
 
-<summary><b>GitHub Client `_get_paginated_data` method (Click to expand)</b></summary>
+<summary><b>Jira Client `_get_paginated_data` method (Click to expand)</b></summary>
 
 
 ```python showLineNumbers
@@ -290,7 +290,7 @@ We want to **ingest Jira projects**. The method `get_paginated_projects` handles
 
 <details>
 
-<summary><b>GitHub Client `get_paginated_projects` method (Click to expand)</b></summary>
+<summary><b>Jira Client `get_paginated_projects` method (Click to expand)</b></summary>
 
 
 ```python showLineNumbers
@@ -326,7 +326,7 @@ Similarly, to **ingest Jira issues**, we provide:
 
 <details>
 
-<summary><b>GitHub Client `get_paginated_issues` and `get_single_issue` methods (Click to expand)</b></summary>
+<summary><b>Jira Client `get_paginated_issues` and `get_single_issue` methods (Click to expand)</b></summary>
 
 ```python showLineNumbers
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
@@ -364,7 +364,7 @@ If the Jira instance is Atlassian Cloud (`api.atlassian.com`), we call `_create_
 
 <details>
 
-<summary><b>GitHub Client `_create_events_webhook_oauth` method (Click to expand)</b></summary>
+<summary><b>Jira Client `_create_events_webhook_oauth` method (Click to expand)</b></summary>
 
 ```python showLineNumbers
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
@@ -406,7 +406,7 @@ If not an OAuth host, `_create_events_webhook` is called. The logic is similar b
 
 <details>
 
-<summary><b>GitHub Client `_create_events_webhook` method (Click to expand)</b></summary>
+<summary><b>Jira Client `_create_events_webhook` method (Click to expand)</b></summary>
 
 ```python showLineNumbers
     async def create_webhooks(self, app_host: str) -> None:
@@ -444,7 +444,7 @@ Bringing it all together, here’s what your `jira/client.py` file should look l
 
 <details>
 
-<summary><b>GitHub Client (Click to expand)</b></summary>
+<summary><b>Jira Client (Click to expand)</b></summary>
 
 ```python
 import asyncio
