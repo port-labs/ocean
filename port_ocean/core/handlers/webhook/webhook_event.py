@@ -5,7 +5,6 @@ from uuid import uuid4
 from fastapi import Request
 from loguru import logger
 
-from port_ocean.context.event import EventContext
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import RAW_ITEM
 
@@ -57,7 +56,6 @@ class WebhookEvent(LiveEvent):
         self.payload = payload
         self.headers = headers
         self._original_request = original_request
-        self.event_context: EventContext | None = None
 
     @classmethod
     async def from_request(
@@ -102,9 +100,6 @@ class WebhookEvent(LiveEvent):
                 "headers": self.headers,
             },
         )
-
-    def set_event_context(self, event_context: EventContext) -> None:
-        self.event_context = event_context
 
 
 class WebhookEventRawResults:

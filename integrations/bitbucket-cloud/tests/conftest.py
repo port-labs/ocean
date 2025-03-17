@@ -30,7 +30,6 @@ def mock_http_client() -> Generator[AsyncClient, None, None]:
     with patch("client.http_async_client", new=AsyncClient()) as mock_client:
         yield mock_client
 
-
 @pytest.fixture
 def webhook_client_mock() -> BitbucketWebhookClient:
     """Create a mocked webhook client."""
