@@ -206,9 +206,13 @@ When Jira sends a **webhook** event to the integration:
 
 Ocean then **maps** those raw results into your Port environment, using the rules in the `.port/resources/port-app-config.yml` file or in the integration mapping configuration on your Port dashboard
 
+## Guidelines for Implementing Webhooks
+
+- **File Structure**: Implement webhook processors in the `webhook_processors` with each webhook processor in its own file.
+- **Authentication**: Implement `authenticate` and `validate_payload` to ensure the request is from a valid source and the data is in the correct format.
+- **Event processing**: The `should_process_event` method should not only check whether the class is responsible for the event type, but should also verify that the user has not excluded the entity in the event from their mapping via selector queries.
 
 
-## Conclusion
 
 We now have **two webhook processors**—`IssueWebhookProcessor` and `ProjectWebhookProcessor`—each in its own file, inheriting from `AbstractWebhookProcessor`. These classes define how to handle incoming Jira events for **issues** and **projects**, respectively. Key steps included:
 

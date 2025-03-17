@@ -245,6 +245,13 @@ At the end of this guide, you should now have:
 
 With these components, your Jira integration is ready to fetch data and push it into Port!
 
+## Guidelines for Writing Resync Functions
+
+- **Avoid blocking operations**: Resync functions should be non-blocking and return quickly.
+- **Use async generators**: Yield data in batches to avoid memory issues.
+- **Handle errors gracefully**: Implement error handling to manage and log errors.
+- **Use resource configs**: Cast resource configs to relevant selectors to access user-defined parameters.
+
 :::info Source Code
 You can find the source code for the integration in the [Jira integration directory on GitHub](https://github.com/port-labs/ocean/tree/main/integrations/jira)
 

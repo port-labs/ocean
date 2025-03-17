@@ -231,6 +231,13 @@ class JiraIntegration(BaseIntegration):
 
 </details>
 
+## Guidelines for Defining Integration Configuration and Kinds
+
+- **Provide a default configuration**: Provide a default configuration for the integration. This is to ensure that the integration is functional out of the box.
+- **Add field descriptions**: Add field descriptions to the configuration fields to help users understand what they are configuring.
+- **Single file**: All configurations should be defined in a single file.
+- **Avoid nested classes**: Avoid nested classes for the configuration classes.
+
 :::info Source Code
 You can find the source code for the integration in the [Jira integration directory on GitHub](https://github.com/port-labs/ocean/tree/main/integrations/jira)
 

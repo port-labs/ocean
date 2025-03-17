@@ -304,6 +304,11 @@ Some best practices to keep in mind when modifying configurations are:
 For more details, refer to the [Ocean configuration documentation](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources#port-app-configyml-file). This section explains the structure of the .port folder and its different components.
 
 
+## Guidelines for Defining Configuration Files
+
+- **Define only what is needed**: Blueprint and port-app-config mapping are modifiable by the user. You should only define minimal configurations useful for the user to get started.
+- **Port App Config**: The port-app-config mapping using JQ should be used to handle any data transformation needed.
+- **Spec**: All dependecy configurations for the spec file should have a corresponding description with a link to the documentation.
 
 :::info Source Code
 You can find the source code for the integration in the [Jira integration directory on GitHub](https://github.com/port-labs/ocean/tree/main/integrations/jira)

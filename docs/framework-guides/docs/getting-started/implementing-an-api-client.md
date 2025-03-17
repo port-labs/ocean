@@ -19,7 +19,7 @@ In this guide, we’ll walk through the process of creating a `JiraClient` class
 - [Jira Issue API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-get)
 - [Jira Webhooks API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-webhooks/#api-group-webhooks)
 
-## Create the `JiraClient` File
+## Create the `client.py` File
 
 Create a `client.py` (or similarly named file) in your Jira integration directory. For example:
 
@@ -27,7 +27,7 @@ Create a `client.py` (or similarly named file) in your Jira integration director
 $ mkdir jira && touch jira/client.py
 ```
 
-This file will contain the `JiraClient` class, which encapsulates all the Jira API logic. Note that, the `client.py` file is created in another `jira` directory which is inside the Jira integration.
+This file will contain the `JiraClient` class, which would encapsulate all the logic needed to interact with Jira's API. Note that, the `client.py` file is created in another `jira` directory which is inside the Jira integration.
 
 ## The `JiraClient` Constructor
 
@@ -687,6 +687,17 @@ $ poetry run black . && poetry run isort .
 ```
 
 :::
+
+## Guidelines for Implementing an API Client
+
+- **Ensure the client supports at least one authentication method**: OAuth, Basic Auth, API key, or any other method if authentication is required.
+- **Concurrency and Rate-limiting**: Ensure to follow the concurrency and rate-limiting guidelines for the third-party API.
+- **Pagination**: Implement dedicated methods to abstract away the pagination logic.
+- **Standalone**: The API client should be standalone and not depend on Ocean internals or variables. Exceptions to this rule includes the http client, Ocean's caching utilities and other utility functions. Reading user configurations should be passed from the [resync functions](./sending-data-to-port-using-resync-functions.md) to the client.
+- **Logging**: Incorporate logging to help with debugging and troubleshooting.
+- **Webhooks**: The client should implement methods to automatically create webhooks for the integration.
+- **Single Requests**: Use single, targeted requests for handling webhook events.
+- **Data Transformation**: Use the port-app-config mapping to handle any data transformation needed, do not modify the data in the client. This is to ensure users get to choose how they want to transform the data. You can add extra fields to the data returned by the client, however, the keys should be prefixed with a double underscore `__` to avoid conflicts with the data returned by the client. e.g. `__custom_field_name`.
 
 :::info Source Code
 You can find the source code for the integration in the [Jira integration directory on GitHub](https://github.com/port-labs/ocean/tree/main/integrations/jira)

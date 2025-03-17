@@ -21,20 +21,21 @@ Developing an integration within the Ocean monorepo has some advantages:
 - The Ocean monorepo provides a set of automations on GitHub CI environment including testing, linting, and building the integration Docker image. This ensures that your integration is well-tested and ready for deployment.
 
 ### Cloning the Ocean Monorepo
-To develop an integration, you need to fork the [Port Ocean monorepo](https://github.com/port-labs/ocean), clone it to your local machine, and install the dependencies from the root directory.
+To develop an integration, you need to fork the [Port Ocean monorepo](https://github.com/port-labs/ocean), clone it to your local machine in a directory of your choice and prepare to work in the `integrations` directory:
 
 
 <details>
-<summary><b>Installing dependencies on Ocean monorepo (Click to expand)</b></summary>
+<summary><b>Cloning the Ocean monorepo (Click to expand)</b></summary>
 
 ```console showLineNumbers title="bash"
-$ make install
+$ git clone https://github.com/port-labs/ocean.git
+$ cd ocean/integrations
 ```
 
 </details>
 
 ### Scaffolding the project with `make new`
-Next, you will scaffold the Jira integration for ingesting Projects and Issues. Run the following command to scaffold a new integration:
+From the `integrations` directory, you will scaffold the Jira integration for ingesting Projects and Issues. Run the following command to scaffold a new integration:
 
 <details>
 <summary><b>Scaffolding an integration within Ocean monorepo (Click to expand)</b></summary>
