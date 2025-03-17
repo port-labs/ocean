@@ -13,7 +13,7 @@ When building a Jira integration for Ocean, the first step is to create an API c
 - **Retrieves data from Jira:** Sends authenticated requests to fetch API resources. This guide focuses on projects and issues, though support can be extended to include additional resources like users, teams, or boards as needed.
 - **Configures webhooks:** Set up webhooks to report real-time updates, such as new issues or changes to projects, to Ocean.
 
-In this guide, we’ll walk through the process of creating a `JiraClient` class that encapsulates all the Jira API logic. This class will be used to interact with Jira’s REST API, fetch data, and set up webhooks. We are concerned with the following API endpoints:
+In this guide, we’ll walk through building a `JiraClient` class that encapsulates all interactions with Jira’s REST API. This class will handle data retrieval and webhook configuration. We will specifically focus on the following API endpoints:
 
 - [Jira Project API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-projects/#api-rest-api-3-project-search-get)
 - [Jira Issue API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-get)
