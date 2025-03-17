@@ -406,7 +406,7 @@ If not an OAuth host, `_create_events_webhook` is called. The logic is similar b
 
 <details>
 
-<summary><b>GitHub Client `_create_events_webhook` method (Click to expand)</b></summary>
+<summary><b>Jira Client `_create_events_webhook` method (Click to expand)</b></summary>
 
 ```python showLineNumbers
     async def create_webhooks(self, app_host: str) -> None:
