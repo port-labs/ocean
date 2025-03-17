@@ -4,7 +4,6 @@ from loguru import logger
 
 from .graphql_client import GraphQLClient
 from .rest_client import RestClient
-import asyncio
 from copy import deepcopy
 
 
