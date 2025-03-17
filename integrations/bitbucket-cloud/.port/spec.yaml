@@ -14,10 +14,10 @@ configurations:
   - name: bitbucketWorkspaceToken
     type: string
     sensitive: true
-    description: Bitbucket Workspace access token, it can be created in the Bitbucket by visiting Bitbucket Workspace Settings page.
+    description: Bitbucket Workspace access token. Required if not using username/app password authentication. Can be created in the Bitbucket Workspace Settings page.
   - name: bitbucketUsername
     type: string
-    description: The username of the Bitbucket account.
+    description: The username of the Bitbucket account. Required if using username/app password authentication instead of workspace token.
   - name: bitbucketWorkspace
     description: The slug of the workspace the integration will work with
     type: string
@@ -25,7 +25,7 @@ configurations:
   - name: bitbucketAppPassword
     type: string
     sensitive: true
-    description: Bitbucket app password, it can be created in the Bitbucket by visiting <a href="https://bitbucket.org/account/settings/app-passwords/" target="_blank">Bitbucket personal account settings</a>
+    description: Bitbucket app password. Required if using username/app password authentication instead of workspace token. Can be created in the Bitbucket personal account settings. Can be created in the <a href="https://bitbucket.org/account/settings/app-passwords/" target="_blank">Bitbucket personal account settings</a>
   - name: bitbucketHostUrl
     type: string
     description: The base api url of Bitbucket Cloud Rest API. It should include the protocol and version (e.g. <a href="https://api.bitbucket.org/2.0" target="_blank">https://api.bitbucket.org/2.0</a>).
