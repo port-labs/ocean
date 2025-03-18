@@ -1,12 +1,20 @@
-from typing import Any, AsyncIterator, Optional
+from typing import Any, AsyncIterator, Optional, cast
 
 from loguru import logger
 
 from .base_client import HTTPBaseClient
 from .queries import ProjectQueries
+import asyncio
+
+MAX_CONCURRENT_REQUESTS = 10
 
 
 class GraphQLClient(HTTPBaseClient):
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
+
     RESOURCE_QUERIES = {
         "projects": ProjectQueries.LIST,
     }
@@ -25,7 +33,7 @@ class GraphQLClient(HTTPBaseClient):
             variables: Optional query variables (e.g., filters).
 
         Yields:
-            Tuple of (nodes, nested_field_generators) where nodes is the resource list
+            tuple of (nodes, nested_field_generators) where nodes is the resource list
             and nested_field_generators streams nested fields like labels.
         """
         query = self.RESOURCE_QUERIES[resource_type]
@@ -130,11 +138,60 @@ class GraphQLClient(HTTPBaseClient):
             )
             nodes = resource_field_data["nodes"]
 
-            logger.debug(f"Yielding {len(nodes)} {field_name} nodes for {parent_id}")
+            logger.info(f"Got {len(nodes)} {field_name} for {parent_id}")
             yield field_name, nodes
 
             page_info = resource_field_data["pageInfo"]
             cursor = page_info["endCursor"]
+
+    async def safe_next(
+        self, field_iter: AsyncIterator[tuple[str, list[dict[str, Any]]]]
+    ) -> Optional[tuple[str, list[dict[str, Any]]]]:
+        try:
+            async with self._semaphore:
+                return await anext(field_iter)
+        except StopAsyncIteration:
+            return None
+        except Exception as e:
+            logger.error(f"Error in iterator: {e}")
+            return None
+
+    async def _process_nested_fields(
+        self,
+        projects: list[dict[str, Any]],
+        field_iterators: list[AsyncIterator[tuple[str, list[dict[str, Any]]]]],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        active_data = list(zip(projects, field_iterators))
+        while active_data:
+            updated = False
+            next_active = []
+            tasks = [self.safe_next(field_iter) for _, field_iter in active_data]
+            results = await asyncio.gather(*tasks)
+            for (project, field_iter), result in zip(active_data, results):
+                if result:
+                    field_name, nodes = result
+                    if nodes:
+                        project[field_name]["nodes"].extend(nodes)
+                        updated = True
+                    next_active.append((project, field_iter))
+            active_data = next_active
+            if updated:
+                yield [self._copy_project(project) for project, _ in active_data]
+
+    def _copy_project(self, project: dict[str, Any]) -> dict[str, Any]:
+        return {
+            key: (
+                {
+                    "nodes": list(project[key]["nodes"]),
+                    "pageInfo": project[key]["pageInfo"],
+                }
+                if key != "id"
+                and isinstance(project[key], dict)
+                and "nodes" in project[key]
+                else project[key]
+            )
+            for key in project
+        }
 
     async def _execute_query(
         self, query: str, params: Optional[dict[str, Any]] = None
