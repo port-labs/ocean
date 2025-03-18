@@ -275,5 +275,6 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
             assert prs == mock_data["values"]
 
         mock_paginated.assert_called_once_with(
-            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests"
+            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
+            params={"state": "OPEN"},
         )

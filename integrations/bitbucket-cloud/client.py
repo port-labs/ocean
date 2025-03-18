@@ -5,9 +5,16 @@ from port_ocean.utils import http_async_client
 from helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
+from helpers.rate_limiter import RollingWindowLimiter
 import base64
 
+PULL_REQUEST_STATE = "OPEN"
 PAGE_SIZE = 100
+RATE_LIMIT_WINDOW = 3600
+RATE_LIMITER_LIMIT = 1000
+RATE_LIMITER: RollingWindowLimiter[None] = RollingWindowLimiter(
+    limit=RATE_LIMITER_LIMIT, window=RATE_LIMIT_WINDOW
+)
 
 
 class BitbucketClient:
@@ -68,8 +75,13 @@ class BitbucketClient:
             method=method, url=url, params=params, json=json_data
         )
         try:
-            response.raise_for_status()
-            return response.json()
+            if url.startswith(f"{self.base_url}/repositories/"):
+                async with RATE_LIMITER:
+                    response.raise_for_status()
+                    return response.json()
+            else:
+                response.raise_for_status()
+                return response.json()
         except HTTPStatusError as e:
             error_data = e.response.json()
             error_message = error_data.get("error", {}).get("message", str(e))
@@ -101,7 +113,9 @@ class BitbucketClient:
             Lists of dictionaries containing the paginated data.
         """
         if params is None:
-            params = {}
+            params = {
+                "pagelen": PAGE_SIZE,
+            }
         while True:
             response = await self._send_api_request(url, params=params, method=method)
             if values := response.get(data_key, []):
@@ -145,7 +159,12 @@ class BitbucketClient:
         self, repo_slug: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get pull requests for a repository."""
+        params = {
+            "state": PULL_REQUEST_STATE,
+            "pagelen": PAGE_SIZE,
+        }
         async for pull_requests in self._send_paginated_api_request(
-            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests"
+            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
+            params=params,
         ):
             yield pull_requests
