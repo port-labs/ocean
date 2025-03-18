@@ -33,6 +33,7 @@ class GitLabClient:
                 projects_batch, field_iterators
             ):
                 yield updated_batch
+
     async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user."""
         async for batch in self.rest.get_resource(

@@ -8,12 +8,13 @@ import asyncio
 
 MAX_CONCURRENT_REQUESTS = 10
 
+
 class GraphQLClient(HTTPBaseClient):
-    
-    def __init__(self, *args, **kwargs):
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
-        
+
     RESOURCE_QUERIES = {
         "projects": ProjectQueries.LIST,
     }
@@ -142,8 +143,10 @@ class GraphQLClient(HTTPBaseClient):
 
             page_info = resource_field_data["pageInfo"]
             cursor = page_info["endCursor"]
-            
-    async def safe_next(self, field_iter: AsyncIterator[tuple[str, list[dict[str, Any]]]]) -> Optional[tuple[str, list[dict[str, Any]]]]:
+
+    async def safe_next(
+        self, field_iter: AsyncIterator[tuple[str, list[dict[str, Any]]]]
+    ) -> Optional[tuple[str, list[dict[str, Any]]]]:
         try:
             async with self._semaphore:
                 return await anext(field_iter)
@@ -176,13 +179,20 @@ class GraphQLClient(HTTPBaseClient):
                 yield [self._copy_project(project) for project, _ in active_data]
 
     def _copy_project(self, project: dict[str, Any]) -> dict[str, Any]:
-            return {
-                key: {"nodes": list(project[key]["nodes"]), "pageInfo": project[key]["pageInfo"]}
-                if key != "id" and isinstance(project[key], dict) and "nodes" in project[key]
+        return {
+            key: (
+                {
+                    "nodes": list(project[key]["nodes"]),
+                    "pageInfo": project[key]["pageInfo"],
+                }
+                if key != "id"
+                and isinstance(project[key], dict)
+                and "nodes" in project[key]
                 else project[key]
-                for key in project
-            }
-            
+            )
+            for key in project
+        }
+
     async def _execute_query(
         self, query: str, variables: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
