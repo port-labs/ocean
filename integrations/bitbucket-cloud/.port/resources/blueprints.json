@@ -81,7 +81,7 @@
         "status": {
           "title": "Status",
           "type": "string",
-          "enum": ["MERGED","OPEN","DECLINED"],
+          "enum": ["MERGED", "OPEN", "DECLINED"],
           "enumColors": {
             "MERGED": "purple",
             "OPEN": "green",
