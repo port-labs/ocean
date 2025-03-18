@@ -2,7 +2,7 @@ import asyncio
 import json
 import typing
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, AsyncIterator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, List, Optional, Tuple, Union, Set
 
 import aiolimiter
 import anyio.to_thread
@@ -33,8 +33,10 @@ from yaml.parser import ParserError
 
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
-from port_ocean.utils.cache import cache_iterator_result
 import functools
+from memory_profiler import profile
+
+import gc
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 
@@ -488,7 +490,6 @@ class GitlabService:
                 logger.error(f"Failed to fetch group with ID {group_id}: {err}")
                 raise
 
-    @cache_iterator_result()
     async def get_all_groups(
         self, skip_validation: bool = False
     ) -> typing.AsyncIterator[List[Group]]:
@@ -748,63 +749,102 @@ class GitlabService:
     def should_run_for_members(self, include_bot_members: bool, member: RESTObject):
         return include_bot_members or not member.username.__contains__("bot")
 
+    @profile
     async def enrich_object_with_members(
         self,
         obj: RESTObject,
         include_inherited_members: bool = False,
         include_bot_members: bool = True,
+        batch_size: int = 100,
     ) -> RESTObject:
         """
-        Enriches an object (e.g., Project or Group) with its members and optionally their public emails.
+        Enriches an object (e.g., Project or Group) with its members using memory-optimized approach.
         """
-        members_list = [
-            member
-            async for members in self.get_all_object_members(
-                obj, include_inherited_members, include_bot_members
-            )
-            for member in members
-        ]
+        obj_name = getattr(obj, "name", "unknown")
+        logger.info(f"Starting member enrichment for {obj_name}")
 
-        setattr(obj, "__members", [member.asdict() for member in members_list])
-        return obj
+        setattr(obj, "__members", [])
+        members_list = getattr(obj, "__members")
+
+        processed_member_ids: Set[int] = set()
+        total_members_processed = 0
+
+        try:
+            async for members_batch in self.get_all_object_members(
+                obj, include_inherited_members, include_bot_members
+            ):
+                for member_chunk_idx in range(0, len(members_batch), batch_size):
+                    member_chunk = members_batch[
+                        member_chunk_idx : member_chunk_idx + batch_size
+                    ]
+
+                    # Filter out duplicates
+                    for member in member_chunk:
+                        member_id = getattr(member, "id", None)
+                        if (
+                            member_id is not None
+                            and member_id not in processed_member_ids
+                        ):
+                            processed_member_ids.add(member_id)
+                            members_list.append(member.asdict())
+
+                    total_members_processed += len(member_chunk)
+
+                    gc.collect()
+                logger.info(
+                    f"Processed {total_members_processed} members for {obj_name}"
+                )
+                gc.collect()
+
+            logger.info(
+                f"Completed member enrichment for {obj_name} with {len(members_list)} unique members"
+            )
+            return obj
+
+        except Exception as e:
+            logger.error(f"Error enriching members for {obj_name}: {e}")
+            return obj
 
     async def get_all_object_members(
         self,
         obj: RESTObject,
         include_inherited_members: bool = False,
         include_bot_members: bool = True,
+        page_size: int = 50,
     ) -> AsyncIterator[RESTObjectList]:
         """
         Fetches all members of an object (e.g., Project or Group) generically.
         """
+        obj_name = getattr(obj, "name", "unknown")
         try:
-            obj_name = getattr(obj, "name", "unknown")
-            logger.info(f"Fetching all members of {obj_name}")
+            logger.info(
+                f"Fetching members of {obj_name} with pagination size {page_size}"
+            )
 
             members_attr = "members_all" if include_inherited_members else "members"
             members_manager = getattr(obj, members_attr, None)
             if not members_manager:
                 raise AttributeError(f"Object does not have attribute '{members_attr}'")
 
-            fetch_func = members_manager.list
-
             validation_func = functools.partial(
                 self.should_run_for_members, include_bot_members
             )
 
             async for members_batch in AsyncFetcher.fetch_batch(
-                fetch_func=fetch_func,
+                fetch_func=members_manager.list,
                 validation_func=validation_func,
-                pagination="offset",
+                pagination="page",
+                page_size=page_size,
                 order_by="id",
                 sort="asc",
             ):
                 members: RESTObjectList = typing.cast(RESTObjectList, members_batch)
-
-                logger.info(
-                    f"Queried {len(members)} members {[member.username for member in members]} from {obj_name}"
-                )
+                logger.info(f"Fetched page with {len(members)} members for {obj_name}")
                 yield members
+
+                # Force garbage collection after processing each page
+                gc.collect()
+
         except Exception as e:
             logger.error(f"Failed to get members for object='{obj_name}'. Error: {e}")
             return
