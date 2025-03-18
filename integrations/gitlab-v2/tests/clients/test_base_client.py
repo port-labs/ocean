@@ -39,7 +39,11 @@ class TestGitLabClient:
         """Test project fetching delegates to GraphQL client and handles nested fields."""
         # Arrange
         mock_projects: list[dict[str, Any]] = [
-            {"id": "1", "name": "Test Project", "labels": {}}
+            {
+                "id": "1",
+                "name": "Test Project",
+                "labels": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+            }
         ]
         mock_labels: list[dict[str, Any]] = [{"id": "label1", "title": "Bug"}]
 
