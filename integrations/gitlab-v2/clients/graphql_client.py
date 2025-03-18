@@ -1,9 +1,10 @@
-from typing import Any, AsyncIterator, Optional
+from typing import Any, AsyncIterator, Optional, cast
 
 from loguru import logger
 
 from .base_client import HTTPBaseClient
 from .queries import ProjectQueries
+import asyncio
 
 
 class GraphQLClient(HTTPBaseClient):
@@ -135,6 +136,44 @@ class GraphQLClient(HTTPBaseClient):
 
             page_info = resource_field_data["pageInfo"]
             cursor = page_info["endCursor"]
+            
+    async def _process_nested_fields(
+        self,
+        projects: list[dict[str, Any]],
+        field_iterators: list[AsyncIterator[tuple[str, list[dict[str, Any]]]]],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Process nested fields for a batch of projects, yielding after meaningful updates."""
+        active_data = list(zip(projects, field_iterators))  # Pair 100 projects with iterators
+        sem = asyncio.Semaphore(50)  # Limit to 50 concurrent requests
+        async def bounded_anext(field_iter):
+            async with sem:
+                return await anext(field_iter)
+        while active_data:  # Loop until all iterators are done
+            updated = False
+            next_active = []
+            tasks = [bounded_anext(field_iter) for _, field_iter in active_data]  # 100 tasks, capped at 50
+            results = await asyncio.gather(*tasks, return_exceptions=True)  # Fetch next 100 items
+            for (project, field_iter), result in zip(active_data, results):
+                if not isinstance(result, (StopAsyncIteration, Exception)):  # Skip if exhausted or error
+                    field_name, nodes = cast(tuple[str, list[dict[str, Any]]], result)
+                    if nodes:
+                        project[field_name]["nodes"].extend(nodes)  # Add directly to project
+                        updated = True
+                    next_active.append((project, field_iter))
+                # No else—implicit skip for StopAsyncIteration/Exception
+            active_data = next_active  # Shrink as iterators finish
+            if updated:
+                yield [  # Dynamic manual copy
+                    {
+                        key: (
+                            {"nodes": list(project[key]["nodes"]), "pageInfo": project[key]["pageInfo"]}
+                            if key != "id" and isinstance(project[key], dict) and "nodes" in project[key]
+                            else project[key]
+                        )
+                        for key in project
+                    }
+                    for project, _ in active_data
+                ]
 
     async def _execute_query(
         self, query: str, variables: Optional[dict[str, Any]] = None
