@@ -38,7 +38,9 @@ class BitbucketWebhookClient(BitbucketClient):
         Skip if secret was not provided
         """
         if not self.secret:
-            logger.warning("No secret provided for authenticating incoming webhooks, skipping authentication.")
+            logger.warning(
+                "No secret provided for authenticating incoming webhooks, skipping authentication."
+            )
             return True
 
         signature = headers.get("x-hub-signature")
