@@ -34,7 +34,6 @@ from yaml.parser import ParserError
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 import functools
-from memory_profiler import profile
 
 import gc
 
@@ -749,7 +748,6 @@ class GitlabService:
     def should_run_for_members(self, include_bot_members: bool, member: RESTObject):
         return include_bot_members or not member.username.__contains__("bot")
 
-    @profile
     async def enrich_object_with_members(
         self,
         obj: RESTObject,
