@@ -5,11 +5,14 @@ from loguru import logger
 from .base_client import HTTPBaseClient
 from .queries import ProjectQueries
 import asyncio
+import gc
 
 MAX_CONCURRENT_REQUESTS = 10
 
 
 class GraphQLClient(HTTPBaseClient):
+    BATCH_SIZE = 100  # Fetch batch
+    SUB_BATCH_SIZE = 50  # Process sub-batch
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -161,22 +164,28 @@ class GraphQLClient(HTTPBaseClient):
         projects: list[dict[str, Any]],
         field_iterators: list[AsyncIterator[tuple[str, list[dict[str, Any]]]]],
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        active_data = list(zip(projects, field_iterators))
+        active_data = list(zip(projects, field_iterators))  # 100 projects, paired with iterators
         while active_data:
-            updated = False
+            updated_projects = []  # Accumulate updated projects
             next_active = []
-            tasks = [self.safe_next(field_iter) for _, field_iter in active_data]
-            results = await asyncio.gather(*tasks)
-            for (project, field_iter), result in zip(active_data, results):
-                if result:
-                    field_name, nodes = result
-                    if nodes:
-                        project[field_name]["nodes"].extend(nodes)
-                        updated = True
+            # Process in two sub-batches of 50
+            for start in range(0, min(len(active_data), self.BATCH_SIZE), self.SUB_BATCH_SIZE):
+                sub_batch = active_data[start:start + self.SUB_BATCH_SIZE]  # 50 projects
+                tasks = [self.safe_next(field_iter) for _, field_iter in sub_batch]
+                results = await asyncio.gather(*tasks)
+                for (project, field_iter), result in zip(sub_batch, results):
+                    if result:
+                        field_name, nodes = result
+                        project[field_name]["nodes"].extend(nodes)  # GitLab provides structure
+                        updated_projects.append(project)
                     next_active.append((project, field_iter))
             active_data = next_active
-            if updated:
-                yield [self._copy_project(project) for project, _ in active_data]
+            if updated_projects:
+                yield [self._copy_project(p) for p in projects]
+                for project in projects:
+                    project["labels"]["nodes"] = []
+                gc.collect()  # Force cleanup
+
 
     def _copy_project(self, project: dict[str, Any]) -> dict[str, Any]:
         return {
