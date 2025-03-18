@@ -143,7 +143,6 @@ class AzureDevopsFileSelector(Selector):
     """Selector for Azure DevOps file resources."""
 
     files: FileSelector = Field(
-        default=FileSelector(path="port.yml"),  # Changed to a specific default file
         description="""Configuration for file selection and scanning.
         
         Specify explicit file paths to fetch from repositories.
