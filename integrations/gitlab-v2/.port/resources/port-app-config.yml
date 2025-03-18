@@ -16,4 +16,3 @@ resources:
             description: .description
             defaultBranch: .repository.rootRef
             languages: .languages
-
