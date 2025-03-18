@@ -1,4 +1,4 @@
-from typing import Any, AsyncIterator, Optional, cast
+from typing import Any, AsyncIterator, Optional
 
 from loguru import logger
 
