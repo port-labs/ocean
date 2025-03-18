@@ -1,10 +1,8 @@
-from typing import Any, AsyncIterator, cast
-import asyncio
+from typing import Any, AsyncIterator
 from loguru import logger
 
 from .graphql_client import GraphQLClient
 from .rest_client import RestClient
-from copy import deepcopy
 
 
 class GitLabClient:
