@@ -5,7 +5,7 @@ from initialize_client import init_webhook_client
 from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPayload
 
 
-class _BaseWebhookProcessorConfig(AbstractWebhookProcessor):
+class _BitbucketAbstractWebhookProcessor(AbstractWebhookProcessor):
 
     _webhook_client = init_webhook_client()
 

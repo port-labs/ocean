@@ -12,7 +12,7 @@ class HasValues(Protocol):
 
 class EventEnumMeta(EnumMeta):
     """
-    Nothing fancy here, just a custom metaclass util that allows adding multiple enum classes at the class level to combine their values.
+    Nothing fancy here, just a custom metaclass util that allows adding multiple enum classes at the class level to combine their unique values.
     """
 
     def __add__[
@@ -56,3 +56,7 @@ class RepositoryEvents(EventEnum):
     REPOSITORY_CREATED = "repo:created"
     REPOSITORY_UPDATED = "repo:updated"
     REPOSITORY_DELETED = "repo:deleted"
+
+
+if __name__ == "__main__":
+    print(RepositoryEvents("repo:created"))

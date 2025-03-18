@@ -1,5 +1,5 @@
 import pytest
-from bitbucket_integration.webhook.events import PullRequestEvents, RepositoryEvents
+from bitbucket_cloud.webhook.events import PullRequestEvents, RepositoryEvents
 
 
 class TestPullRequestEvents:

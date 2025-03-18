@@ -5,12 +5,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from bitbucket_integration.utils import ObjectKind
-from bitbucket_integration.webhook.webhook_client import BitbucketWebhookClient
+from bitbucket_cloud.helpers.utils import ObjectKind
+from bitbucket_cloud.webhook.webhook_client import BitbucketWebhookClient
 
 # Patch the module before importing the class
 with patch("initialize_client.init_webhook_client") as mock_init_client:
-    from bitbucket_integration.webhook.processors.repository import (
+    from bitbucket_cloud.webhook.processors.repository import (
         RepositoryWebhookProcessor,
     )
 

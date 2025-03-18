@@ -4,7 +4,7 @@ import hashlib
 import hmac
 from unittest.mock import AsyncMock, patch
 from typing import Any, AsyncGenerator
-from bitbucket_integration.webhook.webhook_client import BitbucketWebhookClient
+from bitbucket_cloud.webhook.webhook_client import BitbucketWebhookClient
 
 
 def compute_signature(secret: str, payload: dict[str, Any]) -> str:
@@ -20,6 +20,7 @@ def compute_signature(secret: str, payload: dict[str, Any]) -> str:
 def webhook_client_with_secret() -> BitbucketWebhookClient:
     """Create a BitbucketWebhookClient with a secret."""
     return BitbucketWebhookClient(
+        host="https://api.bitbucket.org/2.0",
         secret="test-secret",
         workspace="test-workspace",
         username="test-user",
@@ -31,7 +32,10 @@ def webhook_client_with_secret() -> BitbucketWebhookClient:
 def webhook_client_no_secret() -> BitbucketWebhookClient:
     """Create a BitbucketWebhookClient without a secret."""
     return BitbucketWebhookClient(
-        workspace="test-workspace", username="test-user", app_password="test-password"
+        host="https://api.bitbucket.org/2.0",
+        workspace="test-workspace",
+        username="test-user",
+        app_password="test-password",
     )
 
 
@@ -53,7 +57,7 @@ class TestBitbucketWebhookClient:
         self, webhook_client_with_secret: BitbucketWebhookClient
     ) -> None:
         """Test that the workspace webhook URL is correctly formed."""
-        expected = "workspaces/test-workspace/hooks"
+        expected = "https://api.bitbucket.org/2.0/workspaces/test-workspace/hooks"
         assert webhook_client_with_secret._workspace_webhook_url == expected
 
     @pytest.mark.asyncio

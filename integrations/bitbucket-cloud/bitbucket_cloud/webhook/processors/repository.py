@@ -4,12 +4,13 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from bitbucket_integration.webhook.events import RepositoryEvents
-from bitbucket_integration.utils import ObjectKind
-from bitbucket_integration.webhook.processors._base import _BaseWebhookProcessorConfig
+from bitbucket_cloud.webhook.events import RepositoryEvents
+from bitbucket_cloud.helpers.utils import ObjectKind
+from bitbucket_cloud.webhook.processors._base import _BitbucketAbstractWebhookProcessor
+from loguru import logger
 
 
-class RepositoryWebhookProcessor(_BaseWebhookProcessorConfig):
+class RepositoryWebhookProcessor(_BitbucketAbstractWebhookProcessor):
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
@@ -25,6 +26,9 @@ class RepositoryWebhookProcessor(_BaseWebhookProcessorConfig):
     ) -> WebhookEventRawResults:
 
         repository_id = payload["repository"]["uuid"]
+        logger.info(
+            f"Handling repository webhook event for repository: {repository_id}"
+        )
         repository_details = await self._webhook_client.get_repository(repository_id)
         return WebhookEventRawResults(
             updated_raw_results=[repository_details],

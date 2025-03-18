@@ -1,10 +1,10 @@
 from typing import Any
 import json
 
-from bitbucket_integration.client import BitbucketClient
+from bitbucket_cloud.client import BitbucketClient
 from loguru import logger
-from bitbucket_integration.webhook.events import RepositoryEvents, PullRequestEvents
-from httpx import HTTPStatusError  # Importing for specific HTTP error handling
+from bitbucket_cloud.webhook.events import RepositoryEvents, PullRequestEvents
+from httpx import HTTPStatusError
 import hashlib
 import hmac
 
@@ -43,7 +43,9 @@ class BitbucketWebhookClient(BitbucketClient):
         signature = headers.get("x-hub-signature")
 
         if not signature:
-            logger.error("Missing X-Hub-Signature header")
+            logger.error(
+                "Aborting webhook authentication due to missing X-Hub-Signature header"
+            )
             return False
 
         payload_bytes = json.dumps(payload).encode()
@@ -59,7 +61,7 @@ class BitbucketWebhookClient(BitbucketClient):
 
         :return: The URL endpoint for workspace webhook operations.
         """
-        return f"workspaces/{self.workspace}/hooks"
+        return f"{self.base_url}/workspaces/{self.workspace}/hooks"
 
     async def _webhook_exist(self, webhook_url: str) -> bool:
         """
@@ -78,7 +80,7 @@ class BitbucketWebhookClient(BitbucketClient):
                 return True
         return False
 
-    async def create_webhook(self, webhook_url: str) -> None:
+    async def create_webhook(self, app_host: str) -> None:
         """
         Create a new webhook for the workspace if one doesn't already exist.
 
@@ -88,6 +90,7 @@ class BitbucketWebhookClient(BitbucketClient):
         """
         logger.info("Setting up Bitbucket webhooks for workspace: {}", self.workspace)
 
+        webhook_url = f"{app_host}/integration/webhook"
         if await self._webhook_exist(webhook_url):
             logger.info(
                 "Webhook already exists for workspace {} (webhook URL: {}), skipping creation.",
