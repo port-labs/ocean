@@ -643,12 +643,13 @@ class AzureDevopsClient(HTTPBaseClient):
                 logger.warning(
                     f"None of the paths {paths} were found in repository {repository['name']}"
                 )
-            return
+            else:
+                raise
         except Exception as e:
             logger.error(
                 f"Unexpected error processing files in {repository['name']}: {e}"
             )
-            return
+            raise
 
     async def download_single_file(
         self, file: dict[str, Any], repository: dict[str, Any], branch: str
