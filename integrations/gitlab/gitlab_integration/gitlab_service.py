@@ -771,6 +771,7 @@ class GitlabService:
             async for members_batch in self.get_all_object_members(
                 obj, include_inherited_members, include_bot_members
             ):
+                members_batch = typing.cast(List[RESTObject], members_batch)
                 for member_chunk_idx in range(0, len(members_batch), batch_size):
                     member_chunk = members_batch[
                         member_chunk_idx : member_chunk_idx + batch_size

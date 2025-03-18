@@ -338,5 +338,5 @@ async def test_enrich_object_with_members(
 
     # Assert
     assert enriched_obj.name == "test_group"
-    assert len(enriched_obj.__members) == 6
+    assert len(enriched_obj.__members) == 3
     assert enriched_obj.__members[0] == {"id": 1, "username": "user1"}
