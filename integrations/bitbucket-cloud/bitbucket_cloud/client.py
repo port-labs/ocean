@@ -69,6 +69,7 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
+        return_full_response: bool = False,
     ) -> Any:
         """Send request to Bitbucket API with error handling."""
         response = await self.client.request(
@@ -76,7 +77,7 @@ class BitbucketClient:
         )
         try:
             response.raise_for_status()
-            return response.json()
+            return response if return_full_response else response.json()
         except HTTPStatusError as e:
             error_data = e.response.json()
             error_message = error_data.get("error", {}).get("message", str(e))
@@ -165,8 +166,19 @@ class BitbucketClient:
             )
             yield repos
 
+    async def get_repository(self, repo_slug: str) -> dict[str, Any]:
+        """Get a specific repository by slug."""
+        return await self._send_api_request(
+            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
+        )
+
     async def get_directory_contents(
-        self, repo_slug: str, branch: str, path: str, max_depth: int = 2
+        self,
+        repo_slug: str,
+        branch: str,
+        path: str,
+        max_depth: int = 2,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get contents of a directory."""
         params = {
@@ -212,3 +224,11 @@ class BitbucketClient:
         return await self._send_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )
+    async def get_repository_files(self, repo: str, branch: str, path: str) -> Any:
+        """Get the content of a file."""
+        response = await self._send_api_request(
+            f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
+            method="GET",
+            return_full_response=True,
+        )
+        return response.text

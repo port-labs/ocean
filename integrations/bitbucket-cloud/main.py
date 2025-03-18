@@ -16,9 +16,18 @@ from bitbucket_cloud.webhook_processors.processors.repository_webhook_processor 
     RepositoryWebhookProcessor,
 )
 from initialize_client import init_client, init_webhook_client
-from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
+from integration import (
+    BitbucketFolderResourceConfig,
+    BitbucketFolderSelector,
+    BitbucketFileResourceConfig,
+    BitbucketFileSelector,
+)
 from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
+)
+from helpers.file_kind import (
+    process_file_patterns,
+    calculate_base_path,
 )
 
 
@@ -75,8 +84,27 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = cast(BitbucketFolderSelector, config.selector)
     client = init_client()
+
     async for matching_folders in process_folder_patterns(selector.folders, client):
         yield matching_folders
+
+
+@ocean.on_resync(ObjectKind.FILE)
+async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync files based on configuration using optimized query filtering."""
+    config = cast(
+        Union[ResourceConfig, BitbucketFileResourceConfig], event.resource_config
+    )
+    selector = cast(BitbucketFileSelector, config.selector)
+    client = init_client()
+
+    base_path = calculate_base_path(selector)
+    logger.info(f"Using base path: {base_path} for file retrieval")
+
+    async for file_result in process_file_patterns(
+        selector.files, client, base_path=base_path, format="meta"
+    ):
+        yield file_result
 
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
