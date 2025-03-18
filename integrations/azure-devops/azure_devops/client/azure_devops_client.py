@@ -12,7 +12,7 @@ from azure_devops.webhooks.webhook_event import WebhookEvent
 
 from .base_client import HTTPBaseClient
 from .file_processing import (
-    generate_file_object_from_repository_file,
+    parse_file_content,
 )
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -680,11 +680,24 @@ class AzureDevopsClient(HTTPBaseClient):
             **file.get("contentMetadata", {}),
         }
 
-        processed_file = await generate_file_object_from_repository_file(
-            file_obj, content, repository
-        )
-        logger.info(
-            f"Downloaded file {file_path} of size {file_size} bytes "
-            f"({file_size / 1024:.2f} KB, {file_size / (1024 * 1024):.2f} MB)"
-        )
-        return processed_file
+        try:
+            parsed_content = await parse_file_content(content)
+            processed_file = {
+                "file": {
+                    **file_obj,
+                    "content": {
+                        "raw": content.decode("utf-8"),
+                        "parsed": parsed_content,
+                    },
+                    "size": len(content),
+                },
+                "repo": repository,
+            }
+            logger.info(
+                f"Downloaded file {file_path} of size {file_size} bytes "
+                f"({file_size / 1024:.2f} KB, {file_size / (1024 * 1024):.2f} MB)"
+            )
+            return processed_file
+        except Exception as e:
+            logger.error(f"Failed to process file {file_path}: {str(e)}")
+            raise

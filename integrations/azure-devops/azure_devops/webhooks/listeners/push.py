@@ -11,7 +11,7 @@ from azure_devops.gitops.generate_entities import generate_entities_from_commit_
 from azure_devops.misc import GitPortAppConfig, Kind, extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_event import WebhookEvent
 from azure_devops.client.file_processing import (
-    generate_file_object_from_repository_file,
+    parse_file_content,
 )
 
 from .listener import HookListener
@@ -143,11 +143,25 @@ class PushHookListener(HookListener):
             }
             logger.debug(f"File metadata: {file_metadata}")
 
-            file_data = await generate_file_object_from_repository_file(
-                file_metadata, file_content, repo_info
+            parsed_content = await parse_file_content(file_content)
+
+            processed_file = {
+                "file": {
+                    **file_metadata,
+                    "content": {
+                        "raw": file_content.decode("utf-8"),
+                        "parsed": parsed_content,
+                    },
+                    "size": len(file_content),
+                },
+                "repo": repo_info,
+            }
+            logger.info(
+                f"Downloaded file {file_path} of size {file_metadata['size']} bytes "
+                f"({file_metadata['size'] / 1024:.2f} KB, {file_metadata['size'] / (1024 * 1024):.2f} MB)"
             )
-            if file_data:
-                await ocean.register_raw(Kind.FILE, [file_data])
+            if processed_file:
+                await ocean.register_raw(Kind.FILE, [processed_file])
                 logger.info(f"Successfully ingested file {file_path} to Port")
 
         except Exception as e:
