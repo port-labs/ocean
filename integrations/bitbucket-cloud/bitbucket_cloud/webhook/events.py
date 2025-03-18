@@ -56,7 +56,3 @@ class RepositoryEvents(EventEnum):
     REPOSITORY_CREATED = "repo:created"
     REPOSITORY_UPDATED = "repo:updated"
     REPOSITORY_DELETED = "repo:deleted"
-
-
-if __name__ == "__main__":
-    print(RepositoryEvents("repo:created"))
