@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, List, Dict
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.utils import http_async_client
@@ -62,6 +62,7 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
+        return_full_response: bool = False,
     ) -> Any:
         """Send request to Bitbucket API with error handling."""
         response = await self.client.request(
@@ -69,7 +70,7 @@ class BitbucketClient:
         )
         try:
             response.raise_for_status()
-            return response.json()
+            return response if return_full_response else response.json()
         except HTTPStatusError as e:
             error_data = e.response.json()
             error_message = error_data.get("error", {}).get("message", str(e))
@@ -125,14 +126,26 @@ class BitbucketClient:
         ):
             yield repos
 
+    async def get_repository(self, repo_slug: str) -> dict[str, Any]:
+        """Get a specific repository by slug."""
+        return await self._send_api_request(
+            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
+        )
+
     async def get_directory_contents(
-        self, repo_slug: str, branch: str, path: str, max_depth: int = 2
+        self,
+        repo_slug: str,
+        branch: str,
+        path: str,
+        max_depth: int = 2,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get contents of a directory."""
-        params = {
-            "max_depth": max_depth,
-            "pagelen": PAGE_SIZE,
-        }
+        if params is None:
+            params = {
+                "max_depth": max_depth,
+                "pagelen": PAGE_SIZE,
+            }
         async for contents in self._send_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
             params=params,
@@ -141,9 +154,18 @@ class BitbucketClient:
 
     async def get_pull_requests(
         self, repo_slug: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get pull requests for a repository."""
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Get pull requests for a specific repository."""
         async for pull_requests in self._send_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests"
         ):
             yield pull_requests
+
+    async def get_repository_files(self, repo: str, branch: str, path: str) -> Any:
+        """Get the content of a file."""
+        response = await self._send_api_request(
+            f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
+            method="GET",
+            return_full_response=True,
+        )
+        return response.text

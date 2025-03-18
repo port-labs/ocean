@@ -52,8 +52,37 @@ class BitbucketFolderResourceConfig(ResourceConfig):
     port: PortResourceConfig
 
 
+class BitbucketFilePattern(BaseModel):
+    path: str = Field(
+        default="",
+        alias="path",
+        description="Specify the pattern or path to match files",
+    )
+    repos: list[str] = Field(
+        default_factory=list,
+        alias="repos",
+        description="Specify the repositories to fetch files from",
+    )
+    skip_parsing: bool = Field(
+        default=False,
+        alias="skipParsing",
+        description="Skip parsing the files and just return the raw file content",
+    )
+
+
+class BitbucketFileSelector(Selector):
+    files: BitbucketFilePattern
+
+
+class BitbucketFileResourceConfig(ResourceConfig):
+    kind: Literal["file"]
+    selector: BitbucketFileSelector
+
+
 class BitbucketAppConfig(PortAppConfig):
-    resources: list[BitbucketFolderResourceConfig | ResourceConfig] = Field(
+    resources: list[
+        BitbucketFolderResourceConfig | BitbucketFileResourceConfig | ResourceConfig
+    ] = Field(
         default_factory=list,
         alias="resources",
         description="Specify the resources to include in the sync",

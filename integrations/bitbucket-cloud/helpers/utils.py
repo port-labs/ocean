@@ -6,3 +6,4 @@ class ObjectKind(StrEnum):
     FOLDER = "folder"
     REPOSITORY = "repository"
     PULL_REQUEST = "pull-request"
+    FILE = "file"
