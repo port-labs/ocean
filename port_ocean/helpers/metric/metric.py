@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, TYPE_CHECKING, Optional
 from fastapi import APIRouter
 from port_ocean.exceptions.context import ResourceContextNotFoundError
 import prometheus_client
@@ -10,6 +10,9 @@ from prometheus_client import Gauge
 import prometheus_client.openmetrics
 import prometheus_client.openmetrics.exposition
 import prometheus_client.parser
+
+if TYPE_CHECKING:
+    from port_ocean.config.settings import MetricsSettings, IntegrationSettings
 
 
 class MetricPhase:
@@ -44,18 +47,32 @@ class EmptyMetric:
 class Metrics:
     def __init__(
         self,
-        metrics_settings: Any,
-        integration_configuration: Any,
-        integration_version: str,
-        ocean_version: str,
+        metrics_settings: "MetricsSettings",
+        integration_configuration: "IntegrationSettings",
     ) -> None:
         self.metrics_settings = metrics_settings
         self.integration_configuration = integration_configuration
-        self.integration_version = integration_version
-        self.ocean_version = ocean_version
         self.registry = prometheus_client.CollectorRegistry()
         self.metrics: dict[str, Gauge] = {}
         self.load_metrics()
+        self._integration_version: Optional[str] = None
+        self._ocean_version: Optional[str] = None
+
+    @property
+    def integration_version(self) -> str:
+        if self._integration_version is None:
+            from port_ocean.version import __integration_version__
+
+            self._integration_version = __integration_version__
+        return self._integration_version
+
+    @property
+    def ocean_version(self) -> str:
+        if self._ocean_version is None:
+            from port_ocean.version import __version__
+
+            self._ocean_version = __version__
+        return self._ocean_version
 
     @property
     def enabled(self) -> bool:
@@ -76,7 +93,6 @@ class Metrics:
         if not self.enabled:
             return EmptyMetric()
         metrics = self.metrics.get(name)
-        # Should i add a new metric although it was not initialized?
         if not metrics:
             return EmptyMetric()
         return metrics.labels(self.get_kind(), *lables)
