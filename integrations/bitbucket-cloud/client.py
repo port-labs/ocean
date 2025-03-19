@@ -12,7 +12,7 @@ import base64
 PULL_REQUEST_STATE = "OPEN"
 PULL_REQUEST_PAGE_SIZE = 50
 PAGE_SIZE = 100
-RATE_LIMITER: RollingWindowLimiter[None] = RollingWindowLimiter(
+RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
     limit=BitbucketRateLimiterConfig.LIMIT, window=BitbucketRateLimiterConfig.WINDOW
 )
 

@@ -8,9 +8,9 @@ from typing import Generator
 
 
 @pytest.fixture
-def limiter() -> Generator[RollingWindowLimiter[None], None, None]:
+def limiter() -> Generator[RollingWindowLimiter, None, None]:
     """Fixture providing a RollingWindowLimiter with proper cleanup."""
-    limiter_instance = RollingWindowLimiter[None](
+    limiter_instance = RollingWindowLimiter(
         limit=5, window=0.5
     )  # Use shorter window for faster tests
     yield limiter_instance
@@ -39,7 +39,7 @@ def limiter() -> Generator[RollingWindowLimiter[None], None, None]:
 
 
 @pytest.mark.asyncio
-async def test_basic_rate_limiting(limiter: RollingWindowLimiter[None]) -> None:
+async def test_basic_rate_limiting(limiter: RollingWindowLimiter) -> None:
     """Test basic rate limiting functionality."""
     # Should allow 5 requests immediately
     for i in range(5):
@@ -69,9 +69,7 @@ async def test_basic_rate_limiting(limiter: RollingWindowLimiter[None]) -> None:
 async def test_rolling_window_behavior() -> None:
     """Test that the window truly rolls."""
     # Use a shorter window for faster tests
-    limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
-        limit=2, window=0.3
-    )
+    limiter: RollingWindowLimiter = RollingWindowLimiter(limit=2, window=0.3)
 
     try:
         # Make initial requests
@@ -111,9 +109,7 @@ async def test_rolling_window_behavior() -> None:
 @pytest.mark.asyncio
 async def test_concurrent_requests() -> None:
     """Test handling of concurrent requests."""
-    limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
-        limit=3, window=0.5
-    )
+    limiter: RollingWindowLimiter = RollingWindowLimiter(limit=3, window=0.5)
 
     try:
 
@@ -156,7 +152,7 @@ async def test_concurrent_requests() -> None:
 @pytest.mark.asyncio
 async def test_context_manager() -> None:
     """Test using the limiter as a context manager."""
-    limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
+    limiter: RollingWindowLimiter = RollingWindowLimiter(
         limit=1, window=0.3
     )  # Shorter window for faster tests
 
@@ -207,9 +203,7 @@ async def test_context_manager() -> None:
 @pytest.mark.asyncio
 async def test_metrics() -> None:
     """Test metrics collection."""
-    limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
-        limit=2, window=0.5
-    )
+    limiter: RollingWindowLimiter = RollingWindowLimiter(limit=2, window=0.5)
 
     try:
         # Initial metrics
@@ -257,9 +251,7 @@ async def test_metrics() -> None:
 @pytest.mark.asyncio
 async def test_cancellation() -> None:
     """Test cancellation behavior."""
-    limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
-        limit=1, window=0.5
-    )
+    limiter: RollingWindowLimiter = RollingWindowLimiter(limit=1, window=0.5)
 
     try:
         # Use up the limit
@@ -318,9 +310,7 @@ async def test_cancellation() -> None:
 async def test_shutdown() -> None:
     """Test graceful shutdown."""
     # Create a separate limiter for this test
-    limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
-        limit=1, window=0.2
-    )
+    limiter: RollingWindowLimiter = RollingWindowLimiter(limit=1, window=0.2)
 
     try:
         # Force shutdown event
@@ -351,9 +341,7 @@ async def test_shutdown() -> None:
 @pytest.mark.asyncio
 async def test_rate_limit_decorator() -> None:
     """Test the function decorator."""
-    limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
-        limit=2, window=0.5
-    )
+    limiter: RollingWindowLimiter = RollingWindowLimiter(limit=2, window=0.5)
 
     try:
         # Track function calls
@@ -397,17 +385,15 @@ async def test_edge_cases() -> None:
     """Test edge cases and error conditions."""
     # Test invalid initialization
     with pytest.raises(ValueError) as excinfo:
-        RollingWindowLimiter[None](limit=0, window=1.0)
+        RollingWindowLimiter(limit=0, window=1.0)
     assert "Limit must be a positive integer" in str(excinfo.value)
 
     with pytest.raises(ValueError) as excinfo:
-        RollingWindowLimiter[None](limit=1, window=0)
+        RollingWindowLimiter(limit=1, window=0)
     assert "Window must be a positive number of seconds" in str(excinfo.value)
 
     # Test with very short window
-    limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
-        limit=1, window=0.2
-    )
+    limiter: RollingWindowLimiter = RollingWindowLimiter(limit=1, window=0.2)
     try:
         await limiter.acquire()
         assert len(limiter._timestamps) == 1
@@ -415,9 +401,7 @@ async def test_edge_cases() -> None:
         limiter._shutdown_event.set()
 
     # Test with very large limit
-    large_limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
-        limit=100, window=0.5
-    )
+    large_limiter: RollingWindowLimiter = RollingWindowLimiter(limit=100, window=0.5)
     try:
         for _ in range(10):  # Should handle large numbers efficiently
             await large_limiter.acquire()
@@ -431,7 +415,7 @@ async def test_edge_cases() -> None:
 async def test_purge_behavior() -> None:
     """Test timestamp purging behavior."""
     # Use a shorter window for faster tests
-    limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
+    limiter: RollingWindowLimiter = RollingWindowLimiter(
         limit=3, window=0.2, purge_interval=0.1
     )
 
@@ -470,9 +454,7 @@ async def test_purge_behavior() -> None:
 @pytest.mark.asyncio
 async def test_wait_for_next_slot() -> None:
     """Test waiting for the next available slot."""
-    limiter: RollingWindowLimiter[None] = RollingWindowLimiter[None](
-        limit=1, window=0.2
-    )
+    limiter: RollingWindowLimiter = RollingWindowLimiter(limit=1, window=0.2)
 
     try:
         # Fill the limit

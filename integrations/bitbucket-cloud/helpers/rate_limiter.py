@@ -7,20 +7,15 @@ from typing import (
     Dict,
     Any,
     Callable,
-    TypeVar,
     Coroutine,
     Deque,
     Tuple,
     Type,
-    Generic,
 )
 from contextlib import AbstractAsyncContextManager
 
-T = TypeVar("T")
-R = TypeVar("R")
 
-
-class RollingWindowLimiter(AbstractAsyncContextManager[None], Generic[T]):
+class RollingWindowLimiter(AbstractAsyncContextManager[None]):
     """
     A rolling window rate limiter that allows up to `limit` operations per `window` seconds.
 
@@ -250,7 +245,7 @@ class RollingWindowLimiter(AbstractAsyncContextManager[None], Generic[T]):
                     # when the oldest request expires from our window
                     wait_time = await self._calculate_next_slot_time()
 
-                    self._logger.debug(
+                    self._logger.info(
                         f"Will process next request in {wait_time:.6f}s when oldest timestamp expires"
                     )
 
@@ -389,8 +384,8 @@ class RollingWindowLimiter(AbstractAsyncContextManager[None], Generic[T]):
         return False
 
     def limit_function(
-        self, func: Callable[..., Coroutine[Any, Any, R]]
-    ) -> Callable[..., Coroutine[Any, Any, R]]:
+        self, func: Callable[..., Coroutine[Any, Any, Any]]
+    ) -> Callable[..., Coroutine[Any, Any, Any]]:
         """
         Decorator to rate limit an asynchronous function.
 
