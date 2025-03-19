@@ -20,7 +20,6 @@ class Fragments:
                 }
                 nodes {
                     id
-                    title
                 }
             }
             languages {
@@ -33,7 +32,7 @@ class Fragments:
 
 class ProjectQueries:
     LIST = f"""
-        query Projects($cursor: String) {{
+        query Projects($cursor: String, $filePaths: [String!]!) {{
             projects(
                 membership: true,
                 first: 100,
@@ -51,7 +50,7 @@ class ProjectQueries:
         {Fragments.PROJECT_FIELDS}
     """
 
-    GET_LABELS = f"""
+    GET_LABELS = """
         query ProjectLabels($fullPath: ID!, $labelsCursor: String) {{
             project(fullPath: $fullPath) {{
                 id
