@@ -1,4 +1,4 @@
-import typing
+from typing import Optional, Literal
 
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -14,6 +14,8 @@ from port_ocean.core.integrations.base import BaseIntegration
 class SLOHistorySelector(Selector):
     timeframe: int = Field(alias="timeframe", default=7)
     period_of_time_in_months: int = Field(alias="periodOfTimeInMonths", default=12)
+    period_of_time_in_days: Optional[int] = Field(alias="periodOfTimeInDays")
+    concurrency: int = Field(alias="concurrency", default=2)
 
     @validator("timeframe")
     def validate_timeframe_field(cls, v: int) -> int:
@@ -37,9 +39,31 @@ class SLOHistorySelector(Selector):
             return 6
         return v
 
+    @validator("period_of_time_in_days")
+    def validate_period_of_time_in_days(cls, v: int) -> int:
+        if v < 1 or v > 365:
+            logger.warning(
+                f"The selector value 'periodOfTimeInDays' ({v}) must be between 1 and 365. "
+                f"This value determines how far back in time to fetch SLO history. "
+                f"Using default value of 7 days."
+            )
+            return 7
+        return v
+
+    @validator("concurrency")
+    def validate_concurrency(cls, v: int) -> int:
+        if v < 1:
+            logger.warning(
+                f"The selector value 'concurrency' ({v}) must be larger than 0. "
+                f"This value determines how many concurrent requests to make to Datadog. "
+                f"Using default value of 2."
+            )
+            return 2
+        return v
+
 
 class SLOHistoryResourceConfig(ResourceConfig):
-    kind: typing.Literal["sloHistory"]
+    kind: Literal["sloHistory"]
     selector: SLOHistorySelector
 
 
@@ -74,7 +98,7 @@ class TeamSelector(Selector):
 
 
 class TeamResourceConfig(ResourceConfig):
-    kind: typing.Literal["team"]
+    kind: Literal["team"]
     selector: TeamSelector
 
 
