@@ -147,7 +147,7 @@ class BitbucketClient:
         async for projects in self._send_paginated_api_request(
             f"{self.base_url}/workspaces/{self.workspace}/projects"
         ):
-            logger.info(f"Fetched project batch with {len(projects)} projects")
+            logger.info(f"Fetched batch of {len(projects)} projects from workspace {self.workspace}")
             yield projects
 
     @cache_iterator_result()
