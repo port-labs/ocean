@@ -6,14 +6,13 @@ from helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
 from helpers.rate_limiter import RollingWindowLimiter
+from helpers.utils import BitbucketRateLimiterConfig
 import base64
 
 PULL_REQUEST_STATE = "OPEN"
 PAGE_SIZE = 100
-RATE_LIMIT_WINDOW = 3600
-RATE_LIMITER_LIMIT = 1000
 RATE_LIMITER: RollingWindowLimiter[None] = RollingWindowLimiter(
-    limit=RATE_LIMITER_LIMIT, window=RATE_LIMIT_WINDOW
+    limit=BitbucketRateLimiterConfig.LIMIT, window=BitbucketRateLimiterConfig.WINDOW
 )
 
 
@@ -75,13 +74,8 @@ class BitbucketClient:
             method=method, url=url, params=params, json=json_data
         )
         try:
-            if url.startswith(f"{self.base_url}/repositories/"):
-                async with RATE_LIMITER:
-                    response.raise_for_status()
-                    return response.json()
-            else:
-                response.raise_for_status()
-                return response.json()
+            response.raise_for_status()
+            return response.json()
         except HTTPStatusError as e:
             error_data = e.response.json()
             error_message = error_data.get("error", {}).get("message", str(e))
@@ -95,6 +89,29 @@ class BitbucketClient:
         except HTTPError as e:
             logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
             raise e
+
+    async def _send_rate_limited_paginated_api_request(
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        method: str = "GET",
+        data_key: str = "values",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Handle rate-limited paginated requests to Bitbucket API"""
+        if params is None:
+            params = {
+                "pagelen": PAGE_SIZE,
+            }
+        while True:
+            async with RATE_LIMITER:
+                response = await self._send_api_request(
+                    url, params=params, method=method
+                )
+                if values := response.get(data_key, []):
+                    yield values
+                url = response.get("next")
+                if not url:
+                    break
 
     async def _send_paginated_api_request(
         self,
@@ -136,7 +153,7 @@ class BitbucketClient:
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the workspace."""
-        async for repos in self._send_paginated_api_request(
+        async for repos in self._send_rate_limited_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}", params=params
         ):
             yield repos
@@ -149,7 +166,7 @@ class BitbucketClient:
             "max_depth": max_depth,
             "pagelen": PAGE_SIZE,
         }
-        async for contents in self._send_paginated_api_request(
+        async for contents in self._send_rate_limited_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
             params=params,
         ):
@@ -163,7 +180,7 @@ class BitbucketClient:
             "state": PULL_REQUEST_STATE,
             "pagelen": PAGE_SIZE,
         }
-        async for pull_requests in self._send_paginated_api_request(
+        async for pull_requests in self._send_rate_limited_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
             params=params,
         ):
