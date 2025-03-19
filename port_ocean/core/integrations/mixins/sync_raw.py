@@ -569,10 +569,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         """
         logger.info("Resync was triggered")
 
-        # Clear all metrics at the start of resync
-        ocean.metrics.clear_metrics()
-        logger.info("Metrics cleared for fresh resync")
-
         async with event_context(
             EventType.RESYNC,
             trigger_type=trigger_type,
