@@ -5,6 +5,7 @@ from loguru import logger
 from .base_client import HTTPBaseClient
 from .queries import ProjectQueries
 import asyncio
+import gc
 
 MAX_CONCURRENT_REQUESTS = 10
 
@@ -17,7 +18,7 @@ class GraphQLClient(HTTPBaseClient):
 
     RESOURCE_QUERIES = {
         "projects": ProjectQueries.LIST,
-        "project_labels": ProjectQueries.GET_LABELS,
+        "labels": ProjectQueries.GET_LABELS,
     }
 
     async def get_resource(
@@ -53,6 +54,24 @@ class GraphQLClient(HTTPBaseClient):
             list[dict[str, Any]], list[AsyncIterator[tuple[str, list[dict[str, Any]]]]]
         ]
     ]:
+        """Execute a paginated GraphQL query to fetch resources and their nested field iterators.
+
+        This method paginates through a resource (e.g., projects) using the provided GraphQL query,
+        yielding batches of resource nodes along with iterators for their nested fields (e.g., labels).
+
+        Args:
+            query (str): The GraphQL query string to execute (e.g., `ProjectQueries.LIST`).
+            resource_field (str): The field in the query response containing the resource data
+                (e.g., "projects").
+            params (Optional[dict[str, Any]]): Additional query parameters (e.g., filters).
+                Defaults to None.
+
+        Yields:
+            tuple[list[dict[str, Any]], list[AsyncIterator[tuple[str, list[dict[str, Any]]]]]]:
+                A tuple containing:
+                - A list of resource nodes (e.g., list of project dictionaries).
+                - A list of async iterators for nested fields (e.g., label iterators for each project).
+        """
         cursor = None
 
         while True:
@@ -68,8 +87,7 @@ class GraphQLClient(HTTPBaseClient):
                 break
 
             nested_field_generators = [
-                self._fetch_paginated_fields(node, resource_field, query, params or {})
-                for node in nodes
+                self._fetch_paginated_fields(node, params or {}) for node in nodes
             ]
 
             yield nodes, nested_field_generators
@@ -83,13 +101,31 @@ class GraphQLClient(HTTPBaseClient):
     async def _fetch_paginated_fields(
         self,
         resource: dict[str, Any],
-        resource_field: str,
-        query: str,
         params: dict[str, Any],
     ) -> AsyncIterator[tuple[str, list[dict[str, Any]]]]:
+        """Fetch paginated nested fields for a resource.
+
+        This method iterates over the nested fields of a resource (e.g., labels of a project)
+        that have pagination data (`nodes` and `pageInfo`), creating async iterators for each
+        field and yielding their paginated data.
+
+        Args:
+            resource (dict[str, Any]): The resource dictionary containing nested fields
+                (e.g., a project with a "labels" field).
+            params (dict[str, Any]): Query parameters to pass to the field pagination
+                (e.g., filters).
+
+        Yields:
+            tuple[str, list[dict[str, Any]]]: A tuple containing:
+                - The field name (e.g., "labels").
+                - A list of nodes for that field (e.g., list of label dictionaries).
+
+        Raises:
+            Exception: If the underlying `_paginate_field` or `_execute_query` fails.
+        """
 
         field_generators = [
-            self._paginate_field(resource, field, resource_field, query, params)
+            self._paginate_field(resource, field, params)
             for field, value in resource.items()
             if isinstance(value, dict) and "nodes" in value and "pageInfo" in value
         ]
@@ -102,17 +138,32 @@ class GraphQLClient(HTTPBaseClient):
         self,
         parent: dict[str, Any],
         field_name: str,
-        resource_field: str,
-        query: str,
         params: dict[str, Any],
     ) -> AsyncIterator[tuple[str, list[dict[str, Any]]]]:
-        parent_id: str = parent["id"]  # Still used for logging
-        parent_full_path: str = parent["fullPath"]  # Use fullPath for query
+        """Paginate a nested field for a specific resource.
+
+        This method paginates a nested field (e.g., labels) for a given resource (e.g., a project),
+        yielding batches of nodes as they are fetched from the GraphQL API. It uses a field-specific
+        query (e.g., `LabelQueries.GET_LABELS`) to fetch additional pages of data.
+
+        Args:
+            parent (dict[str, Any]): The parent resource dictionary (e.g., a project).
+            field_name (str): The name of the field to paginate (e.g., "labels").
+            params (dict[str, Any]): Additional query parameters (e.g., filters).
+
+        Yields:
+            tuple[str, list[dict[str, Any]]]: A tuple containing:
+                - The field name (e.g., "labels").
+                - A list of nodes for that field (e.g., list of label dictionaries).
+        """
+
+        parent_id: str = parent["id"]
+        parent_full_path: str = parent["fullPath"]
         field_data: dict[str, Any] = parent[field_name]
         nodes: list[dict[str, Any]] = field_data["nodes"]
         page_info: dict[str, Any] = field_data["pageInfo"]
 
-        yield field_name, nodes  # Initial yield
+        yield field_name, nodes
 
         cursor: str | None = page_info["endCursor"]
         while page_info["hasNextPage"]:
@@ -123,10 +174,14 @@ class GraphQLClient(HTTPBaseClient):
                 break
 
             logger.debug(f"Fetching '{field_name}' for {parent_id}")
-            label_query = self.RESOURCE_QUERIES["project_labels"]
+            resource_query = self.RESOURCE_QUERIES[field_name]
             response = await self._execute_query(
-                label_query,
-                params={"fullPath": parent_full_path, "labelsCursor": cursor},
+                resource_query,
+                params={
+                    "fullPath": parent_full_path,
+                    "labelsCursor": cursor,
+                    **(params or {}),
+                },
             )
 
             project_data = response["project"]
@@ -168,6 +223,26 @@ class GraphQLClient(HTTPBaseClient):
         projects: list[dict[str, Any]],
         field_iterators: list[AsyncIterator[tuple[str, list[dict[str, Any]]]]],
     ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Process nested fields for a batch of projects, yielding updated project data.
+
+        This method processes nested fields (e.g., labels) for a batch of projects in parallel,
+        fetching paginated data from the provided iterators and updating the projects' nested
+        field nodes. It yields the updated projects whenever new data is added, clearing the
+        accumulated nodes to manage memory usage.
+
+        Args:
+            projects (list[dict[str, Any]]): List of project dictionaries to process.
+            field_iterators (list[AsyncIterator[tuple[str, list[dict[str, Any]]]]]): List of
+                async iterators for the nested fields of each project (e.g., label iterators).
+
+        Yields:
+            list[dict[str, Any]]: A list of updated project dictionaries with their nested
+                field nodes (e.g., labels) appended.
+
+        Notes:
+            - Clears `project[field_name]["nodes"]` after each yield to minimize memory usage.
+            - Processes all iterators in parallel using `asyncio.gather`.
+        """
         active_data = list(zip(projects, field_iterators))
         while active_data:
             updated = False
@@ -184,7 +259,9 @@ class GraphQLClient(HTTPBaseClient):
             active_data = next_active
             if updated:
                 yield [self._copy_project(project) for project, _ in active_data]
-                project["labels"]["nodes"] = []
+                for project, _ in active_data:
+                    project[field_name]["nodes"] = []
+                gc.collect()  # Force garbage collection
 
     def _copy_project(self, project: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -204,15 +281,12 @@ class GraphQLClient(HTTPBaseClient):
     async def _execute_query(
         self, query: str, params: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
-        for attempt in range(3):  # Retry up to 3 times
+        for attempt in range(3):
             try:
                 response = await self.send_api_request(
                     "POST",
                     "",
-                    data={
-                        "query": query,
-                        "variables": params or {},
-                    },
+                    data={"query": query, "variables": params or {}},
                 )
 
                 if "errors" in response:
@@ -221,11 +295,9 @@ class GraphQLClient(HTTPBaseClient):
 
                 return response["data"]
             except Exception as e:
-                logger.info(
-                    f"Attempt {attempt+1}/3 failed to execute GraphQL query: {str(e)}"
-                )
-                if attempt < 2:  # Retry if not the last attempt
-                    await asyncio.sleep(2**attempt)  # Backoff: 1, 2 sec
+                logger.info(f"Attempt {attempt+1}/3 failed: {str(e)}")
+                if attempt < 2:
+                    await asyncio.sleep(2**attempt)
                 else:
-                    logger.error(f"All retries exhausted for GraphQL query: {str(e)}")
-                    raise  # Raise on final failure
+                    logger.error(f"All retries exhausted: {str(e)}")
+                    raise
