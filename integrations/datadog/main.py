@@ -105,15 +105,17 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     concurrency = selector.concurrency
 
     if period_of_time_in_days:
-        logger.info(
-            f"Fetching SLO histories for {period_of_time_in_days} days back"
+        logger.info(f"Fetching SLO histories for {period_of_time_in_days} days back")
+        start_timestamp = get_start_of_the_day_in_seconds_x_day_back(
+            period_of_time_in_days
         )
-        start_timestamp = get_start_of_the_day_in_seconds_x_day_back(period_of_time_in_days)
     else:
         logger.info(
             f"Fetching SLO histories for {period_of_time_in_months} months back"
         )
-        start_timestamp = get_start_of_the_month_in_seconds_x_months_back(period_of_time_in_months)
+        start_timestamp = get_start_of_the_month_in_seconds_x_months_back(
+            period_of_time_in_months
+        )
 
     logger.info(
         f"Fetching SLO histories for timeframe {timeframe}, start_timestamp {start_timestamp}, concurrency {concurrency}"
