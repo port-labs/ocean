@@ -50,6 +50,17 @@ class SLOHistorySelector(Selector):
             return 6
         return v
 
+    @validator("concurrency")
+    def validate_concurrency(cls, v: int) -> int:
+        if v < 1 or v > 20:
+            logger.warning(
+                f"The selector value 'concurrency' ({v}) must be between 1 and 20. "
+                f"This value determines how many concurrent requests to make to Datadog. "
+                f"Using default value of 2."
+            )
+            return 2
+        return v
+
 
 class SLOHistoryResourceConfig(ResourceConfig):
     kind: Literal["sloHistory"]
