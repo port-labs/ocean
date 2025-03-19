@@ -147,7 +147,9 @@ class BitbucketClient:
         async for projects in self._send_paginated_api_request(
             f"{self.base_url}/workspaces/{self.workspace}/projects"
         ):
-            logger.info(f"Fetched batch of {len(projects)} projects from workspace {self.workspace}")
+            logger.info(
+                f"Fetched batch of {len(projects)} projects from workspace {self.workspace}"
+            )
             yield projects
 
     @cache_iterator_result()
@@ -158,7 +160,9 @@ class BitbucketClient:
         async for repos in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}", params=params
         ):
-            logger.info(f"Fetched batch of {len(repos)} repositories from workspace {self.workspace}")
+            logger.info(
+                f"Fetched batch of {len(repos)} repositories from workspace {self.workspace}"
+            )
             yield repos
 
     async def get_directory_contents(
