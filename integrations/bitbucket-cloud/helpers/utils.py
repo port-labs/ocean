@@ -14,4 +14,4 @@ class BitbucketRateLimiterConfig:
     """Configuration for Bitbucket API rate limiting."""
 
     WINDOW: int = 3600  # Rate limit window in seconds
-    LIMIT: int = 1000  # Number of requests allowed per window
+    LIMIT: int = 980  # Number of requests allowed per window

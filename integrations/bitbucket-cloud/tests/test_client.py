@@ -218,7 +218,7 @@ async def test_get_repositories(mock_client: BitbucketClient) -> None:
 
     async with event_context("test_event"):
         with patch.object(
-            mock_client, "_send_rate_limited_paginated_api_request"
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
         ) as mock_paginated:
 
             async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
@@ -239,7 +239,7 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
 
     async with event_context("test_event"):
         with patch.object(
-            mock_client, "_send_rate_limited_paginated_api_request"
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
         ) as mock_paginated:
 
             async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
@@ -263,7 +263,7 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
 
     async with event_context("test_event"):
         with patch.object(
-            mock_client, "_send_rate_limited_paginated_api_request"
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
         ) as mock_paginated:
 
             async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
