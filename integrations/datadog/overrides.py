@@ -47,14 +47,14 @@ class SLOHistorySelector(Selector):
                 f"This value determines how far back in time to fetch SLO history. "
                 f"Using default value of 7 days."
             )
-            return 6
+            return 7
         return v
 
     @validator("concurrency")
     def validate_concurrency(cls, v: int) -> int:
-        if v < 1 or v > 20:
+        if v < 1:
             logger.warning(
-                f"The selector value 'concurrency' ({v}) must be between 1 and 20. "
+                f"The selector value 'concurrency' ({v}) must be larger than 0. "
                 f"This value determines how many concurrent requests to make to Datadog. "
                 f"Using default value of 2."
             )
