@@ -15,15 +15,6 @@ def get_start_of_the_month_in_seconds_x_months_back(months_back: int) -> int:
 
 
 def get_start_of_the_day_in_seconds_x_day_back(days_back: int) -> int:
-    """
-    Calculate the timestamp for the start of the day 'days_back' days ago.
-
-    Args:
-        days_back: Number of days to go back in time
-
-    Returns:
-        Unix timestamp (seconds since epoch) for the start of that day
-    """
     now = datetime.datetime.now()
     target_date = now - datetime.timedelta(days=days_back)
     start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
