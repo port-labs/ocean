@@ -158,7 +158,7 @@ class BitbucketClient:
         async for repos in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}", params=params
         ):
-            logger.info(f"Fetched repository batch with {len(repos)} repositories")
+            logger.info(f"Fetched batch of {len(repos)} repositories from workspace {self.workspace}")
             yield repos
 
     async def get_directory_contents(
