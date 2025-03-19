@@ -1,4 +1,4 @@
-from typing import Optional,Literal
+from typing import Optional, Literal
 
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (

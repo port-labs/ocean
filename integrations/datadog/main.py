@@ -5,7 +5,10 @@ from typing import Any, cast
 from loguru import logger
 
 from client import DatadogClient
-from utils import get_start_of_the_day_in_seconds_x_day_back, get_start_of_the_month_in_seconds_x_months_back
+from utils import (
+    get_start_of_the_day_in_seconds_x_day_back,
+    get_start_of_the_month_in_seconds_x_months_back,
+)
 from overrides import (
     SLOHistoryResourceConfig,
     DatadogResourceConfig,
@@ -108,9 +111,7 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     async for histories in dd_client.list_slo_histories(
-        timeframe=timeframe,
-        start_timestamp=start_timestamp,
-        concurrency=concurrency
+        timeframe=timeframe, start_timestamp=start_timestamp, concurrency=concurrency
     ):
         yield histories
 

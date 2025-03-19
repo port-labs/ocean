@@ -31,6 +31,7 @@ def test_get_start_of_the_day_in_seconds_x_day_back() -> None:
         expected = int(datetime(2023, 12, 31, 0, 0, 0).timestamp())
         assert result == expected
 
+
 def test_generate_time_windows_from_interval_days() -> None:
     current_time = int(time.time())
     day_in_seconds = 24 * 60 * 60
