@@ -10,7 +10,7 @@ from urllib.parse import urlparse, urlunparse
 import httpx
 from loguru import logger
 
-from utils import transform_period_of_time_in_days_to_timestamps
+from utils import generate_time_windows_from_interval_days
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
 
@@ -334,12 +334,9 @@ class DatadogClient:
             offset += limit
 
     async def list_slo_histories(
-        self,
-        timeframe: int,
-        start_timestamp: int,
-        concurrency: int
+        self, timeframe: int, start_timestamp: int, concurrency: int
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        timestamps = transform_period_of_time_in_days_to_timestamps(
+        timestamps = generate_time_windows_from_interval_days(
             timeframe, start_timestamp
         )
         async for slos in self.get_slos():

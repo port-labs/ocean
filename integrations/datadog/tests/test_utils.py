@@ -4,7 +4,7 @@ from freezegun import freeze_time
 
 from utils import (
     get_start_of_the_day_in_seconds_x_day_back,
-    transform_period_of_time_in_days_to_timestamps,
+    generate_time_windows_from_interval_days,
 )
 
 
@@ -31,13 +31,13 @@ def test_get_start_of_the_day_in_seconds_x_day_back() -> None:
         expected = int(datetime(2023, 12, 31, 0, 0, 0).timestamp())
         assert result == expected
 
-def test_transform_period_of_time_in_days_to_timestamps() -> None:
+def test_generate_time_windows_from_interval_days() -> None:
     current_time = int(time.time())
     day_in_seconds = 24 * 60 * 60
 
     # Test with 1-day interval
     start_timestamp = current_time - (3 * day_in_seconds)  # 3 days ago
-    result = transform_period_of_time_in_days_to_timestamps(1, start_timestamp)
+    result = generate_time_windows_from_interval_days(1, start_timestamp)
 
     assert len(result) == 3
     for i, (start, end) in enumerate(result[:-1]):
@@ -49,7 +49,7 @@ def test_transform_period_of_time_in_days_to_timestamps() -> None:
 
     # Test with 2-day interval
     start_timestamp = current_time - (6 * day_in_seconds)  # 6 days ago
-    result = transform_period_of_time_in_days_to_timestamps(2, start_timestamp)
+    result = generate_time_windows_from_interval_days(2, start_timestamp)
 
     assert len(result) == 3
     for i, (start, end) in enumerate(result[:-1]):

@@ -30,7 +30,7 @@ def get_start_of_the_day_in_seconds_x_day_back(days_back: int) -> int:
     return int(start_of_day.timestamp())
 
 
-def transform_period_of_time_in_days_to_timestamps(
+def generate_time_windows_from_interval_days(
     interval: int, start_timestamp: int
 ) -> list[tuple[int, int]]:
     """
