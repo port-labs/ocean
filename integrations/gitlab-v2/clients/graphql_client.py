@@ -17,6 +17,7 @@ class GraphQLClient(HTTPBaseClient):
 
     RESOURCE_QUERIES = {
         "projects": ProjectQueries.LIST,
+        "project_labels": ProjectQueries.GET_LABELS,
     }
 
     async def get_resource(
@@ -67,9 +68,7 @@ class GraphQLClient(HTTPBaseClient):
                 break
 
             nested_field_generators = [
-                self._fetch_paginated_fields(
-                    node, resource_field, query, variables or {}
-                )
+                self._fetch_paginated_fields(node, resource_field, query, params or {})
                 for node in nodes
             ]
 
@@ -86,11 +85,11 @@ class GraphQLClient(HTTPBaseClient):
         resource: dict[str, Any],
         resource_field: str,
         query: str,
-        variables: dict[str, Any],
+        params: dict[str, Any],
     ) -> AsyncIterator[tuple[str, list[dict[str, Any]]]]:
 
         field_generators = [
-            self._paginate_field(resource, field, resource_field, query, variables)
+            self._paginate_field(resource, field, resource_field, query, params)
             for field, value in resource.items()
             if isinstance(value, dict) and "nodes" in value and "pageInfo" in value
         ]
@@ -105,16 +104,15 @@ class GraphQLClient(HTTPBaseClient):
         field_name: str,
         resource_field: str,
         query: str,
-        variables: dict[str, Any],
+        params: dict[str, Any],
     ) -> AsyncIterator[tuple[str, list[dict[str, Any]]]]:
-        """Stream paginated nodes for a field (e.g., labels) of a GitLab resource."""
-
-        parent_id: str = parent["id"]
+        parent_id: str = parent["id"]  # Still used for logging
+        parent_full_path: str = parent["fullPath"]  # Use fullPath for query
         field_data: dict[str, Any] = parent[field_name]
         nodes: list[dict[str, Any]] = field_data["nodes"]
         page_info: dict[str, Any] = field_data["pageInfo"]
 
-        yield field_name, nodes
+        yield field_name, nodes  # Initial yield
 
         cursor: str | None = page_info["endCursor"]
         while page_info["hasNextPage"]:
@@ -125,18 +123,27 @@ class GraphQLClient(HTTPBaseClient):
                 break
 
             logger.debug(f"Fetching '{field_name}' for {parent_id}")
+            label_query = self.RESOURCE_QUERIES["project_labels"]
             response = await self._execute_query(
-                query,
-                variables={f"{field_name}Cursor": cursor, **variables},
+                label_query,
+                params={"fullPath": parent_full_path, "labelsCursor": cursor},
             )
 
-            resource_nodes: list[dict[str, Any]] = response[resource_field]["nodes"]
-            resource_field_data: dict[str, Any] = next(
-                resource[field_name]
-                for resource in resource_nodes
-                if resource["id"] == parent_id
-            )
+            project_data = response["project"]
+            if not project_data:
+                logger.warning(
+                    f"No project data returned for {parent_id} in {field_name} pagination"
+                )
+                break
+
+            resource_field_data = project_data[field_name]
             nodes = resource_field_data["nodes"]
+
+            if not nodes:
+                logger.warning(
+                    f"No more {field_name} found for {parent_id} at cursor {cursor}"
+                )
+                break
 
             logger.info(f"Got {len(nodes)} {field_name} for {parent_id}")
             yield field_name, nodes
@@ -177,6 +184,7 @@ class GraphQLClient(HTTPBaseClient):
             active_data = next_active
             if updated:
                 yield [self._copy_project(project) for project, _ in active_data]
+                project["labels"]["nodes"] = []
 
     def _copy_project(self, project: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -196,21 +204,28 @@ class GraphQLClient(HTTPBaseClient):
     async def _execute_query(
         self, query: str, params: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
-        try:
-            response = await self.send_api_request(
-                "POST",
-                "",
-                data={
-                    "query": query,
-                    "variables": params or {},
-                },
-            )
+        for attempt in range(3):  # Retry up to 3 times
+            try:
+                response = await self.send_api_request(
+                    "POST",
+                    "",
+                    data={
+                        "query": query,
+                        "variables": params or {},
+                    },
+                )
 
-            if "errors" in response:
-                logger.error(f"GraphQL query failed: {response['errors']}")
-                raise Exception(f"GraphQL query failed: {response['errors']}")
+                if "errors" in response:
+                    logger.error(f"GraphQL query failed: {response['errors']}")
+                    raise Exception(f"GraphQL query failed: {response['errors']}")
 
-            return response["data"]
-        except Exception as e:
-            logger.error(f"Failed to execute GraphQL query: {str(e)}")
-            raise
+                return response["data"]
+            except Exception as e:
+                logger.info(
+                    f"Attempt {attempt+1}/3 failed to execute GraphQL query: {str(e)}"
+                )
+                if attempt < 2:  # Retry if not the last attempt
+                    await asyncio.sleep(2**attempt)  # Backoff: 1, 2 sec
+                else:
+                    logger.error(f"All retries exhausted for GraphQL query: {str(e)}")
+                    raise  # Raise on final failure
