@@ -1,7 +1,7 @@
 import asyncio
+import functools
 import json
 from typing import Any, AsyncGenerator, Optional
-
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
@@ -11,6 +11,15 @@ from port_ocean.utils.cache import cache_iterator_result
 from azure_devops.webhooks.webhook_event import WebhookEvent
 
 from .base_client import HTTPBaseClient
+from .file_processing import (
+    parse_file_content,
+)
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+    semaphore_async_iterator,
+)
+from port_ocean.utils.queue_utils import process_in_queue
+
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -18,6 +27,9 @@ WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 # (based on Azure DevOps API limitations) https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/list?view=azure-devops-rest-7.1&tabs=HTTP
 MAX_WORK_ITEMS_PER_REQUEST = 200
 MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 19999
+MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
+MAX_CONCURRENT_FILE_DOWNLOADS = 50
+MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 
 
 class AzureDevopsClient(HTTPBaseClient):
@@ -507,3 +519,185 @@ class AzureDevopsClient(HTTPBaseClient):
         return await self._get_item_content(
             file_path, repository_id, "Commit", commit_id
         )
+
+    async def generate_files(
+        self,
+        path: str | list[str],
+        repos: Optional[list[str]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        paths = [path] if isinstance(path, str) else path
+        logger.info(f"Processing files with paths: {paths}")
+
+        async for repositories in self.generate_repositories(
+            include_disabled_repositories=True
+        ):
+            if not repositories:
+                logger.warning("No repositories found. Skipping file discovery.")
+                return
+
+            filtered_repositories = (
+                [repo for repo in repositories if repo["name"] in repos]
+                if repos
+                else repositories
+            )
+
+            semaphore = asyncio.BoundedSemaphore(
+                MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+            )
+
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(self._get_repository_files, repository, paths),
+                )
+                for repository in filtered_repositories
+            ]
+
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+
+    async def _get_repository_files(
+        self,
+        repository: dict[str, Any],
+        paths: list[str],
+    ) -> AsyncGenerator[list[dict[str, Any] | None], None]:
+        logger.info(
+            f"Checking repository {repository['name']} for files matching {paths}"
+        )
+
+        branch = repository.get("defaultBranch")
+        if not branch:
+            logger.warning(
+                f"Repository {repository['name']} has no default branch. Skipping."
+            )
+            return
+
+        branch = branch.replace("refs/heads/", "")
+        project_id = repository["project"]["id"]
+        repository_id = repository["id"]
+
+        items_batch_url = f"{self._organization_base_url}/{project_id}/_apis/git/repositories/{repository_id}/itemsbatch"
+        logger.debug(f"Items batch URL: {items_batch_url}")
+
+        item_descriptors = [
+            {
+                "path": path if path.startswith("/") else f"/{path}",
+                "recursionLevel": "none",
+                "versionDescriptor": {"version": branch, "versionType": "branch"},
+            }
+            for path in paths
+        ]
+
+        request_data = {
+            "itemDescriptors": item_descriptors,
+            "includeContentMetadata": True,
+            "latestProcessedChange": True,
+        }
+
+        try:
+            response = await self.send_request(
+                "POST",
+                items_batch_url,
+                params={"api-version": "7.1"},
+                data=json.dumps(request_data),
+                headers={"Content-Type": "application/json"},
+            )
+
+            if response is None:
+                logger.warning(
+                    f"No response from itemsbatch API for repository {repository['name']}"
+                )
+                return
+
+            if response.status_code == 400:
+                logger.warning(
+                    f"Bad request (400) for repository {repository['name']}: {response.json().get('message')}"
+                )
+                return
+
+            batch_results = response.json()
+
+            # Flatten nested arrays to get a single list of file dictionaries
+            files = [
+                file_info
+                for sublist in batch_results.get("value", [])
+                for file_info in sublist
+            ]
+            logger.info(f"Found {len(files)} files in repository {repository['name']}")
+
+            downloaded_files = await process_in_queue(
+                files,
+                self.download_single_file,
+                repository,
+                branch,
+                concurrency=MAX_CONCURRENT_FILE_DOWNLOADS,
+            )
+
+            for file in downloaded_files:
+                yield [file]
+
+        except HTTPStatusError as e:
+            logger.error(e.response.status_code)
+            logger.error(e.response.text)
+            if e.response.status_code == 400:
+                logger.warning(
+                    f"None of the paths {paths} were found in repository {repository['name']}"
+                )
+            else:
+                raise
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing files in {repository['name']}: {e}"
+            )
+            raise
+
+    async def download_single_file(
+        self, file: dict[str, Any], repository: dict[str, Any], branch: str
+    ) -> dict[str, Any] | None:
+        if not file:
+            return None
+
+        if file.get("gitObjectType") != "blob":
+            return None
+
+        file_path = file["path"].lstrip("/")
+        content = await self.get_file_by_branch(file_path, repository["id"], branch)
+
+        if not content:
+            return None
+
+        file_size = len(content)
+        if file_size > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
+            logger.warning(f"Skipping large file {file_path} ({file_size} bytes)")
+            return None
+
+        file_obj = {
+            "path": file_path,
+            "objectId": file["objectId"],
+            "size": file_size,
+            "isFolder": False,
+            "commitId": file.get("commitId"),
+            **file.get("contentMetadata", {}),
+        }
+
+        try:
+            parsed_content = await parse_file_content(content)
+            processed_file = {
+                "file": {
+                    **file_obj,
+                    "content": {
+                        "raw": content.decode("utf-8"),
+                        "parsed": parsed_content,
+                    },
+                    "size": len(content),
+                },
+                "repo": repository,
+            }
+            logger.info(
+                f"Downloaded file {file_path} of size {file_size} bytes "
+                f"({file_size / 1024:.2f} KB, {file_size / (1024 * 1024):.2f} MB)"
+            )
+            return processed_file
+        except Exception as e:
+            logger.error(f"Failed to process file {file_path}: {str(e)}")
+            raise
