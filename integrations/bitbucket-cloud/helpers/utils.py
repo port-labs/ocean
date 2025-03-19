@@ -1,4 +1,5 @@
 from enum import StrEnum
+from dataclasses import dataclass
 
 
 class ObjectKind(StrEnum):
@@ -6,3 +7,11 @@ class ObjectKind(StrEnum):
     FOLDER = "folder"
     REPOSITORY = "repository"
     PULL_REQUEST = "pull-request"
+
+
+@dataclass
+class BitbucketRateLimiterConfig:
+    """Configuration for Bitbucket API rate limiting."""
+
+    WINDOW: int = 3600  # Rate limit window in seconds
+    LIMIT: int = 980  # Number of requests allowed per window
