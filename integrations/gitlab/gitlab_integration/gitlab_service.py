@@ -9,7 +9,7 @@ import anyio.to_thread
 import yaml
 import gitlab.exceptions
 from gitlab import Gitlab, GitlabError, GitlabList
-from gitlab.base import RESTObject, RESTObjectList
+from gitlab.base import RESTObject
 from gitlab.v4.objects import (
     Group,
     GroupMergeRequest,
@@ -35,7 +35,6 @@ from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 import functools
 
-import gc
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 
@@ -753,7 +752,7 @@ class GitlabService:
         obj: RESTObject,
         include_inherited_members: bool = False,
         include_bot_members: bool = True,
-        batch_size: int = 100,
+        batch_size: int = 50,
     ) -> RESTObject:
         """
         Enriches an object (e.g., Project or Group) with its members using memory-optimized approach.
@@ -771,7 +770,6 @@ class GitlabService:
             async for members_batch in self.get_all_object_members(
                 obj, include_inherited_members, include_bot_members
             ):
-                members_batch = typing.cast(List[RESTObject], members_batch)
                 for member_chunk_idx in range(0, len(members_batch), batch_size):
                     member_chunk = members_batch[
                         member_chunk_idx : member_chunk_idx + batch_size
@@ -789,11 +787,9 @@ class GitlabService:
 
                     total_members_processed += len(member_chunk)
 
-                    gc.collect()
                 logger.info(
                     f"Processed {total_members_processed} members for {obj_name}"
                 )
-                gc.collect()
 
             logger.info(
                 f"Completed member enrichment for {obj_name} with {len(members_list)} unique members"
@@ -810,7 +806,7 @@ class GitlabService:
         include_inherited_members: bool = False,
         include_bot_members: bool = True,
         page_size: int = 50,
-    ) -> AsyncIterator[RESTObjectList]:
+    ) -> AsyncIterator[List[RESTObject]]:
         """
         Fetches all members of an object (e.g., Project or Group) generically.
         """
@@ -837,12 +833,9 @@ class GitlabService:
                 order_by="id",
                 sort="asc",
             ):
-                members: RESTObjectList = typing.cast(RESTObjectList, members_batch)
+                members: List[RESTObject] = typing.cast(List[RESTObject], members_batch)
                 logger.info(f"Fetched page with {len(members)} members for {obj_name}")
                 yield members
-
-                # Force garbage collection after processing each page
-                gc.collect()
 
         except Exception as e:
             logger.error(f"Failed to get members for object='{obj_name}'. Error: {e}")
