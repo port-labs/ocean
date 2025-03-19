@@ -4,6 +4,7 @@ from port_ocean.clients.port.client import PortClient
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.time import get_next_occurrence
 from port_ocean.context.ocean import ocean
+from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 
 
 class ResyncStateUpdater:
@@ -84,4 +85,7 @@ class ResyncStateUpdater:
                 "updatedAt"
             ]
 
-            await ocean.metrics.flush()
+        ocean.metrics.get_metric(MetricType.SUCCESS[0], [MetricPhase.RESYNC]).set(
+            0 if status == IntegrationStateStatus.Failed else 1
+        )
+        await ocean.metrics.flush()

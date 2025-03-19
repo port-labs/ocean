@@ -192,6 +192,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             return resolve_entities_diff(entities, entities_at_port_with_properties)
         return entities
 
+
     async def _fetch_entities_batch_from_port(
         self,
         entities_batch: list[Entity],
@@ -331,6 +332,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     number_of_transformed_entities += calculation_result.number_of_transformed_entities
             except* OceanAbortException as error:
                 errors.append(error)
+
+        ocean.metrics.get_metric(
+            MetricType.SUCCESS[0], [MetricPhase.RESYNC]
+        ).set(0 if errors else 1)
 
         logger.info(
             f"Finished registering change for {len(results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
@@ -550,7 +555,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         trigger_type: TriggerType = "machine",
         user_agent_type: UserAgentType = UserAgentType.exporter,
         silent: bool = True,
-    ) -> None:
+    ) -> bool:
         """Perform a full synchronization of raw entities.
 
         This method performs a full synchronization of raw entities, including registration, unregistration,
@@ -563,6 +568,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             silent (bool): Whether to raise exceptions or handle them silently.
         """
         logger.info("Resync was triggered")
+
+        # Clear all metrics at the start of resync
+        ocean.metrics.clear_metrics()
+        logger.info("Metrics cleared for fresh resync")
+
         async with event_context(
             EventType.RESYNC,
             trigger_type=trigger_type,
@@ -598,6 +608,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     # create resource context per resource kind, so resync method could have access to the resource
                     # config as we might have multiple resources in the same event
                     async with resource_context(resource,index):
+                        # Clear metrics specific to this resource kind before processing
+                        resource_kind_id = f"{resource.kind}-{index}"
                         task = asyncio.get_event_loop().create_task(
                             self._register_in_batches(resource, user_agent_type)
                         )
@@ -608,11 +620,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             MetricType.OBJECT_COUNT[0], [MetricPhase.LOAD]
                         ).set(len(kind_results[0]))
 
-                        ocean.metrics.get_metric(
-                            MetricType.ERROR_COUNT[0], [MetricPhase.LOAD]
-                        ).set(len(kind_results[1]))
-
                         creation_results.append(kind_results)
+
+                        await ocean.metrics.flush(kind=resource_kind_id)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
 
@@ -634,7 +644,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 ]
 
                 if errors:
-                    message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"
+                    message = f"Resync failed with {len(errors)} errors, skipping delete phase due to incomplete state"
                     error_group = ExceptionGroup(
                         message,
                         errors,
@@ -643,8 +653,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         raise error_group
 
                     logger.error(message, exc_info=error_group)
+                    return False
                 else:
-                    await ocean.metrics.flush()
                     logger.info(
                         f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
                     )
@@ -658,8 +668,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                     logger.info("Resync finished successfully")
 
-                    await ocean.metrics.flush()
-
                     # Execute resync_complete hooks
                     if "resync_complete" in self.event_strategy:
                         logger.info("Executing resync_complete hooks")
@@ -668,3 +676,5 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             await resync_complete_fn()
 
                         logger.info("Finished executing resync_complete hooks")
+
+                    return True

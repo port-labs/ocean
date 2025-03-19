@@ -97,8 +97,12 @@ class Ocean:
             await self.resync_state_updater.update_before_resync()
             logger.info("Starting a new scheduled resync")
             try:
-                await self.integration.sync_raw_all()
-                await self.resync_state_updater.update_after_resync()
+                successed = await self.integration.sync_raw_all()
+                await self.resync_state_updater.update_after_resync(
+                    IntegrationStateStatus.Completed
+                    if successed
+                    else IntegrationStateStatus.Failed
+                )
             except asyncio.CancelledError:
                 logger.warning(
                     "resync was cancelled by the scheduled resync, skipping state update"
