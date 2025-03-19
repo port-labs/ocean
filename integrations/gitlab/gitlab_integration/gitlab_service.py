@@ -755,7 +755,7 @@ class GitlabService:
         batch_size: int = 50,
     ) -> RESTObject:
         """
-        Enriches an object (e.g., Project or Group) with its members using memory-optimized approach.
+        Enriches an object (e.g., Project or Group) with its members.
         """
         obj_name = getattr(obj, "name", "unknown")
         logger.info(f"Starting member enrichment for {obj_name}")
