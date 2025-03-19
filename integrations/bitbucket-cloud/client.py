@@ -10,6 +10,7 @@ from helpers.utils import BitbucketRateLimiterConfig
 import base64
 
 PULL_REQUEST_STATE = "OPEN"
+PULL_REQUEST_PAGE_SIZE = 50
 PAGE_SIZE = 100
 RATE_LIMITER: RollingWindowLimiter[None] = RollingWindowLimiter(
     limit=BitbucketRateLimiterConfig.LIMIT, window=BitbucketRateLimiterConfig.WINDOW
@@ -178,7 +179,7 @@ class BitbucketClient:
         """Get pull requests for a repository."""
         params = {
             "state": PULL_REQUEST_STATE,
-            "pagelen": PAGE_SIZE,
+            "pagelen": PULL_REQUEST_PAGE_SIZE,
         }
         async for pull_requests in self._send_rate_limited_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
