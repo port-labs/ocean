@@ -280,16 +280,18 @@ class GraphQLClient(HTTPBaseClient):
             for key in project
         }
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10))
+    @retry(
+        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10)
+    )
     async def _execute_query(
         self, query: str, params: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
         response = await self.send_api_request(
             "POST", "", data={"query": query, "variables": params or {}}
         )
-        
+
         if "errors" in response:
             logger.error(f"GraphQL query failed: {response['errors']}")
             raise Exception(f"GraphQL query failed: {response['errors']}")
-            
+
         return response["data"]
