@@ -6,6 +6,8 @@ from .base_client import HTTPBaseClient
 from .queries import ProjectQueries
 import asyncio
 import gc
+from tenacity import retry, stop_after_attempt, wait_exponential
+
 
 MAX_CONCURRENT_REQUESTS = 10
 
@@ -278,26 +280,16 @@ class GraphQLClient(HTTPBaseClient):
             for key in project
         }
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10))
     async def _execute_query(
         self, query: str, params: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
-        for attempt in range(3):
-            try:
-                response = await self.send_api_request(
-                    "POST",
-                    "",
-                    data={"query": query, "variables": params or {}},
-                )
-
-                if "errors" in response:
-                    logger.error(f"GraphQL query failed: {response['errors']}")
-                    raise Exception(f"GraphQL query failed: {response['errors']}")
-
-                return response["data"]
-            except Exception as e:
-                logger.info(f"Attempt {attempt+1}/3 failed: {str(e)}")
-                if attempt < 2:
-                    await asyncio.sleep(2**attempt)
-                else:
-                    logger.error(f"All retries exhausted: {str(e)}")
-                    raise
+        response = await self.send_api_request(
+            "POST", "", data={"query": query, "variables": params or {}}
+        )
+        
+        if "errors" in response:
+            logger.error(f"GraphQL query failed: {response['errors']}")
+            raise Exception(f"GraphQL query failed: {response['errors']}")
+            
+        return response["data"]

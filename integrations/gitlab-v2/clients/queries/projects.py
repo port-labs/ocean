@@ -28,11 +28,17 @@ class Fragments:
             }
         }
     """
+    LABEL_FIELDS = """
+        fragment LabelFields on Label {
+            id
+            title
+        }
+    """
 
 
 class ProjectQueries:
     LIST = f"""
-        query Projects($cursor: String, $filePaths: [String!]!) {{
+        query Projects($cursor: String) {{
             projects(
                 membership: true,
                 first: 100,
@@ -50,7 +56,7 @@ class ProjectQueries:
         {Fragments.PROJECT_FIELDS}
     """
 
-    GET_LABELS = """
+    GET_LABELS = f"""
         query ProjectLabels($fullPath: ID!, $labelsCursor: String) {{
             project(fullPath: $fullPath) {{
                 id
@@ -60,10 +66,10 @@ class ProjectQueries:
                         endCursor
                     }}
                     nodes {{
-                        id
-                        title
+                        ...LabelFields
                     }}
                 }}
             }}
         }}
+        {Fragments.LABEL_FIELDS}
     """
