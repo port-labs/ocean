@@ -191,6 +191,6 @@ class BitbucketClient:
             params=params,
         ):
             logger.info(
-                f"Fetched pull request batch with {len(pull_requests)} pull requests"
+                f"Fetched batch of {len(pull_requests)} pull requests from repository {repo_slug} in workspace {self.workspace}"
             )
             yield pull_requests
