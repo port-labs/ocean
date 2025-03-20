@@ -1,10 +1,13 @@
 from collections import defaultdict
-from typing import Any, AsyncGenerator, Dict, List, Set, Tuple
+from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, TYPE_CHECKING
 
 from loguru import logger
 import fnmatch
-from client import BitbucketClient
 from integration import FolderPattern
+
+
+if TYPE_CHECKING:
+    from bitbucket_cloud.client import BitbucketClient
 
 
 def extract_repo_names_from_patterns(
@@ -113,7 +116,7 @@ def find_common_base_path_and_max_depth(paths: List[str]) -> Tuple[str, int]:
 
 
 async def process_folder_patterns(
-    folder_patterns: list[FolderPattern], client: BitbucketClient
+    folder_patterns: list[FolderPattern], client: "BitbucketClient"
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     repo_names = extract_repo_names_from_patterns(folder_patterns)
     if not repo_names:
@@ -134,7 +137,7 @@ async def process_repo_folders(
     repo: dict[str, Any],
     pattern_by_repo: dict[str, dict[str, list[str]]],
     folder_patterns: list[FolderPattern],
-    client: BitbucketClient,
+    client: "BitbucketClient",
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     repo_name = repo["name"]
     if repo_name not in pattern_by_repo:

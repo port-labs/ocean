@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 import time
-from helpers.rate_limiter import RollingWindowLimiter
+from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
 from unittest.mock import patch
 import contextlib
 from typing import Generator

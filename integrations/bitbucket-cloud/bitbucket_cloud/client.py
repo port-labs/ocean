@@ -2,11 +2,11 @@ from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPError, HTTPStatusError
 from loguru import logger
 from port_ocean.utils import http_async_client
-from helpers.exceptions import MissingIntegrationCredentialException
+from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
-from helpers.rate_limiter import RollingWindowLimiter
-from helpers.utils import BitbucketRateLimiterConfig
+from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
+from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
 import base64
 
 PULL_REQUEST_STATE = "OPEN"
@@ -198,3 +198,17 @@ class BitbucketClient:
                 f"Fetched batch of {len(pull_requests)} pull requests from repository {repo_slug} in workspace {self.workspace}"
             )
             yield pull_requests
+
+    async def get_pull_request(
+        self, repo_slug: str, pull_request_id: str
+    ) -> dict[str, Any]:
+        """Get a specific pull request by ID."""
+        return await self._send_api_request(
+            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests/{pull_request_id}"
+        )
+
+    async def get_repository(self, repo_slug: str) -> dict[str, Any]:
+        """Get a specific repository by slug."""
+        return await self._send_api_request(
+            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
+        )

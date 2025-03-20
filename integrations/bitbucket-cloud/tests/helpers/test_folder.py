@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock
 from typing import Any, AsyncGenerator, Dict, List, Optional, Set
 
-from helpers.folder import (
+from bitbucket_cloud.helpers.folder import (
     extract_repo_names_from_patterns,
     create_pattern_mapping,
     find_matching_folders,
@@ -10,7 +10,7 @@ from helpers.folder import (
     process_repo_folders,
 )
 from integration import FolderPattern, RepositoryBranchMapping
-from client import BitbucketClient
+from bitbucket_cloud.client import BitbucketClient
 
 
 @pytest.fixture

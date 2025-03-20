@@ -30,3 +30,7 @@ configurations:
     type: string
     description: The base api url of Bitbucket Cloud Rest API. It should include the protocol and version (e.g. <a href="https://api.bitbucket.org/2.0" target="_blank">https://api.bitbucket.org/2.0</a>).
     default: https://api.bitbucket.org/2.0
+  - name: bitbucketWebhookSecret
+    type: string
+    description: The secret used to verify the webhook requests.
+    required: false
