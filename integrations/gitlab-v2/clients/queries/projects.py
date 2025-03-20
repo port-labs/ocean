@@ -35,6 +35,7 @@ class Fragments:
         }
     """
 
+
 class ProjectQueries:
     LIST = f"""
         query Projects($cursor: String, $includeLabels: Boolean!) {{
