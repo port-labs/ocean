@@ -9,7 +9,12 @@ import urllib.parse
 
 class RestClient(HTTPBaseClient):
     DEFAULT_PAGE_SIZE = 100
-    VALID_GROUP_RESOURCES = ["issues", "merge_requests", "labels", "search"]
+    VALID_GROUP_RESOURCES = [
+        "issues",
+        "merge_requests",
+        "labels",
+        "search"
+    ]
 
     RESOURCE_PARAMS = {
         "labels": {
@@ -23,9 +28,7 @@ class RestClient(HTTPBaseClient):
         self, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
         try:
-            async for batch in self._make_paginated_request(
-                resource_type, params=params
-            ):
+            async for batch in self._make_paginated_request(resource_type, params):
                 yield batch
         except Exception as e:
             logger.error(f"Failed to fetch {resource_type}: {str(e)}")
@@ -112,7 +115,6 @@ class RestClient(HTTPBaseClient):
 
             page += 1
 
-
     async def get_file_content(
         self, project_id: str, file_path: str, ref: str = "main"
     ) -> Optional[str]:
@@ -128,13 +130,13 @@ class RestClient(HTTPBaseClient):
             The file content as a string if found, None otherwise
         """
         try:
-            encoded_project_id = urllib.parse.quote(str(project_id), safe="")
+            encoded_project_id = urllib.parse.quote(project_id, safe="")
             encoded_file_path = urllib.parse.quote(file_path, safe="")
 
             path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
             params = {"ref": ref}
 
-            response = await self._send_api_request("GET", path, params=params)
+            response = await self.send_api_request("GET", path, params=params)
             if not response:
                 logger.warning(
                     f"No file content returned for {file_path} in project {project_id}"
