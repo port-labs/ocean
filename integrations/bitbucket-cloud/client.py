@@ -5,9 +5,16 @@ from port_ocean.utils import http_async_client
 from helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
+from helpers.rate_limiter import RollingWindowLimiter
+from helpers.utils import BitbucketRateLimiterConfig
 import base64
 
+PULL_REQUEST_STATE = "OPEN"
+PULL_REQUEST_PAGE_SIZE = 50
 PAGE_SIZE = 100
+RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
+    limit=BitbucketRateLimiterConfig.LIMIT, window=BitbucketRateLimiterConfig.WINDOW
+)
 
 
 class BitbucketClient:
@@ -84,6 +91,29 @@ class BitbucketClient:
             logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
             raise e
 
+    async def _fetch_paginated_api_with_rate_limiter(
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        method: str = "GET",
+        data_key: str = "values",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Handle rate-limited paginated requests to Bitbucket API"""
+        if params is None:
+            params = {
+                "pagelen": PAGE_SIZE,
+            }
+        while True:
+            async with RATE_LIMITER:
+                response = await self._send_api_request(
+                    url, params=params, method=method
+                )
+                if values := response.get(data_key, []):
+                    yield values
+                url = response.get("next")
+                if not url:
+                    break
+
     async def _send_paginated_api_request(
         self,
         url: str,
@@ -101,7 +131,9 @@ class BitbucketClient:
             Lists of dictionaries containing the paginated data.
         """
         if params is None:
-            params = {}
+            params = {
+                "pagelen": PAGE_SIZE,
+            }
         while True:
             response = await self._send_api_request(url, params=params, method=method)
             if values := response.get(data_key, []):
@@ -115,6 +147,9 @@ class BitbucketClient:
         async for projects in self._send_paginated_api_request(
             f"{self.base_url}/workspaces/{self.workspace}/projects"
         ):
+            logger.info(
+                f"Fetched batch of {len(projects)} projects from workspace {self.workspace}"
+            )
             yield projects
 
     @cache_iterator_result()
@@ -122,9 +157,12 @@ class BitbucketClient:
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the workspace."""
-        async for repos in self._send_paginated_api_request(
+        async for repos in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}", params=params
         ):
+            logger.info(
+                f"Fetched batch of {len(repos)} repositories from workspace {self.workspace}"
+            )
             yield repos
 
     async def get_directory_contents(
@@ -135,17 +173,28 @@ class BitbucketClient:
             "max_depth": max_depth,
             "pagelen": PAGE_SIZE,
         }
-        async for contents in self._send_paginated_api_request(
+        async for contents in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
             params=params,
         ):
+            logger.info(
+                f"Fetched directory contents batch with {len(contents)} contents"
+            )
             yield contents
 
     async def get_pull_requests(
         self, repo_slug: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get pull requests for a repository."""
-        async for pull_requests in self._send_paginated_api_request(
-            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests"
+        params = {
+            "state": PULL_REQUEST_STATE,
+            "pagelen": PULL_REQUEST_PAGE_SIZE,
+        }
+        async for pull_requests in self._fetch_paginated_api_with_rate_limiter(
+            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
+            params=params,
         ):
+            logger.info(
+                f"Fetched batch of {len(pull_requests)} pull requests from repository {repo_slug} in workspace {self.workspace}"
+            )
             yield pull_requests

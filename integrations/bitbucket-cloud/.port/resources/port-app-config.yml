@@ -27,20 +27,3 @@ resources:
             defaultBranch: .mainbranch.name
           relations:
             project: '.project.uuid | gsub("[{-}]"; "")'
-  - kind: pull-request
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: ".destination.repository.name + (.id|tostring)"
-          title: ".title"
-          blueprint: '"bitbucketPullRequest"'
-          properties:
-            creator: ".author.display_name"
-            status: ".state"
-            createdAt: ".created_on"
-            updatedAt: ".updated_on"
-            link: ".links.html.href"
-          relations:
-            repository: ".destination.repository.name"

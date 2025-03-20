@@ -19,14 +19,13 @@ class Fragments:
                 id
                 fullPath            
             }
-            labels(first: 100) {
+            labels(first: 100) @include(if: $includeLabels) {
                 pageInfo {
                     hasNextPage
                     endCursor
                 }
                 nodes {
                     id
-                    title
                 }
             }
             languages {
@@ -35,11 +34,17 @@ class Fragments:
             }
         }
     """
+    LABEL_FIELDS = """
+        fragment LabelFields on Label {
+            id
+            title
+        }
+    """
 
 
 class ProjectQueries:
     LIST = f"""
-        query Projects($cursor: String) {{
+        query Projects($cursor: String, $includeLabels: Boolean!) {{
             projects(
                 membership: true,
                 first: 100,
@@ -67,10 +72,10 @@ class ProjectQueries:
                         endCursor
                     }}
                     nodes {{
-                        id
-                        title
+                        ...LabelFields
                     }}
                 }}
             }}
         }}
+        {Fragments.LABEL_FIELDS}
     """

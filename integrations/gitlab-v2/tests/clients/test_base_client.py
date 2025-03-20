@@ -63,8 +63,9 @@ class TestGitLabClient:
             "get_resource",
             return_value=async_mock_generator(mock_response),
         ) as mock_get_resource:
+            params = {"includeLabels": True}
             # Act
-            async for batch in client.get_projects():
+            async for batch in client.get_projects(params):
                 results: list[dict[str, Any]] = []
 
                 results.extend(batch)
@@ -73,7 +74,7 @@ class TestGitLabClient:
             assert len(results) == 1  # Only one project
             assert results[0]["name"] == "Test Project"
             assert results[0]["labels"]["nodes"] == mock_labels  # Nested field updated
-            mock_get_resource.assert_called_once_with("projects")
+            mock_get_resource.assert_called_once_with("projects", params)
 
     async def test_get_groups(self, client: GitLabClient) -> None:
         """Test group fetching delegates to REST client"""
