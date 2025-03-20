@@ -751,7 +751,6 @@ class GitlabService:
         obj: RESTObject,
         include_inherited_members: bool = False,
         include_bot_members: bool = True,
-        batch_size: int = 50,
         include_verbose_member_object: bool = False,
     ) -> RESTObject:
         """
