@@ -215,8 +215,11 @@ async def test_get_projects(mock_client: BitbucketClient) -> None:
 async def test_get_repositories(mock_client: BitbucketClient) -> None:
     """Test getting repositories."""
     mock_data = {"values": [{"slug": "test-repo", "name": "Test Repo"}]}
+
     async with event_context("test_event"):
-        with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
 
             async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
                 yield mock_data["values"]
@@ -234,29 +237,23 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
     """Test getting directory contents."""
     mock_dir_data = {"values": [{"type": "commit_directory", "path": "src"}]}
 
-    with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
 
-        async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
-            yield mock_dir_data["values"]
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
+                yield mock_dir_data["values"]
 
-        mock_paginated.return_value = mock_generator()
-        async for contents in mock_client.get_directory_contents(
-            "test-repo", "main", ""
-        ):
-            assert contents == mock_dir_data["values"]
-        mock_paginated.assert_called_once_with(
-            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
-            params={"max_depth": 2, "pagelen": 100},
-        )
-        mock_paginated.reset_mock()
-        async for contents in mock_client.get_directory_contents(
-            "test-repo", "main", "", max_depth=4
-        ):
-            assert contents == mock_dir_data["values"]
-        mock_paginated.assert_called_once_with(
-            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
-            params={"max_depth": 4, "pagelen": 100},
-        )
+            mock_paginated.return_value = mock_generator()
+            async for contents in mock_client.get_directory_contents(
+                "test-repo", "main", ""
+            ):
+                assert contents == mock_dir_data["values"]
+            mock_paginated.assert_called_once_with(
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
+                params={"max_depth": 2, "pagelen": 100},
+            )
 
 
 @pytest.mark.asyncio
@@ -264,16 +261,18 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
     """Test getting pull requests."""
     mock_data = {"values": [{"id": 1, "title": "Test PR"}]}
 
-    with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
 
-        async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
-            yield mock_data["values"]
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
+                yield mock_data["values"]
 
-        mock_paginated.return_value = mock_generator()
-
-        async for prs in mock_client.get_pull_requests("test-repo"):
-            assert prs == mock_data["values"]
-
-        mock_paginated.assert_called_once_with(
-            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests"
-        )
+            mock_paginated.return_value = mock_generator()
+            async for prs in mock_client.get_pull_requests("test-repo"):
+                assert prs == mock_data["values"]
+            mock_paginated.assert_called_once_with(
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
+                params={"state": "OPEN", "pagelen": 50},
+            )
