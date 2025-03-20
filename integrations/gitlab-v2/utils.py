@@ -7,3 +7,4 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
     LABELS = "labels"
+    FILE = "file"

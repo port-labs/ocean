@@ -8,6 +8,12 @@ class Fragments:
             fullPath
             repository {
                 rootRef
+                blobs(paths: $filePaths) {
+                    nodes {
+                        path
+                        rawBlob
+                    }
+                }
             }
             group {
                 id
@@ -38,7 +44,7 @@ class Fragments:
 
 class ProjectQueries:
     LIST = f"""
-        query Projects($cursor: String, $includeLabels: Boolean!) {{
+        query Projects($cursor: String, $includeLabels: Boolean!, $filePaths: [String!]!) {{
             projects(
                 membership: true,
                 first: 100,
