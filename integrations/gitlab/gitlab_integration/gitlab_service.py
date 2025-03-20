@@ -35,6 +35,7 @@ from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 import functools
 
+# from memory_profiler import profile
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 
@@ -753,6 +754,7 @@ class GitlabService:
         include_inherited_members: bool = False,
         include_bot_members: bool = True,
         batch_size: int = 50,
+        include_verbose_member_object: bool = False,
     ) -> RESTObject:
         """
         Enriches an object (e.g., Project or Group) with its members.
@@ -783,8 +785,16 @@ class GitlabService:
                             and member_id not in processed_member_ids
                         ):
                             processed_member_ids.add(member_id)
-                            members_list.append(member.asdict())
-
+                            if include_verbose_member_object:
+                                members_list.append(member.asdict())
+                            else:
+                                members_list.append(
+                                    {
+                                        "id": member.id,
+                                        "username": member.username,
+                                        "email": getattr(member, "email", ""),
+                                    }
+                                )
                     total_members_processed += len(member_chunk)
 
                 logger.info(
