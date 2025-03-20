@@ -45,3 +45,70 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        path: package.json
+        repos:
+          - my-node-app
+          - my-react-app
+    port:
+      entity:
+        mappings:
+          identifier: .file.path | gsub(" "; "")
+          title: .file.path
+          blueprint: '"file"'
+          properties:
+            path: .file.path
+            size: .file.size
+            content: .file.content
+            link: .repo.remoteUrl + "?path=" + (.file.path)
+          relations:
+            repository: >-
+              "\(.repo.project.name | ascii_downcase | gsub("[ ();]";
+              ""))/\(.repo.name | ascii_downcase | gsub("[ ();]"; ""))"
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        path:
+          - deployment/helm/values.yaml
+          - docs/README.md
+    port:
+      entity:
+        mappings:
+          identifier: .file.path | gsub(" "; "")
+          title: .file.path
+          blueprint: '"file"'
+          properties:
+            path: .file.path
+            size: .file.size
+            content: .file.content
+            link: .repo.remoteUrl + "?path=" + (.file.path)
+          relations:
+            repository: >-
+              "\(.repo.project.name | ascii_downcase | gsub("[ ();]";
+              ""))/\(.repo.name | ascii_downcase | gsub("[ ();]"; ""))"
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        path:
+          - package.json
+          - package-lock.json
+    port:
+      entity:
+        mappings:
+          identifier: .file.objectId
+          title: .file.path
+          blueprint: '"file"'
+          properties:
+            path: .file.path
+            size: .file.size
+            content: .file.content
+            link: .repo.remoteUrl + "?path=" + (.file.path)
+          relations:
+            repository: >-
+              "\(.repo.project.name | ascii_downcase | gsub("[ ();]";
+              ""))/\(.repo.name | ascii_downcase | gsub("[ ();]"; ""))"
