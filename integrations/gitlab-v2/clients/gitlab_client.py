@@ -168,8 +168,6 @@ class GitLabClient:
         logger.info(f"Searching for files matching pattern: '{path_pattern}'")
         patterns = convert_glob_to_gitlab_patterns(path_pattern)
 
-        logger.info(f"Patterns: {patterns}")
-
         if repositories:
             logger.info(f"Searching in {len(repositories)} specific repositories")
             for repo in repositories:

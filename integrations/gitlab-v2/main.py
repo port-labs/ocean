@@ -38,20 +38,17 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_labels = bool(selector.include_labels)
     params = {"includeLabels": include_labels}
 
-    # Extract file paths from resource_config
+    params = {
+        "includeLabels": include_labels,
+    }
 
     if event.resource_config:
         mappings = event.resource_config.port.entity.mappings
-        file_paths = get_file_paths(mappings)
-
-    params = {}
-
-    if file_paths:
-        params["filePaths"] = file_paths
+        if file_paths := get_file_paths(mappings):
+            params["filePaths"] = file_paths
 
     async for projects_batch in client.get_projects(params):
         logger.info(f"Received project batch with {len(projects_batch)} projects")
-
         if include_labels:
             for project in projects_batch:
                 project["__labels"] = project["labels"]["nodes"]
