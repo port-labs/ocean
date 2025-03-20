@@ -5,8 +5,8 @@ from port_ocean.utils import http_async_client
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
-from helpers.rate_limiter import RollingWindowLimiter
-from helpers.utils import BitbucketRateLimiterConfig
+from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
+from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
 import base64
 
 PULL_REQUEST_STATE = "OPEN"
