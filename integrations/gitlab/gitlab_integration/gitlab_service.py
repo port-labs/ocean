@@ -35,8 +35,6 @@ from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 import functools
 
-# from memory_profiler import profile
-
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 
 
