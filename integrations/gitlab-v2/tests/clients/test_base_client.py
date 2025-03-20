@@ -148,7 +148,7 @@ class TestGitLabClient:
         """Test file search in specific repositories"""
         # Arrange
         raw_files: list[dict[str, Any]] = [
-            {"path": "test.json", "data": '{"key": "value"}'}
+            {"path": "test.json", "data": '{"key": "value"}', "project_id": "123"}
         ]
         repos = ["group/project"]
         pattern = "*.json"
@@ -158,42 +158,42 @@ class TestGitLabClient:
             "get_project_resource",
             return_value=async_mock_generator([raw_files]),
         ):
-            # Act
-            results: list[dict[str, Any]] = []
-            async for batch in client.search_files(pattern, repositories=repos):
-                results.extend(batch)
-
-            # Assert
-            assert len(results) == 1
-            assert results[0]["path"] == "test.json"
-            assert results[0]["data"] == {"key": "value"}  # Parsed JSON
+            with patch.object(
+                client, "get_file_content", return_value='{"key": "value"}'
+            ):  # Mock full content
+                results: list[dict[str, Any]] = []
+                async for batch in client.search_files(pattern, repositories=repos):
+                    results.extend(batch)
+                assert len(results) == 1
+                assert results[0]["path"] == "test.json"
+                assert results[0]["content"] == {"key": "value"}
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
         """Test file search across all groups"""
         # Arrange
         mock_groups: list[dict[str, Any]] = [{"id": "1", "name": "Group1"}]
-        raw_files: list[dict[str, Any]] = [{"path": "test.yaml", "data": "key: value"}]
+        raw_files: list[dict[str, Any]] = [
+            {"path": "test.yaml", "data": "key: value", "project_id": "123"}
+        ]
         pattern = "*.yaml"
 
         with patch.object(
-            client,
-            "get_groups",
-            return_value=async_mock_generator([mock_groups]),
+            client, "get_groups", return_value=async_mock_generator([mock_groups])
         ):
             with patch.object(
                 client.rest,
                 "get_group_resource",
                 return_value=async_mock_generator([raw_files]),
             ):
-                # Act
-                results: list[dict[str, Any]] = []
-                async for batch in client.search_files(pattern):
-                    results.extend(batch)
-
-                # Assert
-                assert len(results) == 1
-                assert results[0]["path"] == "test.yaml"
-                assert results[0]["data"] == {"key": "value"}  # Parsed YAML
+                with patch.object(
+                    client, "get_file_content", return_value="key: value"
+                ):  # Mock full content
+                    results: list[dict[str, Any]] = []
+                    async for batch in client.search_files(pattern):
+                        results.extend(batch)
+                    assert len(results) == 1
+                    assert results[0]["path"] == "test.yaml"
+                    assert results[0]["content"] == {"key": "value"}  # Parsed YAML
 
     async def test_get_file_content(self, client: GitLabClient) -> None:
         """Test fetching file content via REST"""
