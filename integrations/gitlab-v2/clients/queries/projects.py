@@ -13,7 +13,7 @@ class Fragments:
                 id
                 fullPath            
             }
-            labels(first: 100) {
+            labels(first: 100) @include(if: $includeLabels) {
                 pageInfo {
                     hasNextPage
                     endCursor
@@ -35,10 +35,9 @@ class Fragments:
         }
     """
 
-
 class ProjectQueries:
     LIST = f"""
-        query Projects($cursor: String) {{
+        query Projects($cursor: String, $includeLabels: Boolean!) {{
             projects(
                 membership: true,
                 first: 100,

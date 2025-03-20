@@ -32,16 +32,17 @@ async def on_start() -> None:
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(ProjectResourceConfig, event.resource_config).selector
+    
+    include_labels = bool(selector.include_labels)
+    params = {"includeLabels": include_labels}
 
-    async for projects_batch in client.get_projects():
+    async for projects_batch in client.get_projects(params):
         logger.info(f"Received project batch with {len(projects_batch)} projects")
-        if selector.include_labels:
+        
+        if include_labels:
             for project in projects_batch:
-                project["__labels"] = (
-                    project["labels"]["nodes"]
-                    if "labels" in project and "nodes" in project["labels"]
-                    else []
-                )
+                project["__labels"] = project["labels"]["nodes"]
+        
         yield projects_batch
 
 
