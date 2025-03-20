@@ -1,4 +1,4 @@
-from typing import Any, Union, cast
+from typing import Any, Union
 from braceexpand import braceexpand
 
 import json
