@@ -36,9 +36,8 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(ProjectResourceConfig, event.resource_config).selector
 
     include_labels = bool(selector.include_labels)
-    params = {"includeLabels": include_labels}
 
-    params = {
+    params: dict[str, bool | list[str]] = {
         "includeLabels": include_labels,
     }
 
