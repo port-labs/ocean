@@ -9,12 +9,7 @@ import urllib.parse
 
 class RestClient(HTTPBaseClient):
     DEFAULT_PAGE_SIZE = 100
-    VALID_GROUP_RESOURCES = [
-        "issues",
-        "merge_requests",
-        "labels",
-        "search"
-    ]
+    VALID_GROUP_RESOURCES = ["issues", "merge_requests", "labels", "search"]
 
     RESOURCE_PARAMS = {
         "labels": {
