@@ -757,8 +757,8 @@ class GitlabService:
         """
         Enriches an object (e.g., Project or Group) with its members.
         """
-        obj_name = getattr(obj, "name", "unknown")
-        logger.info(f"Starting member enrichment for {obj_name}")
+        obj_name = obj.name
+        logger.info(f"Starting member enrichment for {obj.name}")
 
         setattr(obj, "__members", [])
         members_list = getattr(obj, "__members")
@@ -770,30 +770,22 @@ class GitlabService:
             async for members_batch in self.get_all_object_members(
                 obj, include_inherited_members, include_bot_members
             ):
-                for member_chunk_idx in range(0, len(members_batch), batch_size):
-                    member_chunk = members_batch[
-                        member_chunk_idx : member_chunk_idx + batch_size
-                    ]
-
-                    # Filter out duplicates
-                    for member in member_chunk:
-                        member_id = getattr(member, "id", None)
-                        if (
-                            member_id is not None
-                            and member_id not in processed_member_ids
-                        ):
-                            processed_member_ids.add(member_id)
-                            if include_verbose_member_object:
-                                members_list.append(member.asdict())
-                            else:
-                                members_list.append(
-                                    {
-                                        "id": member.id,
-                                        "username": member.username,
-                                        "email": getattr(member, "email", ""),
-                                    }
-                                )
-                    total_members_processed += len(member_chunk)
+                # Filter out duplicates
+                for member in members_batch:
+                    member_id = member.id
+                    if member_id not in processed_member_ids:
+                        processed_member_ids.add(member_id)
+                        if include_verbose_member_object:
+                            members_list.append(member.asdict())
+                        else:
+                            members_list.append(
+                                {
+                                    "id": member.id,
+                                    "username": member.username,
+                                    "email": getattr(member, "email", ""),
+                                }
+                            )
+                total_members_processed += len(members_batch)
 
                 logger.info(
                     f"Processed {total_members_processed} members for {obj_name}"
