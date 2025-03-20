@@ -1,4 +1,4 @@
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Optional
 from loguru import logger
 
 from .graphql_client import GraphQLClient
@@ -15,7 +15,7 @@ class GitLabClient:
         self.graphql = GraphQLClient(base_url, token, endpoint="api/graphql")
         self.rest = RestClient(base_url, token, endpoint="api/v4")
 
-    async def get_projects(self, params) -> AsyncIterator[list[dict[str, Any]]]:
+    async def get_projects(self, params: Optional[dict[str, Any]] = None) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all accessible projects using GraphQL.
         Note: GraphQL is preferred over REST for projects as it allows efficient
         fetching of extendable fields (like members, labels, files) in a single query
