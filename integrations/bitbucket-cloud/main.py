@@ -6,6 +6,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from client import BitbucketClient
 from helpers.utils import ObjectKind
 from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
@@ -44,10 +45,12 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests from all repositories."""
     client = init_client()
     async for repositories in client.get_repositories():
-        for repo in repositories:
-            repo_slug = repo.get("slug", repo["name"].lower())
-            async for pull_requests in client.get_pull_requests(repo_slug):
-                yield pull_requests
+        tasks = [
+            client.get_pull_requests(repo.get("slug", repo["name"].lower()))
+            for repo in repositories
+        ]
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
 
 
 @ocean.on_resync(ObjectKind.FOLDER)

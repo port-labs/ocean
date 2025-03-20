@@ -10,6 +10,7 @@ from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
     PULL_REQUEST_SEARCH_CRITERIA,
     AzureDevopsProjectResourceConfig,
+    AzureDevopsFileResourceConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     Kind,
@@ -157,6 +158,22 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for releases in azure_devops_client.generate_releases():
         logger.info(f"Resyncing {len(releases)} releases")
         yield releases
+
+
+@ocean.on_resync(Kind.FILE)
+async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    config = cast(AzureDevopsFileResourceConfig, event.resource_config)
+
+    logger.info(f"Starting file resync for paths: {config.selector.files.path}")
+
+    async for files_batch in azure_devops_client.generate_files(
+        path=config.selector.files.path,
+        repos=config.selector.files.repos,
+    ):
+        if files_batch:
+            logger.info(f"Resyncing batch of {len(files_batch)} files")
+            yield files_batch
 
 
 @ocean.router.post("/webhook")
