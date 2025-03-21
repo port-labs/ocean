@@ -25,7 +25,7 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
             ocean.integration_config["sonar_is_on_premise"],
         )
 
-        project = await sonar_client.get_single_component(payload.get("project", {}))
+        project = await sonar_client.get_single_component(payload["project"])
         project_data = await sonar_client.get_single_project(project)
 
         return WebhookEventRawResults(

@@ -26,7 +26,7 @@ class IssueWebhookProcessor(BaseSonarQubeWebhookProcessor):
             ocean.integration_config["sonar_is_on_premise"],
         )
 
-        project = await sonar_client.get_single_component(payload.get("project", {}))
+        project = await sonar_client.get_single_component(payload["project"])
         issues = []
 
         async for issues_batch in sonar_client.get_issues_by_component(project):

@@ -32,9 +32,7 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
         analysis_data = []
 
         if ocean.integration_config["sonar_is_on_premise"]:
-            project = await sonar_client.get_single_component(
-                payload["project"]
-            )
+            project = await sonar_client.get_single_component(payload["project"])
             analysis_data = await sonar_client.get_measures_for_all_pull_requests(
                 project["key"]
             )
