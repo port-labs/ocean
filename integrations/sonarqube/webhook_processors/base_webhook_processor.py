@@ -14,7 +14,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class BaseSonarQubeWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         # Process events related to projects
-        if not ocean.integration_config.get("webhook_secret"):
+        if (
+            not ocean.integration_config.get("webhook_secret")
+            or event._original_request is None
+        ):
             return "project" in event.payload
         signature = event.headers.get("X-Sonar-Webhook-HMAC-SHA256", "")
         body = await event._original_request.body()
