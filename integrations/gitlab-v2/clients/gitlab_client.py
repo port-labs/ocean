@@ -83,18 +83,15 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         group_id = group["id"]
 
-        async with semaphore:
-            logger.debug(f"Starting fetch for {resource_type} in group {group_id}")
-            async for resource_batch in self.rest.get_group_resource(
-                group_id, resource_type, params
-            ):
-                if resource_batch:
-                    logger.info(
-                        f"Fetched {len(resource_batch)} {resource_type} for group {group_id}"
-                    )
-                    batches.append(resource_batch)
-
-        return batches
+        logger.debug(f"Starting fetch for {resource_type} in group {group_id}")
+        async for resource_batch in self.rest.get_group_resource(
+            group_id, resource_type, params
+        ):
+            if resource_batch:
+                logger.info(
+                    f"Fetched {len(resource_batch)} {resource_type} for group {group_id}"
+                )
+                yield resource_batch
 
     async def get_project_resource(
         self,

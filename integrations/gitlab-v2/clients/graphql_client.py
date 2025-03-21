@@ -3,10 +3,11 @@ from typing import Any, AsyncIterator, Optional
 from loguru import logger
 
 from .base_client import HTTPBaseClient
-from .queries import ProjectQueries
+from .helpers.utils.queries import ProjectQueries
 import asyncio
 import gc
 from tenacity import retry, stop_after_attempt, wait_exponential
+from .helpers.utils.exceptions import GraphQLQueryError
 
 
 MAX_CONCURRENT_REQUESTS = 10
@@ -289,9 +290,10 @@ class GraphQLClient(HTTPBaseClient):
         response = await self.send_api_request(
             "POST", "", data={"query": query, "variables": params or {}}
         )
-
         if "errors" in response:
             logger.error(f"GraphQL query failed: {response['errors']}")
-            raise Exception(f"GraphQL query failed: {response['errors']}")
+            raise GraphQLQueryError(
+                f"GraphQL query failed: {response['errors']}", response["errors"]
+            )
 
         return response["data"]
