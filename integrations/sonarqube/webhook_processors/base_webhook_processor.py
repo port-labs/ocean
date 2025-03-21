@@ -23,7 +23,7 @@ class BaseSonarQubeWebhookProcessor(AbstractWebhookProcessor):
         body = await event._original_request.body()
         computed_signature = hmac.new(
             ocean.integration_config["webhook_secret"].encode("utf-8"),
-            str(body).encode("utf-8"),
+            body,
             hashlib.sha256,
         ).hexdigest()
         process_event = "project" in event.payload and hmac.compare_digest(
