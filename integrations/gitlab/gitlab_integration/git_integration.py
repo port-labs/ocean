@@ -132,6 +132,14 @@ class GitlabMemberSelector(Selector):
         default=True,
         description="If set to false, bots will be filtered out from the members list. Default value is true",
     )
+    include_verbose_member_object: bool = Field(
+        alias="includeVerboseMemberObject",
+        default=False,
+        description=(
+            "If set to true, the integration will include the verbose/entire member object in the members list. Default value is false, "
+            "this will reduce the memory footprint of the integration"
+        ),
+    )
 
 
 class GitlabObjectWithMembersResourceConfig(ResourceConfig):

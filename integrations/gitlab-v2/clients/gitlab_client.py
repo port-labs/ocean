@@ -51,17 +51,49 @@ class GitLabClient:
 
     async def get_group_resource(
         self,
+       
         groups_batch: list[dict[str, Any]],
+       
         resource_type: str,
-        params: Optional[dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,,
+        max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        for group in groups_batch:
-            group_id = group["id"]
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        tasks = [
+            asyncio.create_task(
+                self._process_single_group(group, resource_type, semaphore)
+            )
+            for group in groups_batch
+        ]
+
+        for completed_task in asyncio.as_completed(tasks):
+            batches = await completed_task
+            for batch in batches:
+                if batch:
+                    yield batch
+
+    async def _process_single_group(
+        self,
+        group: dict[str, Any],
+        resource_type: str,
+        semaphore: asyncio.Semaphore,
+    ) -> list[list[dict[str, Any]]]:
+        group_id = group["id"]
+        batches = []
+
+        async with semaphore:
+            logger.debug(f"Starting fetch for {resource_type} in group {group_id}")
             async for resource_batch in self.rest.get_group_resource(
                 group_id, resource_type, params
             ):
-                logger.info(f"Fetched {resource_type} batch for group {group['id']}")
-                yield resource_batch
+                if resource_batch:
+                    logger.info(
+                        f"Fetched {len(resource_batch)} {resource_type} for group {group_id}"
+                    )
+                    batches.append(resource_batch)
+
+        return batches
 
     async def get_project_resource(
         self,
