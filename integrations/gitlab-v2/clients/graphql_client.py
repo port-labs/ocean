@@ -182,7 +182,7 @@ class GraphQLClient(HTTPBaseClient):
                 resource_query,
                 params={
                     "fullPath": parent_full_path,
-                    "labelsCursor": cursor,
+                    f"{field_name}Cursor": cursor,
                     **(params or {}),
                 },
             )
@@ -262,8 +262,6 @@ class GraphQLClient(HTTPBaseClient):
             active_data = next_active
             if updated:
                 yield [self._copy_project(project) for project, _ in active_data]
-                for project, _ in active_data:
-                    project[field_name]["nodes"] = []
                 gc.collect()  # Force garbage collection
 
     def _copy_project(self, project: dict[str, Any]) -> dict[str, Any]:
