@@ -14,6 +14,5 @@ def produce_component_params(
 
     ## Handle query_params based on environment
     if client.is_onpremise and selector:
-
         component_query_params.update(selector.generate_request_params())
     return component_query_params
