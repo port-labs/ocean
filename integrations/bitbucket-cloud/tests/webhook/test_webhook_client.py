@@ -153,7 +153,7 @@ class TestBitbucketWebhookClient:
             new=fake_paginated_response,
         ):
             result = await webhook_client_with_secret._webhook_exist(
-                "https://example.com"
+                "https://example.com/integration/webhook"
             )
             assert result is True
 

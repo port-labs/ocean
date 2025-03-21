@@ -47,7 +47,7 @@ async def _generate_entity_from_port_yaml(
                 path=str(file_meta),
             )
             if file_meta.suffix == JSON_SUFFIX:
-                properties[key] = json.loads(file_content.decode("utf-8"))
+                properties[key] = json.loads(file_content)
             else:
                 properties[key] = file_content
         else:

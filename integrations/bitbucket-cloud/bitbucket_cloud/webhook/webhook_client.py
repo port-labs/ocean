@@ -80,7 +80,6 @@ class BitbucketWebhookClient(BitbucketClient):
         async for webhook_config_batch in self._send_paginated_api_request(
             self._workspace_webhook_url
         ):
-            webhook_url = f"{webhook_url}/integration/webhook"
             if any(
                 existing_webhook_config.get("url") == webhook_url
                 for existing_webhook_config in webhook_config_batch
