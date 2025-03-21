@@ -225,7 +225,7 @@ class BitbucketClient:
         logger.debug(
             f"Retrieving diff stat for workspace: {self.workspace}, repo: {repo}, old_hash: {old_hash}, new_hash: {new_hash}; retrieve_diff_stat"
         )
-        async for diff_stat in self._send_paginated_api_request(
+        async for diff_stat in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo}/diffstat/{new_hash}..{old_hash}",
             params={"pagelen": 500},
         ):
