@@ -3,7 +3,11 @@ import json
 
 from bitbucket_cloud.client import BitbucketClient
 from loguru import logger
-from bitbucket_cloud.webhook.events import RepositoryEvents, PullRequestEvents
+from bitbucket_cloud.webhook.events import (
+    RepositoryEvents,
+    PullRequestEvents,
+    PushEvents,
+)
 from httpx import HTTPStatusError
 import hashlib
 import hmac
@@ -107,7 +111,7 @@ class BitbucketWebhookClient(BitbucketClient):
             "url": webhook_url,
             "active": True,
             "secret": self.secret,
-            "events": list(PullRequestEvents + RepositoryEvents),
+            "events": list(PullRequestEvents + RepositoryEvents + PushEvents),
         }
 
         try:

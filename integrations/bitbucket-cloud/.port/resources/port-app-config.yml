@@ -23,6 +23,7 @@ resources:
           title: ".name"
           blueprint: '"bitbucketRepository"'
           properties:
+            readme: file://README.md
             url: ".links.html.href"
             defaultBranch: .mainbranch.name
           relations:
