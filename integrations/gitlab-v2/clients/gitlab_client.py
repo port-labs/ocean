@@ -4,6 +4,11 @@ from loguru import logger
 from .graphql_client import GraphQLClient
 from .rest_client import RestClient
 import asyncio
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+    semaphore_async_iterator,
+)
+from functools import partial
 
 
 class GitLabClient:
@@ -52,39 +57,32 @@ class GitLabClient:
         resource_type: str,
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        semaphore = asyncio.Semaphore(max_concurrent)
 
+        semaphore = asyncio.Semaphore(max_concurrent)
         tasks = [
-            asyncio.create_task(
-                self._process_single_group(group, resource_type, semaphore)
+            semaphore_async_iterator(
+                semaphore, partial(self._process_single_group, group, resource_type)
             )
             for group in groups_batch
         ]
 
-        for completed_task in asyncio.as_completed(tasks):
-            batches = await completed_task
-            for batch in batches:
-                if batch:
-                    yield batch
+        async for batch in stream_async_iterators_tasks(*tasks):
+            if batch:
+                yield batch
 
     async def _process_single_group(
         self,
         group: dict[str, Any],
         resource_type: str,
-        semaphore: asyncio.Semaphore,
-    ) -> list[list[dict[str, Any]]]:
+    ) -> AsyncIterator[list[dict[str, Any]]]:
         group_id = group["id"]
-        batches = []
 
-        async with semaphore:
-            logger.debug(f"Starting fetch for {resource_type} in group {group_id}")
-            async for resource_batch in self.rest.get_group_resource(
-                group_id, resource_type
-            ):
-                if resource_batch:
-                    logger.info(
-                        f"Fetched {len(resource_batch)} {resource_type} for group {group_id}"
-                    )
-                    batches.append(resource_batch)
-
-        return batches
+        logger.debug(f"Starting fetch for {resource_type} in group {group_id}")
+        async for resource_batch in self.rest.get_group_resource(
+            group_id, resource_type
+        ):
+            if resource_batch:
+                logger.info(
+                    f"Fetched {len(resource_batch)} {resource_type} for group {group_id}"
+                )
+                yield resource_batch
