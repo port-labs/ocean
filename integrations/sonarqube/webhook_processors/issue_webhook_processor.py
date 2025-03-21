@@ -1,4 +1,4 @@
-from utils import init_sonar_client
+from initialize_client import init_sonar_client
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 

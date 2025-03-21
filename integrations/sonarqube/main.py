@@ -1,6 +1,7 @@
 from typing import cast
 from loguru import logger
-from utils import init_sonar_client, produce_component_params
+from utils import produce_component_params
+from initialize_client import init_sonar_client
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
