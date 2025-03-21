@@ -1,10 +1,9 @@
 from typing import cast
 from loguru import logger
-from utils import produce_component_params
+from utils import init_sonar_client, produce_component_params
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from client import SonarQubeClient
 from integration import (
     ObjectKind,
     SonarQubeGAProjectResourceConfig,
@@ -14,16 +13,6 @@ from integration import (
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.analysis_webhook_processor import AnalysisWebhookProcessor
-
-
-def init_sonar_client() -> SonarQubeClient:
-    return SonarQubeClient(
-        ocean.integration_config.get("sonar_url", "https://sonarcloud.io"),
-        ocean.integration_config["sonar_api_token"],
-        ocean.integration_config.get("sonar_organization_id"),
-        ocean.integration_config.get("app_host"),
-        ocean.integration_config["sonar_is_on_premise"],
-    )
 
 
 @ocean.on_resync(ObjectKind.PROJECTS)
