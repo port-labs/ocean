@@ -142,6 +142,9 @@ async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             group_with_members_selector.include_inherited_members
         )
         include_bot_members = group_with_members_selector.include_bot_members
+        include_verbose_member_object = (
+            group_with_members_selector.include_verbose_member_object
+        )
 
         async for groups in service.get_all_groups():
             groups_batch_iter = iter(groups)
@@ -154,7 +157,10 @@ async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 )
                 tasks = [
                     service.enrich_object_with_members(
-                        group, include_inherited_members, include_bot_members
+                        group,
+                        include_inherited_members,
+                        include_bot_members,
+                        include_verbose_member_object=include_verbose_member_object,
                     )
                     for group in groups_batch
                 ]
@@ -215,7 +221,9 @@ async def resync_project_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             project_with_members_selector.include_inherited_members
         )
         include_bot_members = project_with_members_selector.include_bot_members
-
+        include_verbose_member_object = (
+            project_with_members_selector.include_verbose_member_object
+        )
         async for projects in service.get_all_projects():
             projects_batch_iter = iter(projects)
             projects_processed_in_full_batch = 0
@@ -239,6 +247,7 @@ async def resync_project_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         project,
                         include_inherited_members,
                         include_bot_members,
+                        include_verbose_member_object=include_verbose_member_object,
                     )
                     for project in projects_enriched_with_extras
                 ]

@@ -19,12 +19,12 @@ configurations:
     description: The PagerDuty API token. To create a token, see the <a href="https://support.pagerduty.com/docs/api-access-keys" target="_blank">PagerDuty documentation</a>
   - name: apiUrl
     required: true
-    type: string
+    type: url
     default: https://api.pagerduty.com
     description: Pagerduty Api URL. If not specified, the default will be <a href="https://api.pagerduty.com" target="_blank">https://api.pagerduty.com</a>. Customers on the EU data centers should set this to https://api.eu.pagerduty.com
   - name: appHost
     required: false
-    type: string
+    type: url
     description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in PagerDuty
 saas:
   enabled: true
