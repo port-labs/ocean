@@ -3,11 +3,11 @@ from typing import Any, AsyncIterator, Optional
 from loguru import logger
 
 from .base_client import HTTPBaseClient
-from .queries import ProjectQueries
+from .helpers.utils.queries import ProjectQueries
 import asyncio
 import gc
 from tenacity import retry, stop_after_attempt, wait_exponential
-from .exceptions import GraphQLQueryError
+from .helpers.utils.exceptions import GraphQLQueryError
 
 
 MAX_CONCURRENT_REQUESTS = 10

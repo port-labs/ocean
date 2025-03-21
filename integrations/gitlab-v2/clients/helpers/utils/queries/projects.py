@@ -13,7 +13,7 @@ class Fragments:
                 id
                 fullPath            
             }
-            labels(first: 100) @include(if: $includeLabels) {
+            labels(first: 70) @include(if: $includeLabels) {
                 pageInfo {
                     hasNextPage
                     endCursor
@@ -60,7 +60,7 @@ class ProjectQueries:
         query ProjectLabels($fullPath: ID!, $labelsCursor: String) {{
             project(fullPath: $fullPath) {{
                 id
-                labels(first: 100, after: $labelsCursor) {{
+                labels(first: 50, after: $labelsCursor) {{
                     pageInfo {{
                         hasNextPage
                         endCursor
