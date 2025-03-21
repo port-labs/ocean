@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Tuple
 from loguru import logger
-from bitbucket_integration.client import BitbucketClient
-from bitbucket_integration.gitops.entity_generator import (
+from bitbucket_cloud.client import BitbucketClient
+from bitbucket_cloud.gitops.entity_generator import (
     generate_entities_from_yaml_file,
 )
 from port_ocean.core.models import Entity

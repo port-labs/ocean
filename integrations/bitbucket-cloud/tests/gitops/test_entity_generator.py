@@ -1,6 +1,6 @@
 import pytest
 from typing import Dict, Any
-from bitbucket_integration.gitops.entity_generator import get_commit_hash_from_payload
+from bitbucket_cloud.gitops.entity_generator import get_commit_hash_from_payload
 
 
 @pytest.mark.asyncio

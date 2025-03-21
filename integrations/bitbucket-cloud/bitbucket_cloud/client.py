@@ -69,6 +69,7 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
+        return_full_response: bool = False,
     ) -> Any:
         """Send request to Bitbucket API with error handling."""
         response = await self.client.request(
@@ -76,6 +77,8 @@ class BitbucketClient:
         )
         try:
             response.raise_for_status()
+            if return_full_response:
+                return response
             return response.json()
         except HTTPStatusError as e:
             error_data = e.response.json()
@@ -212,3 +215,30 @@ class BitbucketClient:
         return await self._send_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )
+
+    async def retrieve_diff_stat(
+        self, repo: str, old_hash: str, new_hash: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Retrieve diff statistics between two commits using Bitbucket API
+        """
+        logger.debug(
+            f"Retrieving diff stat for workspace: {self.workspace}, repo: {repo}, old_hash: {old_hash}, new_hash: {new_hash}; retrieve_diff_stat"
+        )
+        async for diff_stat in self._send_paginated_api_request(
+            f"{self.base_url}/repositories/{self.workspace}/{repo}/diffstat/{new_hash}..{old_hash}",
+            params={"pagelen": 500},
+        ):
+            logger.info(
+                f"Fetched batch of {len(diff_stat)} diff stat from repository {repo} in workspace {self.workspace}"
+            )
+            yield diff_stat
+
+    async def get_file_content(self, repo: str, branch: str, path: str) -> Any:
+        """Get the content of a file."""
+        response = await self._send_api_request(
+            f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
+            method="GET",
+            return_full_response=True,
+        )
+        return response.text

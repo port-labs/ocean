@@ -1,7 +1,7 @@
 import json
 import pytest
 from unittest.mock import patch, AsyncMock
-from bitbucket_integration.gitops.file_entity_handler import FileEntityProcessor
+from bitbucket_cloud.gitops.file_entity_handler import FileEntityProcessor
 
 MOCK_PORT_OCEAN_CONTEXT = AsyncMock()
 
@@ -20,7 +20,7 @@ async def test_file_entity_processor_search_json_success() -> None:
     mock_client.get_file_content.return_value = json_str
 
     with patch(
-        "bitbucket_integration.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
+        "bitbucket_cloud.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
         return_value=mock_client,
     ):
         processor = FileEntityProcessor(
@@ -46,7 +46,7 @@ async def test_file_entity_processor_search_non_json_success() -> None:
     mock_client.get_file_content.return_value = expected_content
 
     with patch(
-        "bitbucket_integration.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
+        "bitbucket_cloud.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
         return_value=mock_client,
     ):
         processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
@@ -70,7 +70,7 @@ async def test_file_entity_processor_search_error_handling() -> None:
     mock_client.get_file_content.side_effect = Exception("Test exception")
 
     with patch(
-        "bitbucket_integration.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
+        "bitbucket_cloud.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
         return_value=mock_client,
     ):
         processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
@@ -107,7 +107,7 @@ async def test_file_entity_processor_search_missing_folder_commit() -> None:
     mock_client.get_file_content.return_value = expected_content
 
     with patch(
-        "bitbucket_integration.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
+        "bitbucket_cloud.gitops.file_entity_handler.BitbucketClient.create_from_ocean_config",
         return_value=mock_client,
     ):
         processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)

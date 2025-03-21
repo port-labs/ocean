@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch
-from bitbucket_integration.gitops.commit_processor import process_single_file
+from bitbucket_cloud.gitops.commit_processor import process_single_file
 
 
 @pytest.mark.asyncio
@@ -15,11 +15,11 @@ async def test_process_single_file() -> None:
     spec_paths = ["specs/"]
 
     with patch(
-        "bitbucket_integration.gitops.commit_processor.match_spec_paths"
+        "bitbucket_cloud.gitops.commit_processor.match_spec_paths"
     ) as mock_match:
         mock_match.return_value = ["specs/service.yml"]
         with patch(
-            "bitbucket_integration.gitops.commit_processor.process_file"
+            "bitbucket_cloud.gitops.commit_processor.process_file"
         ) as mock_process:
             mock_process.return_value = (["old_entity"], ["new_entity"])
 
@@ -52,7 +52,7 @@ async def test_process_single_file_no_matching_paths() -> None:
     spec_paths = ["specs/"]
 
     with patch(
-        "bitbucket_integration.gitops.commit_processor.match_spec_paths"
+        "bitbucket_cloud.gitops.commit_processor.match_spec_paths"
     ) as mock_match:
         # No matches found
         mock_match.return_value = []

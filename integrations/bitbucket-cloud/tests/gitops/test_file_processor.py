@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch
-from bitbucket_integration.gitops.file_processor import (
+from bitbucket_cloud.gitops.file_processor import (
     determine_file_action,
     process_file,
 )
@@ -33,7 +33,7 @@ async def test_process_file_deleted() -> None:
     mock_client.get_file_content.return_value = "old content"
 
     with patch(
-        "bitbucket_integration.gitops.file_processor.generate_entities_from_yaml_file"
+        "bitbucket_cloud.gitops.file_processor.generate_entities_from_yaml_file"
     ) as mock_generate:
         mock_generate.return_value = ["old_entity"]
 
@@ -61,7 +61,7 @@ async def test_process_file_added() -> None:
     mock_client.get_file_content.return_value = "new content"
 
     with patch(
-        "bitbucket_integration.gitops.file_processor.generate_entities_from_yaml_file"
+        "bitbucket_cloud.gitops.file_processor.generate_entities_from_yaml_file"
     ) as mock_generate:
         mock_generate.return_value = ["new_entity"]
 
@@ -89,7 +89,7 @@ async def test_process_file_modified() -> None:
     mock_client.get_file_content.side_effect = ["old content", "new content"]
 
     with patch(
-        "bitbucket_integration.gitops.file_processor.generate_entities_from_yaml_file"
+        "bitbucket_cloud.gitops.file_processor.generate_entities_from_yaml_file"
     ) as mock_generate:
         mock_generate.side_effect = [["old_entity"], ["new_entity"]]
 

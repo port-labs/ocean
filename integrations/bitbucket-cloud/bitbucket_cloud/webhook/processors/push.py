@@ -1,23 +1,23 @@
 from typing import cast, List, Any
 from loguru import logger
-from integration import BitbucketAppConfig
-from bitbucket_integration.gitops.entity_generator import get_commit_hash_from_payload
-from bitbucket_integration.utils import ObjectKind
+from bitbucket_cloud.gitops.entity_generator import get_commit_hash_from_payload
+from bitbucket_cloud.helpers.utils import ObjectKind
 from port_ocean.context.ocean import ocean
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from bitbucket_integration.webhook.processors._base import _BaseWebhookProcessorConfig
+from bitbucket_cloud.webhook.processors._base import _BitbucketAbstractWebhookProcessor
 from port_ocean.context.event import event
+from integration import BitbucketAppConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
-from bitbucket_integration.gitops.commit_processor import process_diff_stats
+from bitbucket_cloud.gitops.commit_processor import process_diff_stats
 
 
-class PushWebhookProcessor(_BaseWebhookProcessorConfig):
+class PushWebhookProcessor(_BitbucketAbstractWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.REPOSITORY]
 
@@ -62,7 +62,7 @@ class PushWebhookProcessor(_BaseWebhookProcessorConfig):
             old_commit_hash,
             branch,
         ) in get_commit_hash_from_payload(payload):
-            logger.debug(
+            logger.info(
                 f"Processing commit: new={new_commit_hash}, old={old_commit_hash}, branch={branch}"
             )
 

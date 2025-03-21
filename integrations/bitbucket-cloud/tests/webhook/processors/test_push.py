@@ -5,12 +5,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from bitbucket_integration.utils import ObjectKind
-from bitbucket_integration.webhook.webhook_client import BitbucketWebhookClient
+from bitbucket_cloud.helpers.utils import ObjectKind
+from bitbucket_cloud.webhook.webhook_client import BitbucketWebhookClient
 
 
 with patch("initialize_client.init_webhook_client") as mock_init_client:
-    from bitbucket_integration.webhook.processors.push import PushWebhookProcessor
+    from bitbucket_cloud.webhook.processors.push import PushWebhookProcessor
 
 
 @pytest.fixture
@@ -90,7 +90,7 @@ class TestPushWebhookProcessor:
         # Mock process_diff_stats
         with (
             patch(
-                "bitbucket_integration.gitops.commit_processor.process_diff_stats",
+                "bitbucket_cloud.gitops.commit_processor.process_diff_stats",
                 return_value=([], [{"test": "entity"}]),
             ),
             patch("port_ocean.context.event._get_event_context") as mock_event_context,

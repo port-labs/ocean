@@ -9,7 +9,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from bitbucket_integration.gitops.file_entity_handler import GitManipulationHandler
+from bitbucket_cloud.gitops.file_entity_handler import GitManipulationHandler
 
 
 class RepositoryBranchMapping(BaseModel):

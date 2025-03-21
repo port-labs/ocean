@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import Any, AsyncGenerator
 from loguru import logger
 import yaml
-from bitbucket_integration.client import BitbucketClient
+from bitbucket_cloud.client import BitbucketClient
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload
 from port_ocean.core.models import Entity
-from bitbucket_integration.gitops.file_entity_handler import (
+from bitbucket_cloud.gitops.file_entity_handler import (
     FILE_PROPERTY_PREFIX,
     JSON_SUFFIX,
 )
@@ -23,7 +23,7 @@ async def get_commit_hash_from_payload(
             old = change.get("old", {})
             old_commit = old.get("target", {}).get("hash", "")
             new_commit = new.get("target", {}).get("hash", "")
-            branch = new.get("name", "") or old.get("name", "")
+            branch = new["name"] if new else old["name"]
             yield new_commit, old_commit, branch
         return
     except Exception as e:

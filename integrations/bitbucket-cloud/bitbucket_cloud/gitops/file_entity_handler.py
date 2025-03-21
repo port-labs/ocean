@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, Type, Optional
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
-from bitbucket_integration.client import BitbucketClient
+from bitbucket_cloud.client import BitbucketClient
 
 FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"

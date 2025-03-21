@@ -1,9 +1,9 @@
 import asyncio
 from typing import List, Any, Dict, Tuple
 from loguru import logger
-from bitbucket_integration.client import BitbucketClient
-from bitbucket_integration.gitops.path_validator import match_spec_paths
-from bitbucket_integration.gitops.file_processor import (
+from bitbucket_cloud.client import BitbucketClient
+from bitbucket_cloud.gitops.path_validator import match_spec_paths
+from bitbucket_cloud.gitops.file_processor import (
     determine_file_action,
     process_file,
 )

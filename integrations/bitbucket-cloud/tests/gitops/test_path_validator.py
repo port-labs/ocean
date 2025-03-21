@@ -1,5 +1,5 @@
 import pytest
-from bitbucket_integration.gitops.path_validator import (
+from bitbucket_cloud.gitops.path_validator import (
     match_spec_paths,
     match_path_pattern,
 )
