@@ -326,7 +326,10 @@ async def test_get_measures_is_called_with_correct_params(
     await sonarqube_client.get_measures(PURE_PROJECTS[0]["key"])
     mock_paginated_request.assert_called_once_with(
         endpoint="measures/component",
-        query_params={"component": PURE_PROJECTS[0]["key"], "metricKeys": "coverage,bugs"},
+        query_params={
+            "component": PURE_PROJECTS[0]["key"],
+            "metricKeys": "coverage,bugs",
+        },
     )
 
 

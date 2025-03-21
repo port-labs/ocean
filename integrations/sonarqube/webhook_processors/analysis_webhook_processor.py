@@ -14,7 +14,11 @@ from integration import ObjectKind
 
 class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.ANALYSIS, ObjectKind.SASS_ANALYSIS, ObjectKind.ONPREM_ANALYSIS]
+        return [
+            ObjectKind.ANALYSIS,
+            ObjectKind.SASS_ANALYSIS,
+            ObjectKind.ONPREM_ANALYSIS,
+        ]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -30,8 +34,12 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
         analysis_data = []
 
         if ocean.integration_config["sonar_is_on_premise"]:
-            project = await sonar_client.get_single_component(payload.get("project", {}))
-            analysis_data = await sonar_client.get_measures_for_all_pull_requests(project["key"])
+            project = await sonar_client.get_single_component(
+                payload.get("project", {})
+            )
+            analysis_data = await sonar_client.get_measures_for_all_pull_requests(
+                project["key"]
+            )
         else:
             analysis_data = [await sonar_client.get_analysis_for_task(payload)]
 

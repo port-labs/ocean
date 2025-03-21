@@ -5,7 +5,12 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from client import SonarQubeClient
-from integration import ObjectKind, SonarQubeGAProjectResourceConfig, SonarQubeIssueResourceConfig, SonarQubeProjectResourceConfig
+from integration import (
+    ObjectKind,
+    SonarQubeGAProjectResourceConfig,
+    SonarQubeIssueResourceConfig,
+    SonarQubeProjectResourceConfig,
+)
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.analysis_webhook_processor import AnalysisWebhookProcessor
@@ -125,6 +130,7 @@ async def on_start() -> None:
     # we only subscribe to webhook events when the user supplies the app_host config variable
     if ocean.integration_config.get("app_host"):
         await sonar_client.get_or_create_webhook_url()
+
 
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)

@@ -24,10 +24,14 @@ class BaseSonarQubeWebhookProcessor(AbstractWebhookProcessor):
             str(body).encode("utf-8"),
             hashlib.sha256,
         ).hexdigest()
-        process_event = "project" in event.payload and hmac.compare_digest(signature, computed_signature)
+        process_event = "project" in event.payload and hmac.compare_digest(
+            signature, computed_signature
+        )
         return process_event
 
-    async def authenticate(self, payload: EventPayload, headers: dict[str, Any]) -> bool:
+    async def authenticate(
+        self, payload: EventPayload, headers: dict[str, Any]
+    ) -> bool:
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
