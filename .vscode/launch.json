@@ -3,6 +3,17 @@
   "configurations": [
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/sonarqube",
+      "envFile": "${workspaceFolder}/integrations/sonarqube/.env",
+      "justMyCode": true,
+      "name": "Run sonarqube integration",
+      "program": "${workspaceFolder}/integrations/sonarqube/debug.py",
+      "python": "${workspaceFolder}/integrations/sonarqube/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira",
       "envFile": "${workspaceFolder}/integrations/jira/.env",
       "justMyCode": true,

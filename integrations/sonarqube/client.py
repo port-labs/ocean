@@ -242,6 +242,9 @@ class SonarQubeClient:
         :return: A list of measures associated with the specified component.
         """
         logger.info(f"Fetching all measures in : {project_key}")
+        response = None
+        if not self.metrics:
+            return []
         response = await self._send_api_request(
             endpoint=Endpoints.MEASURES,
             query_params={

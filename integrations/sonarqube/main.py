@@ -1,18 +1,14 @@
-from typing import Any, cast
-
+from typing import cast
 from loguru import logger
+from utils import produce_component_params
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
 from client import SonarQubeClient
-from integration import (
-    ObjectKind,
-    SonarQubeGAProjectResourceConfig,
-    SonarQubeIssueResourceConfig,
-    SonarQubeProjectResourceConfig,
-)
-from utils import produce_component_params
+from integration import ObjectKind, SonarQubeGAProjectResourceConfig, SonarQubeIssueResourceConfig, SonarQubeProjectResourceConfig
+from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
+from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
+from webhook_processors.analysis_webhook_processor import AnalysisWebhookProcessor
 
 
 def init_sonar_client() -> SonarQubeClient:
@@ -110,37 +106,6 @@ async def on_portfolio_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield portfolio_list
 
 
-@ocean.router.post("/webhook")
-async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
-    logger.info(
-        f"Processing Sonarqube webhook for event type: {webhook_data.get('project', {}).get('key')}"
-    )
-    sonar_client = init_sonar_client()
-
-    project = await sonar_client.get_single_component(
-        webhook_data.get("project", {})
-    )  ## making sure we're getting the right project details
-    project_data = await sonar_client.get_single_project(project)
-    await ocean.register_raw(ObjectKind.PROJECTS, [project_data])
-    await ocean.register_raw(ObjectKind.PROJECTS_GA, [project_data])
-    async for issues_data in sonar_client.get_issues_by_component(project):
-        await ocean.register_raw(ObjectKind.ISSUES, issues_data)
-
-    if ocean.integration_config["sonar_is_on_premise"]:
-        onprem_analysis_data = await sonar_client.get_measures_for_all_pull_requests(
-            project_key=project["key"]
-        )
-        await ocean.register_raw(ObjectKind.ONPREM_ANALYSIS, onprem_analysis_data)
-    else:
-        cloud_analysis_data = await sonar_client.get_analysis_for_task(
-            webhook_data=webhook_data
-        )
-        await ocean.register_raw(ObjectKind.SASS_ANALYSIS, [cloud_analysis_data])
-        await ocean.register_raw(ObjectKind.ANALYSIS, [cloud_analysis_data])
-
-    logger.info("Webhook event processed")
-
-
 @ocean.on_start()
 async def on_start() -> None:
     if not ocean.integration_config.get("sonar_organization_id"):
@@ -160,3 +125,7 @@ async def on_start() -> None:
     # we only subscribe to webhook events when the user supplies the app_host config variable
     if ocean.integration_config.get("app_host"):
         await sonar_client.get_or_create_webhook_url()
+
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", AnalysisWebhookProcessor)
