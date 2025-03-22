@@ -5,7 +5,6 @@ from datetime import datetime
 from functools import partial
 from http import HTTPStatus
 from typing import Any, Callable, Coroutine, Iterable, Mapping, Union
-from urllib.parse import urlparse, urlunparse
 import httpx
 from dateutil.parser import isoparse
 
@@ -281,52 +280,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         jitter = (backoff * self._jitter_ratio) * random.choice([1, -1])
         total_backoff = backoff + jitter
         return min(total_backoff, self._max_backoff_wait)
-
-    def normlize_request(self, request: httpx.Request) -> str:
-        normalized_url = self.normalize_url(request.url)
-        # Add request method and remove query params
-        endpoint = f"{request.method} {normalized_url.split('?')[0]}"
-        return endpoint
-
-    def normalize_url(self, url: str | httpx.URL) -> str:
-        # Convert httpx.URL object to string if needed
-        url_str = str(url) if not isinstance(url, str) else url
-
-        parsed = urlparse(url_str)
-        path = parsed.path
-        # Remove trailing IDs to improve Prometheus metrics aggregation
-        # Match patterns like /path/to/resource/123456 and normalize to /path/to/resource
-        parts = path.rstrip("/").split("/")
-
-        # Check if the last part is numeric or looks like an ID (alphanumeric with certain patterns)
-        if parts and (
-            parts[-1].isdigit()
-            or (
-                len(parts[-1]) > 8  # Likely an ID if longer than 8 chars
-                and any(c.isdigit() for c in parts[-1])  # Contains at least one digit
-                and any(c.isalpha() for c in parts[-1])  # Contains at least one letter
-            )
-        ):
-            # Remove the ID part
-            path = "/".join(parts[:-1])
-
-        # Ensure path ends with a slash for consistency
-        if not path.endswith("/"):
-            path += "/"
-
-        # Reconstruct the URL without the ID
-        normalized = urlunparse(
-            (
-                parsed.scheme,
-                parsed.netloc,
-                path,
-                parsed.params,
-                parsed.query,
-                parsed.fragment,
-            )
-        )
-
-        return normalized
 
     async def _retry_operation_async(
         self,

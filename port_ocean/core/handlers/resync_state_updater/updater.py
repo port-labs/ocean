@@ -85,7 +85,9 @@ class ResyncStateUpdater:
                 "updatedAt"
             ]
 
-        ocean.metrics.get_metric(MetricType.SUCCESS[0], [MetricPhase.RESYNC]).set(
-            0 if status == IntegrationStateStatus.Failed else 1
+        ocean.metrics.set_metric(
+            name=MetricType.SUCCESS_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.RESYNC],
+            value=int(status == IntegrationStateStatus.Completed),
         )
         await ocean.metrics.flush()

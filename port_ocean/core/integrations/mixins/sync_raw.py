@@ -11,6 +11,7 @@ from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.ocean import ocean
 from port_ocean.context.resource import resource_context
+from port_ocean.context import resource
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
 from port_ocean.core.integrations.mixins.utils import (
@@ -309,6 +310,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             errors.extend(calculation_result.errors)
             passed_entities = list(calculation_result.entity_selector_diff.passed)
+            logger.info(
+                f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
+            )
 
         number_of_raw_results = 0
         number_of_transformed_entities = 0
@@ -333,20 +337,27 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except* OceanAbortException as error:
                 errors.append(error)
 
-        ocean.metrics.get_metric(
-            MetricType.SUCCESS[0], [MetricPhase.RESYNC]
-        ).set(0 if errors else 1)
-
         logger.info(
-            f"Finished registering change for {len(results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
+            f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
         )
-        ocean.metrics.get_metric(
-            MetricType.OBJECT_COUNT[0], [MetricPhase.EXTRACT]
-        ).set(number_of_raw_results)
 
-        ocean.metrics.get_metric(
-            MetricType.OBJECT_COUNT[0], [MetricPhase.TRANSFORM]
-        ).set(number_of_transformed_entities)
+        ocean.metrics.set_metric(
+            name=MetricType.SUCCESS_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.RESYNC],
+            value=int(not errors)
+        )
+
+        ocean.metrics.set_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT],
+            value=number_of_raw_results
+        )
+
+        ocean.metrics.set_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM],
+            value=number_of_transformed_entities
+        )
 
         return passed_entities, errors
 
@@ -604,17 +615,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     # create resource context per resource kind, so resync method could have access to the resource
                     # config as we might have multiple resources in the same event
                     async with resource_context(resource,index):
-                        # Clear metrics specific to this resource kind before processing
                         resource_kind_id = f"{resource.kind}-{index}"
-                        task = asyncio.get_event_loop().create_task(
+                        task = asyncio.create_task(
                             self._register_in_batches(resource, user_agent_type)
                         )
 
                         event.on_abort(lambda: task.cancel())
                         kind_results: tuple[list[Entity], list[Exception]] = await task
-                        ocean.metrics.get_metric(
-                            MetricType.OBJECT_COUNT[0], [MetricPhase.LOAD]
-                        ).set(len(kind_results[0]))
+                        ocean.metrics.set_metric(
+                            name=MetricType.OBJECT_COUNT_NAME,
+                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
+                            value=len(kind_results[0])
+                        )
 
                         creation_results.append(kind_results)
 

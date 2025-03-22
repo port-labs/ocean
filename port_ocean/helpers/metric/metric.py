@@ -1,4 +1,4 @@
-from typing import Any, TYPE_CHECKING, Optional
+from typing import Any, TYPE_CHECKING, Optional, Dict, List, Tuple
 from fastapi import APIRouter
 from port_ocean.exceptions.context import ResourceContextNotFoundError
 import prometheus_client
@@ -19,21 +19,64 @@ class MetricPhase:
     EXTRACT = "extract"
     TRANSFORM = "transform"
     LOAD = "load"
-    TOP_SORT = "top_sort"
     RESYNC = "resync"
+    DELETE = "delete"
 
 
 class MetricType:
-    DURATION = ("duration_seconds", "duration description", ["kind", "phase"])
-    OBJECT_COUNT = ("object_count", "object_count description", ["kind", "phase"])
-    ERROR_COUNT = ("error_count", "error_count description", ["kind", "phase"])
-    SUCCESS = ("success", "success description", ["kind", "phase"])
-    RATE_LIMIT_WAIT = (
-        "rate_limit_wait_seconds",
+    # Define metric names as constants
+    DURATION_NAME = "duration_seconds"
+    OBJECT_COUNT_NAME = "object_count"
+    ERROR_COUNT_NAME = "error_count"
+    SUCCESS_NAME = "success"
+    RATE_LIMIT_WAIT_NAME = "rate_limit_wait_seconds"
+    DELETION_COUNT_NAME = "deletion_count"
+
+
+# Registry for core and custom metrics
+_metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
+    MetricType.DURATION_NAME: (
+        MetricType.DURATION_NAME,
+        "duration description",
+        ["kind", "phase"],
+    ),
+    MetricType.OBJECT_COUNT_NAME: (
+        MetricType.OBJECT_COUNT_NAME,
+        "object_count description",
+        ["kind", "phase"],
+    ),
+    MetricType.ERROR_COUNT_NAME: (
+        MetricType.ERROR_COUNT_NAME,
+        "error_count description",
+        ["kind", "phase"],
+    ),
+    MetricType.SUCCESS_NAME: (
+        MetricType.SUCCESS_NAME,
+        "success description",
+        ["kind", "phase"],
+    ),
+    MetricType.RATE_LIMIT_WAIT_NAME: (
+        MetricType.RATE_LIMIT_WAIT_NAME,
         "rate_limit_wait description",
         ["kind", "phase", "endpoint"],
-    )
-    DELETED = ("deleted_count", "deleted description", ["kind", "phase"])
+    ),
+    MetricType.DELETION_COUNT_NAME: (
+        MetricType.DELETION_COUNT_NAME,
+        "deletion_count description",
+        ["kind", "phase"],
+    ),
+}
+
+
+def register_metric(name: str, description: str, labels: List[str]) -> None:
+    """Register a custom metric that will be available for use.
+
+    Args:
+        name (str): The metric name to register
+        description (str): Description of what the metric measures
+        labels (list[str]): Labels to apply to the metric
+    """
+    _metrics_registry[name] = (name, description, labels)
 
 
 class EmptyMetric:
@@ -81,21 +124,33 @@ class Metrics:
     def load_metrics(self) -> None:
         if not self.enabled:
             return None
-        for attr in dir(MetricType):
-            if callable(getattr(MetricType, attr)) or attr.startswith("__"):
-                continue
-            name, description, lables = getattr(MetricType, attr)
+
+        # Load all registered metrics
+        for name, (_, description, labels) in _metrics_registry.items():
             self.metrics[name] = Gauge(
-                name, description, lables, registry=self.registry
+                name, description, labels, registry=self.registry
             )
 
-    def get_metric(self, name: str, lables: list[str]) -> Gauge | EmptyMetric:
+    def get_metric(self, name: str, labels: list[str]) -> Gauge | EmptyMetric:
         if not self.enabled:
             return EmptyMetric()
         metrics = self.metrics.get(name)
         if not metrics:
             return EmptyMetric()
-        return metrics.labels(self.get_kind(), *lables)
+        return metrics.labels(*labels)
+
+    def set_metric(self, name: str, labels: list[str], value: float) -> None:
+        """Set a metric value in a single method call.
+
+        Args:
+            name (str): The metric name to set.
+            labels (list[str]): The labels to apply to the metric.
+            value (float): The value to set.
+        """
+        if not self.enabled:
+            return None
+
+        self.get_metric(name, labels).set(value)
 
     def create_mertic_router(self) -> APIRouter:
         if not self.enabled:
@@ -108,7 +163,7 @@ class Metrics:
 
         return router
 
-    def get_kind(self) -> str:
+    def current_resource_kind(self) -> str:
         try:
             return f"{resource.resource.kind}-{resource.resource.index}"
         except ResourceContextNotFoundError:
@@ -123,6 +178,9 @@ class Metrics:
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
     ) -> None:
         if not self.enabled:
+            return None
+
+        if not self.metrics_settings.webhook_url:
             return None
 
         latest_raw = self.generate_latest()
@@ -153,27 +211,23 @@ class Metrics:
 
                 current_level[sample.name] = sample.value
 
-        if self.metrics_settings.webhook_url:
-            # If no metrics were filtered, exit early
-            if not metrics_dict.get("kind", {}):
-                return None
+        # If no metrics were filtered, exit early
+        if not metrics_dict.get("kind", {}):
+            return None
 
-            for kind_key, metrics in metrics_dict.get("kind", {}).items():
-                # Skip if we're filtering by kind and this isn't the requested kind
-                if kind and kind_key != kind:
-                    continue
+        for kind_key, metrics in metrics_dict.get("kind", {}).items():
+            # Skip if we're filtering by kind and this isn't the requested kind
+            if kind and kind_key != kind:
+                continue
 
-                event = {
-                    "integration_type": self.integration_configuration.type,
-                    "integration_identifier": self.integration_configuration.identifier,
-                    "integration_version": self.integration_version,
-                    "ocean_version": self.ocean_version,
-                    "kind_identifier": kind_key,
-                    "kind": "-".join(kind_key.split("-")[:-1]),
-                    "metrics": metrics,
-                }
-                logger.debug(f"Sending metrics to webhook {kind_key}")
-                logger.info(f"Sending metrics to webhook {event}")
-                await AsyncClient().post(
-                    url=self.metrics_settings.webhook_url, json=event
-                )
+            event = {
+                "integration_type": self.integration_configuration.type,
+                "integration_identifier": self.integration_configuration.identifier,
+                "integration_version": self.integration_version,
+                "ocean_version": self.ocean_version,
+                "kind_identifier": kind_key,
+                "kind": "-".join(kind_key.split("-")[:-1]),
+                "metrics": metrics,
+            }
+            logger.info(f"Sending metrics to webhook {kind_key}: {event}")
+            await AsyncClient().post(url=self.metrics_settings.webhook_url, json=event)
