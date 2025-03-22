@@ -26,7 +26,7 @@ def mock_ocean_context() -> None:
             "sonar_url": "https://sonarqube.com",
             "sonar_organization_id": "organization_id",
             "sonar_is_on_premise": False,
-            "sonar_webhook_secret": "12345"
+            "sonar_webhook_secret": "12345",
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
@@ -58,7 +58,7 @@ def app() -> Ocean:
                 "sonar_url": "https://sonarqube.com",
                 "sonar_organization_id": "organization_id",
                 "sonar_is_on_premise": False,
-                "sonar_webhook_secret": "12345"
+                "sonar_webhook_secret": "12345",
             }
         },
         "port": {
