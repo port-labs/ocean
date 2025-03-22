@@ -725,7 +725,7 @@ async def test_create_webhook_payload_for_project_no_organization(
     )
 
     result = await sonarqube_client._create_webhook_payload_for_project("project1")
-    assert result == {"name": "Port Ocean Webhook", "project": "project1"}
+    assert result == {"name": "Port Ocean Webhook", "project": "project1", "secret": "12345"}
 
 
 async def test_create_webhook_payload_for_project_with_organization(
@@ -751,6 +751,7 @@ async def test_create_webhook_payload_for_project_with_organization(
         "name": "Port Ocean Webhook",
         "project": "project1",
         "organization": "test-org",
+        "secret": "12345"
     }
 
 
@@ -884,4 +885,4 @@ async def test_create_webhook_payload_for_project_different_url(
     )
 
     result = await sonarqube_client._create_webhook_payload_for_project("project1")
-    assert result == {"name": "Port Ocean Webhook", "project": "project1"}
+    assert result == {"name": "Port Ocean Webhook", "project": "project1", "secret": "12345"}
