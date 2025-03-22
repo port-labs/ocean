@@ -5,7 +5,6 @@ from datetime import datetime
 from functools import partial
 from http import HTTPStatus
 from typing import Any, Callable, Coroutine, Iterable, Mapping, Union
-
 import httpx
 from dateutil.parser import isoparse
 
@@ -172,6 +171,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response = await self._retry_operation_async(request, send_method)
             else:
                 response = await transport.handle_async_request(request)
+
             return response
         except Exception as e:
             # Retyable methods are logged via _log_error
@@ -340,6 +340,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
+
         while True:
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})

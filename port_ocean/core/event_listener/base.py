@@ -14,7 +14,7 @@ class EventListenerEvents(TypedDict):
     A dictionary containing event types and their corresponding event handlers.
     """
 
-    on_resync: Callable[[dict[Any, Any]], Awaitable[None]]
+    on_resync: Callable[[dict[Any, Any]], Awaitable[bool]]
 
 
 class BaseEventListener:
@@ -67,8 +67,11 @@ class BaseEventListener:
         """
         await self._before_resync()
         try:
-            await self.events["on_resync"](resync_args)
-            await self._after_resync()
+            resync_succeeded = await self.events["on_resync"](resync_args)
+            if resync_succeeded:
+                await self._after_resync()
+            else:
+                await self._on_resync_failure(Exception("Resync failed"))
         except Exception as e:
             await self._on_resync_failure(e)
             raise e

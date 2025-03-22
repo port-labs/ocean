@@ -61,6 +61,11 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
         return values
 
 
+class MetricsSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = Field(default=False)
+    webhook_url: str | None = Field(default=None)
+
+
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     _integration_config_model: BaseModel | None = None
 
@@ -83,8 +88,25 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     runtime: Runtime = Runtime.OnPrem
     resources_path: str = Field(default=".port/resources")
+    metrics: MetricsSettings = Field(
+        default_factory=lambda: MetricsSettings(enabled=False, webhook_url=None)
+    )
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
+
+    @validator("metrics", pre=True)
+    def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:
+        if v is None:
+            return MetricsSettings(enabled=False, webhook_url=None)
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, MetricsSettings):
+            return v
+        # Try to convert to dict for other types
+        try:
+            return dict(v)
+        except (TypeError, ValueError):
+            return MetricsSettings(enabled=False, webhook_url=None)
 
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:

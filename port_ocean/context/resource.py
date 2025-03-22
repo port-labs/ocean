@@ -23,6 +23,7 @@ class ResourceContext:
     """
 
     resource_config: "ResourceConfig"
+    index: int
 
     @property
     def kind(self) -> str:
@@ -50,12 +51,10 @@ resource: ResourceContext = LocalProxy(lambda: _get_resource_context())  # type:
 
 @asynccontextmanager
 async def resource_context(
-    resource_config: "ResourceConfig",
+    resource_config: "ResourceConfig", index: int = 0
 ) -> AsyncIterator[ResourceContext]:
     _resource_context_stack.push(
-        ResourceContext(
-            resource_config=resource_config,
-        )
+        ResourceContext(resource_config=resource_config, index=index)
     )
 
     with logger.contextualize(resource_kind=resource.kind):
