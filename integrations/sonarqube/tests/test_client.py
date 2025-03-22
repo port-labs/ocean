@@ -309,7 +309,6 @@ async def test_get_measures_is_called_with_correct_params(
     )
     mock_paginated_request = AsyncMock()
     mock_paginated_request.return_value = {}
-    # mock_paginated_request.get.return_value = {}
 
     sonarqube_client.http_client = MockHttpxClient(  # type: ignore
         [
@@ -319,11 +318,18 @@ async def test_get_measures_is_called_with_correct_params(
 
     monkeypatch.setattr(sonarqube_client, "_send_api_request", mock_paginated_request)
 
+    sonarqube_client.metrics = []
     await sonarqube_client.get_measures(PURE_PROJECTS[0]["key"])
+    mock_paginated_request.assert_not_called()
 
-    mock_paginated_request.assert_any_call(
+    sonarqube_client.metrics = ["coverage", "bugs"]
+    await sonarqube_client.get_measures(PURE_PROJECTS[0]["key"])
+    mock_paginated_request.assert_called_once_with(
         endpoint="measures/component",
-        query_params={"component": PURE_PROJECTS[0]["key"], "metricKeys": ""},
+        query_params={
+            "component": PURE_PROJECTS[0]["key"],
+            "metricKeys": "coverage,bugs",
+        },
     )
 
 
@@ -719,7 +725,11 @@ async def test_create_webhook_payload_for_project_no_organization(
     )
 
     result = await sonarqube_client._create_webhook_payload_for_project("project1")
-    assert result == {"name": "Port Ocean Webhook", "project": "project1"}
+    assert result == {
+        "name": "Port Ocean Webhook",
+        "project": "project1",
+        "secret": "12345",
+    }
 
 
 async def test_create_webhook_payload_for_project_with_organization(
@@ -745,6 +755,7 @@ async def test_create_webhook_payload_for_project_with_organization(
         "name": "Port Ocean Webhook",
         "project": "project1",
         "organization": "test-org",
+        "secret": "12345",
     }
 
 
@@ -878,4 +889,8 @@ async def test_create_webhook_payload_for_project_different_url(
     )
 
     result = await sonarqube_client._create_webhook_payload_for_project("project1")
-    assert result == {"name": "Port Ocean Webhook", "project": "project1"}
+    assert result == {
+        "name": "Port Ocean Webhook",
+        "project": "project1",
+        "secret": "12345",
+    }

@@ -37,3 +37,8 @@ configurations:
     required: false
     description: Whether the SonarQube instance is on-premise. If set to true, the sonarUrl configuration is required.
     default: false
+  - name: sonarWebhookSecret
+    type: string
+    required: false
+    description: The secret token used to authenticate incoming webhook requests from SonarQube. This is required if webhook authentication is enabled in SonarQube to verify the integrity of received payloads.
+    default: false

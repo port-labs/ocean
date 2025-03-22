@@ -1,9 +1,9 @@
 import asyncio
 import base64
-from typing import Any, AsyncGenerator, Generator, Optional, cast
-
 import httpx
 from loguru import logger
+from typing import Any, AsyncGenerator, Generator, Optional, cast
+from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
@@ -242,6 +242,9 @@ class SonarQubeClient:
         :return: A list of measures associated with the specified component.
         """
         logger.info(f"Fetching all measures in : {project_key}")
+        response = None
+        if not self.metrics:
+            return []
         response = await self._send_api_request(
             endpoint=Endpoints.MEASURES,
             query_params={
@@ -592,7 +595,8 @@ class SonarQubeClient:
         params = {}
         if self.organization_id:
             params["organization"] = self.organization_id
-
+        if ocean.integration_config["sonar_webhook_secret"]:
+            params["secret"] = ocean.integration_config["sonar_webhook_secret"]
         webhooks_response = await self._send_api_request(
             endpoint=f"{Endpoints.WEBHOOKS}/list",
             query_params={
@@ -611,6 +615,8 @@ class SonarQubeClient:
         params = {}
         if self.organization_id:
             params["organization"] = self.organization_id
+        if ocean.integration_config["sonar_webhook_secret"]:
+            params["secret"] = ocean.integration_config["sonar_webhook_secret"]
         return {
             "name": "Port Ocean Webhook",
             "project": project_key,
