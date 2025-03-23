@@ -1,0 +1,95 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: false
+enableMergeEntity: true
+resources:
+  - kind: komodorService
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .uid
+          title: .service
+          blueprint: '"komodorService"'
+          properties:
+            serviceId: .uid
+            status: .status
+            cluster: .cluster
+            kind: .kind
+            namespace: .namespace
+            service: .service
+            link to komodor: .link
+            labels: .labels
+            last deploy at: .lastDeploy.endTime | todate
+            last deploy status: .lastDeploy.status
+  - kind: komodorService
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .uid
+          title: .service
+          blueprint: '"komodorService"'
+          properties: {}
+          relations:
+            workload: .service
+  - kind: komodorRiskViolations
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .komodorUid
+          blueprint: '"komodorRiskViolations"'
+          properties:
+            status: .status
+            komodorUid: .komodorUid
+            severity: .severity
+            supportingData: .supportingData
+            link to komodor: .link
+            createdAt: .createdAt | todate
+            lastEvalutaedAt: .lastEvaluatedAt | todate
+            checkType: .checkType
+  - kind: komodorRiskViolations
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .komodorUid
+          blueprint: '"komodorRiskViolations"'
+          properties: {}
+          relations:
+            issue: .supportingData.unhealthyService.issueId
+  - kind: komodorIssues
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .link | capture("eventId=(?<eventId>[a-f0-9-]+)") | .eventId
+          title: .summary
+          blueprint: '"komodorIssues"'
+          properties:
+            details: .details
+            status: .status
+            startTime: .startTime | todate
+            link: .link
+            summary: .summary
+            type: .type
+            workloadName: .summary | split("/") | last | split(" ") | first
+  - kind: komodorIssues
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .link | capture("eventId=(?<eventId>[a-f0-9-]+)") | .eventId
+          title: .summary
+          blueprint: '"komodorIssues"'
+          properties: {}
+          relations:
+            workload: .workloadName
