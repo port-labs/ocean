@@ -1,0 +1,228 @@
+[
+    {
+        "identifier": "githubRepository",
+        "title": "GitHub Repository",
+        "icon": "Github",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "visibility": {
+                    "type": "string",
+                    "title": "Visibility",
+                    "enum": ["public", "private"],
+                    "enumColors": {
+                        "public": "green",
+                        "private": "red"
+                    }
+                },
+                "defaultBranch": {
+                    "type": "string",
+                    "title": "Default Branch"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL",
+                    "format": "url"
+                },
+                "language": {
+                    "type": "string",
+                    "title": "Primary Language"
+                },
+                "stars": {
+                    "type": "number",
+                    "title": "Stars"
+                },
+                "forks": {
+                    "type": "number",
+                    "title": "Forks"
+                }
+            },
+            "required": ["name", "visibility", "url"]
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "githubPullRequest",
+        "title": "GitHub Pull Request",
+        "icon": "Git",
+        "schema": {
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "title": "Title"
+                },
+                "state": {
+                    "type": "string",
+                    "enum": ["open", "closed", "merged"],
+                    "enumColors": {
+                        "open": "yellow",
+                        "closed": "red",
+                        "merged": "green"
+                    },
+                    "title": "State"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL",
+                    "format": "url"
+                },
+                "creator": {
+                    "type": "string",
+                    "title": "Creator"
+                },
+                "repository": {
+                    "type": "string",
+                    "title": "Repository"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                }
+            },
+            "required": ["title", "state", "url"]
+        },
+        "relations": {
+            "repository": {
+                "target": "githubRepository",
+                "title": "Repository",
+                "required": false
+            }
+        }
+    },
+    {
+        "identifier": "githubIssue",
+        "title": "GitHub Issue",
+        "icon": "Bug",
+        "schema": {
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "title": "Title"
+                },
+                "state": {
+                    "type": "string",
+                    "enum": ["open", "closed"],
+                    "enumColors": {
+                        "open": "red",
+                        "closed": "green"
+                    },
+                    "title": "State"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL",
+                    "format": "url"
+                },
+                "creator": {
+                    "type": "string",
+                    "title": "Creator"
+                },
+                "repository": {
+                    "type": "string",
+                    "title": "Repository"
+                },
+                "labels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Labels"
+                }
+            },
+            "required": ["title", "state", "url"]
+        },
+        "relations": {
+            "repository": {
+                "target": "githubRepository",
+                "title": "Repository",
+                "required": false
+            }
+        }
+    },
+    {
+        "identifier": "githubTeam",
+        "title": "GitHub Team",
+        "icon": "Team",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "privacy": {
+                    "type": "string",
+                    "enum": ["secret", "closed"],
+                    "title": "Privacy Level"
+                },
+                "membersCount": {
+                    "type": "number",
+                    "title": "Members Count"
+                }
+            },
+            "required": ["name"]
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "githubWorkflow",
+        "title": "GitHub Workflow",
+        "icon": "Pipeline",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "state": {
+                    "type": "string",
+                    "enum": ["active", "disabled"],
+                    "enumColors": {
+                        "active": "green",
+                        "disabled": "red"
+                    },
+                    "title": "State"
+                },
+                "path": {
+                    "type": "string",
+                    "title": "Path"
+                },
+                "repository": {
+                    "type": "string",
+                    "title": "Repository"
+                },
+                "lastRunStatus": {
+                    "type": "string",
+                    "enum": ["success", "failure", "cancelled", "skipped", "in_progress"],
+                    "enumColors": {
+                        "success": "green",
+                        "failure": "red",
+                        "cancelled": "orange",
+                        "skipped": "gray",
+                        "in_progress": "blue"
+                    },
+                    "title": "Last Run Status"
+                }
+            },
+            "required": ["name", "state", "path"]
+        },
+        "relations": {
+            "repository": {
+                "target": "githubRepository",
+                "title": "Repository",
+                "required": false
+            }
+        }
+    }
+]

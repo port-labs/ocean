@@ -1,0 +1,90 @@
+resources:
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .full_name | gsub("/"; "-")
+          title: .name
+          blueprint: '"githubRepository"'
+          properties:
+            name: .name
+            description: .description
+            visibility: .visibility
+            defaultBranch: .default_branch
+            url: .html_url
+            language: .language
+            stars: .stargazers_count
+            forks: .forks_count
+
+  - kind: pull-request
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: (.base.repo.full_name | gsub("/"; "-")) + "-pr-" + (.number | tostring)
+          title: .title
+          blueprint: '"githubPullRequest"'
+          properties:
+            title: .title
+            state: if .merged then "merged" elif .state == "open" then "open" else "closed" end
+            url: .html_url
+            creator: .user.login
+            repository: .base.repo.full_name
+            createdAt: .created_at
+          relations:
+            repository: .base.repo.full_name | gsub("/"; "-")
+
+  - kind: issue
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: (.repository.full_name | gsub("/"; "-")) + "-issue-" + (.number | tostring)
+          title: .title
+          blueprint: '"githubIssue"'
+          properties:
+            title: .title
+            state: .state
+            url: .html_url
+            creator: .user.login
+            repository: .repository.full_name
+            labels: [.labels[].name]
+          relations:
+            repository: .repository.full_name | gsub("/"; "-")
+
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .slug
+          title: .name
+          blueprint: '"githubTeam"'
+          properties:
+            name: .name
+            description: .description
+            privacy: .privacy
+            membersCount: .members_count
+
+  - kind: workflow
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: (.repository.full_name | gsub("/"; "-")) + "-workflow-" + (.id | tostring)
+          title: .name
+          blueprint: '"githubWorkflow"'
+          properties:
+            name: .name
+            state: .state
+            path: .path
+            repository: .repository.full_name
+            lastRunStatus: .latest_run.status
+          relations:
+            repository: .repository.full_name | gsub("/"; "-")

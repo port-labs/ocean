@@ -1,0 +1,26 @@
+description: GitHub integration for Port Ocean
+icon: Github
+features:
+  - type: exporter
+    section: Git
+    resources:
+      - kind: repository
+      - kind: pull-request
+      - kind: issue
+      - kind: team
+      - kind: workflow
+configurations:
+  - name: github_token
+    required: true
+    type: string
+    sensitive: true
+    description: GitHub personal access token with necessary permissions
+  - name: organization
+    required: true
+    type: string
+    description: GitHub organization name
+  - name: webhook_secret
+    type: string
+    sensitive: true
+    description: Secret for GitHub webhook (optional, for real-time updates)
+    default_value: ${GITHUB_WEBHOOK_SECRET}

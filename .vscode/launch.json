@@ -141,7 +141,20 @@
       "python": "${workspaceFolder}/.venv/bin/python",
       "request": "launch",
       "type": "debugpy",
-      "args": ["new"]
+      "args": [
+        "new"
+      ]
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/github",
+      "envFile": "${workspaceFolder}/integrations/github/.env",
+      "justMyCode": true,
+      "name": "Run github integration",
+      "program": "${workspaceFolder}/integrations/github/debug.py",
+      "python": "${workspaceFolder}/integrations/github/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }
