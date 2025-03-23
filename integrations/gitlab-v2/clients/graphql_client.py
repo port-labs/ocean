@@ -262,7 +262,6 @@ class GraphQLClient(HTTPBaseClient):
             active_data = next_active
             if updated:
                 yield [self._copy_project(project) for project, _ in active_data]
-                gc.collect()  # Force garbage collection
 
     def _copy_project(self, project: dict[str, Any]) -> dict[str, Any]:
         return {
