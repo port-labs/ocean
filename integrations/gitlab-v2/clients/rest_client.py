@@ -125,7 +125,7 @@ class RestClient(HTTPBaseClient):
             The file content as a string if found, None otherwise
         """
         try:
-            encoded_project_id = urllib.parse.quote(project_id, safe="")
+            encoded_project_id = urllib.parse.quote(str(project_id), safe="")
             encoded_file_path = urllib.parse.quote(file_path, safe="")
 
             path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"

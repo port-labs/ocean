@@ -24,9 +24,9 @@ class GitLabFileProcessor(JQEntityProcessor):
             return content
 
         logger.info(
-            f"File {file_path} not found in GraphQL response, fetching via REST API"
+            f"File {file_path} not found in GraphQL response, No File Found"
         )
-        return await self._fetch_file_rest(data, file_path)
+        # return await self._fetch_file_rest(data, file_path)
 
     def _get_graphql_file_content(
         self, data: Dict[str, Any], file_path: str
@@ -45,25 +45,25 @@ class GitLabFileProcessor(JQEntityProcessor):
 
         return None
 
-    async def _fetch_file_rest(
-        self, data: Dict[str, Any], file_path: str
-    ) -> Optional[str]:
-        """Fall back to fetching file content via REST."""
-        from main import create_gitlab_client
+    # async def _fetch_file_rest(
+    #     self, data: Dict[str, Any], file_path: str
+    # ) -> Optional[str]:
+    #     """Fall back to fetching file content via REST."""
+    #     from main import create_gitlab_client
 
-        try:
-            client = create_gitlab_client()
-            project_id_raw = data.get("id") or data.get("fullPath")
-            if project_id_raw is None:
-                logger.error("No project ID or fullPath found in data")
-                return None
-            project_id = str(project_id_raw)
+    #     try:
+    #         client = create_gitlab_client()
+    #         project_id_raw = data.get("id") or data.get("fullPath")
+    #         if project_id_raw is None:
+    #             logger.error("No project ID or fullPath found in data")
+    #             return None
+    #         project_id = str(project_id_raw)
 
-            ref = "main"
-            if "repository" in data and data["repository"].get("rootRef"):
-                ref = data["repository"]["rootRef"]
+    #         ref = "main"
+    #         if "repository" in data and data["repository"].get("rootRef"):
+    #             ref = data["repository"]["rootRef"]
 
-            return await client.get_file_content(project_id, file_path, ref)
-        except Exception as e:
-            logger.error(f"Error fetching file {file_path}: {str(e)}")
-            return None
+    #         return await client.get_file_content(project_id, file_path, ref)
+    #     except Exception as e:
+    #         logger.error(f"Error fetching file {file_path}: {str(e)}")
+    #         return None
