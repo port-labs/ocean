@@ -5,7 +5,6 @@ from loguru import logger
 from .base_client import HTTPBaseClient
 from .helpers.utils.queries import ProjectQueries
 import asyncio
-import gc
 from tenacity import retry, stop_after_attempt, wait_exponential
 from .helpers.utils.exceptions import GraphQLQueryError
 
