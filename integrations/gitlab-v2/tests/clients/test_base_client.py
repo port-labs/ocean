@@ -113,7 +113,7 @@ class TestGitLabClient:
         ) as mock_get_group_resource:
             # Act
             results: list[dict[str, Any]] = []
-            async for batch in client.get_group_resource(
+            async for batch in client.get_groups_resource(
                 [group], "issues"
             ):  # Changed to pass list of groups
                 results.extend(batch)
