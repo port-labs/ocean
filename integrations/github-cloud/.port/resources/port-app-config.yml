@@ -1,0 +1,86 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+useDefaultBranch: true
+resources:
+  - kind: repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .name
+          blueprint: '"githubRepository"'
+          properties:
+            readme: file://README.md
+            name: .name
+            description: .description
+            visibility: .visibility
+            defaultBranch: .default_branch
+            link: .html_url
+
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .title
+          blueprint: '"githubIssue"'
+          properties:
+            title: .title
+            state: .state
+            assignee: .assignee
+            createdDate: .created_at
+            updatedDate: .updated_at
+            link: .html_url
+
+  - kind: pull_request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .title
+          blueprint: '"githubPullRequest"'
+          properties:
+            title: .title
+            status: .status
+            author: .user.login
+            createdDate: .created_at
+            updatedDate: .updated_at
+            link: .html_url
+          relations:
+            repository: .repository.id
+
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .name
+          blueprint: '"githubTeam"'
+          properties:
+            name: .name
+            members_url: .members_url
+            link: .html_url
+
+  - kind: workflow
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .name
+          blueprint: '"githubWorkflow"'
+          properties:
+            name: .name
+            state: .state
+            createdDate: .created_at
+            updatedDate: .updated_at
+            link: .html_url

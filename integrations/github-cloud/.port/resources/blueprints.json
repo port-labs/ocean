@@ -1,0 +1,248 @@
+[
+    {
+        "identifier": "githubRepository",
+        "title": "Repository",
+        "icon": "GitHub",
+        "schema": {
+            "properties": {
+                "readme": {
+                    "title": "Readme",
+                    "type": "string",
+                    "format": "markdown",
+                    "icon": "Book",
+                    "description": "The doc of the repository."
+                },
+                "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "icon": "GitHub",
+                    "description": "The name of the repository."
+                },
+                "description": {
+                    "title": "Description",
+                    "type": "string",
+                    "icon": "GitHub",
+                    "description": "A brief description of the repository."
+                },
+                "visibility": {
+                    "title": "Visibility",
+                    "type": "string",
+                    "icon": "GitHub",
+                    "description": "Indicates whether the repository is private or public."
+                },
+                "defaultBranch": {
+                    "title": "Default Branch",
+                    "type": "string",
+                    "icon": "Branch",
+                    "description": "The default branch of the repository."
+                },
+                "link": {
+                    "title": "Link",
+                    "type": "string",
+                    "format": "url",
+                    "icon": "GitHub",
+                    "description": "Link to the GitHub repository."
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "githubIssue",
+        "title": "Issue",
+        "icon": "GitHub",
+        "schema": {
+            "properties": {
+                "title": {
+                    "title": "Title",
+                    "type": "string",
+                    "icon": "GitHub",
+                    "description": "The title of the issue."
+                },
+                "state": {
+                    "title": "State",
+                    "type": "string",
+                    "icon": "GitHub",
+                    "description": "The current state of the issue (e.g., open, closed)."
+                },
+                "assignee": {
+                    "title": "Assignee",
+                    "type": "string",
+                    "icon": "User",
+                    "description": "The person assigned to the issue."
+                },
+                "createdDate": {
+                    "title": "Created Date",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The date and time when the issue was created."
+                },
+                "updatedDate": {
+                    "title": "Updated Date",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The date and time when the issue was last updated."
+                },
+                "link": {
+                    "title": "Link",
+                    "type": "string",
+                    "format": "url",
+                    "icon": "GitHub",
+                    "description": "Link to the issue on GitHub."
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "githubPullRequest",
+        "title": "Pull Request",
+        "icon": "GitHub",
+        "schema": {
+            "properties": {
+                "title": {
+                    "title": "Title",
+                    "type": "string",
+                    "icon": "GitHub",
+                    "description": "The title of the pull request."
+                },
+                "status": {
+                    "title": "Status",
+                    "type": "string",
+                    "icon": "GitHub",
+                    "description": "The current status of the pull request (e.g., open, closed, merged)."
+                },
+                "author": {
+                    "title": "Author",
+                    "type": "string",
+                    "icon": "User",
+                    "description": "The person who created the pull request."
+                },
+                "createdDate": {
+                    "title": "Created Date",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The date and time when the pull request was created."
+                },
+                "updatedDate": {
+                    "title": "Updated Date",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The date and time when the pull request was last updated."
+                },
+                "link": {
+                    "title": "Link",
+                    "type": "string",
+                    "format": "url",
+                    "icon": "GitHub",
+                    "description": "Link to the pull request on GitHub."
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+            "repository": {
+                "title": "Repository",
+                "target": "repository",
+                "required": true,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "githubTeam",
+        "title": "Team",
+        "icon": "Team",
+        "schema": {
+            "properties": {
+                "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "icon": "Team",
+                    "description": "The name of the team."
+                },
+                "members_url": {
+                    "title": "Members",
+                    "type": "string",
+                    "icon": "User",
+                    "description": "The members url of the team."
+                },
+                "link": {
+                    "title": "Link",
+                    "type": "string",
+                    "format": "url",
+                    "icon": "GitHub",
+                    "description": "Link to the team on GitHub."
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "githubWorkflow",
+        "title": "Workflow",
+        "icon": "GitHub",
+        "schema": {
+            "properties": {
+                "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "icon": "GitHub",
+                    "description": "The name of the workflow."
+                },
+                "state": {
+                    "title": "State",
+                    "type": "string",
+                    "icon": "GitHub",
+                    "description": "The current state of the workflow (e.g., active, disabled)."
+                },
+                "createdDate": {
+                    "title": "Created Date",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The date and time when the workflow was created."
+                },
+                "updatedDate": {
+                    "title": "Updated Date",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The date and time when the workflow was last updated."
+                },
+                "link": {
+                    "title": "Link",
+                    "type": "string",
+                    "format": "url",
+                    "icon": "GitHub",
+                    "description": "Link to the workflow on GitHub."
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+            "repository": {
+                "title": "Repository",
+                "target": "repository",
+                "required": true,
+                "many": false
+            }
+        }
+    }
+]
