@@ -119,7 +119,7 @@ class TestGitLabClient:
             # Assert
             assert len(results) == 1
             assert results[0]["title"] == "Test Issue"
-            mock_get_group_resource.assert_called_once_with("123", "issues", None)
+            mock_get_group_resource.assert_called_once_with("123", "issues")
 
     async def test_get_project_resource(self, client: GitLabClient) -> None:
         """Test project resource fetching delegates to REST client"""

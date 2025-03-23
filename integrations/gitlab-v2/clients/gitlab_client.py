@@ -175,7 +175,9 @@ class GitLabClient:
             params["search"] = f"path:{pattern}"
             group_id = group["id"]
             try:
-                async for batch in self.rest.get_group_resource(group_id, "search", params):
+                async for batch in self.rest.get_group_resource(
+                    group_id, "search", params
+                ):
                     logger.info(f"Received search batch for {group_context}")
                     if batch:
                         processed_batch = []
@@ -189,34 +191,34 @@ class GitLabClient:
                 logger.error(f"Error searching in {group_context}: {str(e)}")
 
     async def search_files(
-            self,
-            path_pattern: str,
-            repositories: Optional[list[str]] = None,
-            max_concurrent: int = 10,
-        ) -> AsyncIterator[list[dict[str, Any]]]:
-            logger.info(f"Searching for files matching pattern: '{path_pattern}'")
-            patterns = convert_glob_to_gitlab_patterns(path_pattern)
+        self,
+        path_pattern: str,
+        repositories: Optional[list[str]] = None,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        logger.info(f"Searching for files matching pattern: '{path_pattern}'")
+        patterns = convert_glob_to_gitlab_patterns(path_pattern)
 
-            if repositories:
-                logger.info(f"Searching in {len(repositories)} specific repositories")
-                for repo in repositories:
-                    logger.debug(f"Searching repo '{repo}' for pattern '{path_pattern}'")
-                    async for batch in self._search_in_repository(repo, patterns):
-                        yield batch
-            else:
-                logger.info("Searching across all accessible groups")
-                async for groups in self.get_groups():
-                    logger.debug(f"Processing batch of {len(groups)} groups")
-                    semaphore = asyncio.Semaphore(max_concurrent)
-                    tasks = [
-                        semaphore_async_iterator(
-                            semaphore, partial(self._search_in_group, group, patterns)
-                        )
-                        for group in groups
-                    ]
-                    async for batch in stream_async_iterators_tasks(*tasks):
-                        yield batch
-                        
+        if repositories:
+            logger.info(f"Searching in {len(repositories)} specific repositories")
+            for repo in repositories:
+                logger.debug(f"Searching repo '{repo}' for pattern '{path_pattern}'")
+                async for batch in self._search_in_repository(repo, patterns):
+                    yield batch
+        else:
+            logger.info("Searching across all accessible groups")
+            async for groups in self.get_groups():
+                logger.debug(f"Processing batch of {len(groups)} groups")
+                semaphore = asyncio.Semaphore(max_concurrent)
+                tasks = [
+                    semaphore_async_iterator(
+                        semaphore, partial(self._search_in_group, group, patterns)
+                    )
+                    for group in groups
+                ]
+                async for batch in stream_async_iterators_tasks(*tasks):
+                    yield batch
+
     async def get_file_content(
         self, project_id: str, file_path: str, ref: str = "main"
     ) -> Optional[str]:
