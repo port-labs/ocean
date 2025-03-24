@@ -31,18 +31,16 @@ async def on_start() -> None:
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
+
     selector = cast(ProjectResourceConfig, event.resource_config).selector
 
     include_labels = bool(selector.include_labels)
-    params = {"includeLabels": include_labels}
+    include_languages = bool(selector.include_languages)
 
-    async for projects_batch in client.get_projects(params):
+    async for projects_batch in client.get_projects(
+        include_labels=include_labels, include_languages=include_languages
+    ):
         logger.info(f"Received project batch with {len(projects_batch)} projects")
-
-        if include_labels:
-            for project in projects_batch:
-                project["__labels"] = project["labels"]["nodes"]
-
         yield projects_batch
 
 
@@ -77,13 +75,3 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             groups_batch, "merge_requests"
         ):
             yield mrs_batch
-
-
-@ocean.on_resync(ObjectKind.LABELS)
-async def on_resync_labels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_gitlab_client()
-
-    async for groups_batch in client.get_groups():
-        logger.info(f"Processing batch of {len(groups_batch)} groups for labels")
-        async for labels_batch in client.get_groups_resource(groups_batch, "labels"):
-            yield labels_batch
