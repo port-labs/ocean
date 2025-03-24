@@ -1,6 +1,5 @@
 from typing import Any, AsyncIterator, Optional, Callable
 from loguru import logger
-from .graphql_client import GraphQLClient
 from .rest_client import RestClient
 import asyncio
 from port_ocean.utils.async_iterators import (
@@ -11,8 +10,6 @@ from functools import partial
 
 
 class GitLabClient:
-    """Async client for interacting with GitLab API using both GraphQL and REST endpoints."""
-
     DEFAULT_MIN_ACCESS_LEVEL = 30
     DEFAULT_PARAMS = {
         "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,
@@ -20,7 +17,6 @@ class GitLabClient:
     }
 
     def __init__(self, base_url: str, token: str) -> None:
-        self.graphql = GraphQLClient(base_url, token, endpoint="api/graphql")
         self.rest = RestClient(base_url, token, endpoint="api/v4")
 
     async def get_projects(

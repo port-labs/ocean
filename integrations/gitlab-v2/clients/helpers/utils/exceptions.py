@@ -1,2 +1,0 @@
-class GraphQLQueryError(Exception):
-    pass
