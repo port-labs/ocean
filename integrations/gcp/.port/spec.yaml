@@ -10,7 +10,7 @@ configurations:
   - name: encodedADCConfiguration
     type: string
     require: false
-    description: Base64 encoding of your Google Cloud's ADC Credentials configuration file. For more information, see the <a href="https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/gcp/installation" target="_blank">Google documentation</a>
+    description: Base64 encoding of your Google Cloud's ADC Credentials configuration file. For more information, see the <a href="https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/gcp/installation" target="_blank">Google documentation</a>
   - name: searchAllResourcesPerMinuteQuota
     type: integer
     require: false
