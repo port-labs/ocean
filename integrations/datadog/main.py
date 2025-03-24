@@ -5,6 +5,10 @@ from typing import Any, cast
 from loguru import logger
 
 from client import DatadogClient
+from utils import (
+    get_start_of_the_day_in_seconds_x_day_back,
+    get_start_of_the_month_in_seconds_x_months_back,
+)
 from overrides import (
     SLOHistoryResourceConfig,
     DatadogResourceConfig,
@@ -92,16 +96,33 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SLO_HISTORY)
 async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
-    timeframe = typing.cast(
-        SLOHistoryResourceConfig, event.resource_config
-    ).selector.timeframe
+    resource_config = cast(SLOHistoryResourceConfig, event.resource_config)
+    selector = resource_config.selector
 
-    period_of_time_in_months = typing.cast(
-        SLOHistoryResourceConfig, event.resource_config
-    ).selector.period_of_time_in_months
+    timeframe = selector.timeframe
+    period_of_time_in_months = selector.period_of_time_in_months
+    period_of_time_in_days = selector.period_of_time_in_days
+    concurrency = selector.concurrency
+
+    if period_of_time_in_days:
+        logger.info(f"Fetching SLO histories for {period_of_time_in_days} days back")
+        start_timestamp = get_start_of_the_day_in_seconds_x_day_back(
+            period_of_time_in_days
+        )
+    else:
+        logger.info(
+            f"Fetching SLO histories for {period_of_time_in_months} months back"
+        )
+        start_timestamp = get_start_of_the_month_in_seconds_x_months_back(
+            period_of_time_in_months
+        )
+
+    logger.info(
+        f"Fetching SLO histories for timeframe {timeframe}, start_timestamp {start_timestamp}, concurrency {concurrency}"
+    )
 
     async for histories in dd_client.list_slo_histories(
-        timeframe, period_of_time_in_months
+        timeframe=timeframe, start_timestamp=start_timestamp, concurrency=concurrency
     ):
         yield histories
 
