@@ -3,7 +3,7 @@
     "identifier": "gitlab_scaffold_service",
     "title": "Scaffold Service",
     "icon": "Microservice",
-    "description": "To complete setting up this action, please refer to the following guide: [Setup scaffold service action ->](https://docs.getport.io/guides-and-tutorials/scaffold-a-new-service?git-provider=gitlab)",
+    "description": "To complete setting up this action, please refer to the following guide: [Setup scaffold service action ->](https://docs.port.io/guides-and-tutorials/scaffold-a-new-service?git-provider=gitlab)",
     "trigger": {
       "operation": "CREATE",
       "type": "self-service",
@@ -33,7 +33,7 @@
     "identifier": "gitlab_send_scorecard_reminder",
     "title": "Send scorecard reminder",
     "icon": "Slack",
-    "description": "To complete setting up this action, please refer to the following guide: [Setup send scorecard reminder action ->](https://docs.getport.io/guides-and-tutorials/setup-slack-reminders?git-provider=gitlab)",
+    "description": "To complete setting up this action, please refer to the following guide: [Setup send scorecard reminder action ->](https://docs.port.io/guides-and-tutorials/setup-slack-reminders?git-provider=gitlab)",
     "trigger": {
       "operation": "CREATE",
       "type": "self-service",
@@ -56,7 +56,7 @@
     "identifier": "gitlab_enrich_service",
     "title": "Enrich service",
     "icon": "Git",
-    "description": "To complete setting up this action, please refer to the following guide: [Setup enrich service action ->](https://docs.getport.io/guides-and-tutorials/let-developers-enrich-services-using-gitops?git-provider=gitlab)",
+    "description": "To complete setting up this action, please refer to the following guide: [Setup enrich service action ->](https://docs.port.io/guides-and-tutorials/let-developers-enrich-services-using-gitops?git-provider=gitlab)",
     "trigger": {
       "operation": "DAY-2",
       "blueprintIdentifier": "service",
@@ -105,7 +105,7 @@
     "identifier": "gitlab_create_s3_bucket",
     "title": "Create s3 bucket",
     "icon": "S3",
-    "description": "To complete setting up this action, please refer to the following guide: [Setup create s3 bucket ->](https://docs.getport.io/guides-and-tutorials/create-cloud-resource-using-iac?git-provider=gitlab)",
+    "description": "To complete setting up this action, please refer to the following guide: [Setup create s3 bucket ->](https://docs.port.io/guides-and-tutorials/create-cloud-resource-using-iac?git-provider=gitlab)",
     "invocationMethod": {
       "type": "WEBHOOK",
       "agent": false,

@@ -1,7 +1,7 @@
 title: Wiz
 description: Wiz integration for Port Ocean
 icon: Wiz
-docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz
 features:
   - type: exporter
     section: Code Quality & Security
@@ -13,11 +13,11 @@ features:
 configurations:
   - name: wizClientId
     required: true
-    description: Wiz Client ID. For more information, see the <a target="_blank" href="https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">documentation</a>.
+    description: Wiz Client ID. For more information, see the <a target="_blank" href="https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">documentation</a>.
     type: string
     sensitive: true
   - name: wizClientSecret
-    description: Wiz Client Secret. For more information, see the <a target="_blank" href="https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">documentation</a>.
+    description: Wiz Client Secret. For more information, see the <a target="_blank" href="https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">documentation</a>.
     required: true
     type: string
     sensitive: true
@@ -26,7 +26,7 @@ configurations:
     type: string
     required: true
   - name: wizTokenUrl
-    description: The URL used to obtain an access token for the Wiz API e.g https://auth.app.wiz.io/oauth/token. For more information, see the <a target="_blank" href="https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">documentation</a>.
+    description: The URL used to obtain an access token for the Wiz API e.g https://auth.app.wiz.io/oauth/token. For more information, see the <a target="_blank" href="https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">documentation</a>.
     type: string
     required: true
   - name: wizWebhookVerificationToken

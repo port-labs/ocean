@@ -50,7 +50,7 @@ async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ProjectResourceConfig, event.resource_config
         ).selector.attach_issues_to_project:
             logger.warning(
-                "The flag attach_issues_to_project is set to True, fetching issues for projects in batch. Please know that this approach of mapping issues to projects will be deprecated soon, in favour of our new data model for Snyk resources. Refer to the documentation for more information: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk/#project"
+                "The flag attach_issues_to_project is set to True, fetching issues for projects in batch. Please know that this approach of mapping issues to projects will be deprecated soon, in favour of our new data model for Snyk resources. Refer to the documentation for more information: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk/#project"
             )
             tasks = [process_project_issues(semaphore, project) for project in projects]
             issues = await asyncio.gather(*tasks)
@@ -68,7 +68,7 @@ async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
     all_issues: list[dict[str, Any]] = []
 
     logger.warning(
-        "This kind will be deprecated at the end of Q3, in favour of our new data model for Snyk resources. This change is necessary because Snyk has announced a migration and end of life of their v1 API to focus on their REST API. Refer to our documentation for more information: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk/#issue"
+        "This kind will be deprecated at the end of Q3, in favour of our new data model for Snyk resources. This change is necessary because Snyk has announced a migration and end of life of their v1 API to focus on their REST API. Refer to our documentation for more information: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk/#issue"
     )
 
     semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
