@@ -1,10 +1,9 @@
 from typing import Any, AsyncIterator, Optional
-
 from loguru import logger
-
 from .base_client import HTTPBaseClient
 import base64
 import urllib.parse
+from urllib.parse import quote
 
 
 class RestClient(HTTPBaseClient):
@@ -22,38 +21,41 @@ class RestClient(HTTPBaseClient):
     async def get_resource(
         self, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        try:
-            async for batch in self._make_paginated_request(resource_type, params):
+        """Fetch a paginated resource (e.g., projects, groups)."""
+        async for batch in self._make_paginated_request(resource_type, params=params):
+            yield batch
+
+    async def get_project_resource(
+        self,
+        project_path: str,
+        resource_type: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch a paginated project resource (e.g., labels)."""
+        encoded_project_path = quote(project_path, safe="")
+        path = f"projects/{encoded_project_path}/{resource_type}"
+        async for batch in self._make_paginated_request(path, params=params):
+            if batch:
                 yield batch
-        except Exception as e:
-            logger.error(f"Failed to fetch {resource_type}: {str(e)}")
-            raise
 
     async def get_group_resource(
         self, group_id: str, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch a paginated group resource (e.g., labels)."""
         if resource_type not in self.VALID_GROUP_RESOURCES:
             raise ValueError(f"Unsupported resource type: {resource_type}")
-
         path = f"groups/{group_id}/{resource_type}"
         request_params = self.RESOURCE_PARAMS.get(resource_type, {})
+        async for batch in self._make_paginated_request(path, params=request_params):
+            if batch:
+                yield batch
 
-        if params:
-            request_params.update(params)
-
-        try:
-            async for batch in self._make_paginated_request(
-                path,
-                params=request_params,
-                page_size=self.DEFAULT_PAGE_SIZE,
-            ):
-                if batch:
-                    yield batch
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch {resource_type} for group {group_id}: {str(e)}"
-            )
-            raise
+    async def get_project_languages(
+        self, project_path: str, params: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        encoded_project_path = quote(project_path, safe="")
+        path = f"projects/{encoded_project_path}/languages"
+        return await self.send_api_request("GET", path, params=params or {})
 
     async def get_project_resource(
         self,

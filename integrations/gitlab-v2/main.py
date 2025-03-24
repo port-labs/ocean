@@ -33,9 +33,12 @@ async def on_start() -> None:
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
+
     selector = cast(ProjectResourceConfig, event.resource_config).selector
 
     include_labels = bool(selector.include_labels)
+    include_languages = bool(selector.include_languages)
+
 
     params: dict[str, bool | list[str]] = {
         "includeLabels": include_labels,
@@ -46,12 +49,10 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if file_paths := get_file_paths(mappings):
             params["filePaths"] = file_paths
 
-    async for projects_batch in client.get_projects(params):
+    async for projects_batch in client.get_projects(
+        include_labels=include_labels, include_languages=include_languages
+    ):
         logger.info(f"Received project batch with {len(projects_batch)} projects")
-        if include_labels:
-            for project in projects_batch:
-                project["__labels"] = project["labels"]["nodes"]
-
         yield projects_batch
 
 
@@ -70,7 +71,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for groups_batch in client.get_groups():
         logger.info(f"Processing batch of {len(groups_batch)} groups for issues")
-        async for issues_batch in client.get_group_resource(groups_batch, "issues"):
+        async for issues_batch in client.get_groups_resource(groups_batch, "issues"):
             yield issues_batch
 
 
@@ -82,7 +83,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(
             f"Processing batch of {len(groups_batch)} groups for merge requests"
         )
-        async for mrs_batch in client.get_group_resource(
+        async for mrs_batch in client.get_groups_resource(
             groups_batch, "merge_requests"
         ):
             yield mrs_batch

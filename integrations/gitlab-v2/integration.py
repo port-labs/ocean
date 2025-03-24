@@ -16,6 +16,11 @@ class ProjectSelector(Selector):
         default=False,
         description="Whether to include the labels of the project, defaults to false",
     )
+    include_languages: bool = Field(
+        alias="includeLanguages",
+        default=False,
+        description="Whether to include the languages of the project, defaults to false",
+    )
 
 
 class ProjectResourceConfig(ResourceConfig):
