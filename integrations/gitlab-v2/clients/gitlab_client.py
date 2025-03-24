@@ -69,7 +69,7 @@ class GitLabClient:
     async def enrich_project_with_languages(
         self, project: dict[str, Any]
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        
+
         project_path = project.get("path_with_namespace", str(project["id"]))
         logger.debug(f"Enriching {project_path} with languages")
         languages = await self.rest.get_project_languages(project_path)
@@ -80,7 +80,7 @@ class GitLabClient:
     async def enrich_project_with_labels(
         self, project: dict[str, Any]
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        
+
         project_path = project.get("path_with_namespace", str(project["id"]))
         logger.debug(f"Enriching {project_path} with labels")
         all_labels = []

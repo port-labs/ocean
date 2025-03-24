@@ -30,7 +30,7 @@ class RestClient(HTTPBaseClient):
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch a paginated project resource (e.g., labels)."""
-        encoded_project_path = quote(project_path, safe='')
+        encoded_project_path = quote(project_path, safe="")
         path = f"projects/{encoded_project_path}/{resource_type}"
         async for batch in self._make_paginated_request(path, params=params):
             if batch:
@@ -51,7 +51,7 @@ class RestClient(HTTPBaseClient):
     async def get_project_languages(
         self, project_path: str, params: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
-        encoded_project_path = quote(project_path, safe='')
+        encoded_project_path = quote(project_path, safe="")
         path = f"projects/{encoded_project_path}/languages"
         return await self.send_api_request("GET", path, params=params or {})
 
