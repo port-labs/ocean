@@ -4,7 +4,7 @@ from httpx import AsyncClient
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from typing import Generator
-from bitbucket_cloud.webhook.webhook_client import BitbucketWebhookClient
+from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
 
 
 @pytest.fixture(autouse=True)

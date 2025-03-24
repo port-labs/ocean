@@ -2,9 +2,10 @@ import pytest
 import json
 import hashlib
 import hmac
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from typing import Any, AsyncGenerator
-from bitbucket_cloud.webhook.webhook_client import BitbucketWebhookClient
+from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
+from fastapi import Request
 
 
 def compute_signature(secret: str, payload: dict[str, Any]) -> str:
@@ -39,6 +40,20 @@ def webhook_client_no_secret() -> BitbucketWebhookClient:
     )
 
 
+# Create a mock request for testing
+def create_mock_request(body: bytes, headers: dict[str, str]) -> Request:
+    """Create a mock FastAPI Request object for testing."""
+    mock_request = MagicMock(spec=Request)
+    mock_request.headers = headers
+
+    # Create a mock body() coroutine that returns the bytes
+    async def mock_body() -> bytes:
+        return body
+
+    mock_request.body = mock_body
+    return mock_request
+
+
 class TestBitbucketWebhookClient:
 
     def test_init_with_secret(
@@ -66,13 +81,16 @@ class TestBitbucketWebhookClient:
     ) -> None:
         """Test webhook authentication with a valid signature."""
         payload = {"test": "data"}
+        payload_bytes = json.dumps(payload).encode("utf-8")
         valid_signature = compute_signature(
             str(webhook_client_with_secret.secret), payload
         )
         headers = {"x-hub-signature": valid_signature}
 
+        mock_request = create_mock_request(payload_bytes, headers)
+
         result = await webhook_client_with_secret.authenticate_incoming_webhook(
-            payload, headers
+            mock_request
         )
         assert result is True
 
@@ -82,10 +100,13 @@ class TestBitbucketWebhookClient:
     ) -> None:
         """Test webhook authentication with an invalid signature."""
         payload = {"test": "data"}
+        payload_bytes = json.dumps(payload).encode("utf-8")
         headers = {"x-hub-signature": "sha256=invalid"}
 
+        mock_request = create_mock_request(payload_bytes, headers)
+
         result = await webhook_client_with_secret.authenticate_incoming_webhook(
-            payload, headers
+            mock_request
         )
         assert result is False
 
@@ -95,10 +116,13 @@ class TestBitbucketWebhookClient:
     ) -> None:
         """Test webhook authentication when no signature is provided."""
         payload = {"test": "data"}
+        payload_bytes = json.dumps(payload).encode("utf-8")
         headers: dict[str, Any] = {}
 
+        mock_request = create_mock_request(payload_bytes, headers)
+
         result = await webhook_client_with_secret.authenticate_incoming_webhook(
-            payload, headers
+            mock_request
         )
         assert result is False
 
@@ -108,10 +132,13 @@ class TestBitbucketWebhookClient:
     ) -> None:
         """Test webhook authentication when no secret is configured."""
         payload = {"test": "data"}
+        payload_bytes = json.dumps(payload).encode("utf-8")
         headers: dict[str, Any] = {}
 
+        mock_request = create_mock_request(payload_bytes, headers)
+
         result = await webhook_client_no_secret.authenticate_incoming_webhook(
-            payload, headers
+            mock_request
         )
         assert result is True
 
@@ -174,9 +201,7 @@ class TestBitbucketWebhookClient:
                 "_send_api_request",
                 new=AsyncMock(return_value={"id": "hook-123"}),
             ) as mock_send:
-                await webhook_client_with_secret.create_webhook(
-                    "https://example.com/webhook"
-                )
+                await webhook_client_with_secret.create_webhook("https://example.com")
                 mock_send.assert_called_once()
 
     @pytest.mark.asyncio
@@ -194,7 +219,5 @@ class TestBitbucketWebhookClient:
             with patch.object(
                 webhook_client_with_secret, "_send_api_request", new=AsyncMock()
             ) as mock_send:
-                await webhook_client_with_secret.create_webhook(
-                    "https://example.com/webhook"
-                )
+                await webhook_client_with_secret.create_webhook("https://example.com")
                 mock_send.assert_not_called()

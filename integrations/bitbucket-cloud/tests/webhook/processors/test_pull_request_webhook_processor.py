@@ -9,8 +9,8 @@ from bitbucket_cloud.helpers.utils import ObjectKind
 
 # Patch the module before importing the class
 with patch("initialize_client.init_webhook_client") as mock_init_client:
-    from bitbucket_cloud.webhook.webhook_client import BitbucketWebhookClient
-    from bitbucket_cloud.webhook.processors.pull_request import (
+    from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
+    from bitbucket_cloud.webhook_processors.processors.pull_request_webhook_processor import (
         PullRequestWebhookProcessor,
     )
 
@@ -58,7 +58,7 @@ class TestPullRequestWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id", headers={"x-event-key": event_key}, payload={}
         )
-        result = await pull_request_webhook_processor.should_process_event(event)
+        result = await pull_request_webhook_processor._should_process_event(event)
         assert result == expected
 
     @pytest.mark.asyncio

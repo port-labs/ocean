@@ -1,17 +1,16 @@
 from typing import Any
-import json
 
 from bitbucket_cloud.client import BitbucketClient
 from loguru import logger
-from bitbucket_cloud.webhook.events import RepositoryEvents, PullRequestEvents
+from bitbucket_cloud.webhook_processors.events import (
+    RepositoryEvents,
+    PullRequestEvents,
+)
 from httpx import HTTPStatusError
 import hashlib
 import hmac
 
-from port_ocean.core.handlers.webhook.webhook_event import (
-    EventHeaders,
-    EventPayload,
-)
+from fastapi import Request
 
 
 class BitbucketWebhookClient(BitbucketClient):
@@ -31,9 +30,7 @@ class BitbucketWebhookClient(BitbucketClient):
                 "Received secret for authenticating incoming webhooks. Only authenticated webhooks will be synced."
             )
 
-    async def authenticate_incoming_webhook(
-        self, payload: EventPayload, headers: EventHeaders
-    ) -> bool:
+    async def authenticate_incoming_webhook(self, request: Request) -> bool:
         """Authenticate the Bitbucket webhook payload using the secret.
         Skip if secret was not provided
         """
@@ -43,7 +40,7 @@ class BitbucketWebhookClient(BitbucketClient):
             )
             return True
 
-        signature = headers.get("x-hub-signature")
+        signature = request.headers.get("x-hub-signature")
 
         if not signature:
             logger.error(
@@ -51,9 +48,16 @@ class BitbucketWebhookClient(BitbucketClient):
             )
             return False
 
-        payload_bytes = json.dumps(payload).encode()
-        hash_object = hmac.new(self.secret.encode(), payload_bytes, hashlib.sha256)
+        body = await request.body()
+
+        hash_object = hmac.new(self.secret.encode(), body, hashlib.sha256)
         expected_signature = "sha256=" + hash_object.hexdigest()
+
+        logger.debug(
+            "Webhook authentication: Comparing signatures",
+            received=signature,
+            expected=expected_signature,
+        )
 
         return hmac.compare_digest(signature, expected_signature)
 

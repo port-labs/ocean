@@ -4,15 +4,17 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from bitbucket_cloud.webhook.events import RepositoryEvents
+from bitbucket_cloud.webhook_processors.events import RepositoryEvents
 from bitbucket_cloud.helpers.utils import ObjectKind
-from bitbucket_cloud.webhook.processors._base import _BitbucketAbstractWebhookProcessor
+from bitbucket_cloud.webhook_processors.processors._bitbucket_abstract_webhook_processor import (
+    _BitbucketAbstractWebhookProcessor,
+)
 from loguru import logger
 
 
 class RepositoryWebhookProcessor(_BitbucketAbstractWebhookProcessor):
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
         try:
             return bool(RepositoryEvents(event.headers["x-event-key"]))
         except ValueError:

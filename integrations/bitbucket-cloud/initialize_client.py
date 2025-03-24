@@ -1,6 +1,6 @@
 from port_ocean.context.ocean import ocean
 from bitbucket_cloud.client import BitbucketClient
-from bitbucket_cloud.webhook.webhook_client import BitbucketWebhookClient
+from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
 
 
 def init_client() -> BitbucketClient:
@@ -9,7 +9,7 @@ def init_client() -> BitbucketClient:
 
 def init_webhook_client() -> BitbucketWebhookClient:
     return BitbucketWebhookClient(
-        secret=ocean.integration_config["bitbucket_webhook_secret"],
+        secret=ocean.integration_config["webhook_secret"],
         workspace=ocean.integration_config["bitbucket_workspace"],
         host=ocean.integration_config["bitbucket_host_url"],
         username=ocean.integration_config.get("bitbucket_username"),

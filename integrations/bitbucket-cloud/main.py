@@ -9,10 +9,10 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from bitbucket_cloud.helpers.utils import ObjectKind
 
-from bitbucket_cloud.webhook.processors.pull_request import (
+from bitbucket_cloud.webhook_processors.processors.pull_request_webhook_processor import (
     PullRequestWebhookProcessor,
 )
-from bitbucket_cloud.webhook.processors.repository import (
+from bitbucket_cloud.webhook_processors.processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
 from initialize_client import init_client, init_webhook_client
