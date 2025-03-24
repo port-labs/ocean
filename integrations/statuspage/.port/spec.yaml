@@ -1,7 +1,7 @@
 title: Statuspage
 description: Statuspage integration for Port Ocean
 icon: StatusPage
-docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/statuspage
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/statuspage
 features:
   - type: exporter
     section: Incident Management

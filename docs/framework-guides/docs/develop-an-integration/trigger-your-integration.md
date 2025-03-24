@@ -27,7 +27,7 @@ creating new data, update existing data and delete data that no longer exists in
 
 1. Login to [Port](https://app.getport.io) and browse to the [builder page](https://app.getport.io/dev-portal).
 
-2. Open the ingest modal by expanding one of the [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) and clicking the ingest button on the blueprint.
+2. Open the ingest modal by expanding one of the [blueprints](https://docs.port.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) and clicking the ingest button on the blueprint.
 
    ![Ingest Button](@site/static/img/ingest-button-1.png)
 
