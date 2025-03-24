@@ -1,14 +1,13 @@
-from typing import Any, Optional, cast
+from typing import cast
 
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from clients.gitlab_client import GitLabClient
 from integration import ProjectResourceConfig
-from utils.object_kinds import ObjectKind
 from utils.client_factory import create_gitlab_client
+from utils.object_kinds import ObjectKind
 
 
 @ocean.on_start()

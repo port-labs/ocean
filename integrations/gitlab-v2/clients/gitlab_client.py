@@ -1,12 +1,14 @@
-from typing import Any, AsyncIterator, Optional, Callable
-from loguru import logger
-from .rest_client import RestClient
 import asyncio
-from port_ocean.utils.async_iterators import (
-    stream_async_iterators_tasks,
-    semaphore_async_iterator,
-)
 from functools import partial
+from typing import Any, AsyncIterator, Callable, Optional
+
+from loguru import logger
+from port_ocean.utils.async_iterators import (
+    semaphore_async_iterator,
+    stream_async_iterators_tasks,
+)
+
+from .rest_client import RestClient
 
 
 class GitLabClient:

@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator, AsyncIterator
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
