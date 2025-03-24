@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.2.34 (2025-03-19)
+
+### Improvements
+
+- Introduced a few flexibility enablements in the sloHistory kind:
+  - Set period in Days, not just in Months
+  - Set the concurrency of the history pulling dynamically
 
 ## 0.2.33 (2025-03-13)
 

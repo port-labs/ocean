@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.52 (2025-03-18)
+===================
+
+### Improvements
+
+- Improve memory usage for gitlab members kind
+
+
 0.2.51 (2025-03-13)
 ===================
 
