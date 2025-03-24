@@ -7,10 +7,6 @@ from bitbucket_cloud.webhook_processors.events import (
     PullRequestEvents,
 )
 from httpx import HTTPStatusError
-import hashlib
-import hmac
-
-from fastapi import Request
 
 
 class BitbucketWebhookClient(BitbucketClient):
@@ -29,37 +25,6 @@ class BitbucketWebhookClient(BitbucketClient):
             logger.info(
                 "Received secret for authenticating incoming webhooks. Only authenticated webhooks will be synced."
             )
-
-    async def authenticate_incoming_webhook(self, request: Request) -> bool:
-        """Authenticate the Bitbucket webhook payload using the secret.
-        Skip if secret was not provided
-        """
-        if not self.secret:
-            logger.warning(
-                "No secret provided for authenticating incoming webhooks, skipping authentication."
-            )
-            return True
-
-        signature = request.headers.get("x-hub-signature")
-
-        if not signature:
-            logger.error(
-                "Aborting webhook authentication due to missing X-Hub-Signature header"
-            )
-            return False
-
-        body = await request.body()
-
-        hash_object = hmac.new(self.secret.encode(), body, hashlib.sha256)
-        expected_signature = "sha256=" + hash_object.hexdigest()
-
-        logger.debug(
-            "Webhook authentication: Comparing signatures",
-            received=signature,
-            expected=expected_signature,
-        )
-
-        return hmac.compare_digest(signature, expected_signature)
 
     @property
     def _workspace_webhook_url(self) -> str:
