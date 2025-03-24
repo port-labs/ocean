@@ -97,5 +97,5 @@ Integrations powered by the Ocean framework support two methods to get the desir
 ## Next steps
 
 - To view the list of integrations powered by the Ocean framework, refer to the [integrations library](./integrations-library/integrations-library.md) page
-  - You can also take a look at the variety of integrations and methods to ingest data into Port at Port's [documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/)
+  - You can also take a look at the variety of integrations and methods to ingest data into Port at Port's [documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/)
 - To start developing your own integration with Port, powered by the Ocean framework, refer to the [getting started](./getting-started/getting-started.md) page

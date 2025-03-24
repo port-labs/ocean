@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.3-dev (2025-03-21)
+## 0.1.4 (2025-03-25)
 
 
 ### Features
@@ -15,12 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for gitops
 
 
-## 0.1.2-dev (2025-03-20)
+## 0.1.3-dev (2025-03-24)
 
 
 ### Features
 
 - Added support for live events
+
+
+## 0.1.2-dev (2025-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.0
 
 
 ## 0.1.1-dev (2025-03-18)

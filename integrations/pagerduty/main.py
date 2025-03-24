@@ -183,7 +183,7 @@ async def on_global_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield resource_batch
         except Exception as e:
             logger.error(
-                f"Failed to fetch {kind} from Pagerduty due to error: {e}. For information on supported resources, please refer to our documentation at https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/#supported-resources"
+                f"Failed to fetch {kind} from Pagerduty due to error: {e}. For information on supported resources, please refer to our documentation at https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/#supported-resources"
             )
             raise e
 
