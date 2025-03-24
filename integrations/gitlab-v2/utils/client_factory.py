@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Any, Optional
 
 from port_ocean.context.ocean import ocean
