@@ -5,16 +5,11 @@ from port_ocean.utils import http_async_client
 from helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
-from helpers.rate_limiter import RollingWindowLimiter
-from helpers.utils import BitbucketRateLimiterConfig
 import base64
 
 PULL_REQUEST_STATE = "OPEN"
 PULL_REQUEST_PAGE_SIZE = 50
 PAGE_SIZE = 100
-RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
-    limit=BitbucketRateLimiterConfig.LIMIT, window=BitbucketRateLimiterConfig.WINDOW
-)
 
 
 class BitbucketClient:
@@ -55,13 +50,34 @@ class BitbucketClient:
 
     @classmethod
     def create_from_ocean_config(cls) -> "BitbucketClient":
-        return cls(
-            workspace=ocean.integration_config["bitbucket_workspace"],
-            host=ocean.integration_config["bitbucket_host_url"],
-            username=ocean.integration_config.get("bitbucket_username"),
-            app_password=ocean.integration_config.get("bitbucket_app_password"),
-            workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
+        """Create a BitbucketClient from the Ocean config."""
+        credentials = ocean.integration_config.get("bitbucket_credentials")
+        if not credentials:
+            raise MissingIntegrationCredentialException(
+                "Either workspace token or both username and app password must be provided"
+            )
+        credentials = credentials.split(",")[0]
+        username, app_password = (
+            credentials.split("::") if "::" in credentials else (None, None)
         )
+        if credentials and not username and not app_password:
+            workspace_token = credentials
+            return cls(
+                workspace=ocean.integration_config["bitbucket_workspace"],
+                host=ocean.integration_config["bitbucket_host_url"],
+                workspace_token=workspace_token,
+            )
+        elif username and app_password:
+            return cls(
+                workspace=ocean.integration_config["bitbucket_workspace"],
+                host=ocean.integration_config["bitbucket_host_url"],
+                username=username,
+                app_password=app_password,
+            )
+        else:
+            raise MissingIntegrationCredentialException(
+                "Either workspace token or both username and app password must be provided"
+            )
 
     async def _send_api_request(
         self,
@@ -91,29 +107,6 @@ class BitbucketClient:
             logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
             raise e
 
-    async def _fetch_paginated_api_with_rate_limiter(
-        self,
-        url: str,
-        params: Optional[dict[str, Any]] = None,
-        method: str = "GET",
-        data_key: str = "values",
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Handle rate-limited paginated requests to Bitbucket API"""
-        if params is None:
-            params = {
-                "pagelen": PAGE_SIZE,
-            }
-        while True:
-            async with RATE_LIMITER:
-                response = await self._send_api_request(
-                    url, params=params, method=method
-                )
-                if values := response.get(data_key, []):
-                    yield values
-                url = response.get("next")
-                if not url:
-                    break
-
     async def _send_paginated_api_request(
         self,
         url: str,
@@ -121,15 +114,7 @@ class BitbucketClient:
         method: str = "GET",
         data_key: str = "values",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Handle Bitbucket's pagination for API requests with a flexible data key.
-        Args:
-            url: The API endpoint to request.
-            params: Optional dictionary of query parameters.
-            method: The HTTP method to use.
-            data_key: The key to use when extracting data from the API response.
-        Yields:
-            Lists of dictionaries containing the paginated data.
-        """
+        """Handle paginated requests to Bitbucket API."""
         if params is None:
             params = {
                 "pagelen": PAGE_SIZE,
@@ -157,7 +142,7 @@ class BitbucketClient:
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the workspace."""
-        async for repos in self._fetch_paginated_api_with_rate_limiter(
+        async for repos in self._send_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}", params=params
         ):
             logger.info(
@@ -173,7 +158,7 @@ class BitbucketClient:
             "max_depth": max_depth,
             "pagelen": PAGE_SIZE,
         }
-        async for contents in self._fetch_paginated_api_with_rate_limiter(
+        async for contents in self._send_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
             params=params,
         ):
@@ -190,7 +175,7 @@ class BitbucketClient:
             "state": PULL_REQUEST_STATE,
             "pagelen": PULL_REQUEST_PAGE_SIZE,
         }
-        async for pull_requests in self._fetch_paginated_api_with_rate_limiter(
+        async for pull_requests in self._send_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
             params=params,
         ):

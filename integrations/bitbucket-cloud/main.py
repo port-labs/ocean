@@ -1,18 +1,19 @@
 from typing import Union, cast
-
 from loguru import logger
-
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from client import BitbucketClient
+from helpers.multiple_token import BitbucketClientManager
 from helpers.utils import ObjectKind
 from integration import BitbucketFolderResourceConfig, BitbucketFolderSelector
 from helpers.folder import (
     process_folder_patterns,
 )
+from helpers.utils import BitbucketRateLimiterConfig
+from port_ocean.utils.cache import cache_coroutine_result
 
 
 @ocean.on_start()
@@ -22,6 +23,17 @@ async def on_start() -> None:
 
 def init_client() -> BitbucketClient:
     return BitbucketClient.create_from_ocean_config()
+
+
+@cache_coroutine_result()
+async def init_multiple_client() -> BitbucketClientManager:
+    return BitbucketClientManager(
+        workspace=ocean.integration_config["bitbucket_workspace"],
+        host=ocean.integration_config["bitbucket_host_url"],
+        credentials=ocean.integration_config["bitbucket_credentials"],
+        limit_per_client=BitbucketRateLimiterConfig.LIMIT,
+        window=BitbucketRateLimiterConfig.WINDOW,
+    )
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -34,21 +46,24 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all repositories in the workspace."""
-    client = init_client()
-    async for repositories in client.get_repositories():
+    """Resync all repositories in the workspace using the client manager."""
+    manager = await init_multiple_client()
+    async for repositories in manager.execute_request("get_repositories"):
         yield repositories
 
 
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests from all repositories."""
-    client = init_client()
-    async for repositories in client.get_repositories():
+    manager = await init_multiple_client()
+    async for repositories in manager.execute_request("get_repositories"):
         tasks = [
-            client.get_pull_requests(repo.get("slug", repo["name"].lower()))
+            manager.execute_request(
+                "get_pull_requests", repo.get("slug", repo["name"].lower())
+            )
             for repo in repositories
         ]
+        logger.info(f"Resyncing pull requests for {len(tasks)} repositories")
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
@@ -56,10 +71,10 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync folders based on configuration."""
+    manager = await init_multiple_client()
     config = cast(
         Union[ResourceConfig, BitbucketFolderResourceConfig], event.resource_config
     )
     selector = cast(BitbucketFolderSelector, config.selector)
-    client = init_client()
-    async for matching_folders in process_folder_patterns(selector.folders, client):
+    async for matching_folders in process_folder_patterns(selector.folders, manager):
         yield matching_folders

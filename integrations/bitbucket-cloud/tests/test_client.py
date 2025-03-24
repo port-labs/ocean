@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
-from typing import Any, AsyncIterator, Generator
+from typing import Any, AsyncIterator
 from client import BitbucketClient
 from helpers.exceptions import MissingIntegrationCredentialException
 
@@ -14,20 +14,13 @@ def mock_http_client() -> AsyncClient:
 
 
 @pytest.fixture
-def mock_integration_config() -> Generator[dict[str, str], None, None]:
-    """Mock the ocean integration config."""
-    config = {
+def mock_integration_config() -> dict[str, str]:
+    """Create mock integration config."""
+    return {
         "bitbucket_workspace": "test_workspace",
         "bitbucket_host_url": "https://api.bitbucket.org/2.0",
-        "bitbucket_username": "test_user",
-        "bitbucket_app_password": "test_password",
+        "bitbucket_credentials": "test_user::test_password",
     }
-    with patch(
-        "port_ocean.context.ocean.PortOceanContext.integration_config",
-        new_callable=PropertyMock,
-    ) as mock_config:
-        mock_config.return_value = config
-        yield config
 
 
 @pytest.fixture
@@ -45,7 +38,7 @@ async def test_client_init_with_token() -> None:
     config = {
         "bitbucket_workspace": "test_workspace",
         "bitbucket_host_url": "https://api.bitbucket.org/2.0",
-        "bitbucket_workspace_token": "test_token",
+        "bitbucket_credentials": "test_token",
     }
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
@@ -53,6 +46,8 @@ async def test_client_init_with_token() -> None:
     ) as mock_config:
         mock_config.return_value = config
         client = BitbucketClient.create_from_ocean_config()
+        assert client.workspace == "test_workspace"
+        assert client.base_url == "https://api.bitbucket.org/2.0"
         assert "Bearer test_token" in client.headers["Authorization"]
 
 
@@ -61,8 +56,15 @@ async def test_client_init_with_app_password(
     mock_integration_config: dict[str, str]
 ) -> None:
     """Test client initialization with app password auth."""
-    client = BitbucketClient.create_from_ocean_config()
-    assert "Basic" in client.headers["Authorization"]
+    with patch(
+        "port_ocean.context.ocean.PortOceanContext.integration_config",
+        new_callable=PropertyMock,
+    ) as mock_config:
+        mock_config.return_value = mock_integration_config
+        client = BitbucketClient.create_from_ocean_config()
+        assert client.workspace == "test_workspace"
+        assert client.base_url == "https://api.bitbucket.org/2.0"
+        assert "Basic" in client.headers["Authorization"]
 
 
 @pytest.mark.asyncio
@@ -207,7 +209,7 @@ async def test_get_projects(mock_client: BitbucketClient) -> None:
             async for projects in mock_client.get_projects():
                 assert projects == mock_data["values"]
             mock_paginated.assert_called_once_with(
-                f"{mock_client.base_url}/workspaces/test_workspace/projects"
+                f"{mock_client.base_url}/workspaces/{mock_client.workspace}/projects"
             )
 
 
@@ -217,9 +219,7 @@ async def test_get_repositories(mock_client: BitbucketClient) -> None:
     mock_data = {"values": [{"slug": "test-repo", "name": "Test Repo"}]}
 
     async with event_context("test_event"):
-        with patch.object(
-            mock_client, "_fetch_paginated_api_with_rate_limiter"
-        ) as mock_paginated:
+        with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
 
             async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
                 yield mock_data["values"]
@@ -228,7 +228,8 @@ async def test_get_repositories(mock_client: BitbucketClient) -> None:
             async for repos in mock_client.get_repositories():
                 assert repos == mock_data["values"]
             mock_paginated.assert_called_once_with(
-                f"{mock_client.base_url}/repositories/test_workspace", params=None
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}",
+                params=None,
             )
 
 
@@ -238,9 +239,7 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
     mock_dir_data = {"values": [{"type": "commit_directory", "path": "src"}]}
 
     async with event_context("test_event"):
-        with patch.object(
-            mock_client, "_fetch_paginated_api_with_rate_limiter"
-        ) as mock_paginated:
+        with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
 
             async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
                 yield mock_dir_data["values"]
@@ -262,9 +261,7 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
     mock_data = {"values": [{"id": 1, "title": "Test PR"}]}
 
     async with event_context("test_event"):
-        with patch.object(
-            mock_client, "_fetch_paginated_api_with_rate_limiter"
-        ) as mock_paginated:
+        with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
 
             async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
                 yield mock_data["values"]
