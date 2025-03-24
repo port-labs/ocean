@@ -183,51 +183,56 @@ class Metrics:
         if not self.metrics_settings.webhook_url:
             return None
 
-        latest_raw = self.generate_latest()
-        metric_families = prometheus_client.parser.text_string_to_metric_families(
-            latest_raw
-        )
-        metrics_dict: dict[str, Any] = {}
-        for family in metric_families:
-            for sample in family.samples:
-                # Skip if a specific metric name was requested and this isn't it
-                if metric_name and sample.name != metric_name:
-                    continue
-
-                current_level = metrics_dict
-                if sample.labels:
-                    # Skip if a specific kind was requested and this isn't it
-                    if kind and sample.labels.get("kind") != kind:
+        try:
+            latest_raw = self.generate_latest()
+            metric_families = prometheus_client.parser.text_string_to_metric_families(
+                latest_raw
+            )
+            metrics_dict: dict[str, Any] = {}
+            for family in metric_families:
+                for sample in family.samples:
+                    # Skip if a specific metric name was requested and this isn't it
+                    if metric_name and sample.name != metric_name:
                         continue
 
-                    # Create nested dictionary structure based on labels
-                    for key, value in sample.labels.items():
-                        if key not in current_level:
-                            current_level[key] = {}
-                        current_level = current_level[key]
-                        if value not in current_level:
-                            current_level[value] = {}
-                        current_level = current_level[value]
+                    current_level = metrics_dict
+                    if sample.labels:
+                        # Skip if a specific kind was requested and this isn't it
+                        if kind and sample.labels.get("kind") != kind:
+                            continue
 
-                current_level[sample.name] = sample.value
+                        # Create nested dictionary structure based on labels
+                        for key, value in sample.labels.items():
+                            if key not in current_level:
+                                current_level[key] = {}
+                            current_level = current_level[key]
+                            if value not in current_level:
+                                current_level[value] = {}
+                            current_level = current_level[value]
 
-        # If no metrics were filtered, exit early
-        if not metrics_dict.get("kind", {}):
-            return None
+                    current_level[sample.name] = sample.value
 
-        for kind_key, metrics in metrics_dict.get("kind", {}).items():
-            # Skip if we're filtering by kind and this isn't the requested kind
-            if kind and kind_key != kind:
-                continue
+            # If no metrics were filtered, exit early
+            if not metrics_dict.get("kind", {}):
+                return None
 
-            event = {
-                "integration_type": self.integration_configuration.type,
-                "integration_identifier": self.integration_configuration.identifier,
-                "integration_version": self.integration_version,
-                "ocean_version": self.ocean_version,
-                "kind_identifier": kind_key,
-                "kind": "-".join(kind_key.split("-")[:-1]),
-                "metrics": metrics,
-            }
-            logger.info(f"Sending metrics to webhook {kind_key}: {event}")
-            await AsyncClient().post(url=self.metrics_settings.webhook_url, json=event)
+            for kind_key, metrics in metrics_dict.get("kind", {}).items():
+                # Skip if we're filtering by kind and this isn't the requested kind
+                if kind and kind_key != kind:
+                    continue
+
+                event = {
+                    "integration_type": self.integration_configuration.type,
+                    "integration_identifier": self.integration_configuration.identifier,
+                    "integration_version": self.integration_version,
+                    "ocean_version": self.ocean_version,
+                    "kind_identifier": kind_key,
+                    "kind": "-".join(kind_key.split("-")[:-1]),
+                    "metrics": metrics,
+                }
+                logger.info(f"Sending metrics to webhook {kind_key}: {event}")
+                await AsyncClient().post(
+                    url=self.metrics_settings.webhook_url, json=event
+                )
+        except Exception as e:
+            logger.error(f"Error sending metrics to webhook: {e}")

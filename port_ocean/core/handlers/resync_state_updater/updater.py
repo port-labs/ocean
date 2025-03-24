@@ -90,4 +90,4 @@ class ResyncStateUpdater:
             labels=[ocean.metrics.current_resource_kind(), MetricPhase.RESYNC],
             value=int(status == IntegrationStateStatus.Completed),
         )
-        await ocean.metrics.flush()
+        await ocean.metrics.flush(kind=ocean.metrics.current_resource_kind())
