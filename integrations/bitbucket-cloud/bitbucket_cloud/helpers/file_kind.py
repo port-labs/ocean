@@ -124,7 +124,7 @@ async def process_file_patterns(
                     matched_files, client, repo_slug, branch, repo
                 ):
                     if skip_parsing:
-                        yield matched_file
+                        yield [matched_file]
                     else:
                         yield parse_file(matched_file)
             logger.info(
@@ -141,21 +141,19 @@ async def retrieve_matched_file_contents(
     repo_slug: str,
     branch: str,
     repo: Dict[str, Any],
-) -> AsyncGenerator[List[Dict[str, Any]], None]:
+) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Retrieve the contents of matched files.
     """
     for matched_file in matched_files:
         file_path = matched_file.get("path", "")
         file_content = await client.get_repository_files(repo_slug, branch, file_path)
-        yield [
-            {
-                "content": file_content,
-                "repo": repo,
-                "branch": branch,
-                "metadata": matched_file,
-            }
-        ]
+        yield {
+            "content": file_content,
+            "repo": repo,
+            "branch": branch,
+            "metadata": matched_file,
+        }
 
 
 def parse_file(file: Dict[str, Any]) -> List[Dict[str, Any]]:
