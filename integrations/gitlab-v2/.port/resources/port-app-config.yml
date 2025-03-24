@@ -8,11 +8,12 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .fullPath
+          identifier: .path_with_namespace | gsub(" "; "")
           title: .name
           blueprint: '"service"'
           properties:
-            url: .webUrl
+            url: .web_url
             description: .description
-            defaultBranch: .repository.rootRef
-            languages: .languages
+            defaultBranch: .default_branch
+            language: .__languages | to_entries | max_by(.value) | .key
+            labels: .__labels

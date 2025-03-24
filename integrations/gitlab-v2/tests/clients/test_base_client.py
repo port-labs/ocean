@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator, AsyncIterator
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -36,45 +36,55 @@ class TestGitLabClient:
         return GitLabClient("https://gitlab.example.com", "test-token")
 
     async def test_get_projects(self, client: GitLabClient) -> None:
-        """Test project fetching delegates to GraphQL client and handles nested fields."""
+        """Test project fetching and enrichment with languages and labels via REST."""
         # Arrange
-        mock_projects: list[dict[str, Any]] = [
+        mock_projects = [
             {
                 "id": "1",
                 "name": "Test Project",
-                "labels": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+                "path_with_namespace": "test/test-project",
             }
         ]
-        mock_labels: list[dict[str, Any]] = [{"id": "label1", "title": "Bug"}]
+        mock_languages = {"Python": 50.0, "JavaScript": 30.0}
+        mock_labels = [{"id": "label1", "title": "Bug"}]
 
-        # Mock field iterator yielding labels
-        async def mock_field_iterator() -> (
-            AsyncIterator[tuple[str, list[dict[str, Any]]]]
+        with (
+            patch.object(client.rest, "get_resource") as mock_get_resource,
+            patch.object(
+                client.rest,
+                "get_project_languages",
+                AsyncMock(return_value=mock_languages),
+            ) as mock_get_languages,
+            patch.object(client.rest, "get_project_resource") as mock_get_labels,
         ):
-            yield "labels", mock_labels  # First page
-            yield "labels", []
 
-        # Mock get_resource to yield (projects, iterators)
-        mock_iterators = [mock_field_iterator()]
-        mock_response = [(mock_projects, mock_iterators)]  # Single batch with iterator
+            # Mock get_resource to yield projects
+            mock_get_resource.return_value = async_mock_generator([mock_projects])
 
-        with patch.object(
-            client.graphql,
-            "get_resource",
-            return_value=async_mock_generator(mock_response),
-        ) as mock_get_resource:
-            params = {"includeLabels": True}
+            # Mock get_project_resource to yield labels
+            async def mock_labels_generator(*args, **kwargs):
+                yield mock_labels
+
+            mock_get_labels.return_value = mock_labels_generator()
+
             # Act
-            async for batch in client.get_projects(params):
-                results: list[dict[str, Any]] = []
-
+            results = []
+            params = {"some": "param"}
+            async for batch in client.get_projects(
+                params=params,
+                max_concurrent=1,
+                include_languages=True,
+                include_labels=True,
+            ):
                 results.extend(batch)
 
             # Assert
-            assert len(results) == 1  # Only one project
+            assert len(results) == 1  # One project in the batch
             assert results[0]["name"] == "Test Project"
-            assert results[0]["labels"]["nodes"] == mock_labels  # Nested field updated
-            mock_get_resource.assert_called_once_with("projects", params)
+            assert results[0]["__languages"] == mock_languages
+            assert results[0]["__labels"] == mock_labels
+            mock_get_languages.assert_called_once_with("test/test-project")
+            mock_get_labels.assert_called_once_with("test/test-project", "labels")
 
     async def test_get_groups(self, client: GitLabClient) -> None:
         """Test group fetching delegates to REST client"""
