@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Generator
-from client import BitbucketClient
-from helpers.exceptions import MissingIntegrationCredentialException
+from bitbucket_cloud.client import BitbucketClient
+from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ async def mock_client(
     mock_integration_config: dict[str, str], mock_http_client: AsyncClient
 ) -> BitbucketClient:
     """Create BitbucketClient using create_from_ocean_config."""
-    with patch("client.http_async_client", mock_http_client):
+    with patch("bitbucket_cloud.client.http_async_client", mock_http_client):
         return BitbucketClient.create_from_ocean_config()
 
 
@@ -147,7 +147,7 @@ async def test_send_api_request_error(mock_client: BitbucketClient) -> None:
         patch.object(
             mock_client.client, "request", new_callable=AsyncMock
         ) as mock_request,
-        patch("client.logger.error") as mock_logger,
+        patch("bitbucket_cloud.client.logger.error") as mock_logger,
     ):
         mock_request.return_value = mock_response
 
