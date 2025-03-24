@@ -22,7 +22,6 @@ class ProjectSelector(Selector):
         description="Whether to include the languages of the project, defaults to false",
     )
 
-
 class ProjectResourceConfig(ResourceConfig):
     kind: Literal["project"]
     selector: ProjectSelector
