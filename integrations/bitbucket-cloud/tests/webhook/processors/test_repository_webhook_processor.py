@@ -37,7 +37,7 @@ class TestRepositoryWebhookProcessor:
         [
             ("repo:created", True),
             ("repo:updated", True),
-            ("repo:deleted", True),
+            ("repo:push", True),
             ("pullrequest:created", False),
             ("pullrequest:updated", False),
             ("invalid:event", False),

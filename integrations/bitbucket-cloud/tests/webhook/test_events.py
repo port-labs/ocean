@@ -31,7 +31,7 @@ class TestPullRequestEvents:
 class TestRepositoryEvents:
     def test_values(self) -> None:
         """Test that RepositoryEvents.values() returns all expected events."""
-        expected_values = {"repo:created", "repo:updated", "repo:deleted"}
+        expected_values = {"repo:created", "repo:updated", "repo:push"}
         assert RepositoryEvents.values() == expected_values
 
     def test_enum_access(self) -> None:
