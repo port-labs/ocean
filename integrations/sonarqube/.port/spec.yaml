@@ -42,4 +42,3 @@ configurations:
     sensitive: true
     required: false
     description: The secret token used to authenticate incoming webhook requests from SonarQube. This is required if webhook authentication is enabled in SonarQube to verify the integrity of received payloads.
-    default: false

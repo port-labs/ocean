@@ -588,24 +588,22 @@ class SonarQubeClient:
         Create webhook for a project
 
         :param project_key: Project key
+
         :return: dict[str, Any]
         """
         logger.info(f"Fetching existing webhooks in project: {project_key}")
-
-        def _get_common_params() -> dict[str, Any]:
-            """Helper to get common query params."""
-            params = {}
-            if self.organization_id:
-                params["organization"] = self.organization_id
-            if ocean.integration_config.get("webhook_secret"):
-                params["secret"] = ocean.integration_config["webhook_secret"]
-            return params
-
+        params = {}
+        if self.organization_id:
+            params["organization"] = self.organization_id
+        if ocean.integration_config["webhook_secret"]:
+            params["secret"] = ocean.integration_config["webhook_secret"]
         webhooks_response = await self._send_api_request(
             endpoint=f"{Endpoints.WEBHOOKS}/list",
-            query_params={"project": project_key, **_get_common_params()},
+            query_params={
+                "project": project_key,
+                **params,
+            },
         )
-
         webhooks = webhooks_response.get("webhooks", [])
         logger.info(webhooks)
 
@@ -616,7 +614,7 @@ class SonarQubeClient:
         return {
             "name": "Port Ocean Webhook",
             "project": project_key,
-            **_get_common_params(),
+            **params,
         }
 
     async def _create_webhooks_for_projects(
