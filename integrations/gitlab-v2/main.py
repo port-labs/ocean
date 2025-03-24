@@ -1,29 +1,15 @@
-from typing import Any, Optional, cast
+from typing import cast
 
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from clients.gitlab_client import GitLabClient
+from integration import ProjectResourceConfig
+from utils.client_factory import create_gitlab_client
+from utils.object_kinds import ObjectKind
 from integration import ProjectResourceConfig, GitLabFilesResourceConfig
 from gitops.utils import get_file_paths
-from utils import ObjectKind
-
-
-_gitlab_client: Optional[GitLabClient] = None
-
-
-def create_gitlab_client() -> GitLabClient:
-    global _gitlab_client
-    if _gitlab_client is not None:
-        return _gitlab_client
-
-    integration_config: dict[str, Any] = ocean.integration_config
-    base_url = integration_config["gitlab_host"].rstrip("/")
-    _gitlab_client = GitLabClient(base_url, integration_config["gitlab_token"])
-    return _gitlab_client
-
 
 @ocean.on_start()
 async def on_start() -> None:

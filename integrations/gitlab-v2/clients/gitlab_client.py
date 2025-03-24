@@ -1,4 +1,7 @@
-from typing import Any, AsyncIterator, Optional, Callable
+import asyncio
+from functools import partial
+from typing import Any, AsyncIterator, Callable, Optional
+
 from loguru import logger
 from .rest_client import RestClient
 import urllib.parse
@@ -6,14 +9,15 @@ from .utils import convert_glob_to_gitlab_patterns, parse_file_content
 import anyio
 import asyncio
 from port_ocean.utils.async_iterators import (
-    stream_async_iterators_tasks,
     semaphore_async_iterator,
+    stream_async_iterators_tasks,
 )
-from functools import partial
+
+from .rest_client import RestClient
 
 
 class GitLabClient:
-    DEFAULT_MIN_ACCESS_LEVEL = 30
+    DEFAULT_MIN_ACCESS_LEVEL = 10
     DEFAULT_PARAMS = {
         "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,
         "all_available": True,
@@ -31,7 +35,7 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch projects and optionally enrich with languages and/or labels."""
         request_params = self.DEFAULT_PARAMS | (params or {})
-        async for projects_batch in self.rest.get_resource(
+        async for projects_batch in self.rest.get_paginated_resource(
             "projects", params=request_params
         ):
             logger.info(f"Received batch with {len(projects_batch)} projects")
@@ -83,7 +87,9 @@ class GitLabClient:
         project_path = project.get("path_with_namespace", str(project["id"]))
         logger.debug(f"Enriching {project_path} with labels")
         all_labels = []
-        async for label_batch in self.rest.get_project_resource(project_path, "labels"):
+        async for label_batch in self.rest.get_paginated_project_resource(
+            project_path, "labels"
+        ):
             logger.info(f"Fetched {len(label_batch)} labels for {project_path}")
             all_labels.extend(label_batch)
         project["__labels"] = all_labels
@@ -91,7 +97,9 @@ class GitLabClient:
 
     async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user."""
-        async for batch in self.rest.get_resource("groups", params=self.DEFAULT_PARAMS):
+        async for batch in self.rest.get_paginated_resource(
+            "groups", params=self.DEFAULT_PARAMS
+        ):
             yield batch
 
     async def get_groups_resource(
@@ -121,7 +129,7 @@ class GitLabClient:
         group_id = group["id"]
 
         logger.debug(f"Starting fetch for {resource_type} in group {group_id}")
-        async for resource_batch in self.rest.get_group_resource(
+        async for resource_batch in self.rest.get_paginated_group_resource(
             group_id, resource_type
         ):
             if resource_batch:

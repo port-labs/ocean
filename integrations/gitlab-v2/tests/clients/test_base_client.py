@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator, AsyncIterator
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -49,13 +49,15 @@ class TestGitLabClient:
         mock_labels = [{"id": "label1", "title": "Bug"}]
 
         with (
-            patch.object(client.rest, "get_resource") as mock_get_resource,
+            patch.object(client.rest, "get_paginated_resource") as mock_get_resource,
             patch.object(
                 client.rest,
                 "get_project_languages",
                 AsyncMock(return_value=mock_languages),
             ) as mock_get_languages,
-            patch.object(client.rest, "get_project_resource") as mock_get_labels,
+            patch.object(
+                client.rest, "get_paginated_project_resource"
+            ) as mock_get_labels,
         ):
 
             # Mock get_resource to yield projects
@@ -95,7 +97,7 @@ class TestGitLabClient:
 
         with patch.object(
             client.rest,
-            "get_resource",
+            "get_paginated_resource",
             return_value=async_mock_generator([mock_groups]),
         ) as mock_get_resource:
             # Act
@@ -107,7 +109,7 @@ class TestGitLabClient:
             assert len(results) == 1
             assert results[0]["name"] == "Test Group"
             mock_get_resource.assert_called_once_with(
-                "groups", params={"min_access_level": 30, "all_available": True}
+                "groups", params={"min_access_level": 10, "all_available": True}
             )
 
     async def test_get_group_resource(self, client: GitLabClient) -> None:
@@ -118,7 +120,7 @@ class TestGitLabClient:
 
         with patch.object(
             client.rest,
-            "get_group_resource",
+            "get_paginated_group_resource",
             return_value=async_mock_generator([mock_issues]),
         ) as mock_get_group_resource:
             # Act

@@ -19,7 +19,7 @@ A resource mapping is a YAML configuration that can be applied to an integration
 - By updating the integration configuration through Port's UI
 - By updating the integration configuration by making a PATCH request to Port's `https://api.getport.io/v1/integration/<INTEGRATION_IDENTIIFER>` route with the updated configuration
 
-The Ocean integration uses the resource mapping to process an object received in the response from the 3rd-party service, and transform it into the desired [Port entity](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/#entity-json-structure).
+The Ocean integration uses the resource mapping to process an object received in the response from the 3rd-party service, and transform it into the desired [Port entity](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/#entity-json-structure).
 
 :::tip
 The `port-app-config.yml` file is optional, if it is not provided, the integration will create an empty resource mapping when it is installed.
