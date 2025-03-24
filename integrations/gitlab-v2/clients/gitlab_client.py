@@ -1,4 +1,4 @@
-from typing import Any, AsyncIterator, Optional
+from typing import Any, AsyncIterator, Optional, Callable
 from loguru import logger
 from .graphql_client import GraphQLClient
 from .rest_client import RestClient
@@ -52,7 +52,7 @@ class GitLabClient:
     async def _enrich_batch(
         self,
         batch: list[dict[str, Any]],
-        enrich_func: callable,
+        enrich_func: Callable[[dict[str, Any]], AsyncIterator[list[dict[str, Any]]]],
         max_concurrent: int,
     ) -> list[dict[str, Any]]:
 
@@ -69,7 +69,7 @@ class GitLabClient:
     async def enrich_project_with_languages(
         self, project: dict[str, Any]
     ) -> AsyncIterator[list[dict[str, Any]]]:
-
+        
         project_path = project.get("path_with_namespace", str(project["id"]))
         logger.debug(f"Enriching {project_path} with languages")
         languages = await self.rest.get_project_languages(project_path)
@@ -80,7 +80,7 @@ class GitLabClient:
     async def enrich_project_with_labels(
         self, project: dict[str, Any]
     ) -> AsyncIterator[list[dict[str, Any]]]:
-
+        
         project_path = project.get("path_with_namespace", str(project["id"]))
         logger.debug(f"Enriching {project_path} with labels")
         all_labels = []

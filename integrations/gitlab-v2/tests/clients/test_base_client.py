@@ -62,7 +62,10 @@ class TestGitLabClient:
             mock_get_resource.return_value = async_mock_generator([mock_projects])
 
             # Mock get_project_resource to yield labels
-            async def mock_labels_generator(*args, **kwargs):
+            async def mock_labels_generator(
+                *args: Any,
+                **kwargs: Any
+            ) -> AsyncIterator[list[dict[str, Any]]]:
                 yield mock_labels
 
             mock_get_labels.return_value = mock_labels_generator()
