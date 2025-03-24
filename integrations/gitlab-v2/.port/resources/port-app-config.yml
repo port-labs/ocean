@@ -14,4 +14,3 @@ resources:
             url: .web_url
             description: .description
             defaultBranch: .default_branch
-
