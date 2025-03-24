@@ -55,4 +55,4 @@ class PullRequestEvents(EventEnum):
 class RepositoryEvents(EventEnum):
     REPOSITORY_CREATED = "repo:created"
     REPOSITORY_UPDATED = "repo:updated"
-    REPOSITORY_DELETED = "repo:deleted"
+    REPOSITORY_PUSHED = "repo:push"
