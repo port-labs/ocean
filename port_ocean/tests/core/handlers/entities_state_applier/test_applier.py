@@ -8,6 +8,7 @@ from port_ocean.core.ocean_types import EntityDiff
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.ocean import Ocean
 from port_ocean.context.ocean import PortOceanContext
+from port_ocean.tests.core.conftest import create_entity
 
 
 @pytest.mark.asyncio
@@ -25,8 +26,8 @@ async def test_delete_diff_no_deleted_entities() -> None:
 
 
 @pytest.mark.asyncio
-async def test_delete_diff_below_threshold(mock_ocean: Ocean) -> None:
-    applier = HttpEntitiesStateApplier(Mock())
+async def test_delete_diff_below_threshold(mock_context: PortOceanContext) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
     entities = EntityDiff(
         before=[
             Entity(identifier="1", blueprint="test"),
@@ -50,8 +51,10 @@ async def test_delete_diff_below_threshold(mock_ocean: Ocean) -> None:
 
 
 @pytest.mark.asyncio
-async def test_delete_diff_above_default_threshold(mock_ocean: Ocean) -> None:
-    applier = HttpEntitiesStateApplier(Mock())
+async def test_delete_diff_above_default_threshold(
+    mock_context: PortOceanContext,
+) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
     entities = EntityDiff(
         before=[
             Entity(identifier="1", blueprint="test"),
@@ -71,9 +74,9 @@ async def test_delete_diff_above_default_threshold(mock_ocean: Ocean) -> None:
 
 @pytest.mark.asyncio
 async def test_delete_diff_custom_threshold_above_threshold_not_deleted(
-    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
 ) -> None:
-    applier = HttpEntitiesStateApplier(Mock())
+    applier = HttpEntitiesStateApplier(mock_context)
     entities = EntityDiff(
         before=[
             Entity(identifier="1", blueprint="test"),
@@ -121,9 +124,6 @@ async def test_applier_with_mock_context(
 async def test_using_create_entity_helper(
     mock_ocean: Ocean, mock_context: PortOceanContext
 ) -> None:
-    # This test demonstrates using the create_entity helper from conftest.py
-    from port_ocean.tests.core.conftest import create_entity
-
     # Create the applier with the mock context
     applier = HttpEntitiesStateApplier(mock_context)
 
