@@ -6,8 +6,8 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from integration import ProjectResourceConfig
-from utils.client_factory import create_gitlab_client
-from utils.object_kinds import ObjectKind
+from helpers.client_factory import create_gitlab_client
+from helpers.utils import ObjectKind
 
 
 @ocean.on_start()
