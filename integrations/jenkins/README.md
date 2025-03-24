@@ -219,7 +219,7 @@ The following resources can be used to map data from Jenkins, it is possible to 
 :::
 
 :::note
-You will be able to see realtime `build` data after you have successfully configured the web hook on your Jenkins instance according to this [documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/ci-cd/jenkins)
+You will be able to see realtime `build` data after you have successfully configured the web hook on your Jenkins instance according to this [documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/ci-cd/jenkins)
 :::
 
 - The root key of the integration configuration is the `resources` key:

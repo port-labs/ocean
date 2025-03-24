@@ -28,7 +28,7 @@ This guide will walk you through deploying an integration of the Ocean framework
 - [Kubernetes](https://kubernetes.io/docs/tasks/tools/) cluster to deploy the integration to.
 - [ArgoCD](https://argoproj.github.io/cd/) must be installed in your Kubernetes cluster. Please refer to ArgoCD's [documentation](https://argo-cd.readthedocs.io/en/stable/getting_started/#1-install-argo-cd) for further details about the installation.
 - The integration's required configurations.
-- Your organization [Port credentials](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/api/#find-your-port-credentials).
+- Your organization [Port credentials](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/api/#find-your-port-credentials).
 
 :::tip
 <details>

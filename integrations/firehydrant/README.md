@@ -2,6 +2,6 @@
 
 An integration used to import Firehydrant resources into Port.
 
-#### Install & use the integration - [Integration documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/firehydrant)
+#### Install & use the integration - [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/firehydrant)
 
 #### Develop & improve the integration - [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)

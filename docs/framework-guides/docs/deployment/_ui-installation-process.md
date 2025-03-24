@@ -7,7 +7,7 @@ using Port's UI. The UI will guide you through the installation process.
 
 1. Login to [Port](https://app.getport.io) and browse to the [builder page](https://app.getport.io/dev-portal).
 
-2. Open the ingest modal by expanding one of the [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) and clicking the ingest button on the blueprints.
+2. Open the ingest modal by expanding one of the [blueprints](https://docs.port.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) and clicking the ingest button on the blueprints.
 
    ![Ingest Button](@site/static/img/ingest-button-1.png)
 
