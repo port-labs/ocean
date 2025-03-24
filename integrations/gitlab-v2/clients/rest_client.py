@@ -8,22 +8,14 @@ class RestClient(HTTPBaseClient):
     DEFAULT_PAGE_SIZE = 100
     VALID_GROUP_RESOURCES = ["issues", "merge_requests", "labels"]
 
-    RESOURCE_PARAMS = {
-        "labels": {
-            "with_counts": True,
-            "include_descendant_groups": True,
-            "only_group_labels": False,
-        }
-    }
-
-    async def get_resource(
+    async def get_paginated_resource(
         self, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch a paginated resource (e.g., projects, groups)."""
         async for batch in self._make_paginated_request(resource_type, params=params):
             yield batch
 
-    async def get_project_resource(
+    async def get_paginated_project_resource(
         self,
         project_path: str,
         resource_type: str,
@@ -36,15 +28,15 @@ class RestClient(HTTPBaseClient):
             if batch:
                 yield batch
 
-    async def get_group_resource(
-        self, group_id: str, resource_type: str
+    async def get_paginated_group_resource(
+        self,
+        group_id: str,
+        resource_type: str,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch a paginated group resource (e.g., labels)."""
-        if resource_type not in self.VALID_GROUP_RESOURCES:
-            raise ValueError(f"Unsupported resource type: {resource_type}")
+        """Fetch a paginated group resource (e.g., issues)."""
         path = f"groups/{group_id}/{resource_type}"
-        request_params = self.RESOURCE_PARAMS.get(resource_type, {})
-        async for batch in self._make_paginated_request(path, params=request_params):
+        async for batch in self._make_paginated_request(path, params=params):
             if batch:
                 yield batch
 
