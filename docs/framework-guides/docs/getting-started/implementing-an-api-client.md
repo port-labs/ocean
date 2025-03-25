@@ -146,7 +146,7 @@ class JiraClient(OAuthClient):
 
 A few things to take note of:
 
-- **self.client**: Since Ocean integrations are developed with speed and performance in mind, we will be using Python's async features which naturally leads us to use a robust async http client, [httpx](https://www.python-httpx.org/). Fortunately, the `httpx` library is already included in the Ocean framework with helper features such as exponential backoff retry mechanism and other sensible defaults so we don't need to install or configure it separately.
+- **self.client**: Ocean integrations prioritize speed and performance by leveraging Python's asynchronous capabilities. To that end, we use the robust async HTTP client [httpx](https://www.python-httpx.org/). The Ocean framework already includes httpx, complete with features like an exponential backoff retry mechanism and other sensible defaults, so there’s no need for additional installation or configuration.
 - **`super().__init__()`**: We extend `OAuthClient` to leverage built-in capabilities for OAuth tokens.
 - **`_semaphore`**: Limits concurrency to `MAX_CONCURRENT_REQUESTS`.
 
