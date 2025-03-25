@@ -1,0 +1,29 @@
+[
+  {
+    "identifier": "service",
+    "title": "Service",
+    "icon": "GitLab",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "defaultBranch": {
+          "title": "Default Branch",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  }
+]

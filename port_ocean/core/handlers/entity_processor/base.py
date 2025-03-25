@@ -1,7 +1,6 @@
 from abc import abstractmethod
 
 from loguru import logger
-
 from port_ocean.core.handlers.base import BaseHandler
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (
@@ -51,7 +50,6 @@ class BaseEntityProcessor(BaseHandler):
         with logger.contextualize(kind=mapping.kind):
             if not raw_data:
                 return CalculationResult(EntitySelectorDiff([], []), [])
-
             return await self._parse_items(
                 mapping, raw_data, parse_all, send_raw_data_examples_amount
             )
