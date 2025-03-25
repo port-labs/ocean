@@ -1,11 +1,13 @@
 import logging
 import sys
 import os
+import asyncio
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
+from port_ocean.utils.cache import cache_iterator_result
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,6 +23,7 @@ class GithubHandler:
         }
 
     async def check_rate_limit(self):
+        """Check the API rate limit and handle retries if necessary."""
         url = f'{self.base_url}/rate_limit'
         response = await self.client.get(url, headers=self.headers)
         if response.status_code == 200:
@@ -30,56 +33,65 @@ class GithubHandler:
         else:
             response.raise_for_status()
 
+    async def fetch_with_retry(self, url: str, retries: int = 3, backoff_factor: int = 2):
+        """Fetch data with retry logic for handling rate limits."""
+        for attempt in range(retries):
+            response = await self.client.get(url, headers=self.headers)
+            match response.status_code:
+                case 200:
+                    return response.json()
+                case 429:  # Rate limit exceeded
+                    retry_after = int(response.headers.get("Retry-After", backoff_factor))
+                    logger.warning(f"Rate limit exceeded. Retrying after {retry_after} seconds.")
+                    await asyncio.sleep(retry_after * (backoff_factor ** attempt))
+                case _:
+                    response.raise_for_status()
+        raise Exception("Max retries exceeded")
+
+    @cache_iterator_result()
     async def get_repositories(self):
-        await self.check_rate_limit()
+        """Fetch all repositories for the authenticated user."""
         url = f'{self.base_url}/user/repos'
-        response = await self.client.get(url, headers=self.headers)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            response.raise_for_status()
+        data = await self.fetch_with_retry(url)
+        for repo in data:
+            yield repo
 
+    @cache_iterator_result()
     async def get_issues(self, username: str, repo: str):
-        await self.check_rate_limit()
+        """Fetch all issues for a specific repository."""
         url = f'{self.base_url}/repos/{username}/{repo}/issues'
-        response = await self.client.get(url, headers=self.headers)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            response.raise_for_status()
+        data = await self.fetch_with_retry(url)
+        for issue in data:
+            yield issue
 
+    @cache_iterator_result()
     async def get_pull_requests(self, username: str, repo: str):
-        await self.check_rate_limit()
+        """Fetch all pull requests for a specific repository."""
         url = f'{self.base_url}/repos/{username}/{repo}/pulls'
-        response = await self.client.get(url, headers=self.headers)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            response.raise_for_status()
+        data = await self.fetch_with_retry(url)
+        for pull_request in data:
+            yield pull_request
 
+    @cache_iterator_result()
     async def get_organizations(self):
-        await self.check_rate_limit()
+        """Fetch all organizations the authenticated user belongs to."""
         url = f'{self.base_url}/user/orgs'
-        response = await self.client.get(url, headers=self.headers)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            response.raise_for_status()
+        data = await self.fetch_with_retry(url)
+        for org in data:
+            yield org
 
+    @cache_iterator_result()
     async def get_teams(self, org: str):
-        await self.check_rate_limit()
+        """Fetch all teams for a specific organization."""
         url = f'{self.base_url}/orgs/{org}/teams'
-        response = await self.client.get(url, headers=self.headers)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            response.raise_for_status()
+        data = await self.fetch_with_retry(url)
+        for team in data:
+            yield team
 
+    @cache_iterator_result()
     async def get_workflows(self, username: str, repo: str):
-        await self.check_rate_limit()
+        """Fetch all workflows for a specific repository."""
         url = f'{self.base_url}/repos/{username}/{repo}/actions/workflows'
-        response = await self.client.get(url, headers=self.headers)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            response.raise_for_status()
+        data = await self.fetch_with_retry(url)
+        for workflow in data:
+            yield workflow

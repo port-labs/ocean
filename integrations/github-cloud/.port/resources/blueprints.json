@@ -10,7 +10,7 @@
                     "type": "string",
                     "format": "markdown",
                     "icon": "Book",
-                    "description": "The doc of the repository."
+                    "description": "The documentation of the repository."
                 },
                 "name": {
                     "title": "Name",
@@ -176,7 +176,7 @@
                     "title": "Members",
                     "type": "string",
                     "icon": "User",
-                    "description": "The members url of the team."
+                    "description": "The members URL of the team."
                 },
                 "link": {
                     "title": "Link",

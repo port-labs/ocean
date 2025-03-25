@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, AsyncGenerator
 import logging
 import sys
 import os
@@ -6,7 +6,6 @@ import os
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from port_ocean.context.ocean import ocean
-
 from client import GithubHandler
 
 # Configure logging
@@ -14,83 +13,65 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 @ocean.on_resync('repository')
-async def resync_repository(kind: str) -> list[dict[Any, Any]]:
+async def resync_repository(kind: str) -> AsyncGenerator[dict[Any, Any], None]:
+    """Resync repositories."""
     try:
         handler = GithubHandler()
-        repos = await handler.get_repositories()
-        logger.info('Repositories: %s', repos)
-        return repos
+        async for repo in handler.get_repositories():
+            logger.info(f"Yielding repository: {repo['name']}")
+            yield repo
     except Exception as e:
-        logger.error('Failed to resync repository: %s', e)
-        return []
+        logger.error(f"Failed to resync repository: {e}")
 
 @ocean.on_resync('issue')
-async def resync_issues(kind: str) -> list[dict[Any, Any]]:
+async def resync_issues(kind: str) -> AsyncGenerator[dict[Any, Any], None]:
+    """Resync issues."""
     try:
         handler = GithubHandler()
-        repos = await handler.get_repositories()
-        all_issues = []
-        for repo in repos:
-            username = repo["owner"]["login"]
-            repo_name = repo['name']
-            issues = await handler.get_issues(username, repo_name)
-            all_issues.extend(issues)
-        logger.info('Issues: %s', all_issues)
-        return all_issues
+        async for repo in handler.get_repositories():
+            async for issue in handler.get_issues(repo["owner"]["login"], repo["name"]):
+                logger.info(f"Yielding issue: {issue['title']}")
+                yield issue
     except Exception as e:
-        logger.error('Failed to resync issues: %s', e)
-        return []
+        logger.error(f"Failed to resync issues: {e}")
 
 @ocean.on_resync('pull_request')
-async def resync_pull_requests(kind: str) -> list[dict[Any, Any]]:
+async def resync_pull_requests(kind: str) -> AsyncGenerator[dict[Any, Any], None]:
+    """Resync pull requests."""
     try:
         handler = GithubHandler()
-        repos = await handler.get_repositories()
-        all_pull_requests = []
-        for repo in repos:
-            username = repo["owner"]["login"]
-            repo_name = repo['name']
-            pull_requests = await handler.get_pull_requests(username, repo_name)
-            all_pull_requests.extend(pull_requests)
-        logger.info('Pull Requests: %s', all_pull_requests)
-        return all_pull_requests
+        async for repo in handler.get_repositories():
+            async for pull_request in handler.get_pull_requests(repo["owner"]["login"], repo["name"]):
+                logger.info(f"Yielding pull request: {pull_request['title']}")
+                yield pull_request
     except Exception as e:
-        logger.error('Failed to resync pull requests: %s', e)
-        return []
+        logger.error(f"Failed to resync pull requests: {e}")
 
 @ocean.on_resync('team')
-async def resync_teams(kind: str) -> list[dict[Any, Any]]:
+async def resync_teams(kind: str) -> AsyncGenerator[dict[Any, Any], None]:
+    """Resync teams."""
     try:
         handler = GithubHandler()
-        organizations = await handler.get_organizations()
-        all_teams = []
-        for org in organizations:
-            teams = await handler.get_teams(org["login"])
-            all_teams.extend(teams)
-        logger.info('Teams: %s', all_teams)
-        return all_teams
+        async for org in handler.get_organizations():
+            async for team in handler.get_teams(org["login"]):
+                logger.info(f"Yielding team: {team['name']}")
+                yield team
     except Exception as e:
-        logger.error('Failed to resync teams: %s', e)
-        return []
+        logger.error(f"Failed to resync teams: {e}")
 
 @ocean.on_resync('workflow')
-async def resync_workflows(kind: str) -> list[dict[Any, Any]]:
+async def resync_workflows(kind: str) -> AsyncGenerator[dict[Any, Any], None]:
+    """Resync workflows."""
     try:
         handler = GithubHandler()
-        username = ocean.integration_config["github_username"]
-        repos = await handler.get_repositories()
-        all_workflows = []
-        for repo in repos:
-            username = repo["owner"]["login"]
-            repo_name = repo['name']
-            workflows = await handler.get_workflows(username, repo_name)
-            all_workflows.extend(workflows)
-        logger.info('Workflows: %s', all_workflows)
-        return all_workflows
+        async for repo in handler.get_repositories():
+            async for workflow in handler.get_workflows(repo["owner"]["login"], repo["name"]):
+                logger.info(f"Yielding workflow: {workflow['name']}")
+                yield workflow
     except Exception as e:
-        logger.error('Failed to resync workflows: %s', e)
-        return []
+        logger.error(f"Failed to resync workflows: {e}")
 
 @ocean.on_start()
 async def on_start() -> None:
-    logger.info("Starting github-cloud integration")
+    """Handle integration start."""
+    logger.info("Starting GitHub Cloud integration")

@@ -31,7 +31,7 @@ resources:
           properties:
             title: .title
             state: .state
-            assignee: .assignee
+            assignee: .assignee.login
             createdDate: .created_at
             updatedDate: .updated_at
             link: .html_url
@@ -47,7 +47,7 @@ resources:
           blueprint: '"githubPullRequest"'
           properties:
             title: .title
-            status: .status
+            status: .state
             author: .user.login
             createdDate: .created_at
             updatedDate: .updated_at
@@ -84,3 +84,5 @@ resources:
             createdDate: .created_at
             updatedDate: .updated_at
             link: .html_url
+          relations:
+            repository: .repository.id
