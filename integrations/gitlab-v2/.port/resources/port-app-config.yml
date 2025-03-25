@@ -1,7 +1,6 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
 resources:
-
   - kind: project
     selector:
       query: 'true'
@@ -15,5 +14,3 @@ resources:
             url: .web_url
             description: .description
             defaultBranch: .default_branch
-            language: .__languages | to_entries | max_by(.value) | .key
-            labels: .__labels
