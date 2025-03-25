@@ -65,7 +65,6 @@ class TestGitLabClient:
             ) -> AsyncIterator[list[dict[str, Any]]]:
                 yield mock_labels
 
-
             # Act
             results = []
             params = {"some": "param"}
