@@ -110,7 +110,7 @@ class TestGitLabClient:
             assert len(results) == 1
             assert results[0]["name"] == "Test Group"
             mock_get_resource.assert_called_once_with(
-                "groups", params={"min_access_level": 10, "all_available": True}
+                "groups", params={"min_access_level": 30, "all_available": True}
             )
 
     async def test_get_group_resource(self, client: GitLabClient) -> None:
