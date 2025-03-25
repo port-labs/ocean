@@ -313,7 +313,7 @@ We want to **ingest Jira projects**. The method `get_paginated_projects` handles
 </details>
 
 - **`get_paginated_projects`** is an **async generator**, so you can `async for batch in get_paginated_projects(): ...` to process and send them to Ocean as they arrive.
-- **`get\_single\_projects`** is a simpler case for retrieving one project by key. We will be needing this method when implementing webhooks.
+- **`get_single_projects`** is a simpler case for retrieving one project by key. We will be needing this method when implementing webhooks.
 
 
 ## Retrieving Issues
