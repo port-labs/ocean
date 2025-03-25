@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, AsyncIterator
+from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
