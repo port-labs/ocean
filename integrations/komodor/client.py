@@ -72,7 +72,7 @@ class KomodorClient:
                 if issue:
                     for single_issue in issue:
                         all_issues_in_cluster.append(single_issue)
-                yield all_issues_in_cluster
+            yield all_issues_in_cluster
 
     async def _get_issues_from_cluster(self, clusters: list[dict[str, Any]]) -> AsyncGenerator[
         list[dict[str, Any]] | None, Any]:

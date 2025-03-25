@@ -39,7 +39,7 @@ async def test_get_all_services(mock_komodor_client: KomodorClient) -> None:
 
 
     with patch.object(
-        mock_komodor_client, "_send_api_request", new_callable=AsyncMock
+        mock_komodor_client, "_send_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [api_response]
 
@@ -66,7 +66,7 @@ async def test_get_all_services_multiple_pages(mock_komodor_client: KomodorClien
     pages = await generate_service_response(NUM_OF_PAGES)
 
     with patch.object(
-        mock_komodor_client, "_send_api_request", new_callable=AsyncMock
+        mock_komodor_client, "_send_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = pages
 
