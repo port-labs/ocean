@@ -63,7 +63,7 @@ class RestClient(HTTPBaseClient):
             logger.debug(f"Fetching page {page} from {path}")
 
             response = await self.send_api_request("GET", path, params=request_params)
-            
+
             # HTTP API returns a list directly, or empty dict for 404
             batch: list[dict[str, Any]] = response if isinstance(response, list) else []
 
