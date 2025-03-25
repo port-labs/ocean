@@ -58,7 +58,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(
             f"Processing batch of {len(groups_batch)} groups for merge requests"
         )
-        async for mrs_batch in client.get_groups_resource(
+        async for merge_requests_batch in client.get_groups_resource(
             groups_batch, "merge_requests"
         ):
-            yield mrs_batch
+            yield merge_requests_batch
