@@ -7,7 +7,7 @@ from client import KomodorClient
 
 def init_client() -> KomodorClient:
     return KomodorClient(api_key=ocean.integration_config["komodor_api_key"],
-                         api_url=ocean.integration_config["server_url"])
+                         api_url=ocean.integration_config["komodor_base_url"])
 
 
 @ocean.on_resync("komodorService")
