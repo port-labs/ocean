@@ -4,7 +4,6 @@ from typing import Any, AsyncIterator, Callable, Optional
 
 from loguru import logger
 from .rest_client import RestClient
-import urllib.parse
 from .utils import convert_glob_to_gitlab_patterns, parse_file_content
 import anyio
 import asyncio

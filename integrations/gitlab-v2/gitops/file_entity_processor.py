@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from port_ocean.core.handlers import JQEntityProcessor
 from loguru import logger
 from helpers.client_factory import create_gitlab_client
