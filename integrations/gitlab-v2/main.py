@@ -5,10 +5,9 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import ProjectResourceConfig
 from helpers.client_factory import create_gitlab_client
 from helpers.utils import ObjectKind
-from integration import ProjectResourceConfig, GitLabFilesResourceConfig
+from integration import GitLabFilesResourceConfig, ProjectResourceConfig
 
 
 @ocean.on_start()

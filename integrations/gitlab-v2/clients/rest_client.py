@@ -1,8 +1,10 @@
-from typing import Any, AsyncIterator, Optional
-from loguru import logger
-from .base_client import HTTPBaseClient
 import base64
+from typing import Any, AsyncIterator, Optional
 from urllib.parse import quote
+
+from loguru import logger
+
+from .base_client import HTTPBaseClient
 
 
 class RestClient(HTTPBaseClient):

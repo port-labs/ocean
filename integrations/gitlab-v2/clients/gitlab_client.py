@@ -2,17 +2,15 @@ import asyncio
 from functools import partial
 from typing import Any, AsyncIterator, Callable, Optional
 
-from loguru import logger
-from .rest_client import RestClient
-from .utils import convert_glob_to_gitlab_patterns, parse_file_content
 import anyio
-import asyncio
+from loguru import logger
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
 
 from .rest_client import RestClient
+from .utils import convert_glob_to_gitlab_patterns, parse_file_content
 
 
 class GitLabClient:
