@@ -12,7 +12,7 @@ from .rest_client import RestClient
 
 
 class GitLabClient:
-    DEFAULT_MIN_ACCESS_LEVEL = 10
+    DEFAULT_MIN_ACCESS_LEVEL = 30
     DEFAULT_PARAMS = {
         "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,
         "all_available": True,

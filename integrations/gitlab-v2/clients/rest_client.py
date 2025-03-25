@@ -63,13 +63,13 @@ class RestClient(HTTPBaseClient):
             logger.debug(f"Fetching page {page} from {path}")
 
             response = await self.send_api_request("GET", path, params=request_params)
-            
+
             if not response:
                 break
-            
+
             yield response
 
-            if len(batch) < page_size:
+            if len(response) < page_size:
                 logger.debug(f"Last page reached for {path}, no more data.")
                 break
 
