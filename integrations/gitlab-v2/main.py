@@ -21,11 +21,10 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     selector = cast(ProjectResourceConfig, event.resource_config).selector
 
-    include_labels = bool(selector.include_labels)
     include_languages = bool(selector.include_languages)
 
     async for projects_batch in client.get_projects(
-        include_labels=include_labels, include_languages=include_languages
+        include_languages=include_languages
     ):
         logger.info(f"Received project batch with {len(projects_batch)} projects")
         yield projects_batch

@@ -26,7 +26,6 @@ class GitLabClient:
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
         include_languages: bool = False,
-        include_labels: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch projects and optionally enrich with languages and/or labels."""
         request_params = self.DEFAULT_PARAMS | (params or {})
@@ -39,10 +38,6 @@ class GitLabClient:
             if include_languages:
                 enriched_batch = await self._enrich_batch(
                     enriched_batch, self.enrich_project_with_languages, max_concurrent
-                )
-            if include_labels:
-                enriched_batch = await self._enrich_batch(
-                    enriched_batch, self.enrich_project_with_labels, max_concurrent
                 )
 
             yield enriched_batch
@@ -73,21 +68,6 @@ class GitLabClient:
         languages = await self.rest.get_project_languages(project_path)
         logger.info(f"Fetched languages for {project_path}: {languages}")
         project["__languages"] = languages
-        yield [project]
-
-    async def enrich_project_with_labels(
-        self, project: dict[str, Any]
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-
-        project_path = project.get("path_with_namespace", str(project["id"]))
-        logger.debug(f"Enriching {project_path} with labels")
-        all_labels = []
-        async for label_batch in self.rest.get_paginated_project_resource(
-            project_path, "labels"
-        ):
-            logger.info(f"Fetched {len(label_batch)} labels for {project_path}")
-            all_labels.extend(label_batch)
-        project["__labels"] = all_labels
         yield [project]
 
     async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
