@@ -7,31 +7,39 @@
       "properties": {
         "status": {
           "type": "string",
-          "title": "Status"
+          "title": "Status",
+          "enum": [
+            "healthy",
+            "unhealthy"
+          ],
+          "enumColors": {
+            "healthy": "green",
+            "unhealthy": "red"
+          }
         },
-        "cluster": {
+        "cluster_name": {
           "type": "string",
           "title": "cluster"
         },
-        "kind": {
+        "workload_kind": {
           "type": "string",
           "title": "kind"
         },
-        "service": {
+        "service_name": {
           "icon": "DefaultProperty",
           "type": "string",
           "title": "Service"
         },
-        "namespace": {
+        "namespace_name": {
           "type": "string",
           "title": "namespace"
         },
-        "lastDeployAt": {
+        "last_deploy_at": {
           "type": "string",
           "title": "Last Deploy At",
           "format": "date-time"
         },
-        "link": {
+        "link_to_komodor": {
           "type": "string",
           "title": "Komodor Link",
           "format": "url"
@@ -46,14 +54,7 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {
-      "workload": {
-        "title": "workload",
-        "target": "workload",
-        "required": false,
-        "many": false
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "komodorRiskViolations",
@@ -132,9 +133,9 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "issue": {
-        "title": "issue",
-        "target": "komodorIssues",
+      "service": {
+        "title": "service",
+        "target": "komodorService",
         "required": false,
         "many": false
       }
@@ -183,21 +184,15 @@
       },
       "required": []
     },
-    "mirrorProperties": {
-      "related_service": {
-        "title": "Related Service",
-        "path": "services.service"
-      }
-    },
+    "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "services": {
-        "title": "services",
+      "service": {
+        "title": "service",
         "target": "komodorService",
         "required": false,
         "many": false
       }
     }
-  }
-]
+  }]

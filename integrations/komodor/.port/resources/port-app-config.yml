@@ -14,26 +14,14 @@ resources:
           properties:
             serviceId: .uid
             status: .status
-            cluster: .cluster
-            kind: .kind
-            namespace: .namespace
-            service: .service
-            link to komodor: .link
+            cluster_name: .cluster
+            workload_kind: .kind
+            namespace_name: .namespace
+            service_name: .service
+            link_to_komodor: .link
             labels: .labels
-            last deploy at: .lastDeploy.endTime | todate
-            last deploy status: .lastDeploy.status
-  - kind: komodorService
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .uid
-          title: .service
-          blueprint: '"komodorService"'
-          properties: {}
-          relations:
-            workload: .service
+            last_deploy_at: .lastDeploy.endTime | todate
+            last_deploy_status: .lastDeploy.status
   - kind: komodorRiskViolations
     selector:
       query: 'true'
@@ -52,18 +40,17 @@ resources:
             createdAt: .createdAt | todate
             lastEvalutaedAt: .lastEvaluatedAt | todate
             checkType: .checkType
-  - kind: komodorRiskViolations
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .komodorUid
-          blueprint: '"komodorRiskViolations"'
-          properties: {}
-          relations:
-            issue: .supportingData.unhealthyService.issueId
+            workloadType: .komodorUid | split("|") | .[0]
+            clusterName: .komodorUid | split("|") | .[1]
+            namespaceName: .komodorUid | split("|") | .[2]
+            workloadName: .komodorUid | split("|") | .[3]
+        relations:
+          service:
+            combinator: '"and"'
+            rules:
+              - property: '"service_name"'
+                operator: '"="'
+                value: .komodorUid | split("|") | .[3]
   - kind: komodorIssues
     selector:
       query: 'true'
@@ -80,16 +67,12 @@ resources:
             link: .link
             summary: .summary
             type: .type
-            workloadName: .summary | split("/") | last | split(" ") | first
-  - kind: komodorIssues
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .link | capture("eventId=(?<eventId>[a-f0-9-]+)") | .eventId
-          title: .summary
-          blueprint: '"komodorIssues"'
-          properties: {}
-          relations:
-            workload: .workloadName
+            workloadName: .summary | split("/") | .[2] | split(" ") | first
+            clusterName: .summary | split("/") | .[0]
+        relations:
+          service:
+            combinator: '"and"'
+            rules:
+              - property: '"service_name"'
+                operator: '"="'
+                value: .summary | split("/") | .[2] | split(" ") | first
