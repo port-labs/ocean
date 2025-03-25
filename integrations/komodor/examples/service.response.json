@@ -1,0 +1,26 @@
+{
+  "annotations": {
+    "deployment.kubernetes.io/revision": "1",
+    "meta.helm.sh/release-name": "komodor-agent",
+    "meta.helm.sh/release-namespace": "komodor"
+  },
+  "cluster": "test",
+  "kind": "Deployment",
+  "labels": {
+    "app.kubernetes.io/instance": "komodor-agent",
+    "app.kubernetes.io/managed-by": "Helm",
+    "app.kubernetes.io/name": "komodor-agent",
+    "app.kubernetes.io/version": "X.X.X",
+    "helm.sh/chart": "komodor-agent-X.X.X"
+  },
+  "lastDeploy": {
+    "endTime": 1737534402,
+    "startTime": 1737534402,
+    "status": "success"
+  },
+  "link": "https://app.komodor.com/services/ACCOUNT_NAME.CLUSTER.SERVICE?workspaceId=null&referer=public-api",
+  "namespace": "komodor",
+  "service": "komodor-agent",
+  "status": "healthy",
+  "uid": "INTERNAL_KOMODOR_UID"
+}

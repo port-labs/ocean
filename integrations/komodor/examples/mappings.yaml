@@ -1,0 +1,35 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: false
+enableMergeEntity: true
+resources:
+  - kind: komodorService
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .uid
+          title: .service
+          blueprint: '"komodorService"'
+          properties:
+            serviceId: .uid
+            status: .status
+            cluster_name: .cluster
+            workload_kind: .kind
+            namespace_name: .namespace
+            service_name: .service
+            link_to_komodor: .link
+            labels: .labels
+            last_deploy_at: .lastDeploy.endTime | todate
+            last_deploy_status: .lastDeploy.status
+  - kind: komodorService
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .uid
+          blueprint: '"komodorService"'
+          properties: {}
+          relations:
+            Workload: .service + "-" + .kind + "-" + .namespace + "-" + .cluster
