@@ -16,6 +16,7 @@ class GithubHandler:
     def __init__(self) -> None:
         self.token = ocean.integration_config["github_access_token"]
         self.base_url = ocean.integration_config["github_base_url"]
+        self.app_host = ocean.integration_config['app_host']
         self.client = http_async_client
         self.headers = {
             'Authorization': f'token {self.token}',
@@ -39,7 +40,11 @@ class GithubHandler:
             response = await self.client.get(url, headers=self.headers)
             match response.status_code:
                 case 200:
-                    return response.json()
+                    # Check if response.json is awaitable
+                    if asyncio.iscoroutinefunction(response.json):
+                        return await response.json()
+                    else:
+                        return response.json()
                 case 429:  # Rate limit exceeded
                     retry_after = int(response.headers.get("Retry-After", backoff_factor))
                     logger.warning(f"Rate limit exceeded. Retrying after {retry_after} seconds.")

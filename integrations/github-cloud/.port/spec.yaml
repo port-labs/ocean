@@ -15,6 +15,10 @@ configurations:
     sensitive: true
     description: "Token for authenticating with GitHub Cloud"
     required: false
+  - name: appHost
+    type: string
+    description: "App Host"
+    required: true
   - name: githubBaseUrl
     type: url
     description: "Base URL for GitHub API"
