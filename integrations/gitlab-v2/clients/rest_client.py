@@ -37,9 +37,7 @@ class RestClient(HTTPBaseClient):
         resource_type: str,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch a paginated group resource (e.g., labels)."""
-        if resource_type not in self.VALID_GROUP_RESOURCES:
-            raise ValueError(f"Unsupported resource type: {resource_type}")
+        """Fetch a paginated group resource (e.g., issues)."""
         path = f"groups/{group_id}/{resource_type}"
         async for batch in self._make_paginated_request(path, params=params):
             if batch:
