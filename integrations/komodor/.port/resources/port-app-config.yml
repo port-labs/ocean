@@ -44,13 +44,22 @@ resources:
             clusterName: .komodorUid | split("|") | .[1]
             namespaceName: .komodorUid | split("|") | .[2]
             workloadName: .komodorUid | split("|") | .[3]
-        relations:
-          service:
-            combinator: '"and"'
-            rules:
-              - property: '"service_name"'
-                operator: '"="'
-                value: .komodorUid | split("|") | .[3]
+          relations:
+            service:
+              combinator: '"and"'
+              rules:
+                - property: '"workload_kind"'
+                  operator: '"="'
+                  value: .komodorUid | split("|") | .[0]
+                - property: '"cluster_name"'
+                  operator: '"="'
+                  value: .komodorUid | split("|") | .[1]
+                - property: '"namespace_name"'
+                  operator: '"="'
+                  value: .komodorUid | split("|") | .[2]
+                - property: '"service_name"'
+                  operator: '"="'
+                  value: .komodorUid | split("|") | .[3]
   - kind: komodorIssues
     selector:
       query: 'true'
@@ -69,10 +78,16 @@ resources:
             type: .type
             workloadName: .summary | split("/") | .[2] | split(" ") | first
             clusterName: .summary | split("/") | .[0]
-        relations:
-          service:
-            combinator: '"and"'
-            rules:
-              - property: '"service_name"'
-                operator: '"="'
-                value: .summary | split("/") | .[2] | split(" ") | first
+          relations:
+            service:
+              combinator: '"and"'
+              rules:
+                - property: '"service_name"'
+                  operator: '"="'
+                  value: .summary | split("/") | .[2] | split(" ") | first
+                - property: '"cluster_name"'
+                  operator: '"="'
+                  value: .summary | split("/") | .[0]
+                - property: '"namespace_name"'
+                  operator: '"="'
+                  value: .summary | split("/") | .[1]

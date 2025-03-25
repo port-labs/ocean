@@ -5,8 +5,7 @@ from port_ocean.utils import http_async_client
 
 from models import IssueBody, IssueScope
 
-MAX_CONCURRENT_REQUESTS = 2
-DEFAULT_PAGE_SIZE = 50
+DEFAULT_PAGE_SIZE = 100
 
 
 class KomodorClient:
@@ -32,13 +31,14 @@ class KomodorClient:
 
     async def get_all_services(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         current_page = 0
+        service_default_page_size = 25
         while True:
             res = await self._send_request(url=f"{self.api_url}/services/search", data={
                 "kind": [
                     "Deployment"
                 ],
                 "pagination": {
-                    "pageSize": DEFAULT_PAGE_SIZE,
+                    "pageSize": service_default_page_size,
                     "page": current_page
                 }
             }, method="POST")
@@ -51,9 +51,10 @@ class KomodorClient:
 
     async def get_risks(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         offset = 0
+        default_risks_page_size = 50
         while True:
             res = await self._send_request(url=f"{self.api_url}/health/risks",
-                                           params={"pageSize": DEFAULT_PAGE_SIZE, "offset": offset,
+                                           params={"pageSize": default_risks_page_size, "offset": offset,
                                                    "checkCategory": ["workload",
                                                                      "infrastructure"],
                                                    "impactGroupType": ["dynamic"]})
@@ -62,7 +63,7 @@ class KomodorClient:
             if not res.get("hasMoreResults"):
                 logger.info("No more health risks pages, breaking.")
                 break
-            offset += DEFAULT_PAGE_SIZE
+            offset += default_risks_page_size
 
     async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], Any]:
         async for cluster in self.get_clusters():

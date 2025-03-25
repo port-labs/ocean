@@ -7,8 +7,8 @@ features:
     section: Kubernetes Stack  # Should be one of the available sections in Port
     resources:
       - kind: komodorService
-      - kind: komodorRiskViolations
       - kind: komodorIssues
+      - kind: komodorRiskViolations
 configurations:
   - name: komodorApiKey
     required: true
