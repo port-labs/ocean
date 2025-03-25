@@ -1,7 +1,7 @@
 [
   {
     "identifier": "komodorService",
-    "title": "komodorService",
+    "title": "Komodor Service",
     "icon": "Komodor",
     "schema": {
       "properties": {
@@ -19,11 +19,11 @@
         },
         "cluster_name": {
           "type": "string",
-          "title": "cluster"
+          "title": "Cluster"
         },
         "workload_kind": {
           "type": "string",
-          "title": "kind"
+          "title": "Kind"
         },
         "service_name": {
           "icon": "DefaultProperty",
@@ -32,21 +32,23 @@
         },
         "namespace_name": {
           "type": "string",
-          "title": "namespace"
+          "title": "Namespace"
         },
         "last_deploy_at": {
           "type": "string",
           "title": "Last Deploy At",
           "format": "date-time"
         },
-        "link_to_komodor": {
+        "komodor_link": {
           "type": "string",
           "title": "Komodor Link",
-          "format": "url"
+          "format": "url",
+          "icon": "LinkOut"
         },
         "labels": {
+          "icon": "JsonEditor",
           "type": "object",
-          "title": "labels"
+          "title": "Labels"
         }
       },
       "required": []
@@ -58,23 +60,19 @@
   },
   {
     "identifier": "komodorRiskViolations",
-    "title": "komodorRiskViolations",
+    "title": "Komodor Risk Violations",
     "icon": "Komodor",
     "schema": {
       "properties": {
-        "komodorUid": {
-          "type": "string",
-          "title": "komodorUid"
-        },
-        "supportingData": {
+        "supporting_data": {
           "icon": "JsonEditor",
           "type": "object",
           "title": "supportingData"
         },
-        "link": {
+        "komodor_link": {
           "icon": "LinkOut",
           "type": "string",
-          "title": "link to komodor",
+          "title": "Komodor Link",
           "format": "url"
         },
         "severity": {
@@ -91,24 +89,24 @@
             "low": "yellow"
           }
         },
-        "createdAt": {
+        "created_at": {
           "type": "string",
           "title": "created at",
           "format": "date-time"
         },
-        "lastEvalutaedAt": {
+        "last_evaluated_at": {
           "icon": "Clock",
           "type": "string",
           "title": "Last Evaluated At",
           "format": "date-time"
         },
-        "checkType": {
+        "check_type": {
           "type": "string",
-          "title": "check type"
+          "title": "Check Type"
         },
         "status": {
           "type": "string",
-          "title": "status",
+          "title": "Status",
           "enum": [
             "open",
             "confirmed",
@@ -134,7 +132,7 @@
     "aggregationProperties": {},
     "relations": {
       "service": {
-        "title": "service",
+        "title": "Service",
         "target": "komodorService",
         "required": false,
         "many": false
@@ -143,35 +141,36 @@
   },
   {
     "identifier": "komodorIssues",
-    "title": "komodorIssues",
+    "title": "Komodor Issues",
     "icon": "Komodor",
     "schema": {
       "properties": {
         "type": {
           "type": "string",
-          "title": "type"
+          "title": "Issue Type"
         },
         "summary": {
           "type": "string",
-          "title": "summary"
+          "title": "Summary"
         },
         "details": {
           "type": "string",
-          "title": "details"
+          "title": "Details"
         },
-        "link": {
+        "komodor_link": {
           "type": "string",
-          "title": "link",
+          "title": "Komodor Link",
+          "icon": "LinkOut",
           "format": "url"
         },
-        "startTime": {
+        "start_time": {
           "type": "string",
           "title": "Start Time",
           "format": "date-time"
         },
         "status": {
           "type": "string",
-          "title": "status",
+          "title": "Status",
           "enum": [
             "open",
             "closed"

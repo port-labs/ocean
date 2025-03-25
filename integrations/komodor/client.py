@@ -81,6 +81,7 @@ class KomodorClient:
             if cluster_name is None:
                 logger.error("Required cluster name parameter is missing")
                 yield None
+                continue
 
             body = IssueBody(scope=IssueScope(cluster=cluster_name)).dict()
             current_page = 0
@@ -91,6 +92,7 @@ class KomodorClient:
                 issues = res.get("data", {}).get("issues", [])
                 if issues is None:
                     yield None
+                    continue
 
                 # enrich issue with cluster name
                 for issue in issues:

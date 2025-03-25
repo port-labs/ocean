@@ -12,13 +12,13 @@ resources:
           title: .service
           blueprint: '"komodorService"'
           properties:
-            serviceId: .uid
+            service_id: .uid
             status: .status
             cluster_name: .cluster
             workload_kind: .kind
             namespace_name: .namespace
             service_name: .service
-            link_to_komodor: .link
+            komodor_link: .link
             labels: .labels
             last_deploy_at: .lastDeploy.endTime | todate
             last_deploy_status: .lastDeploy.status
@@ -33,17 +33,17 @@ resources:
           blueprint: '"komodorRiskViolations"'
           properties:
             status: .status
-            komodorUid: .komodorUid
+            komodor_uid: .komodorUid
             severity: .severity
-            supportingData: .supportingData
-            link to komodor: .link
-            createdAt: .createdAt | todate
-            lastEvalutaedAt: .lastEvaluatedAt | todate
-            checkType: .checkType
-            workloadType: .komodorUid | split("|") | .[0]
-            clusterName: .komodorUid | split("|") | .[1]
-            namespaceName: .komodorUid | split("|") | .[2]
-            workloadName: .komodorUid | split("|") | .[3]
+            supporting_data: .supportingData
+            komodor_link: .link
+            created_at: .createdAt | todate
+            last_evaluated_at: .lastEvaluatedAt | todate
+            check_type: .checkType
+            workload_type: .komodorUid | split("|") | .[0]
+            cluster_name: .komodorUid | split("|") | .[1]
+            namespace_name: .komodorUid | split("|") | .[2]
+            workload_name: .komodorUid | split("|") | .[3]
           relations:
             service:
               combinator: '"and"'
@@ -72,12 +72,12 @@ resources:
           properties:
             details: .details
             status: .status
-            startTime: .startTime | todate
-            link: .link
+            start_time: .startTime | todate
+            komodor_link: .link
             summary: .summary
             type: .type
-            workloadName: .summary | split("/") | .[2] | split(" ") | first
-            clusterName: .summary | split("/") | .[0]
+            workload_name: .summary | split("/") | .[2] | split(" ") | first
+            cluster_name: .summary | split("/") | .[0]
           relations:
             service:
               combinator: '"and"'
