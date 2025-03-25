@@ -14,7 +14,7 @@ from bitbucket_cloud.webhook_processors.processors.pull_request_webhook_processo
 from bitbucket_cloud.webhook_processors.processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
-from bitbucket_cloud.webhook.processors.push import (
+from bitbucket_cloud.webhook_processors.processors.gitops_push_webhook_processor import (
     PushWebhookProcessor,
 )
 from initialize_client import init_client, init_webhook_client

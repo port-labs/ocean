@@ -6,11 +6,13 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from bitbucket_cloud.helpers.utils import ObjectKind
-from bitbucket_cloud.webhook.webhook_client import BitbucketWebhookClient
+from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
 
 
 with patch("initialize_client.init_webhook_client") as mock_init_client:
-    from bitbucket_cloud.webhook.processors.push import PushWebhookProcessor
+    from bitbucket_cloud.webhook_processors.processors.gitops_push_webhook_processor import (
+        PushWebhookProcessor,
+    )
 
 
 @pytest.fixture
@@ -49,7 +51,7 @@ class TestPushWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id", headers={"x-event-key": event_key}, payload={}
         )
-        result = await push_webhook_processor.should_process_event(event)
+        result = await push_webhook_processor._should_process_event(event)
         assert result == expected
 
     @pytest.mark.asyncio

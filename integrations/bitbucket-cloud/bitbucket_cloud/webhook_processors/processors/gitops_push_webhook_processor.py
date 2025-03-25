@@ -5,7 +5,9 @@ from bitbucket_cloud.helpers.utils import ObjectKind
 from port_ocean.context.ocean import ocean
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from bitbucket_cloud.webhook.processors._base import _BitbucketAbstractWebhookProcessor
+from bitbucket_cloud.webhook_processors.processors._bitbucket_abstract_webhook_processor import (
+    _BitbucketAbstractWebhookProcessor,
+)
 from port_ocean.context.event import event
 from integration import BitbucketAppConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -21,7 +23,7 @@ class PushWebhookProcessor(_BitbucketAbstractWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.REPOSITORY]
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
         return event.headers.get("x-event-key") == "repo:push"
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:

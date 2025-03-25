@@ -215,6 +215,7 @@ class BitbucketClient:
         return await self._send_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )
+
     async def retrieve_diff_stat(
         self, repo: str, old_hash: str, new_hash: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
