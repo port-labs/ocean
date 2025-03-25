@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, AsyncIterator
+from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -46,7 +46,6 @@ class TestGitLabClient:
             }
         ]
         mock_languages = {"Python": 50.0, "JavaScript": 30.0}
-        mock_labels = [{"id": "label1", "title": "Bug"}]
 
         with (
             patch.object(client.rest, "get_paginated_resource") as mock_get_resource,
@@ -55,21 +54,10 @@ class TestGitLabClient:
                 "get_project_languages",
                 AsyncMock(return_value=mock_languages),
             ) as mock_get_languages,
-            patch.object(
-                client.rest, "get_paginated_project_resource"
-            ) as mock_get_labels,
         ):
 
             # Mock get_resource to yield projects
             mock_get_resource.return_value = async_mock_generator([mock_projects])
-
-            # Mock get_project_resource to yield labels
-            async def mock_labels_generator(
-                *args: Any, **kwargs: Any
-            ) -> AsyncIterator[list[dict[str, Any]]]:
-                yield mock_labels
-
-            mock_get_labels.return_value = mock_labels_generator()
 
             # Act
             results = []
@@ -78,7 +66,6 @@ class TestGitLabClient:
                 params=params,
                 max_concurrent=1,
                 include_languages=True,
-                include_labels=True,
             ):
                 results.extend(batch)
 
@@ -86,9 +73,7 @@ class TestGitLabClient:
             assert len(results) == 1  # One project in the batch
             assert results[0]["name"] == "Test Project"
             assert results[0]["__languages"] == mock_languages
-            assert results[0]["__labels"] == mock_labels
             mock_get_languages.assert_called_once_with("test/test-project")
-            mock_get_labels.assert_called_once_with("test/test-project", "labels")
 
     async def test_get_groups(self, client: GitLabClient) -> None:
         """Test group fetching delegates to REST client"""
@@ -109,7 +94,7 @@ class TestGitLabClient:
             assert len(results) == 1
             assert results[0]["name"] == "Test Group"
             mock_get_resource.assert_called_once_with(
-                "groups", params={"min_access_level": 10, "all_available": True}
+                "groups", params={"min_access_level": 30, "all_available": True}
             )
 
     async def test_get_group_resource(self, client: GitLabClient) -> None:

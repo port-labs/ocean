@@ -13,11 +13,6 @@ from gitops.file_entity_processor import GitLabFileProcessor
 
 
 class ProjectSelector(Selector):
-    include_labels: bool = Field(
-        alias="includeLabels",
-        default=False,
-        description="Whether to include the labels of the project, defaults to false",
-    )
     include_languages: bool = Field(
         alias="includeLanguages",
         default=False,

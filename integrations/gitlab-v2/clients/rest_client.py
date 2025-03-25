@@ -71,7 +71,6 @@ class RestClient(HTTPBaseClient):
             batch: list[dict[str, Any]] = response if isinstance(response, list) else []
 
             if not batch:
-                logger.debug(f"No more records to fetch for {path}.")
                 break
 
             yield batch
