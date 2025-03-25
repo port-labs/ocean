@@ -3,7 +3,7 @@ from typing import Any, Dict
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 
-from helpers.client_factory import create_gitlab_client
+from clients.client_factory import create_gitlab_client
 
 FILE_PROPERTY_PREFIX = "file://"
 
