@@ -46,7 +46,7 @@ class KomodorClient:
 
             current_page = res.get("meta", {}).get("nextPage", None)
             if not current_page:
-                logger.info("No more service pages, breaking.")
+                logger.debug("No more service pages, breaking.")
                 break
 
     async def get_risks(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -61,7 +61,7 @@ class KomodorClient:
             yield res.get("violations", [])
 
             if not res.get("hasMoreResults"):
-                logger.info("No more health risks pages, breaking.")
+                logger.debug("No more health risks pages, breaking.")
                 break
             offset += default_risks_page_size
 
@@ -98,5 +98,5 @@ class KomodorClient:
                 yield issues
                 current_page = res.get("meta", {}).get("nextPage", None)
                 if not current_page:
-                    logger.info("No more issues pages, breaking.")
+                    logger.debug("No more issues pages, breaking.")
                     break
