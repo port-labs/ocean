@@ -138,18 +138,6 @@ class GitLabClient:
                 )
                 yield resource_batch
 
-    async def get_project_resource(
-        self,
-        project_path: str,
-        resource_type: str,
-        params: Optional[dict[str, Any]] = None,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        encoded_project_path = urllib.parse.quote(project_path, safe="")
-        async for batch in self.rest.get_project_resource(
-            encoded_project_path, resource_type, params
-        ):
-            yield batch
-
     async def process_file(
         self,
         file: dict[str, Any],
@@ -201,16 +189,15 @@ class GitLabClient:
         params = {"scope": "blobs", "search_type": "advanced"}
         for pattern in patterns:
             params["search"] = f"path:{pattern}"
-            try:
-                async for batch in self.get_project_resource(repo, "search", params):
-                    if batch:
-                        processed_batch = []
-                        async for processed_file in self._process_batch(batch, repo):
-                            processed_batch.append(processed_file)
-                        if processed_batch:
-                            yield processed_batch
-            except Exception as e:
-                logger.error(f"Error searching in {repo}: {str(e)}")
+            async for batch in self.rest.get_paginated_project_resource(
+                repo, "search", params
+            ):
+                if batch:
+                    processed_batch = []
+                    async for processed_file in self._process_batch(batch, repo):
+                        processed_batch.append(processed_file)
+                    if processed_batch:
+                        yield processed_batch
 
     async def _search_in_group(
         self,
@@ -222,21 +209,19 @@ class GitLabClient:
         for pattern in patterns:
             params["search"] = f"path:{pattern}"
             group_id = group["id"]
-            try:
-                async for batch in self.rest.get_group_resource(
-                    group_id, "search", params
-                ):
-                    logger.info(f"Received search batch for {group_context}")
-                    if batch:
-                        processed_batch = []
-                        async for processed_file in self._process_batch(
-                            batch, group_context
-                        ):
-                            processed_batch.append(processed_file)
-                        if processed_batch:
-                            yield processed_batch
-            except Exception as e:
-                logger.error(f"Error searching in {group_context}: {str(e)}")
+
+            async for batch in self.rest.get_paginated_group_resource(
+                group_id, "search", params
+            ):
+                logger.info(f"Received search batch for {group_context}")
+                if batch:
+                    processed_batch = []
+                    async for processed_file in self._process_batch(
+                        batch, group_context
+                    ):
+                        processed_batch.append(processed_file)
+                    if processed_batch:
+                        yield processed_batch
 
     async def search_files(
         self,
@@ -246,9 +231,10 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         logger.info(f"Searching for files matching pattern: '{path_pattern}'")
         patterns = convert_glob_to_gitlab_patterns(path_pattern)
+        semaphore = asyncio.Semaphore(max_concurrent)
 
         if repositories:
-            logger.info(f"Searching in {len(repositories)} specific repositories")
+            logger.info(f"Searching in {len(repositories)} repositories")
             for repo in repositories:
                 logger.debug(f"Searching repo '{repo}' for pattern '{path_pattern}'")
                 async for batch in self._search_in_repository(repo, patterns):
@@ -257,7 +243,6 @@ class GitLabClient:
             logger.info("Searching across all accessible groups")
             async for groups in self.get_groups():
                 logger.debug(f"Processing batch of {len(groups)} groups")
-                semaphore = asyncio.Semaphore(max_concurrent)
                 tasks = [
                     semaphore_async_iterator(
                         semaphore, partial(self._search_in_group, group, patterns)

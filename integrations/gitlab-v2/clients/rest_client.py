@@ -2,7 +2,7 @@ from typing import Any, AsyncIterator, Optional
 from loguru import logger
 from .base_client import HTTPBaseClient
 import base64
-import urllib.parse
+from urllib.parse import quote
 
 
 class RestClient(HTTPBaseClient):
@@ -12,15 +12,11 @@ class RestClient(HTTPBaseClient):
     async def get_paginated_resource(
         self, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
-<<<<<<< HEAD
-        try:
-            async for batch in self._make_paginated_request(resource_type, params):
-=======
         """Fetch a paginated resource (e.g., projects, groups)."""
         async for batch in self._make_paginated_request(resource_type, params=params):
             yield batch
 
-    async def get_project_resource(
+    async def get_paginated_project_resource(
         self,
         project_path: str,
         resource_type: str,
@@ -31,7 +27,6 @@ class RestClient(HTTPBaseClient):
         path = f"projects/{encoded_project_path}/{resource_type}"
         async for batch in self._make_paginated_request(path, params=params):
             if batch:
->>>>>>> 894478946a18175517e98dc740f6c87d3407cb3b
                 yield batch
 
     async def get_paginated_group_resource(
@@ -44,61 +39,16 @@ class RestClient(HTTPBaseClient):
         if resource_type not in self.VALID_GROUP_RESOURCES:
             raise ValueError(f"Unsupported resource type: {resource_type}")
         path = f"groups/{group_id}/{resource_type}"
-        request_params = self.RESOURCE_PARAMS.get(resource_type, {})
-        async for batch in self._make_paginated_request(path, params=request_params):
+        async for batch in self._make_paginated_request(path, params=params):
             if batch:
                 yield batch
 
-<<<<<<< HEAD
-        if params:
-            request_params.update(params)
-
-        try:
-            async for batch in self._make_paginated_request(
-                path,
-                params=request_params,
-                page_size=self.DEFAULT_PAGE_SIZE,
-            ):
-                if batch:
-                    yield batch
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch {resource_type} for group {group_id}: {str(e)}"
-            )
-            raise
-=======
     async def get_project_languages(
         self, project_path: str, params: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
         encoded_project_path = quote(project_path, safe="")
         path = f"projects/{encoded_project_path}/languages"
         return await self.send_api_request("GET", path, params=params or {})
->>>>>>> 894478946a18175517e98dc740f6c87d3407cb3b
-
-    async def get_project_resource(
-        self,
-        project_path: str,
-        resource_type: str,
-        params: Optional[dict[str, Any]] = None,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-
-        path = f"projects/{project_path}/{resource_type}"
-
-        request_params = params or {}
-
-        try:
-            async for batch in self._make_paginated_request(
-                path,
-                params=request_params,
-                page_size=self.DEFAULT_PAGE_SIZE,
-            ):
-                if batch:
-                    yield batch
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch {resource_type} for project {project_path}: {str(e)}"
-            )
-            raise
 
     async def _make_paginated_request(
         self,
@@ -133,43 +83,26 @@ class RestClient(HTTPBaseClient):
     async def get_file_content(
         self, project_id: str, file_path: str, ref: str = "main"
     ) -> Optional[str]:
-        """
-        Get the content of a file from a repository.
 
-        Args:
-            project_id: The ID or URL-encoded path of the project
-            file_path: The path of the file inside the repository
-            ref: The name of the branch, tag or commit
+        encoded_project_id = quote(str(project_id), safe="")
+        encoded_file_path = quote(file_path, safe="")
 
-        Returns:
-            The file content as a string if found, None otherwise
-        """
-        try:
-            encoded_project_id = urllib.parse.quote(str(project_id), safe="")
-            encoded_file_path = urllib.parse.quote(file_path, safe="")
+        path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
+        params = {"ref": ref}
 
-            path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
-            params = {"ref": ref}
-
-            response = await self.send_api_request("GET", path, params=params)
-            if not response:
-                logger.warning(
-                    f"No file content returned for {file_path} in project {project_id}"
-                )
-                return None
-
-            content = response.get("content", "")
-            if not content:
-                return None
-
-            try:
-                return base64.b64decode(content).decode("utf-8")
-            except Exception as e:
-                logger.error(f"Failed to decode file content: {str(e)}")
-                return None
-
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch file {file_path} from project {project_id}: {str(e)}"
+        response = await self.send_api_request("GET", path, params=params)
+        if not response:
+            logger.warning(
+                f"No file content returned for {file_path} in project {project_id}"
             )
+            return None
+
+        content = response["content"]
+        if not content:
+            return None
+
+        try:
+            return base64.b64decode(content).decode("utf-8")
+        except Exception as e:
+            logger.error(f"Failed to decode file content: {str(e)}")
             return None

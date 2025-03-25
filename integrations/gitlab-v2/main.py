@@ -9,7 +9,7 @@ from integration import ProjectResourceConfig
 from helpers.client_factory import create_gitlab_client
 from helpers.utils import ObjectKind
 from integration import ProjectResourceConfig, GitLabFilesResourceConfig
-from gitops.utils import get_file_paths
+
 
 @ocean.on_start()
 async def on_start() -> None:
@@ -24,16 +24,6 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     include_labels = bool(selector.include_labels)
     include_languages = bool(selector.include_languages)
-
-
-    params: dict[str, bool | list[str]] = {
-        "includeLabels": include_labels,
-    }
-
-    if event.resource_config:
-        mappings = event.resource_config.port.entity.mappings
-        if file_paths := get_file_paths(mappings):
-            params["filePaths"] = file_paths
 
     async for projects_batch in client.get_projects(
         include_labels=include_labels, include_languages=include_languages
@@ -75,25 +65,11 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield mrs_batch
 
 
-@ocean.on_resync(ObjectKind.LABELS)
-async def on_resync_labels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_gitlab_client()
-
-    async for groups_batch in client.get_groups():
-        logger.info(f"Processing batch of {len(groups_batch)} groups for labels")
-        async for labels_batch in client.get_group_resource(groups_batch, "labels"):
-            yield labels_batch
-
-
 @ocean.on_resync(ObjectKind.FILE)
 async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     selector = cast(GitLabFilesResourceConfig, event.resource_config).selector
-
-    if not selector.files or not selector.files.path:
-        logger.warning("No path provided in the selector, skipping fetching files")
-        return
 
     search_path = selector.files.path
 

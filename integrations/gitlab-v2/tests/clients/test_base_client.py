@@ -135,29 +135,6 @@ class TestGitLabClient:
             assert results[0]["title"] == "Test Issue"
             mock_get_group_resource.assert_called_once_with("123", "issues")
 
-    async def test_get_project_resource(self, client: GitLabClient) -> None:
-        """Test project resource fetching delegates to REST client"""
-        # Arrange
-        mock_files: list[dict[str, Any]] = [{"path": "test.txt", "data": "content"}]
-        project_path = "group/project"
-
-        with patch.object(
-            client.rest,
-            "get_project_resource",
-            return_value=async_mock_generator([mock_files]),
-        ) as mock_get_project_resource:
-            # Act
-            results: list[dict[str, Any]] = []
-            async for batch in client.get_project_resource(project_path, "search"):
-                results.extend(batch)
-
-            # Assert
-            assert len(results) == 1
-            assert results[0]["path"] == "test.txt"
-            mock_get_project_resource.assert_called_once_with(
-                "group%2Fproject", "search", None
-            )
-
     async def test_search_files_in_repos(self, client: GitLabClient) -> None:
         """Test file search in specific repositories"""
         # Arrange
@@ -169,7 +146,7 @@ class TestGitLabClient:
 
         with patch.object(
             client.rest,
-            "get_project_resource",
+            "get_paginated_project_resource",
             return_value=async_mock_generator([raw_files]),
         ):
             with patch.object(
@@ -196,7 +173,7 @@ class TestGitLabClient:
         ):
             with patch.object(
                 client.rest,
-                "get_group_resource",
+                "get_paginated_group_resource",
                 return_value=async_mock_generator([raw_files]),
             ):
                 with patch.object(
