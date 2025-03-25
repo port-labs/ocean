@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "komodor-new"
+name = "komodor"
 version = "0.1.0"
 description = "Komodor Ocean Integration"
 authors = ["Yotam Dekel <yotam@komodor.io>"]
@@ -58,7 +58,7 @@ name = "Improved Documentation"
 showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.0.0,<2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
