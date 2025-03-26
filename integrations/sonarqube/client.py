@@ -243,8 +243,6 @@ class SonarQubeClient:
         """
         logger.info(f"Fetching all measures in : {project_key}")
         response = None
-        if not self.metrics:
-            return []
         response = await self._send_api_request(
             endpoint=Endpoints.MEASURES,
             query_params={
