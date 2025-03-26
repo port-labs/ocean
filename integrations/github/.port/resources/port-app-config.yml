@@ -1,41 +1,48 @@
 resources:
   - kind: repository
     selector:
-      query: "true"
+      query: 'true'
+      teams: true
     port:
       entity:
         mappings:
-          identifier: .full_name | gsub("/"; "-")
+          identifier: .full_name
           title: .name
           blueprint: '"githubRepository"'
           properties:
-            name: .name
-            description: .description
-            visibility: .visibility
-            defaultBranch: .default_branch
+            readme: file://README.md
             url: .html_url
-            language: .language
-            stars: .stargazers_count
-            forks: .forks_count
-
+            defaultBranch: .default_branch
+          relations:
+            githubTeams: '[.teams[].id | tostring]'
+    
   - kind: pull-request
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
-          identifier: (.base.repo.full_name | gsub("/"; "-")) + "-pr-" + (.number | tostring)
+          identifier: .id|tostring
           title: .title
           blueprint: '"githubPullRequest"'
           properties:
-            title: .title
-            state: if .merged then "merged" elif .state == "open" then "open" else "closed" end
-            url: .html_url
-            creator: .user.login
-            repository: .base.repo.full_name
+            status: .status
+            closedAt: .closed_at
+            updatedAt: .updated_at
+            mergedAt: .merged_at
             createdAt: .created_at
-          relations:
-            repository: .base.repo.full_name | gsub("/"; "-")
+            prNumber: .number
+            link: .html_url
+            branch: .head.ref
+            leadTimeHours: >-
+              (.created_at as $createdAt | .merged_at as $mergedAt | ($createdAt
+              | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)
+              as $createdTimestamp | ($mergedAt | if . == null then null else
+              sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end)
+              as $mergedTimestamp | if $mergedTimestamp == null then null else
+              (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) /
+              100) end)
+          relations: {}
 
   - kind: issue
     selector:
@@ -47,12 +54,11 @@ resources:
           title: .title
           blueprint: '"githubIssue"'
           properties:
-            title: .title
             state: .state
             url: .html_url
             creator: .user.login
             repository: .repository.full_name
-            labels: [.labels[].name]
+            labels: "[.labels[].name]"
           relations:
             repository: .repository.full_name | gsub("/"; "-")
 
@@ -66,7 +72,6 @@ resources:
           title: .name
           blueprint: '"githubTeam"'
           properties:
-            name: .name
             description: .description
             privacy: .privacy
             membersCount: .members_count
@@ -81,7 +86,6 @@ resources:
           title: .name
           blueprint: '"githubWorkflow"'
           properties:
-            name: .name
             state: .state
             path: .path
             repository: .repository.full_name

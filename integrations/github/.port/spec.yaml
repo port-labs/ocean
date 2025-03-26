@@ -1,5 +1,7 @@
+title: PagerDuty
 description: GitHub integration for Port Ocean
-icon: Github
+icon: github
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github/
 features:
   - type: exporter
     section: Git
@@ -10,7 +12,7 @@ features:
       - kind: team
       - kind: workflow
 configurations:
-  - name: github_token
+  - name: token
     required: true
     type: string
     sensitive: true
@@ -19,18 +21,12 @@ configurations:
     required: true
     type: string
     description: GitHub organization name
-  - name: webhook_secret
+  - name: baseUrl
+    required: false
+    type: url
+    description: The Port Ocean Base Url. To be used for setting th endpoint for Webhooks created in Github
+  - name: githubApiVersion
+    required: false
     type: string
-    sensitive: true
-    description: Secret for GitHub webhook (optional, for real-time updates)
-    default_value: ${GITHUB_WEBHOOK_SECRET}
-
-webhook:
-  type: github
-  secret: ${GITHUB_WEBHOOK_SECRET}
-  events:
-    - repository
-    - pull_request
-    - issues
-    - team
-    - workflow_run
+    default: "2022-11-28"
+    description: The GitHub API version to use when setting up a Github Client
