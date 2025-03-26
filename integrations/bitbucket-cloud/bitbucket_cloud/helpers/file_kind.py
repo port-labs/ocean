@@ -1,14 +1,23 @@
 import fnmatch
 import json
-import os
-from typing import Dict, List, Any, Set, AsyncGenerator
+import re
+from typing import Dict, List, Any, AsyncGenerator, Set
 from loguru import logger
 import yaml
 from integration import BitbucketFilePattern, BitbucketFileSelector
-from client import BitbucketClient
+from bitbucket_cloud.client import BitbucketClient
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+
 
 JSON_FILE_SUFFIX = ".json"
-YAML_FILE_SUFFIX = [".yaml", ".yml"]
+YAML_FILE_SUFFIX = (".yaml", ".yml")
+
+
+def calculate_required_depth(pattern: str, depth: int) -> int:
+    """
+    Calculate the required depth for recursive search based on the pattern.
+    """
+    return depth if "**/" in pattern else min(pattern.count("/") + 1, depth)
 
 
 def calculate_base_path(selector: BitbucketFileSelector) -> str:
@@ -16,27 +25,23 @@ def calculate_base_path(selector: BitbucketFileSelector) -> str:
         return "/"
 
     file_path = selector.files.path
-    if "**/" in file_path:
-        base_dir = file_path.split("**/")[0]
-    elif "*" in file_path and "/" in file_path:
-        base_dir = file_path.split("*")[0]
-    elif "[" in file_path and "]" in file_path and "/" in file_path:
-        base_dir = file_path.split("[")[0]
-    elif "/" in file_path:
-        if file_path.endswith("/"):
-            return file_path
-        last_slash = file_path.rfind("/")
-        return file_path[: last_slash + 1] if last_slash != -1 else "/"
-    else:
+    logger.debug(f"File path: {file_path}")
+    if file_path.startswith("**/"):
         return "/"
 
-    if base_dir and not base_dir.endswith("/"):
-        last_slash = base_dir.rfind("/")
-        base_dir = base_dir[: last_slash + 1] if last_slash != -1 else f"{base_dir}/"
-    return base_dir or "/"
+    # Match the base directory up to the first wildcard or pattern character
+    base_match = re.match(r"^([^*[?]*/)?", file_path)
+    logger.debug(f"Base match: {base_match}")
+    base_dir = base_match[0] if base_match else "/"
+
+    # Ensure the base directory ends with a slash
+    if not base_dir.endswith("/"):
+        base_dir = f"{base_dir}/"
+
+    return base_dir
 
 
-async def _match_files_with_pattern(
+def _match_files_with_pattern(
     files: List[Dict[str, Any]], pattern: str
 ) -> List[Dict[str, Any]]:
     """
@@ -45,40 +50,72 @@ async def _match_files_with_pattern(
     if not pattern:
         return files
 
-    matched_files = []
+    paths = [file.get("path", "") for file in files]
+    matched_paths: Set[str] = set()
 
-    for file in files:
-        file_path = file.get("path", "")
+    if pattern.startswith("**/"):
+        root_pattern = pattern[3:]  # Match files in root directory
+        matched_paths.update(
+            path
+            for path in paths
+            if fnmatch.fnmatch(path, root_pattern.replace("**", "*"))
+        )
 
-        # Handle patterns with **/ in the middle (e.g., "path/**/file.yaml")
-        if "**/" in pattern:
-            # Split the pattern into prefix and suffix around the first **/
-            parts = pattern.split("**/", 1)
-            prefix = parts[0]
-            suffix = parts[1] if len(parts) > 1 else ""
+    matched_paths.update(
+        path for path in paths if fnmatch.fnmatch(path, pattern.replace("**", "*"))
+    )
 
-            if prefix and suffix:
-                if file_path.startswith(prefix) and file_path.endswith(suffix):
-                    matched_files.append(file)
-                    continue
-            elif prefix:
-                if file_path.startswith(prefix):
-                    matched_files.append(file)
-                    continue
-            elif suffix:
-                if file_path.endswith(suffix) or fnmatch.fnmatch(
-                    os.path.basename(file_path), suffix
-                ):
-                    matched_files.append(file)
-                    continue
-        elif fnmatch.fnmatch(file_path, pattern):
-            matched_files.append(file)
-            continue
-        elif pattern.endswith("/") and file_path.startswith(pattern):
-            matched_files.append(file)
-            continue
+    return [file for file in files if file.get("path", "") in matched_paths]
 
-    return matched_files
+
+async def process_repository(
+    repo_slug: str,
+    pattern: str,
+    client: BitbucketClient,
+    base_path: str,
+    skip_parsing: bool,
+    batch_size: int,
+    depth: int = 2,
+) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    """
+    Process a single repository to find matching files.
+    """
+    try:
+        max_depth = calculate_required_depth(pattern, depth)
+        query_params = {
+            "pagelen": batch_size,
+            "max_depth": max_depth,
+            "q": 'type="commit_file"',
+        }
+
+        repo = await client.get_repository(repo_slug)
+        branch = repo.get("mainbranch", {}).get("name", "master")
+
+        async for files_batch in client.get_directory_contents(
+            repo_slug, branch=branch, path=base_path, params=query_params
+        ):
+            matched_files = _match_files_with_pattern(files_batch, pattern)
+            logger.debug(f"Matched files: {matched_files}")
+            tasks = [
+                retrieve_matched_file_contents([file], client, repo_slug, branch, repo)
+                for file in matched_files
+            ]
+
+            async for file_results in stream_async_iterators_tasks(*tasks):
+                if skip_parsing:
+                    yield file_results
+                else:
+                    logger.debug(f"Result: {file_results}")
+                    parsed_results = parse_file(file_results)
+                    logger.debug(f"Parsed results: {parsed_results}")
+                    yield parsed_results
+
+        logger.info(
+            f"Finished scanning {repo_slug}, found {len(matched_files)} matching file paths"
+        )
+    except Exception as e:
+        logger.error(f"Error scanning files in repository {repo_slug}: {str(e)}")
+        return
 
 
 async def process_file_patterns(
@@ -89,11 +126,12 @@ async def process_file_patterns(
     batch_size: int = 100,
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """
-    Process file patterns and retrieve matching files efficiently.
+    Process file patterns and retrieve matching files efficiently using concurrent processing.
     """
     pattern = file_pattern.path
     repos = file_pattern.repos
     skip_parsing = file_pattern.skip_parsing
+    depth = file_pattern.depth
 
     if not repos:
         logger.warning("No repositories specified - skipping file processing")
@@ -101,38 +139,20 @@ async def process_file_patterns(
 
     logger.info(f"Searching for pattern '{pattern}' in {len(repos)} repositories")
 
-    processed_repos: Set[str] = set()
-
-    for repo_slug in repos:
-        if repo_slug in processed_repos:
-            continue
-        processed_repos.add(repo_slug)
-        try:
-            query_params = {
-                "pagelen": batch_size,
-                "max_depth": 2,
-                "q": 'type="commit_file"',
-            }
-
-            repo = await client.get_repository(repo_slug)
-            branch = repo.get("mainbranch", {}).get("name", "master")
-            async for files_batch in client.get_directory_contents(
-                repo_slug, branch=branch, path=base_path, params=query_params
-            ):
-                matched_files = await _match_files_with_pattern(files_batch, pattern)
-                async for matched_file in retrieve_matched_file_contents(
-                    matched_files, client, repo_slug, branch, repo
-                ):
-                    if skip_parsing:
-                        yield [matched_file]
-                    else:
-                        yield parse_file(matched_file)
-            logger.info(
-                f"Finished scanning {repo_slug}, found {len(matched_files)} matching file paths"
-            )
-        except Exception as e:
-            logger.error(f"Error scanning files in repository {repo_slug}: {str(e)}")
-            continue
+    tasks = [
+        process_repository(
+            repo_slug=repo_slug,
+            pattern=pattern,
+            client=client,
+            base_path=base_path,
+            skip_parsing=skip_parsing,
+            batch_size=batch_size,
+            depth=depth,
+        )
+        for repo_slug in repos
+    ]
+    async for results in stream_async_iterators_tasks(*tasks):
+        yield results
 
 
 async def retrieve_matched_file_contents(

@@ -25,7 +25,7 @@ from integration import (
 from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
 )
-from helpers.file_kind import (
+from bitbucket_cloud.helpers.file_kind import (
     process_file_patterns,
     calculate_base_path,
 )

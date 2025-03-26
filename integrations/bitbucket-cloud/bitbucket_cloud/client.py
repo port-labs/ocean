@@ -166,12 +166,6 @@ class BitbucketClient:
             )
             yield repos
 
-    async def get_repository(self, repo_slug: str) -> dict[str, Any]:
-        """Get a specific repository by slug."""
-        return await self._send_api_request(
-            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
-        )
-
     async def get_directory_contents(
         self,
         repo_slug: str,
@@ -181,10 +175,11 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get contents of a directory."""
-        params = {
-            "max_depth": max_depth,
-            "pagelen": PAGE_SIZE,
-        }
+        if params is None:
+            params = {
+                "max_depth": max_depth,
+                "pagelen": PAGE_SIZE,
+            }
         async for contents in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
             params=params,
@@ -224,6 +219,7 @@ class BitbucketClient:
         return await self._send_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )
+
     async def get_repository_files(self, repo: str, branch: str, path: str) -> Any:
         """Get the content of a file."""
         response = await self._send_api_request(

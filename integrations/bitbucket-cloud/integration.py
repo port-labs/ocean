@@ -68,6 +68,11 @@ class BitbucketFilePattern(BaseModel):
         alias="skipParsing",
         description="Skip parsing the files and just return the raw file content",
     )
+    depth: int = Field(
+        default=20,
+        alias="depth",
+        description="Specify the depth of the files to fetch",
+    )
 
 
 class BitbucketFileSelector(Selector):
