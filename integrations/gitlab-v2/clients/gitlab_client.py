@@ -8,10 +8,12 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
+from urllib.parse import quote
+
+import fnmatch
 
 from .rest_client import RestClient
 from .utils import convert_glob_to_gitlab_patterns, parse_file_content
-
 
 class GitLabClient:
     DEFAULT_MIN_ACCESS_LEVEL = 30
@@ -158,6 +160,19 @@ class GitLabClient:
         for completed in asyncio.as_completed(tasks):
             yield await completed
 
+    def _post_search_filter(self, full_path: str, desired_glob: str) -> bool:
+        """
+        Check if the full_path matches the desired_glob pattern.
+
+        Args:
+            full_path (str): The complete file path to be checked.
+            desired_glob (str): The glob pattern to match against.
+
+        Returns:
+            bool: True if full_path matches the desired_glob pattern, False otherwise.
+        """
+        return fnmatch.fnmatch(full_path, desired_glob)
+
     async def _search_in_repository(
         self,
         repo: str,
@@ -170,8 +185,12 @@ class GitLabClient:
                 repo, "search", params
             ):
                 if batch:
+                    filtered_batch = [
+                        file for file in batch
+                        if self._post_search_filter(file.get("path", ""), pattern)
+                    ]
                     processed_batch = []
-                    async for processed_file in self._process_batch(batch, repo):
+                    async for processed_file in self._process_batch(filtered_batch, repo):
                         processed_batch.append(processed_file)
                     if processed_batch:
                         yield processed_batch
@@ -192,10 +211,12 @@ class GitLabClient:
             ):
                 logger.info(f"Received search batch for {group_context}")
                 if batch:
+                    filtered_batch = [
+                        file for file in batch
+                        if self._post_search_filter(file.get("path", ""), pattern)
+                    ]
                     processed_batch = []
-                    async for processed_file in self._process_batch(
-                        batch, group_context
-                    ):
+                    async for processed_file in self._process_batch(filtered_batch, group_context):
                         processed_batch.append(processed_file)
                     if processed_batch:
                         yield processed_batch
@@ -233,3 +254,15 @@ class GitLabClient:
         self, project_id: str, file_path: str, ref: str = "main"
     ) -> Optional[str]:
         return await self.rest.get_file_content(project_id, file_path, ref)
+        
+    async def file_exists(self, project_id: str, scope: str, query: str) -> bool:
+
+        params = {
+            "scope": scope,
+            "search": query,
+        }
+        encoded_project_path = quote(project_id, safe="")
+        
+        response = await self.rest.send_api_request("GET", f"projects/{encoded_project_path}/search", params)
+        
+        return bool(response)  # True if response has any data (non-empty list), False otherwise

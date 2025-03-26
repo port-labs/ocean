@@ -91,9 +91,6 @@ class RestClient(HTTPBaseClient):
 
         response = await self.send_api_request("GET", path, params=params)
         if not response:
-            logger.warning(
-                f"No file content returned for {file_path} in project {project_id}"
-            )
             return None
 
         content = response["content"]
