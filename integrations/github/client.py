@@ -115,26 +115,27 @@ class GitHubClient:
         params["per_page"] = PAGE_SIZE
         page = 1
 
-        while True:
-            params["page"] = page
-            response = await self._send_api_request(endpoint, method=method, params=params)
-            
-            if not response:
-                break
+        try:
+            while True:
+                params["page"] = page
+                response = await self._send_api_request(endpoint, method=method, params=params)
                 
-            if isinstance(response, dict) and "items" in response:
-                # Some endpoints return paginated results in an 'items' key
-                items = response["items"]
-            elif isinstance(response, list):
-                items = response
-            else:
-                items = []
+                if not response:
+                    return
+                    
+                items = response if isinstance(response, list) else response.get("items", [])
+                
+                if not items:
+                    return
 
-            if not items:
-                break
-
-            yield items
-            page += 1
+                yield items
+                
+                # Check for next page in Link header
+                if isinstance(response, dict) and not response.get("next"):
+                    return
+                page += 1
+        except StopAsyncIteration:
+            return
 
     @cache_iterator_result()
     async def get_repositories(self) -> AsyncGenerator[List[Dict[str, Any]], None]:

@@ -1,10 +1,10 @@
 # Description
 
-What -
+What - A new GitHub integration for Port's Ocean framework that syncs GitHub resources to Port.
 
-Why -
+Why - To allow Port users to import and track their GitHub resources (repositories, pull requests, issues, teams, and workflows) in their developer portal.
 
-How -
+How - Using GitHub's REST API v3 with async processing, rate limiting, and webhook support.
 
 ## Type of change
 
@@ -55,6 +55,45 @@ Please leave one option from the following and delete the rest:
 
 Include screenshots from your environment showing how the resources of the integration will look.
 
+Repository Entity:
+
+Pull Request Entity:
+
+Issue Entity:
+
+Team Entity:
+
+Workflow Entity:
+
+
 ## API Documentation
 
-Provide links to the API documentation used for this integration.
+- [GitHub REST API v3](https://docs.github.com/en/rest)
+- [Repositories API](https://docs.github.com/en/rest/repos)
+- [Pull Requests API](https://docs.github.com/en/rest/pulls)
+- [Issues API](https://docs.github.com/en/rest/issues)
+- [Teams API](https://docs.github.com/en/rest/teams)
+- [Actions (Workflows) API](https://docs.github.com/en/rest/actions)
+- [Webhooks API](https://docs.github.com/en/rest/repos/webhooks)
+
+Additional Implementation Details:
+1. Rate Limiting:
+    - Uses GitHub's rate limit headers (X-RateLimit-)
+    - Semaphore for concurrent request limiting
+    - Automatic backoff when limits are reached
+    - Logging of rate limit status
+2. Pagination:
+    - Implements GitHub's page-based pagination
+    - Configurable page size (default 100)
+    - Eficient async processing of pages
+    - Proper handling of empty results
+3. Webhook Support:
+    - Organization-level webhook creation
+    - Event-specific processors
+    - Secure webhook validation
+    - Real-time entity updates
+4. Resource Processing:
+    - Efficient batch processing
+    - Proper error handling
+    - Detailed logging
+    - Resource relationship mapping
