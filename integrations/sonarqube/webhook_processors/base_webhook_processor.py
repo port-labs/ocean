@@ -14,12 +14,14 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class BaseSonarQubeWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         # Process events related to projects
+        signature = event.headers.get("x-sonar-webhook-hmac-sha256", "")
+        if (signature and not ocean.integration_config.get("webhook_secret")):
+            return False
         if (
             not ocean.integration_config.get("webhook_secret")
             or event._original_request is None
         ):
             return "project" in event.payload
-        signature = event.headers.get("x-sonar-webhook-hmac-sha256", "")
         body = await event._original_request.body()
         computed_signature = hmac.new(
             ocean.integration_config["webhook_secret"].encode("utf-8"),

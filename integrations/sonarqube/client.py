@@ -62,6 +62,7 @@ class SonarQubeClient:
         organization_id: str | None,
         app_host: str | None,
         is_onpremise: bool = False,
+        metrics: list[str] = []
     ):
         self.base_url = base_url
         self.api_key = api_key
@@ -70,7 +71,7 @@ class SonarQubeClient:
         self.is_onpremise = is_onpremise
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_params["headers"])
-        self.metrics: list[str] = []
+        self.metrics: list[str] = [] if not metrics else metrics
         self.webhook_invoke_url = f"{self.app_host}/integration/webhook"
 
     @property

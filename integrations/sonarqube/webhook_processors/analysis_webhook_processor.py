@@ -1,4 +1,5 @@
 from initialize_client import init_sonar_client
+from utils import extract_metrics_from_payload
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
@@ -21,11 +22,13 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        sonar_client = init_sonar_client()
+        metrics = [condition["metric"] for condition in payload.get("qualityGate", {}).get("conditions", [])]
+        sonar_client = init_sonar_client(metrics)
 
         analysis_data = []
 
         if ocean.integration_config["sonar_is_on_premise"]:
+            metrics = extract_metrics_from_payload(payload)
             project = await sonar_client.get_single_component(payload["project"])
             analysis_data = await sonar_client.get_measures_for_all_pull_requests(
                 project["key"]

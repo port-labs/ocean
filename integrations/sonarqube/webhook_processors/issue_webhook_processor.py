@@ -1,4 +1,5 @@
 from initialize_client import init_sonar_client
+from utils import extract_metrics_from_payload
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
@@ -17,7 +18,8 @@ class IssueWebhookProcessor(BaseSonarQubeWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        sonar_client = init_sonar_client()
+        metrics = extract_metrics_from_payload(payload)
+        sonar_client = init_sonar_client(metrics)
 
         project = await sonar_client.get_single_component(payload["project"])
         issues = []
