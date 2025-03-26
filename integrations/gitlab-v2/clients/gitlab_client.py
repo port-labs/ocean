@@ -15,6 +15,7 @@ import fnmatch
 from .rest_client import RestClient
 from .utils import convert_glob_to_gitlab_patterns, parse_file_content
 
+
 class GitLabClient:
     DEFAULT_MIN_ACCESS_LEVEL = 30
     DEFAULT_PARAMS = {
@@ -186,11 +187,14 @@ class GitLabClient:
             ):
                 if batch:
                     filtered_batch = [
-                        file for file in batch
+                        file
+                        for file in batch
                         if self._post_search_filter(file.get("path", ""), pattern)
                     ]
                     processed_batch = []
-                    async for processed_file in self._process_batch(filtered_batch, repo):
+                    async for processed_file in self._process_batch(
+                        filtered_batch, repo
+                    ):
                         processed_batch.append(processed_file)
                     if processed_batch:
                         yield processed_batch
@@ -212,11 +216,14 @@ class GitLabClient:
                 logger.info(f"Received search batch for {group_context}")
                 if batch:
                     filtered_batch = [
-                        file for file in batch
+                        file
+                        for file in batch
                         if self._post_search_filter(file.get("path", ""), pattern)
                     ]
                     processed_batch = []
-                    async for processed_file in self._process_batch(filtered_batch, group_context):
+                    async for processed_file in self._process_batch(
+                        filtered_batch, group_context
+                    ):
                         processed_batch.append(processed_file)
                     if processed_batch:
                         yield processed_batch
@@ -254,7 +261,7 @@ class GitLabClient:
         self, project_id: str, file_path: str, ref: str = "main"
     ) -> Optional[str]:
         return await self.rest.get_file_content(project_id, file_path, ref)
-        
+
     async def file_exists(self, project_id: str, scope: str, query: str) -> bool:
 
         params = {
@@ -262,7 +269,11 @@ class GitLabClient:
             "search": query,
         }
         encoded_project_path = quote(project_id, safe="")
-        
-        response = await self.rest.send_api_request("GET", f"projects/{encoded_project_path}/search", params)
-        
-        return bool(response)  # True if response has any data (non-empty list), False otherwise
+
+        response = await self.rest.send_api_request(
+            "GET", f"projects/{encoded_project_path}/search", params
+        )
+
+        return bool(
+            response
+        )  # True if response has any data (non-empty list), False otherwise

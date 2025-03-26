@@ -8,6 +8,7 @@ from clients.client_factory import create_gitlab_client
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
 
+
 class GitLabFileProcessor(JQEntityProcessor):
     """
     Custom entity processor that handles file:// references for GitLab files.
@@ -31,9 +32,9 @@ class GitLabFileProcessor(JQEntityProcessor):
             parts = search_str.split("&&")
 
             scope_part, query_part = map(str.strip, parts)
-            
-            scope = scope_part[len("scope="):].strip()
-            query = query_part[len("query="):].strip()
+
+            scope = scope_part[len("scope=") :].strip()
+            query = query_part[len("query=") :].strip()
 
             logger.debug(f"Parsed scope: {scope}, query: {query}")
 
