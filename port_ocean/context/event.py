@@ -142,6 +142,7 @@ async def event_context(
     )
 
     attributes = {**parent_attributes, **(attributes or {})}
+
     new_event = EventContext(
         event_type,
         trigger_type=trigger_type,

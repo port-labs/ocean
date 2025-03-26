@@ -1,7 +1,7 @@
 title: Terraform Cloud
 description: Terraform Cloud integration for Port Ocean
 icon: Terraform
-docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/terraform-cloud
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/terraform-cloud
 features:
   - type: exporter
     section: IaC
