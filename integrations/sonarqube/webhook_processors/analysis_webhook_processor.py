@@ -22,7 +22,10 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        metrics = [condition["metric"] for condition in payload.get("qualityGate", {}).get("conditions", [])]
+        metrics = [
+            condition["metric"]
+            for condition in payload.get("qualityGate", {}).get("conditions", [])
+        ]
         sonar_client = init_sonar_client(metrics)
 
         analysis_data = []

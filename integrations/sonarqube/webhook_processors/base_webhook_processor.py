@@ -15,7 +15,7 @@ class BaseSonarQubeWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         # Process events related to projects
         signature = event.headers.get("x-sonar-webhook-hmac-sha256", "")
-        if (signature and not ocean.integration_config.get("webhook_secret")):
+        if signature and not ocean.integration_config.get("webhook_secret"):
             return False
         if (
             not ocean.integration_config.get("webhook_secret")

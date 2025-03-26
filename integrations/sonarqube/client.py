@@ -62,7 +62,7 @@ class SonarQubeClient:
         organization_id: str | None,
         app_host: str | None,
         is_onpremise: bool = False,
-        metrics: list[str] = []
+        metrics: list[str] = [],
     ):
         self.base_url = base_url
         self.api_key = api_key
