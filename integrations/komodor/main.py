@@ -1,15 +1,19 @@
 from loguru import logger
+
+from integrations.komodor.models import KomoObjectKind
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import KomodorClient
 
 
+
+
 def init_client() -> KomodorClient:
     return KomodorClient(api_key=ocean.integration_config["komodor_api_key"],
                          api_url=ocean.integration_config["komodor_base_url"])
 
-@ocean.on_resync("komodorService")
+@ocean.on_resync(KomoObjectKind.SERVICE)
 async def resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
     async for service in client.get_all_services():
@@ -17,7 +21,7 @@ async def resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield service
 
 
-@ocean.on_resync("komodorRiskViolations")
+@ocean.on_resync(KomoObjectKind.RISK_VIOLATION)
 async def resync_risks(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
     async for risks in client.get_risks():
@@ -25,7 +29,7 @@ async def resync_risks(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield risks
 
 
-@ocean.on_resync("komodorIssues")
+@ocean.on_resync(KomoObjectKind.AVAILABILITY_ISSUES)
 async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
     async for issues in client.get_issues():
