@@ -16,7 +16,7 @@ class FileEntityProcessor(JQEntityProcessor):
     ) -> Optional[Any]:
         """Helper method to fetch and process file content."""
         try:
-            file_content = await client.get_file_content(repo_slug, ref, file_path)
+            file_content = await client.get_repository_files(repo_slug, ref, file_path)
             return (
                 json.loads(file_content)
                 if file_path.endswith(JSON_SUFFIX)

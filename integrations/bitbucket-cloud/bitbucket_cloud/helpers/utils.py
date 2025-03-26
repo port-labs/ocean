@@ -9,6 +9,7 @@ class ObjectKind(StrEnum):
     PULL_REQUEST = "pull-request"
     FILE = "file"
 
+
 @dataclass
 class BitbucketRateLimiterConfig:
     """Configuration for Bitbucket API rate limiting."""

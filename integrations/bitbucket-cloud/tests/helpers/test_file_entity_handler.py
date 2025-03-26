@@ -17,7 +17,7 @@ async def test_file_entity_processor_search_json_success() -> None:
     json_str = json.dumps(expected_content)
 
     mock_client = AsyncMock()
-    mock_client.get_file_content.return_value = json_str
+    mock_client.get_repository_files.return_value = json_str
 
     with patch(
         "bitbucket_cloud.helpers.file_entity_handler.BitbucketClient.create_from_ocean_config",
@@ -28,7 +28,7 @@ async def test_file_entity_processor_search_json_success() -> None:
         )  # if context isn't used, passing None is fine
         result = await processor._search(data, pattern)
         assert result == expected_content
-        mock_client.get_file_content.assert_called_once_with(
+        mock_client.get_repository_files.assert_called_once_with(
             "test-repo", "commit-hash", "src/config.json"
         )
 
@@ -43,7 +43,7 @@ async def test_file_entity_processor_search_non_json_success() -> None:
     expected_content = "plain text content"
 
     mock_client = AsyncMock()
-    mock_client.get_file_content.return_value = expected_content
+    mock_client.get_repository_files.return_value = expected_content
 
     with patch(
         "bitbucket_cloud.helpers.file_entity_handler.BitbucketClient.create_from_ocean_config",
@@ -52,7 +52,7 @@ async def test_file_entity_processor_search_non_json_success() -> None:
         processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
         result = await processor._search(data, pattern)
         assert result == expected_content
-        mock_client.get_file_content.assert_called_once_with(
+        mock_client.get_repository_files.assert_called_once_with(
             "test-repo", "commit123", "docs/README.md"
         )
 
@@ -104,7 +104,7 @@ async def test_file_entity_processor_search_missing_folder_commit() -> None:
     expected_content = '{"key": "value"}'
 
     mock_client = AsyncMock()
-    mock_client.get_file_content.return_value = expected_content
+    mock_client.get_repository_files.return_value = expected_content
 
     with patch(
         "bitbucket_cloud.helpers.file_entity_handler.BitbucketClient.create_from_ocean_config",
@@ -114,6 +114,6 @@ async def test_file_entity_processor_search_missing_folder_commit() -> None:
         result = await processor._search(data, pattern)
         # In this case, since commit hash is missing, it should use the default branch ("main")
         assert result == json.loads(expected_content)
-        mock_client.get_file_content.assert_called_once_with(
+        mock_client.get_repository_files.assert_called_once_with(
             "test-repo", "main", "src/config.json"
         )

@@ -96,5 +96,6 @@ class BitbucketAppConfig(PortAppConfig):
 
 class BitbucketIntegration(BaseIntegration):
     EntityProcessorClass = GitManipulationHandler
+
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = BitbucketAppConfig
