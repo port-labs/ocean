@@ -1,86 +1,102 @@
-from typing import Any, Dict, List
-import os
+from typing import cast
 
+from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+
 from client import GitHubClient
-
-# Initialize the GitHub client
-github_token = os.environ.get("GITHUB_TOKEN")
-github_org = os.environ.get("GITHUB_ORGANIZATION")
-github_client = None
+from helpers.utils import ObjectKind
+from integration import GitHubResourceConfig
 
 @ocean.on_start()
 async def on_start() -> None:
-    """Initialize the GitHub client when the integration starts"""
-    global github_client
-    if not github_token or not github_org:
-        raise ValueError("GITHUB_TOKEN and GITHUB_ORGANIZATION environment variables are required")
-    
-    print(f"Starting GitHub integration for organization: {github_org}")
-    github_client = GitHubClient(token=github_token, org=github_org)
+    logger.info("Starting Port Ocean GitHub integration")
 
-@ocean.on_resync()
-async def on_resync(kind: str) -> List[Dict[Any, Any]]:
-    """Handle resync events for different kinds of resources"""
-    if not github_client:
-        raise RuntimeError("GitHub client not initialized")
+def init_client() -> GitHubClient:
+    return GitHubClient(
+        token=ocean.integration_config.get_secret("github_token"),
+        org=ocean.integration_config.get("organization")
+    )
 
-    if kind == "repository":
-        return await github_client.get_repositories()
-    
-    elif kind == "pull-request":
-        all_prs = []
-        repos = await github_client.get_repositories()
-        for repo in repos:
-            prs = await github_client.get_pull_requests(repo["name"])
-            all_prs.extend(prs)
-        return all_prs
-    
-    elif kind == "issue":
-        all_issues = []
-        repos = await github_client.get_repositories()
-        for repo in repos:
-            issues = await github_client.get_issues(repo["name"])
-            all_issues.extend(issues)
-        return all_issues
-    
-    elif kind == "team":
-        return await github_client.get_teams()
-    
-    elif kind == "workflow":
-        all_workflows = []
-        repos = await github_client.get_repositories()
-        for repo in repos:
-            workflows = await github_client.get_workflows(repo["name"])
-            # Enrich workflow data with repository information
-            for workflow in workflows:
-                workflow["repository"] = repo
-                if "latest_run" not in workflow:
-                    workflow["latest_run"] = {"status": "unknown"}
-            all_workflows.extend(workflows)
-        return all_workflows
+@ocean.on_resync(ObjectKind.REPOSITORY)
+async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all repositories in the organization."""
+    client = init_client()
+    async for repositories in client.get_repositories():
+        yield repositories
 
-    return []
+@ocean.on_resync(ObjectKind.PULL_REQUEST)
+async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all pull requests from all repositories."""
+    client = init_client()
+    async for repositories in client.get_repositories():
+        tasks = [
+            client.get_pull_requests(repo["name"])
+            for repo in repositories
+        ]
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
 
+@ocean.on_resync(ObjectKind.ISSUE)
+async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all issues from all repositories."""
+    client = init_client()
+    async for repositories in client.get_repositories():
+        tasks = [
+            client.get_issues(repo["name"])
+            for repo in repositories
+        ]
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
+@ocean.on_resync(ObjectKind.TEAM)
+async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all teams in the organization."""
+    client = init_client()
+    async for teams in client.get_teams():
+        yield teams
 
+@ocean.on_resync(ObjectKind.WORKFLOW)
+async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all workflows from all repositories."""
+    client = init_client()
+    async for repositories in client.get_repositories():
+        tasks = []
+        for repo in repositories:
+            async for workflows in client.get_workflows(repo["name"]):
+                # Enrich workflow data with repository information
+                for workflow in workflows:
+                    workflow["repository"] = repo
+                    runs = await client.get_workflow_runs(repo["name"], workflow["id"], per_page=1)
+                    workflow["latest_run"] = runs[0] if runs else {"status": "unknown"}
+                tasks.append(workflows)
+        
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
 
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
-@ocean.on_start()
-async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting github integration")
+@ocean.on_webhook()
+async def on_webhook(webhook_data: dict) -> None:
+    """Handle webhook events from GitHub."""
+    event_type = webhook_data.get("event")
+    if not event_type:
+        return
+
+    # Map GitHub webhook events to resource kinds
+    event_mapping = {
+        ObjectKind.REPOSITORY: ["created", "deleted", "archived", "unarchived", "edited", "renamed", "transferred"],
+        ObjectKind.PULL_REQUEST: ["opened", "closed", "reopened", "edited", "merged"],
+        ObjectKind.ISSUE: ["opened", "closed", "reopened", "edited", "deleted"],
+        ObjectKind.TEAM: ["created", "deleted", "edited"],
+        ObjectKind.WORKFLOW: ["workflow_run"]
+    }
+
+    # Find the relevant resource kind for this event
+    for kind, events in event_mapping.items():
+        if event_type in events:
+            logger.info(f"Processing webhook event {event_type} for kind {kind}")
+            config = cast(ResourceConfig, event.resource_config)
+            await ocean.register_raw_resync([config])
+            break

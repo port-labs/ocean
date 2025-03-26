@@ -24,3 +24,13 @@ configurations:
     sensitive: true
     description: Secret for GitHub webhook (optional, for real-time updates)
     default_value: ${GITHUB_WEBHOOK_SECRET}
+
+webhook:
+  type: github
+  secret: ${GITHUB_WEBHOOK_SECRET}
+  events:
+    - repository
+    - pull_request
+    - issues
+    - team
+    - workflow_run

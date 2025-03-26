@@ -1,4 +1,5 @@
-from typing import Dict, Any, List
+from typing import AsyncGenerator, Dict, Any, List
+from ocean.port_ocean.context import ocean
 from port_ocean.clients.port.client import PortClient
 
 from port_ocean.context.ocean import logger
@@ -21,6 +22,14 @@ class GitHubClient:
             "reset": time.time() + 3600
         }
 
+    @classmethod
+    def create_from_ocean_config(cls) -> "GitHubClient":
+        """Create a client instance from Ocean configuration."""
+        return cls(
+            token=ocean.integration_config.get_secret("github_token"),
+            org=ocean.integration_config.get("organization")
+        )
+
     async def _handle_rate_limit(self) -> None:
         """Handle GitHub API rate limiting"""
         if self.rate_limit["remaining"] <= 1:
@@ -33,6 +42,12 @@ class GitHubClient:
         """Make a rate-limited request to GitHub API"""
         await self._handle_rate_limit()
         url = f"{self.BASE_URL}/{endpoint}"
+        
+        # Add default pagination parameters if not provided
+        if "params" not in kwargs:
+            kwargs["params"] = {}
+        if "per_page" not in kwargs["params"]:
+            kwargs["params"]["per_page"] = 100  # GitHub's max items per page
         
         try:
             response = await self.client.request(
@@ -55,29 +70,74 @@ class GitHubClient:
             logger.error(f"GitHub API request failed: {str(e)}")
             raise
 
-    async def get_repositories(self) -> List[Dict[str, Any]]:
-        """Get all repositories for the organization"""
-        return await self._make_request("GET", f"orgs/{self.org}/repos")
+    async def get_repositories(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Get repositories with pagination."""
+        page = 1
+        while True:
+            repos = await self._make_request(
+                "GET",
+                f"orgs/{self.org}/repos",
+                params={"page": page, "per_page": 100}
+            )
+            if not repos:
+                break
+            yield repos
+            page += 1
+
+    async def get_pull_requests(self, repo: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Get pull requests with pagination."""
+        page = 1
+        while True:
+            prs = await self._make_request(
+                "GET",
+                f"repos/{self.org}/{repo}/pulls",
+                params={"page": page, "per_page": 100, "state": "all"}
+            )
+            if not prs:
+                break
+            yield prs
+            page += 1
+
+    async def get_issues(self, repo: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Get issues with pagination."""
+        page = 1
+        while True:
+            issues = await self._make_request(
+                "GET",
+                f"repos/{self.org}/{repo}/issues",
+                params={"page": page, "per_page": 100, "state": "all"}
+            )
+            if not issues:
+                break
+            yield issues
+            page += 1
+
+    async def get_teams(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Get teams with pagination."""
+        page = 1
+        while True:
+            teams = await self._make_request(
+                "GET",
+                f"orgs/{self.org}/teams",
+                params={"page": page, "per_page": 100}
+            )
+            if not teams:
+                break
+            yield teams
+            page += 1
+
+    async def get_workflows(self, repo: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Get workflows with pagination."""
+        workflows = await self._make_request(
+            "GET",
+            f"repos/{self.org}/{repo}/actions/workflows"
+        )
+        if workflows:
+            yield workflows.get("workflows", [])
 
     async def get_repository(self, repo: str) -> Dict[str, Any]:
         """Get a specific repository"""
         return await self._make_request("GET", f"repos/{self.org}/{repo}")
-
-    async def get_pull_requests(self, repo: str, state: str = "all") -> List[Dict[str, Any]]:
-        """Get pull requests for a repository"""
-        return await self._make_request("GET", f"repos/{self.org}/{repo}/pulls", params={"state": state})
-
-    async def get_issues(self, repo: str, state: str = "all") -> List[Dict[str, Any]]:
-        """Get issues for a repository"""
-        return await self._make_request("GET", f"repos/{self.org}/{repo}/issues", params={"state": state})
-
-    async def get_teams(self) -> List[Dict[str, Any]]:
-        """Get all teams in the organization"""
-        return await self._make_request("GET", f"orgs/{self.org}/teams")
-
-    async def get_workflows(self, repo: str) -> List[Dict[str, Any]]:
-        """Get GitHub Actions workflows for a repository"""
-        return await self._make_request("GET", f"repos/{self.org}/{repo}/actions/workflows")
 
     async def get_workflow_runs(self, repo: str, workflow_id: str) -> List[Dict[str, Any]]:
         """Get workflow runs for a specific workflow"""
