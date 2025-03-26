@@ -1,6 +1,6 @@
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
-
+from bitbucket_cloud.helpers.file_entity_handler import GitManipulationHandler
 from typing import Literal
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
@@ -95,5 +95,6 @@ class BitbucketAppConfig(PortAppConfig):
 
 
 class BitbucketIntegration(BaseIntegration):
+    EntityProcessorClass = GitManipulationHandler
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = BitbucketAppConfig

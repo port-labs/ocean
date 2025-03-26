@@ -1258,17 +1258,6 @@ text-unidecode = ">=1.3"
 unidecode = ["Unidecode (>=1.1.1)"]
 
 [[package]]
-name = "pywildcard"
-version = "1.0.10"
-description = "A fork of fnmatch to implement **"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "pywildcard-1.0.10.tar.gz", hash = "sha256:825f7dc4eac27fdb2f59052ccccf6e3cbbbc09e3c8b07c5021b2b841cccb6161"},
-]
-
-[[package]]
 name = "pyyaml"
 version = "6.0.2"
 description = "YAML parser and emitter for Python"
@@ -1647,4 +1636,4 @@ dev = ["black (>=19.3b0) ; python_version >= \"3.6\"", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "488fda0b9249dfb2aba846f2bb1a1158c6c3f1fae242fc33bddc5f202da2e5fe"
+content-hash = "7889be54bb9679a0e0a05969edcfcc1857bede044d2a6e31178b64223336ca8c"
