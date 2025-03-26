@@ -203,8 +203,8 @@ Webhooks are represented in Port through FastAPI endpoints. When Jira sends a we
 # highlight-start
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
+from webhook_processors.user_webhook_processor import UserWebhookProcessor
 # highlight-end
-
 
 ... # Existing code
 

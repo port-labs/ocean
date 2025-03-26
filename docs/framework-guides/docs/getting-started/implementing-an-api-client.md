@@ -527,9 +527,6 @@ class JiraClient(OAuthClient):
         except ValueError:
             return BearerAuth(self.jira_token)
 
-    def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
-        return next(self._get_bearer().auth_flow(request))
-
     async def _handle_rate_limit(self, response: Response) -> None:
         if response.status_code == 429:
             logger.warning(
