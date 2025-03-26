@@ -18,7 +18,7 @@ resources:
             workload_kind: .kind
             namespace_name: .namespace
             service_name: .service
-            komodor_link: .link
+            komodor_link: .link + "&utmSource=port"
             labels: .labels
             last_deploy_at: .lastDeploy.endTime | todate
             last_deploy_status: .lastDeploy.status
@@ -36,7 +36,7 @@ resources:
             komodor_uid: .komodorUid
             severity: .severity
             supporting_data: .supportingData
-            komodor_link: .link
+            komodor_link: .link + "&utmSource=port"
             created_at: .createdAt | todate
             last_evaluated_at: .lastEvaluatedAt | todate
             check_type: .checkType
@@ -73,7 +73,7 @@ resources:
             details: .details
             status: .status
             start_time: .startTime | todate
-            komodor_link: .link
+            komodor_link: .link + "&utmSource=port"
             summary: .summary
             type: .type
             workload_name: .summary | split("/") | .[2] | split(" ") | first
