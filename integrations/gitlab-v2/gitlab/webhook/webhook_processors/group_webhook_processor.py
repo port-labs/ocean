@@ -50,4 +50,5 @@ class GroupWebhookProcessor(_GitlabAbstractWebhookProcessor):
         )
 
     async def validate_payload(self, payload: EventPayload) -> bool:
+        # override the base class's validate_payload method
         return not ({"group_id", "full_path", "event_name"} - payload.keys())

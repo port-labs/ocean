@@ -25,3 +25,6 @@ class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
         return bool(
             self.hook == event.headers["x-gitlab-event"] and event_name in self.events
         )
+
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        return not ({"object_kind", "project"} - payload.keys())

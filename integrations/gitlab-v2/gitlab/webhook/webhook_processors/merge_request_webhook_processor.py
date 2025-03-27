@@ -31,13 +31,8 @@ class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
         merge_request = await self._gitlab_webhook_client.get_merge_request(
             project_id, merge_request_id
         )
-        logger.warning("Merege Request: {}".format(merge_request))
 
         return WebhookEventRawResults(
             updated_raw_results=[merge_request],
             deleted_raw_results=[],
         )
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        required_fields = ["object_attributes", "project"]
-        return all(field in payload for field in required_fields)

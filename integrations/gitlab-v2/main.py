@@ -31,9 +31,9 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    client = create_gitlab_client()
     if base_url := ocean.app.base_url:
         logger.info(f"Creating webhooks for all groups at {base_url}")
+        client = create_gitlab_client()
         webhook_factory = GroupWebHook(client, base_url)
         await webhook_factory.create_webhooks_for_all_groups()
 

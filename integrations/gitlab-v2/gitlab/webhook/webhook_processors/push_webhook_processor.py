@@ -28,6 +28,3 @@ class PushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=[project], deleted_raw_results=[]
         )
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        return not ({"object_kind", "project"} - payload.keys())

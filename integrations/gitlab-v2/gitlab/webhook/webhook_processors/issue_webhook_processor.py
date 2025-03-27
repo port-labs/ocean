@@ -35,6 +35,3 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
             updated_raw_results=[issue],
             deleted_raw_results=[],
         )
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        return not ({"object_attributes", "project"} - payload.keys())
