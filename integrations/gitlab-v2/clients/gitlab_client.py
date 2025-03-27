@@ -87,19 +87,11 @@ class GitLabClient:
         return await self.rest.get_file_content(project_id, file_path, ref)
 
     async def file_exists(self, project_id: str, scope: str, query: str) -> bool:
-        params = {
-            "scope": scope,
-            "search": query,
-        }
+        params = {"scope": scope, "search": query}
         encoded_project_path = quote(project_id, safe="")
-
-        response = await self.rest.send_api_request(
-            "GET", f"projects/{encoded_project_path}/search", params
-        )
-
-        return bool(
-            response
-        )  # True if response has any data (non-empty list), False otherwise
+        path = f"projects/{encoded_project_path}/search"
+        response = await self.rest.get_resource(path, params=params)
+        return bool(response)
 
     async def search_files(
         self,
@@ -130,28 +122,38 @@ class GitLabClient:
                 async for batch in stream_async_iterators_tasks(*tasks):
                     yield batch
 
-    async def process_file(
+    async def get_repository_tree(
         self,
-        file: dict[str, Any],
-        context: str,
-    ) -> dict[str, Any]:
-        """Fetch full file content and parse it."""
-        file_path = file["path"]
-        project_id = file["project_id"]
-        ref = file.get("ref", "main")
+        project: dict[str, Any],
+        path: str,
+        ref: str = "main",
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch repository tree (folders only) for a project."""
+        project_path = project["path_with_namespace"]
+        params = {"ref": ref, "path": path, "recursive": True, "per_page": 100}
+        async for batch in self.rest.get_paginated_project_resource(
+            project_path, "repository/tree", params
+        ):
+            folders_batch = [item for item in batch if item["type"] == "tree"]
+            if folders_batch:
+                yield [
+                    {"folder": folder, "repo": project, "__branch": ref}
+                    for folder in folders_batch
+                ]
 
-        full_content = await self.get_file_content(project_id, file_path, ref)
-        if full_content is not None:
-            try:
-                file["content"] = await anyio.to_thread.run_sync(
-                    parse_file_content, full_content, file_path, context
-                )
-            except Exception as e:
-                logger.error(f"Failed to parse {file_path} in {context}: {str(e)}")
-                file["parsed_data"] = None
-        else:
-            file["content"] = None
-        return file
+    async def search_folders(
+        self, path: str, repos: list[str], branch: Optional[str] = None
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Search for folders in specified repositories only."""
+        for repo in repos:
+            project = await self.get_project(repo)
+            if project:
+                effective_branch = branch or project["default_branch"]
+                async for folders_batch in self.get_repository_tree(
+                    project, path, effective_branch
+                ):
+                    if folders_batch:
+                        yield folders_batch
 
     # Helpers: Enrichment
     async def _enrich_batch(
@@ -199,6 +201,29 @@ class GitLabClient:
                 yield resource_batch
 
     # Helpers: File Processing and Search
+    async def _process_file(
+        self,
+        file: dict[str, Any],
+        context: str,
+    ) -> dict[str, Any]:
+        """Fetch full file content and parse it."""
+        file_path = file["path"]
+        project_id = file["project_id"]
+        ref = file.get("ref", "main")
+
+        full_content = await self.get_file_content(project_id, file_path, ref)
+        if full_content is not None:
+            try:
+                file["content"] = await anyio.to_thread.run_sync(
+                    parse_file_content, full_content, file_path, context
+                )
+            except Exception as e:
+                logger.error(f"Failed to parse {file_path} in {context}: {str(e)}")
+                file["parsed_data"] = None
+        else:
+            file["content"] = None
+        return file
+
     async def _process_batch(
         self,
         batch: list[dict[str, Any]],
@@ -208,7 +233,7 @@ class GitLabClient:
 
         tasks = [
             (
-                self.process_file(file, context)
+                self._process_file(file, context)
                 if file.get("path", "").endswith(PARSEABLE_EXTENSIONS)
                 else asyncio.create_task(asyncio.sleep(0, result=file))
             )
@@ -284,82 +309,3 @@ class GitLabClient:
                         processed_batch.append(processed_file)
                     if processed_batch:
                         yield processed_batch
-
-    async def search_files(
-        self,
-        path_pattern: str,
-        repositories: Optional[list[str]] = None,
-        max_concurrent: int = 10,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        logger.info(f"Searching for files matching pattern: '{path_pattern}'")
-        patterns = convert_glob_to_gitlab_patterns(path_pattern)
-        semaphore = asyncio.Semaphore(max_concurrent)
-
-        if repositories:
-            logger.info(f"Searching in {len(repositories)} repositories")
-            for repo in repositories:
-                logger.debug(f"Searching repo '{repo}' for pattern '{path_pattern}'")
-                async for batch in self._search_in_repository(repo, patterns):
-                    yield batch
-        else:
-            logger.info("Searching across all accessible groups")
-            async for groups in self.get_groups():
-                logger.debug(f"Processing batch of {len(groups)} groups")
-                tasks = [
-                    semaphore_async_iterator(
-                        semaphore, partial(self._search_in_group, group, patterns)
-                    )
-                    for group in groups
-                ]
-                async for batch in stream_async_iterators_tasks(*tasks):
-                    yield batch
-
-    async def get_file_content(
-        self, project_id: str, file_path: str, ref: str = "main"
-    ) -> Optional[str]:
-        return await self.rest.get_file_content(project_id, file_path, ref)
-
-    async def file_exists(self, project_id: str, scope: str, query: str) -> bool:
-        params = {"scope": scope, "search": query}
-        encoded_project_path = quote(project_id, safe="")
-        path = f"projects/{encoded_project_path}/search"
-        response = await self.rest.get_resource(path, params=params)
-        return bool(response)
-
-    async def get_repository_tree(
-        self,
-        project: dict[str, Any],
-        path: str,
-        ref: str = "main",
-        max_concurrent: int = 10,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch repository tree (folders only) for a project."""
-        project_path = project["path_with_namespace"]
-        params = {"ref": ref, "path": path, "recursive": True, "per_page": 100}
-        async for batch in self.rest.get_paginated_project_resource(
-            project_path, "repository/tree", params
-        ):
-            logger.info(batch)
-            folders_batch = [item for item in batch if item["type"] == "tree"]
-            if folders_batch:
-                logger.info(
-                    f"Found {len(folders_batch)} folders in {project_path} at path: {path}"
-                )
-                yield [
-                    {"folder": folder, "repo": project, "__branch": ref}
-                    for folder in folders_batch
-                ]
-
-    async def search_folders(
-        self, path: str, repos: list[str], branch: Optional[str] = None
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search for folders in specified repositories only."""
-        for repo in repos:
-            project = await self.get_project(repo)
-            if project:
-                effective_branch = branch or project["default_branch"]
-                async for folders_batch in self.get_repository_tree(
-                    project, path, effective_branch
-                ):
-                    if folders_batch:
-                        yield folders_batch
