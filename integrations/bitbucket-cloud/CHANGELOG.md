@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.0 (2025-03-27)
+
+
+### Improvement
+
+- Bumped integration version from dev to GA
+
+
 ## 0.1.3-dev (2025-03-24)
 
 
