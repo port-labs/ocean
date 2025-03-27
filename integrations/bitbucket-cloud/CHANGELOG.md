@@ -7,13 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.4 (2025-03-25)
+## 0.1.4-dev (2025-03-25)
 
 
 ### Improvements
 
 - Bumped jinja2 version to resolve vulnerability
-- Bumped integration version from dev to GA
 
 
 ## 0.1.3-dev (2025-03-24)
