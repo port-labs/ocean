@@ -49,7 +49,7 @@ class TestPullRequestWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": action, "pull_request": {}},
-            headers={"X-GitHub-Event": "pull_request"},
+            headers={"x-github-event": "pull_request"},
         )
         result = await pull_request_webhook_processor.should_process_event(event)
         assert result is True

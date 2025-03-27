@@ -286,6 +286,6 @@ class GitHubClient:
             raise ValueError(f"Unsupported resource type: {object_type}")
 
         endpoint = endpoints[object_type]
-        response, _ = await self._send_api_request(endpoint)
+        response = await self._send_api_request(endpoint)
         logger.debug(f"Fetched {object_type} {identifier}: {response}")
         return response

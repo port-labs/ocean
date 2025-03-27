@@ -49,7 +49,7 @@ class TestRepositoryWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": "created", "repository": {}},
-            headers={"X-GitHub-Event": "repository"},
+            headers={"x-github-event": "repository"},
         )
         result = await repository_webhook_processor.should_process_event(event)
         assert result is True
@@ -60,7 +60,7 @@ class TestRepositoryWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": "deleted", "repository": {}},
-            headers={"X-GitHub-Event": "repository"},
+            headers={"x-github-event": "repository"},
         )
         result = await repository_webhook_processor.should_process_event(event)
         assert result is True
@@ -71,7 +71,7 @@ class TestRepositoryWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": "created", "repository": {}},
-            headers={"X-GitHub-Event": "issues"},
+            headers={"x-github-event": "issues"},
         )
         result = await repository_webhook_processor.should_process_event(event)
         assert result is False
@@ -82,7 +82,7 @@ class TestRepositoryWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": "invalid_action", "repository": {}},
-            headers={"X-GitHub-Event": "repository"},
+            headers={"x-github-event": "repository"},
         )
         result = await repository_webhook_processor.should_process_event(event)
         assert result is False

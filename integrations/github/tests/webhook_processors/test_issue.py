@@ -48,7 +48,7 @@ class TestIssueWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": "opened", "issue": {}},
-            headers={"X-GitHub-Event": "issues"},
+            headers={"x-github-event": "issues"},
         )
         result = await issue_webhook_processor.should_process_event(event)
         assert result is True
@@ -59,7 +59,7 @@ class TestIssueWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": "closed", "issue": {}},
-            headers={"X-GitHub-Event": "issues"},
+            headers={"x-github-event": "issues"},
         )
         result = await issue_webhook_processor.should_process_event(event)
         assert result is True
@@ -70,7 +70,7 @@ class TestIssueWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": "opened", "issue": {}},
-            headers={"X-GitHub-Event": "pull_request"},
+            headers={"x-github-event": "pull_request"},
         )
         result = await issue_webhook_processor.should_process_event(event)
         assert result is False

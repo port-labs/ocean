@@ -98,13 +98,19 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for repositories in client.get_repositories():
         tasks = []
         for repo in repositories:
+            workflows_with_runs = []
             async for workflows in client.get_workflows(repo["name"]):
-
                 for workflow in workflows:
                     workflow["repository"] = repo
                     runs = await client.get_workflow_runs(repo["name"], workflow["id"])
                     workflow["latest_run"] = runs[0] if runs else {"status": "unknown"}
-                tasks.append(workflows)
+                    workflows_with_runs.append(workflow)
+
+            # Create an async generator for each repository's workflows
+            async def workflow_generator(items):
+                yield items
+
+            tasks.append(workflow_generator(workflows_with_runs))
 
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch

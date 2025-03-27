@@ -58,7 +58,7 @@ class TestTeamWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": action, "team": {}},
-            headers={"X-GitHub-Event": "team"},
+            headers={"x-github-event": "team"},
         )
         result = await team_webhook_processor.should_process_event(event)
         assert result is True

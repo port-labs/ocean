@@ -49,7 +49,7 @@ class TestWorkflowWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": action, "workflow_run": {}, "workflow": {}},
-            headers={"X-GitHub-Event": "workflow_run"},
+            headers={"x-github-event": "workflow_run"},
         )
         result = await workflow_webhook_processor.should_process_event(event)
         assert result is True
@@ -60,7 +60,7 @@ class TestWorkflowWebhookProcessor:
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={"action": "completed", "workflow_run": {}},
-            headers={"X-GitHub-Event": "push"},
+            headers={"x-github-event": "push"},
         )
         result = await workflow_webhook_processor.should_process_event(event)
         assert result is False

@@ -70,6 +70,7 @@ resources:
           relations:
             repository: .repository.full_name | gsub("/"; "-")
 
+
   - kind: team
     selector:
       query: "true"
@@ -90,13 +91,14 @@ resources:
     port:
       entity:
         mappings:
-          identifier: (.repository.full_name | gsub("/"; "-")) + "-workflow-" + (.id | tostring)
-          title: .name
+          identifier: ".repo + (.id|tostring)"
+          title: ".name"
           blueprint: '"githubWorkflow"'
           properties:
-            state: .state
-            path: .path
-            repository: .repository.full_name
-            lastRunStatus: .latest_run.status
+            path: ".path"
+            state: ".state"
+            createdAt: ".created_at"
+            updatedAt: ".updated_at"
+            url: ".html_url"
           relations:
             repository: .repository.full_name | gsub("/"; "-")

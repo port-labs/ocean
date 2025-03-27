@@ -132,10 +132,10 @@
     {
         "identifier": "githubIssue",
         "title": "GitHub Issue",
-        "icon": "Bug",
+        "icon": "Github",
         "schema": {
-            "properties": {
-                "state": {
+          "properties": {
+            "state": {
                     "type": "string",
                     "enum": ["open", "closed"],
                     "enumColors": {
@@ -200,42 +200,54 @@
     },
     {
         "identifier": "githubWorkflow",
-        "title": "GitHub Workflow",
-        "icon": "Pipeline",
+        "title": "Workflow",
+        "icon": "Github",
         "schema": {
-            "properties": {
-                "state": {
-                    "type": "string",
-                    "enum": ["active", "disabled"],
-                    "enumColors": {
-                        "active": "green",
-                        "disabled": "red"
-                    },
-                    "title": "State"
-                },
-                "path": {
-                    "type": "string",
-                    "title": "Path"
-                },
-                "repository": {
-                    "type": "string",
-                    "title": "Repository"
-                },
-                "lastRunStatus": {
-                    "type": "string",
-                    "enum": ["success", "failure", "cancelled", "skipped", "in_progress"],
-                    "enumColors": {
-                        "success": "green",
-                        "failure": "red",
-                        "cancelled": "orange",
-                        "skipped": "gray",
-                        "in_progress": "blue"
-                    },
-                    "title": "Last Run Status"
-                }
+          "properties": {
+            "path": {
+              "title": "Path",
+              "type": "string"
             },
-            "required": ["state", "path"]
+            "state": {
+              "title": "State",
+              "type": "string",
+              "enum": [
+                "active",
+                "deleted",
+                "disabled_fork",
+                "disabled_inactivity",
+                "disabled_manually"
+              ],
+              "enumColors": {
+                "active": "green",
+                "deleted": "red"
+              }
+            },
+            "createdAt": {
+              "title": "Created At",
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "title": "Updated At",
+              "type": "string",
+              "format": "date-time"
+            },
+            "deletedAt": {
+              "title": "Deleted At",
+              "type": "string",
+              "format": "date-time"
+            },
+            "url": {
+              "title": "Url",
+              "type": "string",
+              "format": "url"
+            }
+          },
+          "required": []
         },
+        "mirrorProperties": {},
+        "calculationProperties": {},
         "relations": {
             "repository": {
                 "target": "githubRepository",
@@ -244,4 +256,4 @@
             }
         }
     }
-]
+] 
