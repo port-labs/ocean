@@ -268,16 +268,30 @@ class TestGitLabClient:
         repos = ["group/project1", "group/project2"]
         path = "src"
         branch = "develop"
-        mock_project1 = {"id": "1", "path_with_namespace": "group/project1", "default_branch": "main"}
-        mock_project2 = {"id": "2", "path_with_namespace": "group/project2", "default_branch": "main"}
-        mock_tree = [{"type": "tree", "name": "folder1"}, {"type": "blob", "name": "file.txt"}]
+        mock_project1 = {
+            "id": "1",
+            "path_with_namespace": "group/project1",
+            "default_branch": "main",
+        }
+        mock_project2 = {
+            "id": "2",
+            "path_with_namespace": "group/project2",
+            "default_branch": "main",
+        }
+        mock_tree = [
+            {"type": "tree", "name": "folder1"},
+            {"type": "blob", "name": "file.txt"},
+        ]
         with patch.object(
             client, "get_project", AsyncMock(side_effect=[mock_project1, mock_project2])
         ) as mock_get_project:
             with patch.object(
                 client.rest,
                 "get_paginated_project_resource",
-                side_effect=[async_mock_generator([mock_tree]), async_mock_generator([mock_tree])],
+                side_effect=[
+                    async_mock_generator([mock_tree]),
+                    async_mock_generator([mock_tree]),
+                ],
             ) as mock_get_paginated:
                 results = []
                 async for batch in client.search_folders(path, repos, branch):
@@ -294,10 +308,20 @@ class TestGitLabClient:
                 mock_get_paginated.assert_any_call(
                     "group/project1",
                     "repository/tree",
-                    {"ref": "develop", "path": "src", "recursive": True, "per_page": 100},
+                    {
+                        "ref": "develop",
+                        "path": "src",
+                        "recursive": True,
+                        "per_page": 100,
+                    },
                 )
                 mock_get_paginated.assert_any_call(
                     "group/project2",
                     "repository/tree",
-                    {"ref": "develop", "path": "src", "recursive": True, "per_page": 100},
+                    {
+                        "ref": "develop",
+                        "path": "src",
+                        "recursive": True,
+                        "per_page": 100,
+                    },
                 )

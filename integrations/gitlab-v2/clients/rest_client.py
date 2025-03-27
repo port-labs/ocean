@@ -15,8 +15,7 @@ class RestClient(HTTPBaseClient):
         self, path: str, params: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
         params = params or {}
-        response = await self.send_api_request("GET", path, params=params)
-        return response
+        return await self.send_api_request("GET", path, params=params)
 
     async def get_paginated_resource(
         self, resource_type: str, params: Optional[dict[str, Any]] = None
