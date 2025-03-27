@@ -8,7 +8,9 @@ from port_ocean.core.handlers.entities_state_applier.base import (
 from port_ocean.core.handlers.entities_state_applier.port.get_related_entities import (
     get_related_entities,
 )
-
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.metric.metric import MetricType, MetricPhase
+from port_ocean.helpers.metric.utils import TimeMetric
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import EntityDiff
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
@@ -23,6 +25,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     through HTTP requests.
     """
 
+    @TimeMetric(MetricPhase.DELETE)
     async def _safe_delete(
         self,
         entities_to_delete: list[Entity],
@@ -100,6 +103,11 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             and deletion_rate <= entity_deletion_threshold
         ):
             await self._safe_delete(diff.deleted, kept_entities, user_agent_type)
+            ocean.metrics.set_metric(
+                name=MetricType.DELETION_COUNT_NAME,
+                labels=[ocean.metrics.current_resource_kind(), MetricPhase.DELETE],
+                value=len(diff.deleted),
+            )
         else:
             logger.info(
                 f"Skipping deletion of entities with deletion rate {deletion_rate}",

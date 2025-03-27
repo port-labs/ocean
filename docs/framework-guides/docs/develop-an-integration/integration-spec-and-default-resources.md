@@ -166,11 +166,11 @@ The following resources are supported:
 ]
 ```
 
-The `blueprints.json` file is part of the `.port/resources` directory, it is used to specify the default [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) that will be created when the integration is installed.
+The `blueprints.json` file is part of the `.port/resources` directory, it is used to specify the default [blueprints](https://docs.port.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) that will be created when the integration is installed.
 
 #### Structure
 
-The `blueprints.json` is a JSON file which contains an array of objects that match the [blueprint objects](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/#blueprint-structure) from Port's API.
+The `blueprints.json` is a JSON file which contains an array of objects that match the [blueprint objects](https://docs.port.io/build-your-software-catalog/define-your-data-model/setup-blueprint/#blueprint-structure) from Port's API.
 
 :::tip
 The `blueprints.json` file is optional, if it is not provided, the integration will not create any blueprints when it is installed.

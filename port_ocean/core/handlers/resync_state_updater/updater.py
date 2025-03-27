@@ -3,6 +3,8 @@ from typing import Any, Literal
 from port_ocean.clients.port.client import PortClient
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.time import get_next_occurrence
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 
 
 class ResyncStateUpdater:
@@ -82,3 +84,10 @@ class ResyncStateUpdater:
             self.last_integration_state_updated_at = integration["resyncState"][
                 "updatedAt"
             ]
+
+        ocean.metrics.set_metric(
+            name=MetricType.SUCCESS_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.RESYNC],
+            value=int(status == IntegrationStateStatus.Completed),
+        )
+        await ocean.metrics.flush(kind=ocean.metrics.current_resource_kind())

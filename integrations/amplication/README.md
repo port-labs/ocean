@@ -4,7 +4,7 @@ An integration used to import amplication resources into Port.
 
 ## Install & use the integration
 
-- [Integration documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/) *Replace this link with a link to this integration's documentation*
+- [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/) *Replace this link with a link to this integration's documentation*
 - Create a secret in your Port application:
     - In your Port application, click on the *...* button in the top right corner, and select *Credentials*.
     - In the *Credentials* window, choose the *Secrets* tab.

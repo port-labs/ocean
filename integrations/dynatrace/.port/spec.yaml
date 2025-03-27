@@ -1,7 +1,7 @@
 title: Dynatrace
 description: Dynatrace integration for Port Ocean
 icon: Dynatrace
-docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/dynatrace
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/dynatrace
 features:
   - type: exporter
     section: APM & Alerting
