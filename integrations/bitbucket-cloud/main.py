@@ -5,7 +5,6 @@ from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.helpers.multiple_token import BitbucketClientManager
 from bitbucket_cloud.helpers.utils import ObjectKind
 

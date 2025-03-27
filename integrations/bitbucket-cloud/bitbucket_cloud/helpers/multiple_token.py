@@ -2,8 +2,8 @@ import time
 from typing import Any, AsyncGenerator, Dict, Optional, Tuple
 import asyncio
 from loguru import logger
-from helpers.rate_limiter import RollingWindowLimiter
-from client import BitbucketClient
+from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
+from bitbucket_cloud.client import BitbucketClient
 
 
 class BitbucketClientManager:
