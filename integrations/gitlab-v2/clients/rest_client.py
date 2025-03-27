@@ -11,6 +11,13 @@ class RestClient(HTTPBaseClient):
     DEFAULT_PAGE_SIZE = 100
     VALID_GROUP_RESOURCES = ["issues", "merge_requests", "labels", "search"]
 
+    async def get_resource(
+        self, path: str, params: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        params = params or {}
+        response = await self.send_api_request("GET", path, params=params)
+        return response
+
     async def get_paginated_resource(
         self, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
@@ -27,6 +34,7 @@ class RestClient(HTTPBaseClient):
         """Fetch a paginated project resource (e.g., labels)."""
         encoded_project_path = quote(project_path, safe="")
         path = f"projects/{encoded_project_path}/{resource_type}"
+
         async for batch in self._make_paginated_request(path, params=params):
             if batch:
                 yield batch
@@ -89,7 +97,7 @@ class RestClient(HTTPBaseClient):
         path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
         params = {"ref": ref}
 
-        response = await self.send_api_request("GET", path, params=params)
+        response = await self.get_resource("GET", path, params=params)
         if not response:
             return None
 

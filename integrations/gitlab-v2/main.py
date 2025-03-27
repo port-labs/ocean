@@ -7,7 +7,11 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients.client_factory import create_gitlab_client
 from helpers.utils import ObjectKind
-from integration import GitLabFilesResourceConfig, ProjectResourceConfig
+from integration import (
+    GitLabFilesResourceConfig,
+    ProjectResourceConfig,
+    GitLabFoldersResourceConfig,
+)
 
 
 @ocean.on_start()
@@ -81,3 +85,25 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if files_batch:
             logger.info(f"Found batch of {len(files_batch)} matching files")
             yield files_batch
+
+
+@ocean.on_resync(ObjectKind.FOLDER)
+async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(GitLabFoldersResourceConfig, event.resource_config).selector
+
+    for folder_selector in selector.folders:
+        path = folder_selector.path
+        repos = folder_selector.repos if folder_selector.repos else None
+        branch = folder_selector.branch
+
+        if not repos:
+            logger.info(
+                f"No repositories specified for path {path}; skipping folder resync"
+            )
+            continue
+
+        async for folders_batch in client.search_folders(path, repos, branch):
+            if folders_batch:
+                logger.info(f"Found batch of {len(folders_batch)} matching folders")
+                yield folders_batch

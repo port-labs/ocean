@@ -41,9 +41,27 @@ class GitLabFilesResourceConfig(ResourceConfig):
     kind: Literal["file"]
 
 
+class FoldersSelector(BaseModel):
+    path: str
+    repos: list[str] = Field(default_factory=list)
+    branch: str | None = None
+
+
+class GitlabFolderSelector(Selector):
+    folders: list[FoldersSelector] = Field(default_factory=list)
+
+
+class GitLabFoldersResourceConfig(ResourceConfig):
+    selector: GitlabFolderSelector
+    kind: Literal["folder"]
+
+
 class GitlabPortAppConfig(PortAppConfig):
     resources: list[
-        GitLabFilesResourceConfig | ProjectResourceConfig | ResourceConfig
+        GitLabFoldersResourceConfig
+        | GitLabFilesResourceConfig
+        | ProjectResourceConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 
