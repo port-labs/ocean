@@ -201,6 +201,7 @@ class GitLabClient:
                 yield resource_batch
 
     # Helpers: File Processing and Search
+
     async def _process_file(
         self,
         file: dict[str, Any],
