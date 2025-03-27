@@ -1,5 +1,5 @@
 description: Ocean integration for Bitbucket Cloud
-icon: bitbucket
+icon: BitBucket
 features:
   - type: exporter
     section: Git Providers
