@@ -161,7 +161,7 @@ class TestGitLabClient:
         ):
             with patch.object(
                 client,
-                "_search_in_group_with_query",
+                "_search_in_group",
                 return_value=async_mock_generator([processed_files]),
             ) as mock_search_group:
                 with patch.object(

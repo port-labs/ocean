@@ -110,7 +110,7 @@ class GitLabClient:
                 tasks = [
                     semaphore_async_iterator(
                         semaphore,
-                        partial(self._search_in_group_with_query, group, scope, query),
+                        partial(self._search_in_group, group, scope, query),
                     )
                     for group in groups
                 ]
@@ -217,7 +217,7 @@ class GitLabClient:
                 if processed_batch:
                     yield processed_batch
 
-    async def _search_in_group_with_query(
+    async def _search_in_group(
         self,
         group: dict[str, Any],
         scope: str,
