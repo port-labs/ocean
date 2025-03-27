@@ -5,10 +5,6 @@
         "icon": "Github",
         "schema": {
             "properties": {
-                "name": {
-                    "type": "string",
-                    "title": "Name"
-                },
                 "description": {
                     "type": "string",
                     "title": "Description"
@@ -44,7 +40,7 @@
                     "title": "Forks"
                 }
             },
-            "required": ["name", "visibility", "url"]
+            "required": ["visibility", "url"]
         },
         "relations": {}
     },
@@ -54,10 +50,6 @@
         "icon": "Git",
         "schema": {
             "properties": {
-                "title": {
-                    "type": "string",
-                    "title": "Title"
-                },
                 "state": {
                     "type": "string",
                     "enum": ["open", "closed", "merged"],
@@ -87,7 +79,7 @@
                     "title": "Created At"
                 }
             },
-            "required": ["title", "state", "url"]
+            "required": ["state", "url"]
         },
         "relations": {
             "repository": {
@@ -103,10 +95,6 @@
         "icon": "Bug",
         "schema": {
             "properties": {
-                "title": {
-                    "type": "string",
-                    "title": "Title"
-                },
                 "state": {
                     "type": "string",
                     "enum": ["open", "closed"],
@@ -137,7 +125,7 @@
                     "title": "Labels"
                 }
             },
-            "required": ["title", "state", "url"]
+            "required": ["state", "url"]
         },
         "relations": {
             "repository": {
@@ -153,10 +141,6 @@
         "icon": "Team",
         "schema": {
             "properties": {
-                "name": {
-                    "type": "string",
-                    "title": "Name"
-                },
                 "description": {
                     "type": "string",
                     "title": "Description"
@@ -170,8 +154,7 @@
                     "type": "number",
                     "title": "Members Count"
                 }
-            },
-            "required": ["name"]
+            }
         },
         "relations": {}
     },
@@ -181,10 +164,6 @@
         "icon": "Pipeline",
         "schema": {
             "properties": {
-                "name": {
-                    "type": "string",
-                    "title": "Name"
-                },
                 "state": {
                     "type": "string",
                     "enum": ["active", "disabled"],
@@ -215,7 +194,7 @@
                     "title": "Last Run Status"
                 }
             },
-            "required": ["name", "state", "path"]
+            "required": ["state", "path"]
         },
         "relations": {
             "repository": {

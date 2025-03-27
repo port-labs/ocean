@@ -12,8 +12,10 @@ from port_ocean.context.ocean import ocean
 PAGE_SIZE = 100
 MAX_CONCURRENT_REQUESTS = 10
 
+
 class GitHubRateLimiter:
     """Rate limiter for GitHub API requests."""
+
     def __init__(self):
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
         self.rate_limit = {
@@ -26,7 +28,9 @@ class GitHubRateLimiter:
         if self.rate_limit["remaining"] <= 1:
             wait_time = self.rate_limit["reset"] - time.time()
             if wait_time > 0:
-                logger.warning(f"Rate limit reached. Waiting {wait_time:.2f} seconds...")
+                logger.warning(
+                    f"Rate limit reached. Waiting {wait_time:.2f} seconds..."
+                )
                 await asyncio.sleep(wait_time)
         return self
 
@@ -37,11 +41,13 @@ class GitHubRateLimiter:
         """Update rate limit information from response headers."""
         self.rate_limit = {
             "remaining": int(headers.get("X-RateLimit-Remaining", 5000)),
-            "reset": int(headers.get("X-RateLimit-Reset", time.time() + 3600))
+            "reset": int(headers.get("X-RateLimit-Reset", time.time() + 3600)),
         }
+
 
 class GitHubClient:
     """Client for interacting with GitHub API v3."""
+
     BASE_URL = "https://api.github.com"
 
     def __init__(self, token: str, organization: str, webhook_base_url: str | None):
@@ -51,7 +57,7 @@ class GitHubClient:
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": ocean.integration_config["github_api_version"]
+            "X-GitHub-Api-Version": ocean.integration_config["github_api_version"],
         }
         self.client.headers.update(self.headers)
         self.rate_limiter = GitHubRateLimiter()
@@ -74,7 +80,7 @@ class GitHubClient:
     ) -> Dict[str, Any]:
         """Send request to GitHub API with error handling and rate limiting."""
         url = f"{self.BASE_URL}/{endpoint}"
-        
+
         async with self.rate_limiter:
             try:
                 response = await self.client.request(
@@ -84,11 +90,11 @@ class GitHubClient:
                     json=json_data,
                 )
                 response.raise_for_status()
-                
+
                 # Update rate limit info
                 self.rate_limiter.update_rate_limit(response.headers)
                 return response.json() if response.text else {}
-                
+
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 404:
                     logger.debug(f"Resource not found at endpoint '{endpoint}'")
@@ -111,25 +117,31 @@ class GitHubClient:
         """Handle GitHub's pagination for API requests."""
         if params is None:
             params = {}
-        
+
         params["per_page"] = PAGE_SIZE
         page = 1
 
         try:
             while True:
                 params["page"] = page
-                response = await self._send_api_request(endpoint, method=method, params=params)
-                
+                response = await self._send_api_request(
+                    endpoint, method=method, params=params
+                )
+
                 if not response:
                     return
-                    
-                items = response if isinstance(response, list) else response.get("items", [])
-                
+
+                items = (
+                    response
+                    if isinstance(response, list)
+                    else response.get("items", [])
+                )
+
                 if not items:
                     return
 
                 yield items
-                
+
                 # Check for next page in Link header
                 if isinstance(response, dict) and not response.get("next"):
                     return
@@ -141,25 +153,29 @@ class GitHubClient:
     async def get_repositories(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get all repositories in the organization with pagination."""
         async for repos in self._paginate_request(f"orgs/{self.organization}/repos"):
-            logger.info(f"Fetched batch of {len(repos)} repositories from organization {self.organization}")
+            logger.info(
+                f"Fetched batch of {len(repos)} repositories from organization {self.organization}"
+            )
             yield repos
 
-    async def get_pull_requests(self, repo: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    async def get_pull_requests(
+        self, repo: str
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get pull requests for a repository with pagination."""
         params = {"state": "open"}
         async for prs in self._paginate_request(
-            f"repos/{self.organization}/{repo}/pulls",
-            params=params
+            f"repos/{self.organization}/{repo}/pulls", params=params
         ):
-            logger.info(f"Fetched batch of {len(prs)} pull requests from repository {repo}")
+            logger.info(
+                f"Fetched batch of {len(prs)} pull requests from repository {repo}"
+            )
             yield prs
 
     async def get_issues(self, repo: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get issues for a repository with pagination."""
         params = {"state": "open"}
         async for issues in self._paginate_request(
-            f"repos/{self.organization}/{repo}/issues",
-            params=params
+            f"repos/{self.organization}/{repo}/issues", params=params
         ):
             logger.info(f"Fetched batch of {len(issues)} issues from repository {repo}")
             yield issues
@@ -167,23 +183,29 @@ class GitHubClient:
     async def get_teams(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get all teams in the organization with pagination."""
         async for teams in self._paginate_request(f"orgs/{self.organization}/teams"):
-            logger.info(f"Fetched batch of {len(teams)} teams from organization {self.organization}")
+            logger.info(
+                f"Fetched batch of {len(teams)} teams from organization {self.organization}"
+            )
             yield teams
 
-    async def get_workflows(self, repo: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    async def get_workflows(
+        self, repo: str
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get workflows for a repository."""
-        response = await self._send_api_request(f"repos/{self.organization}/{repo}/actions/workflows")
+        response = await self._send_api_request(
+            f"repos/{self.organization}/{repo}/actions/workflows"
+        )
         if workflows := response.get("workflows", []):
             logger.info(f"Fetched {len(workflows)} workflows from repository {repo}")
             yield workflows
 
     async def get_workflow_runs(
-        self, repo: str, workflow_id: str, per_page: int = 1
+        self, repo: str, workflow_id: str
     ) -> List[Dict[str, Any]]:
         """Get recent runs for a specific workflow."""
         response = await self._send_api_request(
             f"repos/{self.organization}/{repo}/actions/workflows/{workflow_id}/runs",
-            params={"per_page": per_page}
+            params={"per_page": PAGE_SIZE},
         )
         return response.get("workflow_runs", [])
 
@@ -197,7 +219,7 @@ class GitHubClient:
             return
 
         webhook_url = f"{self.webhook_base_url}/integration/webhook"
-        
+
         # Check existing webhooks
         async for hooks in self._paginate_request(f"orgs/{self.organization}/hooks"):
             for hook in hooks:
@@ -209,25 +231,37 @@ class GitHubClient:
         webhook_data = {
             "name": "web",
             "active": True,
-            "events": [
-                "repository",
-                "pull_request",
-                "issues",
-                "team",
-                "workflow_run"
-            ],
+            "events": ["repository", "pull_request", "issues", "team", "workflow_run"],
             "config": {
                 "url": webhook_url,
                 "content_type": "json",
-            }
+            },
         }
 
         try:
             await self._send_api_request(
-                f"orgs/{self.organization}/hooks",
-                method="POST",
-                json_data=webhook_data
+                f"orgs/{self.organization}/hooks", method="POST", json_data=webhook_data
             )
             logger.info("Successfully created webhook")
         except httpx.HTTPError as e:
             logger.error(f"Failed to create webhook: {str(e)}")
+
+    async def get_single_resource(
+        self, object_type: str, identifier: str
+    ) -> dict[str, Any]:
+        """Fetch a single resource from GitHub API."""
+
+        endpoints = {
+            "repository": f"repos/{self.organization}/{identifier}",
+            "pull-request": f"repos/{self.organization}/{identifier}/pulls",
+            "issue": f"repos/{self.organization}/{identifier}/issues",
+            "team": f"orgs/{self.organization}/teams/{identifier}",
+            "workflow": f"repos/{self.organization}/{identifier}/actions/workflows",
+        }
+
+        if object_type not in endpoints:
+            raise ValueError(f"Unsupported resource type: {object_type}")
+
+        endpoint = endpoints[object_type]
+        response, _ = await self._send_api_request(endpoint)
+        return response

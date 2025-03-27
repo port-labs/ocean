@@ -1,7 +1,7 @@
 from loguru import logger
-from client import GitHubClient
 from consts import TEAM_DELETE_EVENTS, TEAM_UPSERT_EVENTS
 from helpers.utils import ObjectKind
+from client import GitHubClient
 from webhook_processors.abstract import GitHubAbstractWebhookProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -10,11 +10,13 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
+
 class TeamWebhookProcessor(GitHubAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
+        event_type = event.payload.get("action")
         return (
-            event.payload.get("action") in TEAM_UPSERT_EVENTS
-            or event.payload.get("action") in TEAM_DELETE_EVENTS
+            event.headers.get("X-GitHub-Event") == "team"
+            and event_type in TEAM_UPSERT_EVENTS + TEAM_DELETE_EVENTS
         )
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -23,18 +25,23 @@ class TeamWebhookProcessor(GitHubAbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        client = GitHubClient.from_ocean_config()
+        """Handle team webhook events."""
+        action = payload.get("action")
         team = payload.get("team", {})
-        
-        if payload.get("action") in TEAM_DELETE_EVENTS:
+        team_slug = team.get("slug")
+
+        logger.info(f"Processing team event: {action} for team {team_slug}")
+
+        if action in TEAM_DELETE_EVENTS:
             logger.info(f"Team {team.get('name')} was deleted")
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[team],
             )
 
-        logger.info(f"Got event for team {team.get('name')}: {payload.get('action')}")
+        client = GitHubClient.from_ocean_config()
+        latest_team = await client.get_single_resource(ObjectKind.TEAM, team_slug)
+
         return WebhookEventRawResults(
-            updated_raw_results=[team],
-            deleted_raw_results=[],
-        ) 
+            updated_raw_results=[latest_team], deleted_raw_results=[]
+        )

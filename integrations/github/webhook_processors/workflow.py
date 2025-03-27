@@ -10,9 +10,14 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
+
 class WorkflowWebhookProcessor(GitHubAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("action") in WORKFLOW_EVENTS
+        event_type = event.payload.get("action")
+        return (
+            event.headers.get("X-GitHub-Event") == "workflow_run"
+            and event_type in WORKFLOW_EVENTS
+        )
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.WORKFLOW]
@@ -20,26 +25,27 @@ class WorkflowWebhookProcessor(GitHubAbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        client = GitHubClient.from_ocean_config()
+        """Handle workflow webhook events."""
+        action = payload.get("action")
         workflow_run = payload.get("workflow_run", {})
-        workflow = workflow_run.get("workflow", {})
+        workflow = payload.get("workflow", {})
         repo = payload.get("repository", {})
 
-        logger.info(f"Got workflow run event for {workflow.get('name')}")
-        
-        # Get the complete workflow data
-        async for workflows in client.get_workflows(repo["name"]):
-            for wf in workflows:
-                if wf["id"] == workflow["id"]:
-                    # Enrich with repository and latest run
-                    wf["repository"] = repo
-                    wf["latest_run"] = workflow_run
-                    return WebhookEventRawResults(
-                        updated_raw_results=[wf],
-                        deleted_raw_results=[],
-                    )
+        workflow_id = workflow["id"]
+        repo_name = repo.get("name")
+
+        logger.info(
+            f"Processing workflow event: {action} for workflow {workflow_id} in {repo_name}"
+        )
+
+        client = GitHubClient.from_ocean_config()
+        latest_workflow = await client.get_single_resource(
+            ObjectKind.WORKFLOW, f"{repo_name}/{workflow_id}"
+        )
+
+        # Enrich workflow data with the latest run
+        latest_workflow["latest_run"] = workflow_run
 
         return WebhookEventRawResults(
-            updated_raw_results=[],
-            deleted_raw_results=[],
-        ) 
+            updated_raw_results=[latest_workflow], deleted_raw_results=[]
+        )
