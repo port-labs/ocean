@@ -1,6 +1,6 @@
 <h1 align="center">
   <p align="center">Port Documentation</p>
-  <a href="https://docs.getport.io"><img src="https://port-graphical-assets.s3.eu-west-1.amazonaws.com/Port+Logo.svg" alt="Port"></a>
+  <a href="https://docs.port.io"><img src="https://port-graphical-assets.s3.eu-west-1.amazonaws.com/Port+Logo.svg" alt="Port"></a>
 </h1>
 
 <p align="center">
@@ -15,7 +15,7 @@ Port is a Developer Platform made to make life easier for developers and DevOps 
 
 ## Port's documentation
 
-This is the repository for Port's documentation website (available at [https://docs.getport.io](https://docs.getport.io))
+This is the repository for Port's documentation website (available at [https://docs.port.io](https://docs.port.io))
 
 Port's documentation is built using [Docusaurus 2](https://docusaurus.io/), a modern static website generator.
 

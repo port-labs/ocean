@@ -10,5 +10,5 @@ Your Wiz credentials should have the `read:projects` and `read:issues` permissio
 1. The `wizApiUrl` and `wizTokenUrl` must be set since they do not have default value as there are at least 2 possible URLs a client will have based on their location.
 
 ### Resources
-1. Install & use the integration - [Integration documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz) 
+1. Install & use the integration - [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz) 
 2. Develop & improve the integration - [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)
