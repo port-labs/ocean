@@ -62,7 +62,7 @@ class SonarQubeClient:
         organization_id: str | None,
         app_host: str | None,
         is_onpremise: bool = False,
-        metrics: list[str] = [],
+        metrics: list[str] | None = None,
     ):
         self.base_url = base_url
         self.api_key = api_key
@@ -243,7 +243,6 @@ class SonarQubeClient:
         :return: A list of measures associated with the specified component.
         """
         logger.info(f"Fetching all measures in : {project_key}")
-        response = None
         response = await self._send_api_request(
             endpoint=Endpoints.MEASURES,
             query_params={
