@@ -188,3 +188,116 @@ class TestGitLabClient:
             # Assert
             assert result == mock_content
             mock_get_file_content.assert_called_once_with(project_id, file_path, "main")
+
+    async def test_get_project(self, client: GitLabClient) -> None:
+        """Test fetching a single project by path"""
+        project_path = "group/project"
+        mock_project = {
+            "id": "123",
+            "path_with_namespace": project_path,
+            "default_branch": "main",
+        }
+        with patch.object(
+            client.rest,
+            "get_resource",
+            AsyncMock(return_value=mock_project),
+        ) as mock_get_resource:
+            result = await client.get_project(project_path)
+            assert result["id"] == "123"
+            assert result["path_with_namespace"] == project_path
+            mock_get_resource.assert_called_once_with("projects/group%2Fproject")
+
+    async def test_file_exists(self, client: GitLabClient) -> None:
+        """Test checking if a file exists in a project"""
+        project_id = "123"
+        scope = "blobs"
+        query = "test.txt"
+        mock_response = [{"path": "test.txt"}]  # Non-empty response means exists
+        with patch.object(
+            client.rest,
+            "get_resource",
+            AsyncMock(return_value=mock_response),
+        ) as mock_get_resource:
+            exists = await client.file_exists(project_id, scope, query)
+            assert exists is True
+            mock_get_resource.assert_called_once_with(
+                "projects/123/search", params={"scope": "blobs", "search": "test.txt"}
+            )
+
+        # Test non-existent file
+        with patch.object(
+            client.rest,
+            "get_resource",
+            AsyncMock(return_value=[]),  # Empty response means doesn't exist
+        ) as mock_get_resource:
+            exists = await client.file_exists(project_id, scope, query)
+            assert exists is False
+
+    async def test_get_repository_tree(self, client: GitLabClient) -> None:
+        """Test fetching repository tree (folders only) for a project"""
+        project = {"path_with_namespace": "group/project"}
+        path = "src"
+        ref = "main"
+        mock_tree = [
+            {"type": "tree", "name": "folder1"},
+            {"type": "blob", "name": "file.txt"},
+            {"type": "tree", "name": "folder2"},
+        ]
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_tree]),
+        ) as mock_get_paginated:
+            results = []
+            async for batch in client.get_repository_tree(project, path, ref):
+                results.extend(batch)
+
+            assert len(results) == 2
+            assert results[0]["folder"]["name"] == "folder1"
+            assert results[1]["folder"]["name"] == "folder2"
+            assert all(r["repo"] == project for r in results)
+            assert all(r["__branch"] == ref for r in results)
+            mock_get_paginated.assert_called_once_with(
+                "group/project",
+                "repository/tree",
+                {"ref": "main", "path": "src", "recursive": True, "per_page": 100},
+            )
+
+    async def test_search_folders(self, client: GitLabClient) -> None:
+        """Test searching folders across repositories"""
+        repos = ["group/project1", "group/project2"]
+        path = "src"
+        branch = "develop"
+        mock_project1 = {"id": "1", "path_with_namespace": "group/project1", "default_branch": "main"}
+        mock_project2 = {"id": "2", "path_with_namespace": "group/project2", "default_branch": "main"}
+        mock_tree = [{"type": "tree", "name": "folder1"}, {"type": "blob", "name": "file.txt"}]
+        with patch.object(
+            client, "get_project", AsyncMock(side_effect=[mock_project1, mock_project2])
+        ) as mock_get_project:
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                side_effect=[async_mock_generator([mock_tree]), async_mock_generator([mock_tree])],
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client.search_folders(path, repos, branch):
+                    results.extend(batch)
+
+                assert len(results) == 2
+                assert results[0]["folder"]["name"] == "folder1"
+                assert results[0]["repo"] == mock_project1
+                assert results[0]["__branch"] == "develop"
+                assert results[1]["repo"] == mock_project2
+                assert results[1]["__branch"] == "develop"
+                mock_get_project.assert_any_call("group/project1")
+                mock_get_project.assert_any_call("group/project2")
+                mock_get_paginated.assert_any_call(
+                    "group/project1",
+                    "repository/tree",
+                    {"ref": "develop", "path": "src", "recursive": True, "per_page": 100},
+                )
+                mock_get_paginated.assert_any_call(
+                    "group/project2",
+                    "repository/tree",
+                    {"ref": "develop", "path": "src", "recursive": True, "per_page": 100},
+                )
