@@ -2,6 +2,7 @@ import asyncio
 from typing import Any, Literal
 from urllib.parse import quote_plus
 
+
 import httpx
 from loguru import logger
 
@@ -99,7 +100,6 @@ class EntityClientMixin:
         # We return None to ignore the entity later in the delete process
         if result_entity.is_using_search_identifier:
             return None
-
         return self._reduce_entity(result_entity)
 
     @staticmethod
@@ -125,7 +125,6 @@ class EntityClientMixin:
             key: None if isinstance(relation, dict) else relation
             for key, relation in entity.relations.items()
         }
-
         return reduced_entity
 
     async def batch_upsert_entities(

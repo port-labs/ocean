@@ -153,6 +153,6 @@ The parameters available to configure the webhook event listener:
 | `appHost` | The URL of the integration instance | `null`        |
 
 :::note
-The `appHost` parameter must be a URL that Port can send requests to. Port's requests will always arrive from a closed-list of available IP addresses which can be found in Port's [security documentation](https://docs.getport.io/create-self-service-experiences/security/)
+The `appHost` parameter must be a URL that Port can send requests to. Port's requests will always arrive from a closed-list of available IP addresses which can be found in Port's [security documentation](https://docs.port.io/create-self-service-experiences/security/)
 
 :::

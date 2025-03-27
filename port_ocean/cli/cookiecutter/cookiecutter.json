@@ -6,8 +6,8 @@
     "email": "Your address email <you@example.com>",
     "release_date": "{% now 'local' %}",
     "is_private_integration": true,
-    "port_client_id": "you can find it using: https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials",
-    "port_client_secret": "you can find it using: https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials",
+    "port_client_id": "you can find it using: https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials",
+    "port_client_secret": "you can find it using: https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials",
     "is_us_region": false,
     "_extensions": [
         "jinja2_time.TimeExtension",

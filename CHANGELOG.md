@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.22.0 (2025-03-17)
+
+### Features
+
+- Added metrics reporting capability using promethues, which can be accessible through the /metrics route.
+
 ## 0.21.5 (2025-03-12)
 
 ### Improvements

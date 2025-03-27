@@ -57,11 +57,12 @@ echo "# Performance Test Summary
 | Timestamp | Event |
 |:-------------:|-------------|" >"${LOG_FILE_MD}"
 
-START_NS=$(date +%s%N)
+bash --version
+START_NS=$(gdate +%s%N)
 _log "Starting Sync"
 RUN_LOG_FILE="./perf-sync.log"
 "${SCRIPT_BASE}/run-local-smoke-test.sh" | tee "${RUN_LOG_FILE}"
-END_NS=$(date +%s%N)
+END_NS=$(gdate +%s%N)
 ELAPSED_MS=$(((END_NS - START_NS) / 1000000))
 _log "Duration $((ELAPSED_MS / 1000)) seconds"
 
@@ -85,6 +86,7 @@ fi
 
 
 if [[ "${MOCK_PORT_API:-0}" = "1" ]]; then
+    sleep 1
     make smoke/stop-mock-api
 fi
 
