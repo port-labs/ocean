@@ -107,7 +107,7 @@ class TestWorkflowWebhookProcessor:
         assert result.updated_raw_results == [expected_data]
         assert result.deleted_raw_results == []
         mock_client.get_single_resource.assert_called_once_with(
-            "workflow", "test-repo/1"
+            ObjectKind.WORKFLOW, "test-repo/1"
         )
 
     async def test_handle_workflow_event_api_error(

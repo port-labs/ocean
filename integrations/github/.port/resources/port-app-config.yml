@@ -10,9 +10,14 @@ resources:
           title: .name
           blueprint: '"githubRepository"'
           properties:
-            readme: file://README.md
-            url: .html_url
+            description: .description
+            visibility: 'if .private then "private" else "public" end'
             defaultBranch: .default_branch
+            url: .html_url
+            language: .language
+            stars: .stargazers_count
+            forks: .forks_count
+            readme: .readme
           relations:
             githubTeams: '[.teams[].id | tostring]'
     
@@ -26,13 +31,15 @@ resources:
           title: .title
           blueprint: '"githubPullRequest"'
           properties:
-            status: .status
-            closedAt: .closed_at
-            updatedAt: .updated_at
-            mergedAt: .merged_at
+            state: 'if .merged_at then "merged" else .state end'
+            url: .html_url
+            creator: .user.login
+            repository: .base.repo.full_name
             createdAt: .created_at
+            closedAt: .closed_at
+            mergedAt: .merged_at
+            updatedAt: .updated_at
             prNumber: .number
-            link: .html_url
             branch: .head.ref
             leadTimeHours: >-
               (.created_at as $createdAt | .merged_at as $mergedAt | ($createdAt
@@ -42,7 +49,8 @@ resources:
               as $mergedTimestamp | if $mergedTimestamp == null then null else
               (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) /
               100) end)
-          relations: {}
+          relations:
+            repository: .base.repo.full_name | gsub("/"; "-")
 
   - kind: issue
     selector:

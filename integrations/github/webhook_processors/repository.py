@@ -14,8 +14,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class RepositoryWebhookProcessor(GitHubAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.payload.get("action")
+        event = event.headers.get("x-github-event")
+
         return (
-            event.headers.get("X-GitHub-Event") == "repository"
+            event == "repository"
             and event_type in REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
         )
 

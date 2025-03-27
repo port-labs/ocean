@@ -29,21 +29,24 @@ async def on_start() -> None:
 @ocean.on_resync()
 async def on_global_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resync for any kind."""
-    if kind not in ObjectKind.available_kinds():
-        logger.error(f"Kind {kind} is not supported in this integration")
+    if kind in ObjectKind.available_kinds():
+        logger.error(
+            f"Kind {kind} is supported in this integration and so will be skipped"
+        )
         return
 
-    handlers = {
-        ObjectKind.REPOSITORY: resync_repositories,
-        ObjectKind.PULL_REQUEST: resync_pull_requests,
-        ObjectKind.ISSUE: resync_issues,
-        ObjectKind.TEAM: resync_teams,
-        ObjectKind.WORKFLOW: resync_workflows,
-    }
+    client = GitHubClient.from_ocean_config()
 
-    if handler := handlers.get(kind):
-        async for items in handler(kind):
+    try:
+        logger.info(
+            f"No specific handler for kind {kind}, attempting direct pagination"
+        )
+        async for items in client._paginate_request(kind):
+            logger.info(f"Fetched batch of {len(items)} items for kind {kind}")
             yield items
+    except Exception as e:
+        logger.error(f"Failed to fetch data for kind {kind}: {str(e)}")
+        raise
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)

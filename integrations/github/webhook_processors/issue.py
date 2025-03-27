@@ -14,8 +14,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class IssueWebhookProcessor(GitHubAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.payload.get("action")
+        event = event.headers.get("x-github-event")
+
         return (
-            event.headers.get("X-GitHub-Event") == "issues"
+            event == "issues"
             and event_type in ISSUE_UPSERT_EVENTS + ISSUE_UPSERT_EVENTS
         )
 

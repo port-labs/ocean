@@ -11,11 +11,11 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 
 from client import GitHubClient
 
-# Test configuration constants
 TEST_INTEGRATION_CONFIG: Dict[str, str] = {
     "token": "mock-github-token",
     "organization": "test-org",
     "webhook_base_url": "https://app.example.com",
+    "github_api_version": "2022-11-28",
 }
 
 
@@ -38,7 +38,7 @@ def mock_ocean_context() -> None:
             "token": TEST_INTEGRATION_CONFIG["token"],
             "organization": TEST_INTEGRATION_CONFIG["organization"],
             "webhook_base_url": TEST_INTEGRATION_CONFIG["webhook_base_url"],
-            "github_api_version": "2022-11-28",
+            "github_api_version": TEST_INTEGRATION_CONFIG["github_api_version"],
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()

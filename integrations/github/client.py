@@ -43,24 +43,38 @@ class GitHubRateLimiter:
             "remaining": int(headers.get("X-RateLimit-Remaining", 5000)),
             "reset": int(headers.get("X-RateLimit-Reset", time.time() + 3600)),
         }
+        logger.debug(
+            f"Updated rate limit: {self.rate_limit['remaining']} requests remaining, "
+            f"resets at {time.ctime(self.rate_limit['reset'])}"
+        )
 
 
 class GitHubClient:
     """Client for interacting with GitHub API v3."""
 
-    BASE_URL = "https://api.github.com"
+    API_BASE_URL = "https://api.github.com"
 
-    def __init__(self, token: str, organization: str, webhook_base_url: str | None):
+    def __init__(
+        self,
+        token: str,
+        organization: str,
+        github_api_version: str,
+        webhook_base_url: str | None,
+    ):
         self.organization = organization
         self.webhook_base_url = webhook_base_url
         self.client = http_async_client
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": ocean.integration_config["github_api_version"],
+            "X-GitHub-Api-Version": github_api_version,
         }
         self.client.headers.update(self.headers)
         self.rate_limiter = GitHubRateLimiter()
+        logger.info(
+            f"Initialized GitHubClient for organization '{organization}' "
+            f"with API version '{github_api_version}' and webhook base URL '{webhook_base_url}'"
+        )
 
     @classmethod
     def from_ocean_config(cls) -> "GitHubClient":
@@ -68,6 +82,7 @@ class GitHubClient:
         return cls(
             token=ocean.integration_config["token"],
             organization=ocean.integration_config["organization"],
+            github_api_version=ocean.integration_config["github_api_version"],
             webhook_base_url=ocean.app.base_url,
         )
 
@@ -79,7 +94,7 @@ class GitHubClient:
         json_data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Send request to GitHub API with error handling and rate limiting."""
-        url = f"{self.BASE_URL}/{endpoint}"
+        url = f"{self.API_BASE_URL}/{endpoint}"
 
         async with self.rate_limiter:
             try:
@@ -90,6 +105,8 @@ class GitHubClient:
                     json=json_data,
                 )
                 response.raise_for_status()
+
+                logger.debug(f"Successfully fetched {method} {endpoint}")
 
                 # Update rate limit info
                 self.rate_limiter.update_rate_limit(response.headers)
@@ -121,6 +138,8 @@ class GitHubClient:
         params["per_page"] = PAGE_SIZE
         page = 1
 
+        logger.info(f"Starting pagination for {method} {endpoint}")
+
         try:
             while True:
                 params["page"] = page
@@ -147,7 +166,7 @@ class GitHubClient:
                     return
                 page += 1
         except StopAsyncIteration:
-            return
+            logger.debug(f"Pagination stopped for {method} {endpoint}")
 
     @cache_iterator_result()
     async def get_repositories(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -207,7 +226,11 @@ class GitHubClient:
             f"repos/{self.organization}/{repo}/actions/workflows/{workflow_id}/runs",
             params={"per_page": PAGE_SIZE},
         )
-        return response.get("workflow_runs", [])
+        runs = response.get("workflow_runs", [])
+        logger.info(
+            f"Fetched {len(runs)} workflow runs for workflow {workflow_id} in {repo}"
+        )
+        return runs
 
     async def create_webhooks_if_not_exists(self) -> None:
         """Create webhook for the organization if it doesn't exist."""
@@ -264,4 +287,5 @@ class GitHubClient:
 
         endpoint = endpoints[object_type]
         response, _ = await self._send_api_request(endpoint)
+        logger.debug(f"Fetched {object_type} {identifier}: {response}")
         return response

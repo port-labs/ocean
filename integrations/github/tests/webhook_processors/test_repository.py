@@ -116,7 +116,7 @@ class TestRepositoryWebhookProcessor:
         assert result.updated_raw_results == [repo_data]
         assert result.deleted_raw_results == []
         mock_client.get_single_resource.assert_called_once_with(
-            "repository", "test-repo"
+            ObjectKind.REPOSITORY, "test-repo"
         )
 
     async def test_handle_event_delete(

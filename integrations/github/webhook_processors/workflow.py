@@ -14,10 +14,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class WorkflowWebhookProcessor(GitHubAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.payload.get("action")
-        return (
-            event.headers.get("X-GitHub-Event") == "workflow_run"
-            and event_type in WORKFLOW_EVENTS
-        )
+        event = event.headers.get("x-github-event")
+
+        return event == "workflow_run" and event_type in WORKFLOW_EVENTS
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.WORKFLOW]

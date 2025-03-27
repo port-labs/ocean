@@ -13,9 +13,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 class PullRequestWebhookProcessor(GitHubAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
+
         event_type = event.payload.get("action")
+        event = event.headers.get("x-github-event")
+
         return (
-            event.headers.get("X-GitHub-Event") == "pull_request"
+            event == "pull_request"
             and event_type in PULL_REQUEST_UPSERT_EVENTS + PULL_REQUEST_DELETE_EVENTS
         )
 

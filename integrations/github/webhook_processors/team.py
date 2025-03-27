@@ -14,10 +14,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class TeamWebhookProcessor(GitHubAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.payload.get("action")
-        return (
-            event.headers.get("X-GitHub-Event") == "team"
-            and event_type in TEAM_UPSERT_EVENTS + TEAM_DELETE_EVENTS
-        )
+        event = event.headers.get("x-github-event")
+
+        return event == "team" and event_type in TEAM_UPSERT_EVENTS + TEAM_DELETE_EVENTS
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.TEAM]

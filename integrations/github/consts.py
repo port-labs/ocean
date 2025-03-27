@@ -18,7 +18,12 @@ ISSUE_UPSERT_EVENTS = ["opened", "closed", "reopened", "edited"]
 ISSUE_DELETE_EVENTS = ["deleted"]
 
 # Team events
-TEAM_UPSERT_EVENTS = ["created", "edited"]
+TEAM_UPSERT_EVENTS = [
+    "created",
+    "edited",
+    "added_to_repository",
+    "removed_from_repository",
+]
 TEAM_DELETE_EVENTS = ["deleted"]
 
 # Workflow events

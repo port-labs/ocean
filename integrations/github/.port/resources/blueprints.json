@@ -38,11 +38,23 @@
                 "forks": {
                     "type": "number",
                     "title": "Forks"
+                },
+                "readme": {
+                    "type": "string",
+                    "title": "Readme",
+                    "description": "Contents of the repository's README.md file"
                 }
             },
             "required": ["visibility", "url"]
         },
-        "relations": {}
+        "relations": {
+            "githubTeams": {
+                "target": "githubTeam",
+                "title": "Teams",
+                "required": false,
+                "many": true
+            }
+        }
     },
     {
         "identifier": "githubPullRequest",
@@ -77,6 +89,34 @@
                     "type": "string",
                     "format": "date-time",
                     "title": "Created At"
+                },
+                "closedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Closed At"
+                },
+                "mergedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Merged At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                },
+                "prNumber": {
+                    "type": "number",
+                    "title": "PR Number"
+                },
+                "branch": {
+                    "type": "string",
+                    "title": "Branch"
+                },
+                "leadTimeHours": {
+                    "type": "number",
+                    "title": "Lead Time (Hours)",
+                    "description": "Time in hours between PR creation and merge, null if not merged"
                 }
             },
             "required": ["state", "url"]
