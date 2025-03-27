@@ -69,15 +69,16 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     selector = cast(GitLabFilesResourceConfig, event.resource_config).selector
 
-    search_path = selector.files.path
+    search_query = selector.files.query
+    scope = "blobs"
 
-    repos = (
+    repositories = (
         selector.files.repos
         if hasattr(selector.files, "repos") and selector.files.repos
         else None
     )
 
-    async for files_batch in client.search_files(search_path, repos):
+    async for files_batch in client.search_files(scope, search_query, repositories):
         if files_batch:
             logger.info(f"Found batch of {len(files_batch)} matching files")
             yield files_batch

@@ -121,55 +121,61 @@ class TestGitLabClient:
             mock_get_group_resource.assert_called_once_with("123", "issues")
 
     async def test_search_files_in_repos(self, client: GitLabClient) -> None:
-        """Test file search in specific repositories"""
-        # Arrange
-        raw_files: list[dict[str, Any]] = [
-            {"path": "test.json", "data": '{"key": "value"}', "project_id": "123"}
+        """Test file search in specific repositories using scope and query via _search_in_repository"""
+        processed_files = [
+            {"path": "test.json", "project_id": "123", "content": {"key": "value"}}
         ]
         repos = ["group/project"]
-        pattern = "*.json"
-
+        scope = "blobs"
+        query = "test.json"
         with patch.object(
-            client.rest,
-            "get_paginated_project_resource",
-            return_value=async_mock_generator([raw_files]),
-        ):
+            client,
+            "_search_in_repository",
+            return_value=async_mock_generator([processed_files]),
+        ) as mock_search_repo:
             with patch.object(
                 client, "get_file_content", return_value='{"key": "value"}'
-            ):  # Mock full content
-                results: list[dict[str, Any]] = []
-                async for batch in client.search_files(pattern, repositories=repos):
+            ):
+                results = []
+                async for batch in client.search_files(
+                    scope, query, repositories=repos
+                ):
                     results.extend(batch)
                 assert len(results) == 1
                 assert results[0]["path"] == "test.json"
                 assert results[0]["content"] == {"key": "value"}
+                mock_search_repo.assert_called_once_with(
+                    "group/project", "blobs", "test.json"
+                )
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
-        """Test file search across all groups"""
-        # Arrange
-        mock_groups: list[dict[str, Any]] = [{"id": "1", "name": "Group1"}]
-        raw_files: list[dict[str, Any]] = [
-            {"path": "test.yaml", "data": "key: value", "project_id": "123"}
+        """Test file search across all groups using scope and query"""
+        mock_groups = [{"id": "1", "name": "Group1"}]
+        processed_files = [
+            {"path": "test.yaml", "project_id": "123", "content": {"key": "value"}}
         ]
-        pattern = "*.yaml"
-
+        scope = "blobs"
+        query = "test.yaml"
         with patch.object(
             client, "get_groups", return_value=async_mock_generator([mock_groups])
         ):
             with patch.object(
-                client.rest,
-                "get_paginated_group_resource",
-                return_value=async_mock_generator([raw_files]),
-            ):
+                client,
+                "_search_in_group_with_query",
+                return_value=async_mock_generator([processed_files]),
+            ) as mock_search_group:
                 with patch.object(
                     client, "get_file_content", return_value="key: value"
-                ):  # Mock full content
-                    results: list[dict[str, Any]] = []
-                    async for batch in client.search_files(pattern):
+                ):
+                    results = []
+                    async for batch in client.search_files(scope, query):
                         results.extend(batch)
                     assert len(results) == 1
                     assert results[0]["path"] == "test.yaml"
-                    assert results[0]["content"] == {"key": "value"}  # Parsed YAML
+                    assert results[0]["content"] == {"key": "value"}
+                    mock_search_group.assert_called_once_with(
+                        {"id": "1", "name": "Group1"}, "blobs", "test.yaml"
+                    )
 
     async def test_get_file_content(self, client: GitLabClient) -> None:
         """Test fetching file content via REST"""

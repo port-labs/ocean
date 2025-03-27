@@ -10,10 +10,8 @@ from port_ocean.utils.async_iterators import (
 )
 from urllib.parse import quote
 
-import fnmatch
-
 from .rest_client import RestClient
-from .utils import convert_glob_to_gitlab_patterns, parse_file_content
+from .utils import parse_file_content
 
 
 class GitLabClient:
@@ -81,35 +79,29 @@ class GitLabClient:
         return await self.rest.get_file_content(project_id, file_path, ref)
 
     async def file_exists(self, project_id: str, scope: str, query: str) -> bool:
-        params = {
-            "scope": scope,
-            "search": query,
-        }
+        params = {"scope": scope, "search": query}
         encoded_project_path = quote(project_id, safe="")
-
         response = await self.rest.send_api_request(
             "GET", f"projects/{encoded_project_path}/search", params
         )
-
-        return bool(
-            response
-        )  # True if response has any data (non-empty list), False otherwise
+        return bool(response)
 
     async def search_files(
         self,
-        path_pattern: str,
+        scope: str,
+        query: str,
         repositories: Optional[list[str]] = None,
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        logger.info(f"Searching for files matching pattern: '{path_pattern}'")
-        patterns = convert_glob_to_gitlab_patterns(path_pattern)
+        """Search for files in repositories or groups using a scope and query, returning files with content."""
+        logger.info(f"Searching for files with scope '{scope}' and query '{query}'")
         semaphore = asyncio.Semaphore(max_concurrent)
 
         if repositories:
             logger.info(f"Searching in {len(repositories)} repositories")
             for repo in repositories:
-                logger.debug(f"Searching repo '{repo}' for pattern '{path_pattern}'")
-                async for batch in self._search_in_repository(repo, patterns):
+                logger.debug(f"Searching repo '{repo}' for query '{query}'")
+                async for batch in self._search_in_repository(repo, scope, query):
                     yield batch
         else:
             logger.info("Searching across all accessible groups")
@@ -117,7 +109,8 @@ class GitLabClient:
                 logger.debug(f"Processing batch of {len(groups)} groups")
                 tasks = [
                     semaphore_async_iterator(
-                        semaphore, partial(self._search_in_group, group, patterns)
+                        semaphore,
+                        partial(self._search_in_group_with_query, group, scope, query),
                     )
                     for group in groups
                 ]
@@ -170,17 +163,11 @@ class GitLabClient:
                 yield resource_batch
 
     # Helpers: File Processing and Search
-
-    async def _process_file(
-        self,
-        file: dict[str, Any],
-        context: str,
-    ) -> dict[str, Any]:
+    async def _process_file(self, file: dict[str, Any], context: str) -> dict[str, Any]:
         """Fetch full file content and parse it."""
         file_path = file["path"]
         project_id = file["project_id"]
         ref = file.get("ref", "main")
-
         full_content = await self.get_file_content(project_id, file_path, ref)
         if full_content is not None:
             try:
@@ -195,12 +182,9 @@ class GitLabClient:
         return file
 
     async def _process_batch(
-        self,
-        batch: list[dict[str, Any]],
-        context: str,
+        self, batch: list[dict[str, Any]], context: str
     ) -> AsyncIterator[dict[str, Any]]:
         PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
-
         tasks = [
             (
                 self._process_file(file, context)
@@ -209,73 +193,47 @@ class GitLabClient:
             )
             for file in batch
         ]
-
         for completed in asyncio.as_completed(tasks):
             yield await completed
-
-    def _post_search_filter(self, full_path: str, desired_glob: str) -> bool:
-        """
-        Check if the full_path matches the desired_glob pattern.
-
-        Args:
-            full_path (str): The complete file path to be checked.
-            desired_glob (str): The glob pattern to match against.
-
-        Returns:
-            bool: True if full_path matches the desired_glob pattern, False otherwise.
-        """
-        return fnmatch.fnmatch(full_path, desired_glob)
 
     async def _search_in_repository(
         self,
         repo: str,
-        patterns: list[str],
+        scope: str,
+        query: str,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        params = {"scope": "blobs", "search_type": "advanced"}
-        for pattern in patterns:
-            params["search"] = f"path:{pattern}"
-            async for batch in self.rest.get_paginated_project_resource(
-                repo, "search", params
-            ):
-                if batch:
-                    filtered_batch = [
-                        file
-                        for file in batch
-                        if self._post_search_filter(file.get("path", ""), pattern)
-                    ]
-                    processed_batch = []
-                    async for processed_file in self._process_batch(
-                        filtered_batch, repo
-                    ):
-                        processed_batch.append(processed_file)
-                    if processed_batch:
-                        yield processed_batch
+        """Search files in a repository using a scope and query."""
+        logger.debug(
+            f"Searching repo '{repo}' for query '{query}' with scope '{scope}'"
+        )
+        params = {"scope": scope, "search": query}
+        encoded_repo = quote(repo, safe="")
+        path = f"projects/{encoded_repo}/search"
+        async for batch in self.rest.get_paginated_resource(path, params=params):
+            if batch:
+                processed_batch = []
+                async for processed_file in self._process_batch(batch, repo):
+                    processed_batch.append(processed_file)
+                if processed_batch:
+                    yield processed_batch
 
-    async def _search_in_group(
+    async def _search_in_group_with_query(
         self,
         group: dict[str, Any],
-        patterns: list[str],
+        scope: str,
+        query: str,
     ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Search files in a group using a scope and query."""
         group_context = group.get("name", str(group["id"]))
-        params = {"scope": "blobs", "search_type": "advanced"}
-        for pattern in patterns:
-            params["search"] = f"path:{pattern}"
-            group_id = group["id"]
-
-            async for batch in self.rest.get_paginated_group_resource(
-                group_id, "search", params
-            ):
-                logger.info(f"Received search batch for {group_context}")
-                if batch:
-                    filtered_batch = [
-                        file
-                        for file in batch
-                        if self._post_search_filter(file.get("path", ""), pattern)
-                    ]
-                    processed_batch = []
-                    async for processed_file in self._process_batch(
-                        filtered_batch, group_context
-                    ):
-                        processed_batch.append(processed_file)
-                    if processed_batch:
-                        yield processed_batch
+        group_id = group["id"]
+        params = {"scope": scope, "search": query}
+        logger.debug(f"Searching group '{group_context}' for query '{query}'")
+        async for batch in self.rest.get_paginated_group_resource(
+            group_id, "search", params
+        ):
+            if batch:
+                processed_batch = []
+                async for processed_file in self._process_batch(batch, group_context):
+                    processed_batch.append(processed_file)
+                if processed_batch:
+                    yield processed_batch
