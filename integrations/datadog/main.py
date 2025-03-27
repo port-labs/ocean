@@ -1,10 +1,11 @@
 import typing
-from enum import StrEnum
-from typing import Any, cast
+from typing import cast
 
+from initialize_client import init_client
+from integration import ObjectKind
+from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
 from loguru import logger
 
-from client import DatadogClient
 from utils import (
     get_start_of_the_day_in_seconds_x_day_back,
     get_start_of_the_month_in_seconds_x_months_back,
@@ -18,26 +19,6 @@ from overrides import (
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
-
-class ObjectKind(StrEnum):
-    HOST = "host"
-    MONITOR = "monitor"
-    SLO = "slo"
-    SERVICE = "service"
-    SLO_HISTORY = "sloHistory"
-    SERVICE_METRIC = "serviceMetric"
-    TEAM = "team"
-    USER = "user"
-
-
-def init_client() -> DatadogClient:
-    return DatadogClient(
-        ocean.integration_config["datadog_base_url"],
-        ocean.integration_config["datadog_api_key"],
-        ocean.integration_config["datadog_application_key"],
-        ocean.integration_config["datadog_access_token"],
-    )
 
 
 @ocean.on_resync(ObjectKind.TEAM)
@@ -156,23 +137,6 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield metrics
 
 
-# https://docs.datadoghq.com/integrations/webhooks/
-@ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    logger.info(
-        f"Received event type {data['event_type']} - Alert ID: {data['alert_id']}"
-    )
-
-    dd_client = init_client()
-
-    monitor = await dd_client.get_single_monitor(data["alert_id"])
-    if monitor:
-        logger.info(f"Updating monitor status for alert {monitor}")
-        await ocean.register_raw(ObjectKind.MONITOR, [monitor])
-
-    return {"ok": True}
-
-
 @ocean.on_start()
 async def on_start() -> None:
     if ocean.event_listener_type == "ONCE":
@@ -190,3 +154,6 @@ async def on_start() -> None:
         dd_webhook_token = ocean.integration_config.get("datadog_webhook_token")
 
         await dd_client.create_webhooks_if_not_exists(app_host, dd_webhook_token)
+
+
+ocean.add_webhook_processor("/webhook", MonitorWebhookProcessor)
