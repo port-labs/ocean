@@ -50,6 +50,25 @@ class RestClient(HTTPBaseClient):
         path = f"projects/{encoded_project_path}/languages"
         return await self.send_api_request("GET", path, params=params or {})
 
+    async def get_file_content(
+        self, project_id: str, file_path: str, ref: str = "main"
+    ) -> Optional[str]:
+        encoded_project_id = quote(str(project_id), safe="")
+        encoded_file_path = quote(file_path, safe="")
+        path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
+        params = {"ref": ref}
+        response = await self.send_api_request("GET", path, params=params)
+        if not response:
+            return None
+        content = response["content"]
+        if not content:
+            return None
+        try:
+            return base64.b64decode(content).decode("utf-8")
+        except Exception as e:
+            logger.error(f"Failed to decode file content: {str(e)}")
+            return None
+
     async def _make_paginated_request(
         self,
         path: str,
@@ -58,47 +77,16 @@ class RestClient(HTTPBaseClient):
     ) -> AsyncIterator[list[dict[str, Any]]]:
         page = 1
         params_dict: dict[str, Any] = params or {}
-
         while True:
             request_params = {**params_dict, "per_page": page_size, "page": page}
             logger.debug(f"Fetching page {page} from {path}")
-
             response = await self.send_api_request("GET", path, params=request_params)
-
             # HTTP API returns a list directly, or empty dict for 404
             batch: list[dict[str, Any]] = response if isinstance(response, list) else []
-
             if not batch:
                 break
-
             yield batch
-
             if len(batch) < page_size:
                 logger.debug(f"Last page reached for {path}, no more data.")
                 break
-
             page += 1
-
-    async def get_file_content(
-        self, project_id: str, file_path: str, ref: str = "main"
-    ) -> Optional[str]:
-
-        encoded_project_id = quote(str(project_id), safe="")
-        encoded_file_path = quote(file_path, safe="")
-
-        path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
-        params = {"ref": ref}
-
-        response = await self.send_api_request("GET", path, params=params)
-        if not response:
-            return None
-
-        content = response["content"]
-        if not content:
-            return None
-
-        try:
-            return base64.b64decode(content).decode("utf-8")
-        except Exception as e:
-            logger.error(f"Failed to decode file content: {str(e)}")
-            return None
