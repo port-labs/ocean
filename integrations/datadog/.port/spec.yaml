@@ -50,6 +50,8 @@ configurations:
 
 saas:
   enabled: true
+  liveEvents:
+    enabled: true
   oauthConfiguration:
     requiredSecrets:
       - name: datadogApiKey
