@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.2 (2025-03-27)
+
+### Improvements
+
+- Enabled live events support in the hosted option
+
+
 ## 0.1.1 (2025-03-27)
 
 ### Bug Fixes
