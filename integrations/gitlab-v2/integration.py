@@ -26,7 +26,9 @@ class ProjectResourceConfig(ResourceConfig):
 
 
 class FilesSelector(BaseModel):
-    path: str = Field(description="The path to get the files from")
+    query: str = Field(
+        description="Search query using GitLab's Advanced Search syntax."
+    )
     repos: list[str] = Field(
         description="A list of repositories to search files in", default_factory=list
     )
