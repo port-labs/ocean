@@ -8,7 +8,7 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 
-from gitlab.clients.rest_client import RestClient
+from .rest_client import RestClient
 
 
 class GitLabClient:
@@ -20,28 +20,6 @@ class GitLabClient:
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
-
-    async def get_project(self, project_id: int) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"projects/{project_id}", params=self.DEFAULT_PARAMS
-        )
-
-    async def get_group(self, group_id: int) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"groups/{group_id}", params=self.DEFAULT_PARAMS
-        )
-
-    async def get_merge_request(
-        self, project_id: int, merge_request_id: int
-    ) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"projects/{project_id}/merge_requests/{merge_request_id}"
-        )
-
-    async def get_issue(self, project_id: int, issue_id: int) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"projects/{project_id}/issues/{issue_id}"
-        )
 
     async def get_projects(
         self,
@@ -92,22 +70,12 @@ class GitLabClient:
         project["__languages"] = languages
         yield [project]
 
-    async def get_groups(
-        self, root_only: bool = False
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch all groups accessible to the user.
-
-        Args:
-            root_only: If True, only fetch root groups
-        """
-
+    async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch all groups accessible to the user."""
         async for batch in self.rest.get_paginated_resource(
             "groups", params=self.DEFAULT_PARAMS
         ):
-            if root_only:
-                yield [group for group in batch if group["parent_id"] is None]
-            else:
-                yield batch
+            yield batch
 
     async def get_groups_resource(
         self,

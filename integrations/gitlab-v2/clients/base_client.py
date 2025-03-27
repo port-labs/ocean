@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-from gitlab.clients.auth_client import AuthClient
+from .auth_client import AuthClient
 
 
 class HTTPBaseClient:
@@ -38,7 +38,7 @@ class HTTPBaseClient:
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.warning(
+                logger.info(
                     f"Resource not found at {url} for the following params {params}"
                 )
                 return {}
