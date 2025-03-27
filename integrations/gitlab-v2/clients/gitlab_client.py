@@ -124,29 +124,6 @@ class GitLabClient:
                 async for batch in stream_async_iterators_tasks(*tasks):
                     yield batch
 
-    async def process_file(
-        self,
-        file: dict[str, Any],
-        context: str,
-    ) -> dict[str, Any]:
-        """Fetch full file content and parse it."""
-        file_path = file["path"]
-        project_id = file["project_id"]
-        ref = file.get("ref", "main")
-
-        full_content = await self.get_file_content(project_id, file_path, ref)
-        if full_content is not None:
-            try:
-                file["content"] = await anyio.to_thread.run_sync(
-                    parse_file_content, full_content, file_path, context
-                )
-            except Exception as e:
-                logger.error(f"Failed to parse {file_path} in {context}: {str(e)}")
-                file["parsed_data"] = None
-        else:
-            file["content"] = None
-        return file
-
     # Helpers: Enrichment
     async def _enrich_batch(
         self,
@@ -193,6 +170,30 @@ class GitLabClient:
                 yield resource_batch
 
     # Helpers: File Processing and Search
+
+    async def _process_file(
+        self,
+        file: dict[str, Any],
+        context: str,
+    ) -> dict[str, Any]:
+        """Fetch full file content and parse it."""
+        file_path = file["path"]
+        project_id = file["project_id"]
+        ref = file.get("ref", "main")
+
+        full_content = await self.get_file_content(project_id, file_path, ref)
+        if full_content is not None:
+            try:
+                file["content"] = await anyio.to_thread.run_sync(
+                    parse_file_content, full_content, file_path, context
+                )
+            except Exception as e:
+                logger.error(f"Failed to parse {file_path} in {context}: {str(e)}")
+                file["parsed_data"] = None
+        else:
+            file["content"] = None
+        return file
+
     async def _process_batch(
         self,
         batch: list[dict[str, Any]],
@@ -202,7 +203,7 @@ class GitLabClient:
 
         tasks = [
             (
-                self.process_file(file, context)
+                self._process_file(file, context)
                 if file.get("path", "").endswith(PARSEABLE_EXTENSIONS)
                 else asyncio.create_task(asyncio.sleep(0, result=file))
             )
