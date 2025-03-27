@@ -135,8 +135,7 @@ class GitLabClient:
         async for batch in self.rest.get_paginated_project_resource(
             project_path, "repository/tree", params
         ):
-            folders_batch = [item for item in batch if item["type"] == "tree"]
-            if folders_batch:
+            if folders_batch := [item for item in batch if item["type"] == "tree"]:
                 yield [
                     {"folder": folder, "repo": project, "__branch": ref}
                     for folder in folders_batch
