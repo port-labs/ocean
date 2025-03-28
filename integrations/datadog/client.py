@@ -563,66 +563,72 @@ class DatadogClient:
         url = f"{self.api_url}/api/v1/monitor/{monitor_id}"
         return await self._send_api_request(url)
 
-    async def create_webhooks_if_not_exists(self, app_host: Any, token: Any) -> None:
-        dd_webhook_url = (
-            f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks"
-        )
+    async def _webhook_exists(self, webhook_url: str) -> bool:
+        try:
+            webhook = await self._send_api_request(url=webhook_url, method="GET")
+            return bool(webhook)
+
+        except httpx.HTTPStatusError as err:
+            logger.warning(
+                "Failed to check if webhook exists, skipping...", exc_info=err
+            )
+            return False
+
+    async def create_webhooks_if_not_exists(
+        self, base_url: Any, webhook_secret: Any
+    ) -> None:
+
+        webhook_name = "PORT"
+        dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
 
         try:
-            webhook = await self._send_api_request(
-                url=f"{dd_webhook_url}/PORT", method="GET"
-            )
-            if webhook:
-                logger.info(f"Webhook already exists: {webhook}")
+            if await self._webhook_exists(dd_webhook_url):
+                logger.info("Webhook already exists")
                 return
-        except httpx.HTTPStatusError as err:
-            if err.response.status_code == 404:
-                # Webhook does not exist, continue with creation
-                pass
-            elif err.response.status_code == 500:
-                # Webhooks are not yet enabled in Datadog
-                logger.error(err.response.text)
-                raise err
-            else:
-                raise
 
-        logger.info("Subscribing to Datadog webhooks...")
+            logger.info("Subscribing to Datadog webhooks...")
 
-        app_host_webhook_url = f"{app_host}/integration/webhook"
-        modified_url = embed_credentials_in_url(app_host_webhook_url, "port", token)
+            base_webhook_url = f"{base_url}/integration/webhook"
+            modified_url = (
+                embed_credentials_in_url(base_webhook_url, "port", webhook_secret)
+                if webhook_secret
+                else base_webhook_url
+            )
 
-        body = {
-            "name": "PORT",
-            "url": modified_url,
-            "encode_as": "json",
-            "payload": json.dumps(
-                {
-                    "id": "$ID",
-                    "message": "$TEXT_ONLY_MSG",
-                    "priority": "$PRIORITY",
-                    "last_updated": "$LAST_UPDATED",
-                    "event_type": "$EVENT_TYPE",
-                    "event_url": "$LINK",
-                    "service": "$HOSTNAME",
-                    "creator": "$USER",
-                    "title": "$EVENT_TITLE",
-                    "date": "$DATE",
-                    "org_id": "$ORG_ID",
-                    "org_name": "$ORG_NAME",
-                    "alert_id": "$ALERT_ID",
-                    "alert_metric": "$ALERT_METRIC",
-                    "alert_status": "$ALERT_STATUS",
-                    "alert_title": "$ALERT_TITLE",
-                    "alert_type": "$ALERT_TYPE",
-                    "tags": "$TAGS",
-                    "body": "$EVENT_MSG",
-                }
-            ),
-        }
+            body = {
+                "name": webhook_name,
+                "url": modified_url,
+                "encode_as": "json",
+                "payload": json.dumps(
+                    {
+                        "id": "$ID",
+                        "message": "$TEXT_ONLY_MSG",
+                        "priority": "$PRIORITY",
+                        "last_updated": "$LAST_UPDATED",
+                        "event_type": "$EVENT_TYPE",
+                        "event_url": "$LINK",
+                        "service": "$HOSTNAME",
+                        "creator": "$USER",
+                        "title": "$EVENT_TITLE",
+                        "date": "$DATE",
+                        "org_id": "$ORG_ID",
+                        "org_name": "$ORG_NAME",
+                        "alert_id": "$ALERT_ID",
+                        "alert_metric": "$ALERT_METRIC",
+                        "alert_status": "$ALERT_STATUS",
+                        "alert_title": "$ALERT_TITLE",
+                        "alert_type": "$ALERT_TYPE",
+                        "tags": "$TAGS",
+                        "body": "$EVENT_MSG",
+                    }
+                ),
+            }
 
-        logger.info("Creating webhook subscription")
-        result = await self._send_api_request(
-            url=dd_webhook_url, method="POST", json_data=body
-        )
+            result = await self._send_api_request(
+                url=dd_webhook_url, method="POST", json_data=body
+            )
 
-        logger.info(f"Webhook Subscription Response: {result}")
+            logger.info(f"Webhook Subscription Response: {result}")
+
+        except Exception as e:
+            logger.error("Failed to create webhook, skipping...", exc_info=e)

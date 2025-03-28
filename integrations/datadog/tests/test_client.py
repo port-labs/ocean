@@ -186,3 +186,45 @@ async def test_get_team_members_multiple_pages(
             == first_page["included"] + second_page["included"] + third_page["included"]
         )
         assert mock_request.call_count == 4
+
+
+@pytest.mark.asyncio
+async def test_create_webhooks_if_not_exists(
+    mock_datadog_client: DatadogClient,
+) -> None:
+    with (
+        patch.object(
+            mock_datadog_client, "_webhook_exists", new_callable=AsyncMock
+        ) as mock_exists,
+        patch.object(
+            mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_send,
+    ):
+        mock_exists.return_value = False
+        mock_send.return_value = {"status": "created"}
+        base_url = "https://example.com"
+        webhook_secret = "test_secret"
+        await mock_datadog_client.create_webhooks_if_not_exists(
+            base_url, webhook_secret
+        )
+        expected_url = f"https://port:{webhook_secret}@example.com/integration/webhook"
+        mock_send.assert_awaited_once()
+        call_args = mock_send.call_args[1]
+        assert call_args["json_data"]["url"] == expected_url
+
+
+@pytest.mark.asyncio
+async def test_create_webhooks_if_exists(mock_datadog_client: DatadogClient) -> None:
+    with (
+        patch.object(
+            mock_datadog_client, "_webhook_exists", new_callable=AsyncMock
+        ) as mock_exists,
+        patch.object(
+            mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_send,
+    ):
+        mock_exists.return_value = True
+        await mock_datadog_client.create_webhooks_if_not_exists(
+            "https://example.com", "test_secret"
+        )
+        mock_send.assert_not_called()
