@@ -156,7 +156,6 @@ class SonarQubeClient:
                 )  # SonarQube pageIndex starts at 1
                 page_size = paging_info.get("pageSize", PAGE_SIZE)
                 total_records = paging_info.get("total", 0)
-                logger.error("Fetching paginated data")
                 # Check if we have fetched all records
                 if page_index * page_size >= total_records:
                     break
@@ -618,6 +617,7 @@ class SonarQubeClient:
     async def _create_webhooks_for_projects(
         self, webhook_payloads: list[dict[str, Any]]
     ) -> None:
+        print("Webhook url ", self.webhook_invoke_url)
         for webhook in webhook_payloads:
             await self._send_api_request(
                 endpoint=f"{Endpoints.WEBHOOKS}/create",

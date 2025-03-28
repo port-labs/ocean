@@ -118,7 +118,7 @@ async def on_start() -> None:
 
     # We are making the real-time subscription of Sonar webhook events optional. That said,
     # we only subscribe to webhook events when the user supplies the app_host config variable
-    if ocean.integration_config.get("app_host"):
+    if ocean.app.base_url:
         await sonar_client.get_or_create_webhook_url()
 
 
