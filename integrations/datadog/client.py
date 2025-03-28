@@ -589,11 +589,12 @@ class DatadogClient:
         logger.info("Subscribing to Datadog webhooks...")
 
         app_host_webhook_url = f"{app_host}/integration/webhook"
-        modified_url = embed_credentials_in_url(app_host_webhook_url, "port", token)
+        if token:
+            modified_url = embed_credentials_in_url(app_host_webhook_url, "port", token)
 
         body = {
             "name": "PORT",
-            "url": modified_url,
+            "url": modified_url if token else app_host_webhook_url,
             "encode_as": "json",
             "payload": json.dumps(
                 {

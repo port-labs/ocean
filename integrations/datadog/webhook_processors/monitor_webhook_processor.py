@@ -1,5 +1,7 @@
+import base64
 from typing import Any
 from initialize_client import init_client
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -14,7 +16,24 @@ from integration import ObjectKind
 
 class MonitorWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return True
+        authorization = event.headers.get("authorization")
+        datadog_token = ocean.integration_config.get("datadog_webhook_token")
+
+        if not authorization:
+            return True
+
+        if authorization:
+            try:
+                auth_type, encoded_token = authorization.split(" ", 1)
+                if auth_type.lower() != "basic":
+                    return False
+
+                decoded = base64.b64decode(encoded_token).decode("utf-8")
+                _, token = decoded.split(":", 1)
+                return token == datadog_token
+            except (ValueError, UnicodeDecodeError):
+                return False
+        return False
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.MONITOR]

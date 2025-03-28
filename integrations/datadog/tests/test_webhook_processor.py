@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
@@ -25,9 +25,17 @@ def resource_config() -> Any:
 
 @pytest.mark.asyncio
 async def test_should_process_event(
-    processor: MonitorWebhookProcessor, mock_event: WebhookEvent
+    processor: MonitorWebhookProcessor,
+    mock_event: WebhookEvent,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    assert await processor.should_process_event(mock_event) is True
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {}
+    monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean)
+
+    with patch("base64.b64decode"):
+        with patch("webhook_processors.monitor_webhook_processor.ocean", mock_ocean):
+            assert await processor.should_process_event(mock_event) is True
 
 
 @pytest.mark.asyncio
