@@ -60,8 +60,10 @@ class TestBaseWebhookProcessor:
     ) -> None:
         ocean.integration_config["webhook_secret"] = "12345"
         body = b"test_body"
-        signature = hmac.new("12345".encode("utf-8"), body, hashlib.sha256).hexdigest()
-
+        signature = hmac.new(
+            "12345".encode("utf-8"), body, hashlib.sha256
+        ).hexdigest()
+        
         event = self._create_test_event(
             payload={"project": "test-project"},
             headers={"x-sonar-webhook-hmac-sha256": signature},
@@ -76,7 +78,9 @@ class TestBaseWebhookProcessor:
         self, mock_ocean_context: Any, processor: _TestableBaseProcessor
     ) -> None:
         ocean.integration_config["webhook_secret"] = None
-        event = self._create_test_event(payload={"project": "test-project"})
+        event = self._create_test_event(
+            payload={"project": "test-project"}
+        )
 
         result = await processor.should_process_event(event)
         assert result is True
