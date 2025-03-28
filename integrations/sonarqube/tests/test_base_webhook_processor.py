@@ -45,31 +45,27 @@ class TestBaseWebhookProcessor:
         self,
         payload: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
-        original_request: Optional[Dict[str, Any]] = None,
+        body: bytes = b"",
     ) -> WebhookEvent:
         event = MagicMock(spec=WebhookEvent)
         event.payload = payload or {}
         event.headers = headers or {}
-
-        if original_request:
-            event._original_request = MagicMock()
-            event._original_request.body = AsyncMock(return_value=b"test_body")
-        else:
-            event._original_request = None
-
+        event._original_request = MagicMock()
+        event._original_request.body = AsyncMock(return_value=body)
         return event
 
     @pytest.mark.asyncio
     async def test_should_process_event_with_secret(
         self, mock_ocean_context: Any, processor: _TestableBaseProcessor
     ) -> None:
+        ocean.integration_config["webhook_secret"] = "12345"
+        body = b"test_body"
+        signature = hmac.new("12345".encode("utf-8"), body, hashlib.sha256).hexdigest()
+
         event = self._create_test_event(
             payload={"project": "test-project"},
-            headers={
-                "x-sonar-webhook-hmac-sha256": hmac.new(
-                    "12345".encode("utf-8"), b"test_body", hashlib.sha256
-                ).hexdigest()
-            },
+            headers={"x-sonar-webhook-hmac-sha256": signature},
+            body=body,
         )
 
         result = await processor.should_process_event(event)
@@ -80,9 +76,7 @@ class TestBaseWebhookProcessor:
         self, mock_ocean_context: Any, processor: _TestableBaseProcessor
     ) -> None:
         ocean.integration_config["webhook_secret"] = None
-        event = self._create_test_event(
-            payload={"project": "test-project"}, original_request={}
-        )
+        event = self._create_test_event(payload={"project": "test-project"})
 
         result = await processor.should_process_event(event)
         assert result is True
@@ -91,6 +85,7 @@ class TestBaseWebhookProcessor:
     async def test_should_not_process_event_missing_project(
         self, mock_ocean_context: Any, processor: _TestableBaseProcessor
     ) -> None:
+        ocean.integration_config["webhook_secret"] = None
         event = self._create_test_event(payload={})
         result = await processor.should_process_event(event)
         assert result is False
