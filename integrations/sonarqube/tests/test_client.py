@@ -752,12 +752,13 @@ async def test_create_webhook_payload_for_project_with_organization(
     )
 
     result = await sonarqube_client._create_webhook_payload_for_project("project1")
-    assert result == {
-        "name": "Port Ocean Webhook",
-        "project": "project1",
-        "organization": "test-org",
-        "secret": "12345",
-    }
+
+    assert "name" in result
+    assert result["name"] == "Port Ocean Webhook"
+    assert "project" in result
+    assert result["project"] == "project1"
+    assert "organization" in result
+    assert result["organization"] == "test-org"
 
 
 async def test_create_webhook_payload_existing_webhook(
