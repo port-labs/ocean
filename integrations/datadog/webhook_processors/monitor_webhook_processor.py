@@ -16,24 +16,7 @@ from integration import ObjectKind
 
 class MonitorWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        authorization = event.headers.get("authorization")
-        datadog_token = ocean.integration_config.get("webhook_secret")
-
-        if not authorization:
-            return True
-
-        if authorization:
-            try:
-                auth_type, encoded_token = authorization.split(" ", 1)
-                if auth_type.lower() != "basic":
-                    return False
-
-                decoded = base64.b64decode(encoded_token).decode("utf-8")
-                _, token = decoded.split(":", 1)
-                return token == datadog_token
-            except (ValueError, UnicodeDecodeError):
-                return False
-        return False
+        return True
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.MONITOR]
@@ -52,6 +35,20 @@ class MonitorWebhookProcessor(AbstractWebhookProcessor):
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]
     ) -> bool:
+        authorization = headers.get("authorization")
+        webhook_secret = ocean.integration_config.get("webhook_secret")
+
+        if authorization:
+            try:
+                auth_type, encoded_token = authorization.split(" ", 1)
+                if auth_type.lower() != "basic":
+                    return False
+
+                decoded = base64.b64decode(encoded_token).decode("utf-8")
+                _, token = decoded.split(":", 1)
+                return token == webhook_secret
+            except (ValueError, UnicodeDecodeError):
+                return False
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:

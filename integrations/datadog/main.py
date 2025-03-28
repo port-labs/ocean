@@ -145,9 +145,9 @@ async def on_start() -> None:
 
     if base_url := ocean.app.base_url:
         dd_client = init_client()
-        dd_webhook_token = ocean.integration_config.get("webhook_secret")
+        webhook_secret = ocean.integration_config.get("webhook_secret")
 
-        await dd_client.create_webhooks_if_not_exists(base_url, dd_webhook_token)
+        await dd_client.create_webhooks_if_not_exists(base_url, webhook_secret)
 
 
 ocean.add_webhook_processor("/webhook", MonitorWebhookProcessor)
