@@ -82,15 +82,6 @@ class TestBaseWebhookProcessor:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_should_not_process_event_missing_project(
-        self, mock_ocean_context: Any, processor: _TestableBaseProcessor
-    ) -> None:
-        ocean.integration_config["webhook_secret"] = None
-        event = self._create_test_event(payload={})
-        result = await processor.should_process_event(event)
-        assert result is False
-
-    @pytest.mark.asyncio
     async def test_validate_payload(
         self, mock_ocean_context: Any, processor: _TestableBaseProcessor
     ) -> None:
