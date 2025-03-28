@@ -320,7 +320,6 @@ async def test_get_measures_is_called_with_correct_params(
 
     monkeypatch.setattr(sonarqube_client, "_send_api_request", mock_paginated_request)
 
-    sonarqube_client.metrics = []
     await sonarqube_client.get_measures(PURE_PROJECTS[0]["key"])
     mock_paginated_request.assert_called()
 
