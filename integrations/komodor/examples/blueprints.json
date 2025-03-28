@@ -1,0 +1,64 @@
+{
+  "identifier": "komodorService",
+  "title": "komodorService",
+  "icon": "Komodor",
+  "schema": {
+    "properties": {
+      "status": {
+        "type": "string",
+        "title": "Status",
+        "enum": [
+          "healthy",
+          "unhealthy"
+        ],
+        "enumColors": {
+          "healthy": "green",
+          "unhealthy": "red"
+        }
+      },
+      "cluster_name": {
+        "type": "string",
+        "title": "cluster"
+      },
+      "workload_kind": {
+        "type": "string",
+        "title": "kind"
+      },
+      "service_name": {
+        "icon": "DefaultProperty",
+        "type": "string",
+        "title": "Service"
+      },
+      "namespace_name": {
+        "type": "string",
+        "title": "namespace"
+      },
+      "last_deploy_at": {
+        "type": "string",
+        "title": "Last Deploy At",
+        "format": "date-time"
+      },
+      "link_to_komodor": {
+        "type": "string",
+        "title": "Komodor Link",
+        "format": "url"
+      },
+      "labels": {
+        "type": "object",
+        "title": "labels"
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "Workload": {
+      "title": "Workload",
+      "target": "workload",
+      "required": false,
+      "many": false
+    }
+  }
+}

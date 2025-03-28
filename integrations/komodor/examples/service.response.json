@@ -1,0 +1,38 @@
+{
+  "data": {
+    "services": [
+      {
+        "annotations": {
+          "checksum/config": "CHECKSUM",
+          "deployment.kubernetes.io/revision": "1",
+          "meta.helm.sh/release-name": "komodor-agent",
+          "meta.helm.sh/release-namespace": "komodor"
+        },
+        "cluster": "test",
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/instance": "komodor-agent",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "komodor-agent",
+          "app.kubernetes.io/version": "X.X.X",
+          "helm.sh/chart": "komodor-agent-X.X.X"
+        },
+        "lastDeploy": {
+          "endTime": 1740140297,
+          "startTime": 1740140297,
+          "status": "success"
+        },
+        "link": "https://app.komodor.com/services/ACCOUNT.CLUSTER.SERVICE?workspaceId=null&referer=public-api",
+        "namespace": "komodor",
+        "service": "komodor-agent",
+        "status": "healthy",
+        "uid": "INTERNAL_KOMODOR_UID"
+      }
+    ]
+  },
+  "meta": {
+    "nextPage": 1,
+    "page": 0,
+    "pageSize": 1
+  }
+}
