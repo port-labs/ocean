@@ -589,8 +589,7 @@ class DatadogClient:
         logger.info("Subscribing to Datadog webhooks...")
 
         app_host_webhook_url = f"{app_host}/integration/webhook"
-        if token:
-            modified_url = embed_credentials_in_url(app_host_webhook_url, "port", token)
+        modified_url = embed_credentials_in_url(base_webhook_url, "port", webhook_secret) if webhook_secret else base_webhook_url
 
         body = {
             "name": "PORT",
