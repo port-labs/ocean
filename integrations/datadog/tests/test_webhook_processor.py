@@ -24,18 +24,26 @@ def resource_config() -> Any:
 
 
 @pytest.mark.asyncio
-async def test_should_process_event(
+async def test_authenticate(
     processor: MonitorWebhookProcessor,
-    mock_event: WebhookEvent,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     mock_ocean = MagicMock()
-    mock_ocean.integration_config = {}
+    mock_config = MagicMock()
+    mock_config.integration.config = {}
+    mock_ocean.config = mock_config
     monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean)
 
-    with patch("base64.b64decode"):
-        with patch("webhook_processors.monitor_webhook_processor.ocean", mock_ocean):
-            assert await processor.should_process_event(mock_event) is True
+    assert await processor.authenticate({}, {}) is True
+
+    mock_config.integration.config = {"webhook_secret": "test_token"}
+    headers = {"authorization": "Basic dGVzdF91c2VyOnRlc3RfdG9rZW4="}
+
+    headers = {"authorization": "Basic dGVzdF91c2VyOndyb25nX3Rva2Vu"}
+    with patch("base64.b64decode", return_value=b"test_user:wrong_token"):
+        assert await processor.authenticate({}, headers) is False
+
+    assert await processor.authenticate({}, {"authorization": "InvalidHeader"}) is False
 
 
 @pytest.mark.asyncio
@@ -44,11 +52,6 @@ async def test_get_matching_kinds(
 ) -> None:
     kinds = await processor.get_matching_kinds(mock_event)
     assert kinds == [ObjectKind.MONITOR]
-
-
-@pytest.mark.asyncio
-async def test_authenticate(processor: MonitorWebhookProcessor) -> None:
-    assert await processor.authenticate({}, {}) is True
 
 
 @pytest.mark.asyncio
