@@ -8,7 +8,7 @@ authors = ["Tom Tankilevitch <tom@getport.io>"]
 python = "^3.12"
 port_ocean = {version = "^0.22.0", extras = ["cli"]}
 # due to patching the azure-mgmt-resource package, we need to use a specific version
-azure-mgmt-resource = "23.2.0"
+azure-mgmt-resource = "23.3.0"
 azure-identity = "^1.13.0"
 aiohttp = "^3.9.4"
 cloudevents = "^1.9.0"
