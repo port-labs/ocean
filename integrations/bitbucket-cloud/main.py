@@ -25,10 +25,7 @@ from integration import (
 from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
 )
-from bitbucket_cloud.helpers.file_kind import (
-    process_file_patterns,
-    calculate_base_path,
-)
+from bitbucket_cloud.helpers.file_kind import process_file_patterns
 
 
 @ocean.on_start()
@@ -97,13 +94,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = cast(BitbucketFileSelector, config.selector)
     client = init_client()
-
-    base_path = calculate_base_path(selector)
-    logger.info(f"Using base path: {base_path} for file retrieval")
-
-    async for file_result in process_file_patterns(
-        selector.files, client, base_path=base_path, format="meta"
-    ):
+    async for file_result in process_file_patterns(selector.files, client):
         yield file_result
 
 

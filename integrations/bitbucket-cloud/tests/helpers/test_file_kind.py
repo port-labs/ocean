@@ -1,306 +1,144 @@
 import pytest
-from unittest.mock import AsyncMock, patch
-from typing import Any, Dict, List, AsyncGenerator
+from unittest.mock import AsyncMock
 from bitbucket_cloud.helpers.file_kind import (
-    calculate_required_depth,
-    calculate_base_path,
-    _match_files_with_pattern,
-    process_repository,
+    build_search_terms,
     process_file_patterns,
-    retrieve_matched_file_contents,
-    parse_file,
+    validate_file_match,
 )
-from loguru import logger
-from integration import BitbucketFilePattern, BitbucketFileSelector
-from bitbucket_cloud.client import BitbucketClient
+from integration import BitbucketFilePattern
+from typing import AsyncGenerator, Dict, Any, List
 
 
-@pytest.mark.parametrize(
-    "pattern,depth,expected",
-    [
-        ("**/*.json", 20, 20),
-        ("src/test/*.py", 20, 3),
-        ("config.yaml", 20, 1),
-        ("a/b/c/d/*.txt", 20, 5),
-        ("a/b/c/d/*.txt", 3, 3),
-    ],
-)
-def test_calculate_required_depth(pattern: str, depth: int, expected: int) -> None:
-    assert calculate_required_depth(pattern, depth) == expected
+def test_build_search_terms_with_all_parameters() -> None:
+    """Test build_search_terms with all parameters provided."""
+    filename = "test.py"
+    repos = ["repo1", "repo2"]
+    path = "src/main"
+    extension = "py"
+
+    query = build_search_terms(filename, repos, path, extension)
+
+    assert '"test.py"' in query
+    assert "repo:repo1" in query
+    assert "repo:repo2" in query
+    assert "path:src/main" in query
+    assert "ext:py" in query
 
 
-@pytest.mark.parametrize(
-    "selector,expected",
-    [
-        (
-            BitbucketFileSelector(
-                query="true",
-                files=BitbucketFilePattern(
-                    path="", repos=[], skipParsing=False, depth=20
-                ),
-            ),
-            "/",
-        ),
-        (
-            BitbucketFileSelector(
-                query="true",
-                files=BitbucketFilePattern(
-                    path="config.yaml", repos=[], skipParsing=False, depth=20
-                ),
-            ),
-            "/",
-        ),
-        (
-            BitbucketFileSelector(
-                query="true",
-                files=BitbucketFilePattern(
-                    path="src/config.yaml", repos=[], skipParsing=False, depth=20
-                ),
-            ),
-            "src/",
-        ),
-        (
-            BitbucketFileSelector(
-                query="true",
-                files=BitbucketFilePattern(
-                    path="src/*.yaml", repos=[], skipParsing=False, depth=20
-                ),
-            ),
-            "src/",
-        ),
-        (
-            BitbucketFileSelector(
-                query="true",
-                files=BitbucketFilePattern(
-                    path="src/**/*.yaml", repos=[], skipParsing=False, depth=20
-                ),
-            ),
-            "src/",
-        ),
-        (
-            BitbucketFileSelector(
-                query="true",
-                files=BitbucketFilePattern(
-                    path="**/*.yaml", repos=[], skipParsing=False, depth=20
-                ),
-            ),
-            "/",
-        ),
-        (
-            BitbucketFileSelector(
-                query="true",
-                files=BitbucketFilePattern(
-                    path="a/b/c/*.yaml", repos=[], skipParsing=False, depth=20
-                ),
-            ),
-            "a/b/c/",
-        ),
-    ],
-)
-def test_calculate_base_path(selector: BitbucketFileSelector, expected: str) -> None:
-    assert calculate_base_path(selector) == expected
+def test_build_search_terms_with_minimal_parameters() -> None:
+    """Test build_search_terms with only required parameters."""
+    filename = "test.py"
+
+    query = build_search_terms(filename, None, None, "")
+
+    assert query == '"test.py"'
 
 
-@pytest.mark.parametrize(
-    "files,pattern,expected_paths",
-    [
-        (
-            [{"path": "config.yaml"}],
-            "config.yaml",
-            ["config.yaml"],
-        ),
-        (
-            [{"path": "config.yaml"}, {"path": "config.yml"}],
-            "config.*",
-            ["config.yaml", "config.yml"],
-        ),
-        (
-            [{"path": "src/config.yaml"}, {"path": "src/test/config.yaml"}],
-            "src/**/*.yaml",
-            ["src/test/config.yaml"],
-        ),
-        (
-            [{"path": "config.yaml"}, {"path": "src/config.yaml"}],
-            "**/config.yaml",
-            ["config.yaml", "src/config.yaml"],
-        ),
-        (
-            [{"path": "config.yaml"}, {"path": "config.yml"}],
-            "*.txt",
-            [],
-        ),
-        (
-            [{"path": "config.yaml"}],
-            "",
-            ["config.yaml"],
-        ),
-        (
-            [
-                {"path": "src/test/config.yaml"},
-                {"path": "src/test/data/config.yaml"},
-                {"path": "test/new/config.yaml"},
-                {"path": "config.yaml"},
-            ],
-            "**/test/**/config.yaml",
-            ["test/new/config.yaml", "src/test/data/config.yaml"],
-        ),
-    ],
-)
-def test_match_files_with_pattern(
-    files: List[Dict[str, str]], pattern: str, expected_paths: List[str]
-) -> None:
-    matched_files = _match_files_with_pattern(files, pattern)
-    logger.info(f"Matched files: {matched_files}")
-    assert sorted([f["path"] for f in matched_files]) == sorted(expected_paths)
-
-
-@pytest.mark.asyncio
-async def test_retrieve_matched_file_contents() -> None:
-    client = AsyncMock()
-    client.get_repository_files.return_value = '{"key": "value"}'
-
-    matched_files = [{"path": "config.json"}]
-    repo = {"name": "test-repo"}
-
-    results: List[Dict[str, Any]] = []
-    async for result in retrieve_matched_file_contents(
-        matched_files, client, "repo-slug", "main", repo
-    ):
-        results.append(result)
-
-    assert len(results) == 1
-    assert results[0]["content"] == '{"key": "value"}'
-    assert results[0]["repo"] == repo
-    assert results[0]["branch"] == "main"
-    assert results[0]["metadata"] == matched_files[0]
-    client.get_repository_files.assert_called_once_with(
-        "repo-slug", "main", "config.json"
-    )
-
-
-@pytest.mark.parametrize(
-    "file_data,expected_content",
-    [
-        (
-            {
-                "metadata": {"path": "config.json"},
-                "content": '{"key": "value"}',
-            },
-            {"key": "value"},
-        ),
-        (
-            {
-                "metadata": {"path": "config.yaml"},
-                "content": "key: value",
-            },
-            {"key": "value"},
-        ),
-        (
-            {
-                "metadata": {"path": "config.txt"},
-                "content": "plain text",
-            },
-            "plain text",
-        ),
-    ],
-)
-def test_parse_file(file_data: Dict[str, Any], expected_content: Any) -> None:
-    result = parse_file(file_data)
-    assert result[0]["content"] == expected_content
-
-
-@pytest.mark.asyncio
-async def test_process_repository() -> None:
-    client = AsyncMock(spec=BitbucketClient)
-
-    client.get_repository.return_value = {"mainbranch": {"name": "main"}}
-
-    async def async_iter() -> AsyncGenerator[List[Dict[str, str]], None]:
-        yield [{"path": "config.yaml", "type": "commit_file"}]
-
-    client.get_directory_contents.return_value = async_iter()
-
-    client.get_repository_files.return_value = "key: value"
-
-    results: List[List[Dict[str, Any]]] = []
-    async for result in process_repository(
-        "repo-slug",
-        "config.yaml",
-        client,
-        "/",
-        skip_parsing=False,
-        batch_size=100,
-        depth=2,
-    ):
-        results.append(result)
-
-    assert len(results) == 1
-    assert results[0][0]["content"] == {"key": "value"}
-    client.get_repository.assert_called_once_with("repo-slug")
-    client.get_directory_contents.assert_called_once_with(
-        "repo-slug",
-        branch="main",
-        path="/",
-        params={"pagelen": 100, "max_depth": 1, "q": 'type="commit_file"'},
-    )
+def test_validate_file_match() -> None:
+    """Test validate_file_match function."""
+    assert validate_file_match("src/main/test.py", "test.py", "src/main")
+    assert validate_file_match("test.py", "test.py", "")
+    assert validate_file_match("test.py", "test.py", "/")
+    assert not validate_file_match("src/main/other.py", "test.py", "src/main")
+    assert not validate_file_match("src/test/test.py", "test.py", "src/main")
 
 
 @pytest.mark.asyncio
 async def test_process_file_patterns() -> None:
-    client = AsyncMock()
+    """Test process_file_patterns function."""
+    mock_client = AsyncMock()
+    mock_results = [
+        {
+            "path_matches": [{"match": "test.py"}],
+            "file": {
+                "path": "src/test.py",
+                "commit": {
+                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                },
+            },
+        }
+    ]
+
+    async def mock_search_files(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [mock_results[0]]
+
+    mock_client.search_files = mock_search_files
+    mock_client.get_repository_files.return_value = "file content"
+
     file_pattern = BitbucketFilePattern(
-        path="config.yaml",
-        repos=["repo1", "repo2"],
-        skipParsing=False,
-        depth=2,
+        path="src", repos=["test-repo"], filenames=["test.py"], skipParsing=False
     )
 
-    with patch("bitbucket_cloud.helpers.file_kind.process_repository") as mock_process:
-        mock_process.return_value = AsyncMock()
-        mock_process.return_value.__aiter__.return_value = [[{"content": "value"}]]
+    results = []
+    async for result in process_file_patterns(file_pattern, mock_client):
+        results.extend(result)
 
-        results: List[List[Dict[str, Any]]] = []
-        async for result in process_file_patterns(file_pattern, client, base_path="/"):
-            results.append(result)
-
-        assert len(results) == 2
-        assert mock_process.call_count == 2
-        assert results[0] == [{"content": "value"}]
+    assert len(results) == 1
+    assert results[0]["content"] == "file content"
+    assert results[0]["metadata"]["path"] == "src/test.py"
 
 
 @pytest.mark.asyncio
-async def test_process_repository_error_handling() -> None:
-    client = AsyncMock()
-    client.get_repository.side_effect = Exception("API Error")
+async def test_process_file_patterns_with_extensions() -> None:
+    """Test process_file_patterns with file extensions."""
+    mock_client = AsyncMock()
+    search_calls: List[str] = []
 
-    results: List[List[Dict[str, Any]]] = []
-    async for result in process_repository(
-        "repo-slug",
-        "config.yaml",
-        client,
-        "/",
-        skip_parsing=False,
-        batch_size=100,
-        depth=2,
-    ):
-        results.append(result)
+    async def mock_search_files(
+        query: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        search_calls.append(query)
+        yield []
 
-    assert not results
-    client.get_repository.assert_called_once()
+    mock_client.search_files = mock_search_files
+
+    file_pattern = BitbucketFilePattern(
+        path="src",
+        repos=["test-repo"],
+        filenames=["test.py", "test.js"],
+        skipParsing=False,
+    )
+
+    async for _ in process_file_patterns(file_pattern, mock_client):
+        pass
+
+    assert len(search_calls) == 2
+    assert "ext:py" in search_calls[0]
+    assert "ext:js" in search_calls[1]
 
 
 @pytest.mark.asyncio
-async def test_process_file_patterns_empty_repos() -> None:
-    client = AsyncMock()
+async def test_process_file_patterns_skip_non_matching() -> None:
+    """Test process_file_patterns skips non-matching files."""
+    mock_client = AsyncMock()
+    mock_results = [
+        {
+            "path_matches": [{"match": "test.py"}],
+            "file": {
+                "path": "other/test.py",  # Different path than expected
+                "commit": {
+                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                },
+            },
+        }
+    ]
+
+    async def mock_search_files(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [mock_results[0]]
+
+    mock_client.search_files = mock_search_files
+
     file_pattern = BitbucketFilePattern(
-        path="config.yaml",
-        repos=[],
-        skipParsing=False,
-        depth=2,
+        path="src", repos=["test-repo"], filenames=["test.py"], skipParsing=False
     )
 
-    results: List[List[Dict[str, Any]]] = []
-    async for result in process_file_patterns(file_pattern, client):
-        results.append(result)
+    results = []
+    async for result in process_file_patterns(file_pattern, mock_client):
+        results.extend(result)
 
+    # Verify no results due to path mismatch
     assert not results

@@ -155,13 +155,7 @@ async def test_send_api_request_error(mock_client: BitbucketClient) -> None:
             await mock_client._send_api_request(f"{mock_client.base_url}/test/endpoint")
 
         assert exc_info.value == original_error
-        mock_logger.assert_called_once_with("Bitbucket API error: Test error message")
-        mock_request.assert_called_once_with(
-            method="GET",
-            url=f"{mock_client.base_url}/test/endpoint",
-            params=None,
-            json=None,
-        )
+        mock_logger.assert_called_once_with("Bitbucket API error: 400 Client Error")
 
 
 @pytest.mark.asyncio

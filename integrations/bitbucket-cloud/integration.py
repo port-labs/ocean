@@ -56,7 +56,7 @@ class BitbucketFilePattern(BaseModel):
     path: str = Field(
         default="",
         alias="path",
-        description="Specify the pattern or path to match files",
+        description="Specify the path to match files from",
     )
     repos: list[str] = Field(
         default_factory=list,
@@ -68,10 +68,10 @@ class BitbucketFilePattern(BaseModel):
         alias="skipParsing",
         description="Skip parsing the files and just return the raw file content",
     )
-    depth: int = Field(
-        default=20,
-        alias="depth",
-        description="Specify the depth of the files to fetch",
+    filenames: list[str] = Field(
+        default_factory=list,
+        alias="filenames",
+        description="Specify list of filenames to search and return",
     )
 
 
