@@ -4,7 +4,7 @@ import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from clients.auth_client import AuthClient
+from gitlab.clients.auth_client import AuthClient
 
 
 @pytest.fixture(autouse=True)

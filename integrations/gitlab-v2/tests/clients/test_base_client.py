@@ -5,7 +5,7 @@ import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from clients.gitlab_client import GitLabClient
+from gitlab.clients.gitlab_client import GitLabClient
 
 
 @pytest.fixture(autouse=True)
