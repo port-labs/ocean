@@ -2,13 +2,13 @@
 
 [[package]]
 name = "aiofiles"
-version = "0.6.0"
+version = "0.8.0"
 description = "File support for asyncio."
 optional = false
-python-versions = "*"
+python-versions = ">=3.6,<4.0"
 files = [
-    {file = "aiofiles-0.6.0-py3-none-any.whl", hash = "sha256:bd3019af67f83b739f8e4053c6c0512a7f545b9a8d91aaeab55e6e0f9d123c27"},
-    {file = "aiofiles-0.6.0.tar.gz", hash = "sha256:e0281b157d3d5d59d803e3f4557dcc9a3dff28a4dd4829a9ff478adae50ca092"},
+    {file = "aiofiles-0.8.0-py3-none-any.whl", hash = "sha256:7a973fc22b29e9962d0897805ace5856e6a566ab1f0c8e5c91ff6c866519c937"},
+    {file = "aiofiles-0.8.0.tar.gz", hash = "sha256:8334f23235248a3b2e83b2c3a78a22674f39969b96397126cc93664d9a901e59"},
 ]
 
 [[package]]
@@ -1952,4 +1952,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "c4383a7d5dac34145f7c5448f7c11cf4eec2547357486120dd744e26289815c5"
+content-hash = "f265938c611b4817650c2940ae5a5ee911bcde0f9498a0e811adfb0586b7632a"
