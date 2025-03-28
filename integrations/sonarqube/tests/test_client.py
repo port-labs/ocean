@@ -880,17 +880,13 @@ async def test_create_webhook_payload_for_project_different_url(
         [  # type: ignore
             {
                 "status_code": 200,
-                "json": {
-                    "webhooks": [
-                        {"url": "http://different.url/webhook"}
-                    ]
-                },
+                "json": {"webhooks": [{"url": "http://different.url/webhook"}]},
             }
         ]
     )
 
     result = await sonarqube_client._create_webhook_payload_for_project("project1")
-    
+
     assert "name" in result
     assert result["name"] == "Port Ocean Webhook"
     assert "project" in result
