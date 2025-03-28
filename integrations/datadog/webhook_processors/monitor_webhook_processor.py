@@ -17,7 +17,7 @@ from integration import ObjectKind
 class MonitorWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         authorization = event.headers.get("authorization")
-        datadog_token = ocean.integration_config.get("datadog_webhook_token")
+        datadog_token = ocean.integration_config.get("webhook_secret")
 
         if not authorization:
             return True

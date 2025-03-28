@@ -37,7 +37,7 @@ configurations:
     type: url
     required: false
     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in the 3rd party service"
-  - name: datadogWebhookToken
+  - name: webhookSecret
     description: Datadog webhook token (optional). This is used to secure webhook communication between Datadog and Port. To learn more, see the <a target="_blank" href="https://docs.datadoghq.com/integrations/webhooks/#setup">Datadog documentation</a>.
     type: string
     required: false

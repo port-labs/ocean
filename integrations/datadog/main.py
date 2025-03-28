@@ -143,11 +143,11 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    if ocean.integration_config.get("app_host"):
+    if ocean.app.base_url:
         dd_client = init_client()
 
-        app_host = ocean.integration_config.get("app_host")
-        dd_webhook_token = ocean.integration_config.get("datadog_webhook_token")
+        app_host = ocean.app.base_url
+        dd_webhook_token = ocean.integration_config.get("webhook_secret")
 
         await dd_client.create_webhooks_if_not_exists(app_host, dd_webhook_token)
 
