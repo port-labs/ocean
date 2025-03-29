@@ -1,1 +1,0 @@
-/Users/kanmit/Documents/Work/External/PetProject/Whatsapp-spy/.venv/lib/python3.12/site-packages/port_ocean/cli/cookiecutter/../../../integrations/_infra/Makefile

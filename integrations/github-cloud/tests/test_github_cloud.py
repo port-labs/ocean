@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from client import GithubHandler
+from client import GithubClientHandler
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from github_cloud.webhooks import create_webhook_for_repo, delete_webhook_for_repo, get_webhook_for_repo
@@ -45,7 +45,7 @@ async def test_get_repositories() -> None:
         mock_get.return_value.status_code = 200
         mock_get.return_value.json = AsyncMock(return_value=mock_response)
 
-        handler = GithubHandler()
+        handler = GithubClientHandler()
         repos = []
         async for repo in handler.get_repositories():
             repos.append(repo)
@@ -67,7 +67,7 @@ async def test_get_issues() -> None:
         mock_get.return_value.status_code = 200
         mock_get.return_value.json = AsyncMock(return_value=mock_response)
 
-        handler = GithubHandler()
+        handler = GithubClientHandler()
         issues = []
         async for issue in handler.get_issues(MOCK_GITHUB_OWNER, "crimmit"):
             issues.append(issue)
@@ -88,7 +88,7 @@ async def test_get_pull_requests() -> None:
         mock_get.return_value.status_code = 200
         mock_get.return_value.json = AsyncMock(return_value=mock_response)
 
-        handler = GithubHandler()
+        handler = GithubClientHandler()
         pull_requests = []
         async for pr in handler.get_pull_requests(MOCK_GITHUB_OWNER, "crimmit"):
             pull_requests.append(pr)
@@ -109,7 +109,7 @@ async def test_get_organizations() -> None:
         mock_get.return_value.status_code = 200
         mock_get.return_value.json = AsyncMock(return_value=mock_response)
 
-        handler = GithubHandler()
+        handler = GithubClientHandler()
         orgs = []
         async for org in handler.get_organizations():
             orgs.append(org)
@@ -130,7 +130,7 @@ async def test_get_workflows() -> None:
         mock_get.return_value.status_code = 200
         mock_get.return_value.json = AsyncMock(return_value=mock_response)
 
-        handler = GithubHandler()
+        handler = GithubClientHandler()
         workflows = []
         async for workflow in handler.get_workflows(MOCK_GITHUB_OWNER, "test-repo"):
             workflows.append(workflow)
@@ -150,7 +150,7 @@ async def test_create_webhook_for_repo() -> None:
     with patch("client.http_async_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
-        handler = GithubHandler()
+        handler = GithubClientHandler()
         await create_webhook_for_repo(handler, MOCK_GITHUB_OWNER, "crimmit")
 
         mock_post.assert_called_once_with(
@@ -178,7 +178,7 @@ async def test_delete_webhook_for_repo() -> None:
     with patch("client.http_async_client.delete", new_callable=AsyncMock) as mock_delete:
         mock_delete.return_value = mock_response
 
-        handler = GithubHandler()
+        handler = GithubClientHandler()
         await delete_webhook_for_repo(handler, MOCK_GITHUB_OWNER, "test-repo", 12345)
 
         mock_delete.assert_called_once_with(
@@ -204,7 +204,7 @@ async def test_get_webhook_for_repo() -> None:
     with patch("client.http_async_client.get", new_callable=AsyncMock) as mock_get:
         mock_get.return_value = mock_response
 
-        handler = GithubHandler()
+        handler = GithubClientHandler()
         webhook = await get_webhook_for_repo(handler, MOCK_GITHUB_OWNER, "test-repo")
 
         assert webhook is not None

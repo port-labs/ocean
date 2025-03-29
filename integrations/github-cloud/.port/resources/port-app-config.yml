@@ -12,8 +12,6 @@ resources:
           title: .name
           blueprint: '"githubRepository"'
           properties:
-            readme: file://README.md
-            name: .name
             description: .description
             visibility: .visibility
             defaultBranch: .default_branch
@@ -29,7 +27,6 @@ resources:
           title: .title
           blueprint: '"githubIssue"'
           properties:
-            title: .title
             state: .state
             assignee: .assignee.login
             createdDate: .created_at
@@ -46,7 +43,6 @@ resources:
           title: .title
           blueprint: '"githubPullRequest"'
           properties:
-            title: .title
             status: .state
             author: .user.login
             createdDate: .created_at
@@ -65,7 +61,6 @@ resources:
           title: .name
           blueprint: '"githubTeam"'
           properties:
-            name: .name
             members_url: .members_url
             link: .html_url
 
@@ -79,7 +74,6 @@ resources:
           title: .name
           blueprint: '"githubWorkflow"'
           properties:
-            name: .name
             state: .state
             createdDate: .created_at
             updatedDate: .updated_at

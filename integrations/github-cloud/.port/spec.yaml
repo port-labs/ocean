@@ -2,7 +2,7 @@ description: GitHub Cloud integration for Port Ocean
 icon: GitHub  # Should be one of the available icons in Port
 features:
   - type: exporter
-    section: Under Development  # Should be one of the available sections in Port
+    section: Git Providers  # Should be one of the available sections in Port
     resources:
       - kind: repository
       - kind: issue
@@ -10,19 +10,15 @@ features:
       - kind: team
       - kind: workflow
 configurations:
-  - name: githubCloudToken
-    type: string
-    sensitive: true
-    description: "Token for authenticating with GitHub Cloud"
-    required: false
   - name: appHost
     type: string
     description: "App Host"
-    required: true
+    required: false
   - name: githubBaseUrl
     type: url
     description: "Base URL for GitHub API"
     required: false
+    default: https://api.github.com
   - name: githubAccessToken
     type: string
     sensitive: true
