@@ -1,0 +1,82 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+useDefaultBranch: true
+resources:
+  - kind: repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .name
+          blueprint: '"githubRepository"'
+          properties:
+            description: .description
+            visibility: .visibility
+            defaultBranch: .default_branch
+            link: .html_url
+
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .title
+          blueprint: '"githubIssue"'
+          properties:
+            state: .state
+            assignee: .assignee.login
+            createdDate: .created_at
+            updatedDate: .updated_at
+            link: .html_url
+
+  - kind: pull_request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .title
+          blueprint: '"githubPullRequest"'
+          properties:
+            status: .state
+            author: .user.login
+            createdDate: .created_at
+            updatedDate: .updated_at
+            link: .html_url
+          relations:
+            repository: .repository.id
+
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .name
+          blueprint: '"githubTeam"'
+          properties:
+            members_url: .members_url
+            link: .html_url
+
+  - kind: workflow
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .name
+          blueprint: '"githubWorkflow"'
+          properties:
+            state: .state
+            createdDate: .created_at
+            updatedDate: .updated_at
+            link: .html_url
+          relations:
+            repository: .repository.id
