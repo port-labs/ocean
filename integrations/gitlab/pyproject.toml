@@ -6,7 +6,7 @@ authors = ["Yair Siman-Tov <yair@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-aiofiles = "^0.6.0"
+aiofiles = "^0.8.0"
 aiolimiter = "^1.1.0"
 python-gitlab = "^3.14.0"
 pathlib = "^1.0.1"
