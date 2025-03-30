@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.22.1 (2025-03-31)
+
+
+### Features
+
+- Added support for team search query in entity mapping (0.22.1)
+
+
 ## 0.22.0 (2025-03-17)
 
 ### Features

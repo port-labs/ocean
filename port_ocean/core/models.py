@@ -40,7 +40,7 @@ class Entity(BaseModel):
     identifier: Any
     blueprint: Any
     title: Any
-    team: str | None | list[Any] = []
+    team: str | None | list[Any] | dict[str, Any] = []
     properties: dict[str, Any] = {}
     relations: dict[str, Any] = {}
 
