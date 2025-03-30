@@ -35,7 +35,10 @@ class KomodorClient:
         while True:
             res = await self._send_request(url=f"{self.api_url}/services/search", data={
                 "kind": [
-                    "Deployment"
+                    "Deployment",
+                    "StatefulSet",
+                    "DaemonSet",
+                    "Rollout"
                 ],
                 "pagination": {
                     "pageSize": service_default_page_size,
