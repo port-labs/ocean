@@ -1,5 +1,5 @@
 description: Ocean integration for Bitbucket Cloud
-icon: bitbucket
+icon: BitBucket
 features:
   - type: exporter
     section: Git Providers
@@ -29,3 +29,7 @@ configurations:
     description: The secret used to verify the webhook requests.
     sensitive: true
     required: false
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
