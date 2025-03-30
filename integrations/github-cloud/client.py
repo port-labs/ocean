@@ -21,12 +21,14 @@ class GithubClient:
         app_host: str,
         token: Optional[str] = None,
         secret: Optional[str] = None,
+        organization: Optional[str] = None,
     ) -> None:
         self.base_url = base_url
         self.app_host = app_host
         self.client = http_async_client
         self.rate_limiter = GitHubRateLimiter()
         self.secret = secret
+        self.organization = organization
 
         if token:
             self.headers = {
@@ -45,6 +47,7 @@ class GithubClient:
             base_url=ocean.integration_config["github_base_url"],
             app_host=ocean.integration_config["app_host"],
             secret=ocean.integration_config.get("webhook_secret"),
+            organization=ocean.integration_config.get("github_organization"),
         )
 
     async def fetch_with_retry(
@@ -225,7 +228,7 @@ class GithubClient:
 
             endpoints = {
                 "repository": f"repos/{self.organization}/{identifier}",
-                "pull-request": f"repos/{self.organization}/{identifier}/pulls",
+                "pull_request": f"repos/{self.organization}/{identifier}/pulls",
                 "issue": f"repos/{self.organization}/{identifier}/issues",
                 "team": f"orgs/{self.organization}/teams/{identifier}",
                 "workflow": f"repos/{self.organization}/{identifier}/actions/workflows",
@@ -235,7 +238,8 @@ class GithubClient:
                 raise ValueError(f"Unsupported resource type: {object_type}")
 
             endpoint = endpoints[object_type]
-            response = await self._send_api_request(endpoint)
+            url = f"{self.base_url}/{endpoint}"
+            response = await self.fetch_with_retry(url)
             logger.debug(f"Fetched {object_type} {identifier}: {response}")
             return response
 

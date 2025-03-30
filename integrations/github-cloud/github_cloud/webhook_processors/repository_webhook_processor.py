@@ -27,7 +27,13 @@ class RepositoryWebhookProcessor(AbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         action = payload.get("action")
-        repository = payload.get("repository", {})
+        repository = payload.get("repository")
+        if repository is None:
+            logger.info("Repository data is missing")
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
         repo_name = repository.get("name")
 
         logger.info(f"Processing repository event: {action} for {repo_name}")

@@ -41,9 +41,22 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[issue],
             )
 
+        if not issue_number or not repo_name:
+            logger.info("Missing required issue data (number or repository name)")
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
+
         client = init_client()
         latest_issue = await client.get_single_resource(ObjectKind.ISSUE, f"{repo_name}/{issue_number}")
 
         logger.info(f"Successfully retrieved recent data for issue {repo_name}#{issue_number}")
+
+        if not latest_issue:
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
 
         return WebhookEventRawResults(updated_raw_results=[latest_issue], deleted_raw_results=[])

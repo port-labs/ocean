@@ -24,3 +24,7 @@ configurations:
     sensitive: true
     description: "GitHub Access Token for API authentication"
     required: true
+  - name: githubOrganization
+    type: string
+    description: "GitHub Organization name (required for team operations)"
+    required: false

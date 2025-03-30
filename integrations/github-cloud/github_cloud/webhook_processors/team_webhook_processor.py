@@ -38,9 +38,17 @@ class TeamWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[team],
             )
 
+        if not team_name:
+            logger.info("Team name is missing, skipping API call")
+            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+
         client = init_client()
         latest_team = await client.get_single_resource(ObjectKind.TEAM, team_name)
 
         logger.info(f"Successfully retrieved recent data for team {team_name}")
+
+        if latest_team is None:
+            logger.info(f"No data found for team {team_name}")
+            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
         return WebhookEventRawResults(updated_raw_results=[latest_team], deleted_raw_results=[])

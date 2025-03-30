@@ -12,6 +12,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 
 class WorkflowWebhookProcessor(AbstractWebhookProcessor):
+    def __init__(self, event: WebhookEvent) -> None:
+        super().__init__(event)
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.payload.get("action")
         event_name = event.headers.get("x-github-event")
@@ -41,12 +44,25 @@ class WorkflowWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[workflow],
             )
 
+        if not workflow_id or not repo_name:
+            logger.info("Missing required workflow data (ID or repository name)")
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
+
         client = init_client()
         latest_workflow = await client.get_single_resource(
             ObjectKind.WORKFLOW, f"{repo_name}/{workflow_id}"
         )
 
         logger.info(f"Successfully retrieved recent data for workflow ID {workflow_id} in {repo_name}")
+
+        if not latest_workflow:
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[latest_workflow], deleted_raw_results=[]

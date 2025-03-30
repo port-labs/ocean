@@ -43,11 +43,19 @@ class PullRequestWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[pr],
             )
 
+        if pr_number is None or not repo_name:
+            logger.warning(f"Missing required data: PR number or repository name")
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[]
+            )
+
         client = init_client()
         latest_pr = await client.get_single_resource(ObjectKind.PULL_REQUEST, f"{repo_name}/{pr_number}")
 
         logger.info(f"Successfully retrieved recent data for PR #{pr_number} in {repo_name}")
 
         return WebhookEventRawResults(
-            updated_raw_results=[latest_pr], deleted_raw_results=[]
+            updated_raw_results=[latest_pr] if latest_pr is not None else [],
+            deleted_raw_results=[]
         )

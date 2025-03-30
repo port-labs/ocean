@@ -1,3 +1,4 @@
+# Issue related events
 ISSUE_UPSERT_EVENTS = [
     "opened",
     "edited",
@@ -21,12 +22,32 @@ ISSUE_DELETE_EVENTS = [
     "deleted",
 ]
 
+# Repository related events
 REPOSITORY_EVENTS = [
     "created",
     "deleted",
     "renamed",
 ]
 
+REPOSITORY_DELETE_EVENTS = [
+    "deleted",
+]
+
+REPOSITORY_UPSERT_EVENTS = [
+    "created",
+    "deleted",
+    "renamed",
+    "edited",
+    "archived",
+    "unarchived",
+    "pinned",
+    "unpinned",
+    "locked",
+    "unlocked",
+    "transferred",
+]
+
+# Pull request related events
 PULL_REQUEST_EVENTS = [
     "opened",
     "edited",
@@ -65,24 +86,7 @@ PULL_REQUEST_REVIEW_EVENTS = [
     "dismissed",
 ]
 
-REPOSITORY_DELETE_EVENTS = [
-    "deleted",
-]
-
-REPOSITORY_UPSERT_EVENTS = [
-    "created",
-    "deleted",
-    "renamed",
-    "edited",
-    "archived",
-    "unarchived",
-    "pinned",
-    "unpinned",
-    "locked",
-    "unlocked",
-    "transferred",
-]
-
+# Team related events
 TEAM_EVENTS = [
     "created",
     "deleted",
@@ -101,6 +105,7 @@ TEAM_UPSERT_EVENTS = [
     "edited",
 ]
 
+# Workflow related events
 WORKFLOW_EVENTS = [
     "created",
     "deleted",
