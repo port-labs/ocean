@@ -143,8 +143,8 @@ jobs:
         uses: port-labs/port-github-action@v1
         id: get-current-coverage
         with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          clientId: ${{ secrets.PORT_MAIN_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_MAIN_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: GET
           identifier: ocean
