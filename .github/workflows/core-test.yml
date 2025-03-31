@@ -102,6 +102,9 @@ jobs:
         run: |
           echo "Producing coverage report"
           ls -la
+          ls -la .coverage
+          ls -la integrations/aws
+          ls -la integrations/aws/tests
           pwd
           make coverage
 
