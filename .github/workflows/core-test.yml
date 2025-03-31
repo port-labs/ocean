@@ -101,6 +101,8 @@ jobs:
       - name: Produce coverage report
         run: |
           echo "Producing coverage report"
+          ls -la
+          pwd
           make coverage
 
       - name: Upload coverage report
