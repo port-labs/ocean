@@ -77,7 +77,7 @@ jobs:
       - name: Test all integrations with current core
         run: |
           echo "Testing all integrations with local core"
-          SCRIPT_TO_RUN="PYTEST_ADDOPTS= --cov --cov-report= --cov-append --junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml make test" make execute/all
+          SCRIPT_TO_RUN="PYTEST_ADDOPTS=--cov --cov-report= --cov-append --junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml make test" make execute/all
 
       - name: Produce coverage report
         run: |
@@ -88,7 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage/
+          path: coverage/index.html
         
 
       - name: Publish Test Report
