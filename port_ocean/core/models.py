@@ -50,7 +50,11 @@ class Entity(BaseModel):
 
     @property
     def is_using_search_relation(self) -> bool:
-        return any(isinstance(relation, dict) for relation in self.relations.values())
+        return any(
+            isinstance(relation, dict) for relation in self.relations.values()
+        ) or (
+            self.team is not None and any(isinstance(team, dict) for team in self.team)
+        )
 
 
 class BlueprintRelation(BaseModel):
