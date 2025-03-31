@@ -132,6 +132,12 @@ jobs:
               body: output
             })
 
+      - name: Set repo code coverage percentage by the percentage of statements covered in the tests
+        id: set-stmts-coverage
+        run: |
+          stmts=$(jq '.totals.percent_covered' coverage.json)
+          echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
+
       - name: Get current repo coverage percentage from Port
         uses: port-labs/port-github-action@v1
         id: get-current-coverage
@@ -165,6 +171,7 @@ jobs:
               repo: context.repo.repo,
               body: output
             })
+
       - name: Fail PR if current code coverage percentage is higher than the new one
         if: ${{ (steps.run-tests.outputs.CODE_COVERAGE_EXISTS == 'true') && (steps.set-stmts-coverage.outputs.STMTS_COVERAGE < steps.current-coverage.outputs.CURRENT_COVERAGE) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true') }} 
         run: exit 1
