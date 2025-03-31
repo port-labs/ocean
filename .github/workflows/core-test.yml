@@ -106,6 +106,10 @@ jobs:
           ls -la integrations/aws
           ls -la integrations/aws/tests
           pwd
+          cat .coverage
+          echo
+          cat integrations/aws/.coverage
+          echo
           make coverage
 
       - name: Upload coverage report
