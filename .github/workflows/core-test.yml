@@ -100,16 +100,12 @@ jobs:
 
       - name: Produce coverage report
         run: |
-          echo "Producing coverage report"
-          ls -la
-          ls -la .coverage
-          ls -la integrations/aws
-          ls -la integrations/aws/tests
-          pwd
-          cat .coverage
-          echo
-          cat integrations/aws/.coverage
-          echo
+          mkdir -p coverage-merge
+          i=0
+          find . -type f -name ".coverage" | while read -r file; do
+            i=$((i + 1))
+            cp "$file" "coverage-merge/.coverage.$i"
+          done
           make coverage
 
       - name: Upload coverage report
@@ -117,7 +113,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage/index.html
+          path: htmlcov/index.html
         
       - name: Comment PR with code coverage summary
         uses: actions/github-script@v7
