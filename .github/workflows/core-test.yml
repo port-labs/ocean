@@ -6,9 +6,11 @@ on:
       - main
   pull_request:
   workflow_dispatch:
-    PR_NUMBER:
-      description: 'PR number to comment on'
-      required: false
+    inputs:
+      PR_NUMBER:
+        description: 'PR number to comment on'
+        ttype: string
+        required: false
 
 jobs:
   detect-changes:
