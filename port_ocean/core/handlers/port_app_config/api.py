@@ -27,3 +27,6 @@ class APIPortAppConfig(BasePortAppConfig):
             )
             raise EmptyPortAppConfigError()
         return config
+
+    def test(self):
+        pass
