@@ -12,7 +12,7 @@ class IssueProps(BaseModel):
     statuses: list[str] = ["open", "closed"]
 
 
-class IssueBody(BaseModel):
+class IssueRequestBody(BaseModel):
     scope: IssueScope
     props: IssueProps = IssueProps()
 

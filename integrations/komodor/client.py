@@ -3,9 +3,12 @@ from typing import Optional, Any, AsyncGenerator
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-from models import IssueBody, IssueScope
+from models import IssueRequestBody, IssueScope
 
+# The page size may differ between entities base on their potential size
 DEFAULT_PAGE_SIZE = 100
+SERVICES_PAGE_SIZE = 25 # The service page size is smaller due to the potential extra data in labels and annotations
+RISKS_PAGE_SIZE = 50 # The risks page size is smaller due to the potential extra data in the supportingData field
 
 
 class KomodorClient:
@@ -31,9 +34,8 @@ class KomodorClient:
 
     async def get_all_services(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         current_page = 0
-        service_default_page_size = 25
         while True:
-            res = await self._send_request(url=f"{self.api_url}/services/search", data={
+            response = await self._send_request(url=f"{self.api_url}/services/search", data={
                 "kind": [
                     "Deployment",
                     "StatefulSet",
@@ -41,41 +43,37 @@ class KomodorClient:
                     "Rollout"
                 ],
                 "pagination": {
-                    "pageSize": service_default_page_size,
+                    "pageSize": SERVICES_PAGE_SIZE,
                     "page": current_page
                 }
             }, method="POST")
-            yield res.get("data", {}).get("services", [])
+            yield response.get("data", {}).get("services", [])
 
-            current_page = res.get("meta", {}).get("nextPage", None)
+            current_page = response.get("meta", {}).get("nextPage", None)
             if not current_page:
-                logger.debug("No more service pages, breaking.")
+                logger.debug("No more service pages, breaking")
                 break
 
     async def get_risks(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         offset = 0
-        default_risks_page_size = 50
         while True:
-            res = await self._send_request(url=f"{self.api_url}/health/risks",
-                                           params={"pageSize": default_risks_page_size, "offset": offset,
+            response = await self._send_request(url=f"{self.api_url}/health/risks",
+                                           params={"pageSize": RISKS_PAGE_SIZE, "offset": offset,
                                                    "checkCategory": ["workload",
                                                                      "infrastructure"],
                                                    "impactGroupType": ["dynamic"]})
-            yield res.get("violations", [])
+            yield response.get("violations", [])
 
-            if not res.get("hasMoreResults"):
-                logger.debug("No more health risks pages, breaking.")
+            if not response.get("hasMoreResults"):
+                logger.debug("No more health risks pages, breaking")
                 break
-            offset += default_risks_page_size
+            offset += RISKS_PAGE_SIZE
 
     async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], Any]:
-        async for cluster in self.get_clusters():
-            all_issues_in_cluster = []
-            async for issue in self._get_issues_from_cluster(cluster):
+        async for batch_clusters in self.get_clusters():
+            async for issue in self._get_issues_from_cluster(batch_clusters):
                 if issue:
-                    for single_issue in issue:
-                        all_issues_in_cluster.append(single_issue)
-            yield all_issues_in_cluster
+                    yield issue
 
     async def _get_issues_from_cluster(self, clusters: list[dict[str, Any]]) -> AsyncGenerator[
         list[dict[str, Any]] | None, Any]:
@@ -86,13 +84,13 @@ class KomodorClient:
                 yield None
                 continue
 
-            body = IssueBody(scope=IssueScope(cluster=cluster_name)).dict()
+            body = IssueRequestBody(scope=IssueScope(cluster=cluster_name)).dict()
             current_page = 0
             while True:
                 body["pagination"] = {"pageSize": DEFAULT_PAGE_SIZE, "page": current_page}
-                res = await self._send_request(url=f"{self.api_url}/clusters/issues/search", data=body,
+                response = await self._send_request(url=f"{self.api_url}/clusters/issues/search", data=body,
                                                method="POST")
-                issues = res.get("data", {}).get("issues", [])
+                issues = response.get("data", {}).get("issues", [])
                 if issues is None:
                     yield None
                     continue
@@ -101,7 +99,7 @@ class KomodorClient:
                 for issue in issues:
                     issue["_clusterName"] = cluster_name
                 yield issues
-                current_page = res.get("meta", {}).get("nextPage", None)
+                current_page = response.get("meta", {}).get("nextPage", None)
                 if not current_page:
-                    logger.debug("No more issues pages, breaking.")
+                    logger.debug("No more issues pages, breaking")
                     break
