@@ -1,8 +1,14 @@
 name: 🌊 Ocean Core Tests
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
+    PR_NUMBER:
+      description: 'PR number to comment on'
+      required: false
 
 jobs:
   detect-changes:
@@ -77,7 +83,18 @@ jobs:
       - name: Test all integrations with current core
         run: |
           echo "Testing all integrations with local core"
-          SCRIPT_TO_RUN="PYTEST_ADDOPTS=--cov --cov-report= --cov-append --junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml make test" make execute/all
+          SCRIPT_TO_RUN="PYTEST_ADDOPTS=\"--cov --cov-report= --cov-append --junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml\" make test" make execute/all
+
+      - name: Get PR_NUMBER
+        id: pr-number
+        run: |
+          if [ ! -z ${{ inputs.PR_NUMBER }} ]; then
+            echo "PR_NUMBER=${{ inputs.PR_NUMBER }}" >> $GITHUB_OUTPUT
+          elif [ ! -z ${{ github.event.pull_request.number }} ]; then
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else
+            echo "PR_NUMBER=0" >> $GITHUB_OUTPUT
+          fi
 
       - name: Produce coverage report
         run: |
@@ -85,11 +102,80 @@ jobs:
           make coverage
 
       - name: Upload coverage report
+        id: upload-coverage
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage/index.html
         
+      - name: Comment PR with code coverage summary
+        uses: actions/github-script@v7
+        env:
+          CODE_COVERAGE_ARTIFACT_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
+          PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Code Coverage Artifact 📈: ${{ env.CODE_COVERAGE_ARTIFACT_URL }}
+            
+            github.rest.issues.createComment({
+              issue_number: ${{ env.PR_NUMBER }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Get current repo coverage percentage from Port
+        uses: port-labs/port-github-action@v1
+        id: get-current-coverage
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: GET
+          identifier: ocean
+          blueprint: Repository
+
+      - name: Set current code coverage
+        id: set-current-coverage
+        run: echo "CURRENT_COVERAGE=${{ fromJson(steps.get-current-coverage.outputs.entity).properties.coverage_percent }}" >> $GITHUB_OUTPUT
+
+      - name: Comment if Coverage Regression
+        if: ${{ (steps.set-stmts-coverage.outputs.STMTS_COVERAGE < steps.set-current-coverage.outputs.CURRENT_COVERAGE) && (steps.pr-number.outputs.PR_NUMBER != 0) }} 
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
+          CURRENT_COVERAGE: ${{ steps.set-current-coverage.outputs.CURRENT_COVERAGE }}
+          NEW_COVERAGE: ${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `🚨 The code coverage percentage of \`frontend\` is lower than the current one. Current coverage: \`${{ env.CURRENT_COVERAGE }}\`\n While the new one is: \`${{ env.NEW_COVERAGE }}\``;
+            
+            github.rest.issues.createComment({
+              issue_number: ${{ env.PR_NUMBER }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+      - name: Fail PR if current code coverage percentage is higher than the new one
+        if: ${{ (steps.run-tests.outputs.CODE_COVERAGE_EXISTS == 'true') && (steps.set-stmts-coverage.outputs.STMTS_COVERAGE < steps.current-coverage.outputs.CURRENT_COVERAGE) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true') }} 
+        run: exit 1
+
+      - name: Update service code coverage percentage in Port
+        if: ${{ (github.event_name == 'pull_request' && github.event.action == 'ready_for_review') && (steps.set-stmts-coverage.outputs.STMTS_COVERAGE > steps.set-current-coverage.outputs.CURRENT_COVERAGE) }} 
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          identifier: frontend
+          blueprint: Microservice
+          properties: |-
+            {
+              "coverage_percent": "${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}"
+            }
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5
