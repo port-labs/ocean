@@ -31,7 +31,7 @@ jobs:
 
       - name: Unit Test Core
         env:
-          PYTEST_ADDOPTS: --cov --cov-report=term --cov-report=json --junitxml=junit/unit-test-results-ocean/core.xml
+          PYTEST_ADDOPTS: --cov --cov-report=term --cov-report=json --cov-report=html --junitxml=junit/unit-test-results-ocean/core.xml
         run: |
           make test
 
