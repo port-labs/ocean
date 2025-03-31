@@ -113,7 +113,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: htmlcov/index.html
+          path: htmlcov
+
+      - name: Set repo code coverage percentage by the percentage of statements covered in the tests
+        id: set-stmts-coverage
+        run: |
+          stmts=$(jq '.totals.percent_covered' coverage.json)
+          echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
         
       - name: Comment PR with code coverage summary
         uses: actions/github-script@v7
@@ -124,6 +130,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const output = `#### Code Coverage Artifact 📈: ${{ env.CODE_COVERAGE_ARTIFACT_URL }}
+            #### Code Coverage Total Percentage: \`${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}\``;
             
             github.rest.issues.createComment({
               issue_number: ${{ env.PR_NUMBER }},
@@ -131,12 +138,6 @@ jobs:
               repo: context.repo.repo,
               body: output
             })
-
-      - name: Set repo code coverage percentage by the percentage of statements covered in the tests
-        id: set-stmts-coverage
-        run: |
-          stmts=$(jq '.totals.percent_covered' coverage.json)
-          echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
 
       - name: Get current repo coverage percentage from Port
         uses: port-labs/port-github-action@v1
