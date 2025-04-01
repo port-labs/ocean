@@ -129,8 +129,12 @@ jobs:
             } >> $GITHUB_STEP_SUMMARY
           fi
 
+      - name: Set output for trivy results
+        run: |
+          echo "VOLNERABILITIES_COUNT=$(cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i "total:" | awk '{print $2}')" >> $GITHUB_ENV
+
       - name: Send slack alert if vulnerabilities found
-        if: $(cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i "total:" | awk '{print $2}') != 0)
+        if: ${{ env.VULNERABILITIES_COUNT != '0' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook-type: incoming-webhook
@@ -148,7 +152,7 @@ jobs:
                     },
                     {
                       "title": "Vulnerabilities",
-                      "value": "$(cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i 'total:' | awk '{print $2}')",
+                      "value": "${{ env.VULNERABILITIES_COUNT }}",
                       "short": true
                     },
                     {
