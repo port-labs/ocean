@@ -130,18 +130,34 @@ jobs:
           fi
 
       - name: Send slack alert if vulnerabilities found
-        if: $(cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i "total:" | awk '{print $2}') != 0
+        if: $(cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i "total:" | awk '{print $2}') != 0)
         uses: slackapi/slack-github-action@v2.0.0
         with:
-          status: 'danger'
           webhook-type: incoming-webhook
-          icon-emoji: ':warning:'
           payload: |
             {
               "text": "Vulnerabilities found in ${{ steps.enrich-version.outputs.integration }} image",
               "attachments": [
                 {
-                  "text": "<${{ github.run_id }}|View Run>",
+                  "text": "${{ steps.enrich-version.outputs.integration }} image has vulnerabilities",
+                  "fields": [
+                    {
+                      "title": "Image",
+                      "value": "${{ steps.enrich-version.outputs.image_tag }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Vulnerabilities",
+                      "value": "$(cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i 'total:' | awk '{print $2}')",
+                      "short": true
+                    },
+                    {
+                      "title": "link",
+                      "value": "https://github.com/port-labs/ocean/actions/runs/${{ github.run_id }}",
+                      "short": true
+                    }
+                  ],
+
                   "color": "#FF0000"
                 }
               ]
