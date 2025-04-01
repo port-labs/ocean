@@ -17,7 +17,7 @@ An integration used to import Komodor resources into Port.
     port:
       entity:
         mappings:
-          identifier: .uid
+          identifier: .kind + "-" + .cluster + "-" + .namespace + "-" + .service
           blueprint: '"komodorService"'
           properties: {}
           relations:
