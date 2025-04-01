@@ -115,7 +115,7 @@ jobs:
         run: |
           stmts=$(jq '.totals.percent_covered | . * 100 | round | . / 100' coverage.json)
           echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
-        
+
       - name: Comment PR with code coverage summary
         uses: actions/github-script@v7
         env:
@@ -126,7 +126,7 @@ jobs:
           script: |
             const output = `#### Code Coverage Artifact 📈: ${{ env.CODE_COVERAGE_ARTIFACT_URL }}
             #### Code Coverage Total Percentage: \`${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}%\``;
-            
+
             github.rest.issues.createComment({
               issue_number: ${{ env.PR_NUMBER }},
               owner: context.repo.owner,
@@ -150,7 +150,7 @@ jobs:
         run: echo "CURRENT_COVERAGE=${{ fromJson(steps.get-current-coverage.outputs.entity).properties.coverage_percent }}" >> $GITHUB_OUTPUT
 
       - name: Comment if Coverage Regression
-        if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }} 
+        if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }}
         uses: actions/github-script@v7
         env:
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
@@ -160,7 +160,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const output = `🚨 The new code coverage percentage is lower than the current one. Current coverage: \`${{ env.CURRENT_COVERAGE }}\`\n While the new one is: \`${{ env.NEW_COVERAGE }}\``;
-            
+
             github.rest.issues.createComment({
               issue_number: ${{ env.PR_NUMBER }},
               owner: context.repo.owner,
@@ -169,11 +169,11 @@ jobs:
             })
 
       - name: Fail PR if current code coverage percentage is higher than the new one
-        if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true') }} 
+        if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true') }}
         run: exit 1
 
       - name: Update service code coverage percentage in Port
-        if: ${{ (github.event_name == 'push') && (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) > fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) }} 
+        if: ${{ (github.event_name == 'push') && (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) > fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) }}
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_MAIN_CLIENT_ID }}
