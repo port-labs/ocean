@@ -153,7 +153,7 @@ jobs:
                     },
                     {
                       "title": "Vulnerabilities",
-                      "value": "${{ env.VULNERABILITIES_COUNT }}",
+                      "value": "Count: ${{ env.VULNERABILITIES_COUNT }}",
                       "short": true
                     },
                     {
