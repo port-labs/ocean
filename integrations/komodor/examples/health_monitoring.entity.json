@@ -1,10 +1,10 @@
 {
   "identifier": "random-uuid",
   "title": "KIND|CLUSTER|NAMESPACE|NAME",
-  "blueprint": "komodorRiskViolations",
+  "blueprint": "komodorHealthMonitoring",
   "properties": {
     "status": "open",
-    "komodor_uid": "KIND|CLUSTER|NAMESPACE|NAME",
+    "resource_identifier": "KIND-CLUSTER-NAMESPACE-NAME",
     "severity": "medium",
     "supporting_data": {
       "restartingContainers": {

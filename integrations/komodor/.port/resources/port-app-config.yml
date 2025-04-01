@@ -8,7 +8,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .uid
+          identifier: .kind + "-" + .cluster + "-" + .namespace + "-" + .service
           title: .service
           blueprint: '"komodorService"'
           properties:
@@ -22,7 +22,7 @@ resources:
             labels: .labels
             last_deploy_at: .lastDeploy.endTime | todate
             last_deploy_status: .lastDeploy.status
-  - kind: komodorRiskViolations
+  - kind: komodorHealthMonitoring
     selector:
       query: 'true'
     port:
@@ -30,10 +30,10 @@ resources:
         mappings:
           identifier: .id
           title: .komodorUid
-          blueprint: '"komodorRiskViolations"'
+          blueprint: '"komodorHealthMonitoring"'
           properties:
             status: .status
-            komodor_uid: .komodorUid
+            resource_identifier: .komodorUid | gsub("\\|"; "-") | sub("-+$"; "")
             severity: .severity
             supporting_data: .supportingData
             komodor_link: .link + "&utmSource=port"
@@ -44,50 +44,15 @@ resources:
             cluster_name: .komodorUid | split("|") | .[1]
             namespace_name: .komodorUid | split("|") | .[2]
             workload_name: .komodorUid | split("|") | .[3]
-          relations:
-            service:
-              combinator: '"and"'
-              rules:
-                - property: '"workload_kind"'
-                  operator: '"="'
-                  value: .komodorUid | split("|") | .[0]
-                - property: '"cluster_name"'
-                  operator: '"="'
-                  value: .komodorUid | split("|") | .[1]
-                - property: '"namespace_name"'
-                  operator: '"="'
-                  value: .komodorUid | split("|") | .[2]
-                - property: '"service_name"'
-                  operator: '"="'
-                  value: .komodorUid | split("|") | .[3]
-  - kind: komodorIssues
+  - kind: komodorHealthMonitoring
     selector:
-      query: 'true'
+      query: (.komodorUid | split("|") | length) == 4
     port:
       entity:
         mappings:
-          identifier: .link | capture("eventId=(?<eventId>[a-f0-9-]+)") | .eventId
-          title: .summary
-          blueprint: '"komodorIssues"'
-          properties:
-            details: .details
-            status: .status
-            start_time: .startTime | todate
-            komodor_link: .link + "&utmSource=port"
-            summary: .summary
-            type: .type
-            workload_name: .summary | split("/") | .[2] | split(" ") | first
-            cluster_name: .summary | split("/") | .[0]
+          identifier: .id
+          title: .komodorUid
+          blueprint: '"komodorHealthMonitoring"'
+          properties: {}
           relations:
-            service:
-              combinator: '"and"'
-              rules:
-                - property: '"service_name"'
-                  operator: '"="'
-                  value: .summary | split("/") | .[2] | split(" ") | first
-                - property: '"cluster_name"'
-                  operator: '"="'
-                  value: .summary | split("/") | .[0]
-                - property: '"namespace_name"'
-                  operator: '"="'
-                  value: .summary | split("/") | .[1]
+            service: .komodorUid | gsub("\\|"; "-")

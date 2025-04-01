@@ -28,9 +28,7 @@ class KomodorClient:
         res.raise_for_status()
         return res.json()
 
-    async def get_clusters(self) -> AsyncGenerator[list[dict[str, Any]], Any]:
-        res = await self._send_request(url=f"{self.api_url}/clusters")
-        yield res.get("data", {}).get("clusters", [])
+
 
     async def get_all_services(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         current_page = 0
@@ -54,14 +52,15 @@ class KomodorClient:
                 logger.debug("No more service pages, breaking")
                 break
 
-    async def get_risks(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+
+    async def get_health_monitor(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         offset = 0
         while True:
             response = await self._send_request(url=f"{self.api_url}/health/risks",
                                            params={"pageSize": RISKS_PAGE_SIZE, "offset": offset,
                                                    "checkCategory": ["workload",
                                                                      "infrastructure"],
-                                                   "impactGroupType": ["dynamic"]})
+                                                   "impactGroupType": ["dynamic", "realtime"]})
             yield response.get("violations", [])
 
             if not response.get("hasMoreResults"):
@@ -69,11 +68,39 @@ class KomodorClient:
                 break
             offset += RISKS_PAGE_SIZE
 
-    async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], Any]:
-        async for batch_clusters in self.get_clusters():
-            async for issue in self._get_issues_from_cluster(batch_clusters):
-                if issue:
-                    yield issue
+    async def _get_clusters(self) -> AsyncGenerator[list[dict[str, Any]], Any]:
+        res = await self._send_request(url=f"{self.api_url}/clusters")
+        yield res.get("data", {}).get("clusters", [])
+
+
+    async def _get_risks(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        offset = 0
+        while True:
+            response = await self._send_request(url=f"{self.api_url}/health/risks",
+                                                params={"pageSize": RISKS_PAGE_SIZE, "offset": offset,
+                                                        "checkCategory": ["workload",
+                                                                          "infrastructure"],
+                                                        "impactGroupType": ["dynamic"]})
+            yield response.get("violations", [])
+
+            if not response.get("hasMoreResults"):
+                logger.debug("No more health risks pages, breaking")
+                break
+            offset += RISKS_PAGE_SIZE
+
+    async def _get_issues(self) -> AsyncGenerator[list[dict[str, Any]], Any]:
+        offset = 0
+        while True:
+            response = await self._send_request(url=f"{self.api_url}/health/risks",
+                                                params={"pageSize:": RISKS_PAGE_SIZE, "offset": offset,
+                                                        "checkType": ["unhealthyService"],
+                                                        "impactGroupType": ["realtime"],
+                                                        "checkCategory": ["workload"]})
+            yield response.get("violations", [])
+            if not response.get("hasMoreResults"):
+                logger.debug("No more health issues pages, breaking")
+                break
+            offset += RISKS_PAGE_SIZE
 
     async def _get_issues_from_cluster(self, clusters: list[dict[str, Any]]) -> AsyncGenerator[
         list[dict[str, Any]] | None, Any]:

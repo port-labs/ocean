@@ -1,9 +1,0 @@
-{
-  "details": "[NonZeroExitCode - Exit code: 1 PodInitializing]",
-  "link": "https://app.komodor.com/main/events?workspaceId=null&timeWindow=1743258219000-1743344619000&timeframe=custom&eventId=EVENT_ID&referer=public-api",
-  "startTime": 1742511847,
-  "status": "open",
-  "summary": "CLUSTER_NAME/NAMESPACE_NAME/WORKLOAD_NAME is unhealthy",
-  "type": "availability",
-  "_clusterName": "CLUSTER_NAME"
-}

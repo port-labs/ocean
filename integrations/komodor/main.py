@@ -17,22 +17,12 @@ async def resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Got {len(service)} services from komodor api")
         yield service
 
-
-@ocean.on_resync(KomoObjectKind.RISK_VIOLATION)
-async def resync_risks(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+@ocean.on_resync(KomoObjectKind.HEALTH_MONITOR)
+async def resync_health_monitor(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
-    async for risks in client.get_risks():
-        logger.info(f"Got {len(risks)} risks from komodor api")
-        yield risks
-
-
-@ocean.on_resync(KomoObjectKind.AVAILABILITY_ISSUES)
-async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = init_client()
-    async for issues in client.get_issues():
-        logger.info(f"Got {len(issues)} issues from komodor api")
-        yield issues
-
+    async for healh_monitoring in client.get_health_monitor():
+        logger.info(f"Got {len(healh_monitoring)} health monitoring from komodor api")
+        yield healh_monitoring
 
 # Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
