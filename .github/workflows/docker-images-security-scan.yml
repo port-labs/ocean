@@ -128,3 +128,20 @@ jobs:
               echo "</details>"
             } >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Send slack alert if vulnerabilities found
+        if: $(cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i "total:" | awk '{print $2}') != 0
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          payload: |
+            {
+              "text": "Vulnerabilities found in ${{ steps.enrich-version.outputs.integration }} image",
+              "attachments": [
+                {
+                  "text": "<${{ github.run_id }}|View Run>",
+                  "color": "#FF0000"
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_RND_ECOSYSTEM_DEPENDABOT_ALERTS_WEBHOOK_URL }}
