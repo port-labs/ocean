@@ -178,7 +178,7 @@ jobs:
         run: exit 1
 
       - name: Update service code coverage percentage in Port
-        if: ${{(fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) > fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) }} 
+        if: ${{ (github.event_name == 'push') && (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) > fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) }} 
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_MAIN_CLIENT_ID }}
