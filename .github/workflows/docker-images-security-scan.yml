@@ -135,13 +135,13 @@ jobs:
           echo ${{ env.VULNERABILITIES_COUNT }}
 
       - name: Send slack alert if vulnerabilities found
-        if: ${{ env.VULNERABILITIES_COUNT != '0' }}
+        if: ${{ env.VULNERABILITIES_COUNT == '0' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "Vulnerabilities found in ${{ steps.enrich-version.outputs.integration }} image",
+              "text": "Vulnerabilities found in `${{ steps.enrich-version.outputs.integration }}` image",
               "attachments": [
                 {
                   "text": "${{ steps.enrich-version.outputs.integration }} image has vulnerabilities",
