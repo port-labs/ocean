@@ -18,10 +18,12 @@
           }
         },
         "cluster_name": {
+          "icon": "Cluster",
           "type": "string",
           "title": "Cluster"
         },
         "workload_kind": {
+          "icon": "Deployment",
           "type": "string",
           "title": "Kind"
         },
@@ -31,6 +33,7 @@
           "title": "Service"
         },
         "namespace_name": {
+          "icon": "Environment",
           "type": "string",
           "title": "Namespace"
         },
@@ -67,7 +70,7 @@
         "supporting_data": {
           "icon": "JsonEditor",
           "type": "object",
-          "title": "supportingData"
+          "title": "Supporting Data"
         },
         "komodor_link": {
           "icon": "LinkOut",
@@ -91,7 +94,7 @@
         },
         "created_at": {
           "type": "string",
-          "title": "created at",
+          "title": "Created at",
           "format": "date-time"
         },
         "last_evaluated_at": {
