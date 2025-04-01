@@ -134,7 +134,7 @@ jobs:
           echo "VOLNERABILITIES_COUNT=$(cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i "total:" | awk '{print $2}')" >> $GITHUB_ENV
 
       - name: Send slack alert if vulnerabilities found
-        if: ${{ env.VULNERABILITIES_COUNT != '0' }}
+        if: ${{ env.VULNERABILITIES_COUNT == '0' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook-type: incoming-webhook
