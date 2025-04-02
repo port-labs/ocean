@@ -415,26 +415,6 @@ files = [
 ]
 
 [[package]]
-name = "hishel"
-version = "0.1.1"
-description = "Persistent cache implementation for httpx and httpcore"
-optional = false
-python-versions = ">=3.9"
-files = [
-    {file = "hishel-0.1.1-py3-none-any.whl", hash = "sha256:5b51acc340303faeef2f5cfc1658acb1db1fdc3e3ad76406265a485f9707c5d6"},
-    {file = "hishel-0.1.1.tar.gz", hash = "sha256:1f6421b78cc23fc43c610f651b7848c9b8eee2d29551d64a2ab0d45b319b6559"},
-]
-
-[package.dependencies]
-httpx = ">=0.22.0"
-
-[package.extras]
-redis = ["redis (==5.0.1)"]
-s3 = ["boto3 (>=1.15.0,<=1.15.3)", "boto3 (>=1.15.3)"]
-sqlite = ["anysqlite (>=0.0.5)"]
-yaml = ["pyyaml (==6.0.1)"]
-
-[[package]]
 name = "httpcore"
 version = "1.0.7"
 description = "A minimal low-level HTTP client."
@@ -1585,4 +1565,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "e0cfc8f9f061e2eccc95c4bccd660ad0e0e2675cdd2d2ed631a1690d659f8c4e"
+content-hash = "7889be54bb9679a0e0a05969edcfcc1857bede044d2a6e31178b64223336ca8c"
