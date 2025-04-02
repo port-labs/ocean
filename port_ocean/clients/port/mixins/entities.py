@@ -149,7 +149,7 @@ class EntityClientMixin:
 
         result_tuples: list[tuple[bool, Entity]] = []
         for original_entity, result in zip(entities, modified_entities_results):
-            if isinstance(result, Exception):
+            if isinstance(result, Exception) and should_raise:
                 raise result
             elif isinstance(result, Entity):
                 result_tuples.append((True, result))
