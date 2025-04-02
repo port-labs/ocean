@@ -110,7 +110,8 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
 
 
 def are_teams_different(
-    first_team: str | None | list[Any], second_team: str | None | list[Any]
+    first_team: str | None | list[Any],
+    second_team: str | None | list[Any],
 ) -> bool:
     if isinstance(first_team, list) and isinstance(second_team, list):
         return sorted(first_team) != sorted(second_team)
