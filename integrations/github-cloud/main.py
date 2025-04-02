@@ -1,7 +1,7 @@
 from typing import Any, AsyncGenerator
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from initialize_client import init_client
+from github_cloud.initialize_client import init_client
 from github_cloud.helpers.utils import ObjectKind
 
 from github_cloud.webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
@@ -18,9 +18,8 @@ async def on_start() -> None:
     
     client = init_client()
     
-    # Call the create_webhooks_if_not_exists method
-    app_host = ocean.integration_config["app_host"]
-    await client.create_webhooks_if_not_exists(app_host)
+    # Call the setup_repository_webhooks method
+    await client.setup_repository_webhooks()
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)

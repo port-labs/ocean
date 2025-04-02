@@ -3,7 +3,6 @@ import time
 from typing import Dict
 from loguru import logger
 
-
 class GitHubRateLimiter:
     """Rate limiter for GitHub API requests using a queue-based approach."""
 

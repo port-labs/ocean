@@ -29,11 +29,11 @@ REPOSITORY_EVENTS = [
     "renamed",
 ]
 
-REPOSITORY_DELETE_EVENTS = [
+REPO_DELETE_EVENTS = [
     "deleted",
 ]
 
-REPOSITORY_UPSERT_EVENTS = [
+REPO_UPSERT_EVENTS = [
     "created",
     "deleted",
     "renamed",
@@ -55,11 +55,11 @@ PULL_REQUEST_EVENTS = [
     "transferred",
 ]
 
-PULL_REQUEST_DELETE_EVENTS = [
+PR_DELETE_EVENTS = [
     "deleted",
 ]
 
-PULL_REQUEST_UPSERT_EVENTS = [
+PR_UPSERT_EVENTS = [
     "opened",
     "edited",
     "closed",
@@ -74,13 +74,13 @@ PULL_REQUEST_UPSERT_EVENTS = [
     "demilestoned",
 ]
 
-PULL_REQUEST_COMMENT_EVENTS = [
+PR_COMMENT_EVENTS = [
     "created",
     "edited",
     "deleted",
 ]
 
-PULL_REQUEST_REVIEW_EVENTS = [
+PR_REVIEW_EVENTS = [
     "submitted",
     "edited",
     "dismissed",

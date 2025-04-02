@@ -24,6 +24,11 @@ configurations:
     sensitive: true
     description: "GitHub Access Token for API authentication"
     required: true
+  - name: webhookSecret
+    type: string
+    sensitive: true
+    description: "Webhook Secret for GitHub webhook authentication"
+    required: false
   - name: githubOrganization
     type: string
     description: "GitHub Organization name (required for team operations)"
