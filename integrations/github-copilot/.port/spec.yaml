@@ -7,9 +7,12 @@ features:
       - kind: github-copilot-example-kind
       # - kind: <ResourceName2>
 configurations:
-  - name: mygithub-copilotToken
-    # required: true
+  - name: githubToken
     type: string
     sensitive: true
-  - name: someApplicationUrl
+    required: true
+  - name: githubHost
+    required: false
     type: url
+    default: https://api.github.com
+    description: The host of the Github api instance. If not specified, the default will be https://api.github.com.
