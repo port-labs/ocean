@@ -1,7 +1,6 @@
-from typing import List, Optional, Dict, Any
+from typing import List
 from loguru import logger
 from github_cloud.helpers.utils import ObjectKind
-from github_cloud.helpers.constants import PR_DELETE_EVENTS, PR_UPSERT_EVENTS
 from github_cloud.initialize_client import init_client
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -10,112 +9,130 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
     EventHeaders,
 )
-from github_cloud.webhook_processors.abstract_webhook_processor import AbstractWebhookProcessor
-from github_cloud.webhook_processors.base_pipeline import BaseEventPipeline
-from github_cloud.webhook_processors.events import PullRequestEvent
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import AbstractWebhookProcessor
 
-class PullRequestEventPipeline(BaseEventPipeline[PullRequestEvent]):
-    """Pipeline for processing GitHub pull request events."""
+class PullRequestWebhookProcessor(AbstractWebhookProcessor):
+    """Handles GitHub pull request webhook events."""
     
     def __init__(self):
-        super().__init__()
         self.client = init_client()
+        self._supported_resource_kinds = [ObjectKind.PULL_REQUEST]
 
-    def _extract_event_data(self, payload: EventPayload) -> Optional[PullRequestEvent]:
-        """Extract and validate event data from the payload."""
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        """Check if this processor should handle the event."""
+        event_type = event.payload.get("action")
+        event_name = event.headers.get("x-github-event")
+        
+        # Only process pull request events with specific actions
+        valid_actions = {"opened", "closed", "reopened", "edited", "synchronize", "ready_for_review"}
+        
+        return event_name == "pull_request" and event_type in valid_actions
+
+    async def get_matching_kinds(self, event: WebhookEvent) -> List[str]:
+        """Get the list of resource kinds that this processor supports.
+        
+        Args:
+            event: The webhook event to check
+            
+        Returns:
+            List[str]: List of supported resource kinds
+        """
+        return self._supported_resource_kinds
+
+    async def get_supported_resource_kinds(self, event: WebhookEvent) -> List[str]:
+        """Get the list of resource kinds that this processor supports.
+        
+        Args:
+            event: The webhook event to check
+            
+        Returns:
+            List[str]: List of supported resource kinds
+        """
+        return self._supported_resource_kinds
+
+    async def handle_event(
+        self, payload: EventPayload, resource: ResourceConfig
+    ) -> WebhookEventRawResults:
+        """Process the webhook event.
+        
+        Args:
+            payload: The webhook event payload
+            resource: The resource configuration
+            
+        Returns:
+            WebhookEventRawResults: The results of processing the webhook event
+        """
+        return await self.process_webhook_event(payload, resource)
+
+    async def process_webhook_event(
+        self, payload: EventPayload, resource_config: ResourceConfig
+    ) -> WebhookEventRawResults:
+        """Process the webhook event."""
         try:
             action = payload.get("action")
             pull_request = payload.get("pull_request", {})
             repo = payload.get("repository", {})
             
-            if not self._validate_required_fields(pull_request, ["number"]) or not repo:
+            if not pull_request or not repo:
                 logger.warning("Missing required data in payload")
-                return None
-                
-            return PullRequestEvent(
-                action=action,
-                pr_number=pull_request.get("number"),
-                repo_name=repo.get("name"),
-                pr_data=pull_request,
-                repository_data=repo
-            )
-        except Exception as e:
-            logger.error(f"Failed to extract event data: {e}")
-            return None
-
-    async def _handle_delete(self, event: PullRequestEvent) -> WebhookEventRawResults:
-        """Handle pull request deletion events."""
-        logger.info(f"Pull request #{event.pr_number} was deleted in {event.repo_name}")
-        return WebhookEventRawResults(
-            modified_resources=[],
-            removed_resources=[event.pr_data],
-        )
-
-    async def _handle_upsert(self, event: PullRequestEvent) -> WebhookEventRawResults:
-        """Handle pull request creation/update events."""
-        try:
-            latest_pr = await self.client.fetch_resource(
-                ObjectKind.PULL_REQUEST,
-                f"{event.repo_name}/{event.pr_number}"
-            )
-            
-            if not latest_pr:
-                logger.warning(f"Unable to retrieve modified resource data for pull request {event.repo_name}#{event.pr_number}")
                 return WebhookEventRawResults(
-                    modified_resources=[],
-                    removed_resources=[],
+                    updated_raw_results=[],
+                    deleted_raw_results=[],
+                )
+
+            pr_number = pull_request.get("number")
+            repo_name = repo.get("name")  # Use name instead of full_name
+            
+            if not pr_number or not repo_name:
+                logger.warning("Missing required fields in pull request data")
+                return WebhookEventRawResults(
+                    updated_raw_results=[],
+                    deleted_raw_results=[],
+                )
+
+            # Handle delete events
+            if action == "deleted":
+                logger.info(f"Pull request #{pr_number} was deleted in {repo_name}")
+                return WebhookEventRawResults(
+                    updated_raw_results=[],
+                    deleted_raw_results=[pull_request],
+                )
+
+            # Handle create/update events
+            try:
+                latest_pr = await self.client.fetch_resource(
+                    ObjectKind.PULL_REQUEST,
+                    f"{repo_name}/{pr_number}"
                 )
                 
-            logger.info(f"Successfully retrieved modified resource data for pull request {event.repo_name}#{event.pr_number}")
-            return WebhookEventRawResults(
-                modified_resources=[latest_pr],
-                removed_resources=[],
-            )
+                if not latest_pr:
+                    logger.warning(f"Unable to retrieve modified resource data for pull request {repo_name}/{pr_number}")
+                    return WebhookEventRawResults(
+                        updated_raw_results=[],
+                        deleted_raw_results=[],
+                    )
+                    
+                logger.info(f"Successfully retrieved modified resource data for pull request {repo_name}/{pr_number}")
+                return WebhookEventRawResults(
+                    updated_raw_results=[latest_pr],
+                    deleted_raw_results=[],
+                )
+            except Exception as e:
+                logger.error(f"Error fetching latest pull request data: {e}")
+                return WebhookEventRawResults(
+                    updated_raw_results=[],
+                    deleted_raw_results=[],
+                )
+
         except Exception as e:
-            logger.error(f"Error handling pull request upsert: {e}")
+            logger.error(f"Error processing pull request webhook event: {e}")
             return WebhookEventRawResults(
-                modified_resources=[],
-                removed_resources=[],
+                updated_raw_results=[],
+                deleted_raw_results=[],
             )
-
-    def _determine_handler(self, event: PullRequestEvent) -> str:
-        """Determine which handler to use based on the event type."""
-        if event.action in PR_DELETE_EVENTS:
-            return 'delete'
-        elif event.action in PR_UPSERT_EVENTS:
-            return 'upsert'
-        return 'default'
-
-class PullRequestWebhookProcessor(AbstractWebhookProcessor):
-    """Main webhook processor for GitHub pull requests."""
-    
-    def __init__(self):
-        super().__init__()
-        self.pipeline = PullRequestEventPipeline()
-
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        """Determine if this processor should handle the event."""
-        event_type = event.payload.get("action")
-        event_name = event.headers.get("x-github-event")
-        return (
-            event_name == "pull_request"
-            and event_type in PR_UPSERT_EVENTS + PR_DELETE_EVENTS
-        )
-
-    async def get_matching_kinds(self, event: WebhookEvent) -> List[str]:
-        """Get the resource kinds this processor handles."""
-        return [ObjectKind.PULL_REQUEST]
-
-    async def process_webhook_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        """Process the webhook event using the pipeline."""
-        return await self.pipeline.process(payload, resource_config)
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         """Authenticate the webhook request."""
-        # GitHub webhooks are authenticated via the webhook secret
-        # This is handled at the application level
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
@@ -125,6 +142,27 @@ class PullRequestWebhookProcessor(AbstractWebhookProcessor):
             if not payload.get("pull_request") or not payload.get("repository"):
                 logger.warning("Missing required fields in pull request webhook payload")
                 return False
+                
+            pull_request = payload.get("pull_request", {})
+            if not pull_request.get("number"):
+                logger.warning("Missing pull request number in payload")
+                return False
+                
+            repo = payload.get("repository", {})
+            if not repo.get("name"):  # Use name instead of full_name
+                logger.warning("Missing repository name in payload")
+                return False
+                
+            # Check for sender field
+            if not payload.get("sender"):
+                logger.warning("Missing sender information in payload")
+                return False
+                
+            sender = payload.get("sender", {})
+            if not sender.get("login"):
+                logger.warning("Missing sender login in payload")
+                return False
+                
             return True
         except Exception as e:
             logger.error(f"Error validating pull request webhook payload: {e}")

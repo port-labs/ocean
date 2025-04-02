@@ -4,7 +4,7 @@ from httpx import AsyncClient, Response
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from typing import Generator, Any, Dict, Optional
-from initialize_client import init_client
+from github_cloud.initialize_client import init_client
 import time
 
 
