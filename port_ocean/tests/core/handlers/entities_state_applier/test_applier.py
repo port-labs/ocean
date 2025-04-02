@@ -131,6 +131,74 @@ async def test_applier_with_mock_context(
 
 
 @pytest.mark.asyncio
+async def test_applier_one_not_upserted(
+    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    # Create an applier using the mock_context fixture
+    applier = HttpEntitiesStateApplier(mock_context)
+
+    # Create test entities
+    entity = Entity(identifier="test_entity", blueprint="test_blueprint")
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        # Mock the register_entity method
+        event.entity_topological_sorter.register_entity = Mock()
+        event.port_app_config = mock_port_app_config
+
+        # Test the upsert method with mocked client
+        with patch.object(mock_ocean.port_client.client, "post") as mock_post:
+            mock_post.return_value = Mock(
+                status_code=404,
+                json=lambda: {"ok": False, "error": "not_found"},
+            )
+
+            result = await applier.upsert([entity], UserAgentType.exporter)
+
+            # Assert that the post method was called
+            mock_post.assert_called_once()
+            assert len(result) == 0
+            event.entity_topological_sorter.register_entity.assert_called_once_with(
+                entity
+            )
+
+
+@pytest.mark.asyncio
+async def test_applier_error_upserting(
+    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    # Create an applier using the mock_context fixture
+    applier = HttpEntitiesStateApplier(mock_context)
+
+    # Create test entities
+    entity = Entity(identifier="test_entity", blueprint="test_blueprint")
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        # Mock the register_entity method
+        event.entity_topological_sorter.register_entity = Mock()
+        event.port_app_config = mock_port_app_config
+
+        # Test the upsert method with mocked client
+        with patch.object(mock_ocean.port_client.client, "post") as mock_post:
+            mock_post.return_value = Mock(
+                status_code=404,
+                json=lambda: {"ok": False, "error": "not_found"},
+            )
+
+            result = await applier.upsert([entity], UserAgentType.exporter)
+
+            # Assert that the post method was called
+            mock_post.assert_called_once()
+            assert len(result) == 0
+            event.entity_topological_sorter.register_entity.assert_called_once_with(
+                entity
+            )
+
+
+@pytest.mark.asyncio
 async def test_using_create_entity_helper(
     mock_ocean: Ocean,
     mock_context: PortOceanContext,
