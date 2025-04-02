@@ -24,9 +24,9 @@ class KomodorClient:
 
     async def _send_request(self, url: str, params: Optional[dict[str, Any]] = None,
                             data: Optional[dict[str, Any]] = None, method: str = "GET") -> Any:
-        res = await self.http_client.request(url=url, params=params, json=data, method=method)
-        res.raise_for_status()
-        return res.json()
+        response = await self.http_client.request(url=url, params=params, json=data, method=method)
+        response.raise_for_status()
+        return response.json()
 
 
 
@@ -69,8 +69,8 @@ class KomodorClient:
             offset += RISKS_PAGE_SIZE
 
     async def _get_clusters(self) -> AsyncGenerator[list[dict[str, Any]], Any]:
-        res = await self._send_request(url=f"{self.api_url}/clusters")
-        yield res.get("data", {}).get("clusters", [])
+        response = await self._send_request(url=f"{self.api_url}/clusters")
+        yield response.get("data", {}).get("clusters", [])
 
 
     async def _get_risks(self) -> AsyncGenerator[list[dict[str, Any]], None]:
