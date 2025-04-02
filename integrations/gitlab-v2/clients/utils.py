@@ -2,26 +2,7 @@ import json
 from typing import Any, Union
 
 import yaml
-from braceexpand import braceexpand
 from loguru import logger
-
-
-def strip_recursive_prefix(pattern: str) -> str:
-    return pattern[3:] if pattern.startswith("**/") else pattern
-
-
-def convert_glob_to_gitlab_patterns(pattern: Union[str, list[str]]) -> list[str]:
-    """Converts glob patterns into GitLab-compatible patterns."""
-    if isinstance(pattern, list):
-        expanded_patterns: list[str] = []
-        for glob_pattern in pattern:
-            stripped_pattern = strip_recursive_prefix(glob_pattern)
-            expanded_patterns.extend(braceexpand(stripped_pattern))
-        return expanded_patterns
-
-    # Handle single pattern
-    stripped_pattern = strip_recursive_prefix(pattern)
-    return list(braceexpand(stripped_pattern))
 
 
 def parse_file_content(
