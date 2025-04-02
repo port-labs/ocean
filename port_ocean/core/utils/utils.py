@@ -122,6 +122,7 @@ def are_entities_fields_equal(
 ) -> bool:
     """
     Compare two entity fields by serializing them to JSON and comparing their SHA-256 hashes.
+    Removes keys with None values before comparison if the corresponding key doesn't exist in the other dict.
 
     Args:
         first_entity_field: First entity field dictionary to compare
@@ -130,7 +131,13 @@ def are_entities_fields_equal(
     Returns:
         bool: True if the entity fields have identical content
     """
-    first_props = json.dumps(first_entity_field, sort_keys=True)
+    first_entity_field_copy = first_entity_field.copy()
+
+    for key in list(first_entity_field.keys()):
+        if first_entity_field[key] is None and key not in second_entity_field:
+            del first_entity_field_copy[key]
+
+    first_props = json.dumps(first_entity_field_copy, sort_keys=True)
     second_props = json.dumps(second_entity_field, sort_keys=True)
     first_hash = hashlib.sha256(first_props.encode()).hexdigest()
     second_hash = hashlib.sha256(second_props.encode()).hexdigest()
