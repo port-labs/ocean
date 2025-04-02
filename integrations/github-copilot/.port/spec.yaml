@@ -4,8 +4,8 @@ features:
   - type: exporter
     section: Under Development  # Should be one of the available sections in Port
     resources:
-      - kind: github-copilot-example-kind
-      # - kind: <ResourceName2>
+      - kind: copilot-team-metrics
+      - kind: copilot-organization-metrics
 configurations:
   - name: githubToken
     type: string
@@ -16,3 +16,7 @@ configurations:
     type: url
     default: https://api.github.com
     description: The host of the Github api instance. If not specified, the default will be https://api.github.com.
+  - name: githubOrgs
+    required: false
+    type: string
+    description: The organizations to fetch copilot metrics for seperated by commas. If not specified, the default will be all the organizations associated with the github token.
