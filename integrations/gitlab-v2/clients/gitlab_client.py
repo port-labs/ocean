@@ -13,6 +13,8 @@ from urllib.parse import quote
 from clients.rest_client import RestClient
 from clients.utils import parse_file_content
 
+PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
+
 
 class GitLabClient:
     DEFAULT_MIN_ACCESS_LEVEL = 30
@@ -161,7 +163,7 @@ class GitLabClient:
     async def _process_file(self, file: dict[str, Any], context: str) -> dict[str, Any]:
         """Fetch full file content and parse it."""
         file_path = file["path"]
-        project_id = file["project_id"]
+        project_id = str(file["project_id"])
         ref = file.get("ref", "main")
         full_content = await self.get_file_content(project_id, file_path, ref)
         if full_content is not None:
@@ -179,7 +181,6 @@ class GitLabClient:
     async def _process_batch(
         self, batch: list[dict[str, Any]], context: str
     ) -> AsyncIterator[dict[str, Any]]:
-        PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
         tasks = [
             (
                 self._process_file(file, context)
@@ -208,7 +209,6 @@ class GitLabClient:
             if batch:
                 async for processed_file in self._process_batch(batch, repo):
                     yield processed_file
-
 
     async def _search_in_group(
         self,
