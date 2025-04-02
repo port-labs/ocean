@@ -144,7 +144,7 @@ async def test_applier_one_not_upserted(
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         # Mock the register_entity method
-        event.entity_topological_sorter.register_entity = Mock()
+        event.entity_topological_sorter.register_entity = Mock()  # type: ignore
         event.port_app_config = mock_port_app_config
 
         # Test the upsert method with mocked client
@@ -178,7 +178,7 @@ async def test_applier_error_upserting(
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         # Mock the register_entity method
-        event.entity_topological_sorter.register_entity = Mock()
+        event.entity_topological_sorter.register_entity = Mock()  # type: ignore
         event.port_app_config = mock_port_app_config
 
         # Test the upsert method with mocked client
