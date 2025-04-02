@@ -21,7 +21,6 @@ class GitLabFileProcessor(JQEntityProcessor):
         """Handle file:// and search:// patterns in search."""
         async with self._rate_limiter:
 
-
             if pattern.startswith(FILE_PROPERTY_PREFIX):
                 project_id = data["path_with_namespace"]
                 ref = data["default_branch"]
