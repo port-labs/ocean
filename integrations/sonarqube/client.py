@@ -1,9 +1,9 @@
 import asyncio
 import base64
-from typing import Any, AsyncGenerator, Generator, Optional, cast
-
 import httpx
 from loguru import logger
+from typing import Any, AsyncGenerator, Generator, Optional, cast
+from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
@@ -62,6 +62,7 @@ class SonarQubeClient:
         organization_id: str | None,
         app_host: str | None,
         is_onpremise: bool = False,
+        metrics: list[str] | None = None,
     ):
         self.base_url = base_url
         self.api_key = api_key
@@ -70,7 +71,7 @@ class SonarQubeClient:
         self.is_onpremise = is_onpremise
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_params["headers"])
-        self.metrics: list[str] = []
+        self.metrics: list[str] = [] if not metrics else metrics
         self.webhook_invoke_url = f"{self.app_host}/integration/webhook"
 
     @property
@@ -155,7 +156,6 @@ class SonarQubeClient:
                 )  # SonarQube pageIndex starts at 1
                 page_size = paging_info.get("pageSize", PAGE_SIZE)
                 total_records = paging_info.get("total", 0)
-                logger.error("Fetching paginated data")
                 # Check if we have fetched all records
                 if page_index * page_size >= total_records:
                     break
@@ -592,7 +592,8 @@ class SonarQubeClient:
         params = {}
         if self.organization_id:
             params["organization"] = self.organization_id
-
+        if ocean.integration_config["webhook_secret"]:
+            params["secret"] = ocean.integration_config["webhook_secret"]
         webhooks_response = await self._send_api_request(
             endpoint=f"{Endpoints.WEBHOOKS}/list",
             query_params={
@@ -600,7 +601,6 @@ class SonarQubeClient:
                 **params,
             },
         )
-
         webhooks = webhooks_response.get("webhooks", [])
         logger.info(webhooks)
 
@@ -608,9 +608,6 @@ class SonarQubeClient:
             logger.info(f"Webhook already exists in project: {project_key}")
             return {}
 
-        params = {}
-        if self.organization_id:
-            params["organization"] = self.organization_id
         return {
             "name": "Port Ocean Webhook",
             "project": project_key,
@@ -620,6 +617,7 @@ class SonarQubeClient:
     async def _create_webhooks_for_projects(
         self, webhook_payloads: list[dict[str, Any]]
     ) -> None:
+        print("Webhook url ", self.webhook_invoke_url)
         for webhook in webhook_payloads:
             await self._send_api_request(
                 endpoint=f"{Endpoints.WEBHOOKS}/create",

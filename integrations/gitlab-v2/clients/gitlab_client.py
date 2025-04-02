@@ -10,8 +10,10 @@ from port_ocean.utils.async_iterators import (
 )
 from urllib.parse import quote
 
-from .rest_client import RestClient
-from .utils import parse_file_content
+from clients.rest_client import RestClient
+from clients.utils import parse_file_content
+
+PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 
 class GitLabClient:
@@ -52,7 +54,6 @@ class GitLabClient:
 
             yield enriched_batch
 
-    # Public: Group Methods
     async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user."""
         async for batch in self.rest.get_paginated_resource(
@@ -78,7 +79,6 @@ class GitLabClient:
             if batch:
                 yield batch
 
-    # Public: File Methods
     async def get_file_content(
         self, project_id: str, file_path: str, ref: str = "main"
     ) -> Optional[str]:
@@ -182,7 +182,6 @@ class GitLabClient:
         project["__languages"] = languages
         yield [project]
 
-    # Helpers: Group Processing
     async def _process_single_group(
         self,
         group: dict[str, Any],
@@ -200,11 +199,10 @@ class GitLabClient:
                 )
                 yield resource_batch
 
-    # Helpers: File Processing and Search
     async def _process_file(self, file: dict[str, Any], context: str) -> dict[str, Any]:
         """Fetch full file content and parse it."""
         file_path = file["path"]
-        project_id = file["project_id"]
+        project_id = str(file["project_id"])
         ref = file.get("ref", "main")
         full_content = await self.get_file_content(project_id, file_path, ref)
         if full_content is not None:
@@ -221,18 +219,17 @@ class GitLabClient:
 
     async def _process_batch(
         self, batch: list[dict[str, Any]], context: str
-    ) -> AsyncIterator[dict[str, Any]]:
-        PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
+    ) -> list[dict[str, Any]]:
+        """Process a batch of files concurrently and return the full result."""
         tasks = [
             (
                 self._process_file(file, context)
                 if file.get("path", "").endswith(PARSEABLE_EXTENSIONS)
-                else asyncio.create_task(asyncio.sleep(0, result=file))
+                else asyncio.sleep(0, result=file)
             )
             for file in batch
         ]
-        for completed in asyncio.as_completed(tasks):
-            yield await completed
+        return await asyncio.gather(*tasks)
 
     async def _search_in_repository(
         self,
@@ -249,9 +246,7 @@ class GitLabClient:
         path = f"projects/{encoded_repo}/search"
         async for batch in self.rest.get_paginated_resource(path, params=params):
             if batch:
-                processed_batch = []
-                async for processed_file in self._process_batch(batch, repo):
-                    processed_batch.append(processed_file)
+                processed_batch = await self._process_batch(batch, repo)
                 if processed_batch:
                     yield processed_batch
 
@@ -270,8 +265,6 @@ class GitLabClient:
             group_id, "search", params
         ):
             if batch:
-                processed_batch = []
-                async for processed_file in self._process_batch(batch, group_context):
-                    processed_batch.append(processed_file)
+                processed_batch = await self._process_batch(batch, group_context)
                 if processed_batch:
                     yield processed_batch

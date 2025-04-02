@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.54 (2025-03-25)
+===================
+
+### Improvements
+
+- Changed default value of `include_bot_members` selector from True to False to reduce memory usage by excluding bot members by default
+
+
 0.2.53 (2025-03-24)
 ===================
 

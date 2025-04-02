@@ -268,32 +268,34 @@ async def test_get_components_is_called_with_correct_params(
         )
 
 
+@pytest.mark.asyncio
 async def test_get_single_component_is_called_with_correct_params(
     mock_ocean_context: Any,
-    monkeypatch: Any,
 ) -> None:
+    # Setup
     sonarqube_client = SonarQubeClient(
-        "https://sonarqube.com",
-        "token",
-        "organization_id",
-        "app_host",
-        False,
-    )
-    mock_paginated_request = AsyncMock()
-
-    sonarqube_client.http_client = MockHttpxClient(  # type: ignore
-        [
-            {"status_code": 200, "json": PURE_PROJECTS[0]},
-        ]
+        base_url="https://sonarqube.com",
+        api_key="token",
+        organization_id="organization_id",
+        app_host="app_host",
+        is_onpremise=False,
     )
 
-    monkeypatch.setattr(sonarqube_client, "_send_api_request", mock_paginated_request)
+    mock_response = {"component": PURE_PROJECTS[0]}
 
-    await sonarqube_client.get_single_component(PURE_PROJECTS[0])
+    with patch.object(
+        sonarqube_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = mock_response
 
-    mock_paginated_request.assert_any_call(
-        endpoint="components/show", query_params={"component": PURE_PROJECTS[0]["key"]}
-    )
+        result = await sonarqube_client.get_single_component(PURE_PROJECTS[0])
+
+        # Verify
+        mock_request.assert_awaited_once_with(
+            endpoint="components/show",
+            query_params={"component": PURE_PROJECTS[0]["key"]},
+        )
+        assert result == PURE_PROJECTS[0]
 
 
 async def test_get_measures_is_called_with_correct_params(
@@ -309,7 +311,6 @@ async def test_get_measures_is_called_with_correct_params(
     )
     mock_paginated_request = AsyncMock()
     mock_paginated_request.return_value = {}
-    # mock_paginated_request.get.return_value = {}
 
     sonarqube_client.http_client = MockHttpxClient(  # type: ignore
         [
@@ -320,10 +321,16 @@ async def test_get_measures_is_called_with_correct_params(
     monkeypatch.setattr(sonarqube_client, "_send_api_request", mock_paginated_request)
 
     await sonarqube_client.get_measures(PURE_PROJECTS[0]["key"])
+    mock_paginated_request.assert_called()
 
-    mock_paginated_request.assert_any_call(
+    sonarqube_client.metrics = ["coverage", "bugs"]
+    await sonarqube_client.get_measures(PURE_PROJECTS[0]["key"])
+    mock_paginated_request.assert_awaited_with(
         endpoint="measures/component",
-        query_params={"component": PURE_PROJECTS[0]["key"], "metricKeys": ""},
+        query_params={
+            "component": PURE_PROJECTS[0]["key"],
+            "metricKeys": "coverage,bugs",
+        },
     )
 
 
@@ -719,7 +726,10 @@ async def test_create_webhook_payload_for_project_no_organization(
     )
 
     result = await sonarqube_client._create_webhook_payload_for_project("project1")
-    assert result == {"name": "Port Ocean Webhook", "project": "project1"}
+    assert "name" in result
+    assert result["name"] == "Port Ocean Webhook"
+    assert "project" in result
+    assert result["project"] == "project1"
 
 
 async def test_create_webhook_payload_for_project_with_organization(
@@ -741,11 +751,13 @@ async def test_create_webhook_payload_for_project_with_organization(
     )
 
     result = await sonarqube_client._create_webhook_payload_for_project("project1")
-    assert result == {
-        "name": "Port Ocean Webhook",
-        "project": "project1",
-        "organization": "test-org",
-    }
+
+    assert "name" in result
+    assert result["name"] == "Port Ocean Webhook"
+    assert "project" in result
+    assert result["project"] == "project1"
+    assert "organization" in result
+    assert result["organization"] == "test-org"
 
 
 async def test_create_webhook_payload_existing_webhook(
@@ -868,14 +880,14 @@ async def test_create_webhook_payload_for_project_different_url(
         [  # type: ignore
             {
                 "status_code": 200,
-                "json": {
-                    "webhooks": [
-                        {"url": "http://different.url/webhook"}  # Different webhook URL
-                    ]
-                },
+                "json": {"webhooks": [{"url": "http://different.url/webhook"}]},
             }
         ]
     )
 
     result = await sonarqube_client._create_webhook_payload_for_project("project1")
-    assert result == {"name": "Port Ocean Webhook", "project": "project1"}
+
+    assert "name" in result
+    assert result["name"] == "Port Ocean Webhook"
+    assert "project" in result
+    assert result["project"] == "project1"

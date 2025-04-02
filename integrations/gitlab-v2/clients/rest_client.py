@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 from loguru import logger
 
-from .base_client import HTTPBaseClient
+from clients.base_client import HTTPBaseClient
 
 
 class RestClient(HTTPBaseClient):
@@ -60,21 +60,16 @@ class RestClient(HTTPBaseClient):
     async def get_file_content(
         self, project_id: str, file_path: str, ref: str = "main"
     ) -> Optional[str]:
-        encoded_project_id = quote(str(project_id), safe="")
+        encoded_project_id = quote(project_id, safe="")
         encoded_file_path = quote(file_path, safe="")
         path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
         params = {"ref": ref}
+
         response = await self.send_api_request("GET", path, params=params)
         if not response:
             return None
-        content = response["content"]
-        if not content:
-            return None
-        try:
-            return base64.b64decode(content).decode("utf-8")
-        except Exception as e:
-            logger.error(f"Failed to decode file content: {str(e)}")
-            return None
+
+        return base64.b64decode(response["content"]).decode("utf-8")
 
     async def _make_paginated_request(
         self,
