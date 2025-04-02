@@ -180,17 +180,17 @@ class GitLabClient:
 
     async def _process_batch(
         self, batch: list[dict[str, Any]], context: str
-    ) -> AsyncIterator[dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
+        """Process a batch of files concurrently and return the full result."""
         tasks = [
             (
                 self._process_file(file, context)
                 if file.get("path", "").endswith(PARSEABLE_EXTENSIONS)
-                else asyncio.create_task(asyncio.sleep(0, result=file))
+                else asyncio.sleep(0, result=file)
             )
             for file in batch
         ]
-        for completed in asyncio.as_completed(tasks):
-            yield await completed
+        return await asyncio.gather(*tasks)
 
     async def _search_in_repository(
         self,
@@ -207,8 +207,9 @@ class GitLabClient:
         path = f"projects/{encoded_repo}/search"
         async for batch in self.rest.get_paginated_resource(path, params=params):
             if batch:
-                async for processed_file in self._process_batch(batch, repo):
-                    yield processed_file
+                processed_batch = await self._process_batch(batch, repo)
+                if processed_batch:
+                    yield processed_batch
 
     async def _search_in_group(
         self,
@@ -225,5 +226,6 @@ class GitLabClient:
             group_id, "search", params
         ):
             if batch:
-                async for processed_file in self._process_batch(batch, group_context):
-                    yield processed_file
+                processed_batch = await self._process_batch(batch, group_context)
+                if processed_batch:
+                    yield processed_batch

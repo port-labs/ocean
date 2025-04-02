@@ -19,12 +19,13 @@ class GitLabFileProcessor(JQEntityProcessor):
 
     async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         """Handle file:// and search:// patterns in search."""
-        async with GitLabFileProcessor._rate_limiter:
-            project_id = data["path_with_namespace"]
-            ref = data["default_branch"]
-            client = create_gitlab_client()
+        async with self._rate_limiter:
+
 
             if pattern.startswith(FILE_PROPERTY_PREFIX):
+                project_id = data["path_with_namespace"]
+                ref = data["default_branch"]
+                client = create_gitlab_client()
                 file_path = pattern[len(FILE_PROPERTY_PREFIX) :]
                 logger.info(
                     f"Fetching content for file: '{file_path}' in project: '{project_id}' (branch: '{ref}')"
@@ -32,6 +33,9 @@ class GitLabFileProcessor(JQEntityProcessor):
                 return await client.get_file_content(project_id, file_path, ref)
 
             elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
+                project_id = data["path_with_namespace"]
+                ref = data["default_branch"]
+                client = create_gitlab_client()
                 search_str = pattern[len(SEARCH_PROPERTY_PREFIX) :].strip()
                 scope, query = parse_search_string(search_str)
 
