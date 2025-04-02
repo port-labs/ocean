@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 from loguru import logger
 
-from .base_client import HTTPBaseClient
+from clients.base_client import HTTPBaseClient
 
 
 class RestClient(HTTPBaseClient):

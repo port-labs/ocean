@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-from .auth_client import AuthClient
+from clients.auth_client import AuthClient
 
 
 class HTTPBaseClient:
