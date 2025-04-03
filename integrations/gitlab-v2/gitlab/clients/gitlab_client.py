@@ -70,34 +70,6 @@ class GitLabClient:
 
             yield enriched_batch
 
-    async def _enrich_batch(
-        self,
-        batch: list[dict[str, Any]],
-        enrich_func: Callable[[dict[str, Any]], AsyncIterator[list[dict[str, Any]]]],
-        max_concurrent: int,
-    ) -> list[dict[str, Any]]:
-
-        semaphore = asyncio.Semaphore(max_concurrent)
-        tasks = [
-            semaphore_async_iterator(semaphore, partial(enrich_func, project))
-            for project in batch
-        ]
-        enriched_projects = []
-        async for enriched_batch in stream_async_iterators_tasks(*tasks):
-            enriched_projects.extend(enriched_batch)
-        return enriched_projects
-
-    async def enrich_project_with_languages(
-        self, project: dict[str, Any]
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-
-        project_path = project.get("path_with_namespace", str(project["id"]))
-        logger.debug(f"Enriching {project_path} with languages")
-        languages = await self.rest.get_project_languages(project_path)
-        logger.info(f"Fetched languages for {project_path}: {languages}")
-        project["__languages"] = languages
-        yield [project]
-
     async def get_groups(
         self, top_level_only: bool = False
     ) -> AsyncIterator[list[dict[str, Any]]]:
