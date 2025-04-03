@@ -68,3 +68,21 @@ for folder in "$(pwd)"/integrations/*; do
         )
     fi
 done
+
+# Bump version in cookiecutter template
+echo "============================"
+echo "Updating cookiecutter template version"
+echo "============================"
+
+# Get the latest version from any integration's pyproject.toml
+latest_version=$(find integrations -name pyproject.toml -exec grep -h "version =" {} \; | sort -V | tail -n1 | cut -d'"' -f2)
+
+if [ -n "$latest_version" ]; then
+    # Update version in cookiecutter template
+    cookiecutter_dir="port_ocean/cli/cookiecutter"
+    if [ -f "$cookiecutter_dir/__init__.py" ]; then
+        echo "__version__ = \"$latest_version\"" > "$cookiecutter_dir/__init__.py"
+        git add "$cookiecutter_dir/__init__.py"
+        git commit -m "Bumped cookiecutter template version to $latest_version"
+    fi
+fi
