@@ -10,23 +10,44 @@ from port_ocean.utils.async_iterators import (
 )
 from urllib.parse import quote
 
-from clients.rest_client import RestClient
 from clients.utils import parse_file_content
 
+from gitlab.clients.rest_client import RestClient
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 
 class GitLabClient:
     DEFAULT_MIN_ACCESS_LEVEL = 30
     DEFAULT_PARAMS = {
-        "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,
-        "all_available": True,
+        "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,  # Minimum access level to fetch groups
+        "all_available": True,  # Fetch all groups accessible to the user
     }
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
 
-    # Public: Project Methods
+    async def get_project(self, project_id: int) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}", params=self.DEFAULT_PARAMS
+        )
+
+    async def get_group(self, group_id: int) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"groups/{group_id}", params=self.DEFAULT_PARAMS
+        )
+
+    async def get_merge_request(
+        self, project_id: int, merge_request_id: int
+    ) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/merge_requests/{merge_request_id}"
+        )
+
+    async def get_issue(self, project_id: int, issue_id: int) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/issues/{issue_id}"
+        )
+
     async def get_projects(
         self,
         params: Optional[dict[str, Any]] = None,
@@ -48,11 +69,44 @@ class GitLabClient:
 
             yield enriched_batch
 
-    async def get_groups(self) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch all groups accessible to the user."""
-        async for batch in self.rest.get_paginated_resource(
-            "groups", params=self.DEFAULT_PARAMS
-        ):
+    async def _enrich_batch(
+        self,
+        batch: list[dict[str, Any]],
+        enrich_func: Callable[[dict[str, Any]], AsyncIterator[list[dict[str, Any]]]],
+        max_concurrent: int,
+    ) -> list[dict[str, Any]]:
+
+        semaphore = asyncio.Semaphore(max_concurrent)
+        tasks = [
+            semaphore_async_iterator(semaphore, partial(enrich_func, project))
+            for project in batch
+        ]
+        enriched_projects = []
+        async for enriched_batch in stream_async_iterators_tasks(*tasks):
+            enriched_projects.extend(enriched_batch)
+        return enriched_projects
+
+    async def enrich_project_with_languages(
+        self, project: dict[str, Any]
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+
+        project_path = project.get("path_with_namespace", str(project["id"]))
+        logger.debug(f"Enriching {project_path} with languages")
+        languages = await self.rest.get_project_languages(project_path)
+        logger.info(f"Fetched languages for {project_path}: {languages}")
+        project["__languages"] = languages
+        yield [project]
+
+    async def get_groups(
+        self, top_level_only: bool = False
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch all groups accessible to the user.
+
+        Args:
+            top_level_only: If True, only fetch root groups
+        """
+        params = {**self.DEFAULT_PARAMS, "top_level_only": top_level_only}
+        async for batch in self.rest.get_paginated_resource("groups", params=params):
             yield batch
 
     async def get_groups_resource(
