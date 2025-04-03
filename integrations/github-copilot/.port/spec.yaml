@@ -12,7 +12,7 @@ configurations:
   - name: githubToken
     type: string
     sensitive: true
-    description: The Github token to authenticate with the Github API. Refer <a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic" target="_blank">Github documentation</a> on how to create one.
+    description: The Github token to authenticate with the Github API. Refer <a href="https://github.com/settings/tokens/new" target="_blank">Github documentation</a> on how to create one. Make sure to select one of the scopes - manage_billing:copilot, read:org, or read:enterprise.
     required: true
   - name: githubHost
     required: false
