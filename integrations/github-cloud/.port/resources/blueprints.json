@@ -138,7 +138,7 @@
     {
         "identifier": "githubTeam",
         "title": "Team",
-        "icon": "Team",
+        "icon": "GitHub",
         "schema": {
             "properties": {
                 "members_url": {

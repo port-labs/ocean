@@ -8,7 +8,8 @@ class WebhookEvent(Enum):
     PULL_REQUEST = "pull_request"
     ISSUES = "issues"
     WORKFLOW_RUN = "workflow_run"
-
+    WORKFLOW = "workflow"
+    
 @dataclass
 class WebhookConfig:
     """Configuration for GitHub webhooks."""

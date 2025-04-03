@@ -1,9 +1,0 @@
-from typing import Protocol
-
-class GithubClientProtocol(Protocol):
-    """Protocol defining the interface for GithubClient."""
-    base_url: str
-    organization: str
-    async def fetch_with_retry(self, url: str, **kwargs): ...
-    async def _fetch_paginated_api(self, url: str, **kwargs): ...
-    async def get_repositories(self, **kwargs): ... 

@@ -71,7 +71,7 @@ resources:
       entity:
         mappings:
           identifier: .id|tostring
-          title: .name
+          title: .title
           blueprint: '"githubWorkflow"'
           properties:
             state: .state

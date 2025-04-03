@@ -10,9 +10,9 @@ features:
       - kind: team
       - kind: workflow
 configurations:
-  - name: appHost
+  - name: baseUrl
     type: string
-    description: "App Host"
+    description: "Base Url for webhook"
     required: false
   - name: githubBaseUrl
     type: url

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.1.5-dev (2024-04-03)
+
+### Added
+- Added comprehensive logging to all resource fetching methods (repositories, pull requests, issues, teams, workflows)
+- Added proper error handling and logging for webhook operations
+
+### Changed
+- Refactored `get_workflows` to use `fetch_with_retry` instead of `_fetch_paginated_api` to handle GitHub API response structure correctly
+- Updated `fetch_with_retry` to properly handle different HTTP methods (GET, POST, DELETE)
+- Improved error handling for non-existent repositories in webhook operations
+- Standardized logging patterns across all resource fetching methods
+
+### Fixed
+- Fixed "unexpected keyword argument 'method'" error in HTTP requests
+- Fixed incorrect handling of GitHub API response structure in workflows endpoint
+- Fixed pagination handling in resource fetching methods
+
 ## 0.1.4-dev (2024-04-02)
 
 ### Added
@@ -67,33 +84,4 @@ Added support for the following
 - Issue
 - Pull Request
 - Workflow
-
-## [Unreleased]
-
-### Added
-- Implemented abstract methods in all webhook processors to match parent class interface
-- Added proper validation for webhook payloads in all processors
-- Added support for both workflow and workflow_run events in WorkflowWebhookProcessor
-- Added comprehensive error handling and logging across all processors
-
-### Changed
-- Updated repository name handling in PullRequestWebhookProcessor to use `name` instead of `full_name`
-- Improved payload validation to include sender and organization information where required
-- Enhanced event processing logic to handle both create/update and delete events consistently
-- Standardized error messages and logging across all processors
-
-### Fixed
-- Fixed workflow event handling to support both workflow and workflow_run events
-- Fixed pull request delete event handling
-- Fixed team webhook payload validation to properly check for organization information
-- Fixed repository webhook payload validation to properly check for sender information
-
-### Security
-- Added proper payload validation to prevent processing of malformed webhook events
-- Enhanced error handling to prevent information leakage in error messages
-
-### Tests
-- All webhook processor tests now passing
-- Added comprehensive test coverage for all webhook event types
-- Improved test fixtures to better simulate real webhook events
 
