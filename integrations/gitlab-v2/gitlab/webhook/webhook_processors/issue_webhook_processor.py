@@ -29,7 +29,6 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
         )
 
         issue = await self._gitlab_webhook_client.get_issue(project_id, issue_id)
-        print("Issue: ", issue)
 
         return WebhookEventRawResults(
             updated_raw_results=[issue],
