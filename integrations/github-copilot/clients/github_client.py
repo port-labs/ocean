@@ -40,7 +40,8 @@ class GitHubClient:
         url = self._resolve_route_params(endpoint.value, route_params)
 
         while True:
-            response = await self._send_api_request(method='get', path=url, params={"per_page": self.pagination_page_size_limit}, ignore_status_code=ignore_status_code)
+            response = await self._send_api_request(method='get',
+                                                     path=url, params={"per_page": self.pagination_page_size_limit}, ignore_status_code=ignore_status_code)
             if not response:
                 break
             json_data = response.json()
