@@ -1,0 +1,56 @@
+{
+  "checkType": "restartingContainers",
+  "createdAt": 1742447493,
+  "id": "RANDOM_UID",
+  "komodorUid": "WORKLOAD_KIND|CLUSTER_NAME|NAMESPACE_NAME|WORKLOAD_NAME",
+  "lastEvaluatedAt": 1743292800,
+  "link": "https://app.komodor.com/health/risks/drawer?checkCategory=workload-health&checkType=restartingContainers&violationId=78f44264-dbe1-4d0f-9096-9925f5e74ae8",
+  "severity": "medium",
+  "status": "open",
+  "supportingData": {
+    "restartingContainers": {
+      "containers": [
+        {
+          "name": "CONTAINER_NAME",
+          "restarts": 969
+        }
+      ],
+      "restartReasons": {
+        "breakdown": [
+          {
+            "message": "Container Exited With Error - Exit Code: 1",
+            "percent": 100,
+            "numOccurences": 1825,
+            "reason": "ProcessExit"
+          }
+        ],
+        "additionalInfo": {
+          "podSamples": [
+            {
+              "podName": "POD_NAME_1",
+              "restarts": 607
+            },
+            {
+              "podName": "POD_NAME_2",
+              "restarts": 170
+            },
+            {
+              "podName": "POD_NAME_3",
+              "restarts": 57
+            },
+            {
+              "podName": "POD_NAME_4",
+              "restarts": 53
+            },
+            {
+              "podName": "POD_NAME_5",
+              "restarts": 22
+            }
+          ],
+          "numRestartsOnTimeseries": 909,
+          "numRestartsOnDB": 1825
+        }
+      }
+    }
+  }
+}

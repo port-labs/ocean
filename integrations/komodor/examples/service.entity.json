@@ -1,0 +1,23 @@
+{
+  "identifier": "SERVICE_ID",
+  "title": "komodor-agent",
+  "blueprint": "komodorService",
+  "properties": {
+    "serviceId": "KOMODOR_INTERNAL_ID",
+    "status": "healthy",
+    "cluster_name": "test",
+    "workload_kind": "Deployment",
+    "namespace_name": "komodor",
+    "service_name": "komodor-agent",
+    "link_to_komodor": "https://app.komodor.com/services/ACCOUNT_NAME.CLUSTER.SERVICE?workspaceId=null&referer=public-api",
+    "labels": {
+      "app.kubernetes.io/instance": "komodor-agent",
+      "app.kubernetes.io/managed-by": "Helm",
+      "app.kubernetes.io/name": "komodor-agent",
+      "app.kubernetes.io/version": "X.X.X",
+      "helm.sh/chart": "komodor-agent-X.X.X"
+    },
+    "last_deploy_at": "2025-01-22T08:26:42Z",
+    "last_deploy_status": "success"
+  }
+}
