@@ -5,7 +5,6 @@ import re
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-from .github_headers import get_github_base_headers
 from .github_endpoints import GithubEndpoints
 
 
@@ -13,25 +12,43 @@ class GitHubClient:
     def __init__(self, base_url: str, token: str):
         self.token = token
         self._client = http_async_client
-        self._headers = get_github_base_headers(token)
+        self._headers = self.get_headers(token)
         self.base_url = base_url
         self.NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
 
+    async def get_organizations(self):
+        async for organization in self.get_paginated_data(GithubEndpoints.LIST_ACCESSIBLE_ORGS):
+            yield organization
+
+    async def get_teams_of_organization(self, organization: dict[str, Any]):
+        async for team in self.get_paginated_data(GithubEndpoints.LIST_TEAMS, {"org": organization["login"]}, ignore_status_code=[403]):
+            yield team
+
+    async def get_metrics_for_organization(self, organization: dict[str, Any]):
+        for metrics in await self.send_api_request_with_route_params('get', GithubEndpoints.COPILOT_ORGANIZATION_METRICS, {"org": organization["login"]}, ignore_status_code=[422,403]):
+            yield metrics
+
+    async def get_metrics_for_team(self, organization: dict[str, Any], team: dict[str, Any]):
+        for metrics in await self.send_api_request_with_route_params('get', GithubEndpoints.COPILOT_TEAM_METRICS, {"org": organization["login"], "team": team["slug"]}, ignore_status_code=[422,403]):
+            yield metrics
+
     async def get_paginated_data(self, endpoint: GithubEndpoints, route_params: dict = {}, ignore_status_code: Optional[list[int]] = None):
         pages_remaining = True
-        data = []
         url = self._resolve_route_params(endpoint.value, route_params)
 
         while pages_remaining:
             response = await self._send_api_request(method='get', path=url, params={"per_page": 100}, ignore_status_code=ignore_status_code)
-            data.extend(response.json() if response else [])
+            if not response:
+                break
+            json_data = response.json()
+            for item in json_data:
+                yield item
+
             link_header = response.headers.get("Link", "") if response else ""
             match = self.NEXT_PATTERN.search(link_header)
             pages_remaining = bool(match)
             if pages_remaining:
                 url = match.group(1).replace(self.base_url, "")
-
-        return data
 
     async def send_api_request(
         self,
@@ -40,9 +57,9 @@ class GitHubClient:
         params: Optional[dict[str, Any]] = None,
         data: Optional[dict[str, Any]] = None,
         ignore_status_code: Optional[list[int]] = None,
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         response = await self._send_api_request(method, path, params, data, ignore_status_code)
-        return response.json() if response else {}
+        return response.json() if response else []
 
     async def send_api_request_with_route_params(
         self,
@@ -52,7 +69,7 @@ class GitHubClient:
         params: Optional[dict[str, Any]] = None,
         data: Optional[dict[str, Any]] = None,
         ignore_status_code: Optional[list[int]] = None,
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         url = self._resolve_route_params(endpoint.value, route_params)
         return await self.send_api_request(method, url, params, data, ignore_status_code)
 
@@ -96,12 +113,19 @@ class GitHubClient:
             logger.error(f"HTTP error for {method} request to {path}: {e}")
             raise
 
+    def get_headers(self, token: str) -> dict[str, str]:
+        return {
+            "Authorization": f'token {token}',
+            "Accept": 'application/vnd.github+json',
+            "X-GitHub-Api-Version": '2022-11-28'
+        }
+
     @staticmethod
     def _resolve_route_params(endpoint_template: str, params: dict) -> str:
         """
         Replaces placeholders in the endpoint template with actual values from params.
 
-        :param endpoint_template: The URL template containing placeholders like {org}, {team}, etc.
+        :param endpoint_template: The URL template containing placeholders like {organizationn}, {team}, etc.
         :param params: A dictionary mapping placeholder names to values.
         :return: A formatted string with placeholders replaced by their corresponding values.
         """

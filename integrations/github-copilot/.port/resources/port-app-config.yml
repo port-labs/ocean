@@ -1,3 +1,4 @@
+entityDeletionThreshold: 0
 resources:
   - kind: copilot-team-metrics
     selector:
@@ -5,9 +6,9 @@ resources:
     port:
       entity:
         mappings:
-          identifier: (.team + "@" + .date)
-          title: (.team + " copilot-metrics " + .date)
-          blueprint: '"git_hub_copilot_usage_record"'
+          identifier: (.__team.slug + "@" + .date)
+          title: (.__team.slug + " copilot-metrics " + .date)
+          blueprint: '"github_copilot_usage"'
           properties:
             record_date: .date  + "T00:00:00Z"
             breakdown: .
@@ -36,17 +37,17 @@ resources:
             total_active_chat_users: >-
               [.copilot_ide_chat.editors[]?.total_engaged_users // 0]
               | map(select(. != null)) | add
-            git_hub_org: .org
-            git_hub_team: .team
+            git_hub_org: .__organization.login
+            git_hub_team: .__team.slug
   - kind: copilot-organization-metrics
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: (.org + "@" + .date)
-          title: (.org + " copilot-metrics " + .date)
-          blueprint: '"git_hub_copilot_usage_record"'
+          identifier: (.__organization.login + "@" + .date)
+          title: (.__organization.login + " copilot-metrics " + .date)
+          blueprint: '"github_copilot_usage"'
           properties:
             record_date: .date  + "T00:00:00Z"
             breakdown: .
@@ -75,4 +76,4 @@ resources:
             total_active_chat_users: >-
               [.copilot_ide_chat.editors[]?.total_engaged_users // 0]
               | map(select(. != null)) | add
-            git_hub_org: .org
+            git_hub_org: .__organization.login

@@ -1,3 +1,0 @@
-"""
-GitHub Copilot parsers package
-"""
