@@ -411,7 +411,7 @@ async def test_projects_will_return_correct_data(
             sonarqube_client, "_send_paginated_request", mock_paginated_request
         )
 
-        async for _ in sonarqube_client.get_projects({}):
+        async for _ in sonarqube_client.get_projects():
             pass
 
         mock_paginated_request.assert_any_call(
@@ -893,7 +893,7 @@ async def test_create_webhook_payload_for_project_different_url(
     assert result["project"] == "project1"
 
 
-async def test_get_projects(
+async def test_get_customprojects(
     mock_ocean_context: Any,
     monkeypatch: Any,
 ) -> None:
@@ -919,7 +919,7 @@ async def test_get_projects(
     )
 
     # ACT
-    async for projects in sonarqube_client.get_projects():
+    async for projects in sonarqube_client.get_custom_projects():
         # ASSERT
         assert projects == [{"key": "project1"}]
 
@@ -985,7 +985,9 @@ async def test_get_projects_with_enrich_project(
 
         # ACT
         results = []
-        async for projects_batch in sonarqube_client.get_projects(enrich_project=True):
+        async for projects_batch in sonarqube_client.get_custom_projects(
+            enrich_project=True
+        ):
             results.extend(projects_batch)
 
         # ASSERT
