@@ -307,7 +307,6 @@ class SonarQubeClient:
 
     @cache_iterator_result()
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         params = {}
         if self.organization_id:
             params["organization"] = self.organization_id
