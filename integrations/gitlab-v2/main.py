@@ -78,6 +78,10 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else None
     )
 
+    if not repositories:
+        logger.warning("No repositories specified in selector, skipping file resync")
+        return
+
     async for files_batch in client.search_files(scope, search_query, repositories):
         if files_batch:
             logger.info(f"Found batch of {len(files_batch)} matching files")
