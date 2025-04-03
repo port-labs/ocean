@@ -147,16 +147,16 @@ class EntityClientMixin:
             return_exceptions=True,
         )
 
-        result_tuples: list[tuple[bool, Entity]] = []
+        entities_results: list[tuple[bool, Entity]] = []
         for original_entity, result in zip(entities, modified_entities_results):
             if isinstance(result, Exception) and should_raise:
                 raise result
             elif isinstance(result, Entity):
-                result_tuples.append((True, result))
+                entities_results.append((True, result))
             elif result is False:
-                result_tuples.append((False, original_entity))
+                entities_results.append((False, original_entity))
 
-        return result_tuples
+        return entities_results
 
     async def delete_entity(
         self,

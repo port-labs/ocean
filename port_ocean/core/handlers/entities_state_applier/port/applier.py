@@ -130,8 +130,8 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             should_raise=False,
         )
 
-        for isUpserted, entity in upsertedEntities:
-            if isUpserted:
+        for is_upserted, entity in upsertedEntities:
+            if is_upserted:
                 modified_entities.append(entity)
             else:
                 event.entity_topological_sorter.register_entity(entity)
