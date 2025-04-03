@@ -905,7 +905,7 @@ async def test_get_projects(
         False,
     )
 
-    # Fix: The response should have "components" key, not "projects"
+    # MOCK
     sonarqube_client.http_client = MockHttpxClient(
         [
             {
@@ -918,7 +918,9 @@ async def test_get_projects(
         ]  # type: ignore
     )
 
+    # ACT
     async for projects in sonarqube_client.get_projects():
+        # ASSERT
         assert projects == [{"key": "project1"}]
 
 
@@ -937,13 +939,12 @@ async def test_get_projects_with_enrich_project(
             False,
         )
 
-        # Mock project data
+        # MOCK
         mock_projects = [
             {"key": "project1", "name": "Project One"},
             {"key": "project2", "name": "Project Two"},
         ]
 
-        # Create enriched versions of the projects with additional data
         enriched_projects = [
             {
                 "key": "project1",
@@ -963,13 +964,11 @@ async def test_get_projects_with_enrich_project(
             },
         ]
 
-        # Create proper async generator for pagination response
         async def mock_paginated_generator(
             *args: tuple[Any], **kwargs: dict[str, Any]
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
             yield mock_projects
 
-        # Mock the _send_paginated_request to return our async generator
         monkeypatch.setattr(
             sonarqube_client, "_send_paginated_request", mock_paginated_generator
         )
@@ -984,12 +983,12 @@ async def test_get_projects_with_enrich_project(
             sonarqube_client, "get_single_project", mock_get_single_project
         )
 
-        # Call get_projects with enrich_project=True
+        # ACT
         results = []
         async for projects_batch in sonarqube_client.get_projects(enrich_project=True):
             results.extend(projects_batch)
 
-        # Verify the results contain enriched projects
+        # ASSERT
         assert len(results) == 2
         for project in results:
             assert "__measures" in project
@@ -997,6 +996,4 @@ async def test_get_projects_with_enrich_project(
             assert "__branch" in project
             assert "__link" in project
 
-        # Verify the organization was added to the params
-        # We can't easily check call count with our approach, but we can check the results
         assert all(project["key"] in ["project1", "project2"] for project in results)
