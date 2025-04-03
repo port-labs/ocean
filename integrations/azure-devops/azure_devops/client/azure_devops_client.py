@@ -183,9 +183,7 @@ class AzureDevopsClient(HTTPBaseClient):
         async for repositories in self.generate_repositories(
             include_disabled_repositories=False
         ):
-            semaphore = asyncio.BoundedSemaphore(
-                MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS
-            )
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS)
             tasks = [
                 semaphore_async_iterator(
                     semaphore,
