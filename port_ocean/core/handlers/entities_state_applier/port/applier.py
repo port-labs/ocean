@@ -121,16 +121,16 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     ) -> list[Entity]:
         logger.info(f"Upserting {len(entities)} entities")
         modified_entities: list[Entity] = []
-        upsertedEntities: list[tuple[bool, Entity]] = []
+        upserted_entities: list[tuple[bool, Entity]] = []
 
-        upsertedEntities = await self.context.port_client.batch_upsert_entities(
+        upserted_entities = await self.context.port_client.batch_upsert_entities(
             entities,
             event.port_app_config.get_port_request_options(),
             user_agent_type,
             should_raise=False,
         )
 
-        for is_upserted, entity in upsertedEntities:
+        for is_upserted, entity in upserted_entities:
             if is_upserted:
                 modified_entities.append(entity)
             else:
