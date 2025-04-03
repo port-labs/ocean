@@ -182,16 +182,22 @@ class AzureDevopsClient(HTTPBaseClient):
         async for repositories in self.generate_repositories(
             include_disabled_repositories=False
         ):
+            semaphore = asyncio.BoundedSemaphore(
+                MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+            )
             tasks = [
-                self._get_paginated_by_top_and_skip(
-                    f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests",
-                    search_filters,
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._get_paginated_by_top_and_skip,
+                        f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests",
+                        search_filters,
+                    ),
                 )
                 for repository in repositories
             ]
             async for pull_requests in stream_async_iterators_tasks(*tasks):
                 yield pull_requests
-
 
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
