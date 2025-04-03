@@ -3,7 +3,6 @@ from typing import Any, Dict
 
 from loguru import logger
 
-from gitlab.helpers.exceptions import WebhookCreationError
 from gitlab.webhook.events import EventConfig
 from gitlab.clients.gitlab_client import GitLabClient
 
@@ -32,7 +31,7 @@ class BaseWebhookFactory[T: EventConfig](ABC):
             Dictionary with webhook details or empty dict if already exists
 
         Raises:
-            WebhookCreationError: If webhook creation fails
+            Exception: If webhook creation fails
         """
         # Check if webhook already exists
         if await self._exists(webhook_url, gitlab_webhook_endpoint):
@@ -46,14 +45,14 @@ class BaseWebhookFactory[T: EventConfig](ABC):
             response = await self._send_request(gitlab_webhook_endpoint, payload)
 
             if not self._validate_response(response):
-                raise WebhookCreationError("Invalid webhook response", response)
+                raise Exception("Invalid webhook response")
 
             logger.info(f"Created webhook with id {response['id']} at {webhook_url}")
             return response
 
         except Exception as e:
             logger.error(f"Webhook creation failed: {e}")
-            raise WebhookCreationError(str(e)) from e
+            raise
 
     async def _exists(self, webhook_url: str, gitlab_webhook_endpoint: str) -> bool:
         """

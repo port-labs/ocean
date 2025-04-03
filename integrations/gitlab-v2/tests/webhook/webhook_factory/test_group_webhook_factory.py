@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 from typing import Any, cast
 
 from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
-from gitlab.helpers.exceptions import WebhookCreationError
 from gitlab.webhook.events import GroupEvents
 
 
@@ -72,11 +71,10 @@ class TestGroupWebHook:
         self, group_webhook: GroupWebHook, monkeypatch: Any
     ) -> None:
         """Test failed group webhook creation"""
-        # Mock create to raise WebhookCreationError
         monkeypatch.setattr(
             group_webhook,
             "create",
-            AsyncMock(side_effect=WebhookCreationError("Failed to create webhook")),
+            AsyncMock(side_effect=Exception("Failed to create webhook")),
         )
         result = await group_webhook.create_group_webhook("123")
         assert result is False
@@ -95,7 +93,7 @@ class TestGroupWebHook:
         monkeypatch.setattr(
             group_webhook._client,
             "get_groups",
-            lambda root_only: AsyncIterator(mock_batches),
+            lambda top_level_only: AsyncIterator(mock_batches),
         )
 
         await group_webhook.create_webhooks_for_all_groups()

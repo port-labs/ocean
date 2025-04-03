@@ -14,8 +14,8 @@ from gitlab.clients.rest_client import RestClient
 class GitLabClient:
     DEFAULT_MIN_ACCESS_LEVEL = 30
     DEFAULT_PARAMS = {
-        "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,
-        "all_available": True,
+        "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,  # Minimum access level to fetch groups
+        "all_available": True,  # Fetch all groups accessible to the user
     }
 
     def __init__(self, base_url: str, token: str) -> None:
@@ -93,21 +93,16 @@ class GitLabClient:
         yield [project]
 
     async def get_groups(
-        self, root_only: bool = False
+        self, top_level_only: bool = False
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user.
 
         Args:
-            root_only: If True, only fetch root groups
+            top_level_only: If True, only fetch root groups
         """
-
-        async for batch in self.rest.get_paginated_resource(
-            "groups", params=self.DEFAULT_PARAMS
-        ):
-            if root_only:
-                yield [group for group in batch if group["parent_id"] is None]
-            else:
-                yield batch
+        params = {**self.DEFAULT_PARAMS, "top_level_only": top_level_only}
+        async for batch in self.rest.get_paginated_resource("groups", params=params):
+            yield batch
 
     async def get_groups_resource(
         self,

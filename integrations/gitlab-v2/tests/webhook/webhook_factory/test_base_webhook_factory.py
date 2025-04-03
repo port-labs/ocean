@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 from typing import Any
 
 from gitlab.webhook.webhook_factory._base_webhook_factory import BaseWebhookFactory
-from gitlab.helpers.exceptions import WebhookCreationError
 from gitlab.webhook.events import EventConfig
 
 
@@ -135,7 +134,7 @@ class TestBaseWebhookFactory:
             AsyncMock(side_effect=Exception("API Error")),
         )
 
-        with pytest.raises(WebhookCreationError):
+        with pytest.raises(Exception):
             await concrete_factory.create(
                 "https://app.example.com/hook/123", "groups/123/hooks"
             )

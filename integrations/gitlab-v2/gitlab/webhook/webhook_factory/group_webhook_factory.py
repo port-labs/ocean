@@ -1,7 +1,6 @@
 from gitlab.webhook.events import GroupEvents
 from gitlab.webhook.webhook_factory._base_webhook_factory import BaseWebhookFactory
 from loguru import logger
-from gitlab.helpers.exceptions import WebhookCreationError
 
 
 class GroupWebHook(BaseWebhookFactory[GroupEvents]):
@@ -46,7 +45,7 @@ class GroupWebHook(BaseWebhookFactory[GroupEvents]):
 
             return True
 
-        except WebhookCreationError as exc:
+        except Exception as exc:
             logger.error(f"Failed to create webhook for group {group_id}: {exc}")
             return False
 
@@ -56,7 +55,7 @@ class GroupWebHook(BaseWebhookFactory[GroupEvents]):
         """
         logger.info("Initiating webhooks creation for all groups.")
 
-        async for groups_batch in self._client.get_groups(root_only=True):
+        async for groups_batch in self._client.get_groups(top_level_only=True):
             for group in groups_batch:
                 await self.create_group_webhook(group["id"])
 
