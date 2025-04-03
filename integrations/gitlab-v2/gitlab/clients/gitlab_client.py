@@ -13,6 +13,7 @@ from urllib.parse import quote
 from gitlab.clients.utils import parse_file_content
 
 from gitlab.clients.rest_client import RestClient
+
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 
