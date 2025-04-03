@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, AsyncGenerator, Optional
 
 import httpx
 import re
@@ -20,27 +20,26 @@ class GitHubClient:
         self.copilot_disabled_status_code = 422
         self.forbidden_status_code = 403
 
-    async def get_organizations(self):
+    async def get_organizations(self) -> AsyncGenerator[dict[str, Any], None]:
         async for organization in self.get_paginated_data(GithubEndpoints.LIST_ACCESSIBLE_ORGS):
             yield organization
 
-    async def get_teams_of_organization(self, organization: dict[str, Any]):
+    async def get_teams_of_organization(self, organization: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None]:
         async for team in self.get_paginated_data(GithubEndpoints.LIST_TEAMS, {"org": organization["login"]}, ignore_status_code=[self.forbidden_status_code]):
             yield team
 
-    async def get_metrics_for_organization(self, organization: dict[str, Any]):
+    async def get_metrics_for_organization(self, organization: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None]:
         for metrics in await self.send_api_request_with_route_params('get', GithubEndpoints.COPILOT_ORGANIZATION_METRICS, {"org": organization["login"]}, ignore_status_code=[self.copilot_disabled_status_code, self.forbidden_status_code]):
             yield metrics
 
-    async def get_metrics_for_team(self, organization: dict[str, Any], team: dict[str, Any]):
+    async def get_metrics_for_team(self, organization: dict[str, Any], team: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None]:
         for metrics in await self.send_api_request_with_route_params('get', GithubEndpoints.COPILOT_TEAM_METRICS, {"org": organization["login"], "team": team["slug"]}, ignore_status_code=[self.copilot_disabled_status_code, self.forbidden_status_code]):
             yield metrics
 
-    async def get_paginated_data(self, endpoint: GithubEndpoints, route_params: dict = {}, ignore_status_code: Optional[list[int]] = None):
-        pages_remaining = True
+    async def get_paginated_data(self, endpoint: GithubEndpoints, route_params: dict[str, str] = {}, ignore_status_code: Optional[list[int]] = None) -> AsyncGenerator[dict[str, Any], None]:
         url = self._resolve_route_params(endpoint.value, route_params)
 
-        while pages_remaining:
+        while True:
             response = await self._send_api_request(method='get', path=url, params={"per_page": self.pagination_page_size_limit}, ignore_status_code=ignore_status_code)
             if not response:
                 break
@@ -50,9 +49,9 @@ class GitHubClient:
 
             link_header = response.headers.get(self.pagination_header_name, "") if response else ""
             match = self.NEXT_PATTERN.search(link_header)
-            pages_remaining = bool(match)
-            if pages_remaining:
-                url = match.group(1).replace(self.base_url, "")
+            if not match:
+                break
+            url = match.group(1).replace(self.base_url, "")
 
     async def send_api_request(
         self,
@@ -69,7 +68,7 @@ class GitHubClient:
         self,
         method: str,
         endpoint: GithubEndpoints,
-        route_params: dict,
+        route_params: dict[str, str],
         params: Optional[dict[str, Any]] = None,
         data: Optional[dict[str, Any]] = None,
         ignore_status_code: Optional[list[int]] = None,
@@ -125,7 +124,7 @@ class GitHubClient:
         }
 
     @staticmethod
-    def _resolve_route_params(endpoint_template: str, params: dict) -> str:
+    def _resolve_route_params(endpoint_template: str, params: dict[str, str]) -> str:
         """
         Replaces placeholders in the endpoint template with actual values from params.
 
