@@ -1,4 +1,4 @@
-from typing import Any, TypedDict
+from typing import Any, AsyncGenerator, TypedDict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -891,3 +891,112 @@ async def test_create_webhook_payload_for_project_different_url(
     assert result["name"] == "Port Ocean Webhook"
     assert "project" in result
     assert result["project"] == "project1"
+
+
+async def test_get_projects(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    # Fix: The response should have "components" key, not "projects"
+    sonarqube_client.http_client = MockHttpxClient(
+        [
+            {
+                "status_code": 200,
+                "json": {
+                    "components": [{"key": "project1"}],
+                    "paging": {"pageIndex": 1, "pageSize": 100, "total": 1},
+                },
+            }
+        ]  # type: ignore
+    )
+
+    async for projects in sonarqube_client.get_projects():
+        assert projects == [{"key": "project1"}]
+
+
+async def test_get_projects_with_enrich_project(
+    mock_ocean_context: Any,
+    mock_event_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test get_projects with enrich_project=True ensures each project is enriched"""
+    async with event_context("test_event"):
+        sonarqube_client = SonarQubeClient(
+            "https://sonarqube.com",
+            "token",
+            "organization_id",
+            "app_host",
+            False,
+        )
+
+        # Mock project data
+        mock_projects = [
+            {"key": "project1", "name": "Project One"},
+            {"key": "project2", "name": "Project Two"},
+        ]
+
+        # Create enriched versions of the projects with additional data
+        enriched_projects = [
+            {
+                "key": "project1",
+                "name": "Project One",
+                "__measures": [{"metric": "coverage", "value": "85.5"}],
+                "__branches": [{"name": "main", "isMain": True}],
+                "__branch": {"name": "main", "isMain": True},
+                "__link": "https://sonarqube.com/dashboard?id=project1",
+            },
+            {
+                "key": "project2",
+                "name": "Project Two",
+                "__measures": [{"metric": "coverage", "value": "72.0"}],
+                "__branches": [{"name": "main", "isMain": True}],
+                "__branch": {"name": "main", "isMain": True},
+                "__link": "https://sonarqube.com/dashboard?id=project2",
+            },
+        ]
+
+        # Create proper async generator for pagination response
+        async def mock_paginated_generator(
+            *args: tuple[Any], **kwargs: dict[str, Any]
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield mock_projects
+
+        # Mock the _send_paginated_request to return our async generator
+        monkeypatch.setattr(
+            sonarqube_client, "_send_paginated_request", mock_paginated_generator
+        )
+
+        # Mock get_single_project to return enriched projects
+        async def mock_get_single_project(project: dict[str, Any]) -> dict[str, Any]:
+            return next(
+                (p for p in enriched_projects if p["key"] == project["key"]), project
+            )
+
+        monkeypatch.setattr(
+            sonarqube_client, "get_single_project", mock_get_single_project
+        )
+
+        # Call get_projects with enrich_project=True
+        results = []
+        async for projects_batch in sonarqube_client.get_projects(enrich_project=True):
+            results.extend(projects_batch)
+
+        # Verify the results contain enriched projects
+        assert len(results) == 2
+        for project in results:
+            assert "__measures" in project
+            assert "__branches" in project
+            assert "__branch" in project
+            assert "__link" in project
+
+        # Verify the organization was added to the params
+        # We can't easily check call count with our approach, but we can check the results
+        assert all(project["key"] in ["project1", "project2"] for project in results)
