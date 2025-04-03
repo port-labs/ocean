@@ -182,12 +182,16 @@ class AzureDevopsClient(HTTPBaseClient):
         async for repositories in self.generate_repositories(
             include_disabled_repositories=False
         ):
-            for repository in repositories:
-                pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
-                async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
-                    pull_requests_url, search_filters
-                ):
-                    yield filtered_pull_requests
+            tasks = [
+                self._get_paginated_by_top_and_skip(
+                    f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests",
+                    search_filters,
+                )
+                for repository in repositories
+            ]
+            async for pull_requests in stream_async_iterators_tasks(*tasks):
+                yield pull_requests
+
 
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
