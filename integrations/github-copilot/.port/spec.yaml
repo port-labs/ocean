@@ -1,22 +1,21 @@
 description: github-copilot integration for Port Ocean
-icon: Cookiecutter  # Should be one of the available icons in Port
+icon: GithubCopilot
 features:
   - type: exporter
-    section: Under Development  # Should be one of the available sections in Port
+    section: AI Agents
     resources:
       - kind: copilot-team-metrics
       - kind: copilot-organization-metrics
+saas:
+  enabled: true
 configurations:
   - name: githubToken
     type: string
     sensitive: true
+    description: 'The Github token to authenticate with the Github API.'
     required: true
   - name: githubHost
     required: false
     type: url
     default: https://api.github.com
     description: The host of the Github api instance. If not specified, the default will be https://api.github.com.
-  - name: githubOrgs
-    required: false
-    type: string
-    description: The organizations to fetch copilot metrics for seperated by commas. If not specified, the default will be all the organizations associated with the github token.
