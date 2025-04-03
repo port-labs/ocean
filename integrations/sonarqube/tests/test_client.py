@@ -893,7 +893,7 @@ async def test_create_webhook_payload_for_project_different_url(
     assert result["project"] == "project1"
 
 
-async def test_get_customprojects(
+async def test_get_custom_projects(
     mock_ocean_context: Any,
     monkeypatch: Any,
 ) -> None:
@@ -924,7 +924,7 @@ async def test_get_customprojects(
         assert projects == [{"key": "project1"}]
 
 
-async def test_get_projects_with_enrich_project(
+async def test_get_custom_projects_with_enrich_project(
     mock_ocean_context: Any,
     mock_event_context: Any,
     monkeypatch: Any,
