@@ -30,6 +30,7 @@ MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 19999
 MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
 MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
+MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 
 
 class AzureDevopsClient(HTTPBaseClient):
@@ -183,7 +184,7 @@ class AzureDevopsClient(HTTPBaseClient):
             include_disabled_repositories=False
         ):
             semaphore = asyncio.BoundedSemaphore(
-                MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+                MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS
             )
             tasks = [
                 semaphore_async_iterator(
