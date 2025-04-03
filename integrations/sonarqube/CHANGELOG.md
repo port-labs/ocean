@@ -9,12 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.164 (2025-04-03)
 
+
 ### Bug Fixes
 
 - Fixed a bug where `projects_ga` kind wasn't passing `enrich_project=True`
 
 
-## 0.1.163 (2025-03-27)
+## 0.1.163 (2025-04-03)
 
 
 ### Improvements
