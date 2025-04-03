@@ -2,7 +2,7 @@ from aiolimiter import AsyncLimiter
 from typing import Any, Dict
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
-from clients.client_factory import create_gitlab_client
+from gitlab.clients.client_factory import create_gitlab_client
 from processors.utils import parse_search_string
 
 FILE_PROPERTY_PREFIX = "file://"

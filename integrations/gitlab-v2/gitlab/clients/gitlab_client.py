@@ -10,7 +10,7 @@ from port_ocean.utils.async_iterators import (
 )
 from urllib.parse import quote
 
-from clients.utils import parse_file_content
+from gitlab.clients.utils import parse_file_content
 
 from gitlab.clients.rest_client import RestClient
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
