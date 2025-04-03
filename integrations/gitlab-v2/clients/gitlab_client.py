@@ -90,32 +90,15 @@ class GitLabClient:
         self,
         scope: str,
         query: str,
-        repositories: Optional[list[str]] = None,
-        max_concurrent: int = 10,
+        repositories: list[str],
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search for files in repositories or groups using a scope and query, returning files with content."""
         logger.info(f"Searching for files with scope '{scope}' and query '{query}'")
-        semaphore = asyncio.Semaphore(max_concurrent)
 
-        if repositories:
-            logger.info(f"Searching in {len(repositories)} repositories")
-            for repo in repositories:
-                logger.debug(f"Searching repo '{repo}' for query '{query}'")
-                async for batch in self._search_in_repository(repo, scope, query):
-                    yield batch
-        else:
-            logger.info("Searching across all accessible groups")
-            async for groups in self.get_groups():
-                logger.debug(f"Processing batch of {len(groups)} groups")
-                tasks = [
-                    semaphore_async_iterator(
-                        semaphore,
-                        partial(self._search_in_group, group, scope, query),
-                    )
-                    for group in groups
-                ]
-                async for batch in stream_async_iterators_tasks(*tasks):
-                    yield batch
+        logger.info(f"Searching in {len(repositories)} repositories")
+        for repo in repositories:
+            logger.debug(f"Searching repo '{repo}' for query '{query}'")
+            async for batch in self._search_in_repository(repo, scope, query):
+                yield batch
 
     async def _enrich_batch(
         self,
@@ -208,24 +191,5 @@ class GitLabClient:
         async for batch in self.rest.get_paginated_resource(path, params=params):
             if batch:
                 processed_batch = await self._process_batch(batch, repo)
-                if processed_batch:
-                    yield processed_batch
-
-    async def _search_in_group(
-        self,
-        group: dict[str, Any],
-        scope: str,
-        query: str,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search files in a group using a scope and query."""
-        group_context = group.get("name", str(group["id"]))
-        group_id = group["id"]
-        params = {"scope": scope, "search": query}
-        logger.debug(f"Searching group '{group_context}' for query '{query}'")
-        async for batch in self.rest.get_paginated_group_resource(
-            group_id, "search", params
-        ):
-            if batch:
-                processed_batch = await self._process_batch(batch, group_context)
                 if processed_batch:
                     yield processed_batch
