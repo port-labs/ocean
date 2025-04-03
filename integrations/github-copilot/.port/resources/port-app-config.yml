@@ -1,0 +1,79 @@
+entityDeletionThreshold: 0
+resources:
+  - kind: copilot-team-metrics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.__team.slug + "@" + .date)
+          title: (.__team.slug + " copilot-metrics " + .date)
+          blueprint: '"github_copilot_usage"'
+          properties:
+            record_date: .date  + "T00:00:00Z"
+            breakdown: .
+            total_suggestions_count: >-
+              [.copilot_ide_code_completions.editors[]?.models[]?.languages[]?.total_code_suggestions]
+              | map(select(. != null) ) | add
+            total_acceptances_count: >-
+              [.copilot_ide_code_completions.editors[]?.models[]?.languages[]?.total_code_acceptances]
+              | map(select(. != null)) | add
+            total_lines_suggested: >-
+              [.copilot_ide_code_completions.editors[]?.models[]?.languages[]?.total_code_lines_suggested]
+              | map(select(. != null)) | add
+            total_lines_accepted: >-
+              [.copilot_ide_code_completions.editors[]?.models[]?.languages[]?.total_code_lines_accepted]
+              | map(select(. != null)) | add
+            total_active_users: .total_active_users
+            total_chat_acceptances: >-
+              [
+                (.copilot_ide_chat.editors[]?.models[]?.total_chat_copy_events // 0),
+                (.copilot_ide_chat.editors[]?.models[]?.total_chat_insertion_events // 0)
+              ]
+              | map(select(. != null)) | add
+            total_chat_turns: >-
+              [.copilot_ide_chat.editors[]?.models[]?.total_chats // 0]
+              | map(select(. != null)) | add
+            total_active_chat_users: >-
+              [.copilot_ide_chat.editors[]?.total_engaged_users // 0]
+              | map(select(. != null)) | add
+            git_hub_org: .__organization.login
+            git_hub_team: .__team.slug
+  - kind: copilot-organization-metrics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.__organization.login + "@" + .date)
+          title: (.__organization.login + " copilot-metrics " + .date)
+          blueprint: '"github_copilot_usage"'
+          properties:
+            record_date: .date  + "T00:00:00Z"
+            breakdown: .
+            total_suggestions_count: >-
+              [.copilot_ide_code_completions.editors[]?.models[]?.languages[]?.total_code_suggestions]
+              | map(select(. != null) ) | add
+            total_acceptances_count: >-
+              [.copilot_ide_code_completions.editors[]?.models[]?.languages[]?.total_code_acceptances]
+              | map(select(. != null)) | add
+            total_lines_suggested: >-
+              [.copilot_ide_code_completions.editors[]?.models[]?.languages[]?.total_code_lines_suggested]
+              | map(select(. != null)) | add
+            total_lines_accepted: >-
+              [.copilot_ide_code_completions.editors[]?.models[]?.languages[]?.total_code_lines_accepted]
+              | map(select(. != null)) | add
+            total_active_users: .total_active_users
+            total_chat_acceptances: >-
+              [
+                (.copilot_ide_chat.editors[]?.models[]?.total_chat_copy_events // 0),
+                (.copilot_ide_chat.editors[]?.models[]?.total_chat_insertion_events // 0)
+              ]
+              | map(select(. != null)) | add
+            total_chat_turns: >-
+              [.copilot_ide_chat.editors[]?.models[]?.total_chats // 0]
+              | map(select(. != null)) | add
+            total_active_chat_users: >-
+              [.copilot_ide_chat.editors[]?.total_engaged_users // 0]
+              | map(select(. != null)) | add
+            git_hub_org: .__organization.login

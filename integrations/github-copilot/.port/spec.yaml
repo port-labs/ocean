@@ -1,0 +1,21 @@
+description: github-copilot integration for Port Ocean
+icon: GithubCopilot
+features:
+  - type: exporter
+    section: AI Agents
+    resources:
+      - kind: copilot-team-metrics
+      - kind: copilot-organization-metrics
+saas:
+  enabled: true
+configurations:
+  - name: githubToken
+    type: string
+    sensitive: true
+    description: The Github token to authenticate with the Github API. Refer <a href="https://github.com/settings/tokens/new" target="_blank">Github documentation</a> on how to create one. Make sure to select one of the scopes - manage_billing:copilot, read:org, or read:enterprise.
+    required: true
+  - name: githubHost
+    required: false
+    type: url
+    default: https://api.github.com
+    description: The host of the Github api instance. If not specified, the default will be https://api.github.com.

@@ -1,0 +1,3 @@
+"""
+GitHub Copilot clients package
+"""
