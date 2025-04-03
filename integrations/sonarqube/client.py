@@ -284,7 +284,6 @@ class SonarQubeClient:
 
         return project
 
-    @cache_iterator_result()
     async def get_projects(
         self, params: dict[str, Any] = {}, enrich_project: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
