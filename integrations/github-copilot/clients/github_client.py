@@ -15,21 +15,25 @@ class GitHubClient:
         self._headers = self.get_headers(token)
         self.base_url = base_url
         self.NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
+        self.pagination_page_size_limit = 100
+        self.pagination_header_name = "Link"
+        self.copilot_disabled_status_code = 422
+        self.forbidden_status_code = 403
 
     async def get_organizations(self):
         async for organization in self.get_paginated_data(GithubEndpoints.LIST_ACCESSIBLE_ORGS):
             yield organization
 
     async def get_teams_of_organization(self, organization: dict[str, Any]):
-        async for team in self.get_paginated_data(GithubEndpoints.LIST_TEAMS, {"org": organization["login"]}, ignore_status_code=[403]):
+        async for team in self.get_paginated_data(GithubEndpoints.LIST_TEAMS, {"org": organization["login"]}, ignore_status_code=[self.forbidden_status_code]):
             yield team
 
     async def get_metrics_for_organization(self, organization: dict[str, Any]):
-        for metrics in await self.send_api_request_with_route_params('get', GithubEndpoints.COPILOT_ORGANIZATION_METRICS, {"org": organization["login"]}, ignore_status_code=[422,403]):
+        for metrics in await self.send_api_request_with_route_params('get', GithubEndpoints.COPILOT_ORGANIZATION_METRICS, {"org": organization["login"]}, ignore_status_code=[self.copilot_disabled_status_code, self.forbidden_status_code]):
             yield metrics
 
     async def get_metrics_for_team(self, organization: dict[str, Any], team: dict[str, Any]):
-        for metrics in await self.send_api_request_with_route_params('get', GithubEndpoints.COPILOT_TEAM_METRICS, {"org": organization["login"], "team": team["slug"]}, ignore_status_code=[422,403]):
+        for metrics in await self.send_api_request_with_route_params('get', GithubEndpoints.COPILOT_TEAM_METRICS, {"org": organization["login"], "team": team["slug"]}, ignore_status_code=[self.copilot_disabled_status_code, self.forbidden_status_code]):
             yield metrics
 
     async def get_paginated_data(self, endpoint: GithubEndpoints, route_params: dict = {}, ignore_status_code: Optional[list[int]] = None):
@@ -37,14 +41,14 @@ class GitHubClient:
         url = self._resolve_route_params(endpoint.value, route_params)
 
         while pages_remaining:
-            response = await self._send_api_request(method='get', path=url, params={"per_page": 100}, ignore_status_code=ignore_status_code)
+            response = await self._send_api_request(method='get', path=url, params={"per_page": self.pagination_page_size_limit}, ignore_status_code=ignore_status_code)
             if not response:
                 break
             json_data = response.json()
             for item in json_data:
                 yield item
 
-            link_header = response.headers.get("Link", "") if response else ""
+            link_header = response.headers.get(self.pagination_header_name, "") if response else ""
             match = self.NEXT_PATTERN.search(link_header)
             pages_remaining = bool(match)
             if pages_remaining:
