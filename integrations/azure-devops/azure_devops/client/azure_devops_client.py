@@ -719,8 +719,6 @@ class AzureDevopsClient(HTTPBaseClient):
         """Create or update webhook subscriptions"""
         webhook_secret = ocean.integration_config.get("webhook_secret")
         auth_username = "port"
-        if not webhook_secret:
-            raise ValueError("Webhook secret is not configured in integration config")
 
         existing_subscriptions = await self.generate_subscriptions_webhook_events()
 
