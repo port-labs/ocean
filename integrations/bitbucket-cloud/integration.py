@@ -1,6 +1,6 @@
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
-
+from bitbucket_cloud.helpers.file_entity_handler import GitManipulationHandler
 from typing import Literal
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
@@ -52,8 +52,42 @@ class BitbucketFolderResourceConfig(ResourceConfig):
     port: PortResourceConfig
 
 
+class BitbucketFilePattern(BaseModel):
+    path: str = Field(
+        default="",
+        alias="path",
+        description="Specify the path to match files from",
+    )
+    repos: list[str] = Field(
+        default_factory=list,
+        alias="repos",
+        description="Specify the repositories to fetch files from",
+    )
+    skip_parsing: bool = Field(
+        default=False,
+        alias="skipParsing",
+        description="Skip parsing the files and just return the raw file content",
+    )
+    filenames: list[str] = Field(
+        default_factory=list,
+        alias="filenames",
+        description="Specify list of filenames to search and return",
+    )
+
+
+class BitbucketFileSelector(Selector):
+    files: BitbucketFilePattern
+
+
+class BitbucketFileResourceConfig(ResourceConfig):
+    kind: Literal["file"]
+    selector: BitbucketFileSelector
+
+
 class BitbucketAppConfig(PortAppConfig):
-    resources: list[BitbucketFolderResourceConfig | ResourceConfig] = Field(
+    resources: list[
+        BitbucketFolderResourceConfig | BitbucketFileResourceConfig | ResourceConfig
+    ] = Field(
         default_factory=list,
         alias="resources",
         description="Specify the resources to include in the sync",
@@ -61,5 +95,7 @@ class BitbucketAppConfig(PortAppConfig):
 
 
 class BitbucketIntegration(BaseIntegration):
+    EntityProcessorClass = GitManipulationHandler
+
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = BitbucketAppConfig
