@@ -8,7 +8,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
-from azure_devops.webhooks.webhook_event import WebhookEvent
+from azure_devops.webhooks.webhook_event import WebhookSubscription
 
 from .base_client import HTTPBaseClient
 from .file_processing import (
@@ -430,7 +430,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 for board in boards
             ]
 
-    async def generate_subscriptions_webhook_events(self) -> list[WebhookEvent]:
+    async def generate_subscriptions_webhook_events(self) -> list[WebhookSubscription]:
         headers = {"Content-Type": "application/json"}
         try:
             get_subscriptions_url = (
@@ -446,9 +446,11 @@ class AzureDevopsClient(HTTPBaseClient):
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
             logger.warning(err_str)
             raise Exception(err_str)
-        return [WebhookEvent(**subscription) for subscription in subscriptions_raw]
+        return [
+            WebhookSubscription(**subscription) for subscription in subscriptions_raw
+        ]
 
-    async def create_subscription(self, webhook_event: WebhookEvent) -> None:
+    async def create_subscription(self, webhook_event: WebhookSubscription) -> None:
         headers = {"Content-Type": "application/json"}
         create_subscription_url = (
             f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
@@ -469,7 +471,7 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Created subscription id: {response_content['id']} for eventType {response_content['eventType']}"
         )
 
-    async def delete_subscription(self, webhook_event: WebhookEvent) -> None:
+    async def delete_subscription(self, webhook_event: WebhookSubscription) -> None:
         headers = {"Content-Type": "application/json"}
         delete_subscription_url = f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_event.id}"
         logger.info(f"Deleting subscription to event: {webhook_event.json()}")
@@ -710,3 +712,53 @@ class AzureDevopsClient(HTTPBaseClient):
         except Exception as e:
             logger.error(f"Failed to process file {file_path}: {str(e)}")
             raise
+
+    async def create_webhook_subscriptions(
+        self, base_url: str, project_id: Optional[str] = None
+    ) -> None:
+        """Create or update webhook subscriptions"""
+        webhook_secret = ocean.integration_config.get("webhook_secret")
+        auth_username = "port"
+        if not webhook_secret:
+            raise ValueError("Webhook secret is not configured in integration config")
+
+        existing_subscriptions = await self.generate_subscriptions_webhook_events()
+
+        subs_to_create = []
+        subs_to_delete = []
+
+        webhook_subs = [
+            WebhookSubscription(publisherId="tfs", eventType="git.pullrequest.updated"),
+            WebhookSubscription(publisherId="tfs", eventType="git.pullrequest.created"),
+            WebhookSubscription(publisherId="tfs", eventType="git.push"),
+        ]
+
+        for sub in webhook_subs:
+            sub.set_webhook_details(
+                url=f"{base_url}/integration/webhook",
+                auth_username=auth_username,
+                webhook_secret=webhook_secret,
+                project_id=project_id,
+            )
+            existing_sub = sub.get_event_by_subscription(existing_subscriptions)
+
+            if existing_sub and not existing_sub.is_enabled():
+                subs_to_delete.append(existing_sub)
+                subs_to_create.append(sub)
+            elif not existing_sub:
+                subs_to_create.append(sub)
+
+        if subs_to_delete:
+            await asyncio.gather(
+                *[self.delete_subscription(sub) for sub in subs_to_delete]
+            )
+
+        if subs_to_create:
+            results = await asyncio.gather(
+                *[self.create_subscription(sub) for sub in subs_to_create],
+                return_exceptions=True,
+            )
+
+            errors = [r for r in results if isinstance(r, Exception)]
+            if errors:
+                logger.error(f"Failed to create {len(errors)} webhooks")
