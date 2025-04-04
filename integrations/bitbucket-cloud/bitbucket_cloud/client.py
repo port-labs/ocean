@@ -80,7 +80,9 @@ class BitbucketClient:
             return response if return_full_response else response.json()
         except HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.error(f"Requested resource not found: {url}; message: str(e)")
+                logger.warning(
+                    f"Requested resource not found: {url}; message: {str(e)}"
+                )
                 return {}
             logger.error(f"Bitbucket API error: {str(e)}")
             raise e

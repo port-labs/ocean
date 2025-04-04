@@ -3,9 +3,12 @@ from typing import Any, Dict, Type, Optional
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 from bitbucket_cloud.client import BitbucketClient
+import yaml
+
 
 FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"
+YAML_SUFFIX = (".yaml", ".yml")
 
 
 class FileEntityProcessor(JQEntityProcessor):
@@ -17,11 +20,12 @@ class FileEntityProcessor(JQEntityProcessor):
         """Helper method to fetch and process file content."""
         try:
             file_content = await client.get_repository_files(repo_slug, ref, file_path)
-            return (
-                json.loads(file_content)
-                if file_path.endswith(JSON_SUFFIX)
-                else file_content
-            )
+            if file_path.endswith(YAML_SUFFIX):
+                return yaml.safe_load(file_content)
+            elif file_path.endswith(JSON_SUFFIX):
+                return json.loads(file_content)
+            else:
+                return file_content
         except Exception as e:
             logger.error(f"Failed to get file content for {file_path}: {e}")
             return None

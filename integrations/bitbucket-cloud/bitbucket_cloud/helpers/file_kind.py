@@ -66,7 +66,7 @@ async def process_file_patterns(
 
                     tasks.append(
                         retrieve_matched_file_contents(
-                            matched_files=[file_info],
+                            matched_files=file_info,
                             client=client,
                             repo_slug=repo_slug,
                             branch=branch,
@@ -81,7 +81,7 @@ async def process_file_patterns(
 
 
 async def retrieve_matched_file_contents(
-    matched_files: List[Dict[str, Any]],
+    matched_files: Dict[str, Any],
     client: BitbucketClient,
     repo_slug: str,
     branch: str,
@@ -89,15 +89,14 @@ async def retrieve_matched_file_contents(
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """Retrieve the contents of matched files."""
     logger.info(f"Retrieving contents for {len(matched_files)} files")
-    for matched_file in matched_files:
-        file_path = matched_file.get("path", "")
-        file_content = await client.get_repository_files(repo_slug, branch, file_path)
-        yield {
-            "content": file_content,
-            "repo": repo,
-            "branch": branch,
-            "metadata": matched_file,
-        }
+    file_path = matched_files.get("path", "")
+    file_content = await client.get_repository_files(repo_slug, branch, file_path)
+    yield {
+        "content": file_content,
+        "repo": repo,
+        "branch": branch,
+        "metadata": matched_files,
+    }
 
 
 def parse_file(file: Dict[str, Any]) -> Dict[str, Any]:
