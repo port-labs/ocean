@@ -30,6 +30,7 @@ MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 19999
 MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
 MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
+MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 
 
 class AzureDevopsClient(HTTPBaseClient):
@@ -182,12 +183,20 @@ class AzureDevopsClient(HTTPBaseClient):
         async for repositories in self.generate_repositories(
             include_disabled_repositories=False
         ):
-            for repository in repositories:
-                pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
-                async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
-                    pull_requests_url, search_filters
-                ):
-                    yield filtered_pull_requests
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._get_paginated_by_top_and_skip,
+                        f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests",
+                        search_filters,
+                    ),
+                )
+                for repository in repositories
+            ]
+            async for pull_requests in stream_async_iterators_tasks(*tasks):
+                yield pull_requests
 
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():

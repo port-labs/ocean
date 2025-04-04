@@ -49,7 +49,7 @@ async def on_ga_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if api_filters := selector.api_filters:
         params = api_filters.generate_request_params()
 
-    async for projects in sonar_client.get_projects(params):
+    async for projects in sonar_client.get_custom_projects(params, enrich_project=True):
         logger.info(f"Received project batch of size: {len(projects)}")
         yield projects
 

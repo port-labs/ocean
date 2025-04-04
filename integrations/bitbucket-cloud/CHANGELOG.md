@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.3 (2025-03-24)
+## 0.1.4 (2025-04-04)
 
 ### Features
 
 - Added support for ingesting file kind and parsing JSON and YAML files
+
+
+## 0.1.3 (2025-04-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.1
 
 
 ## 0.1.2 (2025-03-27)
