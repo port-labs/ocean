@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from typing import List, Dict, Any
 
+
 class AsyncIterator:
     def __init__(self, items: List[Dict[str, Any]]):
         self.items = items
@@ -15,12 +16,19 @@ class AsyncIterator:
         except IndexError:
             raise StopAsyncIteration
 
+
 @pytest.mark.asyncio
 async def test_get_single_resource(mocked_github_client: MagicMock) -> None:
-    mocked_github_client.get_single_resource.return_value = {"id": 1, "name": "test_issue"}
+    mocked_github_client.get_single_resource.return_value = {
+        "id": 1,
+        "name": "test_issue",
+    }
     result = await mocked_github_client.get_single_resource("issue", "test_repo/1")
     assert result == {"id": 1, "name": "test_issue"}
-    mocked_github_client.get_single_resource.assert_awaited_once_with("issue", "test_repo/1")
+    mocked_github_client.get_single_resource.assert_awaited_once_with(
+        "issue", "test_repo/1"
+    )
+
 
 @pytest.mark.asyncio
 async def test_get_repositories(mocked_github_client: MagicMock) -> None:
@@ -33,6 +41,7 @@ async def test_get_repositories(mocked_github_client: MagicMock) -> None:
     assert result == repos
     mocked_github_client.get_repositories.assert_awaited_once()
 
+
 @pytest.mark.asyncio
 async def test_get_issues(mocked_github_client: MagicMock) -> None:
     issues = [{"title": "issue1"}, {"title": "issue2"}]
@@ -43,6 +52,7 @@ async def test_get_issues(mocked_github_client: MagicMock) -> None:
         result.append(issue)
     assert result == issues
     mocked_github_client.get_issues.assert_awaited_once_with("owner", "repo")
+
 
 @pytest.mark.asyncio
 async def test_get_pull_requests(mocked_github_client: MagicMock) -> None:
@@ -55,6 +65,7 @@ async def test_get_pull_requests(mocked_github_client: MagicMock) -> None:
     assert result == prs
     mocked_github_client.get_pull_requests.assert_awaited_once_with("owner", "repo")
 
+
 @pytest.mark.asyncio
 async def test_get_teams(mocked_github_client: MagicMock) -> None:
     teams = [
@@ -63,15 +74,15 @@ async def test_get_teams(mocked_github_client: MagicMock) -> None:
             "name": "team1",
             "slug": "team-1",
             "description": "Team 1 description",
-            "privacy": "closed"
+            "privacy": "closed",
         },
         {
             "id": 2,
             "name": "team2",
             "slug": "team-2",
             "description": "Team 2 description",
-            "privacy": "secret"
-        }
+            "privacy": "secret",
+        },
     ]
     iterator = AsyncIterator(teams.copy())
     mocked_github_client.get_teams.return_value = iterator
@@ -80,6 +91,7 @@ async def test_get_teams(mocked_github_client: MagicMock) -> None:
         result.append(team)
     assert result == teams
     mocked_github_client.get_teams.assert_awaited_once_with("test-org")
+
 
 @pytest.mark.asyncio
 async def test_get_workflows(mocked_github_client: MagicMock) -> None:
@@ -90,7 +102,7 @@ async def test_get_workflows(mocked_github_client: MagicMock) -> None:
             "path": ".github/workflows/ci.yml",
             "state": "active",
             "created_at": "2024-03-01T00:00:00Z",
-            "updated_at": "2024-03-01T12:00:00Z"
+            "updated_at": "2024-03-01T12:00:00Z",
         },
         {
             "id": 2,
@@ -98,8 +110,8 @@ async def test_get_workflows(mocked_github_client: MagicMock) -> None:
             "path": ".github/workflows/cd.yml",
             "state": "active",
             "created_at": "2024-03-02T00:00:00Z",
-            "updated_at": "2024-03-02T12:00:00Z"
-        }
+            "updated_at": "2024-03-02T12:00:00Z",
+        },
     ]
     iterator = AsyncIterator(workflows.copy())
     mocked_github_client.get_workflows.return_value = iterator
@@ -108,4 +120,3 @@ async def test_get_workflows(mocked_github_client: MagicMock) -> None:
         result.append(workflow)
     assert result == workflows
     mocked_github_client.get_workflows.assert_awaited_once_with("owner", "repo")
-

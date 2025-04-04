@@ -7,6 +7,7 @@ authors = ["Kanmi <kanmitowolabi@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.12"
 port_ocean = { version = "^0.20.0", extras = ["cli"] }
+aiolimiter = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration

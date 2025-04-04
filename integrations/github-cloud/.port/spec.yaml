@@ -11,8 +11,8 @@ features:
       - kind: workflow
 configurations:
   - name: baseUrl
-    type: string
-    description: "Base Url for webhook"
+    type: url
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in the 3rd party service"
     required: false
   - name: githubBaseUrl
     type: url
@@ -28,8 +28,4 @@ configurations:
     type: string
     sensitive: true
     description: "Webhook Secret for GitHub webhook authentication"
-    required: false
-  - name: githubOrganization
-    type: string
-    description: "GitHub Organization name (required for team operations)"
     required: false

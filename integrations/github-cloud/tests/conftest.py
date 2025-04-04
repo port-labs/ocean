@@ -30,7 +30,7 @@ def rate_limit_state() -> Dict[str, Any]:
     return {
         "total_limit": 5000,
         "remaining": 5000,
-        "reset_time": int(time.time()) + 3600
+        "reset_time": int(time.time()) + 3600,
     }
 
 
@@ -43,8 +43,10 @@ def mock_rate_limit_response(rate_limit_state: Dict[str, Any]) -> Dict[str, str]
         "X-RateLimit-Limit": str(rate_limit_state["total_limit"]),
         "X-RateLimit-Remaining": str(rate_limit_state["remaining"]),
         "X-RateLimit-Reset": str(rate_limit_state["reset_time"]),
-        "X-RateLimit-Used": str(rate_limit_state["total_limit"] - rate_limit_state["remaining"]),
-        "X-RateLimit-Resource": "core"
+        "X-RateLimit-Used": str(
+            rate_limit_state["total_limit"] - rate_limit_state["remaining"]
+        ),
+        "X-RateLimit-Resource": "core",
     }
 
 
