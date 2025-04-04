@@ -5,9 +5,9 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import ProjectResourceConfig
 from gitlab.clients.client_factory import create_gitlab_client
 from gitlab.helpers.utils import ObjectKind
+from integration import GitLabFilesResourceConfig, ProjectResourceConfig
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
     MergeRequestWebhookProcessor,
@@ -84,6 +84,31 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             groups_batch, "merge_requests"
         ):
             yield merge_requests_batch
+
+
+@ocean.on_resync(ObjectKind.FILE)
+async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+
+    selector = cast(GitLabFilesResourceConfig, event.resource_config).selector
+
+    search_query = selector.files.query
+    scope = "blobs"
+
+    repositories = (
+        selector.files.repos
+        if hasattr(selector.files, "repos") and selector.files.repos
+        else None
+    )
+
+    if not repositories:
+        logger.warning("No repositories specified in selector, skipping file resync")
+        return
+
+    async for files_batch in client.search_files(scope, search_query, repositories):
+        if files_batch:
+            logger.info(f"Found batch of {len(files_batch)} matching files")
+            yield files_batch
 
 
 ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)

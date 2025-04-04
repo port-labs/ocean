@@ -6,3 +6,4 @@ class ObjectKind(StrEnum):
     GROUP = "group"
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
+    FILE = "file"
