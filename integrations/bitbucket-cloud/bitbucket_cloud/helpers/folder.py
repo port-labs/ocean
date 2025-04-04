@@ -7,7 +7,7 @@ from integration import FolderPattern
 
 
 if TYPE_CHECKING:
-    from bitbucket_cloud.client import BitbucketClient
+    from bitbucket_cloud.client import BitbucketClientManager
 
 
 def extract_repo_names_from_patterns(
@@ -116,15 +116,16 @@ def find_common_base_path_and_max_depth(paths: List[str]) -> Tuple[str, int]:
 
 
 async def process_folder_patterns(
-    folder_patterns: list[FolderPattern], client: "BitbucketClient"
+    folder_patterns: list[FolderPattern], client: "BitbucketClientManager"
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     repo_names = extract_repo_names_from_patterns(folder_patterns)
     if not repo_names:
         return
 
     pattern_by_repo = create_pattern_mapping(folder_patterns)
-    async for repos_batch in client.get_repositories(
-        params={"q": f"name IN ({','.join(f'"{name}"' for name in repo_names)})"}
+    async for repos_batch in client.execute_request(
+        "get_repositories",
+        params={"q": f"name IN ({','.join(f'"{name}"' for name in repo_names)})"},
     ):
         for repo in repos_batch:
             async for matching_folders in process_repo_folders(
@@ -137,7 +138,7 @@ async def process_repo_folders(
     repo: dict[str, Any],
     pattern_by_repo: dict[str, dict[str, list[str]]],
     folder_patterns: list[FolderPattern],
-    client: "BitbucketClient",
+    client: "BitbucketClientManager",
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     repo_name = repo["name"]
     if repo_name not in pattern_by_repo:
@@ -151,8 +152,12 @@ async def process_repo_folders(
             f"Fetching {repo_name}/{effective_branch} from '{base_path}' with depth {max_pattern_depth}"
         )
 
-        async for contents in client.get_directory_contents(
-            repo_slug, effective_branch, base_path, max_depth=max_pattern_depth
+        async for contents in client.execute_request(
+            "get_directory_contents",
+            repo_slug,
+            effective_branch,
+            base_path,
+            max_depth=max_pattern_depth,
         ):
             if matching_folders := find_matching_folders(
                 contents, paths, repo, effective_branch

@@ -4,6 +4,10 @@ import asyncio
 from loguru import logger
 from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
 from bitbucket_cloud.client import BitbucketClient
+from bitbucket_cloud.base_client import BitbucketBaseClient
+from port_ocean.context.ocean import ocean
+from httpx import HTTPError
+from http import HTTPStatus
 
 
 class BitbucketClientManager:
@@ -15,7 +19,6 @@ class BitbucketClientManager:
         self,
         workspace: str,
         host: str,
-        credentials: str,
         limit_per_client: int,
         window: float,
     ) -> None:
@@ -28,39 +31,92 @@ class BitbucketClientManager:
         self.limit_per_client = limit_per_client
         self.window = window
 
-        self._initialize_clients(credentials)
+        self._initialize_clients()
 
         logger.info(
             f"Initialized BitbucketClientManager with {len(self.clients)} clients."
         )
 
-    def _initialize_clients(self, credentials: str) -> None:
+    def _initialize_clients(self) -> None:
         """
-        Parses credentials and initializes clients and their limiters.
+        Parses credentials from environment and initializes clients and their limiters.
         """
-        parsed_credentials = self._parse_credentials(credentials)
+        parsed_credentials = self._parse_credentials()
         for client_id, cred in parsed_credentials.items():
             self.add_client(client_id, cred)
+            
+        # After all clients are created, add alternative base clients to each client
+        self._add_alternative_base_clients()
+
+    def _add_alternative_base_clients(self) -> None:
+        """
+        Add alternative base clients to each BitbucketClient instance.
+        This allows each client to rotate between different authentication methods.
+        """
+        # Create a list of all base clients and their limiters
+        base_clients_with_limiters = []
+        for client_id, (client, limiter) in self.clients.items():
+            base_clients_with_limiters.append((client.base_client, limiter))
+            
+        # Add alternative base clients to each client
+        for client_id, (client, _) in self.clients.items():
+            for base_client, limiter in base_clients_with_limiters:
+                if base_client != client.base_client:
+                    client.add_alternative_base_client(base_client, limiter)
+                    
+        logger.info("Added alternative base clients to all BitbucketClient instances")
 
     def _parse_credentials(
-        self, credentials: str
+        self,
     ) -> Dict[str, Dict[str, Optional[str]]]:
+        """
+        Parse credentials from environment variables.
+        Each credential can be either a workspace token or a username::app_password combination.
+        """
         parsed_credentials = {}
-        for index, cred in enumerate(credentials.split(",")):
+
+        # Get lists of credentials from environment, handling None values
+        usernames = [
+            u.strip()
+            for u in (ocean.integration_config.get("bitbucket_username") or "").split(
+                ","
+            )
+            if u.strip()
+        ]
+        app_passwords = [
+            p.strip()
+            for p in (
+                ocean.integration_config.get("bitbucket_app_password") or ""
+            ).split(",")
+            if p.strip()
+        ]
+        workspace_tokens = [
+            t.strip()
+            for t in (
+                ocean.integration_config.get("bitbucket_workspace_token") or ""
+            ).split(",")
+            if t.strip()
+        ]
+
+        # Handle workspace tokens first
+        for index, token in enumerate(workspace_tokens):
             client_id = f"client_{index}"
-            if "::" in cred:
-                username, app_password = cred.split("::", 1)
-                parsed_credentials[client_id] = {
-                    "username": username,
-                    "app_password": app_password,
-                    "workspace_token": None,
-                }
-            else:
-                parsed_credentials[client_id] = {
-                    "username": None,
-                    "app_password": None,
-                    "workspace_token": cred,
-                }
+            parsed_credentials[client_id] = {
+                "username": None,
+                "app_password": None,
+                "workspace_token": token,
+            }
+
+        # Then handle username + app password combinations
+        start_index = len(workspace_tokens)
+        for index, (username, app_password) in enumerate(zip(usernames, app_passwords)):
+            client_id = f"client_{start_index + index}"
+            parsed_credentials[client_id] = {
+                "username": username,
+                "app_password": app_password,
+                "workspace_token": None,
+            }
+
         return parsed_credentials
 
     def add_client(self, client_id: str, cred: Dict[str, Optional[str]]) -> None:
@@ -70,58 +126,101 @@ class BitbucketClientManager:
         if client_id in self.clients:
             raise ValueError(f"Client with ID '{client_id}' already exists.")
 
-        client = BitbucketClient(
+        # Create a BitbucketBaseClient instance first
+        base_client = BitbucketBaseClient(
             workspace=self.workspace,
             host=self.host,
             username=cred.get("username"),
             app_password=cred.get("app_password"),
             workspace_token=cred.get("workspace_token"),
         )
+        
+        # Then create a BitbucketClient with the base client and client_id
+        client = BitbucketClient(base_client=base_client, client_id=client_id)
+        
         limiter = RollingWindowLimiter(limit=self.limit_per_client, window=self.window)
-
         self.clients[client_id] = (client, limiter)
         self.client_queue.put_nowait((0.0, client_id, client, limiter))
 
         logger.info(f"Added new client '{client_id}' to the manager.")
 
-    async def _rotate_client(self) -> Tuple[str, BitbucketClient, RollingWindowLimiter]:
+    async def _get_next_client(
+        self,
+    ) -> Tuple[str, BitbucketClient, RollingWindowLimiter]:
         """
-        Efficiently rotate clients based on availability tracking.
+        Get the next available client from the queue.
         """
+        # Keep track of which clients have been tried
+        tried_clients = set()
+
         while True:
             availability, client_id, client, limiter = await self.client_queue.get()
             now = time.monotonic()
 
-            if availability <= now and limiter.has_capacity():
-                return client_id, client, limiter
+            if availability <= now:
+                if limiter.has_capacity():
+                    return client_id, client, limiter
+                # If no capacity, put it back in queue with next available time
+                next_available = limiter.next_available_time()
+                self.client_queue.put_nowait((next_available, client_id, client, limiter))
+                logger.info(f"Client {client_id} has no capacity, next available at {next_available}")
 
-            next_available = limiter.next_available_time()
-            self.client_queue.put_nowait((next_available, client_id, client, limiter))
-            await asyncio.sleep(max(0, next_available - now))
+                # Add the client to the tried set
+                tried_clients.add(client_id)
+
+                    # If we've tried all clients and none have capacity, find the earliest available one
+                if len(tried_clients) == len(self.clients):
+                    # Find the earliest available time among all clients
+                    earliest_available = float('inf')
+                    earliest_client = None
+
+                    for client_id, (client, limiter) in self.clients.items():
+                        if limiter.has_capacity():
+                            return client
+                        next_available = limiter.next_available_time()
+                        if next_available < earliest_available:
+                            earliest_available = next_available
+                            earliest_client = client
+
+                    if earliest_client:
+                        logger.info(f"All clients have no capacity, queueing on first available client at {earliest_available}")
+                        await asyncio.sleep(earliest_available - now)
+                        return earliest_client
+            else:
+                self.client_queue.put_nowait((availability, client_id, client, limiter))
 
     async def execute_request(
         self, method_name: str, *args: Any, **kwargs: Any
     ) -> AsyncGenerator[Any, None]:
         """
         Execute a method on a rotated BitbucketClient instance with precise rate limiting.
-
-        If the client method is an async generator, yield items as they are produced.
-        Will rotate to another client only on rate limit (429) errors, raises all other exceptions.
+        Will rotate to another client only on rate limit (429) errors.
         """
-        while True:
-            client_id, client, limiter = await self._rotate_client()
+        logger.info(
+            f"Executing request {method_name} with args {args} and kwargs {kwargs}"
+        )
 
+        while True:
             try:
-                async with limiter:
-                    client_method = getattr(client, method_name)
-                    async for item in client_method(*args, **kwargs):
-                        yield item
-                    break
+                client_id, client, limiter = await self._get_next_client()
+                logger.info(f"Using client {client_id} with limiter {limiter}")
+                client.current_limiter = limiter
+                client_method = getattr(client, method_name)
+                
+                # The rate limiter will handle the timing of requests
+                async for item in client_method(*args, **kwargs):
+                    logger.info(f"Yielding item from client {client_id}")
+                    yield item
+                break  # Successfully completed, exit the loop
+            except asyncio.CancelledError:
+                logger.warning("Operation cancelled, cleaning up")
+                raise
+            except HTTPError as e:
+                if hasattr(e, 'response') and e.response and e.response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
+                    logger.warning(f"Rate limit hit for client {client_id}, rotating to next client")
+                    continue  # Try next client
+                logger.error(f"Error while making request with {client_id}: {str(e)}")
+                raise  # Re-raise non-rate-limit errors
             except Exception as e:
-                if hasattr(e, "status_code") and e.status_code == 429:
-                    logger.warning(
-                        f"Rate limit hit for client {client_id}, rotating to next client"
-                    )
-                    continue
-                logger.error(f"Error while making request with {client_id}: {e}")
+                logger.error(f"Error while making request with {client_id}: {str(e)}")
                 raise
