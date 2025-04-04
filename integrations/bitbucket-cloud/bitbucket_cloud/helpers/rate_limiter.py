@@ -488,3 +488,34 @@ class RollingWindowLimiter(AbstractAsyncContextManager[None]):
         await asyncio.sleep(wait_time)
         self._timestamps.popleft()
         return None
+
+    def has_capacity(self) -> bool:
+        """
+        Check if there is capacity available in the rolling window without blocking.
+
+        Returns:
+            bool: True if a request can be processed immediately, False otherwise.
+        """
+        now = time.monotonic()
+        cutoff = now - self.window
+
+        # Remove expired timestamps
+        while self._timestamps and self._timestamps[0] <= cutoff:
+            self._timestamps.popleft()
+
+        # Check if the current count is below the limit
+        return len(self._timestamps) < self.limit
+
+    def next_available_time(self) -> float:
+        """
+        Returns the exact time (monotonic timestamp) when the next slot will become available.
+
+        Returns:
+            float: Monotonic time when the next slot will be available, or 0.0 if available immediately.
+        """
+
+        if not self._timestamps or len(self._timestamps) < self.limit:
+            return 0.0  # The limiter is available right now
+
+        earliest = self._timestamps[0]
+        return earliest + self.window
