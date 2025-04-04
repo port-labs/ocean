@@ -37,18 +37,6 @@ async def on_start() -> None:
     logger.info("Subscribing to GitHub webhooks")
     await client.create_webhooks_if_not_exists()
 
-    # Register webhook processors
-    webhook_processors = [
-        RepositoryWebhookProcessor,
-        IssueWebhookProcessor,
-        PullRequestWebhookProcessor,
-        TeamWebhookProcessor,
-        WorkflowWebhookProcessor,
-    ]
-
-    for processor in webhook_processors:
-        ocean.add_webhook_processor("/webhook", processor)
-
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -112,3 +100,17 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield workflow
             else:
                 logger.warning(f"Unexpected workflow structure: {workflow}")
+
+    # Register webhook processors
+
+
+webhook_processors = [
+    RepositoryWebhookProcessor,
+    IssueWebhookProcessor,
+    PullRequestWebhookProcessor,
+    TeamWebhookProcessor,
+    WorkflowWebhookProcessor,
+]
+
+for processor in webhook_processors:
+    ocean.add_webhook_processor("/webhook", processor)

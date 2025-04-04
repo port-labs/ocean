@@ -198,43 +198,65 @@ class GitHubClient:
             )
             return
 
-        invoke_url = f"{self.base_url}/integration/webhook"
-        webhook_events = [
-            "push",
-            "pull_request",
-            "issues",
-            "team",
-            "workflow_run",
-        ]
+        # Get organizations from integration config
+        organizations = ocean.integration_config.get("organizations", [])
+        if not organizations:
+            logger.warning("No organizations configured, skipping webhook creation")
+            return
 
-        try:
-            webhooks = await self._send_api_request(
-                "GET", f"{self.github_base_url}/hooks"
-            )
-            for webhook in webhooks.json():
-                if webhook["config"]["url"] == invoke_url:
-                    logger.info("Webhook already exists")
-                    return
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning("Webhook not found")
-                return
-            raise
+        # Get repositories for each organization
+        async for repos in self.get_repositories(organizations):
+            for repo in repos:
+                try:
+                    # Check existing webhooks
+                    webhooks = await self._send_api_request(
+                        "GET",
+                        f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/hooks",
+                        headers={"Authorization": f"Bearer {self.token}"},
+                    )
 
-        body = {
-            "name": "web",
-            "active": True,
-            "events": webhook_events,
-            "config": {"url": invoke_url, "content_type": "json"},
-        }
+                    # Check if webhook already exists
+                    webhook_exists = any(
+                        hook["config"].get("url") == f"{self.base_url}/webhook"
+                        for hook in webhooks
+                    )
 
-        try:
-            await self._send_api_request(
-                "POST", f"{self.github_base_url}/hooks", json=body
-            )
-            logger.info("Created webhook")
-        except (httpx.HTTPStatusError, httpx.HTTPError) as e:
-            logger.error(f"Error creating webhook: {e}")
+                    if not webhook_exists:
+                        # Create new webhook
+                        await self._send_api_request(
+                            "POST",
+                            f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/hooks",
+                            json={
+                                "name": "web",
+                                "active": True,
+                                "events": [
+                                    "issues",
+                                    "pull_request",
+                                    "repository",
+                                    "team",
+                                    "workflow",
+                                ],
+                                "config": {
+                                    "url": f"{self.base_url}/webhook",
+                                    "content_type": "json",
+                                    "insecure_ssl": "0",
+                                },
+                            },
+                            headers={"Authorization": f"Bearer {self.token}"},
+                        )
+                        logger.info(
+                            f"Created webhook for repository {repo['owner']['login']}/{repo['name']}"
+                        )
+                    else:
+                        logger.info(
+                            f"Webhook already exists for repository {repo['owner']['login']}/{repo['name']}"
+                        )
+
+                except Exception as e:
+                    logger.error(
+                        f"Failed to create webhook for repository {repo['owner']['login']}/{repo['name']}: {str(e)}"
+                    )
+                    continue
 
     async def get_single_resource(
         self,

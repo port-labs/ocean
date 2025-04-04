@@ -15,6 +15,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
 )
 
+
 class IssueWebhookProcessor(AbstractWebhookProcessor):
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
@@ -29,7 +30,7 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
 
     async def get_matching_kinds(self) -> list[str]:
         return [ObjectKind.ISSUE]
-    
+
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
 

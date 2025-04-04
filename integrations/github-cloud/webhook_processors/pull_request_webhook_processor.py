@@ -15,6 +15,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
 )
 
+
 class PullRequestWebhookProcessor(AbstractWebhookProcessor):
     """Processor for GitHub pull request webhooks."""
 
@@ -32,7 +33,7 @@ class PullRequestWebhookProcessor(AbstractWebhookProcessor):
     async def get_matching_kinds(self) -> list[str]:
         """Get the kinds of events this processor handles."""
         return [ObjectKind.PULL_REQUEST]
-    
+
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
 

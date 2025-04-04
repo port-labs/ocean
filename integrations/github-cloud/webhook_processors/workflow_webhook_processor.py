@@ -32,7 +32,7 @@ class WorkflowWebhookProcessor(AbstractWebhookProcessor):
     async def get_matching_kinds(self) -> list[str]:
         """Get the kinds of events this processor handles."""
         return [ObjectKind.WORKFLOW]
-    
+
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
 
