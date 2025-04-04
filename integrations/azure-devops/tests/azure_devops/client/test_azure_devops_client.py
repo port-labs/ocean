@@ -8,7 +8,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
-from azure_devops.webhooks.webhook_event import WebhookEvent
+from azure_devops.webhooks.webhook_event import WebhookSubscription
 
 MOCK_ORG_URL = "https://your_organization_url.com"
 MOCK_PERSONAL_ACCESS_TOKEN = "personal_access_token"
@@ -814,7 +814,7 @@ async def test_generate_subscriptions_webhook_events_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
     """
-    generate_subscriptions_webhook_events fetches a single endpoint and returns a list of WebhookEvent.
+    generate_subscriptions_webhook_events fetches a single endpoint and returns a list of WebhookSubscription.
     On 404, it should skip and return [].
     """
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
@@ -1077,7 +1077,7 @@ async def test_generate_subscriptions_webhook_events() -> None:
 @pytest.mark.asyncio
 async def test_create_subscription() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
-    webhook_event = WebhookEvent(
+    webhook_event = WebhookSubscription(
         id=None,
         eventType="git.push",
         publisherId="tfs",
@@ -1109,7 +1109,7 @@ async def test_create_subscription() -> None:
 @pytest.mark.asyncio
 async def test_delete_subscription() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
-    webhook_event = WebhookEvent(
+    webhook_event = WebhookSubscription(
         id="subscription123",
         publisherId="tfs",
         eventType="git.push",
