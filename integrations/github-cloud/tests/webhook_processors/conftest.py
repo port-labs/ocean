@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
-from github_cloud.webhook_processors.abstract_webhook_processor import (
+from port_ocean.core.handlers.webhook.webhook_event import AbstractWebhookProcessor, EventPayload, WebhookEvent
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from github_cloud.helpers.utils import ObjectKind
+
 from typing import Generator
 
 

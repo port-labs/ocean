@@ -1,6 +1,6 @@
 from typing import Any, Dict, cast
 from loguru import logger
-from client import get_client
+from initialize_client import get_client
 from integration import ObjectKind, PullRequestResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
@@ -19,16 +19,21 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class PullRequestWebhookProcessor(AbstractWebhookProcessor):
     """Processor for GitHub pull request webhooks."""
 
+    ACTIONS = [
+        "opened",
+        "edited",
+        "closed",
+        "reopened",
+        "merged",
+        "synchronize",
+    ]
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        """Check if the event should be processed."""
-        return event.get("action") in [
-            "opened",
-            "edited",
-            "closed",
-            "reopened",
-            "merged",
-            "synchronize",
-        ]
+        """Check if the event should be processed by this handler."""
+        return (
+            event.headers.get("x-github-event") == "pull_request"
+            and event.payload.get("action") in self.ACTIONS
+        )
 
     async def get_matching_kinds(self) -> list[str]:
         """Get the kinds of events this processor handles."""

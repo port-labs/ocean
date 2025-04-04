@@ -1,6 +1,6 @@
 from typing import Any, Dict, cast
 from loguru import logger
-from client import get_client
+from initialize_client import get_client
 from integration import ObjectKind, TeamResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
@@ -19,15 +19,20 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class TeamWebhookProcessor(AbstractWebhookProcessor):
     """Processor for GitHub team webhooks."""
 
+    ACTIONS = [
+        "created",
+        "deleted",
+        "edited",
+        "added_to_repository",
+        "removed_from_repository",
+    ]
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        """Check if the event should be processed."""
-        return event.get("action") in [
-            "created",
-            "deleted",
-            "edited",
-            "added_to_repository",
-            "removed_from_repository",
-        ]
+        """Check if the event should be processed by this handler."""
+        return (
+            event.headers.get("x-github-event") == "team"
+            and event.payload.get("action") in self.ACTIONS
+        )
 
     async def get_matching_kinds(self) -> list[str]:
         """Get the kinds of events this processor handles."""

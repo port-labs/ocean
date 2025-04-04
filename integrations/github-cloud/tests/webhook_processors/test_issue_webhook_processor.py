@@ -1,118 +1,129 @@
 import pytest
-from unittest.mock import AsyncMock, patch
-from github_cloud.webhook_processors.issue_webhook_processor import (
-    IssueWebhookProcessor,
-)
-from port_ocean.core.handlers.webhook.webhook_event import (
-    WebhookEvent,
-    WebhookEventRawResults,
-)
-from github_cloud.helpers.utils import ObjectKind
+from unittest.mock import AsyncMock, MagicMock, patch
+from port_ocean.context.event import event
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
+from integration import ObjectKind, IssueResourceConfig
+from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 
 
 @pytest.fixture
-async def processor():
-    with patch(
-        "github_cloud.webhook_processors.issue_webhook_processor.init_client"
-    ) as mock_init_client:
-        mock_client = AsyncMock()
-        mock_init_client.return_value = mock_client
-        processor = IssueWebhookProcessor()
-        yield processor
+def mock_event():
+    with patch("webhook_processors.issue_webhook_processor.event") as mock:
+        mock.resource_config = MagicMock(spec=IssueResourceConfig)
+        mock.resource_config.selector.organizations = ["org1"]
+        mock.resource_config.selector.state = "all"
+        yield mock
 
 
 @pytest.fixture
-def valid_issue_event():
-    return WebhookEvent(
-        payload={
-            "action": "opened",
-            "issue": {"number": 1, "title": "Test Issue"},
-            "repository": {"name": "test-repo", "full_name": "org/test-repo"},
-            "sender": {"login": "test-user"},
-        },
-        headers={"x-github-event": "issues"},
-        trace_id="test-trace-id",
-    )
+def mock_client():
+    with patch("webhook_processors.issue_webhook_processor.get_client") as mock:
+        client = AsyncMock()
+        mock.return_value = client
+        yield client
+
+
+@pytest.fixture
+def issue_webhook_processor(mock_event):
+    return IssueWebhookProcessor(event=mock_event)
 
 
 @pytest.mark.asyncio
-async def test_should_process_event(processor, valid_issue_event):
-    # Test valid event
-    assert await processor.should_process_event(valid_issue_event) is True
-
-    # Test invalid event type
-    invalid_event = WebhookEvent(
-        payload={"action": "opened"},
-        headers={"x-github-event": "invalid"},
-        trace_id="test-trace-id",
-    )
-    assert await processor.should_process_event(invalid_event) is False
+async def test_should_process_event(issue_webhook_processor):
+    # Test valid actions
+    for action in ["opened", "edited", "closed", "reopened", "deleted"]:
+        assert await issue_webhook_processor.should_process_event(action, {}) is True
 
     # Test invalid action
-    invalid_action = WebhookEvent(
-        payload={"action": "invalid_action"},
-        headers={"x-github-event": "issues"},
-        trace_id="test-trace-id",
-    )
-    assert await processor.should_process_event(invalid_action) is False
+    assert await issue_webhook_processor.should_process_event("invalid", {}) is False
 
 
 @pytest.mark.asyncio
-async def test_get_supported_resource_kinds(processor, valid_issue_event):
-    kinds = await processor.get_supported_resource_kinds(valid_issue_event)
+async def test_get_matching_kinds(issue_webhook_processor):
+    kinds = await issue_webhook_processor.get_matching_kinds()
     assert kinds == [ObjectKind.ISSUE]
 
 
 @pytest.mark.asyncio
-async def test_validate_payload(processor):
+async def test_validate_payload(issue_webhook_processor):
     # Test valid payload
     valid_payload = {
+        "issue": {"number": 1, "title": "Test Issue"},
+        "repository": {"name": "test-repo", "owner": {"login": "org1"}},
+    }
+    assert await issue_webhook_processor.validate_payload(valid_payload) is True
+
+    # Test invalid payloads
+    assert await issue_webhook_processor.validate_payload({}) is False
+    assert await issue_webhook_processor.validate_payload({"issue": {}}) is False
+    assert await issue_webhook_processor.validate_payload({"repository": {}}) is False
+
+
+@pytest.mark.asyncio
+async def test_handle_event_deleted(issue_webhook_processor, mock_client):
+    payload = {
+        "action": "deleted",
+        "issue": {"number": 1},
+        "repository": {"name": "test-repo", "owner": {"login": "org1"}},
+    }
+
+    result = await issue_webhook_processor.handle_event(payload)
+    assert isinstance(result, WebhookEventRawResults)
+    assert result.identifier == "1"
+    assert result.state == "deleted"
+
+
+@pytest.mark.asyncio
+async def test_handle_event_updated(issue_webhook_processor, mock_client):
+    payload = {
+        "action": "opened",
+        "issue": {
+            "number": 1,
+            "title": "Test Issue",
+            "html_url": "https://github.com/org1/test-repo/issues/1",
+            "state": "open",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-02T00:00:00Z",
+            "closed_at": None,
+        },
+        "repository": {"name": "test-repo", "owner": {"login": "org1"}},
+    }
+
+    mock_client.get_single_resource.return_value = payload["issue"]
+
+    result = await issue_webhook_processor.handle_event(payload)
+    assert isinstance(result, WebhookEventRawResults)
+    assert result.identifier == "1"
+    assert result.title == "Test Issue"
+    assert result.state == "open"
+    assert result.repository == "org1/test-repo"
+
+
+@pytest.mark.asyncio
+async def test_handle_event_organization_filter(issue_webhook_processor, mock_client):
+    payload = {
         "action": "opened",
         "issue": {"number": 1},
-        "repository": {"name": "test-repo"},
-        "sender": {"login": "test-user"},
+        "repository": {"name": "test-repo", "owner": {"login": "other-org"}},
     }
-    assert await processor.validate_payload(valid_payload) is True
 
-    # Test missing required fields
-    invalid_payload = {"action": "opened", "issue": {"number": 1}}
-    assert await processor.validate_payload(invalid_payload) is False
+    result = await issue_webhook_processor.handle_event(payload)
+    assert result is None
 
 
 @pytest.mark.asyncio
-async def test_authenticate(processor):
-    # Test authentication (always returns True as per implementation)
-    assert await processor.authenticate({}, {}) is True
-
-
-@pytest.mark.asyncio
-async def test_process_webhook_event(processor, valid_issue_event):
-    # Mock the client's fetch_resource method
-    processor.client.fetch_resource.return_value = {"number": 1, "title": "Test Issue"}
-
-    # Test successful event processing
-    result = await processor.process_webhook_event(valid_issue_event.payload, {})
-    assert isinstance(result, WebhookEventRawResults)
-    assert len(result.updated_raw_results) > 0
-    assert len(result.deleted_raw_results) == 0
-
-    # Test delete action
-    delete_event = WebhookEvent(
-        payload={
-            "action": "deleted",
-            "issue": {"number": 1},
-            "repository": {"name": "test-repo"},
-            "sender": {"login": "test-user"},
+async def test_handle_event_state_filter(issue_webhook_processor, mock_client):
+    payload = {
+        "action": "opened",
+        "issue": {
+            "number": 1,
+            "state": "closed",
         },
-        headers={"x-github-event": "issues"},
-        trace_id="test-trace-id",
-    )
-    result = await processor.process_webhook_event(delete_event.payload, {})
-    assert len(result.updated_raw_results) == 0
-    assert len(result.deleted_raw_results) > 0
+        "repository": {"name": "test-repo", "owner": {"login": "org1"}},
+    }
 
-    # Test error handling
-    processor.client.fetch_resource.side_effect = Exception("Test error")
-    result = await processor.process_webhook_event(valid_issue_event.payload, {})
-    assert len(result.updated_raw_results) == 0
-    assert len(result.deleted_raw_results) == 0
+    mock_client.get_single_resource.return_value = payload["issue"]
+    issue_webhook_processor.event.resource_config.selector.state = "open"
+
+    result = await issue_webhook_processor.handle_event(payload)
+    assert result is None

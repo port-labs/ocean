@@ -12,7 +12,7 @@ from webhook_processors.pull_request_webhook_processor import (
 )
 from webhook_processors.team_webhook_processor import TeamWebhookProcessor
 from webhook_processors.workflow_webhook_processor import WorkflowWebhookProcessor
-from client import get_client
+from initialize_client import get_client
 
 from integration import (
     RepositoryResourceConfig,
@@ -42,13 +42,13 @@ async def on_start() -> None:
 async def resync_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync repositories."""
     client = get_client()
-
     selector = cast(RepositoryResourceConfig, event.resource_config).selector
-    async for repo in client.get_repositories(selector.organizations):
+    logger.info(f"Resyncing repositories for organizations: {selector.organizations}")
+    async for repos in client.get_repositories(selector.organizations):
         logger.info(
-            f"Fetching repositories {repo['name']} for organizations: {selector.organizations}"
+            f"Fetching repositories with batch size: {len(repos)}"
         )
-        yield repo
+        yield repos
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -56,10 +56,10 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync issues."""
     client = get_client()
     selector = cast(IssueResourceConfig, event.resource_config).selector
-    async for repo in client.get_repositories(selector.organizations):
-        async for issue in client.get_issues(repo["owner"]["login"], repo["name"]):
-            logger.info(f"Yielding issue: {issue['title']}")
-            yield issue
+    logger.info(f"Resyncing issues for organizations: {selector.organizations}")
+    async for issues in client.get_issues(selector.organizations):
+        logger.info(f"Yielding issues with batch size: {len(issues)}")
+        yield issues
 
 
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
@@ -67,12 +67,10 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync pull requests."""
     client = get_client()
     selector = cast(PullRequestResourceConfig, event.resource_config).selector
-    async for repo in client.get_repositories(selector.organizations):
-        async for pull_request in client.get_pull_requests(
-            repo["owner"]["login"], repo["name"]
-        ):
-            logger.info(f"Yielding pull request: {pull_request['title']}")
-            yield pull_request
+    logger.info(f"Resyncing pull requests for organizations: {selector.organizations}")
+    async for pull_requests in client.get_pull_requests(selector.organizations):
+        logger.info(f"Yielding pull requests with batch size: {len(pull_requests)}")
+        yield pull_requests
 
 
 @ocean.on_resync(ObjectKind.TEAM)
@@ -80,10 +78,10 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync teams."""
     client = get_client()
     selector = cast(TeamResourceConfig, event.resource_config).selector
-    async for repo in client.get_repositories(selector.organizations):
-        async for team in client.get_teams(repo["owner"]["login"], repo["name"]):
-            logger.info(f"Yielding team: {team['name']}")
-            yield team
+    logger.info(f"Resyncing teams for organizations: {selector.organizations}")
+    async for teams in client.get_teams(selector.organizations):
+        logger.info(f"Yielding teams with batch size: {len(teams)}")
+        yield teams
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW)
@@ -91,17 +89,11 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync workflows."""
     client = get_client()
     selector = cast(WorkflowResourceConfig, event.resource_config).selector
-    async for repo in client.get_repositories(selector.organizations):
-        async for workflow in client.get_workflows(
-            repo["owner"]["login"], repo["name"]
-        ):
-            if "name" in workflow:
-                logger.info(f"Yielding workflow: {workflow['name']}")
-                yield workflow
-            else:
-                logger.warning(f"Unexpected workflow structure: {workflow}")
+    logger.info(f"Resyncing workflows for organizations: {selector.organizations}")
+    async for workflows in client.get_workflows(selector.organizations):
+        logger.info(f"Yielding workflows with batch size: {len(workflows)}")
+        yield workflows
 
-    # Register webhook processors
 
 
 webhook_processors = [

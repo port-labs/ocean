@@ -9,18 +9,6 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
 
 
-def get_client() -> "GitHubClient":
-    """Get initialized GitHub client."""
-    token = ocean.integration_config["github_access_token"]
-    github_base_url = ocean.integration_config["github_base_url"]
-    base_url = ocean.app.base_url
-
-    if not token:
-        raise ValueError("GitHub access token not found in integration config")
-
-    return GitHubClient(token=token, github_base_url=github_base_url, base_url=base_url)
-
-
 class GitHubClient:
     """Client for interacting with the GitHub API."""
 
@@ -126,37 +114,29 @@ class GitHubClient:
         self, organizations: list[str], state: str = "all"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """List pull requests."""
-        pull_request_tasks = []
         async for repos in self.get_repositories(organizations):
             for repo in repos:
-                pull_request_tasks.append(
-                    self._send_api_request(
-                        "GET",
-                        f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/pulls",
-                        params={"state": state},
-                    )
+                prs = await self._send_api_request(
+                    "GET",
+                    f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/pulls",
+                    params={"state": state},
                 )
-
-        async for prs in stream_async_iterators_tasks(*pull_request_tasks):
-            yield prs
+                if prs:
+                    yield prs
 
     async def get_issues(
         self, organizations: list[str], state: str = "all"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """List issues."""
-        issue_tasks = []
         async for repos in self.get_repositories(organizations):
             for repo in repos:
-                issue_tasks.append(
-                    self._send_api_request(
-                        "GET",
-                        f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/issues",
-                        params={"state": state},
-                    )
+                issues = await self._send_api_request(
+                    "GET",
+                    f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/issues",
+                    params={"state": state},
                 )
-
-        async for issues in stream_async_iterators_tasks(*issue_tasks):
-            yield issues
+                if issues:
+                    yield issues
 
     async def get_teams(
         self, organizations: list[str]
@@ -175,19 +155,15 @@ class GitHubClient:
         self, organizations: list[str], state: str = "active"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """List workflows."""
-        workflow_tasks = []
         async for repos in self.get_repositories(organizations):
             for repo in repos:
-                workflow_tasks.append(
-                    self._send_api_request(
-                        "GET",
-                        f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/actions/workflows",
-                        params={"state": state},
-                    )
+                workflows = await self._send_api_request(
+                    "GET",
+                    f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/actions/workflows",
+                    params={"state": state},
                 )
-
-        async for workflows in stream_async_iterators_tasks(*workflow_tasks):
-            yield workflows
+                if workflows:
+                    yield workflows
 
     async def create_webhooks_if_not_exists(self) -> None:
         """Create webhooks if they don't exist."""
