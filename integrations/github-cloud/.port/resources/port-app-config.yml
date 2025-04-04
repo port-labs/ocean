@@ -5,11 +5,12 @@ resources:
   - kind: repository
     selector:
       query: 'true'
+      type: "public"
     port:
       entity:
         mappings:
-          identifier: .id|tostring
-          title: .name
+          identifier: ".name"
+          title: ".name"
           blueprint: '"githubRepository"'
           properties:
             description: .description
@@ -23,12 +24,12 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id|tostring
-          title: .title
+          identifier: ".name"
+          title: ".name"
           blueprint: '"githubIssue"'
           properties:
             state: .state
-            assignee: .assignee.login
+            assignee: .assignee
             createdDate: .created_at
             updatedDate: .updated_at
             link: .html_url
@@ -36,11 +37,13 @@ resources:
   - kind: pull_request
     selector:
       query: 'true'
+      repositoryType: "all"
+      state: "all"
     port:
       entity:
         mappings:
-          identifier: .id|tostring
-          title: .title
+          identifier: ".head.repo.name + (.id|tostring)"
+          title: ".title"
           blueprint: '"githubPullRequest"'
           properties:
             status: .state
@@ -49,7 +52,7 @@ resources:
             updatedDate: .updated_at
             link: .html_url
           relations:
-            repository: .repository.id
+            repository: .head.repo.name
 
   - kind: team
     selector:
@@ -57,8 +60,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id|tostring
-          title: .name
+          identifier: ".id|tostring"
+          title: ".name"
           blueprint: '"githubTeam"'
           properties:
             members_url: .members_url
@@ -70,13 +73,14 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id|tostring
-          title: .title
+          identifier: ".name"
+          title: .name
           blueprint: '"githubWorkflow"'
           properties:
             state: .state
+            path: .path
             createdDate: .created_at
             updatedDate: .updated_at
             link: .html_url
           relations:
-            repository: .repository.id
+            repository: .head.repo.name

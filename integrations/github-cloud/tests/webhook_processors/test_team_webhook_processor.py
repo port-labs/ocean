@@ -30,7 +30,13 @@ def team_webhook_processor(mock_event):
 @pytest.mark.asyncio
 async def test_should_process_event(team_webhook_processor):
     # Test valid actions
-    for action in ["created", "deleted", "edited", "added_to_repository", "removed_from_repository"]:
+    for action in [
+        "created",
+        "deleted",
+        "edited",
+        "added_to_repository",
+        "removed_from_repository",
+    ]:
         assert await team_webhook_processor.should_process_event(action, {}) is True
 
     # Test invalid action
@@ -51,9 +57,9 @@ async def test_validate_payload(team_webhook_processor):
             "name": "test-team",
             "slug": "test-team",
             "description": "Test team",
-            "privacy": "closed"
+            "privacy": "closed",
         },
-        "organization": {"login": "org1"}
+        "organization": {"login": "org1"},
     }
     assert await team_webhook_processor.validate_payload(valid_payload) is True
 
@@ -70,8 +76,8 @@ async def test_handle_event_deleted(team_webhook_processor, mock_client):
         "team": {
             "name": "test-team",
             "slug": "test-team",
-            "organization": {"login": "org1"}
-        }
+            "organization": {"login": "org1"},
+        },
     }
 
     result = await team_webhook_processor.handle_event(payload)
@@ -92,8 +98,8 @@ async def test_handle_event_updated(team_webhook_processor, mock_client):
             "html_url": "https://github.com/orgs/org1/teams/test-team",
             "created_at": "2024-01-01T00:00:00Z",
             "updated_at": "2024-01-02T00:00:00Z",
-            "organization": {"login": "org1"}
-        }
+            "organization": {"login": "org1"},
+        },
     }
 
     mock_client.get_single_resource.return_value = payload["team"]
@@ -113,8 +119,8 @@ async def test_handle_event_organization_filter(team_webhook_processor, mock_cli
         "team": {
             "name": "test-team",
             "slug": "test-team",
-            "organization": {"login": "other-org"}
-        }
+            "organization": {"login": "other-org"},
+        },
     }
 
     result = await team_webhook_processor.handle_event(payload)
@@ -129,12 +135,9 @@ async def test_handle_event_repository_actions(team_webhook_processor, mock_clie
         "team": {
             "name": "test-team",
             "slug": "test-team",
-            "organization": {"login": "org1"}
+            "organization": {"login": "org1"},
         },
-        "repository": {
-            "name": "test-repo",
-            "full_name": "org1/test-repo"
-        }
+        "repository": {"name": "test-repo", "full_name": "org1/test-repo"},
     }
 
     mock_client.get_single_resource.return_value = payload["team"]

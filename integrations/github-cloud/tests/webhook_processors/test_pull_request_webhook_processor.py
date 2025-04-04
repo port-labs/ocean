@@ -3,7 +3,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.context.event import event
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from integration import ObjectKind, PullRequestResourceConfig
-from webhook_processors.pull_request_webhook_processor import PullRequestWebhookProcessor
+from webhook_processors.pull_request_webhook_processor import (
+    PullRequestWebhookProcessor,
+)
 
 
 @pytest.fixture
@@ -32,10 +34,16 @@ def pull_request_webhook_processor(mock_event):
 async def test_should_process_event(pull_request_webhook_processor):
     # Test valid actions
     for action in ["opened", "edited", "closed", "reopened", "merged", "synchronize"]:
-        assert await pull_request_webhook_processor.should_process_event(action, {}) is True
+        assert (
+            await pull_request_webhook_processor.should_process_event(action, {})
+            is True
+        )
 
     # Test invalid action
-    assert await pull_request_webhook_processor.should_process_event("invalid", {}) is False
+    assert (
+        await pull_request_webhook_processor.should_process_event("invalid", {})
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -55,8 +63,14 @@ async def test_validate_payload(pull_request_webhook_processor):
 
     # Test invalid payloads
     assert await pull_request_webhook_processor.validate_payload({}) is False
-    assert await pull_request_webhook_processor.validate_payload({"pull_request": {}}) is False
-    assert await pull_request_webhook_processor.validate_payload({"repository": {}}) is False
+    assert (
+        await pull_request_webhook_processor.validate_payload({"pull_request": {}})
+        is False
+    )
+    assert (
+        await pull_request_webhook_processor.validate_payload({"repository": {}})
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -130,7 +144,9 @@ async def test_handle_event_updated(pull_request_webhook_processor, mock_client)
 
 
 @pytest.mark.asyncio
-async def test_handle_event_organization_filter(pull_request_webhook_processor, mock_client):
+async def test_handle_event_organization_filter(
+    pull_request_webhook_processor, mock_client
+):
     payload = {
         "action": "opened",
         "pull_request": {"number": 1},

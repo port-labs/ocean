@@ -29,3 +29,7 @@ configurations:
     sensitive: true
     description: "Webhook Secret for GitHub webhook authentication"
     required: false
+  - name: githubOrganization
+    type: string
+    description: "GitHub Organizations to sync (comma-separated list)"
+    required: false

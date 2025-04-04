@@ -12,7 +12,7 @@ from webhook_processors.pull_request_webhook_processor import (
 )
 from webhook_processors.team_webhook_processor import TeamWebhookProcessor
 from webhook_processors.workflow_webhook_processor import WorkflowWebhookProcessor
-from initialize_client import get_client
+from utils.initialize_client import get_client
 
 from integration import (
     RepositoryResourceConfig,
@@ -43,11 +43,15 @@ async def resync_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync repositories."""
     client = get_client()
     selector = cast(RepositoryResourceConfig, event.resource_config).selector
+
+    # Get organizations from config if not specified in selector
+    if not selector.organizations:
+        organizations_str = ocean.integration_config.get("githubOrganization")
+        selector.organizations = client._parse_organizations(organizations_str)
+
     logger.info(f"Resyncing repositories for organizations: {selector.organizations}")
     async for repos in client.get_repositories(selector.organizations):
-        logger.info(
-            f"Fetching repositories with batch size: {len(repos)}"
-        )
+        logger.info(f"Fetching repositories with batch size: {len(repos)}")
         yield repos
 
 
@@ -56,9 +60,15 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync issues."""
     client = get_client()
     selector = cast(IssueResourceConfig, event.resource_config).selector
+
+    # Get organizations from config if not specified in selector
+    if not selector.organizations:
+        organizations_str = ocean.integration_config.get("githubOrganization")
+        selector.organizations = client._parse_organizations(organizations_str)
+
     logger.info(f"Resyncing issues for organizations: {selector.organizations}")
-    async for issues in client.get_issues(selector.organizations):
-        logger.info(f"Yielding issues with batch size: {len(issues)}")
+    async for issues in client.get_issues(selector.organizations, selector.state):
+        logger.info(f"Fetching issues with batch size: {len(issues)}")
         yield issues
 
 
@@ -67,9 +77,17 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync pull requests."""
     client = get_client()
     selector = cast(PullRequestResourceConfig, event.resource_config).selector
+
+    # Get organizations from config if not specified in selector
+    if not selector.organizations:
+        organizations_str = ocean.integration_config.get("githubOrganization")
+        selector.organizations = client._parse_organizations(organizations_str)
+
     logger.info(f"Resyncing pull requests for organizations: {selector.organizations}")
-    async for pull_requests in client.get_pull_requests(selector.organizations):
-        logger.info(f"Yielding pull requests with batch size: {len(pull_requests)}")
+    async for pull_requests in client.get_pull_requests(
+        selector.organizations, selector.state
+    ):
+        logger.info(f"Fetching pull requests with batch size: {len(pull_requests)}")
         yield pull_requests
 
 
@@ -78,9 +96,15 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync teams."""
     client = get_client()
     selector = cast(TeamResourceConfig, event.resource_config).selector
+
+    # Get organizations from config if not specified in selector
+    if not selector.organizations:
+        organizations_str = ocean.integration_config.get("githubOrganization")
+        selector.organizations = client._parse_organizations(organizations_str)
+
     logger.info(f"Resyncing teams for organizations: {selector.organizations}")
     async for teams in client.get_teams(selector.organizations):
-        logger.info(f"Yielding teams with batch size: {len(teams)}")
+        logger.info(f"Fetching teams with batch size: {len(teams)}")
         yield teams
 
 
@@ -89,11 +113,16 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync workflows."""
     client = get_client()
     selector = cast(WorkflowResourceConfig, event.resource_config).selector
-    logger.info(f"Resyncing workflows for organizations: {selector.organizations}")
-    async for workflows in client.get_workflows(selector.organizations):
-        logger.info(f"Yielding workflows with batch size: {len(workflows)}")
-        yield workflows
 
+    # Get organizations from config if not specified in selector
+    if not selector.organizations:
+        organizations_str = ocean.integration_config.get("githubOrganization")
+        selector.organizations = client._parse_organizations(organizations_str)
+
+    logger.info(f"Resyncing workflows for organizations: {selector.organizations}")
+    async for workflows in client.get_workflows(selector.organizations, selector.state):
+        logger.info(f"Fetching workflows with batch size: {len(workflows)}")
+        yield workflows
 
 
 webhook_processors = [

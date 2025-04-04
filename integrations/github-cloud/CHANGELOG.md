@@ -5,26 +5,16 @@ All notable changes to the GitHub Cloud integration will be documented in this f
 ## 0.1.6-dev (2024-04-04)
 
 ### Added
-- Implemented webhook processors for:
-  - Repository events
-  - Issue events
-  - Pull Request events
-  - Team events
-  - Workflow events
-- Added proper event handling for all webhook types
-- Added organization and state filtering for webhook events
-- Added proper error handling and logging for webhook events
+- Webhook processors for repository, issue, pull request, team, and workflow events
+- Organization and state filtering for webhook events
 
 ### Changed
-- Moved `get_client` function from `main.py` to `client.py` for better code organization
-- Updated webhook processor initialization in `main.py`
-- Improved error handling in webhook processors
-- Enhanced logging throughout the integration
+- Moved `get_client` function to `client.py` for better organization
+- Improved error handling and logging throughout the integration
 
 ### Fixed
-- Fixed import errors in webhook processors
-- Fixed event parameter handling in webhook processors
-- Fixed resource configuration handling in webhook processors
+- Import errors and event parameter handling in webhook processors
+- Resource configuration handling in webhook processors
 
 ## 0.1.5-dev (2024-04-03)
 

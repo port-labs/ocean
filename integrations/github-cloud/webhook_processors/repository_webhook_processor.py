@@ -1,6 +1,6 @@
 from typing import Any, Dict, cast
 from loguru import logger
-from initialize_client import get_client
+from utils.initialize_client import get_client
 from integration import ObjectKind, RepositoryResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 

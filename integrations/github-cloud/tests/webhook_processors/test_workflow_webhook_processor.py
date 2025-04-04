@@ -52,20 +52,22 @@ async def test_validate_payload(workflow_webhook_processor):
             "id": 123,
             "name": "test-workflow",
             "path": ".github/workflows/test.yml",
-            "state": "active"
+            "state": "active",
         },
         "repository": {
             "name": "test-repo",
             "full_name": "org1/test-repo",
-            "owner": {"login": "org1"}
-        }
+            "owner": {"login": "org1"},
+        },
     }
     assert await workflow_webhook_processor.validate_payload(valid_payload) is True
 
     # Test invalid payloads
     assert await workflow_webhook_processor.validate_payload({}) is False
     assert await workflow_webhook_processor.validate_payload({"workflow": {}}) is False
-    assert await workflow_webhook_processor.validate_payload({"repository": {}}) is False
+    assert (
+        await workflow_webhook_processor.validate_payload({"repository": {}}) is False
+    )
 
 
 @pytest.mark.asyncio
@@ -75,13 +77,13 @@ async def test_handle_event_deleted(workflow_webhook_processor, mock_client):
         "workflow": {
             "id": 123,
             "name": "test-workflow",
-            "path": ".github/workflows/test.yml"
+            "path": ".github/workflows/test.yml",
         },
         "repository": {
             "name": "test-repo",
             "full_name": "org1/test-repo",
-            "owner": {"login": "org1"}
-        }
+            "owner": {"login": "org1"},
+        },
     }
 
     result = await workflow_webhook_processor.handle_event(payload)
@@ -101,13 +103,13 @@ async def test_handle_event_updated(workflow_webhook_processor, mock_client):
             "state": "active",
             "html_url": "https://github.com/org1/test-repo/blob/main/.github/workflows/test.yml",
             "created_at": "2024-01-01T00:00:00Z",
-            "updated_at": "2024-01-02T00:00:00Z"
+            "updated_at": "2024-01-02T00:00:00Z",
         },
         "repository": {
             "name": "test-repo",
             "full_name": "org1/test-repo",
-            "owner": {"login": "org1"}
-        }
+            "owner": {"login": "org1"},
+        },
     }
 
     mock_client.get_single_resource.return_value = payload["workflow"]
@@ -121,19 +123,21 @@ async def test_handle_event_updated(workflow_webhook_processor, mock_client):
 
 
 @pytest.mark.asyncio
-async def test_handle_event_organization_filter(workflow_webhook_processor, mock_client):
+async def test_handle_event_organization_filter(
+    workflow_webhook_processor, mock_client
+):
     payload = {
         "action": "created",
         "workflow": {
             "id": 123,
             "name": "test-workflow",
-            "path": ".github/workflows/test.yml"
+            "path": ".github/workflows/test.yml",
         },
         "repository": {
             "name": "test-repo",
             "full_name": "other-org/test-repo",
-            "owner": {"login": "other-org"}
-        }
+            "owner": {"login": "other-org"},
+        },
     }
 
     result = await workflow_webhook_processor.handle_event(payload)
@@ -148,13 +152,13 @@ async def test_handle_event_state_filter(workflow_webhook_processor, mock_client
             "id": 123,
             "name": "test-workflow",
             "path": ".github/workflows/test.yml",
-            "state": "disabled"
+            "state": "disabled",
         },
         "repository": {
             "name": "test-repo",
             "full_name": "org1/test-repo",
-            "owner": {"login": "org1"}
-        }
+            "owner": {"login": "org1"},
+        },
     }
 
     mock_client.get_single_resource.return_value = payload["workflow"]
@@ -173,13 +177,13 @@ async def test_handle_event_disabled_enabled(workflow_webhook_processor, mock_cl
             "id": 123,
             "name": "test-workflow",
             "path": ".github/workflows/test.yml",
-            "state": "disabled"
+            "state": "disabled",
         },
         "repository": {
             "name": "test-repo",
             "full_name": "org1/test-repo",
-            "owner": {"login": "org1"}
-        }
+            "owner": {"login": "org1"},
+        },
     }
 
     mock_client.get_single_resource.return_value = payload["workflow"]

@@ -15,6 +15,8 @@ class GitHubClient:
     PAGE_SIZE = 100
     MAX_RATE_LIMIT = 5000
     TIME_WINDOW = 3600
+    MAX_RETRIES = 3
+    INITIAL_RETRY_DELAY = 1
 
     def __init__(
         self,
@@ -28,12 +30,50 @@ class GitHubClient:
         self.rate_limiter = AsyncLimiter(self.MAX_RATE_LIMIT, self.TIME_WINDOW)
         self.client = http_async_client
 
-    async def _handle_rate_limit(self, response: httpx.Response) -> None:
-        if response.status_code == 429:
-            logger.warning(
-                f"Github API rate limit reached. Waiting for {response.headers['Retry-After']} seconds."
-            )
-            await asyncio.sleep(int(response.headers["Retry-After"]))
+    def _parse_organizations(self, organizations_str: str | None) -> list[str]:
+        """Parse comma-separated organization string into a list.
+
+        Args:
+            organizations_str: Comma-separated string of organization names
+
+        Returns:
+            List of organization names
+        """
+        if not organizations_str:
+            return []
+
+        # Split by comma and strip whitespace
+        return [org.strip() for org in organizations_str.split(",") if org.strip()]
+
+    async def _check_rate_limit(self, response: httpx.Response) -> None:
+        """Check rate limit headers and wait if necessary."""
+        remaining = int(response.headers.get("X-RateLimit-Remaining", 0))
+        reset_time = int(response.headers.get("X-RateLimit-Reset", 0))
+        
+        if remaining <= 1:  # Leave some buffer
+            wait_time = max(0, reset_time - int(asyncio.get_event_loop().time()))
+            if wait_time > 0:
+                logger.warning(f"Rate limit nearly exceeded. Waiting {wait_time} seconds.")
+                await asyncio.sleep(wait_time)
+
+    async def _handle_rate_limit(self, response: httpx.Response, retry_count: int = 0) -> None:
+        """Handle rate limit errors with exponential backoff."""
+        retry_after = int(response.headers.get("Retry-After", self.INITIAL_RETRY_DELAY * (2 ** retry_count)))
+        
+        match response.status_code:
+            case 403 if "rate limit exceeded" in response.text.lower():
+                logger.warning(f"Rate limit exceeded. Waiting {retry_after} seconds before retry {retry_count + 1}/{self.MAX_RETRIES}")
+                await asyncio.sleep(retry_after)
+            case 429:
+                logger.warning(f"Rate limit exceeded. Waiting {retry_after} seconds before retry {retry_count + 1}/{self.MAX_RETRIES}")
+                await asyncio.sleep(retry_after)
+            case _:
+                logger.error(f"Unexpected status code: {response.status_code}")
+                raise httpx.HTTPStatusError(
+                    f"Unexpected status code: {response.status_code}",
+                    request=response.request,
+                    response=response
+                )
 
     async def _send_api_request(
         self,
@@ -42,16 +82,51 @@ class GitHubClient:
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
+        retry_count: int = 0,
     ) -> httpx.Response:
+        """Send API request with rate limit handling and retries."""
+        if headers is None:
+            headers = {}
+        headers["Authorization"] = f"Bearer {self.token}"
+        
         try:
             async with self.rate_limiter:
                 response = await self.client.request(
-                    method=method, url=url, params=params, json=json, headers=headers
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json,
+                    headers=headers
                 )
+                
+                # Check rate limits before processing response
+                await self._check_rate_limit(response)
+                
+                if response.status_code in (403, 429) and retry_count < self.MAX_RETRIES:
+                    await self._handle_rate_limit(response, retry_count)
+                    return await self._send_api_request(
+                        method=method,
+                        url=url,
+                        params=params,
+                        json=json,
+                        headers=headers,
+                        retry_count=retry_count + 1
+                    )
+                
                 response.raise_for_status()
                 return response.json()
+                
         except httpx.HTTPStatusError as e:
-            await self._handle_rate_limit(e.response)
+            if e.response.status_code in (403, 429) and retry_count < self.MAX_RETRIES:
+                await self._handle_rate_limit(e.response, retry_count)
+                return await self._send_api_request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json,
+                    headers=headers,
+                    retry_count=retry_count + 1
+                )
             logger.error(
                 f"Github API request failed with status {e.response.status_code}: {method} {url}"
             )
@@ -96,14 +171,25 @@ class GitHubClient:
             orgs.append(response)
         return orgs
 
+    async def _to_async_iterator(self, coro):
+        """Convert a coroutine into an async iterator that yields a single value."""
+        try:
+            result = await coro
+            if result:
+                yield result
+        except Exception as e:
+            logger.error(f"API request failed: {str(e)}")
+
     @cache_iterator_result()
     async def get_repositories(
         self, organizations: list[str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """List repositories."""
         repository_tasks = [
-            self._send_api_request(
-                "GET", f"{self.github_base_url}/orgs/{organization}/repos"
+            self._to_async_iterator(
+                self._send_api_request(
+                    "GET", f"{self.github_base_url}/orgs/{organization}/repos"
+                )
             )
             for organization in organizations
         ]
@@ -114,37 +200,56 @@ class GitHubClient:
         self, organizations: list[str], state: str = "all"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """List pull requests."""
+        pull_request_tasks = []
         async for repos in self.get_repositories(organizations):
             for repo in repos:
-                prs = await self._send_api_request(
-                    "GET",
-                    f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/pulls",
-                    params={"state": state},
+                pull_request_tasks.append(
+                    self._to_async_iterator(
+                        self._send_api_request(
+                            "GET",
+                            f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/pulls",
+                            params={"state": state, "sort": "updated", "direction": "desc"},
+                        )
+                    )
                 )
-                if prs:
-                    yield prs
+
+        async for prs in stream_async_iterators_tasks(*pull_request_tasks):
+            if prs:  # Only yield if we have pull requests
+                # Ensure each PR has the required fields
+                for pr in prs:
+                    if "state" not in pr:
+                        pr["state"] = "unknown"  # Set a default state if missing
+                yield prs
 
     async def get_issues(
         self, organizations: list[str], state: str = "all"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """List issues."""
+        issue_tasks = []
         async for repos in self.get_repositories(organizations):
             for repo in repos:
-                issues = await self._send_api_request(
-                    "GET",
-                    f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/issues",
-                    params={"state": state},
+                issue_tasks.append(
+                    self._to_async_iterator(
+                        self._send_api_request(
+                            "GET",
+                            f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/issues",
+                            params={"state": state},
+                        )
+                    )
                 )
-                if issues:
-                    yield issues
+
+        async for issues in stream_async_iterators_tasks(*issue_tasks):
+            yield issues
 
     async def get_teams(
         self, organizations: list[str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """List teams."""
         team_tasks = [
-            self._send_api_request(
-                "GET", f"{self.github_base_url}/orgs/{organization}/teams"
+            self._to_async_iterator(
+                self._send_api_request(
+                    "GET", f"{self.github_base_url}/orgs/{organization}/teams"
+                )
             )
             for organization in organizations
         ]
@@ -155,15 +260,22 @@ class GitHubClient:
         self, organizations: list[str], state: str = "active"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """List workflows."""
+        workflow_tasks = []
         async for repos in self.get_repositories(organizations):
             for repo in repos:
-                workflows = await self._send_api_request(
-                    "GET",
-                    f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/actions/workflows",
-                    params={"state": state},
+                workflow_tasks.append(
+                    self._to_async_iterator(
+                        self._send_api_request(
+                            "GET",
+                            f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/actions/workflows",
+                            params={"state": state},
+                        )
+                    )
                 )
-                if workflows:
-                    yield workflows
+        
+        if workflow_tasks:
+            async for workflows in stream_async_iterators_tasks(*workflow_tasks):
+                yield workflows
 
     async def create_webhooks_if_not_exists(self) -> None:
         """Create webhooks if they don't exist."""
@@ -175,7 +287,9 @@ class GitHubClient:
             return
 
         # Get organizations from integration config
-        organizations = ocean.integration_config.get("organizations", [])
+        organizations_str = ocean.integration_config.get("githubOrganization")
+        organizations = self._parse_organizations(organizations_str)
+
         if not organizations:
             logger.warning("No organizations configured, skipping webhook creation")
             return
@@ -197,36 +311,38 @@ class GitHubClient:
                         for hook in webhooks
                     )
 
-                    if not webhook_exists:
-                        # Create new webhook
-                        await self._send_api_request(
-                            "POST",
-                            f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/hooks",
-                            json={
-                                "name": "web",
-                                "active": True,
-                                "events": [
-                                    "issues",
-                                    "pull_request",
-                                    "repository",
-                                    "team",
-                                    "workflow",
-                                ],
-                                "config": {
-                                    "url": f"{self.base_url}/webhook",
-                                    "content_type": "json",
-                                    "insecure_ssl": "0",
-                                },
+                    if webhook_exists:
+                        logger.info(
+                            "Webhook already exists for organization {} (webhook Url: {}), skipping creation.",
+                            repo["owner"]["login"],
+                            f"{self.base_url}/webhook",
+                        )
+                        continue
+
+                    # Create new webhook
+                    await self._send_api_request(
+                        "POST",
+                        f"{self.github_base_url}/repos/{repo['owner']['login']}/{repo['name']}/hooks",
+                        json={
+                            "name": "web",
+                            "active": True,
+                            "events": [
+                                "issues",
+                                "pull_request",
+                                "repository",
+                                "team",
+                                "workflow_run",
+                            ],
+                            "config": {
+                                "url": f"{self.base_url}/webhook",
+                                "content_type": "json",
                             },
-                            headers={"Authorization": f"Bearer {self.token}"},
-                        )
-                        logger.info(
-                            f"Created webhook for repository {repo['owner']['login']}/{repo['name']}"
-                        )
-                    else:
-                        logger.info(
-                            f"Webhook already exists for repository {repo['owner']['login']}/{repo['name']}"
-                        )
+                        },
+                        headers={"Authorization": f"Bearer {self.token}"},
+                    )
+                    logger.info(
+                        f"Created webhook for repository {repo['owner']['login']}/{repo['name']}"
+                    )
 
                 except Exception as e:
                     logger.error(

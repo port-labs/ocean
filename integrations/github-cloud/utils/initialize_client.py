@@ -9,4 +9,3 @@ def get_client() -> GitHubClient:
     base_url = ocean.app.base_url
 
     return GitHubClient(token=token, github_base_url=github_base_url, base_url=base_url)
-    

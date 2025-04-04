@@ -1,6 +1,6 @@
 from typing import Any, Dict, cast
 from loguru import logger
-from initialize_client import get_client
+from utils.initialize_client import get_client
 from integration import ObjectKind, WorkflowResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
@@ -51,6 +51,7 @@ class WorkflowWebhookProcessor(AbstractWebhookProcessor):
         """Handle the workflow webhook event."""
         client = get_client()
         workflow = event["workflow"]
+        workflow_run = event["workflow_run"]
         repository = event["repository"]
         config = cast(WorkflowResourceConfig, resource_config)
 
@@ -89,6 +90,8 @@ class WorkflowWebhookProcessor(AbstractWebhookProcessor):
                 updated_raw_results=[],
                 deleted_raw_results=[],
             )
+        
+        updated_workflow["recent_run"] = workflow_run
 
         return WebhookEventRawResults(
             updated_raw_results=[updated_workflow],
