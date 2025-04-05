@@ -9,11 +9,11 @@ resources:
     port:
       entity:
         mappings:
-          identifier: ".name"
+          identifier: ".id|tostring"
           title: ".name"
           blueprint: '"githubRepository"'
           properties:
-            description: .description
+            description: (.description // null)
             visibility: .visibility
             defaultBranch: .default_branch
             link: .html_url
