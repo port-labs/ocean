@@ -68,6 +68,7 @@ def deconstruct_blueprints_to_creation_steps(
         with_relations.append(blueprint.copy())
 
         blueprint.pop("teamInheritance", {})
+        blueprint.pop("ownership", {})
         blueprint.pop("relations", {})
         bare_blueprint.append(blueprint)
 

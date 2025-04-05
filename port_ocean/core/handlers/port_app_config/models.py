@@ -22,7 +22,7 @@ class EntityMapping(BaseModel):
     identifier: str | IngestSearchQuery
     title: str | None
     blueprint: str
-    team: str | None
+    team: str | IngestSearchQuery | None
     properties: dict[str, str] = Field(default_factory=dict)
     relations: dict[str, str | IngestSearchQuery] = Field(default_factory=dict)
 

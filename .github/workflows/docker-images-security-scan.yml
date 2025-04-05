@@ -1,5 +1,7 @@
 name: Scan docker images
 on:
+  schedule:
+    - cron: '0 0 * * *'  # Every day at midnight
   workflow_dispatch:
     inputs:
       image:
@@ -51,7 +53,7 @@ jobs:
         id: set-images
         run: |
           PROJECTS=$(ls --color=never ./integrations | grep -Ev '_infra')
-          if [[ "${{ inputs.image }}" != "all" ]]; then
+          if [[ "${{ inputs.image }}" != "all" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             PROJECTS="${{ inputs.image }}"
           fi
           IMAGES_WITH_VERSIONS=()
@@ -126,3 +128,44 @@ jobs:
               echo "</details>"
             } >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Set output for trivy results
+        run: |
+          echo "VULNERABILITIES_COUNT=$(cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i "total:" | awk '{print $2}')" >> $GITHUB_ENV
+          echo ${{ env.VULNERABILITIES_COUNT }}
+
+      - name: Send slack alert if vulnerabilities found
+        if: ${{ env.VULNERABILITIES_COUNT != '0' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "Vulnerabilities found in `${{ steps.enrich-version.outputs.integration }}` image",
+              "attachments": [
+                {
+                  "text": "${{ steps.enrich-version.outputs.integration }} image has vulnerabilities",
+                  "fields": [
+                    {
+                      "title": "Image",
+                      "value": "${{ steps.enrich-version.outputs.image_tag }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Vulnerabilities",
+                      "value": "Count: ${{ env.VULNERABILITIES_COUNT }}",
+                      "short": true
+                    },
+                    {
+                      "title": "link",
+                      "value": "https://github.com/port-labs/ocean/actions/runs/${{ github.run_id }}",
+                      "short": true
+                    }
+                  ],
+
+                  "color": "#FF0000"
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_RND_ECOSYSTEM_DEPENDABOT_ALERTS_WEBHOOK_URL }}

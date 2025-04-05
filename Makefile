@@ -163,3 +163,9 @@ smoke/start-mock-api:
 
 smoke/stop-mock-api:
 	ps aux | grep fake_port_api | egrep -v grep | awk '{print $$2};' | xargs kill -9
+
+coverage:
+	$(ACTIVATE) && \
+	coverage combine coverage-merge && \
+	coverage html && \
+	coverage json

@@ -246,6 +246,58 @@ def test_are_entities_fields_equal_different_nested_relations_should_be_false() 
     )
 
 
+def test_are_entities_fields_equal_null_properties_should_be_true() -> None:
+    assert (
+        are_entities_fields_equal(
+            {
+                "team": None,
+                "members": ["user1", "user2"],
+                "metadata": {"role": "admin"},
+            },
+            {"members": ["user1", "user2"], "metadata": {"role": "admin"}},
+        )
+        is True
+    )
+
+
+def test_are_entities_fields_equal_null_properties_and_real_data_in_other_entity_should_be_false() -> (
+    None
+):
+    assert (
+        are_entities_fields_equal(
+            {
+                "team": None,
+                "members": ["user1", "user2"],
+                "metadata": {"role": "admin"},
+            },
+            {
+                "team": "team_id1",
+                "members": ["user1", "user2"],
+                "metadata": {"role": "admin"},
+            },
+        )
+        is False
+    )
+
+
+def test_are_entities_fields_equal_null_properties_in_both_should_be_true() -> None:
+    assert (
+        are_entities_fields_equal(
+            {
+                "team": None,
+                "members": ["user1", "user2"],
+                "metadata": {"role": "admin"},
+            },
+            {
+                "team": None,
+                "members": ["user1", "user2"],
+                "metadata": {"role": "admin"},
+            },
+        )
+        is True
+    )
+
+
 def test_are_entities_different_identical_entities_should_be_false() -> None:
     entity1 = create_test_entity(
         "",

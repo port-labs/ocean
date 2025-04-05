@@ -243,7 +243,6 @@ class SonarQubeGAProjectSelector(CustomSelector):
 
 
 class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
-
     kind: Literal["projects_ga"]  # type: ignore
     selector: SonarQubeGAProjectSelector
 

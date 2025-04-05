@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 from port_ocean.context.ocean import ocean
 
-from clients.gitlab_client import GitLabClient
+from gitlab.clients.gitlab_client import GitLabClient
 
 _gitlab_client: Optional[GitLabClient] = None
 

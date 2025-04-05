@@ -41,8 +41,9 @@ async def test_batch_upsert_entities_read_timeout_should_raise_false(
         result_entities = await entity_client.batch_upsert_entities(
             entities=all_entities, request_options=MagicMock(), should_raise=False
         )
+        entities_only = [entity for _, entity in result_entities]
 
-        assert result_entities == expected_result_entities
+        assert entities_only == expected_result_entities
 
 
 async def test_batch_upsert_entities_read_timeout_should_raise_true(

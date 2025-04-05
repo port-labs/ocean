@@ -121,26 +121,20 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     ) -> list[Entity]:
         logger.info(f"Upserting {len(entities)} entities")
         modified_entities: list[Entity] = []
-        if event.port_app_config.create_missing_related_entities:
-            modified_entities = await self.context.port_client.batch_upsert_entities(
-                entities,
-                event.port_app_config.get_port_request_options(),
-                user_agent_type,
-                should_raise=False,
-            )
-        else:
-            for entity in entities:
-                upsertedEntity = await self.context.port_client.upsert_entity(
-                    entity,
-                    event.port_app_config.get_port_request_options(),
-                    user_agent_type,
-                    should_raise=False,
-                )
-                if upsertedEntity:
-                    modified_entities.append(upsertedEntity)
-                # condition to false to differentiate from `result_entity.is_using_search_identifier`
-                if upsertedEntity is False:
-                    event.entity_topological_sorter.register_entity(entity)
+        upserted_entities: list[tuple[bool, Entity]] = []
+
+        upserted_entities = await self.context.port_client.batch_upsert_entities(
+            entities,
+            event.port_app_config.get_port_request_options(),
+            user_agent_type,
+            should_raise=False,
+        )
+
+        for is_upserted, entity in upserted_entities:
+            if is_upserted:
+                modified_entities.append(entity)
+            else:
+                event.entity_topological_sorter.register_entity(entity)
         return modified_entities
 
     async def delete(

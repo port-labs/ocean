@@ -133,7 +133,7 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> list[Entity]:
+    ) -> list[tuple[bool, Entity]]:
         modified_entities_results = await asyncio.gather(
             *(
                 self.upsert_entity(
@@ -146,17 +146,17 @@ class EntityClientMixin:
             ),
             return_exceptions=True,
         )
-        entity_results = [
-            entity for entity in modified_entities_results if isinstance(entity, Entity)
-        ]
-        if not should_raise:
-            return entity_results
 
-        for entity_result in modified_entities_results:
-            if isinstance(entity_result, Exception):
-                raise entity_result
+        entities_results: list[tuple[bool, Entity]] = []
+        for original_entity, result in zip(entities, modified_entities_results):
+            if isinstance(result, Exception) and should_raise:
+                raise result
+            elif isinstance(result, Entity):
+                entities_results.append((True, result))
+            elif result is False:
+                entities_results.append((False, original_entity))
 
-        return entity_results
+        return entities_results
 
     async def delete_entity(
         self,
