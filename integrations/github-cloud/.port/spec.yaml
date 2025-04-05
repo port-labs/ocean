@@ -1,0 +1,35 @@
+description: GitHub Cloud integration for Port Ocean
+icon: GitHub  # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Git Providers  # Should be one of the available sections in Port
+    resources:
+      - kind: repository
+      - kind: issue
+      - kind: pull_request
+      - kind: team
+      - kind: workflow
+configurations:
+  - name: baseUrl
+    type: url
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in the 3rd party service"
+    required: false
+  - name: githubBaseUrl
+    type: url
+    description: "Base URL for GitHub API"
+    required: false
+    default: https://api.github.com
+  - name: githubAccessToken
+    type: string
+    sensitive: true
+    description: "GitHub Access Token for API authentication"
+    required: true
+  - name: webhookSecret
+    type: string
+    sensitive: true
+    description: "Webhook Secret for GitHub webhook authentication"
+    required: false
+  - name: githubOrganization
+    type: string
+    description: "GitHub Organizations to sync (comma-separated list)"
+    required: false

@@ -1,0 +1,96 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+useDefaultBranch: true
+resources:
+  - kind: repository
+    selector:
+      query: 'true'
+      type: "public"
+    port:
+      entity:
+        mappings:
+          identifier: ".id|tostring"
+          title: ".name"
+          blueprint: '"githubRepository"'
+          properties:
+            description: (.description // null)
+            visibility: .visibility
+            defaultBranch: .default_branch
+            link: .html_url
+
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: ".id|tostring"
+          title: ".title"
+          blueprint: '"githubIssue"'
+          properties:
+            state: .state
+            assignee: .assignee
+            createdDate: .created_at
+            updatedDate: .updated_at
+            link: .html_url
+
+  - kind: pull_request
+    selector:
+      query: 'true'
+      repositoryType: "all"
+      state: "all"
+    port:
+      entity:
+        mappings:
+          identifier: ".head.repo.name + (.id|tostring)"
+          title: ".title"
+          blueprint: '"githubPullRequest"'
+          properties:
+            status: .state
+            author: .user.login
+            createdDate: .created_at
+            updatedDate: .updated_at
+            mergedDate: .merged_at
+            closedDate: .closed_at
+            link: .html_url
+            leadTimeHours: >-
+                (.created_at as $createdAt | .merged_at as $mergedAt |
+                ($createdAt | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
+                ($mergedAt | if . == null then null else sub("\\..*Z$"; "Z") |
+                strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end) as $mergedTimestamp |
+                if $mergedTimestamp == null then null else
+                (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
+          relations:
+            repository: .head.repo.name
+
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: ".id|tostring"
+          title: ".name"
+          blueprint: '"githubTeam"'
+          properties:
+            members_url: .members_url
+            link: .html_url
+
+  - kind: workflow
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: ".id|tostring"
+          title: ".name"
+          blueprint: '"githubWorkflow"'
+          properties:
+            state: .state
+            path: .path
+            createdDate: .created_at
+            updatedDate: .updated_at
+            runs_count: (.runs | length // 0)
+            link: .html_url
+          relations:
+            repository: .repository.name
