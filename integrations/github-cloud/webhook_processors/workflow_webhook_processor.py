@@ -72,13 +72,12 @@ class WorkflowWebhookProcessor(AbstractWebhookProcessor):
             )
 
         updated_workflow = await client.get_single_resource(
-            resource_type="actions/workflows",
+            resource_type="workflows",
             owner=repository["owner"]["login"],
             repo=repository["name"],
             identifier=workflow["id"],
         )
 
-        # Check if the workflow state matches the configured state
         if (
             config.selector.state != "all"
             and updated_workflow["state"] != config.selector.state
@@ -90,8 +89,11 @@ class WorkflowWebhookProcessor(AbstractWebhookProcessor):
                 updated_raw_results=[],
                 deleted_raw_results=[],
             )
-        
+
         updated_workflow["recent_run"] = workflow_run
+
+        if "repository" not in updated_workflow:
+            updated_workflow["repository"] = {"name": repository["name"]}
 
         return WebhookEventRawResults(
             updated_raw_results=[updated_workflow],

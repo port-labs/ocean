@@ -2,6 +2,29 @@
 
 All notable changes to the GitHub Cloud integration will be documented in this file.
 
+## 0.1.7-dev (2024-04-05)
+
+### Added
+- Added workflow runs functionality to the GitHub Cloud integration
+- Implemented `get_single_workflow_run` method to fetch workflow runs for a specific workflow
+- Updated `get_workflow_runs` method to fetch runs for workflows across multiple repositories
+- Enhanced `get_single_resource` method to include workflow runs when fetching workflow data
+- Added workflow runs information to the workflow blueprint in `blueprints.json`
+- Added `runs_count` property to the workflow blueprint
+- Updated `resync_workflows` method to fetch and include workflow runs data
+
+### Changed
+- Improved error handling in API request methods
+- Enhanced rate limit handling with better logging
+- Updated webhook processor to properly handle workflow run events
+- Refactored code to use match-case statements for better readability
+- Improved code formatting and documentation
+
+### Fixed
+- Fixed issue with workflow runs not being properly synced to Port
+- Resolved error with 'async for' requiring an object with __aiter__ method
+- Fixed workflow relation mapping in port-app-config.yml 
+
 ## 0.1.6-dev (2024-04-04)
 
 ### Added
@@ -9,7 +32,7 @@ All notable changes to the GitHub Cloud integration will be documented in this f
 - Organization and state filtering for webhook events
 
 ### Changed
-- Moved `get_client` function to `client.py` for better organization
+- Moved `get_client` function to utils/`initialize_client.py` for better organization
 - Improved error handling and logging throughout the integration
 
 ### Fixed

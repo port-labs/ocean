@@ -92,6 +92,12 @@
                 "status": {
                     "title": "Status",
                     "type": "string",
+                    "enum": ["open", "closed", "merged"],
+                    "enumColors": {
+                        "open": "green",
+                        "closed": "red",
+                        "merged": "purple"
+                    },
                     "icon": "GitHub",
                     "description": "The current status of the pull request (e.g., open, closed, merged)."
                 },
@@ -113,12 +119,29 @@
                     "format": "date-time",
                     "description": "The date and time when the pull request was last updated."
                 },
+                "mergedDate": {
+                    "title": "Merged Date",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The date and time when the pull request was merged."
+                },
+                "closedDate": {
+                    "title": "Closed Date",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The date and time when the pull request was closed."
+                },
                 "link": {
                     "title": "Link",
                     "type": "string",
                     "format": "url",
                     "icon": "GitHub",
                     "description": "Link to the pull request on GitHub."
+                },
+                "leadTime": {
+                    "title": "Lead Time",
+                    "type": "number",
+                    "description": "The time it takes to merge the pull request."
                 }
             },
             "required": []
@@ -192,11 +215,16 @@
                     "format": "date-time",
                     "description": "The date and time when the workflow was last updated."
                 },
+                "runs_count": {
+                    "title": "Runs Count",
+                    "type": "number",
+                    "icon": "GitHub",
+                    "description": "The number of times this workflow has been run."
+                },
                 "link": {
                     "title": "Link",
                     "type": "string",
                     "format": "url",
-                    "icon": "GitHub",
                     "description": "Link to the workflow on GitHub."
                 }
             },

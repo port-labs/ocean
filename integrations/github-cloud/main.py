@@ -44,7 +44,6 @@ async def resync_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_client()
     selector = cast(RepositoryResourceConfig, event.resource_config).selector
 
-    # Get organizations from config if not specified in selector
     if not selector.organizations:
         organizations_str = ocean.integration_config.get("githubOrganization")
         selector.organizations = client._parse_organizations(organizations_str)
@@ -61,7 +60,6 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_client()
     selector = cast(IssueResourceConfig, event.resource_config).selector
 
-    # Get organizations from config if not specified in selector
     if not selector.organizations:
         organizations_str = ocean.integration_config.get("githubOrganization")
         selector.organizations = client._parse_organizations(organizations_str)
@@ -78,7 +76,6 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_client()
     selector = cast(PullRequestResourceConfig, event.resource_config).selector
 
-    # Get organizations from config if not specified in selector
     if not selector.organizations:
         organizations_str = ocean.integration_config.get("githubOrganization")
         selector.organizations = client._parse_organizations(organizations_str)
@@ -97,7 +94,6 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_client()
     selector = cast(TeamResourceConfig, event.resource_config).selector
 
-    # Get organizations from config if not specified in selector
     if not selector.organizations:
         organizations_str = ocean.integration_config.get("githubOrganization")
         selector.organizations = client._parse_organizations(organizations_str)
@@ -114,15 +110,38 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_client()
     selector = cast(WorkflowResourceConfig, event.resource_config).selector
 
-    # Get organizations from config if not specified in selector
     if not selector.organizations:
         organizations_str = ocean.integration_config.get("githubOrganization")
         selector.organizations = client._parse_organizations(organizations_str)
 
     logger.info(f"Resyncing workflows for organizations: {selector.organizations}")
-    async for workflows in client.get_workflows(selector.organizations, selector.state):
+
+    all_workflows = []
+    async for workflows in client.get_workflows(selector.organizations):
         logger.info(f"Fetching workflows with batch size: {len(workflows)}")
+        if workflows.get("total_count", 0) > 0 or workflows.get("workflows"):
+            all_workflows.append(workflows)
         yield workflows
+
+    flattened_workflows = [
+        workflow
+        for workflow_group in all_workflows
+        for workflow in workflow_group.get("workflows", [])
+    ]
+
+    for workflow in flattened_workflows:
+        if "id" in workflow:
+            workflow_id = workflow["id"]
+            logger.info(f"Fetching workflow runs for workflow ID: {workflow_id}")
+            async for workflow_runs in client.get_workflow_runs(
+                selector.organizations, workflow_id
+            ):
+                if workflow_runs:
+                    workflow["runs"] = workflow_runs
+                    logger.info(
+                        f"Added {len(workflow_runs)} runs to workflow {workflow_id}"
+                    )
+                    yield [workflow]
 
 
 webhook_processors = [

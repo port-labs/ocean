@@ -24,8 +24,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: ".name"
-          title: ".name"
+          identifier: ".id|tostring"
+          title: ".title"
           blueprint: '"githubIssue"'
           properties:
             state: .state
@@ -50,7 +50,16 @@ resources:
             author: .user.login
             createdDate: .created_at
             updatedDate: .updated_at
+            mergedDate: .merged_at
+            closedDate: .closed_at
             link: .html_url
+            leadTimeHours: >-
+                (.created_at as $createdAt | .merged_at as $mergedAt |
+                ($createdAt | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
+                ($mergedAt | if . == null then null else sub("\\..*Z$"; "Z") |
+                strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end) as $mergedTimestamp |
+                if $mergedTimestamp == null then null else
+                (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
           relations:
             repository: .head.repo.name
 
@@ -73,14 +82,15 @@ resources:
     port:
       entity:
         mappings:
-          identifier: ".name"
-          title: .name
+          identifier: ".id|tostring"
+          title: ".name"
           blueprint: '"githubWorkflow"'
           properties:
             state: .state
             path: .path
             createdDate: .created_at
             updatedDate: .updated_at
+            runs_count: (.runs | length // 0)
             link: .html_url
           relations:
-            repository: .head.repo.name
+            repository: .repository.name
