@@ -50,8 +50,8 @@ class TeamWebhookProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         """Handle the team webhook event."""
         client = get_client()
-        team = event["team"]
-        organization = event["organization"]
+        team = event.payload["team"]
+        organization = event.payload["organization"]
         config = cast(TeamResourceConfig, resource_config)
 
         # Check if the organization is in the configured organizations
@@ -64,7 +64,7 @@ class TeamWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        if event["action"] == "deleted":
+        if event.payload["action"] == "deleted":
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[team],

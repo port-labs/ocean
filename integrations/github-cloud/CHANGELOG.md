@@ -2,6 +2,14 @@
 
 All notable changes to the GitHub Cloud integration will be documented in this file.
 
+## 0.1.8-dev (2024-04-06)
+
+### Fixed
+- Fixed `WorkflowWebhookProcessor` tests by adding required `trace_id` parameter to `WebhookEvent` fixtures
+- Fixed test failures in `test_workflow_webhook_processor.py` by properly accessing event payload attributes
+- Fixed test failures in `test_handle_event_deleted` by creating a new event instead of modifying the existing one
+- Ensured all webhook processor tests are now passing correctly
+
 ## 0.1.7-dev (2024-04-05)
 
 ### Added

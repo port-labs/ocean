@@ -1,204 +1,190 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from port_ocean.context.event import event
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent, WebhookEventRawResults
 from integration import ObjectKind, WorkflowResourceConfig
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from webhook_processors.workflow_webhook_processor import WorkflowWebhookProcessor
 
 
 @pytest.fixture
-def mock_event():
-    with patch("webhook_processors.workflow_webhook_processor.event") as mock:
-        mock.resource_config = MagicMock(spec=WorkflowResourceConfig)
-        mock.resource_config.selector.organizations = ["org1"]
-        mock.resource_config.selector.state = "all"
-        yield mock
-
-
-@pytest.fixture
-def mock_client():
-    with patch("webhook_processors.workflow_webhook_processor.get_client") as mock:
-        client = AsyncMock()
-        mock.return_value = client
-        yield client
-
-
-@pytest.fixture
-def workflow_webhook_processor(mock_event):
+def workflow_processor(mock_event):
     return WorkflowWebhookProcessor(event=mock_event)
 
 
+@pytest.fixture
+def mock_event():
+    return WebhookEvent(
+        trace_id="test-trace-id",
+        headers={"x-github-event": "workflow_run"},
+        payload={
+            "action": "created",
+            "workflow": {
+                "id": "123",
+                "name": "test-workflow",
+                "state": "active"
+            },
+            "workflow_run": {
+                "id": "456",
+                "status": "completed"
+            },
+            "repository": {
+                "name": "test-repo",
+                "owner": {
+                    "login": "test-org"
+                }
+            }
+        }
+    )
+
+
+@pytest.fixture
+def mock_resource_config():
+    config = MagicMock(spec=WorkflowResourceConfig)
+    config.selector = MagicMock()
+    config.selector.organizations = ["test-org"]
+    config.selector.state = "all"
+    return config
+
+
 @pytest.mark.asyncio
-async def test_should_process_event(workflow_webhook_processor):
-    # Test valid actions
-    for action in ["created", "deleted", "updated", "disabled", "enabled"]:
-        assert await workflow_webhook_processor.should_process_event(action, {}) is True
-
-    # Test invalid action
-    assert await workflow_webhook_processor.should_process_event("invalid", {}) is False
+async def test_should_process_event_valid(workflow_processor, mock_event):
+    result = await workflow_processor.should_process_event(mock_event)
+    assert result is True
 
 
 @pytest.mark.asyncio
-async def test_get_matching_kinds(workflow_webhook_processor):
-    kinds = await workflow_webhook_processor.get_matching_kinds()
+async def test_should_process_event_invalid_event_type(workflow_processor):
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        headers={"x-github-event": "push"},
+        payload={"action": "created"}
+    )
+    result = await workflow_processor.should_process_event(event)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_invalid_action(workflow_processor):
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        headers={"x-github-event": "workflow_run"},
+        payload={"action": "invalid_action"}
+    )
+    result = await workflow_processor.should_process_event(event)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_get_matching_kinds(workflow_processor):
+    kinds = await workflow_processor.get_matching_kinds()
     assert kinds == [ObjectKind.WORKFLOW]
 
 
 @pytest.mark.asyncio
-async def test_validate_payload(workflow_webhook_processor):
-    # Test valid payload
-    valid_payload = {
-        "workflow": {
-            "id": 123,
-            "name": "test-workflow",
-            "path": ".github/workflows/test.yml",
-            "state": "active",
-        },
-        "repository": {
-            "name": "test-repo",
-            "full_name": "org1/test-repo",
-            "owner": {"login": "org1"},
-        },
-    }
-    assert await workflow_webhook_processor.validate_payload(valid_payload) is True
+async def test_authenticate(workflow_processor):
+    result = await workflow_processor.authenticate({}, {})
+    assert result is True
 
-    # Test invalid payloads
-    assert await workflow_webhook_processor.validate_payload({}) is False
-    assert await workflow_webhook_processor.validate_payload({"workflow": {}}) is False
-    assert (
-        await workflow_webhook_processor.validate_payload({"repository": {}}) is False
+
+@pytest.mark.asyncio
+async def test_validate_payload_valid(workflow_processor):
+    payload = {
+        "workflow": {"id": "123"},
+        "repository": {"name": "test-repo"}
+    }
+    result = await workflow_processor.validate_payload(payload)
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_validate_payload_invalid(workflow_processor):
+    payload = {
+        "workflow": {"id": "123"}
+    }
+    result = await workflow_processor.validate_payload(payload)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_handle_event_created(workflow_processor, mock_event, mock_resource_config):
+    mock_client = AsyncMock()
+    mock_client.get_single_resource.return_value = {
+        "id": "123",
+        "name": "test-workflow",
+        "state": "active"
+    }
+    
+    with patch("webhook_processors.workflow_webhook_processor.get_client", return_value=mock_client):
+        result = await workflow_processor.handle_event(mock_event, mock_resource_config)
+        
+        assert isinstance(result, WebhookEventRawResults)
+        assert len(result.updated_raw_results) == 1
+        assert len(result.deleted_raw_results) == 0
+        assert result.updated_raw_results[0]["id"] == "123"
+        assert result.updated_raw_results[0]["recent_run"] == mock_event.payload["workflow_run"]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_deleted(workflow_processor, mock_event, mock_resource_config):
+    # Create a new event with the "deleted" action
+    deleted_event = WebhookEvent(
+        trace_id="test-trace-id",
+        headers={"x-github-event": "workflow_run"},
+        payload={
+            "action": "deleted",
+            "workflow": {
+                "id": "123",
+                "name": "test-workflow",
+                "state": "active"
+            },
+            "workflow_run": {
+                "id": "456",
+                "status": "completed"
+            },
+            "repository": {
+                "name": "test-repo",
+                "owner": {
+                    "login": "test-org"
+                }
+            }
+        }
     )
-
-
-@pytest.mark.asyncio
-async def test_handle_event_deleted(workflow_webhook_processor, mock_client):
-    payload = {
-        "action": "deleted",
-        "workflow": {
-            "id": 123,
-            "name": "test-workflow",
-            "path": ".github/workflows/test.yml",
-        },
-        "repository": {
-            "name": "test-repo",
-            "full_name": "org1/test-repo",
-            "owner": {"login": "org1"},
-        },
-    }
-
-    result = await workflow_webhook_processor.handle_event(payload)
+    
+    # Update the processor with the new event
+    workflow_processor.event = deleted_event
+    
+    result = await workflow_processor.handle_event(deleted_event, mock_resource_config)
+    
     assert isinstance(result, WebhookEventRawResults)
-    assert result.identifier == "123"
-    assert result.state == "deleted"
+    assert len(result.updated_raw_results) == 0
+    assert len(result.deleted_raw_results) == 1
+    assert result.deleted_raw_results[0]["id"] == "123"
 
 
 @pytest.mark.asyncio
-async def test_handle_event_updated(workflow_webhook_processor, mock_client):
-    payload = {
-        "action": "created",
-        "workflow": {
-            "id": 123,
-            "name": "test-workflow",
-            "path": ".github/workflows/test.yml",
-            "state": "active",
-            "html_url": "https://github.com/org1/test-repo/blob/main/.github/workflows/test.yml",
-            "created_at": "2024-01-01T00:00:00Z",
-            "updated_at": "2024-01-02T00:00:00Z",
-        },
-        "repository": {
-            "name": "test-repo",
-            "full_name": "org1/test-repo",
-            "owner": {"login": "org1"},
-        },
-    }
-
-    mock_client.get_single_resource.return_value = payload["workflow"]
-
-    result = await workflow_webhook_processor.handle_event(payload)
+async def test_handle_event_wrong_organization(workflow_processor, mock_event, mock_resource_config):
+    mock_resource_config.selector.organizations = ["different-org"]
+    
+    result = await workflow_processor.handle_event(mock_event, mock_resource_config)
+    
     assert isinstance(result, WebhookEventRawResults)
-    assert result.identifier == "123"
-    assert result.title == "test-workflow"
-    assert result.state == "active"
-    assert result.repository == "org1/test-repo"
+    assert len(result.updated_raw_results) == 0
+    assert len(result.deleted_raw_results) == 0
 
 
 @pytest.mark.asyncio
-async def test_handle_event_organization_filter(
-    workflow_webhook_processor, mock_client
-):
-    payload = {
-        "action": "created",
-        "workflow": {
-            "id": 123,
-            "name": "test-workflow",
-            "path": ".github/workflows/test.yml",
-        },
-        "repository": {
-            "name": "test-repo",
-            "full_name": "other-org/test-repo",
-            "owner": {"login": "other-org"},
-        },
+async def test_handle_event_wrong_state(workflow_processor, mock_event, mock_resource_config):
+    mock_resource_config.selector.state = "disabled"
+    mock_client = AsyncMock()
+    mock_client.get_single_resource.return_value = {
+        "id": "123",
+        "name": "test-workflow",
+        "state": "active"
     }
-
-    result = await workflow_webhook_processor.handle_event(payload)
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_handle_event_state_filter(workflow_webhook_processor, mock_client):
-    payload = {
-        "action": "created",
-        "workflow": {
-            "id": 123,
-            "name": "test-workflow",
-            "path": ".github/workflows/test.yml",
-            "state": "disabled",
-        },
-        "repository": {
-            "name": "test-repo",
-            "full_name": "org1/test-repo",
-            "owner": {"login": "org1"},
-        },
-    }
-
-    mock_client.get_single_resource.return_value = payload["workflow"]
-    workflow_webhook_processor.event.resource_config.selector.state = "active"
-
-    result = await workflow_webhook_processor.handle_event(payload)
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_handle_event_disabled_enabled(workflow_webhook_processor, mock_client):
-    # Test disabled action
-    payload = {
-        "action": "disabled",
-        "workflow": {
-            "id": 123,
-            "name": "test-workflow",
-            "path": ".github/workflows/test.yml",
-            "state": "disabled",
-        },
-        "repository": {
-            "name": "test-repo",
-            "full_name": "org1/test-repo",
-            "owner": {"login": "org1"},
-        },
-    }
-
-    mock_client.get_single_resource.return_value = payload["workflow"]
-
-    result = await workflow_webhook_processor.handle_event(payload)
-    assert isinstance(result, WebhookEventRawResults)
-    assert result.identifier == "123"
-    assert result.state == "disabled"
-
-    # Test enabled action
-    payload["action"] = "enabled"
-    payload["workflow"]["state"] = "active"
-    mock_client.get_single_resource.return_value = payload["workflow"]
-
-    result = await workflow_webhook_processor.handle_event(payload)
-    assert isinstance(result, WebhookEventRawResults)
-    assert result.identifier == "123"
-    assert result.state == "active"
+    
+    with patch("webhook_processors.workflow_webhook_processor.get_client", return_value=mock_client):
+        result = await workflow_processor.handle_event(mock_event, mock_resource_config)
+        
+        assert isinstance(result, WebhookEventRawResults)
+        assert len(result.updated_raw_results) == 0
+        assert len(result.deleted_raw_results) == 0

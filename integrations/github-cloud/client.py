@@ -229,11 +229,10 @@ class GitHubClient:
                 )
 
         async for prs in stream_async_iterators_tasks(*pull_request_tasks):
-            if prs:  # Only yield if we have pull requests
-                # Ensure each PR has the required fields
+            if prs:
                 for pr in prs:
                     if "state" not in pr:
-                        pr["state"] = "unknown"  # Set a default state if missing
+                        pr["state"] = "unknown"
                 yield prs
 
     async def get_issues(

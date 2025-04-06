@@ -50,9 +50,9 @@ class WorkflowWebhookProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         """Handle the workflow webhook event."""
         client = get_client()
-        workflow = event["workflow"]
-        workflow_run = event["workflow_run"]
-        repository = event["repository"]
+        workflow = event.payload["workflow"]
+        workflow_run = event.payload["workflow_run"]
+        repository = event.payload["repository"]
         config = cast(WorkflowResourceConfig, resource_config)
 
         # Check if the repository's organization is in the configured organizations
@@ -65,7 +65,7 @@ class WorkflowWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        if event["action"] == "deleted":
+        if event.payload["action"] == "deleted":
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[workflow],

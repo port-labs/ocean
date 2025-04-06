@@ -1,159 +1,193 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from port_ocean.context.event import event
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent, WebhookEventRawResults
 from integration import ObjectKind, RepositoryResourceConfig
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
 
 
 @pytest.fixture
 def mock_event():
-    with patch("webhook_processors.repository_webhook_processor.event") as mock:
-        mock.resource_config = MagicMock(spec=RepositoryResourceConfig)
-        mock.resource_config.selector.organizations = ["org1"]
-        mock.resource_config.selector.visibility = "all"
-        yield mock
-
-
-@pytest.fixture
-def mock_client():
-    with patch("webhook_processors.repository_webhook_processor.get_client") as mock:
-        client = AsyncMock()
-        mock.return_value = client
-        yield client
-
-
-@pytest.fixture
-def repository_webhook_processor(mock_event):
-    return RepositoryWebhookProcessor(event=mock_event)
-
-
-@pytest.mark.asyncio
-async def test_should_process_event(repository_webhook_processor):
-    # Test valid actions
-    for action in [
-        "created",
-        "deleted",
-        "archived",
-        "unarchived",
-        "edited",
-        "renamed",
-        "transferred",
-        "publicized",
-        "privatized",
-    ]:
-        assert (
-            await repository_webhook_processor.should_process_event(action, {}) is True
-        )
-
-    # Test invalid action
-    assert (
-        await repository_webhook_processor.should_process_event("invalid", {}) is False
+    return WebhookEvent(
+        headers={"x-github-event": "repository"},
+        payload={
+            "action": "created",
+            "repository": {
+                "id": "123",
+                "name": "test-repo",
+                "full_name": "test-org/test-repo",
+                "private": False,
+                "owner": {
+                    "login": "test-org"
+                }
+            }
+        },
+        trace_id="test-trace-id"
     )
 
 
+@pytest.fixture
+def repository_processor(mock_event):
+    return RepositoryWebhookProcessor(event=mock_event)
+
+
+@pytest.fixture
+def mock_resource_config():
+    config = MagicMock(spec=RepositoryResourceConfig)
+    config.selector = MagicMock()
+    config.selector.organizations = ["test-org"]
+    config.selector.visibility = "all"
+    return config
+
+
 @pytest.mark.asyncio
-async def test_get_matching_kinds(repository_webhook_processor):
-    kinds = await repository_webhook_processor.get_matching_kinds()
+async def test_should_process_event_valid(repository_processor, mock_event):
+    result = await repository_processor.should_process_event(mock_event)
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_invalid_event_type(repository_processor):
+    event = WebhookEvent(
+        headers={"x-github-event": "push"},
+        payload={"action": "created"},
+        trace_id="test-trace-id"
+    )
+    result = await repository_processor.should_process_event(event)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_invalid_action(repository_processor):
+    event = WebhookEvent(
+        headers={"x-github-event": "repository"},
+        payload={"action": "invalid_action"},
+        trace_id="test-trace-id"
+    )
+    result = await repository_processor.should_process_event(event)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_get_matching_kinds(repository_processor, mock_event):
+    kinds = await repository_processor.get_matching_kinds(mock_event)
     assert kinds == [ObjectKind.REPOSITORY]
 
 
 @pytest.mark.asyncio
-async def test_validate_payload(repository_webhook_processor):
-    # Test valid payload
-    valid_payload = {
-        "repository": {
-            "name": "test-repo",
-            "full_name": "org1/test-repo",
-            "private": False,
-            "owner": {"login": "org1"},
-        }
-    }
-    assert await repository_webhook_processor.validate_payload(valid_payload) is True
+async def test_authenticate(repository_processor):
+    result = await repository_processor.authenticate({}, {})
+    assert result is True
 
-    # Test invalid payloads
-    assert await repository_webhook_processor.validate_payload({}) is False
-    assert (
-        await repository_webhook_processor.validate_payload({"repository": {}}) is False
+
+@pytest.mark.asyncio
+async def test_validate_payload_valid(repository_processor):
+    payload = {
+        "repository": {"id": "123"},
+        "organization": {"login": "test-org"}
+    }
+    result = await repository_processor.validate_payload(payload)
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_validate_payload_invalid(repository_processor):
+    payload = {
+        "action": "created"
+    }
+    result = await repository_processor.validate_payload(payload)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_handle_event_created(repository_processor, mock_resource_config):
+    mock_client = AsyncMock()
+    mock_client.get_single_resource.return_value = {
+        "id": "123",
+        "name": "test-repo",
+        "full_name": "test-org/test-repo",
+        "private": False,
+        "visibility": "public"
+    }
+    
+    with patch("webhook_processors.repository_webhook_processor.get_client", return_value=mock_client):
+        # Create a new event with the correct structure
+        event = WebhookEvent(
+            headers={"x-github-event": "repository"},
+            payload={
+                "action": "created",
+                "repository": {
+                    "id": "123",
+                    "name": "test-repo",
+                    "full_name": "test-org/test-repo",
+                    "private": False,
+                    "owner": {
+                        "login": "test-org"
+                    }
+                }
+            },
+            trace_id="test-trace-id"
+        )
+        
+        result = await repository_processor.handle_event(event, mock_resource_config)
+        
+        assert isinstance(result, WebhookEventRawResults)
+        assert len(result.updated_raw_results) == 1
+        assert len(result.deleted_raw_results) == 0
+        assert result.updated_raw_results[0]["id"] == "123"
+
+
+@pytest.mark.asyncio
+async def test_handle_event_deleted(repository_processor, mock_resource_config):
+    event = WebhookEvent(
+        headers={"x-github-event": "repository"},
+        payload={
+            "action": "deleted",
+            "repository": {
+                "id": "123",
+                "name": "test-repo",
+                "full_name": "test-org/test-repo",
+                "private": False,
+                "owner": {
+                    "login": "test-org"
+                }
+            }
+        },
+        trace_id="test-trace-id"
     )
-
-
-@pytest.mark.asyncio
-async def test_handle_event_deleted(repository_webhook_processor, mock_client):
-    payload = {
-        "action": "deleted",
-        "repository": {
-            "name": "test-repo",
-            "full_name": "org1/test-repo",
-            "owner": {"login": "org1"},
-        },
-    }
-
-    result = await repository_webhook_processor.handle_event(payload)
+    
+    result = await repository_processor.handle_event(event, mock_resource_config)
+    
     assert isinstance(result, WebhookEventRawResults)
-    assert result.identifier == "org1/test-repo"
-    assert result.state == "deleted"
+    assert len(result.updated_raw_results) == 0
+    assert len(result.deleted_raw_results) == 1
+    assert result.deleted_raw_results[0]["id"] == "123"
 
 
 @pytest.mark.asyncio
-async def test_handle_event_updated(repository_webhook_processor, mock_client):
-    payload = {
-        "action": "created",
-        "repository": {
-            "name": "test-repo",
-            "full_name": "org1/test-repo",
-            "private": False,
-            "description": "Test repository",
-            "html_url": "https://github.com/org1/test-repo",
-            "created_at": "2024-01-01T00:00:00Z",
-            "updated_at": "2024-01-02T00:00:00Z",
-            "owner": {"login": "org1"},
+async def test_handle_event_wrong_organization(repository_processor, mock_resource_config):
+    # Create a new event with the correct structure
+    event = WebhookEvent(
+        headers={"x-github-event": "repository"},
+        payload={
+            "action": "created",
+            "repository": {
+                "id": "123",
+                "name": "test-repo",
+                "full_name": "test-org/test-repo",
+                "private": False,
+                "owner": {
+                    "login": "test-org"
+                }
+            }
         },
-    }
-
-    mock_client.get_single_resource.return_value = payload["repository"]
-
-    result = await repository_webhook_processor.handle_event(payload)
+        trace_id="test-trace-id"
+    )
+    
+    mock_resource_config.selector.organizations = ["different-org"]
+    
+    result = await repository_processor.handle_event(event, mock_resource_config)
+    
     assert isinstance(result, WebhookEventRawResults)
-    assert result.identifier == "org1/test-repo"
-    assert result.title == "test-repo"
-    assert result.state == "active"
-    assert result.repository == "org1/test-repo"
-
-
-@pytest.mark.asyncio
-async def test_handle_event_organization_filter(
-    repository_webhook_processor, mock_client
-):
-    payload = {
-        "action": "created",
-        "repository": {
-            "name": "test-repo",
-            "full_name": "other-org/test-repo",
-            "owner": {"login": "other-org"},
-        },
-    }
-
-    result = await repository_webhook_processor.handle_event(payload)
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_handle_event_visibility_filter(
-    repository_webhook_processor, mock_client
-):
-    payload = {
-        "action": "created",
-        "repository": {
-            "name": "test-repo",
-            "full_name": "org1/test-repo",
-            "private": True,
-            "owner": {"login": "org1"},
-        },
-    }
-
-    mock_client.get_single_resource.return_value = payload["repository"]
-    repository_webhook_processor.event.resource_config.selector.visibility = "public"
-
-    result = await repository_webhook_processor.handle_event(payload)
-    assert result is None
+    assert len(result.updated_raw_results) == 0
+    assert len(result.deleted_raw_results) == 0

@@ -53,7 +53,7 @@ class RepositoryWebhookProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         """Handle the repository webhook event."""
         client = get_client()
-        repository = event["repository"]
+        repository = event.payload["repository"]
         config = cast(RepositoryResourceConfig, resource_config)
 
         # Check if the repository's organization is in the configured organizations
@@ -66,7 +66,7 @@ class RepositoryWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        if event["action"] == "deleted":
+        if event.payload["action"] == "deleted":
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[repository],

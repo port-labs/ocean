@@ -51,8 +51,8 @@ class PullRequestWebhookProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         """Handle the pull request webhook event."""
         client = get_client()
-        pull_request = event["pull_request"]
-        repository = event["repository"]
+        pull_request = event.payload["pull_request"]
+        repository = event.payload["repository"]
         config = cast(PullRequestResourceConfig, resource_config)
 
         # Check if the repository's organization is in the configured organizations
@@ -65,7 +65,7 @@ class PullRequestWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        if event["action"] == "closed" and not pull_request.get("merged"):
+        if event.payload["action"] == "closed" and not pull_request.get("merged"):
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[pull_request],
