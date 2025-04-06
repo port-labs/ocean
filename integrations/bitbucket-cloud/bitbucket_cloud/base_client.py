@@ -6,6 +6,7 @@ import base64
 from typing import Any, Optional
 from loguru import logger
 
+
 class BitbucketBaseClient:
     def __init__(
         self,
@@ -40,7 +41,6 @@ class BitbucketBaseClient:
             )
         self.client.headers.update(self.headers)
 
-
     @classmethod
     def create_from_ocean_config(cls) -> "BitbucketBaseClient":
         """Create a BitbucketClient from the Ocean config."""
@@ -67,7 +67,6 @@ class BitbucketBaseClient:
             raise MissingIntegrationCredentialException(
                 "Either workspace token or both username and app password must be provided"
             )
-        
 
     async def send_api_request(
         self,

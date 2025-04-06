@@ -1,30 +1,31 @@
 import pytest
 from unittest.mock import AsyncMock, patch
-from typing import Any, AsyncGenerator
 from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
+from bitbucket_cloud.base_client import BitbucketBaseClient
 
 
 @pytest.fixture
 def webhook_client_with_secret() -> BitbucketWebhookClient:
     """Create a BitbucketWebhookClient with a secret."""
-    return BitbucketWebhookClient(
-        host="https://api.bitbucket.org/2.0",
-        secret="test-secret",
+    base_client = BitbucketBaseClient(
         workspace="test-workspace",
+        host="https://api.bitbucket.org/2.0",
         username="test-user",
         app_password="test-password",
     )
+    return BitbucketWebhookClient(base_client=base_client, secret="test-secret")
 
 
 @pytest.fixture
 def webhook_client_no_secret() -> BitbucketWebhookClient:
     """Create a BitbucketWebhookClient without a secret."""
-    return BitbucketWebhookClient(
-        host="https://api.bitbucket.org/2.0",
+    base_client = BitbucketBaseClient(
         workspace="test-workspace",
+        host="https://api.bitbucket.org/2.0",
         username="test-user",
         app_password="test-password",
     )
+    return BitbucketWebhookClient(base_client=base_client)
 
 
 class TestBitbucketWebhookClient:
@@ -49,46 +50,40 @@ class TestBitbucketWebhookClient:
         assert webhook_client_with_secret._workspace_webhook_url == expected
 
     @pytest.mark.asyncio
-    async def test_webhook_exist_not_found(
+    async def test_webhook_exist(
         self, webhook_client_with_secret: BitbucketWebhookClient
     ) -> None:
-        """Test that _webhook_exist returns False when no matching webhook is found."""
-
-        async def fake_paginated_response(
-            api_url: str,
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield []  # Simulate an empty batch
-
+        """Test that _webhook_exist returns True when a webhook exists."""
+        # Mock the _send_paginated_api_request method to return a webhook with the specified URL.
+        async def mock_send_paginated_api_request(*args, **kwargs):
+            yield [{"url": "https://example.com/integration/webhook", "description": "Port Bitbucket Integration"}]
+            
         with patch.object(
             webhook_client_with_secret,
             "_send_paginated_api_request",
-            new=fake_paginated_response,
+            new=mock_send_paginated_api_request,
         ):
-            result = await webhook_client_with_secret._webhook_exist(
-                "https://example.com/webhook"
+            assert await webhook_client_with_secret._webhook_exist(
+                "https://example.com/integration/webhook"
             )
-            assert result is False
 
     @pytest.mark.asyncio
-    async def test_webhook_exist_found(
+    async def test_webhook_not_exist(
         self, webhook_client_with_secret: BitbucketWebhookClient
     ) -> None:
-        """Test that _webhook_exist returns True when a matching webhook is found."""
-
-        async def fake_paginated_response(
-            api_url: str,
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield [{"url": "https://example.com/webhook", "id": "hook-123"}]
-
+        """Test that _webhook_exist returns False when a webhook doesn't exist."""
+        # Mock the _send_paginated_api_request method to return an empty list.
+        async def mock_send_paginated_api_request(*args, **kwargs):
+            yield []
+            
         with patch.object(
             webhook_client_with_secret,
             "_send_paginated_api_request",
-            new=fake_paginated_response,
+            new=mock_send_paginated_api_request,
         ):
-            result = await webhook_client_with_secret._webhook_exist(
-                "https://example.com/webhook"
+            assert not await webhook_client_with_secret._webhook_exist(
+                "https://example.com/integration/webhook"
             )
-            assert result is True
 
     @pytest.mark.asyncio
     async def test_create_webhook_when_not_exist(
@@ -101,10 +96,10 @@ class TestBitbucketWebhookClient:
             "_webhook_exist",
             new=AsyncMock(return_value=False),
         ):
-            # Patch _send_api_request to simulate a successful webhook creation.
+            # Patch base_client.send_api_request to simulate a successful webhook creation.
             with patch.object(
-                webhook_client_with_secret,
-                "_send_api_request",
+                webhook_client_with_secret.base_client,
+                "send_api_request",
                 new=AsyncMock(return_value={"id": "hook-123"}),
             ) as mock_send:
                 await webhook_client_with_secret.create_webhook("https://example.com")
@@ -121,9 +116,11 @@ class TestBitbucketWebhookClient:
             "_webhook_exist",
             new=AsyncMock(return_value=True),
         ):
-            # Patch _send_api_request and verify it is not called.
+            # Patch send_api_request and verify it is not called.
             with patch.object(
-                webhook_client_with_secret, "_send_api_request", new=AsyncMock()
+                webhook_client_with_secret.base_client,
+                "send_api_request",
+                new=AsyncMock(),
             ) as mock_send:
                 await webhook_client_with_secret.create_webhook("https://example.com")
                 mock_send.assert_not_called()

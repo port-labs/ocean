@@ -7,7 +7,7 @@ from integration import FolderPattern
 
 
 if TYPE_CHECKING:
-    from bitbucket_cloud.client import BitbucketClientManager
+    from bitbucket_cloud.helpers.multiple_token import BitbucketClientManager
 
 
 def extract_repo_names_from_patterns(

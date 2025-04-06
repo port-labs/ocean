@@ -80,7 +80,7 @@ class BitbucketWebhookClient(BitbucketClient):
         }
 
         try:
-            await self._send_api_request(
+            await self.base_client.send_api_request(
                 self._workspace_webhook_url,
                 method="POST",
                 json_data=webhook_config,

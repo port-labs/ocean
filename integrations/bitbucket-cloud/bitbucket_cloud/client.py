@@ -1,14 +1,9 @@
-from typing import Any, AsyncGenerator, Optional, List, Dict
-import asyncio
-from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
+from typing import Any, AsyncGenerator, Optional
 from loguru import logger
-from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
-from port_ocean.context.ocean import ocean
 from bitbucket_cloud.base_client import BitbucketBaseClient
 from bitbucket_cloud.base_rotating_client import BaseRotatingClient
-import time
 from httpx import HTTPStatusError
 
 PULL_REQUEST_STATE = "OPEN"
@@ -19,7 +14,9 @@ PAGE_SIZE = 100
 class BitbucketClient(BaseRotatingClient):
     """Client for interacting with Bitbucket Cloud API v2.0."""
 
-    def __init__(self, base_client: BitbucketBaseClient, client_id: Optional[str] = None):
+    def __init__(
+        self, base_client: BitbucketBaseClient, client_id: Optional[str] = None
+    ):
         super().__init__(base_client)
         self.base_url = self.base_client.base_url
         self.workspace = self.base_client.workspace
@@ -45,23 +42,64 @@ class BitbucketClient(BaseRotatingClient):
             }
         while True:
             try:
+                response = await self.base_client.send_api_request(
+                    method=method,
+                    url=url,
+                    params=params,
+                )
+                if values := response.get(data_key, []):
+                    yield values
+                url = response.get("next")
+                if not url:
+                    break
+            except (HTTPStatusError, Exception) as e:
+                logger.error(f"Error fetching data from {url}: {str(e)}")
+                raise
+
+    async def _send_rate_limited_paginated_api_request(
+        self,
+        url: str,
+        method: str = "GET",
+        params: Optional[dict[str, Any]] = None,
+        data_key: str = "values",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Handle paginated requests to Bitbucket API with strict rate limiting.
+        This method ensures that a rate limiter is available before making requests.
+        """
+        if params is None:
+            params = {
+                "pagelen": PAGE_SIZE,
+            }
+        while True:
+            try:
                 await self._ensure_client_available()
-                limiter_id = id(self.current_limiter) if self.current_limiter else None
-                logger.debug(f"Using client {self.client_id} with limiter {limiter_id} for API call to {url}")
-                if self.current_limiter:
-                    async with self.current_limiter:
-                        response = await self.base_client.send_api_request(
-                            method=method,
-                            url=url,
-                            params=params,
+                if self.current_limiter is None:
+                    logger.warning(
+                        f"No rate limiter available for client {self.client_id}, attempting to rotate to another client"
+                    )
+                    await self._rotate_base_client()
+                    (
+                        logger.error(
+                            f"Failed to get a valid rate limiter after rotation for client {self.client_id}"
                         )
-                else:
+                        if self.current_limiter is None
+                        else None
+                    )
+                    raise
+
+                limiter_id = id(self.current_limiter)
+                logger.debug(
+                    f"Using client {self.client_id} with limiter {limiter_id} for rate-limited API call to {url}"
+                )
+
+                # Always use the rate limiter for this method
+                async with self.current_limiter:
                     response = await self.base_client.send_api_request(
                         method=method,
                         url=url,
                         params=params,
                     )
-                
                 if values := response.get(data_key, []):
                     yield values
                 url = response.get("next")
@@ -71,7 +109,9 @@ class BitbucketClient(BaseRotatingClient):
             except HTTPStatusError as e:
                 if hasattr(e, "response") and e.response.status_code != 429:
                     raise
-                logger.warning(f"Rate limit exceeded for client {self.client_id}, rotating to next client")
+                logger.warning(
+                    f"Rate limit exceeded for client {self.client_id}, rotating to next client"
+                )
                 await self._rotate_base_client()
                 continue
             except Exception as e:
@@ -93,7 +133,7 @@ class BitbucketClient(BaseRotatingClient):
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the workspace."""
-        async for repos in self._send_paginated_api_request(
+        async for repos in self._send_rate_limited_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}", params=params
         ):
             logger.info(
@@ -109,7 +149,7 @@ class BitbucketClient(BaseRotatingClient):
             "max_depth": max_depth,
             "pagelen": PAGE_SIZE,
         }
-        async for contents in self._send_paginated_api_request(
+        async for contents in self._send_rate_limited_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
             params=params,
         ):
@@ -129,7 +169,7 @@ class BitbucketClient(BaseRotatingClient):
         logger.info(
             f"Fetching pull requests for repository {repo_slug} in workspace {self.workspace}"
         )
-        async for pull_requests in self._send_paginated_api_request(
+        async for pull_requests in self._send_rate_limited_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
             params=params,
         ):
@@ -141,7 +181,7 @@ class BitbucketClient(BaseRotatingClient):
             f"Finished fetching pull requests for repository {repo_slug} in workspace {self.workspace}"
         )
 
-    async def get_pull_requests(self):
+    async def get_pull_requests(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for repositories in self.get_repositories():
             tasks = [
                 self._get_pull_requests(repo.get("slug", repo["name"].lower()))

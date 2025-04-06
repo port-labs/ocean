@@ -44,7 +44,7 @@ class BitbucketClientManager:
         parsed_credentials = self._parse_credentials()
         for client_id, cred in parsed_credentials.items():
             self.add_client(client_id, cred)
-            
+
         # After all clients are created, add alternative base clients to each client
         self._add_alternative_base_clients()
 
@@ -54,16 +54,19 @@ class BitbucketClientManager:
         This allows each client to rotate between different authentication methods.
         """
         # Create a list of all base clients and their limiters
-        base_clients_with_limiters = []
-        for client_id, (client, limiter) in self.clients.items():
-            base_clients_with_limiters.append((client.base_client, limiter))
-            
+        base_clients_with_limiters: list[
+            tuple[BitbucketBaseClient, RollingWindowLimiter]
+        ] = []
+        base_clients_with_limiters.extend(
+            (client.base_client, limiter)
+            for client_id, (client, limiter) in self.clients.items()
+        )
         # Add alternative base clients to each client
         for client_id, (client, _) in self.clients.items():
             for base_client, limiter in base_clients_with_limiters:
                 if base_client != client.base_client:
                     client.add_alternative_base_client(base_client, limiter)
-                    
+
         logger.info("Added alternative base clients to all BitbucketClient instances")
 
     def _parse_credentials(
@@ -134,11 +137,14 @@ class BitbucketClientManager:
             app_password=cred.get("app_password"),
             workspace_token=cred.get("workspace_token"),
         )
-        
+
+        # Create a new rate limiter for this client
+        limiter = RollingWindowLimiter(limit=self.limit_per_client, window=self.window)
         # Then create a BitbucketClient with the base client and client_id
         client = BitbucketClient(base_client=base_client, client_id=client_id)
-        
-        limiter = RollingWindowLimiter(limit=self.limit_per_client, window=self.window)
+        client.current_limiter = limiter
+
+        # Store the client and limiter in the clients dictionary
         self.clients[client_id] = (client, limiter)
         self.client_queue.put_nowait((0.0, client_id, client, limiter))
 
@@ -162,30 +168,44 @@ class BitbucketClientManager:
                     return client_id, client, limiter
                 # If no capacity, put it back in queue with next available time
                 next_available = limiter.next_available_time()
-                self.client_queue.put_nowait((next_available, client_id, client, limiter))
-                logger.info(f"Client {client_id} has no capacity, next available at {next_available}")
+                self.client_queue.put_nowait(
+                    (next_available, client_id, client, limiter)
+                )
+                logger.info(
+                    f"Client {client_id} has no capacity, next available at {next_available}"
+                )
 
                 # Add the client to the tried set
                 tried_clients.add(client_id)
 
-                    # If we've tried all clients and none have capacity, find the earliest available one
+                # If we've tried all clients and none have capacity, find the earliest available one
                 if len(tried_clients) == len(self.clients):
                     # Find the earliest available time among all clients
-                    earliest_available = float('inf')
+                    earliest_available = float("inf")
                     earliest_client = None
+                    earliest_client_id = None
 
                     for client_id, (client, limiter) in self.clients.items():
                         if limiter.has_capacity():
-                            return client
+                            return client_id, client, limiter
                         next_available = limiter.next_available_time()
                         if next_available < earliest_available:
                             earliest_available = next_available
                             earliest_client = client
+                            earliest_client_id = client_id
 
                     if earliest_client:
-                        logger.info(f"All clients have no capacity, queueing on first available client at {earliest_available}")
+                        logger.info(
+                            f"All clients have no capacity, queueing on first available client at {earliest_available}"
+                        )
                         await asyncio.sleep(earliest_available - now)
-                        return earliest_client
+                        # We know earliest_client_id is not None at this point
+                        assert earliest_client_id is not None
+                        return (
+                            earliest_client_id,
+                            earliest_client,
+                            self.clients[earliest_client_id][1],
+                        )
             else:
                 self.client_queue.put_nowait((availability, client_id, client, limiter))
 
@@ -206,7 +226,7 @@ class BitbucketClientManager:
                 logger.info(f"Using client {client_id} with limiter {limiter}")
                 client.current_limiter = limiter
                 client_method = getattr(client, method_name)
-                
+
                 # The rate limiter will handle the timing of requests
                 async for item in client_method(*args, **kwargs):
                     logger.info(f"Yielding item from client {client_id}")
@@ -216,8 +236,14 @@ class BitbucketClientManager:
                 logger.warning("Operation cancelled, cleaning up")
                 raise
             except HTTPError as e:
-                if hasattr(e, 'response') and e.response and e.response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
-                    logger.warning(f"Rate limit hit for client {client_id}, rotating to next client")
+                if (
+                    hasattr(e, "response")
+                    and e.response
+                    and e.response.status_code == HTTPStatus.TOO_MANY_REQUESTS
+                ):
+                    logger.warning(
+                        f"Rate limit hit for client {client_id}, rotating to next client"
+                    )
                     continue  # Try next client
                 logger.error(f"Error while making request with {client_id}: {str(e)}")
                 raise  # Re-raise non-rate-limit errors
