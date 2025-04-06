@@ -10,9 +10,9 @@ from .github_endpoints import GithubEndpoints
 
 class GitHubClient:
     def __init__(self, base_url: str, token: str):
-        self.token = token
+        self._token = token
         self._client = http_async_client
-        self._headers = self.get_headers(token)
+        self._headers = self._get_headers()
         self.base_url = base_url
         self.NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
         self.pagination_page_size_limit = 100
@@ -20,26 +20,26 @@ class GitHubClient:
         self.copilot_disabled_status_code = 422
         self.forbidden_status_code = 403
 
-    async def get_organizations(self) -> AsyncGenerator[dict[str, Any], None]:
-        async for organization in self.get_paginated_data(
-            GithubEndpoints.LIST_ACCESSIBLE_ORGS
+    async def get_organizations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for organizations in self._get_paginated_data(
+            GithubEndpoints.LIST_ACCESSIBLE_ORGS.value
         ):
-            yield organization
+            yield organizations
 
     async def get_teams_of_organization(
         self, organization: dict[str, Any]
-    ) -> AsyncGenerator[dict[str, Any], None]:
-        async for team in self.get_paginated_data(
-            GithubEndpoints.LIST_TEAMS,
-            {"org": organization["login"]},
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        url = self._resolve_route_params(GithubEndpoints.LIST_TEAMS.value, {"org": organization["login"]})
+        async for teams in self._get_paginated_data(
+            url,
             ignore_status_code=[self.forbidden_status_code],
         ):
-            yield team
+            yield teams
 
     async def get_metrics_for_organization(
         self, organization: dict[str, Any]
-    ) -> AsyncGenerator[dict[str, Any], None]:
-        for metrics in await self.send_api_request_with_route_params(
+    ) -> list[dict[str, Any]] | None:
+        return await self.send_api_request_with_route_params(
             "get",
             GithubEndpoints.COPILOT_ORGANIZATION_METRICS,
             {"org": organization["login"]},
@@ -47,13 +47,12 @@ class GitHubClient:
                 self.copilot_disabled_status_code,
                 self.forbidden_status_code,
             ],
-        ):
-            yield metrics
+        )
 
     async def get_metrics_for_team(
         self, organization: dict[str, Any], team: dict[str, Any]
-    ) -> AsyncGenerator[dict[str, Any], None]:
-        for metrics in await self.send_api_request_with_route_params(
+    ) -> list[dict[str, Any]] | None:
+        return await self.send_api_request_with_route_params(
             "get",
             GithubEndpoints.COPILOT_TEAM_METRICS,
             {"org": organization["login"], "team": team["slug"]},
@@ -61,17 +60,13 @@ class GitHubClient:
                 self.copilot_disabled_status_code,
                 self.forbidden_status_code,
             ],
-        ):
-            yield metrics
+        )
 
-    async def get_paginated_data(
+    async def _get_paginated_data(
         self,
-        endpoint: GithubEndpoints,
-        route_params: dict[str, str] = {},
+        url: str,
         ignore_status_code: Optional[list[int]] = None,
-    ) -> AsyncGenerator[dict[str, Any], None]:
-        url = self._resolve_route_params(endpoint.value, route_params)
-
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         while True:
             response = await self._send_api_request(
                 method="get",
@@ -82,8 +77,7 @@ class GitHubClient:
             if not response:
                 break
             json_data = response.json()
-            for item in json_data:
-                yield item
+            yield json_data
 
             link_header = (
                 response.headers.get(self.pagination_header_name, "")
@@ -164,9 +158,9 @@ class GitHubClient:
             logger.error(f"HTTP error for {method} request to {path}: {e}")
             raise
 
-    def get_headers(self, token: str) -> dict[str, str]:
+    def _get_headers(self) -> dict[str, str]:
         return {
-            "Authorization": f"token {token}",
+            "Authorization": f"token {self._token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }

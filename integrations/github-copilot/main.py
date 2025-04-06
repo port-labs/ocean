@@ -15,15 +15,21 @@ class ObjectKind(StrEnum):
 @ocean.on_resync(ObjectKind.COPILOT_TEAM_METRICS)
 async def on_resync_copilot_team_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github_client = create_github_client()
-    async for organization in github_client.get_organizations():
-        async for team in github_client.get_teams_of_organization(organization):
-            async for metrics in github_client.get_metrics_for_team(organization, team):
-                logger.info(
-                    f"Received metrics of day {metrics['date']} for team {team['slug']} of organization {organization['login']}"
-                )
-                metrics["__organization"] = organization
-                metrics["__team"] = team
-                yield [metrics]
+    async for organizationsBatch in github_client.get_organizations():
+        for organization in organizationsBatch:
+            async for teamsBatch in github_client.get_teams_of_organization(organization):
+                for team in teamsBatch:
+                    team_metrics = await github_client.get_metrics_for_team(organization, team)
+                    if not team_metrics:
+                        continue
+
+                    for metrics in team_metrics:
+                        logger.info(
+                            f"Received metrics of day {metrics['date']} for team {team['slug']} of organization {organization['login']}"
+                        )
+                        metrics["__organization"] = organization
+                        metrics["__team"] = team
+                    yield team_metrics
 
 
 @ocean.on_resync(ObjectKind.COPILOT_ORGANIZATION_METRICS)
@@ -31,13 +37,18 @@ async def on_resync_copilot_organization_metrics(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github_client = create_github_client()
-    async for organization in github_client.get_organizations():
-        async for metrics in github_client.get_metrics_for_organization(organization):
-            logger.info(
-                f"Received metrics of day {metrics['date']} for organization {organization['login']}"
-            )
-            metrics["__organization"] = organization
-            yield [metrics]
+    async for organizationsBatch in github_client.get_organizations():
+        for organization in organizationsBatch:
+            organization_metrics = await github_client.get_metrics_for_organization(organization)
+            if not organization_metrics:
+                continue
+
+            for metrics in organization_metrics:
+                logger.info(
+                    f"Received metrics of day {metrics['date']} for organization {organization['login']}"
+                )
+                metrics["__organization"] = organization
+            yield organization_metrics
 
 
 @ocean.on_start()
