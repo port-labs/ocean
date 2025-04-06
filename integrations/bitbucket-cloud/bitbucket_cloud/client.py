@@ -169,7 +169,7 @@ class BitbucketClient:
         repo_slug: str,
         branch: str,
         path: str,
-        max_depth: int = 2,
+        max_depth: int,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get contents of a directory."""

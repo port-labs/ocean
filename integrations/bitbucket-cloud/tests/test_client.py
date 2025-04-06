@@ -241,7 +241,7 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
 
             mock_paginated.return_value = mock_generator()
             async for contents in mock_client.get_directory_contents(
-                "test-repo", "main", ""
+                "test-repo", "main", "", 2
             ):
                 assert contents == mock_dir_data["values"]
             mock_paginated.assert_called_once_with(
