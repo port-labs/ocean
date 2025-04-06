@@ -21,33 +21,75 @@ class GitHubClient:
         self.forbidden_status_code = 403
 
     async def get_organizations(self) -> AsyncGenerator[dict[str, Any], None]:
-        async for organization in self.get_paginated_data(GithubEndpoints.LIST_ACCESSIBLE_ORGS):
+        async for organization in self.get_paginated_data(
+            GithubEndpoints.LIST_ACCESSIBLE_ORGS
+        ):
             yield organization
 
-    async def get_teams_of_organization(self, organization: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None]:
-        async for team in self.get_paginated_data(GithubEndpoints.LIST_TEAMS, {"org": organization["login"]}, ignore_status_code=[self.forbidden_status_code]):
+    async def get_teams_of_organization(
+        self, organization: dict[str, Any]
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        async for team in self.get_paginated_data(
+            GithubEndpoints.LIST_TEAMS,
+            {"org": organization["login"]},
+            ignore_status_code=[self.forbidden_status_code],
+        ):
             yield team
 
-    async def get_metrics_for_organization(self, organization: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None]:
-        for metrics in await self.send_api_request_with_route_params('get', GithubEndpoints.COPILOT_ORGANIZATION_METRICS, {"org": organization["login"]}, ignore_status_code=[self.copilot_disabled_status_code, self.forbidden_status_code]):
+    async def get_metrics_for_organization(
+        self, organization: dict[str, Any]
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        for metrics in await self.send_api_request_with_route_params(
+            "get",
+            GithubEndpoints.COPILOT_ORGANIZATION_METRICS,
+            {"org": organization["login"]},
+            ignore_status_code=[
+                self.copilot_disabled_status_code,
+                self.forbidden_status_code,
+            ],
+        ):
             yield metrics
 
-    async def get_metrics_for_team(self, organization: dict[str, Any], team: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None]:
-        for metrics in await self.send_api_request_with_route_params('get', GithubEndpoints.COPILOT_TEAM_METRICS, {"org": organization["login"], "team": team["slug"]}, ignore_status_code=[self.copilot_disabled_status_code, self.forbidden_status_code]):
+    async def get_metrics_for_team(
+        self, organization: dict[str, Any], team: dict[str, Any]
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        for metrics in await self.send_api_request_with_route_params(
+            "get",
+            GithubEndpoints.COPILOT_TEAM_METRICS,
+            {"org": organization["login"], "team": team["slug"]},
+            ignore_status_code=[
+                self.copilot_disabled_status_code,
+                self.forbidden_status_code,
+            ],
+        ):
             yield metrics
 
-    async def get_paginated_data(self, endpoint: GithubEndpoints, route_params: dict[str, str] = {}, ignore_status_code: Optional[list[int]] = None) -> AsyncGenerator[dict[str, Any], None]:
+    async def get_paginated_data(
+        self,
+        endpoint: GithubEndpoints,
+        route_params: dict[str, str] = {},
+        ignore_status_code: Optional[list[int]] = None,
+    ) -> AsyncGenerator[dict[str, Any], None]:
         url = self._resolve_route_params(endpoint.value, route_params)
 
         while True:
-            response = await self._send_api_request(method='get', path=url, params={"per_page": self.pagination_page_size_limit}, ignore_status_code=ignore_status_code)
+            response = await self._send_api_request(
+                method="get",
+                path=url,
+                params={"per_page": self.pagination_page_size_limit},
+                ignore_status_code=ignore_status_code,
+            )
             if not response:
                 break
             json_data = response.json()
             for item in json_data:
                 yield item
 
-            link_header = response.headers.get(self.pagination_header_name, "") if response else ""
+            link_header = (
+                response.headers.get(self.pagination_header_name, "")
+                if response
+                else ""
+            )
             match = self.NEXT_PATTERN.search(link_header)
             if not match:
                 break
@@ -61,7 +103,9 @@ class GitHubClient:
         data: Optional[dict[str, Any]] = None,
         ignore_status_code: Optional[list[int]] = None,
     ) -> list[dict[str, Any]]:
-        response = await self._send_api_request(method, path, params, data, ignore_status_code)
+        response = await self._send_api_request(
+            method, path, params, data, ignore_status_code
+        )
         return response.json() if response else []
 
     async def send_api_request_with_route_params(
@@ -74,7 +118,9 @@ class GitHubClient:
         ignore_status_code: Optional[list[int]] = None,
     ) -> list[dict[str, Any]]:
         url = self._resolve_route_params(endpoint.value, route_params)
-        return await self.send_api_request(method, url, params, data, ignore_status_code)
+        return await self.send_api_request(
+            method, url, params, data, ignore_status_code
+        )
 
     async def _send_api_request(
         self,
@@ -106,7 +152,9 @@ class GitHubClient:
                 return None
 
             if ignore_status_code and e.response.status_code in ignore_status_code:
-                logger.info(f"Ignoring status code {e.response.status_code} for {method} request to {path}")
+                logger.info(
+                    f"Ignoring status code {e.response.status_code} for {method} request to {path}"
+                )
                 return None
 
             logger.error(f"HTTP status error for {method} request to {path}: {e}")
@@ -118,9 +166,9 @@ class GitHubClient:
 
     def get_headers(self, token: str) -> dict[str, str]:
         return {
-            "Authorization": f'token {token}',
-            "Accept": 'application/vnd.github+json',
-            "X-GitHub-Api-Version": '2022-11-28'
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
         }
 
     @staticmethod
