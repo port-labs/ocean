@@ -1,6 +1,6 @@
 import asyncio
 from functools import partial
-from typing import Any, AsyncIterator, Callable, Optional
+from typing import Any, AsyncIterator, Callable, Optional, Awaitable
 
 import anyio
 from loguru import logger
@@ -130,28 +130,36 @@ class GitLabClient:
     async def _enrich_batch(
         self,
         batch: list[dict[str, Any]],
-        enrich_func: Callable[[dict[str, Any]], AsyncIterator[list[dict[str, Any]]]],
+        enrich_func: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]],
         max_concurrent: int,
     ) -> list[dict[str, Any]]:
         semaphore = asyncio.Semaphore(max_concurrent)
+
         tasks = [
-            semaphore_async_iterator(semaphore, partial(enrich_func, project))
+            self._enrich_project(project, enrich_func, semaphore)
             for project in batch
         ]
-        enriched_projects = []
-        async for enriched_batch in stream_async_iterators_tasks(*tasks):
-            enriched_projects.extend(enriched_batch)
-        return enriched_projects
+        
+        return await asyncio.gather(*tasks)
+    
+    async def _enrich_project(
+        self, 
+        project: dict[str, Any], 
+        enrich_func: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]], 
+        semaphore: asyncio.Semaphore
+    ) -> dict[str, Any]:
+        async with semaphore:
+            return await enrich_func(project)
 
     async def _enrich_project_with_languages(
         self, project: dict[str, Any]
-    ) -> AsyncIterator[list[dict[str, Any]]]:
+    ) -> dict[str, Any]:
         project_path = project.get("path_with_namespace", str(project["id"]))
         logger.debug(f"Enriching {project_path} with languages")
         languages = await self.rest.get_project_languages(project_path)
         logger.info(f"Fetched languages for {project_path}: {languages}")
         project["__languages"] = languages
-        yield [project]
+        return project
 
     async def _process_single_group(
         self,
@@ -171,35 +179,24 @@ class GitLabClient:
                 yield resource_batch
 
     async def _process_file(self, file: dict[str, Any], context: str) -> dict[str, Any]:
-        """Fetch full file content and parse it."""
-        file_path = file["path"]
+        file_path = file.get("path", "")
         project_id = str(file["project_id"])
         ref = file.get("ref", "main")
         full_content = await self.get_file_content(project_id, file_path, ref)
-        if full_content is not None:
-            try:
-                file["content"] = await anyio.to_thread.run_sync(
-                    parse_file_content, full_content, file_path, context
-                )
-            except Exception as e:
-                logger.error(f"Failed to parse {file_path} in {context}: {str(e)}")
-                file["parsed_data"] = None
-        else:
-            file["content"] = None
+        
+        file["content"] = (
+            await anyio.to_thread.run_sync(parse_file_content, full_content, file_path, context)
+            if full_content is not None and file_path.endswith(PARSEABLE_EXTENSIONS)
+            else full_content
+        )
+        
         return file
 
     async def _process_batch(
         self, batch: list[dict[str, Any]], context: str
     ) -> list[dict[str, Any]]:
         """Process a batch of files concurrently and return the full result."""
-        tasks = [
-            (
-                self._process_file(file, context)
-                if file.get("path", "").endswith(PARSEABLE_EXTENSIONS)
-                else asyncio.sleep(0, result=file)
-            )
-            for file in batch
-        ]
+        tasks = [self._process_file(file, context) for file in batch]
         return await asyncio.gather(*tasks)
 
     async def _search_in_repository(
