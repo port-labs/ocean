@@ -2,6 +2,8 @@ title: Komodor
 description: Komodor integration for Port Ocean
 icon: komodor
 type: komodor
+provider:
+  type: community
 features:
   - type: exporter
     section: Kubernetes Stack  # Should be one of the available sections in Port
