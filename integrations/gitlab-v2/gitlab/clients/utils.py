@@ -6,23 +6,45 @@ from loguru import logger
 
 
 def parse_file_content(
-    content: str, file_path: str = "unknown", context: str = "unknown"
+    content: str,
+    file_path: str = "unknown",
+    context: str = "unknown",
 ) -> Union[str, dict[str, Any], list[Any]]:
-    """Parse file content as JSON or YAML, falling back to raw string if parsing fails."""
+    """
+    Attempt to parse a string as JSON or YAML. If both parse attempts fail or the content
+    is empty, the function returns the original string.
+
+    :param content:    The raw file content to parse.
+    :param file_path:  Optional file path for logging purposes (default: 'unknown').
+    :param context:    Optional contextual info for logging purposes (default: 'unknown').
+    :return:           A dictionary or list (if parsing was successful),
+                       or the original string if parsing fails.
+    """
+    # Quick check for empty or whitespace-only strings
+    if not content.strip():
+        logger.debug(f"File '{file_path}' in '{context}' is empty; returning raw content.")
+        return content
+
+    # 1) Try JSON
     try:
         return json.loads(content)
     except json.JSONDecodeError:
-        try:
-            logger.debug(f"Trying to parse file {file_path} in {context} as YAML")
-            documents = list(yaml.load_all(content, Loader=yaml.SafeLoader))
-            if not documents:
-                logger.debug(
-                    f"Failed to parse {file_path} as YAML, returning raw content"
-                )
-                return content
-            return documents if len(documents) > 1 else documents[0]
-        except yaml.YAMLError:
+        pass  # Proceed to try YAML
+
+    # 2) Try YAML
+    logger.debug(f"Attempting to parse file '{file_path}' in '{context}' as YAML.")
+    try:
+        documents = list(yaml.load_all(content, Loader=yaml.SafeLoader))
+        if not documents:
             logger.debug(
-                f"Failed to parse {file_path} as JSON/YAML, returning raw content"
+                f"No valid YAML documents found in file '{file_path}' (context='{context}')."
+                " Returning raw content."
             )
             return content
+        return documents[0] if len(documents) == 1 else documents
+    except yaml.YAMLError:
+        logger.debug(
+            f"Failed to parse file '{file_path}' in '{context}' as JSON or YAML. "
+            "Returning raw content."
+        )
+        return content
