@@ -136,17 +136,16 @@ class GitLabClient:
         semaphore = asyncio.Semaphore(max_concurrent)
 
         tasks = [
-            self._enrich_project(project, enrich_func, semaphore)
-            for project in batch
+            self._enrich_project(project, enrich_func, semaphore) for project in batch
         ]
-        
+
         return await asyncio.gather(*tasks)
-    
+
     async def _enrich_project(
-        self, 
-        project: dict[str, Any], 
-        enrich_func: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]], 
-        semaphore: asyncio.Semaphore
+        self,
+        project: dict[str, Any],
+        enrich_func: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]],
+        semaphore: asyncio.Semaphore,
     ) -> dict[str, Any]:
         async with semaphore:
             return await enrich_func(project)
@@ -183,13 +182,15 @@ class GitLabClient:
         project_id = str(file["project_id"])
         ref = file.get("ref", "main")
         full_content = await self.get_file_content(project_id, file_path, ref)
-        
+
         file["content"] = (
-            await anyio.to_thread.run_sync(parse_file_content, full_content, file_path, context)
+            await anyio.to_thread.run_sync(
+                parse_file_content, full_content, file_path, context
+            )
             if full_content is not None and file_path.endswith(PARSEABLE_EXTENSIONS)
             else full_content
         )
-        
+
         return file
 
     async def _process_batch(
