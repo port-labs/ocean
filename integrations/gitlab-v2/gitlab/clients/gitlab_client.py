@@ -9,6 +9,7 @@ from port_ocean.utils.async_iterators import (
 )
 
 from gitlab.clients.rest_client import RestClient
+from gitlab.helpers.cache import depends_on, smart_cache_iterator_result
 
 
 class GitLabClient:
@@ -100,6 +101,7 @@ class GitLabClient:
         Args:
             top_level_only: If True, only fetch root groups
         """
+        logger.warning("get_groups has been called")
         params = {**self.DEFAULT_PARAMS, "top_level_only": top_level_only}
         async for batch in self.rest.get_paginated_resource("groups", params=params):
             yield batch
@@ -139,3 +141,30 @@ class GitLabClient:
                     f"Fetched {len(resource_batch)} {resource_type} for group {group_id}"
                 )
                 yield resource_batch
+
+    async def get_group_members(
+        self, group_id: int
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        async for batch in self.rest.get_paginated_group_resource(group_id, "members"):
+            if batch:
+                logger.info(
+                    f"Received batch of {len(batch)} members for group {group_id}"
+                )
+                yield batch
+
+    async def enrich_group_with_members(
+        self, group: dict[str, Any]
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        logger.info(f"Enriching group {group['id']} with members")
+        members = [
+            {
+                "username": member["username"],
+                "name": member["name"],
+                "id": member["id"],
+            }
+            async for members_batch in self.get_group_members(group["id"])
+            for member in members_batch
+        ]
+
+        group["__members"] = members
+        yield [group]

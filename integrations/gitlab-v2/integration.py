@@ -23,10 +23,23 @@ class ProjectResourceConfig(ResourceConfig):
     selector: ProjectSelector
 
 
-class GitlabPortAppConfig(PortAppConfig):
-    resources: list[ProjectResourceConfig | ResourceConfig] = Field(
-        default_factory=list
+class GitlabMemberSelector(Selector):
+    include_bot_members: bool = Field(
+        alias="includeBotMembers",
+        default=False,
+        description="If set to false, bots will be filtered out from the members list. Default value is true",
     )
+
+
+class GitlabObjectWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["project-with-members", "group-with-members"]
+    selector: GitlabMemberSelector
+
+
+class GitlabPortAppConfig(PortAppConfig):
+    resources: list[
+        ProjectResourceConfig | GitlabObjectWithMembersResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class GitlabIntegration(BaseIntegration):
