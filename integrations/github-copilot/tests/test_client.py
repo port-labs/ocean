@@ -27,12 +27,12 @@ def mock_ocean_context() -> None:
 
 
 @pytest.fixture
-def github_client():
+def github_client() -> GitHubClient:
     return GitHubClient(base_url=BASE_URL, token=TOKEN)
 
 
 @pytest.mark.asyncio
-async def test_get_organizations_single_page(github_client):
+async def test_get_organizations_single_page(github_client: GitHubClient) -> None:
     expected_response = organizations_response
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -50,7 +50,9 @@ async def test_get_organizations_single_page(github_client):
 
 
 @pytest.mark.asyncio
-async def test_get_teams_of_organization_403_ignored(github_client):
+async def test_get_teams_of_organization_403_ignored(
+    github_client: GitHubClient,
+) -> None:
     error_response = httpx.Response(
         status_code=403, request=httpx.Request("GET", "https://fake")
     )
@@ -71,7 +73,7 @@ async def test_get_teams_of_organization_403_ignored(github_client):
 
 
 @pytest.mark.asyncio
-async def test_get_metrics_for_organization(github_client):
+async def test_get_metrics_for_organization(github_client: GitHubClient) -> None:
     expected_response = copilot_metrics_response
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -87,7 +89,7 @@ async def test_get_metrics_for_organization(github_client):
 
 
 @pytest.mark.asyncio
-async def test_get_metrics_for_team_422_ignored(github_client):
+async def test_get_metrics_for_team_422_ignored(github_client: GitHubClient) -> None:
     error_response = httpx.Response(
         status_code=422, request=httpx.Request("get", "https://fake")
     )
@@ -107,7 +109,7 @@ async def test_get_metrics_for_team_422_ignored(github_client):
 
 
 @pytest.mark.asyncio
-async def test_paginated_response(github_client):
+async def test_paginated_response(github_client: GitHubClient) -> None:
     first_response = MagicMock()
     first_response.status_code = 200
     first_response.json.return_value = [{"item": 1}]
@@ -129,7 +131,7 @@ async def test_paginated_response(github_client):
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_404_returns_empty(github_client):
+async def test_send_api_request_404_returns_empty(github_client: GitHubClient) -> None:
     error_response = httpx.Response(
         status_code=404, request=httpx.Request("get", "https://fake")
     )
@@ -144,7 +146,7 @@ async def test_send_api_request_404_returns_empty(github_client):
         assert result == []
 
 
-def test_resolve_route_params():
+def test_resolve_route_params() -> None:
     endpoint = "/orgs/{org}/teams/{team}/metrics"
     params = {"org": "acme", "team": "devs"}
     result = GitHubClient._resolve_route_params(endpoint, params)
