@@ -17,9 +17,13 @@ async def on_resync_copilot_team_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TY
     github_client = create_github_client()
     async for organizations_batch in github_client.get_organizations():
         for organization in organizations_batch:
-            async for teams_batch in github_client.get_teams_of_organization(organization):
+            async for teams_batch in github_client.get_teams_of_organization(
+                organization
+            ):
                 for team in teams_batch:
-                    team_metrics = await github_client.get_metrics_for_team(organization, team)
+                    team_metrics = await github_client.get_metrics_for_team(
+                        organization, team
+                    )
                     if not team_metrics:
                         continue
 
@@ -39,7 +43,9 @@ async def on_resync_copilot_organization_metrics(
     github_client = create_github_client()
     async for organizations_batch in github_client.get_organizations():
         for organization in organizations_batch:
-            organization_metrics = await github_client.get_metrics_for_organization(organization)
+            organization_metrics = await github_client.get_metrics_for_organization(
+                organization
+            )
             if not organization_metrics:
                 continue
 

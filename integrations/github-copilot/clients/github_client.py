@@ -29,7 +29,9 @@ class GitHubClient:
     async def get_teams_of_organization(
         self, organization: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        url = self._resolve_route_params(GithubEndpoints.LIST_TEAMS.value, {"org": organization["login"]})
+        url = self._resolve_route_params(
+            GithubEndpoints.LIST_TEAMS.value, {"org": organization["login"]}
+        )
         async for teams in self._get_paginated_data(
             url,
             ignore_status_code=[self.forbidden_status_code],
@@ -39,10 +41,13 @@ class GitHubClient:
     async def get_metrics_for_organization(
         self, organization: dict[str, Any]
     ) -> list[dict[str, Any]] | None:
-        return await self.send_api_request_with_route_params(
-            "get",
-            GithubEndpoints.COPILOT_ORGANIZATION_METRICS,
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_ORGANIZATION_METRICS.value,
             {"org": organization["login"]},
+        )
+        return await self.send_api_request(
+            "get",
+            url,
             ignore_status_code=[
                 self.copilot_disabled_status_code,
                 self.forbidden_status_code,
@@ -52,10 +57,13 @@ class GitHubClient:
     async def get_metrics_for_team(
         self, organization: dict[str, Any], team: dict[str, Any]
     ) -> list[dict[str, Any]] | None:
-        return await self.send_api_request_with_route_params(
-            "get",
-            GithubEndpoints.COPILOT_TEAM_METRICS,
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_TEAM_METRICS.value,
             {"org": organization["login"], "team": team["slug"]},
+        )
+        return await self.send_api_request(
+            "get",
+            url,
             ignore_status_code=[
                 self.copilot_disabled_status_code,
                 self.forbidden_status_code,
@@ -101,20 +109,6 @@ class GitHubClient:
             method, path, params, data, ignore_status_code
         )
         return response.json() if response else []
-
-    async def send_api_request_with_route_params(
-        self,
-        method: str,
-        endpoint: GithubEndpoints,
-        route_params: dict[str, str],
-        params: Optional[dict[str, Any]] = None,
-        data: Optional[dict[str, Any]] = None,
-        ignore_status_code: Optional[list[int]] = None,
-    ) -> list[dict[str, Any]]:
-        url = self._resolve_route_params(endpoint.value, route_params)
-        return await self.send_api_request(
-            method, url, params, data, ignore_status_code
-        )
 
     async def _send_api_request(
         self,
