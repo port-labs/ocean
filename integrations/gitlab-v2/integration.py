@@ -32,13 +32,21 @@ class GitlabMemberSelector(Selector):
 
 
 class GitlabObjectWithMembersResourceConfig(ResourceConfig):
-    kind: Literal["project-with-members", "group-with-members"]
+    kind: Literal["group-with-members"]
+    selector: GitlabMemberSelector
+
+
+class GitlabMemberResourceConfig(ResourceConfig):
+    kind: Literal["member"]
     selector: GitlabMemberSelector
 
 
 class GitlabPortAppConfig(PortAppConfig):
     resources: list[
-        ProjectResourceConfig | GitlabObjectWithMembersResourceConfig | ResourceConfig
+        ProjectResourceConfig
+        | GitlabObjectWithMembersResourceConfig
+        | GitlabMemberResourceConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 

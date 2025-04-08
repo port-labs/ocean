@@ -9,7 +9,6 @@ from port_ocean.utils.async_iterators import (
 )
 
 from gitlab.clients.rest_client import RestClient
-from gitlab.helpers.cache import depends_on, smart_cache_iterator_result
 
 
 class GitLabClient:
@@ -42,6 +41,11 @@ class GitLabClient:
     async def get_issue(self, project_id: int, issue_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request(
             "GET", f"projects/{project_id}/issues/{issue_id}"
+        )
+
+    async def get_group_member(self, group_id: int, member_id: int) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"groups/{group_id}/members/{member_id}"
         )
 
     async def get_projects(
@@ -101,7 +105,6 @@ class GitLabClient:
         Args:
             top_level_only: If True, only fetch root groups
         """
-        logger.warning("get_groups has been called")
         params = {**self.DEFAULT_PARAMS, "top_level_only": top_level_only}
         async for batch in self.rest.get_paginated_resource("groups", params=params):
             yield batch
@@ -143,18 +146,25 @@ class GitLabClient:
                 yield resource_batch
 
     async def get_group_members(
-        self, group_id: int
+        self, group_id: str, include_bot_members: bool
     ) -> AsyncIterator[list[dict[str, Any]]]:
         async for batch in self.rest.get_paginated_group_resource(group_id, "members"):
             if batch:
+                filtered_batch = batch
+                if not include_bot_members:
+                    filtered_batch = [
+                        member
+                        for member in batch
+                        if "bot" not in member["username"].lower()
+                    ]
                 logger.info(
-                    f"Received batch of {len(batch)} members for group {group_id}"
+                    f"Received batch of {len(filtered_batch)} members for group {group_id}"
                 )
-                yield batch
+                yield filtered_batch
 
     async def enrich_group_with_members(
-        self, group: dict[str, Any]
-    ) -> AsyncIterator[list[dict[str, Any]]]:
+        self, group: dict[str, Any], include_bot_members: bool
+    ) -> dict[str, Any]:
         logger.info(f"Enriching group {group['id']} with members")
         members = [
             {
@@ -162,9 +172,11 @@ class GitLabClient:
                 "name": member["name"],
                 "id": member["id"],
             }
-            async for members_batch in self.get_group_members(group["id"])
+            async for members_batch in self.get_group_members(
+                group["id"], include_bot_members
+            )
             for member in members_batch
         ]
 
         group["__members"] = members
-        yield [group]
+        return group

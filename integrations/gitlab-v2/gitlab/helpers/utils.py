@@ -6,3 +6,5 @@ class ObjectKind(StrEnum):
     GROUP = "group"
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
+    GROUPWITHMEMBERS = "group-with-members"
+    MEMBER = "member"

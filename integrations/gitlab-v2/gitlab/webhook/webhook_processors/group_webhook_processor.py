@@ -22,7 +22,7 @@ class GroupWebhookProcessor(_GitlabAbstractWebhookProcessor):
     hook = "Subgroup Hook"
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.GROUP]
+        return [ObjectKind.GROUP, ObjectKind.GROUPWITHMEMBERS]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -44,6 +44,12 @@ class GroupWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         # Only fetch group if needed
         group = await self._gitlab_webhook_client.get_group(group_id)
+
+        if resource_config.kind == ObjectKind.GROUPWITHMEMBERS:
+            group = await self._gitlab_webhook_client.enrich_group_with_members(
+                group, include_bot_members=False
+            )
+
         return WebhookEventRawResults(
             updated_raw_results=[group] if group else [],
             deleted_raw_results=[],

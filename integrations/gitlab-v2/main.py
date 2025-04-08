@@ -5,7 +5,11 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import ProjectResourceConfig
+from integration import (
+    ProjectResourceConfig,
+    GitlabObjectWithMembersResourceConfig,
+    GitlabMemberResourceConfig,
+)
 from gitlab.clients.client_factory import create_gitlab_client
 from gitlab.helpers.utils import ObjectKind
 
@@ -29,7 +33,6 @@ from port_ocean.utils.async_iterators import (
 from functools import partial
 
 import asyncio
-from gitlab.helpers.cache import enable_caching_for
 
 RESYNC_BATCH_SIZE = 10
 
@@ -99,6 +102,10 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.GROUPWITHMEMBERS)
 async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
+    selector = cast(
+        GitlabObjectWithMembersResourceConfig, event.resource_config
+    ).selector
+    include_bot_members = bool(selector.include_bot_members)
 
     async for groups_batch in client.get_groups():
         for i in range(0, len(groups_batch), RESYNC_BATCH_SIZE):
@@ -107,28 +114,33 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
                 f"Processing members for {i + len(current_batch)}/{len(groups_batch)} groups"
             )
 
-            tasks = [client.enrich_group_with_members(group) for group in current_batch]
-
-            async for group_batch in stream_async_iterators_tasks(*tasks):
-                if group_batch:
-                    yield group_batch
+            tasks = [
+                client.enrich_group_with_members(group, include_bot_members)
+                for group in current_batch
+            ]
+            results = await asyncio.gather(*tasks)
+            yield results
 
 
 @ocean.on_resync(ObjectKind.MEMBER)
 async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
-
+    selector = cast(GitlabMemberResourceConfig, event.resource_config).selector
+    include_bot_members = bool(selector.include_bot_members)
+    logger.error(f"include_bot_members: {include_bot_members}")
     async for groups_batch in client.get_groups():
         semaphore = asyncio.Semaphore(10)
         tasks = [
             semaphore_async_iterator(
-                semaphore, partial(client.get_group_members, group["id"])
+                semaphore,
+                partial(client.get_group_members, group["id"], include_bot_members),
             )
             for group in groups_batch
         ]
         async for batch in stream_async_iterators_tasks(*tasks):
             if batch:
                 yield batch
+        del tasks
 
 
 ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
