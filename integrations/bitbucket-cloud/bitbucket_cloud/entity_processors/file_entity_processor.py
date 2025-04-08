@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 from initialize_client import init_client
@@ -20,15 +20,17 @@ class FileEntityProcessor(JQEntityProcessor):
                 repo_slug, ref, file_path
             )
         except Exception as e:
-            logger.error(f"Failed to get file content for {file_path}: {e}")
+            logger.error(
+                f"Failed to get file content for {file_path} in repository {repo_slug} in branch {ref}: {e}"
+            )
             return None
 
-    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         """
         Search for a file in the repository and return its content.
 
         Args:
-            data (Dict[str, Any]): The data containing the repository information
+            data (dict[str, Any]): The data containing the repository information
             pattern (str): The pattern to search for (e.g. "file://path/to/file.yaml")
 
             For monorepo, the data should contain a "repo" key and a "folder" key with the repository information.
@@ -48,12 +50,16 @@ class FileEntityProcessor(JQEntityProcessor):
         else:
             file_path = pattern.replace(self.prefix, "")
             if not default_branch:
-                logger.info(f"No default branch found for repository {repo_slug}")
+                logger.info(
+                    f"No default branch found for repository {repo_slug} and file path {file_path}"
+                )
                 return None
             ref = default_branch
 
         if not repo_slug:
-            logger.info("No repository slug found")
+            logger.info(
+                f"No repository slug found for branch {ref} and file path {file_path}"
+            )
             return None
 
         logger.info(
