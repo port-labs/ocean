@@ -141,7 +141,20 @@
       "python": "${workspaceFolder}/.venv/bin/python",
       "request": "launch",
       "type": "debugpy",
-      "args": ["new"]
+      "args": [
+        "new"
+      ]
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/github-copilot",
+      "envFile": "${workspaceFolder}/integrations/github-copilot/.env",
+      "justMyCode": true,
+      "name": "Run github-copilot integration",
+      "program": "${workspaceFolder}/integrations/github-copilot/debug.py",
+      "python": "${workspaceFolder}/integrations/github-copilot/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }

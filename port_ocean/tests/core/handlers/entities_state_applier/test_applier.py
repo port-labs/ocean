@@ -96,6 +96,30 @@ async def test_delete_diff_custom_threshold_above_threshold_not_deleted(
 
 
 @pytest.mark.asyncio
+async def test_delete_diff_custom_threshold_0_not_deleted(
+    mock_context: PortOceanContext,
+) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
+    entities = EntityDiff(
+        before=[
+            Entity(identifier="1", blueprint="test"),
+            Entity(identifier="2", blueprint="test"),
+        ],
+        after=[
+            Entity(identifier="2", blueprint="test"),
+            Entity(identifier="3", blueprint="test"),
+        ],
+    )
+
+    with patch.object(applier, "_safe_delete") as mock_safe_delete:
+        await applier.delete_diff(
+            entities, UserAgentType.exporter, entity_deletion_threshold=0
+        )
+
+    mock_safe_delete.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_applier_with_mock_context(
     mock_ocean: Ocean,
     mock_context: PortOceanContext,
@@ -128,6 +152,74 @@ async def test_applier_with_mock_context(
             mock_post.assert_called_once()
             assert len(result) == 1
             assert result[0].identifier == "test_entity"
+
+
+@pytest.mark.asyncio
+async def test_applier_one_not_upserted(
+    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    # Create an applier using the mock_context fixture
+    applier = HttpEntitiesStateApplier(mock_context)
+
+    # Create test entities
+    entity = Entity(identifier="test_entity", blueprint="test_blueprint")
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        # Mock the register_entity method
+        event.entity_topological_sorter.register_entity = Mock()  # type: ignore
+        event.port_app_config = mock_port_app_config
+
+        # Test the upsert method with mocked client
+        with patch.object(mock_ocean.port_client.client, "post") as mock_post:
+            mock_post.return_value = Mock(
+                status_code=404,
+                json=lambda: {"ok": False, "error": "not_found"},
+            )
+
+            result = await applier.upsert([entity], UserAgentType.exporter)
+
+            # Assert that the post method was called
+            mock_post.assert_called_once()
+            assert len(result) == 0
+            event.entity_topological_sorter.register_entity.assert_called_once_with(
+                entity
+            )
+
+
+@pytest.mark.asyncio
+async def test_applier_error_upserting(
+    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    # Create an applier using the mock_context fixture
+    applier = HttpEntitiesStateApplier(mock_context)
+
+    # Create test entities
+    entity = Entity(identifier="test_entity", blueprint="test_blueprint")
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        # Mock the register_entity method
+        event.entity_topological_sorter.register_entity = Mock()  # type: ignore
+        event.port_app_config = mock_port_app_config
+
+        # Test the upsert method with mocked client
+        with patch.object(mock_ocean.port_client.client, "post") as mock_post:
+            mock_post.return_value = Mock(
+                status_code=404,
+                json=lambda: {"ok": False, "error": "not_found"},
+            )
+
+            result = await applier.upsert([entity], UserAgentType.exporter)
+
+            # Assert that the post method was called
+            mock_post.assert_called_once()
+            assert len(result) == 0
+            event.entity_topological_sorter.register_entity.assert_called_once_with(
+                entity
+            )
 
 
 @pytest.mark.asyncio
