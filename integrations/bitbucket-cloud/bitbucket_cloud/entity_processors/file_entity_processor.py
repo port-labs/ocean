@@ -1,9 +1,7 @@
-import json
-from typing import Any, Dict, Type, Optional
+from typing import Any, Dict, Optional
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 from initialize_client import init_client
-import yaml
 
 
 FILE_PROPERTY_PREFIX = "file://"
@@ -28,7 +26,7 @@ class FileEntityProcessor(JQEntityProcessor):
     async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         """
         Search for a file in the repository and return its content.
-        
+
         Args:
             data (Dict[str, Any]): The data containing the repository information
             pattern (str): The pattern to search for (e.g. "file://path/to/file.yaml")
@@ -62,4 +60,3 @@ class FileEntityProcessor(JQEntityProcessor):
             f"Searching for file {file_path} in Repository {repo_slug}, ref {ref}"
         )
         return await self._get_file_content(repo_slug, ref, file_path)
-

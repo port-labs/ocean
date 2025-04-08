@@ -1,4 +1,3 @@
-import json
 import pytest
 from unittest.mock import patch, AsyncMock
 from bitbucket_cloud.entity_processors.file_entity_processor import FileEntityProcessor

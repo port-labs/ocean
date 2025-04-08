@@ -1,4 +1,6 @@
-from port_ocean.core.handlers.entity_processor.jq_entity_processor import JQEntityProcessor
+from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
+    JQEntityProcessor,
+)
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 from bitbucket_cloud.entity_processors.file_entity_processor import FileEntityProcessor
@@ -13,6 +15,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 
 
 FILE_PROPERTY_PREFIX = "file://"
+
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
