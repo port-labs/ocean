@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for live events
+- Add support for gitlab members
 
 
 ## 0.1.2-dev (2025-04-03)
