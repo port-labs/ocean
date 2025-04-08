@@ -5,13 +5,15 @@ import json
 
 import yaml
 
+
 class ObjectKind(StrEnum):
     PROJECT = "project"
     GROUP = "group"
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
     FILE = "file"
-    
+
+
 def parse_file_content(
     content: str,
     file_path: str = "unknown",
