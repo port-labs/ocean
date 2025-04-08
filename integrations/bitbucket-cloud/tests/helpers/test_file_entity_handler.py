@@ -20,7 +20,7 @@ async def test_file_entity_processor_search_json_success() -> None:
     mock_client.get_repository_files.return_value = json_str
 
     with patch(
-        "bitbucket_cloud.helpers.file_entity_handler.BitbucketClient.create_from_ocean_config",
+        "bitbucket_cloud.helpers.file_entity_handler.init_client",
         return_value=mock_client,
     ):
         processor = FileEntityProcessor(
@@ -46,7 +46,7 @@ async def test_file_entity_processor_search_non_json_success() -> None:
     mock_client.get_repository_files.return_value = expected_content
 
     with patch(
-        "bitbucket_cloud.helpers.file_entity_handler.BitbucketClient.create_from_ocean_config",
+        "bitbucket_cloud.helpers.file_entity_handler.init_client",
         return_value=mock_client,
     ):
         processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
@@ -67,10 +67,10 @@ async def test_file_entity_processor_search_error_handling() -> None:
 
     mock_client = AsyncMock()
     # Simulate an exception when trying to get file content
-    mock_client.get_file_content.side_effect = Exception("Test exception")
+    mock_client.get_repository_files.side_effect = Exception("Test exception")
 
     with patch(
-        "bitbucket_cloud.helpers.file_entity_handler.BitbucketClient.create_from_ocean_config",
+        "bitbucket_cloud.helpers.file_entity_handler.init_client",
         return_value=mock_client,
     ):
         processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
@@ -107,7 +107,7 @@ async def test_file_entity_processor_search_missing_folder_commit() -> None:
     mock_client.get_repository_files.return_value = expected_content
 
     with patch(
-        "bitbucket_cloud.helpers.file_entity_handler.BitbucketClient.create_from_ocean_config",
+        "bitbucket_cloud.helpers.file_entity_handler.init_client",
         return_value=mock_client,
     ):
         processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
