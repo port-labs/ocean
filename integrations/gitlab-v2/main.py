@@ -121,8 +121,7 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     for folder_selector in selector.folders:
         path = folder_selector.path
-        repos = folder_selector.repos if folder_selector.repos else None
-        branch = folder_selector.branch
+        repos = folder_selector.repos
 
         if not repos:
             logger.info(
@@ -130,8 +129,10 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
             continue
 
-        async for folders_batch in client.search_folders(path, repos, branch):
-            if folders_batch:
+        for repo in repos:
+            async for folders_batch in client.search_folders(
+                path=path, repository=repo.name, branch=repo.branch
+            ):
                 logger.info(f"Found batch of {len(folders_batch)} matching folders")
                 yield folders_batch
 
