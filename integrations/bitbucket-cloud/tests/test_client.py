@@ -35,7 +35,9 @@ def mock_client(mock_integration_config: MagicMock) -> BitbucketClient:
             username="test-user",
             app_password="test-password",
         )
-        return BitbucketClient(base_client=base_client)
+        client = BitbucketClient()
+        client.set_base_client(base_client)
+        return client
 
 
 @pytest.mark.asyncio
@@ -47,7 +49,8 @@ async def test_client_init_with_token(mock_integration_config: MagicMock) -> Non
             host="https://api.bitbucket.org/2.0",
             workspace_token="test-token",
         )
-        client = BitbucketClient(base_client=base_client)
+        client = BitbucketClient()
+        client.set_base_client(base_client)
         assert client.workspace == "test-workspace"
         assert client.base_url == "https://api.bitbucket.org/2.0"
         assert "Bearer" in client.base_client.headers["Authorization"]
@@ -65,7 +68,8 @@ async def test_client_init_with_app_password(
             username="test-user",
             app_password="test-password",
         )
-        client = BitbucketClient(base_client=base_client)
+        client = BitbucketClient()
+        client.set_base_client(base_client)
         assert client.workspace == "test-workspace"
         assert client.base_url == "https://api.bitbucket.org/2.0"
         assert "Basic" in client.base_client.headers["Authorization"]

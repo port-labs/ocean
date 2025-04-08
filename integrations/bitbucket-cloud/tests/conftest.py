@@ -34,12 +34,10 @@ def mock_http_client() -> AsyncClient:
 @pytest.fixture
 def webhook_client_mock() -> BitbucketWebhookClient:
     """Create a mocked webhook client."""
-    base_client = BitbucketBaseClient(
-        workspace="test-workspace",
-        host="https://api.bitbucket.org/2.0",
-        username="test-user",
-        app_password="test-password",
-    )
-    client = BitbucketWebhookClient(base_client=base_client, secret="test-secret")
     client = MagicMock(spec=BitbucketWebhookClient)
+    client.secret = "test-secret"
+    client.workspace = "test-workspace"
+    client.base_url = "https://api.bitbucket.org/2.0"
+    client.base_client = MagicMock(spec=BitbucketBaseClient)
+    client.base_client.headers = {"Authorization": "Basic test-auth"}
     return client

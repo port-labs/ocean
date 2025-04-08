@@ -1,6 +1,6 @@
-from typing import Optional, Dict, Tuple, Set
 import asyncio
 import time
+from typing import Optional, Tuple, List
 from loguru import logger
 from bitbucket_cloud.base_client import BitbucketBaseClient
 from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
@@ -8,142 +8,191 @@ from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
 
 class BaseRotatingClient:
     """
-    Base class for clients that can rotate between multiple base clients.
-    Provides functionality to manage and rotate between alternative base clients.
+    Base class for clients that need to rotate between multiple base clients
+    to handle rate limiting.
     """
 
-    def __init__(self, base_client: BitbucketBaseClient):
+    def __init__(self):
+        """Initialize the rotating client."""
+        self.base_client: Optional[BitbucketBaseClient] = None
+        self.current_limiter: Optional[RollingWindowLimiter] = None
+        self.client_id: Optional[str] = None
+        self.base_client_priority_queue: Optional[asyncio.PriorityQueue] = None
+        self.base_url: str = ""
+        self.workspace: str = ""
+
+    def set_base_client(self, base_client: BitbucketBaseClient) -> None:
         """
-        Initialize with a base client.
+        Set the base client and update related attributes.
 
         Args:
-            base_client: The initial base client to use.
+            base_client: The base client to set.
         """
         self.base_client = base_client
-        self.base_client_queue: asyncio.Queue[BitbucketBaseClient] = asyncio.Queue()
-        self.base_client_queue.put_nowait(base_client)
+        self.base_url = base_client.base_url
+        self.workspace = base_client.workspace
 
-        # Package base clients with their rate limiters
-        self.client_packages: Dict[BitbucketBaseClient, RollingWindowLimiter] = {}
-        self.current_limiter: Optional[RollingWindowLimiter] = None
-
-        # Track which base clients have been tried in the current rotation cycle
-        self._tried_base_clients: Set[BitbucketBaseClient] = set()
-
-    def add_alternative_base_client(
+    async def _get_next_client_from_queue(
         self,
-        base_client: BitbucketBaseClient,
-        limiter: RollingWindowLimiter,
-    ) -> None:
+    ) -> Tuple[
+        Optional[str], Optional[BitbucketBaseClient], Optional[RollingWindowLimiter]
+    ]:
         """
-        Add an alternative base client to the rotation queue.
+        Get the next available client from the priority queue.
+
+        Returns:
+            Tuple containing the client ID, base client, and limiter.
+            If no client is available, returns (None, None, None).
+        """
+        if not self.base_client_priority_queue:
+            logger.warning("No priority queue set for client rotation")
+            return None, None, None
+
+        tried_clients = set()
+        all_clients = []
+        now = time.monotonic()
+
+        while True:
+            try:
+                # Get next client from queue
+                availability, client_id, base_client, limiter = (
+                    await self.base_client_priority_queue.get()
+                )
+                all_clients.append((availability, client_id, base_client, limiter))
+
+                # Check if client is available and has capacity
+                if availability <= now and limiter.has_capacity():
+                    # Put back other clients
+                    for a, cid, bc, l in all_clients:
+                        if cid != client_id:
+                            self.base_client_priority_queue.put_nowait((a, cid, bc, l))
+                    return client_id, base_client, limiter
+
+                # Handle client with no capacity
+                if availability <= now:
+                    # Update availability and put back in queue
+                    next_available = limiter.next_available_time()
+                    self.base_client_priority_queue.put_nowait(
+                        (next_available, client_id, base_client, limiter)
+                    )
+                    logger.info(
+                        f"Client {client_id} has no capacity, next available at {next_available}"
+                    )
+
+                    tried_clients.add(client_id)
+
+                    # If we've tried all clients and none have capacity, find earliest available
+                    if len(tried_clients) == len(all_clients):
+                        return await self._find_earliest_available_client(
+                            all_clients, now
+                        )
+                else:
+                    # Client not yet available, put back in queue
+                    self.base_client_priority_queue.put_nowait(
+                        (availability, client_id, base_client, limiter)
+                    )
+            except asyncio.QueueEmpty:
+                logger.warning("Client queue is empty")
+                return None, None, None
+
+    async def _find_earliest_available_client(
+        self,
+        all_clients: List[Tuple[float, str, BitbucketBaseClient, RollingWindowLimiter]],
+        now: float,
+    ) -> Tuple[
+        Optional[str], Optional[BitbucketBaseClient], Optional[RollingWindowLimiter]
+    ]:
+        """
+        Find the earliest available client when all clients have been tried.
 
         Args:
-            base_client: The alternative base client to add.
-            limiter: The rate limiter associated with this base client.
-        """
-        if base_client not in self.client_packages:
-            self.base_client_queue.put_nowait(base_client)
-            self.client_packages[base_client] = limiter
-            logger.info("Added alternative base client to rotation queue")
-        else:
-            logger.info("Base client already in rotation queue")
-
-    async def _rotate_base_client(self) -> None:
-        """
-        Rotate to the next available base client using the queue.
-        Also updates the current rate limiter.
-        """
-        if self.base_client_queue.qsize() <= 1:
-            logger.warning("No alternative base clients available for rotation")
-            return
-
-        # Get the next base client from the queue
-        next_base_client = await self.base_client_queue.get()
-        # Put the current base client back in the queue
-        self.base_client_queue.put_nowait(self.base_client)
-        # Update the current base client
-        self.base_client = next_base_client
-
-        # Update the current rate limiter
-        self.current_limiter = self.client_packages.get(next_base_client)  # type: ignore
-        if self.current_limiter is None:
-            logger.warning("No rate limiter found for the next base client")
-        limiter_id = id(self.current_limiter) if self.current_limiter else None
-        logger.info(
-            f"Rotated to alternative base client with rate limiter ID: {limiter_id}"
-        )
-
-        # Add the base client to the tried set
-        self._tried_base_clients.add(next_base_client)
-
-    def has_tried_all_clients(self) -> bool:
-        """
-        Check if all base clients have been tried in the current rotation cycle.
+            all_clients: List of all clients.
+            now: The current time.
 
         Returns:
-            bool: True if all base clients have been tried, False otherwise.
+            Tuple containing the client ID, base client, and limiter.
         """
-        return len(self._tried_base_clients) == len(self.client_packages)
+        # First check if any client has capacity now
+        for a, cid, bc, l in all_clients:
+            if l.has_capacity():
+                # Put back all clients
+                for a2, cid2, bc2, l2 in all_clients:
+                    self.base_client_priority_queue.put_nowait((a2, cid2, bc2, l2))
+                return cid, bc, l
 
-    def reset_tried_clients(self) -> None:
-        """
-        Reset the set of tried base clients.
-        """
-        self._tried_base_clients.clear()
-
-    def get_earliest_available_client(
-        self,
-    ) -> Tuple[Optional[BitbucketBaseClient], float]:
-        """
-        Find the earliest available client and its availability time.
-
-        Returns:
-            Tuple containing the earliest available client and its availability time.
-            If no client is available, returns (None, float('inf')).
-        """
+        # If no client has capacity, find earliest available
         earliest_available = float("inf")
         earliest_base_client = None
+        earliest_client_id = None
+        earliest_limiter = None
 
-        for base_client, limiter in self.client_packages.items():
-            if limiter and limiter.has_capacity():
-                # If any client has capacity, return it immediately
-                return base_client, 0.0
-            else:
-                next_available = (
-                    limiter.next_available_time() if limiter else float("inf")
-                )
-                if next_available < earliest_available:
-                    earliest_available = next_available
-                    earliest_base_client = base_client
+        for a, cid, bc, l in all_clients:
+            next_available = l.next_available_time()
+            if next_available < earliest_available:
+                earliest_available = next_available
+                earliest_base_client = bc
+                earliest_client_id = cid
+                earliest_limiter = l
 
-        return earliest_base_client, earliest_available
+        if earliest_base_client:
+            logger.info(
+                f"All clients have no capacity, queueing on first available client at {earliest_available}"
+            )
+            await asyncio.sleep(earliest_available - now)
+            # Put back all clients
+            for a, cid, bc, l in all_clients:
+                self.base_client_priority_queue.put_nowait((a, cid, bc, l))
+            return earliest_client_id, earliest_base_client, earliest_limiter
+
+        # If we get here, something went wrong
+        for a, cid, bc, l in all_clients:
+            self.base_client_priority_queue.put_nowait((a, cid, bc, l))
+        return None, None, None
 
     async def _ensure_client_available(self) -> None:
         """
-        Ensure that a client with capacity is available.
-        If the current client has no capacity, try to find another one.
-        If all clients have been tried, wait for the earliest available one.
+        Ensure that a base client and rate limiter are available.
+        If the current client/limiter pair doesn't have capacity, find another available pair.
+        If no client has immediate capacity, wait for the first available limiter.
         """
-        if self.current_limiter and not self.current_limiter.has_capacity():
-            # If we've tried all clients, find the earliest available one
-            if self.has_tried_all_clients():
-                earliest_client, earliest_time = self.get_earliest_available_client()
-
-                if earliest_client:
-                    logger.info(
-                        f"All base clients have no capacity, queueing on first available client at {earliest_time}"
-                    )
-                    # Wait until the earliest available time
-                    await asyncio.sleep(earliest_time - time.monotonic())
-                    # Set the earliest available base client
-                    self.base_client = earliest_client
-                    self.current_limiter = self.client_packages.get(earliest_client)
-                    # Reset the tried set
-                    self.reset_tried_clients()
-                else:
-                    # If no client has capacity, rotate to the next one
-                    await self._rotate_base_client()
+        # If we don't have a client or limiter, get one from the queue
+        if self.base_client is None or self.current_limiter is None:
+            logger.info(
+                "No base client or limiter available, attempting to get from queue"
+            )
+            client_id, base_client, limiter = await self._get_next_client_from_queue()
+            if base_client and limiter:
+                self.base_client = base_client
+                self.current_limiter = limiter
+                self.client_id = client_id
+                logger.info(f"Set base client {client_id} and limiter {id(limiter)}")
             else:
-                # If we haven't tried all clients yet, rotate to the next one
-                await self._rotate_base_client()
+                logger.error("Failed to get base client and limiter from queue")
+                raise RuntimeError("No available base client and limiter")
+
+        # Check if the current client has capacity
+        if not self.current_limiter.has_capacity():
+            logger.info(
+                f"Current client {self.client_id} has no capacity, rotating to next client"
+            )
+            await self._rotate_base_client()
+
+    async def _rotate_base_client(self) -> None:
+        """
+        Rotate to the next available base client.
+        This method will find a client with capacity or wait for the earliest available one.
+        """
+        logger.info("Rotating to next base client")
+
+        # Get the next available client
+        client_id, base_client, limiter = await self._get_next_client_from_queue()
+
+        if base_client and limiter:
+            # Update the current client and limiter
+            self.base_client = base_client
+            self.current_limiter = limiter
+            self.client_id = client_id
+            logger.info(f"Rotated to base client {client_id} and limiter {id(limiter)}")
+        else:
+            logger.error("Failed to rotate to next base client")
+            raise RuntimeError("No available base client and limiter")

@@ -13,7 +13,9 @@ def webhook_client_with_secret() -> BitbucketWebhookClient:
         username="test-user",
         app_password="test-password",
     )
-    return BitbucketWebhookClient(base_client=base_client, secret="test-secret")
+    client = BitbucketWebhookClient(secret="test-secret")
+    client.set_base_client(base_client)
+    return client
 
 
 @pytest.fixture
@@ -25,7 +27,9 @@ def webhook_client_no_secret() -> BitbucketWebhookClient:
         username="test-user",
         app_password="test-password",
     )
-    return BitbucketWebhookClient(base_client=base_client)
+    client = BitbucketWebhookClient()
+    client.set_base_client(base_client)
+    return client
 
 
 class TestBitbucketWebhookClient:
@@ -54,10 +58,16 @@ class TestBitbucketWebhookClient:
         self, webhook_client_with_secret: BitbucketWebhookClient
     ) -> None:
         """Test that _webhook_exist returns True when a webhook exists."""
+
         # Mock the _send_paginated_api_request method to return a webhook with the specified URL.
         async def mock_send_paginated_api_request(*args, **kwargs):
-            yield [{"url": "https://example.com/integration/webhook", "description": "Port Bitbucket Integration"}]
-            
+            yield [
+                {
+                    "url": "https://example.com/integration/webhook",
+                    "description": "Port Bitbucket Integration",
+                }
+            ]
+
         with patch.object(
             webhook_client_with_secret,
             "_send_paginated_api_request",
@@ -72,10 +82,11 @@ class TestBitbucketWebhookClient:
         self, webhook_client_with_secret: BitbucketWebhookClient
     ) -> None:
         """Test that _webhook_exist returns False when a webhook doesn't exist."""
+
         # Mock the _send_paginated_api_request method to return an empty list.
         async def mock_send_paginated_api_request(*args, **kwargs):
             yield []
-            
+
         with patch.object(
             webhook_client_with_secret,
             "_send_paginated_api_request",

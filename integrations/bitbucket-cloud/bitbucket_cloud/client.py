@@ -1,10 +1,11 @@
+from http import HTTPStatus
 from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
 from bitbucket_cloud.base_client import BitbucketBaseClient
 from bitbucket_cloud.base_rotating_client import BaseRotatingClient
-from httpx import HTTPStatusError
+from httpx import HTTPStatusError, HTTPError
 
 PULL_REQUEST_STATE = "OPEN"
 PULL_REQUEST_PAGE_SIZE = 50
@@ -14,19 +15,18 @@ PAGE_SIZE = 100
 class BitbucketClient(BaseRotatingClient):
     """Client for interacting with Bitbucket Cloud API v2.0."""
 
-    def __init__(
-        self, base_client: BitbucketBaseClient, client_id: Optional[str] = None
-    ):
-        super().__init__(base_client)
-        self.base_url = self.base_client.base_url
-        self.workspace = self.base_client.workspace
-        self.client_id = client_id or f"client_{id(self)}"
+    def __init__(self):
+        super().__init__()
 
     @classmethod
     def create_from_ocean_config(cls) -> "BitbucketClient":
-        """Create a BitbucketClient from the Ocean config."""
+        """
+        Create a BitbucketClient instance from Ocean configuration
+        """
+        instance = cls()
         base_client = BitbucketBaseClient.create_from_ocean_config()
-        return cls(base_client)
+        instance.set_base_client(base_client)
+        return instance
 
     async def _send_paginated_api_request(
         self,
@@ -74,26 +74,10 @@ class BitbucketClient(BaseRotatingClient):
         while True:
             try:
                 await self._ensure_client_available()
-                if self.current_limiter is None:
-                    logger.warning(
-                        f"No rate limiter available for client {self.client_id}, attempting to rotate to another client"
-                    )
-                    await self._rotate_base_client()
-                    (
-                        logger.error(
-                            f"Failed to get a valid rate limiter after rotation for client {self.client_id}"
-                        )
-                        if self.current_limiter is None
-                        else None
-                    )
-                    raise
-
                 limiter_id = id(self.current_limiter)
                 logger.debug(
                     f"Using client {self.client_id} with limiter {limiter_id} for rate-limited API call to {url}"
                 )
-
-                # Always use the rate limiter for this method
                 async with self.current_limiter:
                     response = await self.base_client.send_api_request(
                         method=method,
@@ -105,7 +89,17 @@ class BitbucketClient(BaseRotatingClient):
                 url = response.get("next")
                 if not url:
                     break
-
+            except HTTPError as e:
+                if (
+                    hasattr(e, "response")
+                    and e.response
+                    and e.response.status_code == HTTPStatus.TOO_MANY_REQUESTS
+                ):
+                    logger.warning("Rate limit hit, rotating to next client")
+                    await self._rotate_base_client()
+                    continue  # Try next client
+                logger.error(f"Error while making request: {str(e)}")
+                raise  # Re-raise non-rate-limit errors
             except HTTPStatusError as e:
                 if hasattr(e, "response") and e.response.status_code != 429:
                     raise

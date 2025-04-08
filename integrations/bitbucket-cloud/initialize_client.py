@@ -11,10 +11,12 @@ def init_client() -> BitbucketClient:
 
 
 def init_webhook_client() -> BitbucketWebhookClient:
-    return BitbucketWebhookClient(
+    client = BitbucketWebhookClient(
         secret=ocean.integration_config["webhook_secret"],
-        base_client=BitbucketBaseClient.create_from_ocean_config(),
     )
+    base_client = BitbucketBaseClient.create_from_ocean_config()
+    client.set_base_client(base_client)
+    return client
 
 
 def init_multiple_client() -> BitbucketClientManager:
