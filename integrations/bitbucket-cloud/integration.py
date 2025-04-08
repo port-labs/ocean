@@ -1,7 +1,8 @@
+from port_ocean.core.handlers.entity_processor.jq_entity_processor import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
-from bitbucket_cloud.helpers.file_entity_handler import GitManipulationHandler
-from typing import Literal
+from bitbucket_cloud.entity_processors.file_entity_processor import FileEntityProcessor
+from typing import Any, Literal, Type
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -10,6 +11,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 
+
+FILE_PROPERTY_PREFIX = "file://"
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
@@ -92,6 +95,16 @@ class BitbucketAppConfig(PortAppConfig):
         alias="resources",
         description="Specify the resources to include in the sync",
     )
+
+
+class GitManipulationHandler(JQEntityProcessor):
+    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+        entity_processor: Type[JQEntityProcessor]
+        if pattern.startswith(FILE_PROPERTY_PREFIX):
+            entity_processor = FileEntityProcessor
+        else:
+            entity_processor = JQEntityProcessor
+        return await entity_processor(self.context)._search(data, pattern)
 
 
 class BitbucketIntegration(BaseIntegration):

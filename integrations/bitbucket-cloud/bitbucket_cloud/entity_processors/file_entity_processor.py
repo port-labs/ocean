@@ -7,8 +7,6 @@ import yaml
 
 
 FILE_PROPERTY_PREFIX = "file://"
-JSON_SUFFIX = ".json"
-YAML_SUFFIX = (".yaml", ".yml")
 
 
 class FileEntityProcessor(JQEntityProcessor):
@@ -20,21 +18,28 @@ class FileEntityProcessor(JQEntityProcessor):
         """Helper method to fetch and process file content."""
         try:
             bitbucket_client = init_client()
-            file_content = await bitbucket_client.get_repository_files(
+            return await bitbucket_client.get_repository_files(
                 repo_slug, ref, file_path
             )
-            if file_path.endswith(YAML_SUFFIX):
-                return yaml.safe_load(file_content)
-            elif file_path.endswith(JSON_SUFFIX):
-                return json.loads(file_content)
-            else:
-                return file_content
         except Exception as e:
             logger.error(f"Failed to get file content for {file_path}: {e}")
             return None
 
     async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
-        """Search for a file in the repository and return its content."""
+        """
+        Search for a file in the repository and return its content.
+        
+        Args:
+            data (Dict[str, Any]): The data containing the repository information
+            pattern (str): The pattern to search for (e.g. "file://path/to/file.yaml")
+
+            For monorepo, the data should contain a "repo" key and a "folder" key with the repository information.
+            For non-monorepo, the data should contain the repository information directly.
+
+        Returns:
+            Any: The raw or parsed content of the file
+        """
+
         repo_data = data.get("repo", data)
         repo_slug = repo_data.get("name", "")
         default_branch = repo_data.get("mainbranch", {}).get("name", "main")
@@ -58,12 +63,3 @@ class FileEntityProcessor(JQEntityProcessor):
         )
         return await self._get_file_content(repo_slug, ref, file_path)
 
-
-class GitManipulationHandler(JQEntityProcessor):
-    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
-        entity_processor: Type[JQEntityProcessor]
-        if pattern.startswith(FILE_PROPERTY_PREFIX):
-            entity_processor = FileEntityProcessor
-        else:
-            entity_processor = JQEntityProcessor
-        return await entity_processor(self.context)._search(data, pattern)
