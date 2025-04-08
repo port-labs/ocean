@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.5 (2025-04-08)
 
+
 ### Features
 
 - Added support for ingesting file kind and parsing JSON and YAML files
