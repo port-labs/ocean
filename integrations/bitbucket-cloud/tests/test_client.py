@@ -51,6 +51,7 @@ async def test_client_init_with_token(mock_integration_config: MagicMock) -> Non
         )
         client = BitbucketClient()
         client.set_base_client(base_client)
+        assert client.base_client is not None
         assert client.workspace == "test-workspace"
         assert client.base_url == "https://api.bitbucket.org/2.0"
         assert "Bearer" in client.base_client.headers["Authorization"]
@@ -70,6 +71,7 @@ async def test_client_init_with_app_password(
         )
         client = BitbucketClient()
         client.set_base_client(base_client)
+        assert client.base_client is not None
         assert client.workspace == "test-workspace"
         assert client.base_url == "https://api.bitbucket.org/2.0"
         assert "Basic" in client.base_client.headers["Authorization"]

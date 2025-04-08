@@ -5,6 +5,7 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
 from bitbucket_cloud.base_client import BitbucketBaseClient
 from bitbucket_cloud.base_rotating_client import BaseRotatingClient
+from bitbucket_cloud.helpers.exceptions import ClassAttributeNotInitializedError
 from httpx import HTTPStatusError, HTTPError
 
 PULL_REQUEST_STATE = "OPEN"
@@ -15,7 +16,7 @@ PAGE_SIZE = 100
 class BitbucketClient(BaseRotatingClient):
     """Client for interacting with Bitbucket Cloud API v2.0."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     @classmethod
@@ -42,6 +43,12 @@ class BitbucketClient(BaseRotatingClient):
             }
         while True:
             try:
+                if self.base_client is None:
+                    logger.error("Cannot send API request: base_client is None")
+                    raise ClassAttributeNotInitializedError(
+                        "Base client is not initialized"
+                    )
+
                 response = await self.base_client.send_api_request(
                     method=method,
                     url=url,
@@ -74,6 +81,15 @@ class BitbucketClient(BaseRotatingClient):
         while True:
             try:
                 await self._ensure_client_available()
+
+                if self.current_limiter is None or self.base_client is None:
+                    logger.warning(
+                        "Either rate limiter or base client is not initialized"
+                    )
+                    raise ClassAttributeNotInitializedError(
+                        "Rate limiter or base client is not initialized"
+                    )
+
                 limiter_id = id(self.current_limiter)
                 logger.debug(
                     f"Using client {self.client_id} with limiter {limiter_id} for rate-limited API call to {url}"
@@ -189,12 +205,20 @@ class BitbucketClient(BaseRotatingClient):
         self, repo_slug: str, pull_request_id: str
     ) -> dict[str, Any]:
         """Get a specific pull request by ID."""
+        if self.base_client is None:
+            logger.error("Base client is not initialized")
+            raise ClassAttributeNotInitializedError("Base client is not initialized")
+
         return await self.base_client.send_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests/{pull_request_id}"
         )
 
     async def get_repository(self, repo_slug: str) -> dict[str, Any]:
         """Get a specific repository by slug."""
+        if self.base_client is None:
+            logger.error("Base client is not initialized")
+            raise ClassAttributeNotInitializedError("Base client is not initialized")
+
         return await self.base_client.send_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )

@@ -26,16 +26,13 @@ def limiter() -> Generator[RollingWindowLimiter, None, None]:
         with contextlib.suppress(RuntimeError):
             limiter_instance._next_wake_task.cancel()
 
-    try:
+    with contextlib.suppress(RuntimeError):
         while not limiter_instance._queue.empty():
             try:
                 limiter_instance._queue.get_nowait()
                 limiter_instance._queue.task_done()
             except asyncio.QueueEmpty:
                 break
-    except RuntimeError:
-        # Suppress errors if event loop is closed
-        pass
 
 
 @pytest.mark.asyncio

@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
 from bitbucket_cloud.base_client import BitbucketBaseClient
+from typing import Any, AsyncGenerator
 
 
 @pytest.fixture
@@ -60,7 +61,9 @@ class TestBitbucketWebhookClient:
         """Test that _webhook_exist returns True when a webhook exists."""
 
         # Mock the _send_paginated_api_request method to return a webhook with the specified URL.
-        async def mock_send_paginated_api_request(*args, **kwargs):
+        async def mock_send_paginated_api_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
             yield [
                 {
                     "url": "https://example.com/integration/webhook",
@@ -84,7 +87,9 @@ class TestBitbucketWebhookClient:
         """Test that _webhook_exist returns False when a webhook doesn't exist."""
 
         # Mock the _send_paginated_api_request method to return an empty list.
-        async def mock_send_paginated_api_request(*args, **kwargs):
+        async def mock_send_paginated_api_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
             yield []
 
         with patch.object(
