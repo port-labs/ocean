@@ -211,7 +211,7 @@ class GitLabClient:
             )
         return file
 
-    async def _process_batch(
+    async def _process_file_batch(
         self,
         batch: list[dict[str, Any]],
         context: str,
@@ -235,10 +235,10 @@ class GitLabClient:
         encoded_repo = quote(repo, safe="")
         path = f"projects/{encoded_repo}/search"
 
-        async for batch in self.rest.get_paginated_resource(path, params=params):
-            if batch:
-                logger.debug(f"Found {len(batch)} files in '{repo}'")
-                processed_batch = await self._process_batch(batch, repo, skip_parsing)
+        async for file_batch in self.rest.get_paginated_resource(path, params=params):
+            if file_batch:
+                logger.debug(f"Found {len(file_batch)} files in '{repo}'")
+                processed_batch = await self._process_file_batch(file_batch, repo, skip_parsing)
                 if processed_batch:
                     yield processed_batch
 
@@ -256,11 +256,11 @@ class GitLabClient:
         encoded_group = quote(group_id, safe="")
         path = f"groups/{encoded_group}/search"
 
-        async for batch in self.rest.get_paginated_resource(path, params=params):
-            if batch:
-                logger.debug(f"Found {len(batch)} files in group '{group_id}'")
-                processed_batch = await self._process_batch(
-                    batch, group_id, skip_parsing
+        async for file_batch in self.rest.get_paginated_resource(path, params=params):
+            if file_batch:
+                logger.debug(f"Found {len(file_batch)} files in group '{group_id}'")
+                processed_batch = await self._process_file_batch(
+                    file_batch, group_id, skip_parsing
                 )
                 if processed_batch:
                     yield processed_batch
