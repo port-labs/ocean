@@ -6,6 +6,7 @@ from bitbucket_cloud.webhook_processors.events import (
     RepositoryEvents,
     PullRequestEvents,
 )
+from bitbucket_cloud.helpers.exceptions import ClassAttributeNotInitializedError
 from httpx import HTTPStatusError
 
 
@@ -80,7 +81,13 @@ class BitbucketWebhookClient(BitbucketClient):
         }
 
         try:
-            await self._send_api_request(
+            if self.base_client is None:
+                logger.warning("Base client is not initialized")
+                raise ClassAttributeNotInitializedError(
+                    "Base client is not initialized"
+                )
+
+            await self.base_client.send_api_request(
                 self._workspace_webhook_url,
                 method="POST",
                 json_data=webhook_config,

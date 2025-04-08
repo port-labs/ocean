@@ -135,7 +135,20 @@ async def test_process_folder_patterns(
                 {"path": "docs/api", "type": "commit_directory"},
             ]
 
-    # Assign the generators to the mock methods
+    # Mock execute_request method
+    async def mock_execute_request(
+        method_name: str, *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
+        if method_name == "get_repositories":
+            async for item in mock_get_repositories(*args, **kwargs):
+                yield item
+        elif method_name == "get_directory_contents":
+            async for item in mock_get_directory_contents(*args, **kwargs):
+                yield item
+        else:
+            yield []
+
+    mock_client.execute_request = mock_execute_request
     mock_client.get_repositories = mock_get_repositories
     mock_client.get_directory_contents = mock_get_directory_contents
 
@@ -185,6 +198,17 @@ async def test_process_repo_folders() -> None:
             {"path": "docs", "type": "commit_directory"},
         ]
 
+    # Mock execute_request method
+    async def mock_execute_request(
+        method_name: str, *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
+        if method_name == "get_directory_contents":
+            async for item in mock_get_directory_contents(*args, **kwargs):
+                yield item
+        else:
+            yield []
+
+    mock_client.execute_request = mock_execute_request
     mock_client.get_directory_contents = mock_get_directory_contents
     results: List[Dict[str, Any]] = []
     async for folders in process_repo_folders(
