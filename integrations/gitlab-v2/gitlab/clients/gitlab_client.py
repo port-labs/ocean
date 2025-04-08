@@ -101,7 +101,7 @@ class GitLabClient:
                 yield batch
 
     async def get_file_content(
-        self, project_id: str, file_path: str, ref: str = "main"
+        self, project_id: str, file_path: str, ref: str
     ) -> Optional[str]:
         return await self.rest.get_file_content(project_id, file_path, ref)
 

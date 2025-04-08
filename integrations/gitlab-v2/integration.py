@@ -34,7 +34,6 @@ class ProjectResourceConfig(ResourceConfig):
 
 class FilesSelector(BaseModel):
     path: str = Field(
-        default="",
         alias="path",
         description="Specify the path to match files from",
     )
