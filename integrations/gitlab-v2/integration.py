@@ -16,7 +16,7 @@ from aiolimiter import AsyncLimiter
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
-MAX_REQUESTS_PER_SECOND = 20
+MAX_REQUESTS_PER_SECOND = 5
 
 
 class ProjectSelector(Selector):
@@ -62,21 +62,22 @@ class GitlabPortAppConfig(PortAppConfig):
         GitLabFilesResourceConfig | ProjectResourceConfig | ResourceConfig
     ] = Field(default_factory=list)
 
-
 class GitManipulationHandler(JQEntityProcessor):
     _rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_SECOND, 1)
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
-        async with self._rate_limiter:
-            entity_processor: Type[JQEntityProcessor]
-            if pattern.startswith(FILE_PROPERTY_PREFIX):
-                entity_processor = FileEntityProcessor
-            elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
-                entity_processor = SearchEntityProcessor
-            else:
-                entity_processor = JQEntityProcessor
+        entity_processor: Type[JQEntityProcessor]
+        if pattern.startswith(FILE_PROPERTY_PREFIX):
+            entity_processor = FileEntityProcessor
+            async with self._rate_limiter:
+                return await entity_processor(self.context)._search(data, pattern)
+        elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
+            entity_processor = SearchEntityProcessor
+            async with self._rate_limiter:
+                return await entity_processor(self.context)._search(data, pattern)
+        else:
+            entity_processor = JQEntityProcessor
             return await entity_processor(self.context)._search(data, pattern)
-
 
 class GitlabIntegration(BaseIntegration):
     EntityProcessorClass = GitManipulationHandler
