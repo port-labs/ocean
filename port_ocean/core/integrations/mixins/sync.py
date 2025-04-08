@@ -102,7 +102,7 @@ class SyncMixin(HandlerMixin):
             entities, user_agent_type
         )
         await self.entities_state_applier.delete_diff(
-            {"before": entities_at_port, "after": modified_entities}, user_agent_type, app_config.entity_deletion_threshold
+            {"before": entities_at_port, "after": modified_entities}, user_agent_type, app_config.get_entity_deletion_threshold()
         )
 
         logger.info("Finished syncing change")

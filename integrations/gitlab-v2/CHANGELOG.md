@@ -7,20 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.1-dev (2025-04-02)
+## 0.1.4-dev (2025-04-08)
+
 
 ### Features
 
-- Added Support for file kind
+- Added support for file kind
+
+
+## 0.1.3-dev (2025-04-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.2
+
+
+## 0.1.2-dev (2025-04-03)
+
+
+### Features
+
+- Added support for live events
+
+
+## 0.1.1-dev (2025-04-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.1
 
 
 ## 0.1.0-dev (2025-02-27)
 
+
 ### Features
+
 - Initial release of the GitLab v2 integration
 - Support for syncing:
   - Groups
   - Projects
   - Issues
-  - Merge Requests 
-
+  - Merge Requests

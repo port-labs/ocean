@@ -5,7 +5,7 @@ import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from clients.gitlab_client import GitLabClient
+from gitlab.clients.gitlab_client import GitLabClient
 
 
 @pytest.fixture(autouse=True)
@@ -94,7 +94,43 @@ class TestGitLabClient:
             assert len(results) == 1
             assert results[0]["name"] == "Test Group"
             mock_get_resource.assert_called_once_with(
-                "groups", params={"min_access_level": 30, "all_available": True}
+                "groups",
+                params={
+                    "min_access_level": 30,
+                    "all_available": True,
+                    "top_level_only": False,
+                },
+            )
+
+    async def test_get_groups_top_level_only(self, client: GitLabClient) -> None:
+        """Test group fetching with top level only"""
+        # Arrange
+        mock_groups: list[dict[str, Any]] = [
+            {"id": 1, "name": "Test Group", "parent_id": None},
+        ]
+
+        # Use a context manager for patching
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
+            # Act
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_groups(top_level_only=True):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Group"
+            assert results[0]["parent_id"] is None
+            mock_get_resource.assert_called_once_with(
+                "groups",
+                params={
+                    "min_access_level": 30,
+                    "top_level_only": True,
+                    "all_available": True,
+                },
             )
 
     async def test_get_group_resource(self, client: GitLabClient) -> None:
@@ -130,7 +166,7 @@ class TestGitLabClient:
         query = "test.json"
         with patch.object(
             client,
-            "_search_in_repository",
+            "_search_files_in_repository",
             return_value=async_mock_generator([processed_files]),
         ) as mock_search_repo:
             with patch.object(
@@ -138,14 +174,14 @@ class TestGitLabClient:
             ):
                 results = []
                 async for batch in client.search_files(
-                    scope, query, repositories=repos
+                    scope, query, repositories=repos, skip_parsing=False
                 ):
                     results.extend(batch)
                 assert len(results) == 1
                 assert results[0]["path"] == "test.json"
                 assert results[0]["content"] == {"key": "value"}
                 mock_search_repo.assert_called_once_with(
-                    "group/project", "blobs", "test.json"
+                    "group/project", "blobs", "path:test.json", False
                 )
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
@@ -161,20 +197,22 @@ class TestGitLabClient:
         ):
             with patch.object(
                 client,
-                "_search_in_group",
+                "_search_files_in_group",
                 return_value=async_mock_generator([processed_files]),
             ) as mock_search_group:
                 with patch.object(
                     client, "get_file_content", return_value="key: value"
                 ):
                     results = []
-                    async for batch in client.search_files(scope, query):
+                    async for batch in client.search_files(
+                        scope, query, skip_parsing=False
+                    ):
                         results.extend(batch)
                     assert len(results) == 1
                     assert results[0]["path"] == "test.yaml"
                     assert results[0]["content"] == {"key": "value"}
                     mock_search_group.assert_called_once_with(
-                        {"id": "1", "name": "Group1"}, "blobs", "test.yaml"
+                        "1", "blobs", "path:test.yaml", False
                     )
 
     async def test_get_file_content(self, client: GitLabClient) -> None:

@@ -177,10 +177,11 @@ def create_entity(
     blueprint: str,
     relation: dict[str, str] | None = None,
     is_to_fail: bool = False,
+    team: str | list[str] | dict[str, Any] | None = None,
 ) -> Entity:
     if relation is None:
         relation = {}
-    entity = Entity(identifier=id, blueprint=blueprint)
+    entity = Entity(identifier=id, blueprint=blueprint, team=team)
     entity.relations = relation
     entity.properties = {"mock_is_to_fail": is_to_fail}
     return entity
