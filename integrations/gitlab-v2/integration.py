@@ -62,6 +62,7 @@ class GitlabPortAppConfig(PortAppConfig):
         GitLabFilesResourceConfig | ProjectResourceConfig | ResourceConfig
     ] = Field(default_factory=list)
 
+
 class GitManipulationHandler(JQEntityProcessor):
     _rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_SECOND, 1)
 
@@ -78,6 +79,7 @@ class GitManipulationHandler(JQEntityProcessor):
         else:
             entity_processor = JQEntityProcessor
             return await entity_processor(self.context)._search(data, pattern)
+
 
 class GitlabIntegration(BaseIntegration):
     EntityProcessorClass = GitManipulationHandler
