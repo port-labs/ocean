@@ -1,11 +1,11 @@
-from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from gitlab.clients.gitlab_client import GitLabClient
+from gitlab.clients.base_client import HTTPBaseClient
 
 
 @pytest.fixture(autouse=True)
@@ -22,138 +22,163 @@ def mock_ocean_context() -> None:
         pass
 
 
-# Simple async generator function for mocking
-async def async_mock_generator(items: list[Any]) -> AsyncGenerator[Any, None]:
-    for item in items:
-        yield item
-
-
 @pytest.mark.asyncio
-class TestGitLabClient:
+class TestHTTPBaseClient:
     @pytest.fixture
-    def client(self) -> GitLabClient:
-        """Initialize GitLab client with test configuration"""
-        return GitLabClient("https://gitlab.example.com", "test-token")
+    def client(self) -> HTTPBaseClient:
+        """Initialize HTTPBaseClient with test configuration"""
+        return HTTPBaseClient(
+            "https://gitlab.example.com", "test-token", endpoint="api/v4"
+        )
 
-    async def test_get_projects(self, client: GitLabClient) -> None:
-        """Test project fetching and enrichment with languages and labels via REST."""
+    async def test_send_api_request_success(self, client: HTTPBaseClient) -> None:
+        """Test successful API request"""
         # Arrange
-        mock_projects = [
-            {
-                "id": "1",
-                "name": "Test Project",
-                "path_with_namespace": "test/test-project",
-            }
-        ]
-        mock_languages = {"Python": 50.0, "JavaScript": 30.0}
+        method = "GET"
+        path = "projects"
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"id": 1, "name": "Test Project"}
+        mock_response.raise_for_status = MagicMock()
 
-        with (
-            patch.object(client.rest, "get_paginated_resource") as mock_get_resource,
-            patch.object(
-                client.rest,
-                "get_project_languages",
-                AsyncMock(return_value=mock_languages),
-            ) as mock_get_languages,
-        ):
-
-            # Mock get_resource to yield projects
-            mock_get_resource.return_value = async_mock_generator([mock_projects])
-
+        with patch.object(
+            client._client, "request", AsyncMock(return_value=mock_response)
+        ) as mock_request:
             # Act
-            results = []
-            params = {"some": "param"}
-            async for batch in client.get_projects(
+            result = await client.send_api_request(method, path)
+
+            # Assert
+            assert result == {"id": 1, "name": "Test Project"}
+            mock_request.assert_called_once_with(
+                method=method,
+                url=f"{client.base_url}/{path}",
+                headers=client._headers,
+                params=None,
+                json=None,
+            )
+            mock_response.raise_for_status.assert_called_once()
+
+    async def test_send_api_request_with_params(self, client: HTTPBaseClient) -> None:
+        """Test API request with query parameters"""
+        # Arrange
+        method = "GET"
+        path = "projects"
+        params = {"per_page": 10, "page": 1}
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"id": 1, "name": "Test Project"}
+        mock_response.raise_for_status = MagicMock()
+
+        with patch.object(
+            client._client, "request", AsyncMock(return_value=mock_response)
+        ) as mock_request:
+            # Act
+            result = await client.send_api_request(method, path, params=params)
+
+            # Assert
+            assert result == {"id": 1, "name": "Test Project"}
+            mock_request.assert_called_once_with(
+                method=method,
+                url=f"{client.base_url}/{path}",
+                headers=client._headers,
                 params=params,
-                max_concurrent=1,
-                include_languages=True,
-            ):
-                results.extend(batch)
-
-            # Assert
-            assert len(results) == 1  # One project in the batch
-            assert results[0]["name"] == "Test Project"
-            assert results[0]["__languages"] == mock_languages
-            mock_get_languages.assert_called_once_with("test/test-project")
-
-    async def test_get_groups(self, client: GitLabClient) -> None:
-        """Test group fetching delegates to REST client"""
-        # Arrange
-        mock_groups: list[dict[str, Any]] = [{"id": 1, "name": "Test Group"}]
-
-        # Use a context manager for patching
-        with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            return_value=async_mock_generator([mock_groups]),
-        ) as mock_get_resource:
-            # Act
-            results: list[dict[str, Any]] = []
-            async for batch in client.get_groups():
-                results.extend(batch)
-
-            # Assert
-            assert len(results) == 1
-            assert results[0]["name"] == "Test Group"
-            mock_get_resource.assert_called_once_with(
-                "groups",
-                params={
-                    "min_access_level": 30,
-                    "all_available": True,
-                    "top_level_only": False,
-                },
+                json=None,
             )
 
-    async def test_get_groups_top_level_only(self, client: GitLabClient) -> None:
-        """Test group fetching with top level only"""
+    async def test_send_api_request_with_data(self, client: HTTPBaseClient) -> None:
+        """Test API request with request body data"""
         # Arrange
-        mock_groups: list[dict[str, Any]] = [
-            {"id": 1, "name": "Test Group", "parent_id": None},
-        ]
+        method = "POST"
+        path = "projects"
+        data = {"name": "New Project", "description": "Test Description"}
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"id": 1, "name": "New Project"}
+        mock_response.raise_for_status = MagicMock()
 
-        # Use a context manager for patching
         with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            return_value=async_mock_generator([mock_groups]),
-        ) as mock_get_resource:
+            client._client, "request", AsyncMock(return_value=mock_response)
+        ) as mock_request:
             # Act
-            results: list[dict[str, Any]] = []
-            async for batch in client.get_groups(top_level_only=True):
-                results.extend(batch)
+            result = await client.send_api_request(method, path, data=data)
 
             # Assert
-            assert len(results) == 1
-            assert results[0]["name"] == "Test Group"
-            assert results[0]["parent_id"] is None
-            mock_get_resource.assert_called_once_with(
-                "groups",
-                params={
-                    "min_access_level": 30,
-                    "top_level_only": True,
-                    "all_available": True,
-                },
+            assert result == {"id": 1, "name": "New Project"}
+            mock_request.assert_called_once_with(
+                method=method,
+                url=f"{client.base_url}/{path}",
+                headers=client._headers,
+                params=None,
+                json=data,
             )
 
-    async def test_get_group_resource(self, client: GitLabClient) -> None:
-        """Test group resource fetching delegates to REST client"""
+    async def test_send_api_request_404(self, client: HTTPBaseClient) -> None:
+        """Test API request with 404 response"""
         # Arrange
-        mock_issues: list[dict[str, Any]] = [{"id": 1, "title": "Test Issue"}]
-        group: dict[str, str] = {"id": "123"}
+        method = "GET"
+        path = "projects/999"
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Not Found", request=MagicMock(), response=MagicMock(status_code=404)
+        )
 
-        # Use a context manager for patching
         with patch.object(
-            client.rest,
-            "get_paginated_group_resource",
-            return_value=async_mock_generator([mock_issues]),
-        ) as mock_get_group_resource:
+            client._client, "request", AsyncMock(return_value=mock_response)
+        ) as mock_request:
             # Act
-            results: list[dict[str, Any]] = []
-            async for batch in client.get_groups_resource(
-                [group], "issues"
-            ):  # Changed to pass list of groups
-                results.extend(batch)
+            result = await client.send_api_request(method, path)
 
             # Assert
-            assert len(results) == 1
-            assert results[0]["title"] == "Test Issue"
-            mock_get_group_resource.assert_called_once_with("123", "issues")
+            assert result == {}
+            mock_request.assert_called_once_with(
+                method=method,
+                url=f"{client.base_url}/{path}",
+                headers=client._headers,
+                params=None,
+                json=None,
+            )
+
+    async def test_send_api_request_other_error(self, client: HTTPBaseClient) -> None:
+        """Test API request with other HTTP error"""
+        # Arrange
+        method = "GET"
+        path = "projects"
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Server Error", request=MagicMock(), response=MagicMock(status_code=500)
+        )
+
+        with patch.object(
+            client._client, "request", AsyncMock(return_value=mock_response)
+        ) as mock_request:
+            # Act & Assert
+            with pytest.raises(httpx.HTTPStatusError):
+                await client.send_api_request(method, path)
+
+            mock_request.assert_called_once_with(
+                method=method,
+                url=f"{client.base_url}/{path}",
+                headers=client._headers,
+                params=None,
+                json=None,
+            )
+
+    async def test_send_api_request_network_error(self, client: HTTPBaseClient) -> None:
+        """Test API request with network error"""
+        # Arrange
+        method = "GET"
+        path = "projects"
+
+        with patch.object(
+            client._client,
+            "request",
+            AsyncMock(side_effect=httpx.NetworkError("Connection error")),
+        ) as mock_request:
+            # Act & Assert
+            with pytest.raises(httpx.NetworkError):
+                await client.send_api_request(method, path)
+
+            mock_request.assert_called_once_with(
+                method=method,
+                url=f"{client.base_url}/{path}",
+                headers=client._headers,
+                params=None,
+                json=None,
+            )

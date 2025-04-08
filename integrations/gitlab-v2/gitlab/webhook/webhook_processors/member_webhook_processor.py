@@ -20,10 +20,10 @@ class MemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
         "user_update_for_group",
         "user_add_to_group",
     ]
-    hook = "Member Hook"
+    hooks = ["Member Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.MEMBER]
+        return [ObjectKind.MEMBER, ObjectKind.GROUPWITHMEMBERS]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

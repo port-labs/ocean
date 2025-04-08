@@ -26,6 +26,13 @@ from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.member_webhook_processor import (
+    MemberWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.group_with_member_webhook_processor import (
+    GroupWithMemberWebhookProcessor,
+)
+
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
     semaphore_async_iterator,
@@ -127,7 +134,7 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitlabMemberResourceConfig, event.resource_config).selector
     include_bot_members = bool(selector.include_bot_members)
-    logger.error(f"include_bot_members: {include_bot_members}")
+
     async for groups_batch in client.get_groups():
         semaphore = asyncio.Semaphore(10)
         tasks = [
@@ -147,3 +154,5 @@ ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", MemberWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
