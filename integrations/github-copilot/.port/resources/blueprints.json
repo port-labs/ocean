@@ -62,7 +62,7 @@
       "acceptance_rate": {
         "title": "Acceptance Rate",
         "icon": "DefaultProperty",
-        "calculation": "if (.properties.total_suggestions_count == 0)  then 0  else    ((.properties.total_acceptances_count / .properties.total_suggestions_count) * 100     | round) / 100  end",
+        "calculation": "if (.properties.total_suggestions_count == 0)  then 0  else    ((.properties.total_acceptances_count / .properties.total_suggestions_count) * 100     | round)  end",
         "type": "number"
       }
     },
