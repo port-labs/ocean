@@ -242,7 +242,7 @@ class GitLabClient:
                 if processed_batch:
                     yield processed_batch
 
-    async def _search_in_group(
+    async def _search_files_in_group(
         self,
         group_id: str,
         scope: str,
