@@ -53,7 +53,7 @@ async def process_file_patterns(
     )
 
     if not file_pattern.repos:
-        logger.warning("No repositories provided, searching all entire workspace")
+        logger.warning("No repositories provided, searching entire workspace")
     if not file_pattern.path:
         logger.info("Path is required, skipping file search")
         return
