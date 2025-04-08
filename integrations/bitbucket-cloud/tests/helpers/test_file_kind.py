@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from bitbucket_cloud.helpers.file_kind import (
     build_search_terms,
     process_file_patterns,
@@ -28,10 +28,11 @@ def test_build_search_terms_with_all_parameters() -> None:
 def test_build_search_terms_with_minimal_parameters() -> None:
     """Test build_search_terms with only required parameters."""
     filename = "test.py"
+    path = "/"  # Using root path as minimal value
 
-    query = build_search_terms(filename, None, None, "")
+    query = build_search_terms(filename, None, path, "")
 
-    assert query == '"test.py"'
+    assert query == '"test.py" path:/'
 
 
 def test_validate_file_match() -> None:
@@ -46,7 +47,6 @@ def test_validate_file_match() -> None:
 @pytest.mark.asyncio
 async def test_process_file_patterns() -> None:
     """Test process_file_patterns function."""
-    mock_client = AsyncMock()
     mock_results = [
         {
             "path_matches": [{"match": "test.py"}],
@@ -64,26 +64,31 @@ async def test_process_file_patterns() -> None:
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [mock_results[0]]
 
-    mock_client.search_files = mock_search_files
-    mock_client.get_repository_files.return_value = "file content"
+    async def mock_get_repository_files(*args: Any, **kwargs: Any) -> str:
+        return "file content"
 
-    file_pattern = BitbucketFilePattern(
-        path="src", repos=["test-repo"], filenames=["test.py"], skipParsing=False
-    )
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_client.get_repository_files = mock_get_repository_files
+        mock_init_client.return_value = mock_client
 
-    results = []
-    async for result in process_file_patterns(file_pattern, mock_client):
-        results.extend(result)
+        file_pattern = BitbucketFilePattern(
+            path="src", repos=["test-repo"], filenames=["test.py"], skipParsing=False
+        )
 
-    assert len(results) == 1
-    assert results[0]["content"] == "file content"
-    assert results[0]["metadata"]["path"] == "src/test.py"
+        results = []
+        async for result in process_file_patterns(file_pattern):
+            results.extend(result)
+
+        assert len(results) == 1
+        assert results[0]["content"] == "file content"
+        assert results[0]["metadata"]["path"] == "src/test.py"
 
 
 @pytest.mark.asyncio
 async def test_process_file_patterns_with_extensions() -> None:
     """Test process_file_patterns with file extensions."""
-    mock_client = AsyncMock()
     search_calls: List[str] = []
 
     async def mock_search_files(
@@ -92,27 +97,29 @@ async def test_process_file_patterns_with_extensions() -> None:
         search_calls.append(query)
         yield []
 
-    mock_client.search_files = mock_search_files
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_init_client.return_value = mock_client
 
-    file_pattern = BitbucketFilePattern(
-        path="src",
-        repos=["test-repo"],
-        filenames=["test.py", "test.js"],
-        skipParsing=False,
-    )
+        file_pattern = BitbucketFilePattern(
+            path="src",
+            repos=["test-repo"],
+            filenames=["test.py", "test.js"],
+            skipParsing=False,
+        )
 
-    async for _ in process_file_patterns(file_pattern, mock_client):
-        pass
+        async for _ in process_file_patterns(file_pattern):
+            pass
 
-    assert len(search_calls) == 2
-    assert "ext:py" in search_calls[0]
-    assert "ext:js" in search_calls[1]
+        assert len(search_calls) == 2
+        assert "ext:py" in search_calls[0]
+        assert "ext:js" in search_calls[1]
 
 
 @pytest.mark.asyncio
 async def test_process_file_patterns_skip_non_matching() -> None:
     """Test process_file_patterns skips non-matching files."""
-    mock_client = AsyncMock()
     mock_results = [
         {
             "path_matches": [{"match": "test.py"}],
@@ -130,15 +137,18 @@ async def test_process_file_patterns_skip_non_matching() -> None:
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [mock_results[0]]
 
-    mock_client.search_files = mock_search_files
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_init_client.return_value = mock_client
 
-    file_pattern = BitbucketFilePattern(
-        path="src", repos=["test-repo"], filenames=["test.py"], skipParsing=False
-    )
+        file_pattern = BitbucketFilePattern(
+            path="src", repos=["test-repo"], filenames=["test.py"], skipParsing=False
+        )
 
-    results = []
-    async for result in process_file_patterns(file_pattern, mock_client):
-        results.extend(result)
+        results = []
+        async for result in process_file_patterns(file_pattern):
+            results.extend(result)
 
-    # Verify no results due to path mismatch
-    assert not results
+        # Verify no results due to path mismatch
+        assert not results

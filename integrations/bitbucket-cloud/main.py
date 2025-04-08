@@ -93,8 +93,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         Union[ResourceConfig, BitbucketFileResourceConfig], event.resource_config
     )
     selector = cast(BitbucketFileSelector, config.selector)
-    client = init_client()
-    async for file_result in process_file_patterns(selector.files, client):
+    async for file_result in process_file_patterns(selector.files):
         yield file_result
 
 

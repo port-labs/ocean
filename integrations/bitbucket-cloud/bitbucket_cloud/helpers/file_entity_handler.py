@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, Type, Optional
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
-from bitbucket_cloud.client import BitbucketClient
+from initialize_client import init_client
 import yaml
 
 
@@ -15,11 +15,14 @@ class FileEntityProcessor(JQEntityProcessor):
     prefix = FILE_PROPERTY_PREFIX
 
     async def _get_file_content(
-        self, client: BitbucketClient, repo_slug: str, ref: str, file_path: str
+        self, repo_slug: str, ref: str, file_path: str
     ) -> Optional[Any]:
         """Helper method to fetch and process file content."""
         try:
-            file_content = await client.get_repository_files(repo_slug, ref, file_path)
+            bitbucket_client = init_client()
+            file_content = await bitbucket_client.get_repository_files(
+                repo_slug, ref, file_path
+            )
             if file_path.endswith(YAML_SUFFIX):
                 return yaml.safe_load(file_content)
             elif file_path.endswith(JSON_SUFFIX):
@@ -32,7 +35,6 @@ class FileEntityProcessor(JQEntityProcessor):
 
     async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         """Search for a file in the repository and return its content."""
-        client = BitbucketClient.create_from_ocean_config()
         repo_data = data.get("repo", data)
         repo_slug = repo_data.get("name", "")
         default_branch = repo_data.get("mainbranch", {}).get("name", "main")
@@ -54,7 +56,7 @@ class FileEntityProcessor(JQEntityProcessor):
         logger.info(
             f"Searching for file {file_path} in Repository {repo_slug}, ref {ref}"
         )
-        return await self._get_file_content(client, repo_slug, ref, file_path)
+        return await self._get_file_content(repo_slug, ref, file_path)
 
 
 class GitManipulationHandler(JQEntityProcessor):
