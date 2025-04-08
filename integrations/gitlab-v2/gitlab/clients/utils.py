@@ -22,7 +22,9 @@ def parse_file_content(
     """
     # Quick check for empty or whitespace-only strings
     if not content.strip():
-        logger.debug(f"File '{file_path}' in '{context}' is empty; returning raw content.")
+        logger.debug(
+            f"File '{file_path}' in '{context}' is empty; returning raw content."
+        )
         return content
 
     # 1) Try JSON

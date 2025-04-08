@@ -116,16 +116,31 @@ class GitLabClient:
     async def search_files(
         self,
         scope: str,
-        query: str,
-        repositories: list[str],
+        path: str,
+        repositories: list[str] | None = None,
+        skip_parsing: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        logger.info(f"Searching for files with scope '{scope}' and query '{query}'")
+        search_query = f"path:{path}"
+        logger.info(f"Starting file search with path pattern: '{path}'")
 
-        logger.info(f"Searching in {len(repositories)} repositories")
-        for repo in repositories:
-            logger.debug(f"Searching repo '{repo}' for query '{query}'")
-            async for batch in self._search_in_repository(repo, scope, query):
-                yield batch
+        if repositories:
+            logger.info(f"Searching across {len(repositories)} specific repositories")
+            for repo in repositories:
+                logger.debug(f"Processing repository: {repo}")
+                async for batch in self._search_in_repository(
+                    repo, scope, search_query, skip_parsing
+                ):
+                    yield batch
+        else:
+            logger.info("Searching across all top-level groups")
+            async for groups_batch in self.get_groups(top_level_only=True):
+                logger.debug(f"Processing batch of {len(groups_batch)} groups")
+                for group in groups_batch:
+                    group_id = str(group["id"])
+                    async for batch in self._search_in_group(
+                        group_id, scope, search_query, skip_parsing
+                    ):
+                        yield batch
 
     async def _enrich_batch(
         self,
@@ -177,27 +192,33 @@ class GitLabClient:
                 )
                 yield resource_batch
 
-    async def _process_file(self, file: dict[str, Any], context: str) -> dict[str, Any]:
+    async def _process_file(
+        self, file: dict[str, Any], context: str, skip_parsing: bool = False
+    ) -> dict[str, Any]:
         file_path = file.get("path", "")
         project_id = str(file["project_id"])
         ref = file.get("ref", "main")
-        full_content = await self.get_file_content(project_id, file_path, ref)
 
-        file["content"] = (
-            await anyio.to_thread.run_sync(
-                parse_file_content, full_content, file_path, context
+        file["content"] = await self.get_file_content(project_id, file_path, ref)
+
+        if (
+            not skip_parsing
+            and file["content"] is not None
+            and file_path.endswith(PARSEABLE_EXTENSIONS)
+        ):
+            file["content"] = await anyio.to_thread.run_sync(
+                parse_file_content, file["content"], file_path, context
             )
-            if full_content is not None and file_path.endswith(PARSEABLE_EXTENSIONS)
-            else full_content
-        )
-
         return file
 
     async def _process_batch(
-        self, batch: list[dict[str, Any]], context: str
+        self,
+        batch: list[dict[str, Any]],
+        context: str,
+        skip_parsing: bool = False,
     ) -> list[dict[str, Any]]:
         """Process a batch of files concurrently and return the full result."""
-        tasks = [self._process_file(file, context) for file in batch]
+        tasks = [self._process_file(file, context, skip_parsing) for file in batch]
         return await asyncio.gather(*tasks)
 
     async def _search_in_repository(
@@ -205,16 +226,41 @@ class GitLabClient:
         repo: str,
         scope: str,
         query: str,
+        skip_parsing: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search files in a repository using a scope and query."""
         logger.debug(
-            f"Searching repo '{repo}' for query '{query}' with scope '{scope}'"
+            f"Starting search in repository '{repo}' for query '{query}' with scope '{scope}'"
         )
         params = {"scope": scope, "search": query}
         encoded_repo = quote(repo, safe="")
         path = f"projects/{encoded_repo}/search"
+
         async for batch in self.rest.get_paginated_resource(path, params=params):
             if batch:
-                processed_batch = await self._process_batch(batch, repo)
+                logger.debug(f"Found {len(batch)} files in '{repo}'")
+                processed_batch = await self._process_batch(batch, repo, skip_parsing)
+                if processed_batch:
+                    yield processed_batch
+
+    async def _search_in_group(
+        self,
+        group_id: str,
+        scope: str,
+        query: str,
+        skip_parsing: bool = False,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        logger.debug(
+            f"Starting search in group '{group_id}' for query '{query}' with scope '{scope}'"
+        )
+        params = {"scope": scope, "search": query}
+        encoded_group = quote(group_id, safe="")
+        path = f"groups/{encoded_group}/search"
+
+        async for batch in self.rest.get_paginated_resource(path, params=params):
+            if batch:
+                logger.debug(f"Found {len(batch)} files in group '{group_id}'")
+                processed_batch = await self._process_batch(
+                    batch, group_id, skip_parsing
+                )
                 if processed_batch:
                     yield processed_batch

@@ -26,11 +26,18 @@ class ProjectResourceConfig(ResourceConfig):
 
 
 class FilesSelector(BaseModel):
-    query: str = Field(
-        description="Search query using GitLab's Advanced Search syntax."
+    path: str = Field(
+        default="",
+        alias="path",
+        description="Specify the path to match files from",
     )
     repos: list[str] = Field(
         description="A list of repositories to search files in", default_factory=list
+    )
+    skip_parsing: bool = Field(
+        default=False,
+        alias="skipParsing",
+        description="Skip parsing the files and just return the raw file content",
     )
 
 
