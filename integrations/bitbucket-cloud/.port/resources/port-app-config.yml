@@ -27,4 +27,3 @@ resources:
             defaultBranch: .mainbranch.name
           relations:
             project: '.project.uuid | gsub("[{-}]"; "")'
-  
