@@ -127,7 +127,7 @@ class GitLabClient:
             logger.info(f"Searching across {len(repositories)} specific repositories")
             for repo in repositories:
                 logger.debug(f"Processing repository: {repo}")
-                async for batch in self._search_in_repository(
+                async for batch in self._search_files_in_repository(
                     repo, scope, search_query, skip_parsing
                 ):
                     yield batch
@@ -137,7 +137,7 @@ class GitLabClient:
                 logger.debug(f"Processing batch of {len(groups_batch)} groups")
                 for group in groups_batch:
                     group_id = str(group["id"])
-                    async for batch in self._search_in_group(
+                    async for batch in self._search_files_in_group(
                         group_id, scope, search_query, skip_parsing
                     ):
                         yield batch
@@ -238,7 +238,9 @@ class GitLabClient:
         async for file_batch in self.rest.get_paginated_resource(path, params=params):
             if file_batch:
                 logger.debug(f"Found {len(file_batch)} files in '{repo}'")
-                processed_batch = await self._process_file_batch(file_batch, repo, skip_parsing)
+                processed_batch = await self._process_file_batch(
+                    file_batch, repo, skip_parsing
+                )
                 if processed_batch:
                     yield processed_batch
 
