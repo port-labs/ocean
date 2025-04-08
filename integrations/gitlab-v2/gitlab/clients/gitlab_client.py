@@ -221,7 +221,7 @@ class GitLabClient:
         tasks = [self._process_file(file, context, skip_parsing) for file in batch]
         return await asyncio.gather(*tasks)
 
-    async def _search_in_repository(
+    async def _search_files_in_repository(
         self,
         repo: str,
         scope: str,
