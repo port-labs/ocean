@@ -1,10 +1,9 @@
-from typing import Any, cast
+from typing import cast
 
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from starlette.requests import Request
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
@@ -15,33 +14,12 @@ from azure_devops.misc import (
     AzureDevopsWorkItemResourceConfig,
     Kind,
 )
-from azure_devops.webhooks.webhook_event import WebhookEvent
-from bootstrap import setup_listeners, webhook_event_handler
 
 
-@ocean.on_start()
-async def setup_webhooks() -> None:
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
-        return
-    if not ocean.integration_config.get("app_host"):
-        logger.warning("No app host provided, skipping webhook creation.")
-        return
-
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    if ocean.integration_config.get("is_projects_limited"):
-        async for projects in azure_devops_client.generate_projects():
-            for project in projects:
-                logger.info(
-                    f"Setting up webhook listeners for project {project['name']}"
-                )
-                await setup_listeners(
-                    ocean.integration_config["app_host"],
-                    azure_devops_client,
-                    project["id"],
-                )
-    else:
-        await setup_listeners(ocean.integration_config["app_host"], azure_devops_client)
+from azure_devops.webhooks.webhook_processors.pull_request_processor import (
+    PullRequestWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.push_processor import PushWebhookProcessor
 
 
 @ocean.on_resync(Kind.PROJECT)
@@ -176,11 +154,27 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield files_batch
 
 
-@ocean.router.post("/webhook")
-async def webhook(request: Request) -> dict[str, Any]:
-    body = await request.json()
-    webhook_event = WebhookEvent(
-        eventType=body.get("eventType"), publisherId=body.get("publisherId")
-    )
-    await webhook_event_handler.notify(webhook_event, body)
-    return {"ok": True}
+@ocean.on_start()
+async def setup_webhooks() -> None:
+    base_url = ocean.app.base_url
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation for ONCE listener")
+        return
+
+    if not base_url:
+        logger.warning("No app host provided, skipping webhook creation")
+        return
+
+    client = AzureDevopsClient.create_from_ocean_config()
+
+    if ocean.integration_config.get("is_projects_limited"):
+        async for projects in client.generate_projects():
+            for project in projects:
+                logger.info(f"Setting up webhooks for project {project['name']}")
+                await client.create_webhook_subscriptions(base_url, project["id"])
+    else:
+        await client.create_webhook_subscriptions(base_url)
+
+
+ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PushWebhookProcessor)
