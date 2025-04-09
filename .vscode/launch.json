@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
+
     {
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira",
@@ -129,6 +130,28 @@
       "name": "Run backstage integration",
       "program": "${workspaceFolder}/integrations/backstage/debug.py",
       "python": "${workspaceFolder}/integrations/backstage/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/gitlab-v2",
+      "envFile": "${workspaceFolder}/integrations/gitlab-v2/.env",
+      "justMyCode": true,
+      "name": "Run gitlab-v2 integration",
+      "program": "${workspaceFolder}/integrations/gitlab-v2/debug.py",
+      "python": "${workspaceFolder}/integrations/gitlab-v2/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/bitbucket-cloud",
+      "envFile": "${workspaceFolder}/integrations/bitbucket-cloud/.env",
+      "justMyCode": true,
+      "name": "Run bitbucket-cloud integration",
+      "program": "${workspaceFolder}/integrations/bitbucket-cloud/debug.py",
+      "python": "${workspaceFolder}/integrations/bitbucket-cloud/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },
