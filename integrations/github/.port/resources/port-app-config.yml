@@ -5,6 +5,7 @@ resources:
       orgs:
         - "github"
         - "melodyogonna"
+      repoType: "all"
     port:
       entity:
         mappings:
@@ -16,9 +17,13 @@ resources:
             description: .description
             url: .url
             readme: file://readme.md
+          relations:
+            githubTeams: "[.teams[].id | tostring]"
   - kind: pull-request
     selector:
       query: "true"
+      state: "all" # all, closed, open
+      repoType: "public" # private, public
     port:
       entity:
         mappings:
@@ -40,6 +45,10 @@ resources:
   - kind: issues
     selector:
       query: ".pull_request == null"
+      orgs:
+        - github
+      state: "open"
+      repo_type: "public"
     port:
       entity:
         mappings:
@@ -58,3 +67,41 @@ resources:
             link: ".html_url"
           relations:
             repository: .repo
+            createMissingRelatedEntities: true
+  - kind: team
+    selector:
+      query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
+      orgs:
+        - github
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: .name
+          blueprint: '"githubTeam"'
+          properties:
+            name: .name
+            slug: .slug
+            description: .description
+            link: .html_url
+            permission: .permission
+  - kind: workflow
+    selector:
+      query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
+      orgs:
+        - github
+      repo_type: "all"
+    port:
+      entity:
+        mappings:
+          identifier: ".repo + (.id|tostring)"
+          title: ".name"
+          blueprint: '"githubWorkflow"'
+          properties:
+            path: ".path"
+            status: ".state"
+            createdAt: ".created_at"
+            updatedAt: ".updated_at"
+            link: ".html_url"
+          relations:
+            repository: ".repo"

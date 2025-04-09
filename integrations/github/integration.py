@@ -14,7 +14,7 @@ class RepositorySelector(Selector):
     orgs: list[str] = Field(
         description="list of organizations to retrieve from", default_factory=list
     )
-    type: GithubRepositoryTypes = Field(
+    repo_type: GithubRepositoryTypes = Field(
         alias="repoType",
         description="Type of repository to retrieve",
         default=GithubRepositoryTypes.ALL,
@@ -31,6 +31,7 @@ class PullRequestSelector(Selector):
     repo_type: GithubRepositoryTypes = Field(
         description="The type of repository we want to get PRs from",
         default=GithubRepositoryTypes.ALL,
+        alias="repoType",
     )
 
 
@@ -45,6 +46,7 @@ class IssueSelector(Selector):
     repo_type: GithubRepositoryTypes = Field(
         description="The type of repository we want to get issues from",
         default=GithubRepositoryTypes.ALL,
+        alias="repoType",
     )
 
 
@@ -55,6 +57,7 @@ class WorkflowSelector(Selector):
     repo_type: GithubRepositoryTypes = Field(
         description="The type of repository we want to get issues from",
         default=GithubRepositoryTypes.ALL,
+        alias="repoType",
     )
 
 

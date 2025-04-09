@@ -28,7 +28,14 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "githubTeams": {
+        "title": "GitHub Teams",
+        "target": "githubTeam",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "githubPullRequest",
@@ -176,6 +183,100 @@
       "repository": {
         "target": "githubRepository",
         "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "githubTeam",
+    "title": "GitHub Team",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "link": {
+          "title": "Link",
+          "icon": "Link",
+          "type": "string",
+          "format": "url"
+        },
+        "permission": {
+          "title": "Permission",
+          "type": "string"
+        },
+        "notification_setting": {
+          "title": "Notification Setting",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "githubWorkflow",
+    "title": "Workflow",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "active",
+            "deleted",
+            "disabled_fork",
+            "disabled_inactivity",
+            "disabled_manually"
+          ],
+          "enumColors": {
+            "active": "green",
+            "deleted": "red"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "deletedAt": {
+          "title": "Deleted At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "githubRepository",
+        "required": false,
         "many": false
       }
     }
