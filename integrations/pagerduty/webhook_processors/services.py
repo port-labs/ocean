@@ -42,26 +42,18 @@ class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
         )
         services = []
         for attempt in range(MAX_RETRIES):
-            # When creating a service, PagerDuty can take some time to sync the api data with the new service.
-            # We need to retry to avoid false negatives.
-            try:
-                response = await client.get_single_resource(
-                    object_type=Kinds.SERVICES, identifier=service_id
-                )
-                services = await client.update_oncall_users([response["service"]])
+            response = await client.get_single_resource(
+                object_type=Kinds.SERVICES, identifier=service_id
+            )
+            service = response.get("service")
+            if service:
+                services = await client.update_oncall_users([service])
                 break
-            except Exception:
-                if attempt < MAX_RETRIES - 1:
-                    wait_time = 1 * (2**attempt)
-                    logger.warning(
-                        f"Failed to fetch service data from PagerDuty. Attempt {attempt + 1} failed. Retrying in {wait_time} seconds..."
-                    )
-                    await asyncio.sleep(wait_time)
-                else:
-                    logger.error(
-                        f"Failed to fetch service data from PagerDuty. All {MAX_RETRIES} attempts failed. Not updating service {service_id}."
-                    )
-
+            else:
+                # When creating a service, PagerDuty can take some time to sync the api data with the new service.
+                # We need to retry to avoid false negatives.
+                wait_time = 2**attempt
+                await asyncio.sleep(wait_time)
         return WebhookEventRawResults(
             updated_raw_results=services, deleted_raw_results=[]
         )

@@ -171,42 +171,6 @@ class TestServiceWebhookProcessor:
         )
         mock_client.update_oncall_users.assert_called_once_with([service_data])
 
-    async def test_retry_logic(
-        self,
-        service_webhook_processor: ServiceWebhookProcessor,
-        mock_client: MagicMock,
-        resource_config: ResourceConfig,
-    ) -> None:
-        service_id = "SERVICE123"
-        service_data = {
-            "id": service_id,
-            "name": "Test Service",
-            "escalation_policy": {"id": "EP123"},
-        }
-
-        # Mock the API responses to fail twice before succeeding
-        mock_client.get_single_resource = AsyncMock(
-            side_effect=[
-                Exception("API failure"),
-                Exception("API failure"),
-                {"service": service_data},
-            ]
-        )
-        mock_client.update_oncall_users = AsyncMock(return_value=[service_data])
-
-        payload = {
-            "event": {"event_type": "service.created", "data": {"id": service_id}}
-        }
-
-        result = await service_webhook_processor.handle_event(payload, resource_config)
-        assert isinstance(result, WebhookEventRawResults)
-        assert result.updated_raw_results == [service_data]
-        assert result.deleted_raw_results == []
-
-        # Verify the client methods were called correctly
-        assert mock_client.get_single_resource.call_count == 3
-        mock_client.update_oncall_users.assert_called_once_with([service_data])
-
 
 @pytest.mark.asyncio
 class TestIncidentWebhookProcessor:
