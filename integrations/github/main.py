@@ -1,9 +1,9 @@
 from typing import cast
 
+from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from loguru import logger
 
 from integration import (
     GithubIssueResourceConfig,
@@ -18,11 +18,14 @@ from port import PortGithubResources
 
 @ocean.on_resync(PortGithubResources.REPO)
 async def get_owner_repositories(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    print("this is called")
     github = GitHub(ocean.integration_config.get("github_token"))
     resource_config = cast(GithubRepositoryResourceConfig, event.resource_config)
     selector = resource_config.selector
     for org in selector.orgs:
-        async for data in github.get_repositories(org, repo_type=selector.type):
+        print(org)
+        async for data in github.get_repositories(org, repo_type=selector.repo_type):
+            print(data)
             yield data
 
 
@@ -30,7 +33,8 @@ async def get_owner_repositories(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def get_org_teams(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
     token = ocean.integration_config.get("github_token")
     if token is None:
-        raise ValueError("This sync only works for authenticated users")
+        logger.error("this event only works for authenticated users")
+        return
 
     github = GitHub(token)
     resource_config = cast(GithubTeamResourceConfig, event.resource_config)
@@ -78,12 +82,3 @@ async def get_workflows(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for repo in data:
                 async for workflow in github.get_workflows(org, repo["name"]):
                     yield workflow
-
-
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
-@ocean.on_start()
-async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    logger.info("Starting github_integration integration")
