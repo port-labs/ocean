@@ -186,7 +186,11 @@ class TestServiceWebhookProcessor:
 
         # Mock the API responses to fail twice before succeeding
         mock_client.get_single_resource = AsyncMock(
-            side_effect=[Exception("API failure"), Exception("API failure"), {"service": service_data}]
+            side_effect=[
+                Exception("API failure"),
+                Exception("API failure"),
+                {"service": service_data},
+            ]
         )
         mock_client.update_oncall_users = AsyncMock(return_value=[service_data])
 
