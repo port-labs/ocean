@@ -25,5 +25,6 @@ resources:
           properties:
             url: ".links.html.href"
             defaultBranch: .mainbranch.name
+            readme: file://README.md
           relations:
             project: '.project.uuid | gsub("[{-}]"; "")'

@@ -1,0 +1,218 @@
+[
+    {
+        "icon": "Apps",
+        "title": "Copilot Metrics",
+        "protected": false,
+        "widgets": [
+            {
+                "id": "970913f6-f096-445a-a1d7-7dbc05d86df1",
+                "type": "dashboard-widget",
+                "layout": [
+                    {
+                        "height": 400,
+                        "columns": [
+                            {
+                                "id": "vDzZRIJ12egnxBnm",
+                                "size": 6
+                            },
+                            {
+                                "id": "BuN0HdQ8BdAGzZPM",
+                                "size": 6
+                            }
+                        ]
+                    },
+                    {
+                        "height": 400,
+                        "columns": [
+                            {
+                                "id": "cJ1pEfTmJoz5zrs6",
+                                "size": 6
+                            },
+                            {
+                                "id": "xVdCsTg6NakE4FBQ",
+                                "size": 6
+                            }
+                        ]
+                    }
+                ],
+                "widgets": [
+                    {
+                        "id": "cJ1pEfTmJoz5zrs6",
+                        "title": "Usage by Team",
+                        "description": "",
+                        "type": "table-entities-explorer",
+                        "icon": "Table",
+                        "displayMode": "widget",
+                        "excludedFields": [],
+                        "dataset": {
+                            "combinator": "and",
+                            "rules": [
+                                {
+                                    "operator": "!=",
+                                    "value": null,
+                                    "property": "git_hub_team"
+                                },
+                                {
+                                    "operator": "=",
+                                    "value": "github_copilot_usage",
+                                    "property": "$blueprint"
+                                }
+                            ]
+                        },
+                        "blueprintConfig": {
+                            "github_copilot_usage": {
+                                "filterSettings": {
+                                    "filterBy": {
+                                        "combinator": "and",
+                                        "rules": []
+                                    }
+                                },
+                                "groupSettings": {
+                                    "groupBy": [
+                                        "git_hub_team"
+                                    ]
+                                },
+                                "sortSettings": {
+                                    "sortBy": [
+                                        {
+                                            "property": "git_hub_team",
+                                            "order": "asc"
+                                        },
+                                        {
+                                            "property": "record_date",
+                                            "order": "desc"
+                                        }
+                                    ]
+                                },
+                                "propertiesSettings": {
+                                    "order": [
+                                        "git_hub_org",
+                                        "git_hub_team",
+                                        "record_date"
+                                    ],
+                                    "shown": [
+                                        "record_date",
+                                        "total_suggestions_count",
+                                        "total_acceptances_count",
+                                        "total_lines_suggested",
+                                        "total_lines_accepted",
+                                        "total_active_users",
+                                        "git_hub_org",
+                                        "git_hub_team",
+                                        "acceptance_rate"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "id": "BuN0HdQ8BdAGzZPM",
+                        "type": "entities-pie-chart",
+                        "title": "By team",
+                        "description": "",
+                        "icon": "Pie",
+                        "property": "property#git_hub_team",
+                        "dataset": {
+                            "combinator": "and",
+                            "rules": [
+                                {
+                                    "operator": "!=",
+                                    "value": null,
+                                    "property": "git_hub_team"
+                                },
+                                {
+                                    "operator": "=",
+                                    "value": "github_copilot_usage",
+                                    "property": "$blueprint"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "id": "vDzZRIJ12egnxBnm",
+                        "blueprint": "github_copilot_usage",
+                        "calculationBy": "property",
+                        "description": "",
+                        "title": "Average acceptance rate",
+                        "chartType": "aggregateByProperty",
+                        "dataset": [],
+                        "property": "acceptance_rate",
+                        "func": "median",
+                        "unitAlignment": "right",
+                        "unit": "%",
+                        "type": "entities-number-chart",
+                        "icon": "Metric"
+                    },
+                    {
+                        "type": "table-entities-explorer",
+                        "displayMode": "widget",
+                        "title": "Organization Usage",
+                        "excludedFields": [],
+                        "description": "",
+                        "icon": "Table",
+                        "dataset": {
+                            "combinator": "and",
+                            "rules": [
+                                {
+                                    "operator": "=",
+                                    "value": "github_copilot_usage",
+                                    "property": "$blueprint"
+                                }
+                            ]
+                        },
+                        "blueprintConfig": {
+                            "github_copilot_usage": {
+                                "filterSettings": {
+                                    "filterBy": {
+                                        "combinator": "and",
+                                        "rules": [
+                                            {
+                                                "property": "git_hub_team",
+                                                "value": [],
+                                                "operator": "="
+                                            }
+                                        ]
+                                    }
+                                },
+                                "groupSettings": {
+                                    "groupBy": []
+                                },
+                                "sortSettings": {
+                                    "sortBy": [
+                                        {
+                                            "property": "record_date",
+                                            "order": "desc"
+                                        }
+                                    ]
+                                },
+                                "propertiesSettings": {
+                                    "order": [
+                                        "git_hub_org",
+                                        "git_hub_team",
+                                        "record_date"
+                                    ],
+                                    "shown": [
+                                        "record_date",
+                                        "total_suggestions_count",
+                                        "total_acceptances_count",
+                                        "total_lines_suggested",
+                                        "total_lines_accepted",
+                                        "total_active_users",
+                                        "git_hub_org",
+                                        "acceptance_rate"
+                                    ]
+                                }
+                            }
+                        },
+                        "id": "xVdCsTg6NakE4FBQ"
+                    }
+                ]
+            }
+        ],
+        "identifier": "copilot_metrics",
+        "showInSidebar": true,
+        "requiredQueryParams": [],
+        "section": "software_catalog",
+        "type": "dashboard"
+    }
+]

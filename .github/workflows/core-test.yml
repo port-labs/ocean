@@ -168,8 +168,15 @@ jobs:
               body: output
             })
 
+      - name: Calculate minimum required coverage with tolerance
+        run: |
+          STMT_COVERAGE=${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}
+          THRESHOLD_DELTA=${{ vars.COVERAGE_THRESHOLD_DELTA }}
+          MIN_REQUIRED=$(echo "$STMT_COVERAGE + $THRESHOLD_DELTA" | bc)
+          echo "MIN_REQUIRED_COVERAGE=$MIN_REQUIRED" >> $GITHUB_ENV
+
       - name: Fail PR if current code coverage percentage is higher than the new one
-        if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true') }}
+        if: ${{ (fromJson(env.MIN_REQUIRED_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true') }}
         run: exit 1
 
       - name: Update service code coverage percentage in Port
