@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
+- Added support for handling AWS::ResourceGroups::Group as a special kind, allowing optional resyncing of associated group resources. This improvement facilitates the relationship between individual resources and their respective resource groups.
+
+
+## 0.2.115 (2025-04-07)
+
+
+### Improvements
+
 - Bumped ocean version to ^0.22.2
 
 
