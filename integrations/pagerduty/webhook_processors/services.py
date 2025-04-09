@@ -1,3 +1,4 @@
+import asyncio
 from loguru import logger
 from clients.pagerduty import PagerDutyClient
 from consts import SERVICE_DELETE_EVENTS, SERVICE_UPSERT_EVENTS
@@ -11,6 +12,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
+
+MAX_RETRIES = 5
 
 
 class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
@@ -37,10 +40,26 @@ class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
         logger.info(
             f"Got event for service {service_id}: {payload.get('event', {}).get('event_type')}"
         )
-        response = await client.get_single_resource(
-            object_type=Kinds.SERVICES, identifier=service_id
-        )
-        services = await client.update_oncall_users([response["service"]])
+        services = []
+        for attempt in range(MAX_RETRIES):
+            try:
+                response = await client.get_single_resource(
+                    object_type=Kinds.SERVICES, identifier=service_id
+                )
+                services = await client.update_oncall_users([response["service"]])
+                raise Exception("test")
+                break
+            except Exception:
+                if attempt < 2:
+                    wait_time = 1 * (2**attempt)
+                    logger.warning(
+                        f"Failed to fetch service data from PagerDuty. Attempt {attempt + 1} failed. Retrying in {wait_time} seconds..."
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    logger.error(
+                        f"Failed to fetch service data from PagerDuty. All {MAX_RETRIES} attempts failed. Not updating service {service_id}."
+                    )
 
         return WebhookEventRawResults(
             updated_raw_results=services, deleted_raw_results=[]
