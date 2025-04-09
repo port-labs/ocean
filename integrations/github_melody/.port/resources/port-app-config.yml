@@ -16,7 +16,6 @@ resources:
             name: .name
             description: .description
             url: .url
-            readme: file://readme.md
           relations:
             githubTeams: "[.teams[].id | tostring]"
   - kind: pull-requests

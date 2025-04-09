@@ -1,9 +1,9 @@
-from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, AsyncGenerator, TypedDict
 
 import httpx
 from port_ocean.utils import http_async_client
+from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 from aiolimiter import AsyncLimiter
 
@@ -20,12 +20,6 @@ class GithubState(StrEnum):
     OPEN = "open"
     CLOSED = "closed"
     ALL = "all"
-
-
-@dataclass()
-class GithubPagination:
-    next: str | None
-    prev: str | None
 
 
 class RepoParams(TypedDict):
@@ -65,13 +59,11 @@ class GitHub:
         return headers
 
     async def _make_request(
-        self, url: str, method="GET", params: dict[str, Any] | None = None, **kwargs
+        self, url: str, method: str = "GET", params: dict[str, Any] | None = None
     ) -> httpx.Response:
         async with self.rate_limitter:
             try:
-                return await self._http_client.request(
-                    method, url, params=params, **kwargs
-                )
+                return await self._http_client.request(method, url, params=params)
             except httpx.HTTPStatusError as e:
                 logger.error(f"Error occured while fetching {e.request.url}")
                 f"status code: {e.response.status_code} - {e.response.text}"
@@ -83,40 +75,35 @@ class GitHub:
                 raise
 
     async def _get_paginated_data(
-        self, url: str, params: dict[str, Any] | None = None, **kwargs
+        self, url: str, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         while True:
-            res = await self._make_request(url, params=params, **kwargs)
+            res = await self._make_request(url, params=params)
             data = res.json()
             yield data
 
-            pagination = self._parse_pagination(res.headers)
+            pagination = self._extract_pagination_from_header(res.headers)
             if pagination is None:
                 break
-
-            # TODO: Only handle next pages for now; could be changed in the future
-            if pagination.next is None:
-                break
-            url = pagination.next
+            # This only handles pagination in "next". I don't know whether going forward and backward is necessary
+            url = pagination
 
     @staticmethod
-    def _parse_pagination(header: httpx.Headers) -> GithubPagination | None:
+    def _extract_pagination_from_header(header: httpx.Headers) -> str | None:
         link = header.get("Link", None)
         if link is None:
             return None
 
-        pagination = GithubPagination(next=None, prev=None)
         links = link.split(",")
 
         for link in links:
             url, rel = link.split(";")
             if "next" in rel:
-                pagination.next = url.strip("<> ")
-            elif "prev" in rel:
-                pagination.prev = url.strip("<> ")
+                return url.strip("<> ")
 
-        return pagination
+        return None
 
+    @cache_iterator_result()
     async def get_repositories(
         self, owner: str, repo_type: GithubRepositoryTypes = GithubRepositoryTypes.ALL
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -135,6 +122,7 @@ class GitHub:
         ):
             yield repositories
 
+    @cache_iterator_result()
     async def get_pull_requests(
         self, owner: str, repo: str, pr_state: GithubState = GithubState.ALL
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -153,6 +141,7 @@ class GitHub:
         ):
             yield pull_requests
 
+    @cache_iterator_result()
     async def get_issues(
         self, owner: str, repo: str, state: GithubState = GithubState.ALL
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
