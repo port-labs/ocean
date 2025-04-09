@@ -243,13 +243,13 @@ class TestGitLabClient:
         }
         with patch.object(
             client.rest,
-            "get_resource",
+            "send_api_request",
             AsyncMock(return_value=mock_project),
-        ) as mock_get_resource:
+        ) as mock_send_request:
             result = await client.get_project(project_path)
             assert result["id"] == "123"
             assert result["path_with_namespace"] == project_path
-            mock_get_resource.assert_called_once_with("projects/group%2Fproject")
+            mock_send_request.assert_called_once_with("GET", "projects/group%2Fproject")
 
     async def test_file_exists(self, client: GitLabClient) -> None:
         """Test checking if a file exists in a project"""
@@ -259,21 +259,23 @@ class TestGitLabClient:
         mock_response = [{"path": "test.txt"}]  # Non-empty response means exists
         with patch.object(
             client.rest,
-            "get_resource",
+            "send_api_request",
             AsyncMock(return_value=mock_response),
-        ) as mock_get_resource:
+        ) as mock_send_request:
             exists = await client.file_exists(project_id, scope, query)
             assert exists is True
-            mock_get_resource.assert_called_once_with(
-                "projects/123/search", params={"scope": "blobs", "search": "test.txt"}
+            mock_send_request.assert_called_once_with(
+                "GET",
+                "projects/123/search",
+                params={"scope": "blobs", "search": "test.txt"},
             )
 
         # Test non-existent file
         with patch.object(
             client.rest,
-            "get_resource",
+            "send_api_request",
             AsyncMock(return_value=[]),  # Empty response means doesn't exist
-        ) as mock_get_resource:
+        ) as mock_send_request:
             exists = await client.file_exists(project_id, scope, query)
             assert exists is False
 
@@ -307,7 +309,7 @@ class TestGitLabClient:
                 {"ref": "main", "path": "src", "recursive": False},
             )
 
-    async def test_search_folders(self, client: GitLabClient) -> None:
+    async def test_get_repository_folders(self, client: GitLabClient) -> None:
         """Test searching folders in a single repository"""
         # Arrange
         repository = "group/project1"
@@ -335,7 +337,9 @@ class TestGitLabClient:
             ) as mock_get_paginated:
                 # Act
                 results = []
-                async for batch in client.search_folders(path, repository, branch):
+                async for batch in client.get_repository_folders(
+                    path, repository, branch
+                ):
                     results.extend(batch)
 
                 # Assert

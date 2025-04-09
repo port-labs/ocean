@@ -29,22 +29,26 @@ class GitLabClient:
 
     async def get_project(self, project_path: str | int) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
-        path = f"projects/{encoded_path}"
-        return await self.rest.get_resource(path)
+        return await self.rest.send_api_request(
+            "GET", f"projects/{encoded_path}", params=self.DEFAULT_PARAMS
+        )
 
     async def get_group(self, group_id: int) -> dict[str, Any]:
-        path = f"groups/{group_id}"
-        return await self.rest.get_resource(path, params=self.DEFAULT_PARAMS)
+        return await self.rest.send_api_request(
+            "GET", f"groups/{group_id}", params=self.DEFAULT_PARAMS
+        )
 
     async def get_merge_request(
         self, project_id: int, merge_request_id: int
     ) -> dict[str, Any]:
-        path = f"projects/{project_id}/merge_requests/{merge_request_id}"
-        return await self.rest.get_resource(path)
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/merge_requests/{merge_request_id}"
+        )
 
     async def get_issue(self, project_id: int, issue_id: int) -> dict[str, Any]:
-        path = f"projects/{project_id}/issues/{issue_id}"
-        return await self.rest.get_resource(path)
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/issues/{issue_id}"
+        )
 
     async def get_projects(
         self,
@@ -105,7 +109,7 @@ class GitLabClient:
         params = {"scope": scope, "search": query}
         encoded_project_path = quote(project_id, safe="")
         path = f"projects/{encoded_project_path}/search"
-        response = await self.rest.get_resource(path, params=params)
+        response = await self.rest.send_api_request("GET", path, params=params)
         return bool(response)
 
     async def search_files(
@@ -155,7 +159,7 @@ class GitLabClient:
                     for folder in folders_batch
                 ]
 
-    async def search_folders(
+    async def get_repository_folders(
         self, path: str, repository: str, branch: Optional[str] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for folders in specified repositories only."""

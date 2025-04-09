@@ -11,12 +11,6 @@ class RestClient(HTTPBaseClient):
     DEFAULT_PAGE_SIZE = 100
     VALID_GROUP_RESOURCES = ["issues", "merge_requests", "labels", "search"]
 
-    async def get_resource(
-        self, path: str, params: Optional[dict[str, Any]] = None
-    ) -> dict[str, Any]:
-        params = params or {}
-        return await self.send_api_request("GET", path, params=params)
-
     async def get_paginated_resource(
         self, resource_type: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:

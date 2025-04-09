@@ -130,7 +130,7 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             continue
 
         for repo in repos:
-            async for folders_batch in client.search_folders(
+            async for folders_batch in client.get_repository_folders(
                 path=path, repository=repo.name, branch=repo.branch
             ):
                 logger.info(f"Found batch of {len(folders_batch)} matching folders")
