@@ -1,3 +1,4 @@
+from typing import Literal
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -7,6 +8,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from pydantic import Field
 
+from port import PortGithubResources
 from wrappers.github import GithubState, GithubRepositoryTypes
 
 
@@ -69,22 +71,27 @@ class TeamSelector(Selector):
 
 class GithubRepositoryResourceConfig(ResourceConfig):
     selector: RepositorySelector
+    kind: Literal[PortGithubResources.REPO]
 
 
 class GithubPullRequestResourceConfig(ResourceConfig):
     selector: PullRequestSelector
+    kind: Literal[PortGithubResources.PR]
 
 
 class GithubIssueResourceConfig(ResourceConfig):
     selector: IssueSelector
+    kind: Literal[PortGithubResources.ISSUE]
 
 
 class GithubWorkflowResourceConfig(ResourceConfig):
     selector: WorkflowSelector
+    kind: Literal[PortGithubResources.WORKFLOW]
 
 
 class GithubTeamResourceConfig(ResourceConfig):
     selector: TeamSelector
+    kind: Literal[PortGithubResources.TEAM]
 
 
 class GithubPortAppConfig(PortAppConfig):

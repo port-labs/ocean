@@ -5,9 +5,9 @@ features:
     section: Git Providers
     resources:
       - kind: repository
-      - kind: pull-request
+      - kind: pull-requests
       - kind: issues
-      - kind: team
+      - kind: teams
       - kind: workflows
 configurations:
   - name: githubToken

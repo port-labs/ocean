@@ -3,7 +3,7 @@ from enum import StrEnum
 
 class PortGithubResources(StrEnum):
     REPO = "repository"
-    PR = "pull-request"
+    PR = "pull-requests"
     ISSUE = "issues"
-    TEAM = "team"
+    TEAM = "teams"
     WORKFLOW = "workflows"

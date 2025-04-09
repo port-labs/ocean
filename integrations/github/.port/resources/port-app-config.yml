@@ -1,15 +1,15 @@
+createMissingRelatedEntities: true
 resources:
   - kind: repository
     selector:
       query: "true"
       orgs:
         - "github"
-        - "melodyogonna"
       repoType: "all"
     port:
       entity:
         mappings:
-          identifier: .id
+          identifier: .id | tostring
           title: ".name"
           blueprint: '"githubRepository"'
           properties:
@@ -19,9 +19,12 @@ resources:
             readme: file://readme.md
           relations:
             githubTeams: "[.teams[].id | tostring]"
-  - kind: pull-request
+  - kind: pull-requests
     selector:
       query: "true"
+      orgs:
+        - "github"
+        - "melodyogonna"
       state: "all" # all, closed, open
       repoType: "public" # private, public
     port:
@@ -29,7 +32,7 @@ resources:
         mappings:
           identifier: ".head.repo.name + (.id|tostring)"
           title: ".title"
-          blueprint: '"githubPullRequest'
+          blueprint: '"githubPullRequest"'
           properties:
             creator: ".user.login"
             assignees: "[.assignees[].login]"
@@ -54,7 +57,7 @@ resources:
         mappings:
           identifier: ".repository.name + (.id|tostring)"
           title: ".title"
-          blueprint: '"githubIssues'
+          blueprint: '"githubIssues"'
           properties:
             creator: ".user.login"
             assignees: "[.assignees[].login]"
@@ -67,8 +70,7 @@ resources:
             link: ".html_url"
           relations:
             repository: .repo
-            createMissingRelatedEntities: true
-  - kind: team
+  - kind: teams
     selector:
       query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
       orgs:
@@ -85,7 +87,7 @@ resources:
             description: .description
             link: .html_url
             permission: .permission
-  - kind: workflow
+  - kind: workflows
     selector:
       query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
       orgs:

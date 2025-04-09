@@ -18,14 +18,11 @@ from port import PortGithubResources
 
 @ocean.on_resync(PortGithubResources.REPO)
 async def get_owner_repositories(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    print("this is called")
     github = GitHub(ocean.integration_config.get("github_token"))
     resource_config = cast(GithubRepositoryResourceConfig, event.resource_config)
     selector = resource_config.selector
     for org in selector.orgs:
-        print(org)
         async for data in github.get_repositories(org, repo_type=selector.repo_type):
-            print(data)
             yield data
 
 
