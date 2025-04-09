@@ -374,9 +374,7 @@ async def resync_resource_group(
 async def resync_custom_kind(
     kind: str,
     session: aioboto3.Session,
-    service_name: Literal[
-        "acm", "elbv2", "cloudformation", "ec2", "elasticache", "resource-groups"
-    ],
+    service_name: Literal["acm", "elbv2", "cloudformation", "ec2", "elasticache"],
     describe_method: str,
     list_param: str,
     marker_param: Literal["NextToken", "Marker"],
