@@ -23,6 +23,7 @@ from port_ocean.utils.queue_utils import process_in_queue
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
+API_PARAMS = {"api-version": "7.1"}
 # Maximum number of work item IDs allowed in a single API request
 # (based on Azure DevOps API limitations) https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/list?view=azure-devops-rest-7.1&tabs=HTTP
 MAX_WORK_ITEMS_PER_REQUEST = 200
@@ -609,7 +610,7 @@ class AzureDevopsClient(HTTPBaseClient):
             response = await self.send_request(
                 "POST",
                 items_batch_url,
-                params={"api-version": "7.1"},
+                params=API_PARAMS,
                 data=json.dumps(request_data),
                 headers={"Content-Type": "application/json"},
             )
@@ -714,10 +715,12 @@ class AzureDevopsClient(HTTPBaseClient):
             raise
 
     async def create_webhook_subscriptions(
-        self, base_url: str, project_id: Optional[str] = None
+        self,
+        base_url: str,
+        project_id: Optional[str] = None,
+        webhook_secret: Optional[str] = None,
     ) -> None:
         """Create or update webhook subscriptions"""
-        webhook_secret = ocean.integration_config.get("webhook_secret")
         auth_username = "port"
 
         existing_subscriptions = await self.generate_subscriptions_webhook_events()

@@ -11,7 +11,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.clients.port.types import UserAgentType
 
-from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.client.azure_devops_client import API_PARAMS, AzureDevopsClient
 from azure_devops.misc import GitPortAppConfig, extract_branch_name_from_ref, Kind
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
 from azure_devops.webhooks.webhook_processors.base_processor import (
@@ -90,7 +90,7 @@ class PushWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 logger.info("Skipping ref update for non-default branch")
                 continue
 
-            task = self._process_ref_update(config, push_data, update)
+            task = self._handle_gitops_diff_for_ref(config, push_data, update)
             tasks.append(task)
 
         if tasks:
@@ -100,7 +100,7 @@ class PushWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         return processed_entities
 
-    async def _process_ref_update(
+    async def _handle_gitops_diff_for_ref(
         self,
         config: GitPortAppConfig,
         push_data: Dict[str, Any],
@@ -149,9 +149,7 @@ class PushWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             project_id = repo_info["project"]["id"]
             url = f"{self.client._organization_base_url}/{project_id}/_apis/git/repositories/{repo_id}/commits/{commit_id}/changes"
 
-            response = await self.client.send_request(
-                "GET", url, params={"api-version": "7.1"}
-            )
+            response = await self.client.send_request("GET", url, params=API_PARAMS)
             if not response:
                 logger.warning(
                     f"No response when fetching changes for commit {commit_id}"
@@ -161,7 +159,7 @@ class PushWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             changed_files = response.json().get("changes", [])
 
             for changed_file in changed_files:
-                file_entity = await self._process_changed_file(
+                file_entity = await self._build_file_entity_from_commit(
                     repo_info, commit_id, changed_file
                 )
                 if file_entity:
@@ -172,7 +170,7 @@ class PushWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         return file_entities
 
-    async def _process_changed_file(
+    async def _build_file_entity_from_commit(
         self, repo_info: Dict[str, Any], commit_id: str, changed_file: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         try:

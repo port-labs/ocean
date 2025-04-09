@@ -157,6 +157,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_start()
 async def setup_webhooks() -> None:
     base_url = ocean.app.base_url
+    webhook_secret = ocean.integration_config.get("webhook_secret")
     if ocean.event_listener_type == "ONCE":
         logger.info("Skipping webhook creation for ONCE listener")
         return
@@ -166,14 +167,17 @@ async def setup_webhooks() -> None:
         return
 
     client = AzureDevopsClient.create_from_ocean_config()
-
     if ocean.integration_config.get("is_projects_limited"):
         async for projects in client.generate_projects():
             for project in projects:
                 logger.info(f"Setting up webhooks for project {project['name']}")
-                await client.create_webhook_subscriptions(base_url, project["id"])
+                await client.create_webhook_subscriptions(
+                    base_url, project["id"], webhook_secret
+                )
     else:
-        await client.create_webhook_subscriptions(base_url)
+        await client.create_webhook_subscriptions(
+            base_url, webhook_secret=webhook_secret
+        )
 
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
