@@ -84,8 +84,10 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(
             f"Processing batch of {len(groups_batch)} groups for merge requests"
         )
+        params = {"state": "opened"}
+
         async for merge_requests_batch in client.get_groups_resource(
-            groups_batch, "merge_requests"
+            groups_batch, "merge_requests", params=params
         ):
             yield merge_requests_batch
 
@@ -109,9 +111,8 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for files_batch in client.search_files(
         scope, search_path, repositories, skip_parsing
     ):
-        if files_batch:
-            logger.info(f"Found batch of {len(files_batch)} matching files")
-            yield files_batch
+        enriched_batch = await client._enrich_files_with_repos(files_batch)
+        yield enriched_batch
 
 
 @ocean.on_resync(ObjectKind.FOLDER)

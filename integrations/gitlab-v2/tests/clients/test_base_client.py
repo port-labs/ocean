@@ -147,14 +147,14 @@ class TestGitLabClient:
             # Act
             results: list[dict[str, Any]] = []
             async for batch in client.get_groups_resource(
-                [group], "issues"
+                [group], "issues", params=None
             ):  # Changed to pass list of groups
                 results.extend(batch)
 
             # Assert
             assert len(results) == 1
             assert results[0]["title"] == "Test Issue"
-            mock_get_group_resource.assert_called_once_with("123", "issues")
+            mock_get_group_resource.assert_called_once_with("123", "issues", None)
 
     async def test_search_files_in_repos(self, client: GitLabClient) -> None:
         """Test file search in specific repositories using scope and query via _search_in_repository"""
