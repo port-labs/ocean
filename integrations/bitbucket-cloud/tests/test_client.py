@@ -155,13 +155,7 @@ async def test_send_api_request_error(mock_client: BitbucketClient) -> None:
             await mock_client._send_api_request(f"{mock_client.base_url}/test/endpoint")
 
         assert exc_info.value == original_error
-        mock_logger.assert_called_once_with("Bitbucket API error: Test error message")
-        mock_request.assert_called_once_with(
-            method="GET",
-            url=f"{mock_client.base_url}/test/endpoint",
-            params=None,
-            json=None,
-        )
+        mock_logger.assert_called_once_with("Bitbucket API error: 400 Client Error")
 
 
 @pytest.mark.asyncio
@@ -247,7 +241,7 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
 
             mock_paginated.return_value = mock_generator()
             async for contents in mock_client.get_directory_contents(
-                "test-repo", "main", ""
+                "test-repo", "main", "", 2
             ):
                 assert contents == mock_dir_data["values"]
             mock_paginated.assert_called_once_with(

@@ -80,7 +80,6 @@ class TestGitLabClient:
         # Arrange
         mock_groups: list[dict[str, Any]] = [{"id": 1, "name": "Test Group"}]
 
-        # Use a context manager for patching
         with patch.object(
             client.rest,
             "get_paginated_resource",
@@ -140,7 +139,6 @@ class TestGitLabClient:
         mock_issues: list[dict[str, Any]] = [{"id": 1, "title": "Test Issue"}]
         group: dict[str, str] = {"id": "123"}
 
-        # Use a context manager for patching
         with patch.object(
             client.rest,
             "get_paginated_group_resource",
@@ -157,3 +155,80 @@ class TestGitLabClient:
             assert len(results) == 1
             assert results[0]["title"] == "Test Issue"
             mock_get_group_resource.assert_called_once_with("123", "issues")
+
+    async def test_search_files_in_repos(self, client: GitLabClient) -> None:
+        """Test file search in specific repositories using scope and query via _search_in_repository"""
+        processed_files = [
+            {"path": "test.json", "project_id": "123", "content": {"key": "value"}}
+        ]
+        repos = ["group/project"]
+        scope = "blobs"
+        query = "test.json"
+        with patch.object(
+            client,
+            "_search_files_in_repository",
+            return_value=async_mock_generator([processed_files]),
+        ) as mock_search_repo:
+            with patch.object(
+                client, "get_file_content", return_value='{"key": "value"}'
+            ):
+                results = []
+                async for batch in client.search_files(
+                    scope, query, repositories=repos, skip_parsing=False
+                ):
+                    results.extend(batch)
+                assert len(results) == 1
+                assert results[0]["path"] == "test.json"
+                assert results[0]["content"] == {"key": "value"}
+                mock_search_repo.assert_called_once_with(
+                    "group/project", "blobs", "path:test.json", False
+                )
+
+    async def test_search_files_in_groups(self, client: GitLabClient) -> None:
+        """Test file search across all groups using scope and query"""
+        mock_groups = [{"id": "1", "name": "Group1"}]
+        processed_files = [
+            {"path": "test.yaml", "project_id": "123", "content": {"key": "value"}}
+        ]
+        scope = "blobs"
+        query = "test.yaml"
+        with patch.object(
+            client, "get_groups", return_value=async_mock_generator([mock_groups])
+        ):
+            with patch.object(
+                client,
+                "_search_files_in_group",
+                return_value=async_mock_generator([processed_files]),
+            ) as mock_search_group:
+                with patch.object(
+                    client, "get_file_content", return_value="key: value"
+                ):
+                    results = []
+                    async for batch in client.search_files(
+                        scope, query, skip_parsing=False
+                    ):
+                        results.extend(batch)
+                    assert len(results) == 1
+                    assert results[0]["path"] == "test.yaml"
+                    assert results[0]["content"] == {"key": "value"}
+                    mock_search_group.assert_called_once_with(
+                        "1", "blobs", "path:test.yaml", False
+                    )
+
+    async def test_get_file_content(self, client: GitLabClient) -> None:
+        """Test fetching file content via REST"""
+        # Arrange
+        project_id = "123"
+        file_path = "test.txt"
+        mock_content = "Hello, World!"
+        with patch.object(
+            client.rest,
+            "get_file_content",
+            return_value=mock_content,
+        ) as mock_get_file_content:
+            # Act
+            result = await client.get_file_content(project_id, file_path, "main")
+
+            # Assert
+            assert result == mock_content
+            mock_get_file_content.assert_called_once_with(project_id, file_path, "main")
