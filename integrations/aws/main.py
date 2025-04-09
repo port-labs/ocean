@@ -1,5 +1,6 @@
 import json
 import typing
+from typing import Optional, Iterable
 
 from fastapi import Response, status
 import fastapi
@@ -50,13 +51,10 @@ semaphore = get_semaphore()
 async def _handle_global_resource_resync(
     kind: str,
     credentials: AwsCredentials,
-    aws_resource_config: AWSResourceConfig,
+    allowed_regions: Optional[Iterable[str]] = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
-    allowed_regions = filter(
-        aws_resource_config.selector.is_region_allowed, credentials.enabled_regions
-    )
     async for session in credentials.create_session_for_each_region(allowed_regions):
         try:
             async for batch in resync_cloudcontrol(kind, session, aws_resource_config):
@@ -77,16 +75,22 @@ async def resync_resources_for_account(
 
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
+    allowed_regions = filter(
+        aws_resource_config.selector.is_region_allowed, credentials.enabled_regions
+    )
+
     if is_global_resource(kind):
         logger.info(
             f"Handling global resource {kind} for account {credentials.account_id}"
         )
         async for batch in _handle_global_resource_resync(
-            kind, credentials, aws_resource_config
+            kind, credentials, allowed_regions
         ):
             yield batch
     else:
-        async for session in credentials.create_session_for_each_region():
+        async for session in credentials.create_session_for_each_region(
+            allowed_regions
+        ):
             try:
                 async for batch in resync_cloudcontrol(
                     kind, session, aws_resource_config
@@ -110,15 +114,8 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(ResourceKindsWithSpecialHandling):
         return
 
-    tasks = [
-        semaphore_async_iterator(
-            semaphore,
-            functools.partial(resync_resources_for_account, credentials, kind),
-        )
-        async for credentials in get_accounts()
-    ]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+    async for credentials in get_accounts():
+        async for batch in resync_resources_for_account(credentials, kind):
             yield batch
 
 
@@ -132,150 +129,93 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
-    tasks = [
-        semaphore_async_iterator(
-            semaphore,
-            functools.partial(
-                resync_custom_kind,
-                kind,
-                session,
-                "elasticache",
-                "describe_cache_clusters",
-                "CacheClusters",
-                "Marker",
-                aws_resource_config,
-            ),
-        )
-        async for session in get_sessions()
-    ]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+    async for session in get_sessions(
+        aws_resource_config=aws_resource_config,
+    ):
+        async for batch in resync_custom_kind(
+            kind,
+            session,
+            "elasticache",
+            "describe_cache_clusters",
+            "CacheClusters",
+            "Marker",
+        ):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER)
 async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    tasks = [
-        semaphore_async_iterator(
-            semaphore,
-            functools.partial(
-                resync_custom_kind,
-                kind,
-                session,
-                "elbv2",
-                "describe_load_balancers",
-                "LoadBalancers",
-                "Marker",
-                aws_resource_config,
-            ),
-        )
-        async for session in get_sessions()
-    ]
 
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+    async for session in get_sessions(
+        aws_resource_config=aws_resource_config,
+    ):
+        async for batch in resync_custom_kind(
+            kind,
+            session,
+            "elbv2",
+            "describe_load_balancers",
+            "LoadBalancers",
+            "Marker",
+        ):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM_CERTIFICATE)
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    tasks = [
-        semaphore_async_iterator(
-            semaphore,
-            functools.partial(
-                resync_custom_kind,
-                kind,
-                session,
-                "acm",
-                "list_certificates",
-                "CertificateSummaryList",
-                "NextToken",
-                aws_resource_config,
-            ),
-        )
-        async for session in get_sessions()
-    ]
-
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+    async for session in get_sessions(
+        aws_resource_config=aws_resource_config,
+    ):
+        async for batch in resync_custom_kind(
+            kind,
+            session,
+            "acm",
+            "list_certificates",
+            "CertificateSummaryList",
+            "NextToken",
+        ):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.AMI_IMAGE)
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    tasks = [
-        semaphore_async_iterator(
-            semaphore,
-            functools.partial(
-                resync_custom_kind,
-                kind,
-                session,
-                "ec2",
-                "describe_images",
-                "Images",
-                "NextToken",
-                aws_resource_config,
-                {"Owners": ["self"]},
-            ),
-        )
-        async for session in get_sessions()
-    ]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+    async for session in get_sessions(
+        aws_resource_config=aws_resource_config,
+    ):
+        async for batch in resync_custom_kind(
+            kind,
+            session,
+            "ec2",
+            "describe_images",
+            "Images",
+            "NextToken",
+            {"Owners": ["self"]},
+        ):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    tasks = [
-        semaphore_async_iterator(
-            semaphore,
-            functools.partial(
-                resync_custom_kind,
-                kind,
-                session,
-                "cloudformation",
-                "describe_stacks",
-                "Stacks",
-                "NextToken",
-                aws_resource_config,
-            ),
-        )
-        async for session in get_sessions()
-    ]
-
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+    async for session in get_sessions(aws_resource_config=aws_resource_config):
+        async for batch in resync_custom_kind(
+            kind,
+            session,
+            "cloudformation",
+            "describe_stacks",
+            "Stacks",
+            "NextToken",
+        ):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.SQS_QUEUE)
 async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    tasks = [
-        semaphore_async_iterator(
-            semaphore,
-            functools.partial(
-                resync_sqs_queue,
-                kind,
-                session,
-                aws_resource_config,
-            ),
-        )
-        async for session in get_sessions()
-    ]
-
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+    async for session in get_sessions(aws_resource_config=aws_resource_config):
+        async for batch in resync_sqs_queue(kind, session, aws_resource_config):
             yield batch
 
 

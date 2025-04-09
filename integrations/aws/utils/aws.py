@@ -1,4 +1,4 @@
-from typing import Any, AsyncIterator, Optional, Union
+from typing import Any, AsyncIterator, Iterable, Optional, Union, TYPE_CHECKING
 
 import aioboto3
 from starlette.requests import Request
@@ -8,6 +8,9 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from aws.aws_credentials import AwsCredentials
 from aws.session_manager import SessionManager
+
+if TYPE_CHECKING:
+    from utils.overrides import AWSResourceConfig
 
 
 _session_manager: SessionManager = SessionManager()
@@ -37,26 +40,10 @@ async def get_accounts() -> AsyncIterator[AwsCredentials]:
         yield credentials
 
 
-async def session_factory(
-    credentials: AwsCredentials,
-    custom_region: Optional[str],
-    use_default_region: Optional[bool],
-) -> AsyncIterator[aioboto3.Session]:
-
-    if use_default_region:
-        default_region = get_default_region_from_credentials(credentials)
-        yield await credentials.create_session(default_region)
-    elif custom_region:
-        yield await credentials.create_session(custom_region)
-    else:
-        async for session in credentials.create_session_for_each_region():
-            yield session
-
-
 async def get_sessions(
     custom_account_id: Optional[str] = None,
     custom_region: Optional[str] = None,
-    use_default_region: Optional[bool] = None,
+    aws_resource_config: Optional["AWSResourceConfig"] = None,
 ) -> AsyncIterator[aioboto3.Session]:
     """
     Gets boto3 sessions for the AWS regions.
@@ -64,18 +51,19 @@ async def get_sessions(
 
     if custom_account_id:
         credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
-        async for session in session_factory(
-            credentials, custom_region, use_default_region
-        ):
-            yield session
+        yield await credentials.create_session(custom_region)
     else:
-        tasks = [
-            session_factory(credentials, custom_region, use_default_region)
-            async for credentials in get_accounts()
-        ]
-        if tasks:
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
+        async for credentials in get_accounts():
+            allowed_regions: Iterable[str] = credentials.enabled_regions
+            if aws_resource_config:
+                allowed_regions = filter(
+                    aws_resource_config.selector.is_region_allowed,
+                    credentials.enabled_regions,
+                )
+            async for session in credentials.create_session_for_each_region(
+                allowed_regions
+            ):
+                yield session
 
 
 def validate_request(request: Request) -> tuple[bool, str]:
