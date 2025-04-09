@@ -12,6 +12,7 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
     FILE = "file"
+    FOLDER = "folder"
 
 
 def parse_file_content(
