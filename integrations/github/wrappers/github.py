@@ -45,7 +45,7 @@ class GitHub:
         self._init_rate_limitter()
         logger.info("Github wrapper istantiated.")
 
-    def _init_rate_limitter(self):
+    def _init_rate_limitter(self) -> None:
         max_auth_requests = 5000
         max_unauth_requests = 60
         hour = 60 * 60
@@ -55,7 +55,7 @@ class GitHub:
             self.rate_limitter = AsyncLimiter(max_unauth_requests, hour)
 
     @property
-    def headers(self):
+    def headers(self) -> dict[str, str]:
         headers = {
             "X-GitHub-Api-Version": "2022-11-28",
             "Accept": "application/vnd.github+json",
@@ -84,7 +84,7 @@ class GitHub:
     def _parse_pagination(header: httpx.Headers) -> GithubPagination | None:
         link = header.get("Link", None)
         if link is None:
-            return
+            return None
 
         pagination = GithubPagination(next=None, prev=None)
         links = link.split(",")
@@ -100,7 +100,7 @@ class GitHub:
 
     async def get_repositories(
         self, owner: str, repo_type: GithubRepositoryTypes = GithubRepositoryTypes.ALL
-    ) -> AsyncGenerator[list[dict[str, any]], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in an owner account
 
         This method will follow pagination until all items have been retrieved
@@ -127,7 +127,7 @@ class GitHub:
 
     async def get_pull_requests(
         self, owner: str, repo: str, pr_state: GithubState = GithubState.ALL
-    ) -> AsyncGenerator[list[dict[str, any]], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch pull requests from a repository
 
         args:
@@ -154,7 +154,7 @@ class GitHub:
 
     async def get_issues(
         self, owner: str, repo: str, state: GithubState = GithubState.ALL
-    ) -> AsyncGenerator[list[dict[str, any]], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch issues from a repository
 
         args:
@@ -177,7 +177,7 @@ class GitHub:
                 break
             url = pagination.next
 
-    async def get_teams(self, org: str) -> AsyncGenerator[list[dict[str, any]], None]:
+    async def get_teams(self, org: str) -> AsyncGenerator[list[dict[str, Any]], None]:
         """fetch the teams in an organization.
 
         args:
@@ -201,7 +201,7 @@ class GitHub:
 
     async def get_workflows(
         self, owner: str, repo: str
-    ) -> AsyncGenerator[list[dict[str, any]], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """fetch the workflows in repository.
 
         args:

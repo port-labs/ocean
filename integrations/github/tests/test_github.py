@@ -11,13 +11,13 @@ def github_instance() -> GitHub:
     return github
 
 
-def test_github_init(github_instance: GitHub):
+def test_github_init(github_instance: GitHub) -> None:
     assert github_instance._http_client is not None
     assert github_instance._base_url is not None
 
 
 @pytest.mark.asyncio
-async def test_fetching_pageless_respository(github_instance: GitHub):
+async def test_fetching_pageless_respository(github_instance: GitHub) -> None:
     github_instance._http_client = MagicMock(spec=httpx.Client)
     response = AsyncMock(spec=httpx.Response)
     response.json = MagicMock(return_val=[{id: 12, "name": "test repo"}])
@@ -33,7 +33,7 @@ async def test_fetching_pageless_respository(github_instance: GitHub):
 
 
 @pytest.mark.asyncio
-async def test_fetching_page_respository(github_instance: GitHub):
+async def test_fetching_page_respository(github_instance: GitHub) -> None:
     github_instance._http_client = MagicMock(spec=httpx.Client)
     response = AsyncMock(spec=httpx.Response)
     response.json = MagicMock(return_val=[{id: 12, "name": "test repo"}])

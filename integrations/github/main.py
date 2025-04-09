@@ -17,7 +17,7 @@ from port import PortGithubResources
 
 
 @ocean.on_resync(PortGithubResources.REPO)
-async def get_owner_repositories(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def get_owner_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github = GitHub(ocean.integration_config.get("github_token"))
     resource_config = cast(GithubRepositoryResourceConfig, event.resource_config)
     selector = resource_config.selector
@@ -27,7 +27,7 @@ async def get_owner_repositories(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(PortGithubResources.TEAM)
-async def get_org_teams(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def get_org_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     token = ocean.integration_config.get("github_token")
     if token is None:
         logger.error("this event only works for authenticated users")
@@ -42,7 +42,7 @@ async def get_org_teams(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(PortGithubResources.PR)
-async def get_pull_requests(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def get_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github = GitHub(ocean.integration_config.get("github_token"))
     resource_config = cast(GithubPullRequestResourceConfig, event.resource_config)
     selector = resource_config.selector
@@ -56,7 +56,7 @@ async def get_pull_requests(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(PortGithubResources.ISSUE)
-async def get_issues(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def get_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github = GitHub(ocean.integration_config.get("github_token"))
     resource_config = cast(GithubIssueResourceConfig, event.resource_config)
     selector = resource_config.selector
@@ -70,7 +70,7 @@ async def get_issues(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(PortGithubResources.WORKFLOW)
-async def get_workflows(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def get_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github = GitHub(ocean.integration_config.get("github_token"))
     resource_config = cast(GithubWorkflowResourceConfig, event.resource_config)
     selector = resource_config.selector
