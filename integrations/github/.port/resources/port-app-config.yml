@@ -1,16 +1,60 @@
 resources:
-  - kind: github_integration-example-kind
+  - kind: repository
     selector:
-      query: 'true'
+      query: "true"
+      orgs:
+        - "github"
+        - "melodyogonna"
     port:
       entity:
         mappings:
-          identifier: .my_custom_id
-          title: '(.my_component + " @ " + .my_service)'
-          blueprint: '"github_integrationExampleBlueprint"'
+          identifier: .id
+          title: ".name"
+          blueprint: '"githubRepository"'
           properties:
-            status: .my_enum
-            text: .my_custom_text
-            component: .my_component
-            service: .my_service
-            score: .my_special_score
+            name: .name
+            description: .description
+            url: .url
+            readme: file://readme.md
+  - kind: pull-request
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".head.repo.name + (.id|tostring)"
+          title: ".title"
+          blueprint: '"githubPullRequest'
+          properties:
+            creator: ".user.login"
+            assignees: "[.assignees[].login]"
+            reviewers: "[.requested_reviewers[].login]"
+            status: ".status" # merged, closed, opened
+            closedAt: ".closed_at"
+            updatedAt: ".updated_at"
+            mergedAt: ".merged_at"
+            createdAt: ".created_at"
+            link: ".html_url"
+          relations:
+            repository: .head.repo.name
+  - kind: issues
+    selector:
+      query: ".pull_request == null"
+    port:
+      entity:
+        mappings:
+          identifier: ".repository.name + (.id|tostring)"
+          title: ".title"
+          blueprint: '"githubIssues'
+          properties:
+            creator: ".user.login"
+            assignees: "[.assignees[].login]"
+            labels: "[.labels[].nam]"
+            status: ".state" # merged, closed, opened
+            closedAt: ".closed_at"
+            updatedAt: ".updated_at"
+            createdAt: ".created_at"
+            description: ".body"
+            link: ".html_url"
+          relations:
+            repository: .repo

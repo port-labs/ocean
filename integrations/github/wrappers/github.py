@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator, TypedDict
 
 import httpx
 from port_ocean.utils import http_async_client
@@ -8,17 +8,28 @@ from loguru import logger
 from aiolimiter import AsyncLimiter
 
 
-class GithubResources(StrEnum):
-    REPO = "repository"
-    ISSUE = "issues"
-    TEAM = "team"
-    WORKFLOW = "workflows"
+class GithubRepositoryTypes(StrEnum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+    ALL = "all"
+    FORKS = "forks"
+    SOURCES = "sources"
+
+
+class GithubState(StrEnum):
+    OPEN = "open"
+    CLOSED = "closed"
+    ALL = "all"
 
 
 @dataclass()
 class GithubPagination:
     next: str | None
     prev: str | None
+
+
+class RepoParams(TypedDict):
+    type: str
 
 
 class GitHub:
@@ -53,10 +64,12 @@ class GitHub:
             headers["Authorization"] = f"Bearer {self._bearer_token}"
         return headers
 
-    async def _make_request(self, url: str) -> httpx.Response:
+    async def _make_request(
+        self, url: str, params: dict[str, Any] | None = None
+    ) -> httpx.Response:
         async with self.rate_limitter:
             try:
-                return await self._http_client.get(url)
+                return await self._http_client.get(url, params=params)
             except httpx.HTTPStatusError as e:
                 logger.error(f"Error occured while fetching {e.request.url}")
                 f"status code: {e.response.status_code} - {e.response.text}"
@@ -86,7 +99,7 @@ class GitHub:
         return pagination
 
     async def get_repositories(
-        self, owner: str
+        self, owner: str, repo_type: GithubRepositoryTypes = GithubRepositoryTypes.ALL
     ) -> AsyncGenerator[list[dict[str, any]], None]:
         """Get all repositories in an owner account
 
@@ -99,7 +112,7 @@ class GitHub:
         url = f"{self._base_url}/orgs/{owner}/repos"
         logger.info(f"fetching repositories for owner - {owner}")
         while True:
-            res = await self._make_request(url)
+            res = await self._make_request(url, params={"type": repo_type})
             data = res.json()
             yield data
 
@@ -113,18 +126,20 @@ class GitHub:
             url = pagination.next
 
     async def get_pull_requests(
-        self, owner: str, repo: str
+        self, owner: str, repo: str, pr_state: GithubState = GithubState.ALL
     ) -> AsyncGenerator[list[dict[str, any]], None]:
         """Fetch pull requests from a repository
 
         args:
             owner - Owner of the repository with pull requests, may be a user or an organization
             repo - Repository where PRs should be fetched from
+        kwargs:
+            pr_state - state of PR to retrieve. By default we'll fetch every PR
         """
         url = f"{self._base_url}/repos/{owner}/{repo}/pulls"
         logger.info(f"fetching pull requests for repository - {repo}")
         while True:
-            res = await self._make_request(url)
+            res = await self._make_request(url, params={"state": pr_state})
             data = res.json()
             yield data
 
@@ -138,7 +153,7 @@ class GitHub:
             url = pagination.next
 
     async def get_issues(
-        self, owner: str, repo: str
+        self, owner: str, repo: str, state: GithubState = GithubState.ALL
     ) -> AsyncGenerator[list[dict[str, any]], None]:
         """Fetch issues from a repository
 
@@ -147,7 +162,7 @@ class GitHub:
             repo - Repository where issues should be fetched from
         """
         url = f"{self._base_url}/repos/{owner}/{repo}/issues"
-        logger.info(f"fetching pull requests for repository - {repo}")
+        logger.info(f"fetching issues for repository - {repo}")
         while True:
             res = await self._make_request(url)
             data = res.json()
@@ -185,15 +200,16 @@ class GitHub:
             url = pagination.next
 
     async def get_workflows(
-        self, org: str
+        self, owner: str, repo: str
     ) -> AsyncGenerator[list[dict[str, any]], None]:
-        """fetch the teams in an organization.
+        """fetch the workflows in repository.
 
         args:
-            organization - must be an organization
+            owner - workflow owner, can be an organization or a user
+            repo - workflow repo - repository where workflows should be fetched from
         """
-        url = f"{self._base_url}/orgs/{org}/teams"
-        logger.info(f"fetching teams in the organization - {org}")
+        url = f"{self._base_url}/repos/{owner}/{repo}/workflows"
+        logger.info(f"fetching teams in the organization - {owner}")
         while True:
             res = await self._make_request(url)
             data = res.json()

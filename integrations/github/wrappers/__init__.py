@@ -1,3 +1,3 @@
-from .github import GitHub, GithubResources
+from .github import GitHub
 
-__all__ = ["GitHub", "GithubResources"]
+__all__ = ["GitHub"]

@@ -1,41 +1,183 @@
 [
-    {
-        "identifier": "github_integrationExampleBlueprint",
-        "title": "github Example",
-        "icon": "Blueprint",
-        "schema": {
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "enum": [
-                        "VALID",
-                        "FAILED"
-                    ],
-                    "enumColors": {
-                        "VALID": "green",
-                        "FAILED": "red"
-                    },
-                    "title": "Status"
-                },
-                "text": {
-                    "type": "string",
-                    "title": "Text"
-                },
-                "component": {
-                    "type": "string",
-                    "title": "Component"
-                },
-                "service": {
-                    "type": "string",
-                    "title": "Service"
-                },
-                "score": {
-                    "type": "number",
-                    "title": "Score"
-                }
-            },
-            "required": []
+  {
+    "identifier": "githubRepository",
+    "title": "Repository",
+    "icon": "Blueprint",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
         },
-        "relations": {}
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "url": {
+          "type": "string",
+          "format": "url",
+          "title": "Repository URL"
+        },
+        "readme": {
+          "type": "string",
+          "title": "README",
+          "format": "markdown"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "githubPullRequest",
+    "title": "Pull Request",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "creator": {
+          "type": "string",
+          "title": "Creator"
+        },
+        "assignees": {
+          "type": "string",
+          "title": "Assignees"
+        },
+        "reviewers": {
+          "type": "string",
+          "title": "Reviewers"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "merged",
+            "open",
+            "closed"
+          ],
+          "enumColors": {
+            "merged": "purple",
+            "open": "green",
+            "closed": "red"
+          }
+        },
+        "ClosedAt": {
+          "type": "string",
+          "title": "Closed At",
+          "format": "date-time"
+        },
+        "UpdatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        },
+        "MergedAt": {
+          "type": "string",
+          "title": "Merged At",
+          "format": "date-time"
+        },
+        "CreatedAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Link"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "days_old": {
+        "title": "Days Old",
+        "icon": "DefaultProperty",
+        "calculation": "(now / 86400) - (.properties.createdAt | capture(\"(?<date>\\\\d{4}-\\\\d{2}-\\\\d{2})\") | .date | strptime(\"%Y-%m-%d\") | mktime / 86400) | floor",
+        "type": "number"
+      }
+    },
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "githubRepository",
+        "required": false,
+        "many": false
+      }
     }
+  },
+  {
+    "identifier": "githubIssues",
+    "title": "Issue",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "creator": {
+          "title": "Creator",
+          "type": "string"
+        },
+        "assignees": {
+          "title": "Assignees",
+          "type": "array"
+        },
+        "labels": {
+          "title": "Labels",
+          "type": "array"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "enumColors": {
+            "open": "green",
+            "closed": "purple"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "title": "Closed At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "format": "markdown"
+        },
+        "issueNumber": {
+          "title": "Issue Number",
+          "type": "number"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "repository": {
+        "target": "githubRepository",
+        "required": true,
+        "many": false
+      }
+    }
+  }
 ]

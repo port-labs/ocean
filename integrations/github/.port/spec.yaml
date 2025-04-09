@@ -5,11 +5,12 @@ features:
     section: Git Providers
     resources:
       - kind: repository
+      - kind: pull-request
       - kind: issues
       - kind: team
       - kind: workflows
 configurations:
   - name: githubToken
-    required: true
+    required: false
     type: string
     sensitive: true

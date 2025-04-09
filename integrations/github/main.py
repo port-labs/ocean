@@ -1,57 +1,76 @@
-from typing import Any
-
+from typing import cast
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from loguru import logger
 
-from wrappers import GitHub, GithubResources
-
-
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
-@ocean.on_resync(GithubResources.REPO)
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-
-    # Initial stub to show complete flow, replace this with your own logic
-    if kind == "github_integration-example-kind":
-        return [
-            {
-                "my_custom_id": f"id_{x}",
-                "my_custom_text": f"very long text with {x} in it",
-                "my_special_score": x * 32 % 3,
-                "my_component": f"component-{x}",
-                "my_service": f"service-{x % 2}",
-                "my_enum": "VALID" if x % 2 == 0 else "FAILED",
-            }
-            for x in range(25)
-        ]
-
-    return []
+from integration import GithubPullRequestResourceConfig, GithubRepositoryResourceConfig
+from wrappers import GitHub
+from port import PortGithubResources
 
 
-@ocean.on_resync(GithubResources.REPO)
-def get_owner_repositories():
+@ocean.on_resync(PortGithubResources.REPO)
+async def get_owner_repositories(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github = GitHub(ocean.integration_config.get("github_token"))
+    resource_config = cast(GithubRepositoryResourceConfig, event.resource_config)
+    selector = resource_config.selector
+    for org in selector.orgs:
+        async for data in github.get_repositories(org, repo_type=selector.type):
+            yield data
 
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
+@ocean.on_resync(PortGithubResources.TEAM)
+async def get_org_teams(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    token = ocean.integration_config.get("github_token")
+    if token is None:
+        raise ValueError("This sync only works for authenticated users")
+
+    github = GitHub(token)
+    resource_config = cast(GithubRepositoryResourceConfig, event.resource_config)
+    selector = resource_config.selector
+    for org in selector.orgs:
+        async for data in github.get_teams(org):
+            yield data
+
+
+@ocean.on_resync(PortGithubResources.PR)
+async def get_pull_requests(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    github = GitHub(ocean.integration_config.get("github_token"))
+    resource_config = cast(GithubPullRequestResourceConfig, event.resource_config)
+    selector = resource_config.selector
+    for org in selector.orgs:
+        async for data in github.get_repositories(org, repo_type=selector.repo_type):
+            for repo in data:
+                async for pr in github.get_pull_requests(
+                    org, repo["name"], pr_state=selector.state
+                ):
+                    yield pr
+
+
+@ocean.on_resync(PortGithubResources.ISSUE)
+async def get_issues(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    github = GitHub(ocean.integration_config.get("github_token"))
+    resource_config = cast(GithubPullRequestResourceConfig, event.resource_config)
+    selector = resource_config.selector
+    for org in selector.orgs:
+        async for data in github.get_repositories(org, repo_type=selector.repo_type):
+            for repo in data:
+                async for issue in github.get_issues(
+                    org, repo["name"], state=selector.state
+                ):
+                    yield issue
+
+
+@ocean.on_resync(PortGithubResources.WORKFLOW)
+async def get_workflows(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    github = GitHub(ocean.integration_config.get("github_token"))
+    resource_config = cast(GithubPullRequestResourceConfig, event.resource_config)
+    selector = resource_config.selector
+    for org in selector.orgs:
+        async for data in github.get_repositories(org, repo_type=selector.repo_type):
+            for repo in data:
+                async for workflow in github.get_workflows(org, repo["name"]):
+                    yield workflow
 
 
 # Optional
@@ -60,4 +79,4 @@ def get_owner_repositories():
 async def on_start() -> None:
     # Something to do when the integration starts
     # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting github_integration integration")
+    logger.info("Starting github_integration integration")
