@@ -29,14 +29,10 @@ class GitLabClient:
 
     async def get_project(self, project_path: str | int) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
-        return await self.rest.send_api_request(
-            "GET", f"projects/{encoded_path}"
-        )
+        return await self.rest.send_api_request("GET", f"projects/{encoded_path}")
 
     async def get_group(self, group_id: int) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"groups/{group_id}"
-        )
+        return await self.rest.send_api_request("GET", f"groups/{group_id}")
 
     async def get_merge_request(
         self, project_id: int, merge_request_id: int
