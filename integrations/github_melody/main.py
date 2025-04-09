@@ -11,9 +11,9 @@ from integration import (
     GithubRepositoryResourceConfig,
     GithubTeamResourceConfig,
     GithubWorkflowResourceConfig,
+    PortGithubResources,
 )
-from wrappers import GitHub
-from port import PortGithubResources
+from github.client import GitHub
 
 
 @ocean.on_resync(PortGithubResources.REPO)

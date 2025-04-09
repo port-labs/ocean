@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from wrappers import GitHub
+from github import GitHub
 
 
 @pytest.fixture

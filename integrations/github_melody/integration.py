@@ -1,4 +1,6 @@
 from typing import Literal
+from enum import StrEnum
+
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -8,8 +10,15 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from pydantic import Field
 
-from port import PortGithubResources
-from wrappers.github import GithubState, GithubRepositoryTypes
+from github.client import GithubState, GithubRepositoryTypes
+
+
+class PortGithubResources(StrEnum):
+    REPO = "repository"
+    PR = "pull-requests"
+    ISSUE = "issues"
+    TEAM = "teams"
+    WORKFLOW = "workflows"
 
 
 class RepositorySelector(Selector):

@@ -65,11 +65,13 @@ class GitHub:
         return headers
 
     async def _make_request(
-        self, url: str, params: dict[str, Any] | None = None
+        self, url: str, method="GET", params: dict[str, Any] | None = None, **kwargs
     ) -> httpx.Response:
         async with self.rate_limitter:
             try:
-                return await self._http_client.get(url, params=params)
+                return await self._http_client.request(
+                    method, url, params=params, **kwargs
+                )
             except httpx.HTTPStatusError as e:
                 logger.error(f"Error occured while fetching {e.request.url}")
                 f"status code: {e.response.status_code} - {e.response.text}"
@@ -79,6 +81,23 @@ class GitHub:
                     f"Could not complete request. unable to fetch {e.request.url} -{e}"
                 )
                 raise
+
+    async def _get_paginated_data(
+        self, url: str, params: dict[str, Any] | None = None, **kwargs
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        while True:
+            res = await self._make_request(url, params=params, **kwargs)
+            data = res.json()
+            yield data
+
+            pagination = self._parse_pagination(res.headers)
+            if pagination is None:
+                break
+
+            # TODO: Only handle next pages for now; could be changed in the future
+            if pagination.next is None:
+                break
+            url = pagination.next
 
     @staticmethod
     def _parse_pagination(header: httpx.Headers) -> GithubPagination | None:
@@ -111,19 +130,10 @@ class GitHub:
         """
         url = f"{self._base_url}/orgs/{owner}/repos"
         logger.info(f"fetching repositories for owner - {owner}")
-        while True:
-            res = await self._make_request(url, params={"type": repo_type})
-            data = res.json()
-            yield data
-
-            pagination = self._parse_pagination(res.headers)
-            if pagination is None:
-                break
-
-            # TODO: Only handle next pages for now; could be changed in the future
-            if pagination.next is None:
-                break
-            url = pagination.next
+        async for repositories in self._get_paginated_data(
+            url, params={"type": repo_type}
+        ):
+            yield repositories
 
     async def get_pull_requests(
         self, owner: str, repo: str, pr_state: GithubState = GithubState.ALL
@@ -138,19 +148,10 @@ class GitHub:
         """
         url = f"{self._base_url}/repos/{owner}/{repo}/pulls"
         logger.info(f"fetching pull requests for repository - {repo}")
-        while True:
-            res = await self._make_request(url, params={"state": pr_state})
-            data = res.json()
-            yield data
-
-            pagination = self._parse_pagination(res.headers)
-            if pagination is None:
-                break
-
-            # TODO: Only handle next pages for now; could be changed in the future
-            if pagination.next is None:
-                break
-            url = pagination.next
+        async for pull_requests in self._get_paginated_data(
+            url, params={"state": pr_state}
+        ):
+            yield pull_requests
 
     async def get_issues(
         self, owner: str, repo: str, state: GithubState = GithubState.ALL
@@ -163,19 +164,8 @@ class GitHub:
         """
         url = f"{self._base_url}/repos/{owner}/{repo}/issues"
         logger.info(f"fetching issues for repository - {repo}")
-        while True:
-            res = await self._make_request(url)
-            data = res.json()
-            yield data
-
-            pagination = self._parse_pagination(res.headers)
-            if pagination is None:
-                break
-
-            # TODO: Only handle next pages for now; could be changed in the future
-            if pagination.next is None:
-                break
-            url = pagination.next
+        async for issues in self._get_paginated_data(url, params={"state": state}):
+            yield issues
 
     async def get_teams(self, org: str) -> AsyncGenerator[list[dict[str, Any]], None]:
         """fetch the teams in an organization.
@@ -185,19 +175,8 @@ class GitHub:
         """
         url = f"{self._base_url}/orgs/{org}/teams"
         logger.info(f"fetching teams in the organization - {org}")
-        while True:
-            res = await self._make_request(url)
-            data = res.json()
-            yield data
-
-            pagination = self._parse_pagination(res.headers)
-            if pagination is None:
-                break
-
-            # TODO: Only handle next pages for now; could be changed in the future
-            if pagination.next is None:
-                break
-            url = pagination.next
+        async for teams in self._get_paginated_data(url):
+            yield teams
 
     async def get_workflows(
         self, owner: str, repo: str
@@ -210,16 +189,5 @@ class GitHub:
         """
         url = f"{self._base_url}/repos/{owner}/{repo}/workflows"
         logger.info(f"fetching teams in the organization - {owner}")
-        while True:
-            res = await self._make_request(url)
-            data = res.json()
-            yield data
-
-            pagination = self._parse_pagination(res.headers)
-            if pagination is None:
-                break
-
-            # TODO: Only handle next pages for now; could be changed in the future
-            if pagination.next is None:
-                break
-            url = pagination.next
+        async for workflows in self._get_paginated_data(url):
+            yield workflows
