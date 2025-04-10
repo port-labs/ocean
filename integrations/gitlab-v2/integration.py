@@ -17,7 +17,7 @@ import asyncio
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
-MAX_REQUESTS_PER_TIME_WINDOW = 1
+MAX_REQUESTS_PER_TIME_WINDOW = 10
 _rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_TIME_WINDOW, 0.25)
 _semaphore = asyncio.Semaphore(5)
 
@@ -116,11 +116,8 @@ class GitManipulationHandler(JQEntityProcessor):
             entity_processor = SearchEntityProcessor
         else:
             entity_processor = JQEntityProcessor
-            return await entity_processor(self.context)._search(data, pattern)
 
-        async with _semaphore:
-            async with _rate_limiter:
-                return await entity_processor(self.context)._search(data, pattern)
+        return await entity_processor(self.context)._search(data, pattern)
 
 
 class GitlabIntegration(BaseIntegration):
