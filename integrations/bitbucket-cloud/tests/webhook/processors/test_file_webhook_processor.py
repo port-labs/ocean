@@ -96,13 +96,15 @@ class TestFileWebhookProcessor:
 
             # Test payload
             test_payload: Dict[str, Any] = {
-                "repository": {"uuid": "repo-123"},
+                "repository": {"uuid": "repo-123", "name": "test-repo"},
                 "push": {"changes": [{"new": {"hash": "new-hash"}}]},
             }
 
             # Test resource config
             mock_resource_config = MagicMock()
             mock_resource_config.selector.files.skip_parsing = False
+            # Set up the tracked_repository field to include our test repository
+            mock_resource_config.selector.files.repos = ["test-repo"]
 
             # Call the handle_event function
             result = await processor.handle_event(test_payload, mock_resource_config)

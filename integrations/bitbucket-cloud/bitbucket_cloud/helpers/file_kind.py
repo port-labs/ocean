@@ -1,13 +1,14 @@
 import fnmatch
-import json
 from pathlib import Path
 from typing import Dict, List, Any, AsyncGenerator
 from loguru import logger
-import yaml
 from integration import BitbucketFilePattern
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from initialize_client import init_client
-from bitbucket_cloud.helpers.file_kind_live_event import check_and_load_file_prefix
+from bitbucket_cloud.helpers.file_kind_live_event import (
+    check_and_load_file_prefix,
+    parse_file,
+)
 
 
 JSON_FILE_SUFFIX = ".json"
@@ -108,7 +109,7 @@ async def retrieve_file_content(
     """
     file_path = file_info.get("path", "")
     repo_info = file_info["commit"]["repository"]
-    repo_slug = repo_info["name"]
+    repo_slug = repo_info["name"].replace(" ", "-")
     branch = repo_info["mainbranch"]["name"]
 
     logger.info(f"Retrieving contents for file: {file_path}")
@@ -136,21 +137,6 @@ async def retrieve_file_content(
             "metadata": file_info,
         }
     yield result
-
-
-def parse_file(file: Any, file_path: str) -> Any:
-    """Parse a file based on its extension."""
-    try:
-        if file_path.endswith(JSON_FILE_SUFFIX):
-            loaded_file = json.loads(file)
-            file = loaded_file
-        elif file_path.endswith(YAML_FILE_SUFFIX):
-            loaded_file = yaml.safe_load(file)
-            file = loaded_file
-        return file
-    except Exception as e:
-        logger.error(f"Error parsing file: {e}")
-        return file
 
 
 def validate_file_match(file_path: str, filename: str, expected_path: str) -> bool:

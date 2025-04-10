@@ -13,6 +13,7 @@ from integration import BitbucketFileResourceConfig
 from bitbucket_cloud.helpers.file_kind_live_event import (
     process_file_changes,
 )
+from loguru import logger
 
 YAML_SUFFIX = (".yaml", ".yml")
 JSON_SUFFIX = ".json"
@@ -33,9 +34,19 @@ class FileWebhookProcessor(_BitbucketAbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         repository = payload["repository"]["uuid"]
+        repo_name = payload["repository"]["name"].replace(" ", "-")
         matching_resource_config = cast(BitbucketFileResourceConfig, resource_config)
         selector = matching_resource_config.selector
         skip_parsing = selector.files.skip_parsing
+        tracked_repository = selector.files.repos
+        if tracked_repository and repo_name not in tracked_repository:
+            logger.info(
+                f"Skipping push event for repository {repo_name} because it is not in {tracked_repository}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
 
         updated_raw_results, deleted_raw_results = await process_file_changes(
             repository=repository,

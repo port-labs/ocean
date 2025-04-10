@@ -66,7 +66,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
     async for repositories in client.get_repositories():
         tasks = [
-            client.get_pull_requests(repo.get("slug", repo["name"].lower()))
+            client.get_pull_requests(repo.get("slug", repo["name"].lower().replace(" ", "-")))
             for repo in repositories
         ]
         async for batch in stream_async_iterators_tasks(*tasks):

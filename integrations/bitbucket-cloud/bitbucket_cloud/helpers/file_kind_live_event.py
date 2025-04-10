@@ -10,8 +10,8 @@ from fnmatch import fnmatch
 
 
 FILE_PROPERTY_PREFIX = "file://"
-JSON_SUFFIX = ".json"
-YAML_SUFFIX = ".yaml"
+JSON_FILE_SUFFIX = ".json"
+YAML_FILE_SUFFIX = (".yaml", ".yml")
 
 
 def extract_hash_from_payload(changes: dict[str, Any]) -> tuple[str, str, str]:
@@ -48,8 +48,8 @@ async def process_file_value(
     bitbucket_file = await client.get_repository_files(repository, hash, file_path)
 
     return (
-        json.loads(bitbucket_file)
-        if Path(file_path).suffix == JSON_SUFFIX
+        parse_file(bitbucket_file, file_path)
+        if file_path.endswith(JSON_FILE_SUFFIX)
         else bitbucket_file
     )
 
@@ -191,10 +191,7 @@ async def process_file_changes(
                 )
 
                 if not skip_parsing:
-                    if file_path.endswith(YAML_SUFFIX):
-                        raw_data = yaml.safe_load(raw_data)
-                    elif file_path.endswith(JSON_SUFFIX):
-                        raw_data = json.loads(raw_data)
+                    raw_data = parse_file(raw_data, file_path)
 
                 directory_path = Path(file_path).parent
                 full_raw_data = await check_and_load_file_prefix(
@@ -209,3 +206,18 @@ async def process_file_changes(
                 updated_raw_results.append(full_raw_data)
 
     return updated_raw_results, deleted_raw_results
+
+
+def parse_file(file: Any, file_path: str) -> Any:
+    """Parse a file based on its extension."""
+    try:
+        if file_path.endswith(JSON_FILE_SUFFIX):
+            loaded_file = json.loads(file)
+            file = loaded_file
+        elif file_path.endswith(YAML_FILE_SUFFIX):
+            loaded_file = yaml.safe_load(file)
+            file = loaded_file
+        return file
+    except Exception as e:
+        logger.error(f"Error parsing file: {e}")
+        return file
