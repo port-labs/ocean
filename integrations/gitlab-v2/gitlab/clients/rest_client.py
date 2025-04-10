@@ -52,7 +52,7 @@ class RestClient(HTTPBaseClient):
         return await self.send_api_request("GET", path, params=params or {})
 
     async def get_file_data(
-        self, project_id: str, file_path: str, ref: str = "main"
+        self, project_id: str, file_path: str, ref: str
     ) -> dict[str, Any]:
         encoded_project_id = quote(project_id, safe="")
         encoded_file_path = quote(file_path, safe="")
@@ -65,7 +65,7 @@ class RestClient(HTTPBaseClient):
         return response
 
     async def get_file_content(
-        self, project_id: str, file_path: str, ref: str = "main"
+        self, project_id: str, file_path: str, ref: str
     ) -> Optional[str]:
         encoded_project_id = quote(project_id, safe="")
         encoded_file_path = quote(file_path, safe="")
