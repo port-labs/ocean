@@ -136,7 +136,7 @@ class TestFilePushWebhookProcessor:
 
         # Verify _enrich_files_with_repos was called with processed batch
         processor._gitlab_webhook_client._enrich_files_with_repos.assert_called_once_with(
-            file_data, max_concurrent=10
+            file_data
         )
 
         # Verify results
@@ -218,7 +218,7 @@ class TestFilePushWebhookProcessor:
 
         # Verify _enrich_files_with_repos was called with processed batch
         processor._gitlab_webhook_client._enrich_files_with_repos.assert_called_once_with(
-            file_data, max_concurrent=10
+            file_data
         )
 
         # Verify results

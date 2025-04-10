@@ -42,13 +42,7 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
-
-        updated_results: list[dict[str, Any]] = []
-        if "commits" not in payload:
-            return WebhookEventRawResults(
-                updated_raw_results=updated_results, deleted_raw_results=[]
-            )
-
+ 
         changed_files = set()
         for commit in payload.get("commits", []):
             changed_files.update(commit.get("modified", []))
@@ -59,7 +53,7 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         )
         if not matching_files:
             return WebhookEventRawResults(
-                updated_raw_results=updated_results, deleted_raw_results=[]
+                updated_raw_results=[], deleted_raw_results=[]
             )
 
         file_batch = [
@@ -72,11 +66,9 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             context=f"project:{project_id}",
             skip_parsing=selector.files.skip_parsing,
         )
-        enriched_batch = await self._gitlab_webhook_client._enrich_files_with_repos(
-            processed_batch,
-            max_concurrent=10,
+        updated_results = await self._gitlab_webhook_client._enrich_files_with_repos(
+            processed_batch
         )
-        updated_results.extend(enriched_batch)
 
         logger.info(
             f"Completed push event processing; updated {len(updated_results)} entities"
