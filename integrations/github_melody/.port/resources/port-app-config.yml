@@ -59,7 +59,7 @@ resources:
           properties:
             creator: ".user.login"
             assignees: "[.assignees[].login]"
-            labels: "[.labels[].nam]"
+            labels: "[.labels[].name]"
             status: ".state" # merged, closed, opened
             closedAt: ".closed_at"
             updatedAt: ".updated_at"

@@ -71,7 +71,9 @@ class GitHub:
     ) -> httpx.Response:
         async with self.rate_limitter:
             try:
-                return await self._http_client.request(method, url, params=params)
+                return await self._http_client.request(
+                    method, url, params=params, json=json
+                )
             except httpx.HTTPStatusError as e:
                 logger.error(f"Error occured while fetching {e.request.url}")
                 f"status code: {e.response.status_code} - {e.response.text}"
