@@ -4,14 +4,15 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
-from integration import (
-    ProjectResourceConfig,
-    GitlabObjectWithMembersResourceConfig,
-    GitlabMemberResourceConfig,
-)
 from gitlab.clients.client_factory import create_gitlab_client
 from gitlab.helpers.utils import ObjectKind
+from integration import (
+    GitLabFilesResourceConfig,
+    ProjectResourceConfig,
+    GitLabFoldersResourceConfig,
+    GitlabObjectWithMembersResourceConfig,
+    GitlabMemberResourceConfig
+)
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
     MergeRequestWebhookProcessor,
@@ -105,7 +106,6 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ):
             yield merge_requests_batch
 
-
 @ocean.on_resync(ObjectKind.GROUPWITHMEMBERS)
 async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -136,18 +136,62 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_bot_members = bool(selector.include_bot_members)
 
     async for groups_batch in client.get_groups():
-        semaphore = asyncio.Semaphore(10)
-        tasks = [
-            semaphore_async_iterator(
-                semaphore,
-                partial(client.get_group_members, group["id"], include_bot_members),
+        for i in range(0, len(groups_batch), RESYNC_BATCH_SIZE):
+            current_batch = groups_batch[i : i + RESYNC_BATCH_SIZE]
+            tasks = [
+                client.get_group_members(group["id"], include_bot_members)
+                for group in current_batch
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                if batch:
+                    yield batch
+            del tasks
+
+@ocean.on_resync(ObjectKind.FILE)
+async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+
+    selector = cast(GitLabFilesResourceConfig, event.resource_config).selector
+
+    search_path = selector.files.path
+    scope = "blobs"
+    skip_parsing = selector.files.skip_parsing
+
+    repositories = (
+        selector.files.repos
+        if hasattr(selector.files, "repos") and selector.files.repos
+        else None
+    )
+
+    async for files_batch in client.search_files(
+        scope, search_path, repositories, skip_parsing
+    ):
+        if files_batch:
+            logger.info(f"Found batch of {len(files_batch)} matching files")
+            yield files_batch
+
+
+@ocean.on_resync(ObjectKind.FOLDER)
+async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(GitLabFoldersResourceConfig, event.resource_config).selector
+
+    for folder_selector in selector.folders:
+        path = folder_selector.path
+        repos = folder_selector.repos
+
+        if not repos:
+            logger.info(
+                f"No repositories specified for path {path}; skipping folder resync"
             )
-            for group in groups_batch
-        ]
-        async for batch in stream_async_iterators_tasks(*tasks):
-            if batch:
-                yield batch
-        del tasks
+            continue
+
+        for repo in repos:
+            async for folders_batch in client.get_repository_folders(
+                path=path, repository=repo.name, branch=repo.branch
+            ):
+                logger.info(f"Found batch of {len(folders_batch)} matching folders")
+                yield folders_batch
 
 
 ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
