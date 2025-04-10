@@ -98,11 +98,6 @@ class GitLabClient:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
-    async def get_file_content(
-        self, project_id: str, file_path: str, ref: str
-    ) -> Optional[str]:
-        return await self.rest.get_file_content(project_id, file_path, ref)
-
     async def file_exists(self, project_id: str, scope: str, query: str) -> bool:
         params = {"scope": scope, "search": query}
         encoded_project_path = quote(project_id, safe="")
@@ -241,17 +236,19 @@ class GitLabClient:
         project_id = str(file["project_id"])
         ref = file.get("ref", "main")
 
-        file["content"] = await self.get_file_content(project_id, file_path, ref)
+        file_data = await self.rest.get_file_data(project_id, file_path, ref)
+        file_data["project_id"] = project_id
 
         if (
             not skip_parsing
-            and file["content"] is not None
+            and "content" in file_data
             and file_path.endswith(PARSEABLE_EXTENSIONS)
         ):
-            file["content"] = await anyio.to_thread.run_sync(
-                parse_file_content, file["content"], file_path, context
+            file_data["content"] = await anyio.to_thread.run_sync(
+                parse_file_content, file_data["content"], file_path, context
             )
-        return file
+            file_data["project_id"] = project_id
+        return file_data
 
     async def _process_file_batch(
         self,

@@ -51,7 +51,7 @@ class RestClient(HTTPBaseClient):
         path = f"projects/{encoded_project_path}/languages"
         return await self.send_api_request("GET", path, params=params or {})
 
-    async def get_file_content(
+    async def get_file_data(
         self, project_id: str, file_path: str, ref: str = "main"
     ) -> Optional[str]:
         encoded_project_id = quote(project_id, safe="")
@@ -63,7 +63,8 @@ class RestClient(HTTPBaseClient):
         if not response:
             return None
 
-        return base64.b64decode(response["content"]).decode("utf-8")
+        response["content"] = base64.b64decode(response["content"]).decode("utf-8")
+        return response
 
     async def _make_paginated_request(
         self,
