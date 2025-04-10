@@ -13,10 +13,13 @@ from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from port_ocean.core.handlers import JQEntityProcessor
 from aiolimiter import AsyncLimiter
+import asyncio
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
-MAX_REQUESTS_PER_SECOND = 5
+MAX_REQUESTS_PER_TIME_WINDOW = 10
+_rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_TIME_WINDOW, 0.25)
+_semaphore = asyncio.Semaphore(5)
 
 
 class ProjectSelector(Selector):
@@ -63,7 +66,7 @@ class RepositoryBranchMapping(BaseModel):
         description="Specify the repository name",
     )
     branch: str = Field(
-        default="default",
+        default="main",
         alias="branch",
         description="Specify the branch to bring the folders from",
     )
@@ -104,21 +107,17 @@ class GitlabPortAppConfig(PortAppConfig):
 
 
 class GitManipulationHandler(JQEntityProcessor):
-    _rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_SECOND, 1)
-
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         entity_processor: Type[JQEntityProcessor]
+
         if pattern.startswith(FILE_PROPERTY_PREFIX):
             entity_processor = FileEntityProcessor
-            async with self._rate_limiter:
-                return await entity_processor(self.context)._search(data, pattern)
         elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
             entity_processor = SearchEntityProcessor
-            async with self._rate_limiter:
-                return await entity_processor(self.context)._search(data, pattern)
         else:
             entity_processor = JQEntityProcessor
-            return await entity_processor(self.context)._search(data, pattern)
+
+        return await entity_processor(self.context)._search(data, pattern)
 
 
 class GitlabIntegration(BaseIntegration):
