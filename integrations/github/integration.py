@@ -9,7 +9,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from pydantic import Field
 
-from github.client import GithubState, GithubRepositoryTypes
+from client.client import GithubState, GithubRepositoryTypes
 from utils import PortGithubResources
 
 

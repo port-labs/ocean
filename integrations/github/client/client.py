@@ -196,9 +196,12 @@ class GitHub:
         webhooks = await self._make_request(gh_webhook_endpoint, "GET")
         port_webhook_url = f"{app_host}/integration/webhook"
 
+        logger.info(f"Registering ocean webhook for repo: {owner}/{repo}")
         for webhook in webhooks.json():
             if webhook["config"].get("url") == port_webhook_url:
-                logger.info("Ocean real time reporting webhook already exists")
+                logger.info(
+                    f"Ocean real time reporting webhook already exists for repo: {owner}/{repo}"
+                )
                 return
 
         body = {
@@ -208,7 +211,9 @@ class GitHub:
         }
 
         await self._make_request(gh_webhook_endpoint, "POST", json=body)
-        logger.info("Ocean real time reporting webhook created")
+        logger.info(
+            f"Ocean real time reporting webhook created for repo: {owner}/{repo}"
+        )
 
     async def configure_webhooks(self, app_host: str, orgs: list[str]) -> None:
         if not self._bearer_token:

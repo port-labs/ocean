@@ -1,10 +1,13 @@
-from typing import cast
+import traceback
+from typing import cast, Annotated
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from fastapi import Header, Request
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+
 
 from integration import (
     GithubIssueResourceConfig,
@@ -12,7 +15,7 @@ from integration import (
     GithubRepositoryResourceConfig,
     GithubWorkflowResourceConfig,
 )
-from github.client import GitHub
+from client import GitHub
 from utils import PortGithubResources
 from webhooks import GithubIssueWebhookHandler, GithubPRWebhookHandler
 
@@ -28,7 +31,9 @@ async def setup_application(app_host: str) -> None:
     try:
         await gitHub.configure_webhooks(app_host, orgs=orgs)
     except Exception as e:
-        logger.error("error occured while configuring webhooks.", e)
+        logger.error("error occured while configuring webhooks.")
+        logger.error(e)
+        traceback.print_exc()
 
 
 @ocean.on_resync(PortGithubResources.REPO)
@@ -97,18 +102,25 @@ async def get_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_start()
 async def on_start() -> None:
-    logger.info("Starting Port Ocean Jira integration")
-
+    logger.info("Starting Port Ocean Github integration")
     if ocean.event_listener_type == "ONCE":
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    base_url = ocean.app.base_url
-    if not base_url:
+    app_host = ocean.integration_config.get("app_host")
+    if not app_host:
         return
 
-    await setup_application(base_url)
+    await setup_application(app_host)
 
 
-ocean.add_webhook_processor("/webhook", GithubIssueWebhookHandler)
-ocean.add_webhook_processor("/webhook", GithubPRWebhookHandler)
+@ocean.router.post("/webhook")
+async def webhook(
+    X_GitHub_Event: Annotated[str | None, Header()], request: Request
+) -> None:
+    body = await request.json()
+    match X_GitHub_Event:
+        case "issues":
+            await GithubIssueWebhookHandler().handle_event(body)
+        case "pull_request":
+            await GithubPRWebhookHandler().handle_event(body)
