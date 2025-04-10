@@ -4,6 +4,7 @@ from typing import Any, AsyncGenerator, TypedDict
 import httpx
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.context.ocean import ocean
 from loguru import logger
 from aiolimiter import AsyncLimiter
 
@@ -20,6 +21,9 @@ class GithubState(StrEnum):
     OPEN = "open"
     CLOSED = "closed"
     ALL = "all"
+
+
+WEBHOOK_EVENTS = ["pull_request", "issues"]
 
 
 class RepoParams(TypedDict):
@@ -59,7 +63,11 @@ class GitHub:
         return headers
 
     async def _make_request(
-        self, url: str, method: str = "GET", params: dict[str, Any] | None = None
+        self,
+        url: str,
+        method: str = "GET",
+        params: dict[str, Any] | None = None,
+        json: Any | None = None,
     ) -> httpx.Response:
         async with self.rate_limitter:
             try:
@@ -180,3 +188,22 @@ class GitHub:
         logger.info(f"fetching teams in the organization - {owner}")
         async for workflows in self._get_paginated_data(url):
             yield workflows
+
+    async def register_webhooks(self, app_host: str, owner: str, repo: str) -> None:
+        gh_webhook_endpoint = f"{self._base_url}/repos/{owner}/{repo}/hooks"
+        webhooks = await self._make_request(gh_webhook_endpoint, "GET")
+        port_webhook_url = f"{app_host}/integration/webhook"
+
+        for webhook in webhooks.json():
+            if webhook["config"].get("url") == port_webhook_url:
+                logger.info("Ocean real time reporting webhook already exists")
+                return
+
+        body = {
+            "name": f"{ocean.config.integration.identifier}-repo-webhook",
+            "events": WEBHOOK_EVENTS,
+            "config": {"url": port_webhook_url, "content_type": "json"},
+        }
+
+        await self._make_request(gh_webhook_endpoint, "POST", json=body)
+        logger.info("Ocean real time reporting webhook created")

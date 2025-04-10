@@ -23,9 +23,8 @@ resources:
       query: "true"
       orgs:
         - "github"
-        - "melodyogonna"
       state: "all" # all, closed, open
-      repoType: "public" # private, public
+      repoType: "public" # private, public, all
     port:
       entity:
         mappings:

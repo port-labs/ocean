@@ -11,9 +11,9 @@ from integration import (
     GithubRepositoryResourceConfig,
     GithubTeamResourceConfig,
     GithubWorkflowResourceConfig,
-    PortGithubResources,
 )
 from github.client import GitHub
+from port import PortGithubResources
 
 
 def create_github_client() -> GitHub:
