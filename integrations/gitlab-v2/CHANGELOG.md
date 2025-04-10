@@ -10,11 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.6-dev (2025-04-09)
 
 
+### Features
+
+- Added support for live events for file kind
+
 ### Improvements
 
-- Added file enrichment functionality to associate include repository data
-- Added filtering for merge requests to only fetch opened ones
-- Enhanced concurrency control with proper semaphores and rate limiting
+- Added file enrichment
+- Added filtering for merge requests
+- Enhanced concurrency control
 
 ### Bug Fixes
 
