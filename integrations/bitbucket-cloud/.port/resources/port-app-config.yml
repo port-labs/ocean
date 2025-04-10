@@ -34,7 +34,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: ".destination.repository.name + (.id|tostring)" 
+          identifier: ".destination.repository.name + (.id|tostring)"
           title: ".title"
           blueprint: '"bitbucketPullRequest"'
           properties:
