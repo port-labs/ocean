@@ -1,9 +1,8 @@
 import traceback
-from typing import cast, Annotated
+from typing import cast
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from fastapi import Header, Request
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
@@ -107,20 +106,12 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    app_host = ocean.integration_config.get("app_host")
-    if not app_host:
+    app_url = ocean.app.base_url
+    if not app_url:
         return
 
-    await setup_application(app_host)
+    await setup_application(app_url)
 
 
-@ocean.router.post("/webhook")
-async def webhook(
-    X_GitHub_Event: Annotated[str | None, Header()], request: Request
-) -> None:
-    body = await request.json()
-    match X_GitHub_Event:
-        case "issues":
-            await GithubIssueWebhookHandler().handle_event(body)
-        case "pull_request":
-            await GithubPRWebhookHandler().handle_event(body)
+ocean.add_webhook_processor("/webhook", GithubIssueWebhookHandler)
+ocean.add_webhook_processor("/webhook", GithubPRWebhookHandler)
