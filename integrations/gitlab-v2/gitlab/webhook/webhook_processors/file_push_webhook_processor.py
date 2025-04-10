@@ -9,7 +9,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gitlab.helpers.utils import ObjectKind
 from loguru import logger
-from typing import cast, Any
+from typing import cast
 import fnmatch
 from integration import GitLabFilesResourceConfig
 
@@ -42,7 +42,7 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
- 
+
         changed_files = set()
         for commit in payload.get("commits", []):
             changed_files.update(commit.get("modified", []))
