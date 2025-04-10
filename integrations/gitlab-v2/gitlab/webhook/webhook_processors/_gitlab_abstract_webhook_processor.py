@@ -7,7 +7,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 from gitlab.clients.client_factory import create_gitlab_client
-from loguru import logger
 
 
 class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
