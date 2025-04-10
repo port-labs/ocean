@@ -1,11 +1,13 @@
 import fnmatch
 import json
+from pathlib import Path
 from typing import Dict, List, Any, AsyncGenerator
 from loguru import logger
 import yaml
 from integration import BitbucketFilePattern
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from initialize_client import init_client
+from bitbucket_cloud.helpers.file_kind_live_event import check_and_load_file_prefix
 
 
 JSON_FILE_SUFFIX = ".json"
@@ -83,16 +85,17 @@ async def process_file_patterns(
                         )
                         continue
 
-                    tasks.append(retrieve_file_content(file_info))
+                    tasks.append(
+                        retrieve_file_content(file_info, file_pattern.skip_parsing)
+                    )
 
             async for file_results in stream_async_iterators_tasks(*tasks):
-                if not file_pattern.skip_parsing:
-                    file_results = parse_file(file_results)
                 yield [file_results]
 
 
 async def retrieve_file_content(
     file_info: Dict[str, Any],
+    skip_parsing: bool,
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Retrieve the content of a single file from Bitbucket.
@@ -113,26 +116,37 @@ async def retrieve_file_content(
     file_content = await bitbucket_client.get_repository_files(
         repo_slug, branch, file_path
     )
+    parent_directory = Path(file_path).parent
+    if not skip_parsing:
+        file_content = parse_file(file_content, file_path)
+        result = await check_and_load_file_prefix(
+            file_content,
+            str(parent_directory),
+            repo_slug,
+            branch,
+            file_info,
+            repo_info,
+            branch,
+        )
+    else:
+        result = {
+            "content": file_content,
+            "repo": repo_info,
+            "branch": branch,
+            "metadata": file_info,
+        }
+    yield result
 
-    yield {
-        "content": file_content,
-        "repo": repo_info,
-        "branch": branch,
-        "metadata": file_info,
-    }
 
-
-def parse_file(file: Dict[str, Any]) -> Dict[str, Any]:
+def parse_file(file: Any, file_path: str) -> Any:
     """Parse a file based on its extension."""
     try:
-        file_path = file.get("metadata", {}).get("path", "")
-        file_content = file.get("content", "")
         if file_path.endswith(JSON_FILE_SUFFIX):
-            loaded_file = json.loads(file_content)
-            file["content"] = loaded_file
+            loaded_file = json.loads(file)
+            file = loaded_file
         elif file_path.endswith(YAML_FILE_SUFFIX):
-            loaded_file = yaml.safe_load(file_content)
-            file["content"] = loaded_file
+            loaded_file = yaml.safe_load(file)
+            file = loaded_file
         return file
     except Exception as e:
         logger.error(f"Error parsing file: {e}")
