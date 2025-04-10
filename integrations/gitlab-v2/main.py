@@ -22,6 +22,12 @@ from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.pipeline_webhook_processor import (
+    PipelineWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.job_webhook_processor import (
+    JobWebhookProcessor,
+)
 
 
 @ocean.on_start()
@@ -72,6 +78,28 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield issues_batch
 
 
+@ocean.on_resync(ObjectKind.PIPELINE)
+async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+
+    async for projects_batch in client.get_projects():
+        logger.info(f"Processing batch of {len(projects_batch)} projects for pipelines")
+        async for pipelines_batch in client.get_projects_resource(
+            projects_batch, "pipelines"
+        ):
+            yield pipelines_batch
+
+
+@ocean.on_resync(ObjectKind.JOB)
+async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+
+    async for projects_batch in client.get_projects():
+        logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
+        async for jobs_batch in client.get_projects_resource(projects_batch, "jobs"):
+            yield jobs_batch
+
+
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -114,3 +142,5 @@ ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", PipelineWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", JobWebhookProcessor)

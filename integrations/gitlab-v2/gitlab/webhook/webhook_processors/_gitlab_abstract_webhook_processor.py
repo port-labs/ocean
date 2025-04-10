@@ -7,6 +7,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 from gitlab.clients.client_factory import create_gitlab_client
+from loguru import logger
 
 
 class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
@@ -19,11 +20,16 @@ class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        event_name = str(
-            event.payload.get("event_name") or event.payload.get("event_type")
+        logger.info(f"Headers: {event.headers}")
+        logger.info(f"Payload: {event.payload}")
+        event_identifier = (
+            event.payload.get("event_name")
+            or event.payload.get("event_type")
+            or event.payload.get("object_kind")
         )
         return bool(
-            self.hook == event.headers["x-gitlab-event"] and event_name in self.events
+            self.hook == event.headers["x-gitlab-event"]
+            and event_identifier in self.events
         )
 
     async def validate_payload(self, payload: EventPayload) -> bool:

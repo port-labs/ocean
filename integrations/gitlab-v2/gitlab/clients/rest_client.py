@@ -29,6 +29,9 @@ class RestClient(HTTPBaseClient):
         path = f"projects/{encoded_project_path}/{resource_type}"
         async for batch in self._make_paginated_request(path, params=params):
             if batch:
+                logger.info(
+                    f"Received batch of {len(batch)} {resource_type} for project {project_path}"
+                )
                 yield batch
 
     async def get_paginated_group_resource(
@@ -41,6 +44,9 @@ class RestClient(HTTPBaseClient):
         path = f"groups/{group_id}/{resource_type}"
         async for batch in self._make_paginated_request(path, params=params):
             if batch:
+                logger.info(
+                    f"Received batch of {len(batch)} {resource_type} for group {group_id}"
+                )
                 yield batch
 
     async def get_project_languages(

@@ -12,6 +12,8 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
     FILE = "file"
+    PIPELINE = "pipeline"
+    JOB = "job"
 
 
 def parse_file_content(
