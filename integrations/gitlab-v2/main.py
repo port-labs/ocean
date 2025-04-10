@@ -7,7 +7,11 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gitlab.clients.client_factory import create_gitlab_client
 from gitlab.helpers.utils import ObjectKind
-from integration import GitLabFilesResourceConfig, ProjectResourceConfig
+from integration import (
+    GitLabFilesResourceConfig,
+    ProjectResourceConfig,
+    GitLabFoldersResourceConfig,
+)
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
     MergeRequestWebhookProcessor,
@@ -136,6 +140,29 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if files_batch:
             logger.info(f"Found batch of {len(files_batch)} matching files")
             yield files_batch
+
+
+@ocean.on_resync(ObjectKind.FOLDER)
+async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(GitLabFoldersResourceConfig, event.resource_config).selector
+
+    for folder_selector in selector.folders:
+        path = folder_selector.path
+        repos = folder_selector.repos
+
+        if not repos:
+            logger.info(
+                f"No repositories specified for path {path}; skipping folder resync"
+            )
+            continue
+
+        for repo in repos:
+            async for folders_batch in client.get_repository_folders(
+                path=path, repository=repo.name, branch=repo.branch
+            ):
+                logger.info(f"Found batch of {len(folders_batch)} matching folders")
+                yield folders_batch
 
 
 ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)

@@ -27,15 +27,12 @@ class GitLabClient:
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
 
-    async def get_project(self, project_id: int) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"projects/{project_id}", params=self.DEFAULT_PARAMS
-        )
+    async def get_project(self, project_path: str | int) -> dict[str, Any]:
+        encoded_path = quote(str(project_path), safe="")
+        return await self.rest.send_api_request("GET", f"projects/{encoded_path}")
 
     async def get_group(self, group_id: int) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"groups/{group_id}", params=self.DEFAULT_PARAMS
-        )
+        return await self.rest.send_api_request("GET", f"groups/{group_id}")
 
     async def get_merge_request(
         self, project_id: int, merge_request_id: int
@@ -129,14 +126,13 @@ class GitLabClient:
                     self.rest.get_paginated_group_resource,
                     str(group["id"]),
                     resource_type,
-                ),
+                )
             )
             for group in groups_batch
         ]
 
         async for batch in stream_async_iterators_tasks(*tasks):
-            if batch:
-                yield batch
+            yield batch
 
     async def get_file_content(
         self, project_id: str, file_path: str, ref: str
@@ -146,9 +142,8 @@ class GitLabClient:
     async def file_exists(self, project_id: str, scope: str, query: str) -> bool:
         params = {"scope": scope, "search": query}
         encoded_project_path = quote(project_id, safe="")
-        response = await self.rest.send_api_request(
-            "GET", f"projects/{encoded_project_path}/search", params
-        )
+        path = f"projects/{encoded_project_path}/search"
+        response = await self.rest.send_api_request("GET", path, params=params)
         return bool(response)
 
     async def search_files(
@@ -179,6 +174,36 @@ class GitLabClient:
                         group_id, scope, search_query, skip_parsing
                     ):
                         yield batch
+
+    async def get_repository_tree(
+        self,
+        project: dict[str, Any],
+        path: str,
+        ref: str = "main",
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch repository tree (folders only) for a project."""
+        project_path = project["path_with_namespace"]
+        params = {"ref": ref, "path": path, "recursive": False}
+        async for batch in self.rest.get_paginated_project_resource(
+            project_path, "repository/tree", params
+        ):
+            if folders_batch := [item for item in batch if item["type"] == "tree"]:
+                yield [
+                    {"folder": folder, "repo": project, "__branch": ref}
+                    for folder in folders_batch
+                ]
+
+    async def get_repository_folders(
+        self, path: str, repository: str, branch: Optional[str] = None
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Search for folders in specified repositories only."""
+        project = await self.get_project(repository)
+        if project:
+            effective_branch = branch or project["default_branch"]
+            async for folders_batch in self.get_repository_tree(
+                project, path, effective_branch
+            ):
+                yield folders_batch
 
     async def _enrich_batch(
         self,
@@ -257,13 +282,12 @@ class GitLabClient:
         path = f"projects/{encoded_repo}/search"
 
         async for file_batch in self.rest.get_paginated_resource(path, params=params):
-            if file_batch:
-                logger.debug(f"Found {len(file_batch)} files in '{repo}'")
-                processed_batch = await self._process_file_batch(
-                    file_batch, repo, skip_parsing
-                )
-                if processed_batch:
-                    yield processed_batch
+            logger.debug(f"Found {len(file_batch)} files in '{repo}'")
+            processed_batch = await self._process_file_batch(
+                file_batch, repo, skip_parsing
+            )
+            if processed_batch:
+                yield processed_batch
 
     async def _search_files_in_group(
         self,
@@ -280,10 +304,9 @@ class GitLabClient:
         path = f"groups/{encoded_group}/search"
 
         async for file_batch in self.rest.get_paginated_resource(path, params=params):
-            if file_batch:
-                logger.debug(f"Found {len(file_batch)} files in group '{group_id}'")
-                processed_batch = await self._process_file_batch(
-                    file_batch, group_id, skip_parsing
-                )
-                if processed_batch:
-                    yield processed_batch
+            logger.debug(f"Found {len(file_batch)} files in group '{group_id}'")
+            processed_batch = await self._process_file_batch(
+                file_batch, group_id, skip_parsing
+            )
+            if processed_batch:
+                yield processed_batch

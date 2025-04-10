@@ -56,9 +56,50 @@ class GitLabFilesResourceConfig(ResourceConfig):
     kind: Literal["file"]
 
 
+class RepositoryBranchMapping(BaseModel):
+    name: str = Field(
+        default="",
+        alias="name",
+        description="Specify the repository name",
+    )
+    branch: str = Field(
+        default="default",
+        alias="branch",
+        description="Specify the branch to bring the folders from",
+    )
+
+
+class FolderPattern(BaseModel):
+    path: str = Field(
+        alias="path",
+        description="Specify the repositories and folders to include under this relative path",
+    )
+    repos: list[RepositoryBranchMapping] = Field(
+        default_factory=list,
+        alias="repos",
+        description="Specify the repositories and branches to include under this relative path",
+    )
+
+
+class GitlabFolderSelector(Selector):
+    folders: list[FolderPattern] = Field(
+        default_factory=list,
+        alias="folders",
+        description="Specify the repositories, branches and folders to include under this relative path",
+    )
+
+
+class GitLabFoldersResourceConfig(ResourceConfig):
+    selector: GitlabFolderSelector
+    kind: Literal["folder"]
+
+
 class GitlabPortAppConfig(PortAppConfig):
     resources: list[
-        GitLabFilesResourceConfig | ProjectResourceConfig | ResourceConfig
+        GitLabFoldersResourceConfig
+        | GitLabFilesResourceConfig
+        | ProjectResourceConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 
