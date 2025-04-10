@@ -7,17 +7,24 @@ import asyncio
 from aiolimiter import AsyncLimiter
 
 SEARCH_PROPERTY_PREFIX = "search://"
-MAX_REQUESTS_PER_TIME_WINDOW = 1
-_rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_TIME_WINDOW, 0.25)
-_semaphore = asyncio.Semaphore(5)
+MAX_REQUESTS_PER_SECOND = 2
+_rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_SECOND, 1)
+_semaphore = asyncio.Semaphore(2)
 
 
 class SearchEntityProcessor(JQEntityProcessor):
     async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         async with _semaphore:
             async with _rate_limiter:
-                project_id = data["path_with_namespace"]
                 client = create_gitlab_client()
+                project_id = data.get("path_with_namespace") or data.get(
+                    "repo", {}
+                ).get("path_with_namespace")
+                
+                if not project_id:
+                    logger.error("No project path found in data")
+                    raise ValueError("No project path found in data")
+
                 search_str = pattern[len(SEARCH_PROPERTY_PREFIX) :].strip()
                 scope, query = parse_search_string(search_str)
 
