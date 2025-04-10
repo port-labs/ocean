@@ -27,7 +27,6 @@ class TestFilePushWebhookProcessor:
     def processor(self, mock_event: WebhookEvent) -> FilePushWebhookProcessor:
         """Create a FilePushWebhookProcessor instance"""
         processor = FilePushWebhookProcessor(event=mock_event)
-        # Don't initialize the client here - we'll do it in each test
         return processor
 
     @pytest.fixture
@@ -121,7 +120,6 @@ class TestFilePushWebhookProcessor:
             {"file": file_data[1], "repo": push_payload["project"]},
         ]
 
-        # Create a fresh MagicMock for the client
         processor._gitlab_webhook_client = MagicMock()
 
         # Assign AsyncMock objects with return values to methods

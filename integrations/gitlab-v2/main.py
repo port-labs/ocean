@@ -33,6 +33,7 @@ from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
     FolderPushWebhookProcessor,
 )
 
+
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean GitLab-v2 Integration")
@@ -148,4 +149,3 @@ ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
-
