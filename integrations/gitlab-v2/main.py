@@ -114,8 +114,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for files_batch in client.search_files(
         scope, search_path, repositories, skip_parsing
     ):
-        enriched_batch = await client._enrich_files_with_repos(files_batch)
-        yield enriched_batch
+        yield await client._enrich_files_with_repos(files_batch)
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
