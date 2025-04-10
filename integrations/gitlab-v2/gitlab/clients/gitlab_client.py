@@ -247,7 +247,6 @@ class GitLabClient:
             file_data["content"] = await anyio.to_thread.run_sync(
                 parse_file_content, file_data["content"], file_path, context
             )
-            file_data["project_id"] = project_id
         return file_data
 
     async def _process_file_batch(
