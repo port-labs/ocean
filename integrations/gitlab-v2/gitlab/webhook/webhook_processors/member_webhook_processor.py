@@ -34,30 +34,41 @@ class MemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
         user_id = payload["user_id"]
 
         logger.info(
-            f"Handling {event_name} webhook event for group member '{user_name}'"
+            f"Handling webhook event '{event_name}' for group member '{user_name}'"
         )
 
-        # For remove events, no need to fetch member since it's already deleted
-        if event_name in ("user_remove_from_group"):
+        if event_name == "user_remove_from_group":
+            logger.info(
+                f"Removing member '{user_name}' from group '{group_id}' due to event '{event_name}'"
+            )
             return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[payload],
+                updated_raw_results=[], deleted_raw_results=[payload]
             )
 
-        # Only fetch group, member if needed
+        selector: GitlabMemberSelector = typing.cast(
+            GitlabMemberSelector, resource_config.selector
+        )
+
+        if not selector.include_bot_members and "bot" in user_name.lower():
+            logger.info(
+                f"Excluding bot member '{user_name}' from group '{group_id}' because include_bot_members is false"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[payload]
+            )
+
         group_member = await self._gitlab_webhook_client.get_group_member(
             group_id, user_id
         )
-        selector = typing.cast(GitlabMemberSelector, resource_config.selector)
-        include_bot_members = bool(selector.include_bot_members)
-        if not include_bot_members and "bot" in group_member["username"].lower():
-            logger.info(
-                f"Skipping bot member {group_member['username']} for group {group_id} because include_bot_members is false"
+
+        if not group_member:  # 404 not found
+            logger.warning(
+                f"Group member '{user_name}' not found in group '{group_id}'"
             )
+            group_member = {}
 
         return WebhookEventRawResults(
-            updated_raw_results=[group_member] if group_member else [],
-            deleted_raw_results=[],
+            updated_raw_results=[group_member], deleted_raw_results=[]
         )
 
     async def validate_payload(self, payload: EventPayload) -> bool:

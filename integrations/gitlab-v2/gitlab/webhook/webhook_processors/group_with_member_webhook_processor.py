@@ -56,7 +56,7 @@ class GroupWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
             )
         else:
             logger.warning(f"Group with ID '{group_id}' not found")
-            group = []  # type: ignore
+            group = {}
 
         return WebhookEventRawResults(
             updated_raw_results=[group],
