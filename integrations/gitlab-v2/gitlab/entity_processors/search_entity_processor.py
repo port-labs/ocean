@@ -20,7 +20,7 @@ class SearchEntityProcessor(JQEntityProcessor):
                 project_id = data.get("path_with_namespace") or data.get(
                     "repo", {}
                 ).get("path_with_namespace")
-                
+
                 if not project_id:
                     logger.error("No project path found in data")
                     raise ValueError("No project path found in data")
