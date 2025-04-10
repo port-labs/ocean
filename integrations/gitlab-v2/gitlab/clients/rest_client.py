@@ -53,6 +53,19 @@ class RestClient(HTTPBaseClient):
 
     async def get_file_data(
         self, project_id: str, file_path: str, ref: str = "main"
+    ) -> dict[str, Any]:
+        encoded_project_id = quote(project_id, safe="")
+        encoded_file_path = quote(file_path, safe="")
+        path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
+        params = {"ref": ref}
+
+        response = await self.send_api_request("GET", path, params=params)
+
+        response["content"] = base64.b64decode(response["content"]).decode("utf-8")
+        return response
+
+    async def get_file_content(
+        self, project_id: str, file_path: str, ref: str = "main"
     ) -> Optional[str]:
         encoded_project_id = quote(project_id, safe="")
         encoded_file_path = quote(file_path, safe="")
@@ -63,8 +76,7 @@ class RestClient(HTTPBaseClient):
         if not response:
             return None
 
-        response["content"] = base64.b64decode(response["content"]).decode("utf-8")
-        return response
+        return base64.b64decode(response["content"]).decode("utf-8")
 
     async def _make_paginated_request(
         self,

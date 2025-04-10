@@ -98,6 +98,11 @@ class GitLabClient:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
+    async def get_file_content(
+        self, project_id: str, file_path: str, ref: str
+    ) -> Optional[str]:
+        return await self.rest.get_file_content(project_id, file_path, ref)
+
     async def file_exists(self, project_id: str, scope: str, query: str) -> bool:
         params = {"scope": scope, "search": query}
         encoded_project_path = quote(project_id, safe="")

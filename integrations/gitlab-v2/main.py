@@ -26,6 +26,9 @@ from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
+    FilePushWebhookProcessor,
+)
 
 
 @ocean.on_start()
@@ -111,6 +114,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for files_batch in client.search_files(
         scope, search_path, repositories, skip_parsing
     ):
+        logger.info(files_batch)
         enriched_batch = await client._enrich_files_with_repos(files_batch)
         yield enriched_batch
 
@@ -142,3 +146,4 @@ ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
