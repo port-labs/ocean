@@ -98,16 +98,19 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Limit the number of jobs that are yielded to 100.
-    Results will be approximately 100 (or less) per project.
+    Results will be approximately 100 (more or less).
     """
     client = create_gitlab_client()
+    job_limit = 100
+    jobs_yielded = 0
 
     async for projects_batch in client.get_projects():
         logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
-        job_limit = 100
-        jobs_yielded = 0
+
         async for jobs_batch in client.get_projects_resource(projects_batch, "jobs"):
-            yield jobs_batch
+            remaining = job_limit - jobs_yielded
+            if remaining <= 0:
+                return
 
             yield jobs_batch
             jobs_yielded += len(jobs_batch)
