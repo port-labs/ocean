@@ -13,7 +13,7 @@ from loguru import logger
 
 class PushWebhookProcessor(_GitlabAbstractWebhookProcessor):
     events = ["push"]
-    hook = "Push Hook"
+    hooks = ["Push Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.PROJECT]

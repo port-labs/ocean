@@ -14,7 +14,7 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
 
 class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
     events = ["issue"]
-    hook = "Issue Hook"
+    hooks = ["Issue Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ISSUE]

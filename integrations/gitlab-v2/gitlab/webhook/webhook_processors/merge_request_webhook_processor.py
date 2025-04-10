@@ -14,7 +14,7 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
 
 class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
     events = ["merge_request"]
-    hook = "Merge Request Hook"
+    hooks = ["Merge Request Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.MERGE_REQUEST]
