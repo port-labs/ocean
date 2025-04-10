@@ -96,7 +96,6 @@ class GitHub:
             pagination = self._extract_pagination_from_header(res.headers)
             if pagination is None:
                 break
-            # This only handles pagination in "next". I don't know whether going forward and backward is necessary
             url = pagination
 
     @staticmethod
