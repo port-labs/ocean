@@ -26,7 +26,9 @@ from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
-
+from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
+    FolderPushWebhookProcessor,
+)
 
 @ocean.on_start()
 async def on_start() -> None:
@@ -141,3 +143,5 @@ ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
+
