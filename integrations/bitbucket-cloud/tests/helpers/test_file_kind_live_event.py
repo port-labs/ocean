@@ -11,9 +11,9 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
 )
 
 # Test data
-SAMPLE_CHANGE: Dict[str, Dict[str, str]] = {
-    "new": {"hash": "new_hash", "name": "main"},
-    "old": {"hash": "old_hash"},
+SAMPLE_CHANGE: Dict[str, Dict[str, Any]] = {
+    "new": {"target": {"hash": "new_hash"}, "name": "main"},
+    "old": {"target": {"hash": "old_hash"}},
 }
 
 SAMPLE_DIFF_STAT: Dict[str, Any] = {
@@ -82,6 +82,12 @@ async def test_check_single_path() -> None:
 
     # Test empty config path (should match any path)
     assert check_single_path("path/to/test.txt", ["test.txt"], "")
+
+    # Test root directory file with root path
+    assert check_single_path("README.md", ["README.md"], "/")
+
+    # Test root directory file with empty path
+    assert check_single_path("README.md", ["README.md"], "")
 
 
 @pytest.mark.asyncio

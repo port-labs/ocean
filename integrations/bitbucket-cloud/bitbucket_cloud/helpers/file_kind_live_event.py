@@ -15,8 +15,8 @@ YAML_FILE_SUFFIX = (".yaml", ".yml")
 
 
 def extract_hash_from_payload(changes: dict[str, Any]) -> tuple[str, str, str]:
-    new_hash = changes["new"]["hash"]
-    old_hash = changes["old"]["hash"]
+    new_hash = changes["new"]["target"]["hash"]
+    old_hash = changes["old"]["target"]["hash"]
     branch = changes["new"]["name"]
     return new_hash, old_hash, branch
 
@@ -137,6 +137,7 @@ async def check_and_load_file_prefix(
             repo,
             branch,
         )
+
     return raw_data
 
 
@@ -148,7 +149,12 @@ def check_single_path(file_path: str, filenames: list[str], config_path: str) ->
     filename_match = (
         any(fnmatch(file_name, pattern) for pattern in filenames) if filenames else True
     )
-    path_match = fnmatch(path_without_file, config_path) if config_path else True
+
+    # Special handling for root directory files
+    if not path_without_file and config_path in {"/", ""}:
+        path_match = True
+    else:
+        path_match = fnmatch(path_without_file, config_path) if config_path else True
 
     return filename_match and path_match
 
@@ -176,14 +182,18 @@ async def process_file_changes(
             for diff_stat in diff_stats:
                 logger.debug(f"Diff stats: {diff_stat}")
                 action, old_file_path, new_file_path = determine_action(diff_stat)
-                diff_stat["commit"]["hash"] = new_hash
+                diff_stat["commit"] = {"hash": new_hash}
                 file_path = old_file_path if action == "deleted" else new_file_path
+                diff_stat["path"] = file_path
 
                 if not check_single_path(
                     file_path,
                     selector.files.filenames,
                     selector.files.path,
                 ):
+                    logger.info(
+                        f"Skipping file {file_path} because it doesn't match filename the selector {selector.files.filenames} or path {selector.files.path}"
+                    )
                     continue
 
                 raw_data = await webhook_client.get_repository_files(
@@ -192,19 +202,24 @@ async def process_file_changes(
 
                 if not skip_parsing:
                     raw_data = parse_file(raw_data, file_path)
-
-                directory_path = Path(file_path).parent
-                full_raw_data = await check_and_load_file_prefix(
-                    raw_data,
-                    str(directory_path),
-                    repository,
-                    old_hash if action == "deleted" else new_hash,
-                    diff_stat,
-                    repo,
-                    branch,
-                )
+                    directory_path = Path(file_path).parent
+                    full_raw_data = await check_and_load_file_prefix(
+                        raw_data,
+                        str(directory_path),
+                        repository,
+                        old_hash if action == "deleted" else new_hash,
+                        diff_stat,
+                        repo,
+                        branch,
+                    )
+                else:
+                    full_raw_data = {
+                        "content": raw_data,
+                        "metadata": diff_stat,
+                        "repo": repo,
+                        "branch": branch,
+                    }
                 updated_raw_results.append(full_raw_data)
-
     return updated_raw_results, deleted_raw_results
 
 
