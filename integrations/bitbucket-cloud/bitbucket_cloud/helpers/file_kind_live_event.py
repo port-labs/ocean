@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 from initialize_client import init_client
-from typing import Any, Optional
+from typing import Any, Optional, Union
 import json
 import yaml
 from loguru import logger
@@ -12,6 +12,9 @@ from fnmatch import fnmatch
 FILE_PROPERTY_PREFIX = "file://"
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
+
+
+FileObject = dict[str, Any]
 
 
 def extract_hash_from_payload(changes: dict[str, Any]) -> tuple[str, str, str]:
@@ -55,7 +58,7 @@ async def process_file_value(
 
 
 async def process_dict_items(
-    data: dict[str, Any],
+    data: FileObject,
     parent_directory: str,
     repository: str,
     hash: str,
@@ -82,7 +85,7 @@ async def process_dict_items(
 
 
 async def process_list_items(
-    data: list[dict[str, Any]],
+    data: list[FileObject],
     parent_directory: str,
     repository: str,
     hash: str,
@@ -105,7 +108,7 @@ async def process_list_items(
 
 
 async def check_and_load_file_prefix(
-    raw_data: Any,
+    raw_data: Union[FileObject, list[FileObject]],
     parent_directory: str,
     repository: str,
     hash: str,
