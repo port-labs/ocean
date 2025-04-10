@@ -49,7 +49,7 @@ class GitlabMemberResourceConfig(ResourceConfig):
     kind: Literal["member"]
     selector: GitlabMemberSelector
 
-      
+
 class FilesSelector(BaseModel):
     path: str = Field(
         alias="path",

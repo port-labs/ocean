@@ -27,7 +27,7 @@ class GroupWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
     hooks = ["Subgroup Hook", "Member Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.GROUPWITHMEMBERS]
+        return [ObjectKind.GROUP_WITH_MEMBERS]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

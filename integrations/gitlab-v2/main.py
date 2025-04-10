@@ -10,8 +10,8 @@ from integration import (
     GitLabFilesResourceConfig,
     ProjectResourceConfig,
     GitLabFoldersResourceConfig,
-    GitlabObjectWithMembersResourceConfig,
-    GitlabMemberResourceConfig
+    GitlabGroupWithMembersResourceConfig,
+    GitlabMemberResourceConfig,
 )
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
@@ -36,9 +36,7 @@ from gitlab.webhook.webhook_processors.group_with_member_webhook_processor impor
 
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
-    semaphore_async_iterator,
 )
-from functools import partial
 
 import asyncio
 
@@ -106,11 +104,12 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ):
             yield merge_requests_batch
 
-@ocean.on_resync(ObjectKind.GROUPWITHMEMBERS)
+
+@ocean.on_resync(ObjectKind.GROUP_WITH_MEMBERS)
 async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(
-        GitlabObjectWithMembersResourceConfig, event.resource_config
+        GitlabGroupWithMembersResourceConfig, event.resource_config
     ).selector
     include_bot_members = bool(selector.include_bot_members)
 
@@ -146,6 +145,7 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 if batch:
                     yield batch
             del tasks
+
 
 @ocean.on_resync(ObjectKind.FILE)
 async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
