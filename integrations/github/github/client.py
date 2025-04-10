@@ -1,3 +1,4 @@
+import asyncio
 from enum import StrEnum
 from typing import Any, AsyncGenerator, TypedDict
 
@@ -191,7 +192,7 @@ class GitHub:
         async for workflows in self._get_paginated_data(url):
             yield workflows
 
-    async def register_webhooks(self, app_host: str, owner: str, repo: str) -> None:
+    async def register_webhook(self, app_host: str, owner: str, repo: str) -> None:
         gh_webhook_endpoint = f"{self._base_url}/repos/{owner}/{repo}/hooks"
         webhooks = await self._make_request(gh_webhook_endpoint, "GET")
         port_webhook_url = f"{app_host}/integration/webhook"
@@ -209,3 +210,18 @@ class GitHub:
 
         await self._make_request(gh_webhook_endpoint, "POST", json=body)
         logger.info("Ocean real time reporting webhook created")
+
+    async def configure_webhooks(self, app_host: str, orgs: list[str]) -> None:
+        if not self._bearer_token:
+            logger.error("Can't configure webhooks, access token is required")
+            return
+
+        async with asyncio.TaskGroup() as tg:
+            for org in orgs:
+                tg.create_task(self._get_and_configure_repo_webhooks(app_host, org))
+
+    async def _get_and_configure_repo_webhooks(self, app_host: str, org: str) -> None:
+        async for repositories in self.get_repositories(org):
+            async with asyncio.TaskGroup() as tg:
+                for repo in repositories:
+                    tg.create_task(self.register_webhook(app_host, org, repo["name"]))

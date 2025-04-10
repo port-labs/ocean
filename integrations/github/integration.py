@@ -10,13 +10,10 @@ from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from pydantic import Field
 
 from github.client import GithubState, GithubRepositoryTypes
-from port import PortGithubResources
+from utils import PortGithubResources
 
 
 class RepositorySelector(Selector):
-    orgs: list[str] = Field(
-        description="list of organizations to retrieve from", default_factory=list
-    )
     repo_type: GithubRepositoryTypes = Field(
         alias="repoType",
         description="Type of repository to retrieve",
@@ -25,9 +22,6 @@ class RepositorySelector(Selector):
 
 
 class PullRequestSelector(Selector):
-    orgs: list[str] = Field(
-        description="List of organizations to retrieve from", default_factory=list
-    )
     state: GithubState = Field(
         description="State of pull request", default=GithubState.ALL
     )
@@ -39,9 +33,6 @@ class PullRequestSelector(Selector):
 
 
 class IssueSelector(Selector):
-    orgs: list[str] = Field(
-        description="List of organizations to retrieve from", default_factory=list
-    )
     state: GithubState = Field(
         description="state of the issues you want to fetch",
         default=GithubState.ALL,
@@ -54,19 +45,10 @@ class IssueSelector(Selector):
 
 
 class WorkflowSelector(Selector):
-    orgs: list[str] = Field(
-        description="List of organizations to retrieve from", default_factory=list
-    )
     repo_type: GithubRepositoryTypes = Field(
         description="The type of repository we want to get issues from",
         default=GithubRepositoryTypes.ALL,
         alias="repoType",
-    )
-
-
-class TeamSelector(Selector):
-    orgs: list[str] = Field(
-        description="List of organizations to retrieve from", default_factory=list
     )
 
 
@@ -90,18 +72,12 @@ class GithubWorkflowResourceConfig(ResourceConfig):
     kind: Literal[PortGithubResources.WORKFLOW]
 
 
-class GithubTeamResourceConfig(ResourceConfig):
-    selector: TeamSelector
-    kind: Literal[PortGithubResources.TEAM]
-
-
 class GithubPortAppConfig(PortAppConfig):
     resources: list[
         GithubIssueResourceConfig
         | GithubPullRequestResourceConfig
         | GithubRepositoryResourceConfig
         | GithubWorkflowResourceConfig
-        | GithubTeamResourceConfig
         | ResourceConfig
     ] = []
 

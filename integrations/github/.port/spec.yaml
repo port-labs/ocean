@@ -15,3 +15,8 @@ configurations:
     required: false
     type: string
     sensitive: true
+  - name: orgs
+    type: string
+    description: command seperated list of organizations to ingest data from. Can also include user accounts
+    required: true
+    sensitive: false
