@@ -11,13 +11,14 @@ MAX_REQUESTS_PER_TIME_WINDOW = 1
 _rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_TIME_WINDOW, 0.25)
 _semaphore = asyncio.Semaphore(5)
 
+
 class SearchEntityProcessor(JQEntityProcessor):
     async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         async with _semaphore:
             async with _rate_limiter:
                 project_id = data["path_with_namespace"]
                 client = create_gitlab_client()
-                search_str = pattern[len(SEARCH_PROPERTY_PREFIX):].strip()
+                search_str = pattern[len(SEARCH_PROPERTY_PREFIX) :].strip()
                 scope, query = parse_search_string(search_str)
 
                 logger.info(
