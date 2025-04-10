@@ -243,14 +243,18 @@ class GitLabClient:
         self, group: dict[str, Any], include_bot_members: bool
     ) -> dict[str, Any]:
         logger.info(f"Enriching group {group['id']} with members")
-members = []
-async for members_batch in self.get_group_members(group["id"], include_bot_members):
-    for member in members_batch:
-        members.append({
-            "username": member["username"],
-            "name": member["name"],
-            "id": member["id"]
-        })
+        members = []
+        async for members_batch in self.get_group_members(
+            group["id"], include_bot_members
+        ):
+            for member in members_batch:
+                members.append(
+                    {
+                        "username": member["username"],
+                        "name": member["name"],
+                        "id": member["id"],
+                    }
+                )
 
         group["__members"] = members
         return group

@@ -26,6 +26,10 @@ class GroupWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
     ]
     hooks = ["Subgroup Hook", "Member Hook"]
 
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        # override the base class's validate_payload method
+        return not ({"group_id", "event_name"} - payload.keys())
+
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.GROUP_WITH_MEMBERS]
 
@@ -62,7 +66,3 @@ class GroupWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
             updated_raw_results=[group],
             deleted_raw_results=[],
         )
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        # override the base class's validate_payload method
-        return not ({"group_id", "event_name"} - payload.keys())
