@@ -22,7 +22,7 @@ configurations:
     description: Bitbucket Workspace access token. Recommended for bitbucket cloud premium users. Can be created in the Bitbucket Workspace Settings page. Follow <a href="https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/" target="_blank">this guide</a> to create a token.
   - name: bitbucketUsername
     type: string
-    description: The username of the Bitbucket account. Required if using username/app password authentication instead of workspace token. Recommended for non premium bitbucket cloud users. Visit <a href="https://bitbucket.org/account/settings/" target="_blank">this page</a> to view your username.
+    description: Your Bitbucket account username. Required only if you use username and app password for authentication, which is common for non-premium users. You can find your username on your <a href="https://bitbucket.org/account/settings/" target="_blank">account settings</a> page.
   - name: bitbucketAppPassword
     type: string
     sensitive: true
