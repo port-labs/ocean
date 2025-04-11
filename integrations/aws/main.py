@@ -16,6 +16,7 @@ from utils.resources import (
     fix_unserializable_date_properties,
     resync_cloudcontrol,
     resync_sqs_queue,
+    resync_resource_group,
 )
 
 from utils.aws import (
@@ -266,6 +267,31 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             semaphore,
             functools.partial(
                 resync_sqs_queue,
+                kind,
+                session,
+                aws_resource_config,
+            ),
+        )
+        async for session in get_sessions()
+    ]
+
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUP)
+async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Re-syncs AWS resource groups, which are used to organize AWS resources.
+    Includes both the groups and their member resources.
+    """
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    tasks = [
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_resource_group,
                 kind,
                 session,
                 aws_resource_config,

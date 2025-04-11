@@ -105,7 +105,26 @@ def mock_session() -> AsyncMock:
                     return AsyncPaginatorMock()
 
             yield MockCloudControlClient()
+        elif service_name == "resource-groups":
 
+            class MockResourceGroupsClient:
+                def get_paginator(self, method_name: str) -> Any:
+                    class AsyncPaginatorMock:
+                        async def paginate(
+                            self, **kwargs: Any
+                        ) -> AsyncGenerator[Dict[str, Any], None]:
+                            yield {
+                                "Groups": [
+                                    {
+                                        "GroupName": "test-group",
+                                        "GroupArn": "test-group-arn",
+                                    }
+                                ]
+                            }
+
+                    return AsyncPaginatorMock()
+
+            yield MockResourceGroupsClient()
         else:
             raise NotImplementedError(f"Client for service '{service_name}' not mocked")
 
