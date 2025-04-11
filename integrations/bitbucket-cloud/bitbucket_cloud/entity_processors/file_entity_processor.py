@@ -41,8 +41,10 @@ class FileEntityProcessor(JQEntityProcessor):
         """
 
         repo_data = data.get("repo", data)
-        repo_slug = repo_data.get("name", "")
-        default_branch = repo_data.get("mainbranch", {}).get("name", "main")
+        repo_slug = repo_data.get("name", "").replace(" ", "-")
+        default_branch = (
+            repo_data.get("mainbranch", {}).get("name", "main").replace(" ", "-")
+        )
 
         if current_directory_path := data.get("folder", {}).get("path", ""):
             file_path = f"{current_directory_path}/{pattern.replace(self.prefix, '')}"

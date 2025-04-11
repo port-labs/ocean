@@ -15,6 +15,9 @@ from bitbucket_cloud.webhook_processors.processors.pull_request_webhook_processo
 from bitbucket_cloud.webhook_processors.processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
+from bitbucket_cloud.webhook_processors.processors.file_webhook_processor import (
+    FileWebhookProcessor,
+)
 from initialize_client import init_client, init_webhook_client
 from integration import (
     BitbucketFolderResourceConfig,
@@ -66,7 +69,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
     async for repositories in client.get_repositories():
         tasks = [
-            client.get_pull_requests(repo.get("slug", repo["name"].lower()))
+            client.get_pull_requests(
+                repo.get("slug", repo["name"].lower().replace(" ", "-"))
+            )
             for repo in repositories
         ]
         async for batch in stream_async_iterators_tasks(*tasks):
@@ -99,3 +104,4 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
