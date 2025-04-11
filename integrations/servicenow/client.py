@@ -81,7 +81,7 @@ class ServicenowClient:
             response.raise_for_status()
             logger.info("Servicenow sanity check passed")
             logger.info(
-                f"Retrieved sample Servicenow user with number: {response.json().get('result', [])[0].get('first_name')}"
+                f"Retrieved sample Servicenow user with first name: {response.json().get('result', [])[0].get('first_name')}"
             )
         except httpx.HTTPStatusError as e:
             logger.error(
