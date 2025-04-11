@@ -1,84 +1,71 @@
+deleteDependentEntities: true
 createMissingRelatedEntities: true
+enableMergeEntity: true
 resources:
   - kind: repository
     selector:
       query: "true"
-      orgs:
-        - "github"
-      repoType: "all"
+      repoType: all
     port:
       entity:
         mappings:
           identifier: .id | tostring
-          title: ".name"
-          blueprint: '"githubRepository"'
+          title: .name
+          blueprint: '"ghRepo"'
           properties:
             name: .name
             description: .description
             url: .url
-          relations:
-            githubTeams: "[.teams[].id | tostring]"
   - kind: pull-requests
     selector:
       query: "true"
-      orgs:
-        - "github"
-      state: "all" # all, closed, open
-      repoType: "public" # private, public, all
+      state: all
+      repoType: public
     port:
       entity:
         mappings:
-          identifier: ".head.repo.name + (.id|tostring)"
-          title: ".title"
-          blueprint: '"githubPullRequest"'
+          identifier: .id|tostring
+          title: .title
+          blueprint: '"ghPR"'
           properties:
-            creator: ".user.login"
-            assignees: "[.assignees[].login]"
-            reviewers: "[.requested_reviewers[].login]"
-            status: ".status" # merged, closed, opened
-            closedAt: ".closed_at"
-            updatedAt: ".updated_at"
-            mergedAt: ".merged_at"
-            createdAt: ".created_at"
-            link: ".html_url"
-          relations:
-            repository: .head.repo.name
+            creator: .user.login
+            assignees: "[.assignees[]?.login]"
+            reviewers: "[.requested_reviewers[]?.login]"
+            status: .status
+            closedAt: .closed_at
+            updatedAt: .updated_at
+            mergedAt: .merged_at
+            createdAt: .created_at
+            link: .html_url
   - kind: issues
     selector:
-      query: ".pull_request == null"
-      orgs:
-        - github
-      state: "open"
-      repo_type: "public"
+      query: .pull_request == null
+      state: open
     port:
       entity:
         mappings:
-          identifier: ".repository.name + (.id|tostring)"
-          title: ".title"
-          blueprint: '"githubIssues"'
+          identifier: .id|tostring
+          title: .title
+          blueprint: '"ghIssues"'
           properties:
-            creator: ".user.login"
-            assignees: "[.assignees[].login]"
+            creator: .user.login
+            assignees: "[.assignees[]?.login]"
             labels: "[.labels[].name]"
-            status: ".state" # merged, closed, opened
-            closedAt: ".closed_at"
-            updatedAt: ".updated_at"
-            createdAt: ".created_at"
-            description: ".body"
-            link: ".html_url"
-          relations:
-            repository: .repo
+            status: .state
+            closedAt: .closed_at
+            updatedAt: .updated_at
+            createdAt: .created_at
+            description: .body
+            link: .html_url
   - kind: teams
     selector:
-      query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
-      orgs:
-        - github
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: ".id | tostring"
+          identifier: .id | tostring
           title: .name
-          blueprint: '"githubTeam"'
+          blueprint: '"ghTeam"'
           properties:
             name: .name
             slug: .slug
@@ -87,21 +74,16 @@ resources:
             permission: .permission
   - kind: workflows
     selector:
-      query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
-      orgs:
-        - github
-      repo_type: "all"
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: ".repo + (.id|tostring)"
-          title: ".name"
-          blueprint: '"githubWorkflow"'
+          identifier: .id|tostring
+          title: .name
+          blueprint: '"ghWorkflow"'
           properties:
-            path: ".path"
-            status: ".state"
-            createdAt: ".created_at"
-            updatedAt: ".updated_at"
-            link: ".html_url"
-          relations:
-            repository: ".repo"
+            path: .path
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            link: .html_url

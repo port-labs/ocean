@@ -1,8 +1,8 @@
 [
   {
-    "identifier": "githubRepository",
+    "identifier": "ghRepo",
     "title": "Repository",
-    "icon": "Blueprint",
+    "icon": "Github",
     "schema": {
       "properties": {
         "description": {
@@ -23,17 +23,10 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {
-      "githubTeams": {
-        "title": "GitHub Teams",
-        "target": "githubTeam",
-        "required": false,
-        "many": true
-      }
-    }
+    "relations": {}
   },
   {
-    "identifier": "githubPullRequest",
+    "identifier": "ghPR",
     "title": "Pull Request",
     "icon": "Github",
     "schema": {
@@ -53,7 +46,11 @@
         "status": {
           "type": "string",
           "title": "Status",
-          "enum": ["merged", "open", "closed"],
+          "enum": [
+            "merged",
+            "open",
+            "closed"
+          ],
           "enumColors": {
             "merged": "purple",
             "open": "green",
@@ -97,17 +94,10 @@
         "type": "number"
       }
     },
-    "relations": {
-      "repository": {
-        "title": "Repository",
-        "target": "githubRepository",
-        "required": false,
-        "many": false
-      }
-    }
+    "relations": {}
   },
   {
-    "identifier": "githubIssues",
+    "identifier": "ghIssues",
     "title": "Issue",
     "icon": "Github",
     "schema": {
@@ -127,7 +117,10 @@
         "status": {
           "title": "Status",
           "type": "string",
-          "enum": ["open", "closed"],
+          "enum": [
+            "open",
+            "closed"
+          ],
           "enumColors": {
             "open": "green",
             "closed": "purple"
@@ -167,16 +160,10 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {
-      "repository": {
-        "target": "githubRepository",
-        "required": true,
-        "many": false
-      }
-    }
+    "relations": {}
   },
   {
-    "identifier": "githubTeam",
+    "identifier": "ghTeam",
     "title": "GitHub Team",
     "icon": "Github",
     "schema": {
@@ -211,7 +198,7 @@
     "relations": {}
   },
   {
-    "identifier": "githubWorkflow",
+    "identifier": "ghWorkflow",
     "title": "Workflow",
     "icon": "Github",
     "schema": {
@@ -260,13 +247,6 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {
-      "repository": {
-        "title": "Repository",
-        "target": "githubRepository",
-        "required": false,
-        "many": false
-      }
-    }
+    "relations": {}
   }
 ]
