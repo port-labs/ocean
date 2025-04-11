@@ -20,7 +20,7 @@ resources:
     selector:
       query: "true"
       state: all
-      repoType: public
+      repoType: all
     port:
       entity:
         mappings:
@@ -41,6 +41,7 @@ resources:
     selector:
       query: .pull_request == null
       state: open
+      repoType: all
     port:
       entity:
         mappings:
