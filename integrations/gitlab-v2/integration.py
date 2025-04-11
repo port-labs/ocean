@@ -22,6 +22,7 @@ from gitlab.entity_processors.search_entity_processor import SearchEntityProcess
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
 
+
 class ProjectSelector(Selector):
     include_languages: bool = Field(
         alias="includeLanguages",
