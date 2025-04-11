@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added pull request as a default resource and updated the integration spec
+- Added pull request as a default resource 
+- Improved descriptions for configurations defined in `spec.yaml`
 
 
 ## 0.1.5 (2025-04-08)
