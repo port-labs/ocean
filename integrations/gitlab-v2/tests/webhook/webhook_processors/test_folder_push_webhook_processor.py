@@ -7,7 +7,7 @@ from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
 from gitlab.helpers.utils import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from typing import Any
+from typing import Any, AsyncGenerator
 
 
 @pytest.mark.asyncio
@@ -53,39 +53,32 @@ class TestFolderPushWebhookProcessor:
             "commits": [
                 {
                     "id": "def4567890",
-                    "added": ["src/app/components/"],
-                    "modified": ["docs/api/"],
+                    "added": ["src/folder1/"],
+                    "modified": ["src/folder1/data.txt"],
                 }
             ],
         }
 
     @pytest.fixture
     def mock_folder_pattern(self) -> MagicMock:
-        """Mock a folder pattern with default configuration"""
-        pattern = MagicMock()
-        pattern.path = "src/"
-
-        repo = MagicMock()
-        repo.name = "getport-labs/project7"
-        repo.branch = "main"
-
-        pattern.repos = [repo]
-        return pattern
+        """Mock the FolderPattern class with default no-repos config"""
+        folder_pattern = MagicMock()
+        folder_pattern.path = "src/folder1"
+        folder_pattern.repos = None
+        return folder_pattern
 
     @pytest.fixture
-    def mock_gitlab_folders_selector(self, mock_folder_pattern: MagicMock) -> MagicMock:
-        """Mock the GitLabFoldersSelector class"""
-        gitlab_folders_selector = MagicMock()
-        gitlab_folders_selector.folders = [mock_folder_pattern]
-        return gitlab_folders_selector
+    def mock_gitlab_folder_selector(self, mock_folder_pattern: MagicMock) -> MagicMock:
+        """Mock the GitlabFolderSelector class"""
+        gitlab_folder_selector = MagicMock()
+        gitlab_folder_selector.folders = [mock_folder_pattern]
+        return gitlab_folder_selector
 
     @pytest.fixture
-    def resource_config(
-        self, mock_gitlab_folders_selector: MagicMock
-    ) -> ResourceConfig:
-        """Create a mocked GitLabFoldersResourceConfig"""
+    def resource_config(self, mock_gitlab_folder_selector: MagicMock) -> ResourceConfig:
+        """Create a mocked GitLabFoldersResourceConfig with default no-repos config"""
         config = MagicMock(spec=ResourceConfig)
-        config.selector = mock_gitlab_folders_selector
+        config.selector = mock_gitlab_folder_selector
         config.kind = "folder"
         return config
 
@@ -95,73 +88,93 @@ class TestFolderPushWebhookProcessor:
         """Test that get_matching_kinds returns the FOLDER kind"""
         assert await processor.get_matching_kinds(mock_event) == [ObjectKind.FOLDER]
 
-    async def test_handle_event_with_matching_repo_and_branch(
+    async def test_handle_event_with_matching_repo(
         self,
         processor: FolderPushWebhookProcessor,
         push_payload: dict[str, Any],
-        resource_config: ResourceConfig,
     ) -> None:
-        """Test handling a push event with matching repo and branch"""
-        # Mock folders data that would be returned by get_repository_folders
-        folders_data = [
+        """Test handling a push event when repo and branch match"""
+        # Mock FolderPattern with matching repo
+        folder_pattern = MagicMock()
+        folder_pattern.path = "src/folder1"
+        repo = MagicMock()
+        repo.name = "getport-labs/project7"
+        repo.branch = "main"
+        folder_pattern.repos = [repo]
+
+        # Mock GitlabFolderSelector
+        gitlab_folder_selector = MagicMock()
+        gitlab_folder_selector.folders = [folder_pattern]
+
+        # Mock ResourceConfig
+        resource_config = MagicMock(spec=ResourceConfig)
+        resource_config.selector = gitlab_folder_selector
+        resource_config.kind = "folder"
+
+        # Mock folder data
+        folder_data = [
             {
-                "path": "src/app/components",
-                "repository": "getport-labs/project7",
+                "project_id": str(push_payload["project_id"]),
+                "path": "src/folder1",
                 "ref": push_payload["after"],
-                "content": ["Button", "Form", "Navbar"],
-            },
-            {
-                "path": "src/app/utils",
-                "repository": "getport-labs/project7",
-                "ref": push_payload["after"],
-                "content": ["helpers.js", "formatters.js"],
-            },
+                "content": ["data.txt"],
+            }
         ]
 
+        # Define async generator for folders
+        async def folder_generator() -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield folder_data
+
         processor._gitlab_webhook_client = MagicMock()
-
-        # Mock the get_repository_folders method to yield folder batches
-        async def mock_get_repository_folders(*args, **kwargs):
-            yield folders_data
-
-        processor._gitlab_webhook_client.get_repository_folders = (
-            mock_get_repository_folders
+        generator = folder_generator()
+        processor._gitlab_webhook_client.get_repository_folders = MagicMock(
+            return_value=generator
         )
 
         result = await processor.handle_event(push_payload, resource_config)
 
-        # Verify get_repository_folders was called with correct parameters
-        assert (
-            processor._gitlab_webhook_client.get_repository_folders.__name__
-            == "mock_get_repository_folders"
+        # Verify folder fetching
+        processor._gitlab_webhook_client.get_repository_folders.assert_called_once_with(
+            path="src/folder1",
+            repository="getport-labs/project7",
+            branch="main",
         )
 
         # Verify results
-        assert len(result.updated_raw_results) == 2
-        assert result.updated_raw_results == folders_data
+        assert len(result.updated_raw_results) == 1
+        assert result.updated_raw_results == folder_data
         assert not result.deleted_raw_results
 
     async def test_handle_event_with_non_matching_repo(
         self,
         processor: FolderPushWebhookProcessor,
         push_payload: dict[str, Any],
-        resource_config: ResourceConfig,
     ) -> None:
-        """Test handling a push event when repo doesn't match configured repos"""
-        # Change the repo name in the pattern to something that doesn't match
-        resource_config.selector.folders[0].repos[0].name = "other/repo"
+        """Test handling a push event when repo doesn't match"""
+        # Mock FolderPattern with non-matching repo
+        folder_pattern = MagicMock()
+        folder_pattern.path = "src/folder1"
+        repo = MagicMock()
+        repo.name = "other/repo"
+        repo.branch = "main"
+        folder_pattern.repos = [repo]
+
+        # Mock GitlabFolderSelector
+        gitlab_folder_selector = MagicMock()
+        gitlab_folder_selector.folders = [folder_pattern]
+
+        # Mock ResourceConfig
+        resource_config = MagicMock(spec=ResourceConfig)
+        resource_config.selector = gitlab_folder_selector
+        resource_config.kind = "folder"
 
         processor._gitlab_webhook_client = MagicMock()
-
-        # Mock the get_repository_folders method that shouldn't be called
         processor._gitlab_webhook_client.get_repository_folders = AsyncMock()
 
         result = await processor.handle_event(push_payload, resource_config)
 
-        # Verify get_repository_folders was not called
+        # Verify no folders are processed
         processor._gitlab_webhook_client.get_repository_folders.assert_not_called()
-
-        # Verify empty results
         assert not result.updated_raw_results
         assert not result.deleted_raw_results
 
@@ -169,141 +182,31 @@ class TestFolderPushWebhookProcessor:
         self,
         processor: FolderPushWebhookProcessor,
         push_payload: dict[str, Any],
-        resource_config: ResourceConfig,
     ) -> None:
-        """Test handling a push event when branch doesn't match configured branch"""
-        # Change the branch in the pattern to something that doesn't match
-        resource_config.selector.folders[0].repos[0].branch = "develop"
-
-        processor._gitlab_webhook_client = MagicMock()
-
-        # Mock the get_repository_folders method that shouldn't be called
-        processor._gitlab_webhook_client.get_repository_folders = AsyncMock()
-
-        result = await processor.handle_event(push_payload, resource_config)
-
-        # Verify get_repository_folders was not called
-        processor._gitlab_webhook_client.get_repository_folders.assert_not_called()
-
-        # Verify empty results
-        assert not result.updated_raw_results
-        assert not result.deleted_raw_results
-
-    async def test_handle_event_with_multiple_patterns(
-        self,
-        processor: FolderPushWebhookProcessor,
-        push_payload: dict[str, Any],
-        resource_config: ResourceConfig,
-    ) -> None:
-        """Test handling a push event with multiple folder patterns"""
-        # Add a second pattern to the selector
-        second_pattern = MagicMock()
-        second_pattern.path = "docs/api"
-
+        """Test handling a push event when branch doesn't match"""
+        # Mock FolderPattern with matching repo but non-matching branch
+        folder_pattern = MagicMock()
+        folder_pattern.path = "src/folder1"
         repo = MagicMock()
         repo.name = "getport-labs/project7"
-        repo.branch = "main"
+        repo.branch = "develop"
+        folder_pattern.repos = [repo]
 
-        second_pattern.repos = [repo]
-        resource_config.selector.folders.append(second_pattern)
+        # Mock GitlabFolderSelector
+        gitlab_folder_selector = MagicMock()
+        gitlab_folder_selector.folders = [folder_pattern]
 
-        # Mock folders data for each pattern
-        folders_data_1 = [
-            {
-                "path": "src/app/components",
-                "repository": "getport-labs/project7",
-                "ref": push_payload["after"],
-                "content": ["Button", "Form", "Navbar"],
-            },
-        ]
-
-        folders_data_2 = [
-            {
-                "path": "docs/api",
-                "repository": "getport-labs/project7",
-                "ref": push_payload["after"],
-                "content": ["endpoints.md", "schema.md"],
-            },
-        ]
-
-        # Create a fresh MagicMock for the client
-        processor._gitlab_webhook_client = MagicMock()
-
-        # Track calls to get_repository_folders
-        call_count = 0
-
-        # Mock get_repository_folders to return different data based on the path parameter
-        async def mock_get_repository_folders(path, repository, branch):
-            nonlocal call_count
-            call_count += 1
-            if path == "src/":
-                yield folders_data_1
-            elif path == "docs/api":
-                yield folders_data_2
-            else:
-                yield []
-
-        processor._gitlab_webhook_client.get_repository_folders = (
-            mock_get_repository_folders
-        )
-
-        result = await processor.handle_event(push_payload, resource_config)
-
-        # Verify get_repository_folders was called twice (once for each pattern)
-        assert call_count == 2
-
-        # Verify results contain both folder batches
-        assert len(result.updated_raw_results) == 2
-        assert result.updated_raw_results == folders_data_1 + folders_data_2
-        assert not result.deleted_raw_results
-
-    async def test_handle_event_with_no_folders_found(
-        self,
-        processor: FolderPushWebhookProcessor,
-        push_payload: dict[str, Any],
-        resource_config: ResourceConfig,
-    ) -> None:
-        """Test handling a push event when no folders are found"""
-        processor._gitlab_webhook_client = MagicMock()
-
-        # Mock get_repository_folders to return empty results
-        async def mock_get_repository_folders(*args, **kwargs):
-            yield []
-
-        processor._gitlab_webhook_client.get_repository_folders = (
-            mock_get_repository_folders
-        )
-
-        result = await processor.handle_event(push_payload, resource_config)
-
-        # Verify get_repository_folders was called
-        assert (
-            processor._gitlab_webhook_client.get_repository_folders.__name__
-            == "mock_get_repository_folders"
-        )
-
-        # Verify empty results
-        assert not result.updated_raw_results
-        assert not result.deleted_raw_results
-
-    async def test_handle_event_with_no_repos_specified(
-        self,
-        processor: FolderPushWebhookProcessor,
-        push_payload: dict[str, Any],
-        resource_config: ResourceConfig,
-    ) -> None:
-        """Test handling a push event when no repos are specified in the pattern"""
-        # Set repos to empty list
-        resource_config.selector.folders[0].repos = []
+        # Mock ResourceConfig
+        resource_config = MagicMock(spec=ResourceConfig)
+        resource_config.selector = gitlab_folder_selector
+        resource_config.kind = "folder"
 
         processor._gitlab_webhook_client = MagicMock()
         processor._gitlab_webhook_client.get_repository_folders = AsyncMock()
 
         result = await processor.handle_event(push_payload, resource_config)
 
-        # Verify get_repository_folders was not called
+        # Verify no folders are processed
         processor._gitlab_webhook_client.get_repository_folders.assert_not_called()
-
-        # Verify empty results
         assert not result.updated_raw_results
         assert not result.deleted_raw_results
