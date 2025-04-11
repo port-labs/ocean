@@ -12,11 +12,12 @@ from typing import List
 
 from loguru import logger
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import AbstractWebhookProcessor
-from port_ocean.core.handlers.webhook.webhook_event import EventPayload,WebhookEvent, WebhookEventRawResults
+from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPayload,WebhookEvent, WebhookEventRawResults
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from kinds import Kinds
-from initialize_client import create_github_client
+from ..kinds import Kinds
+from ..initialize_client import create_github_client
 from dotenv import load_dotenv
+from port_ocean.context.ocean import ocean
 
 load_dotenv()
 
@@ -130,8 +131,8 @@ class PushWebhookProcessor(AbstractWebhookProcessor):
         # Return the WebhookEventRawResults object with the collected entities
         return WebhookEventRawResults(updated_raw_results=entities, deleted_raw_results=[])
 
-    async def authenticate(self, payload: dict, headers: dict) -> bool:
-        secret = os.getenv("GITHUB_WEBHOOK_SECRET")
+    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+        secret = ocean.integration_config.get("github_webhook_secret")
         if not secret:
             logger.error("GITHUB_WEBHOOK_SECRET is not set")
             return False

@@ -30,7 +30,7 @@ from webhook_processors.repository_webhook_processor import RepositoryWebhookPro
 
 # --- Setup application ---
 async def setup_application() -> None:
-    base_url = ocean.integration_config["base_url"]#ocean.app.base_url ##'https://e459-102-89-41-50.ngrok-free.app'
+    base_url = ocean.integration_config["base_url"]
     if not base_url:
         return
 

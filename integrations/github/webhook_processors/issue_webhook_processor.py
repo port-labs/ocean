@@ -10,11 +10,12 @@ import hmac
 import hashlib
 from loguru import logger
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import AbstractWebhookProcessor
-from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent, WebhookEventRawResults
-from kinds import Kinds
-from initialize_client import create_github_client
+from port_ocean.core.handlers.webhook.webhook_event import EventPayload, EventHeaders,WebhookEvent, WebhookEventRawResults
+from ..kinds import Kinds
+from ..initialize_client import create_github_client
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from dotenv import load_dotenv
+from port_ocean.context.ocean import ocean
 
 load_dotenv()
 
@@ -66,8 +67,8 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         )
 
 
-    async def authenticate(self, payload: dict, headers: dict) -> bool:
-        secret = os.getenv("GITHUB_WEBHOOK_SECRET")
+    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+        secret = ocean.integration_config.get("github_webhook_secret")
         if not secret:
             logger.error("GITHUB_WEBHOOK_SECRET is not set")
             return False

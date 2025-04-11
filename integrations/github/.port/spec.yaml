@@ -46,7 +46,6 @@ configurations:
     description: >
       The publicly accessible base URL where your integration is hosted.
       This URL will be used to form the webhook endpoint (appended with /integration/webhook) so that GitHub can deliver webhook events.
-    default: "https://e459-102-89-41-50.ngrok-free.app"
 saas:
   enabled: true
   liveEvents:
