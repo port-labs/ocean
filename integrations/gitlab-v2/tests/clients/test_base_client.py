@@ -154,7 +154,7 @@ class TestGitLabClient:
             # Assert
             assert len(results) == 1
             assert results[0]["title"] == "Test Issue"
-            mock_get_group_resource.assert_called_once_with("123", "issues")
+            mock_get_group_resource.assert_called_once_with("123", "issues", None)
 
     async def test_search_files_in_repos(self, client: GitLabClient) -> None:
         """Test file search in specific repositories using scope and query via _search_in_repository"""
@@ -170,7 +170,9 @@ class TestGitLabClient:
             return_value=async_mock_generator([processed_files]),
         ) as mock_search_repo:
             with patch.object(
-                client, "get_file_content", return_value='{"key": "value"}'
+                client.rest,
+                "get_file_data",
+                return_value={"content": '{"key": "value"}'},
             ):
                 results = []
                 async for batch in client.search_files(
@@ -201,7 +203,7 @@ class TestGitLabClient:
                 return_value=async_mock_generator([processed_files]),
             ) as mock_search_group:
                 with patch.object(
-                    client, "get_file_content", return_value="key: value"
+                    client.rest, "get_file_data", return_value={"content": "key: value"}
                 ):
                     results = []
                     async for batch in client.search_files(
@@ -214,24 +216,6 @@ class TestGitLabClient:
                     mock_search_group.assert_called_once_with(
                         "1", "blobs", "path:test.yaml", False
                     )
-
-    async def test_get_file_content(self, client: GitLabClient) -> None:
-        """Test fetching file content via REST"""
-        # Arrange
-        project_id = "123"
-        file_path = "test.txt"
-        mock_content = "Hello, World!"
-        with patch.object(
-            client.rest,
-            "get_file_content",
-            return_value=mock_content,
-        ) as mock_get_file_content:
-            # Act
-            result = await client.get_file_content(project_id, file_path, "main")
-
-            # Assert
-            assert result == mock_content
-            mock_get_file_content.assert_called_once_with(project_id, file_path, "main")
 
     async def test_get_project(self, client: GitLabClient) -> None:
         """Test fetching a single project by path"""

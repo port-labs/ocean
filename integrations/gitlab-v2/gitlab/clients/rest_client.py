@@ -57,8 +57,21 @@ class RestClient(HTTPBaseClient):
         path = f"projects/{encoded_project_path}/languages"
         return await self.send_api_request("GET", path, params=params or {})
 
+    async def get_file_data(
+        self, project_id: str, file_path: str, ref: str
+    ) -> dict[str, Any]:
+        encoded_project_id = quote(project_id, safe="")
+        encoded_file_path = quote(file_path, safe="")
+        path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
+        params = {"ref": ref}
+
+        response = await self.send_api_request("GET", path, params=params)
+
+        response["content"] = base64.b64decode(response["content"]).decode("utf-8")
+        return response
+
     async def get_file_content(
-        self, project_id: str, file_path: str, ref: str = "main"
+        self, project_id: str, file_path: str, ref: str
     ) -> Optional[str]:
         encoded_project_id = quote(project_id, safe="")
         encoded_file_path = quote(file_path, safe="")

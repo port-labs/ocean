@@ -32,6 +32,9 @@ from gitlab.webhook.webhook_processors.pipeline_webhook_processor import (
 from gitlab.webhook.webhook_processors.job_webhook_processor import (
     JobWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
+    FilePushWebhookProcessor,
+)
 
 
 @ocean.on_start()
@@ -116,8 +119,10 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(
             f"Processing batch of {len(groups_batch)} groups for merge requests"
         )
+        params = {"state": "opened"}
+
         async for merge_requests_batch in client.get_groups_resource(
-            groups_batch, "merge_requests"
+            groups_batch, "merge_requests", params=params
         ):
             yield merge_requests_batch
 
@@ -141,9 +146,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for files_batch in client.search_files(
         scope, search_path, repositories, skip_parsing
     ):
-        if files_batch:
-            logger.info(f"Found batch of {len(files_batch)} matching files")
-            yield files_batch
+        yield await client._enrich_files_with_repos(files_batch)
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
@@ -175,3 +178,4 @@ ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", PipelineWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", JobWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
