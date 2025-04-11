@@ -117,15 +117,11 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch jobs for each project in the batch, limited to first page (<=100 jobs per project)."""
         for project in project_batch:
-            processed_results = 0
             async for batch in self.rest.get_paginated_project_resource(
                 str(project["id"]), "jobs"
             ):
-                if processed_results < 100:
-                    yield batch
-                    processed_results += len(batch)
-                else:
-                    break
+                yield batch
+                return  # only yield first page
 
     async def get_groups_resource(
         self,
