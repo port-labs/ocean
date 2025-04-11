@@ -3,7 +3,9 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
-from port_ocean.core.handlers.webhook.processor_manager import LiveEventsProcessorManager
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
 from port_ocean.core.integrations.base import BaseIntegration
 from bitbucket_cloud.entity_processors.file_entity_processor import FileEntityProcessor
 from typing import Any, Literal, Type
@@ -119,8 +121,12 @@ class BitbucketHandlerMixin(HandlerMixin):
     logger.info("Initializing BitbucketHandlerMixin")
     EntityProcessorClass = GitManipulationHandler
 
-class BitbucketLiveEventsProcessorManager(LiveEventsProcessorManager, BitbucketHandlerMixin):
+
+class BitbucketLiveEventsProcessorManager(
+    LiveEventsProcessorManager, BitbucketHandlerMixin
+):
     pass
+
 
 class BitbucketIntegration(BaseIntegration, BitbucketHandlerMixin):
     def __init__(self, context: PortOceanContext):
