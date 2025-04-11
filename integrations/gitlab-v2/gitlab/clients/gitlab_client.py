@@ -113,15 +113,33 @@ class GitLabClient:
                 yield batch
 
     async def get_project_jobs(
-        self, project_batch: list[dict[str, Any]]
+        self, project_batch: list[dict[str, Any]], max_concurrent: int = 10
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch jobs for each project in the batch, limited to first page (<=100 jobs per project)."""
-        for project in project_batch:
+
+        async def _get_jobs(
+            project: dict[str, Any]
+        ) -> AsyncIterator[list[dict[str, Any]]]:
+            logger.warning(f"Project : {project}")
             async for batch in self.rest.get_paginated_project_resource(
                 str(project["id"]), "jobs"
             ):
                 yield batch
-                return  # only yield first page
+                break  # only yield first page
+
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(_get_jobs, project),
+            )
+            for project in project_batch
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            if batch:
+                yield batch
 
     async def get_groups_resource(
         self,
