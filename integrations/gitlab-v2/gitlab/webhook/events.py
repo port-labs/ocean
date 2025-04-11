@@ -17,6 +17,8 @@ class GroupEvents(EventConfig):
     subgroup_events: bool = True
     push_events: bool = True
     tag_push_events: bool = True
+    pipeline_events: bool = True
+    job_events: bool = True
 
     def to_dict(self) -> dict[str, bool]:
         return asdict(self)
