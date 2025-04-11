@@ -12,14 +12,9 @@ from pydantic import BaseModel, Field
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from port_ocean.core.handlers import JQEntityProcessor
-from aiolimiter import AsyncLimiter
-import asyncio
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
-MAX_REQUESTS_PER_TIME_WINDOW = 10
-_rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_TIME_WINDOW, 0.25)
-_semaphore = asyncio.Semaphore(5)
 
 
 class ProjectSelector(Selector):
