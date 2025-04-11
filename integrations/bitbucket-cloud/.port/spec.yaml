@@ -33,7 +33,7 @@ configurations:
     default: https://api.bitbucket.org/2.0
   - name: webhookSecret
     type: string
-    description: The secret used to verify the webhook requests.
+    description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Bitbucket are accepted.
     sensitive: true
     required: false
 saas:
