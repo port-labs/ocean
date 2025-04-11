@@ -5,7 +5,6 @@ from typing import Any, AsyncGenerator, TypedDict
 import httpx
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
-from port_ocean.context.ocean import ocean
 from loguru import logger
 from aiolimiter import AsyncLimiter
 
@@ -41,6 +40,7 @@ class GitHub:
         self._base_url = "https://api.github.com"
         self._bearer_token = token
         self._http_client = http_async_client
+        self._http_client.headers.update(self.headers)
         self._init_rate_limitter()
         logger.info("Github wrapper istantiated.")
 
@@ -191,29 +191,81 @@ class GitHub:
         async for workflows in self._get_paginated_data(url):
             yield workflows
 
-    async def register_webhook(self, app_host: str, owner: str, repo: str) -> None:
+    async def register_repo_webhook(
+        self, app_host: str, owner: str, repo: str, events: list[str]
+    ) -> None:
+        """Register webhook to a repository event.
+
+        args:
+            app_host - base_url of your server. `/integration/webhook` will be appended.
+            owner - Owner of the repository
+            repo - Name of repository
+            events - The webhook will be triggered when any of the event specified occurs
+        """
         gh_webhook_endpoint = f"{self._base_url}/repos/{owner}/{repo}/hooks"
-        webhooks = await self._make_request(gh_webhook_endpoint, "GET")
-        port_webhook_url = f"{app_host}/integration/webhook"
+        webhook_url = f"{app_host}/integration/webhook"
+        res = await self._make_request(gh_webhook_endpoint, "GET")
+        webhooks = res.json()
 
         logger.info(f"Registering ocean webhook for repo: {owner}/{repo}")
-        for webhook in webhooks.json():
-            if webhook["config"].get("url") == port_webhook_url:
+        if res.status_code >= 400:
+            logger.error(
+                f"Error occured while registering webhook: {res.json()['message']}"
+            )
+        for webhook in webhooks:
+            if webhook["config"].get("url") == webhook_url:
                 logger.info(
                     f"Ocean real time reporting webhook already exists for repo: {owner}/{repo}"
                 )
                 return
 
         body = {
-            "name": f"{ocean.config.integration.identifier}-repo-webhook",
-            "events": WEBHOOK_EVENTS,
-            "config": {"url": port_webhook_url, "content_type": "json"},
+            "name": "web",
+            "events": events,
+            "config": {"url": webhook_url, "content_type": "json"},
         }
 
         await self._make_request(gh_webhook_endpoint, "POST", json=body)
         logger.info(
             f"Ocean real time reporting webhook created for repo: {owner}/{repo}"
         )
+
+    async def register_org_webhook(
+        self, app_host: str, org: str, events: list[str]
+    ) -> None:
+        """Register a webhook in an organization
+
+        args:
+            app_host - base_url of your server. `/integration/webhook` will be appended.
+            org - organization where webhook should be created
+            events - The webhook will be triggered when any of the event specified occurs
+        """
+        gh_webhook_endpoint = f"{self._base_url}/orgs/{org}/hooks"
+        webhook_url = f"{app_host}/integration/webhook"
+
+        res = await self._make_request(gh_webhook_endpoint, "GET")
+        webhooks = res.json()
+
+        logger.info(f"Registering ocean webhook for org: {org}")
+        if res.status_code >= 400:
+            logger.error(
+                f"Error occured while registering webhook: {res.json()['message']}"
+            )
+        for webhook in webhooks:
+            if webhook["config"].get("url") == webhook_url:
+                logger.info(
+                    f"Ocean real time reporting webhook already exists for org: {org}"
+                )
+                return
+
+        body = {
+            "name": "web",
+            "events": events,
+            "config": {"url": webhook_url, "content_type": "json"},
+        }
+
+        res = await self._make_request(gh_webhook_endpoint, "POST", json=body)
+        logger.info(f"Ocean real time reporting webhook created for org: {org}")
 
     async def configure_webhooks(self, app_host: str, orgs: list[str]) -> None:
         if not self._bearer_token:
@@ -222,10 +274,4 @@ class GitHub:
 
         async with asyncio.TaskGroup() as tg:
             for org in orgs:
-                tg.create_task(self._get_and_configure_repo_webhooks(app_host, org))
-
-    async def _get_and_configure_repo_webhooks(self, app_host: str, org: str) -> None:
-        async for repositories in self.get_repositories(org):
-            async with asyncio.TaskGroup() as tg:
-                for repo in repositories:
-                    tg.create_task(self.register_webhook(app_host, org, repo["name"]))
+                tg.create_task(self.register_org_webhook(app_host, org, WEBHOOK_EVENTS))
