@@ -1,0 +1,90 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+enableMergeEntity: true
+resources:
+  - kind: repository
+    selector:
+      query: "true"
+      repoType: all
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"ghRepo"'
+          properties:
+            name: .name
+            description: .description
+            url: .url
+  - kind: pull-requests
+    selector:
+      query: "true"
+      state: all
+      repoType: all
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .title
+          blueprint: '"ghPR"'
+          properties:
+            creator: .user.login
+            assignees: "[.assignees[]?.login]"
+            reviewers: "[.requested_reviewers[]?.login]"
+            status: .state
+            closedAt: .closed_at
+            updatedAt: .updated_at
+            mergedAt: .merged_at
+            createdAt: .created_at
+            link: .html_url
+  - kind: issues
+    selector:
+      query: .pull_request == null
+      state: open
+      repoType: all
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .title
+          blueprint: '"ghIssues"'
+          properties:
+            creator: .user.login
+            assignees: "[.assignees[]?.login]"
+            labels: "[.labels[].name]"
+            status: .state
+            closedAt: .closed_at
+            updatedAt: .updated_at
+            createdAt: .created_at
+            description: .body
+            link: .html_url
+  - kind: teams
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"ghTeam"'
+          properties:
+            name: .name
+            slug: .slug
+            description: .description
+            link: .html_url
+            permission: .permission
+  - kind: workflows
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .name
+          blueprint: '"ghWorkflow"'
+          properties:
+            path: .path
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            link: .html_url
