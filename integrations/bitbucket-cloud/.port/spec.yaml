@@ -13,7 +13,7 @@ features:
     section: GitOps
 configurations:
   - name: bitbucketWorkspace
-    Unique identifier (slug) for your Bitbucket workspace. It links the integration to your specific workspace. Learn more in the <a href="https://support.atlassian.com/bitbucket-cloud/docs/what-is-a-workspace/" target="_blank">Bitbucket documentation</a>.
+    description: Unique identifier (slug) for your Bitbucket workspace. It links the integration to your specific workspace. Learn more in the <a href="https://support.atlassian.com/bitbucket-cloud/docs/what-is-a-workspace/" target="_blank">Bitbucket documentation</a>.
     type: string
     required: true
   - name: bitbucketWorkspaceToken
