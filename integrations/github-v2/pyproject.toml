@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "github_integration"
+name = "github_v2"
 version = "0.2.6-beta"
 description = "Integration between Port and Github"
 authors = ["Melody Anyaegbulam <melodyogonna@gmail.com>"]

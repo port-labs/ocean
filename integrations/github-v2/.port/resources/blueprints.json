@@ -40,7 +40,7 @@
           "title": "Assignees"
         },
         "reviewers": {
-          "type": "string",
+          "type": "array",
           "title": "Reviewers"
         },
         "status": {
