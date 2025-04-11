@@ -13,7 +13,7 @@ features:
     section: GitOps
 configurations:
   - name: bitbucketWorkspace
-    description: The slug of the workspace the integration is installed for. Check the <a href="https://support.atlassian.com/bitbucket-cloud/docs/what-is-a-workspace/" target="_blank">Bitbucket documentation</a> for more information.
+    description: The slug of the workspace the integration is installed for. Check this <a href="https://support.atlassian.com/bitbucket-cloud/docs/what-is-a-workspace/" target="_blank">Bitbucket documentation</a> for more information.
     type: string
     required: true
   - name: bitbucketWorkspaceToken
@@ -22,7 +22,7 @@ configurations:
     description: Bitbucket Workspace access token. Recommended for bitbucket cloud premium users. Can be created in the Bitbucket Workspace Settings page. Follow <a href="https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/" target="_blank">this guide</a> to create a token.
   - name: bitbucketUsername
     type: string
-    description: The username of the Bitbucket account. Required if using username/app password authentication instead of workspace token. Recommended for non premium bitbucket cloud users. Visit <a href="https://bitbucket.org/account/settings/" target="_blank">this page</a> to create view your username.
+    description: The username of the Bitbucket account. Required if using username/app password authentication instead of workspace token. Recommended for non premium bitbucket cloud users. Visit <a href="https://bitbucket.org/account/settings/" target="_blank">this page</a> to view your username.
   - name: bitbucketAppPassword
     type: string
     sensitive: true
