@@ -156,6 +156,7 @@ class GitLabClient:
                     self.rest.get_paginated_group_resource,
                     str(group["id"]),
                     resource_type,
+                    params,
                 ),
             )
             for group in groups_batch
