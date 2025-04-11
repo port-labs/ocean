@@ -286,7 +286,7 @@ async def enrich_group_with_resources(
     account_id: str,
     region: str,
 ) -> dict[str, Any]:
-    group_resources = await fetch_group_resources(client, group["GroupName"], region)
+    group_resources = await fetch_group_resources(client, group["Name"], region)
 
     return {
         CustomProperties.KIND.value: kind,
@@ -336,31 +336,35 @@ async def resync_resource_group(
             async for groups_batch in paginator.paginate():
                 if not groups_batch:
                     continue
+                for chunk_groups in process_list_in_chunks(
+                    groups_batch, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
+                ):
+                    if list_group_resources:
+                        logger.warning(f"Chunk groups: {chunk_groups}")
+                        tasks = [
+                            enrich_group_with_resources(
+                                client, group, kind, account_id, region
+                            )
+                            for group in chunk_groups
+                        ]
+                        processed_groups = await asyncio.gather(*tasks)
+                    else:
+                        processed_groups = [
+                            {
+                                CustomProperties.KIND.value: kind,
+                                CustomProperties.ACCOUNT_ID.value: account_id,
+                                CustomProperties.REGION.value: region,
+                                **fix_unserializable_date_properties(group),
+                            }
+                            for group in chunk_groups
+                        ]
 
-                if list_group_resources:
-                    tasks = [
-                        enrich_group_with_resources(
-                            client, group, kind, account_id, region
+                    if processed_groups:
+                        logger.warning(f"Results: {processed_groups}")
+                        yield processed_groups
+                        logger.info(
+                            f"Processed batch of {len(processed_groups)} {kind} resource groups from region {region} in account {account_id}"
                         )
-                        for group in groups_batch
-                    ]
-                    processed_groups = await asyncio.gather(*tasks)
-                else:
-                    processed_groups = [
-                        {
-                            CustomProperties.KIND.value: kind,
-                            CustomProperties.ACCOUNT_ID.value: account_id,
-                            CustomProperties.REGION.value: region,
-                            **fix_unserializable_date_properties(group),
-                        }
-                        for group in groups_batch
-                    ]
-
-                if processed_groups:
-                    yield processed_groups
-                    logger.info(
-                        f"Processed batch of {len(processed_groups)} {kind} resource groups from region {region} in account {account_id}"
-                    )
 
         except client.exceptions.ClientError as e:
             if is_access_denied_exception(e):

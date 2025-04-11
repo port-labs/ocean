@@ -123,7 +123,7 @@ async def test_enrich_group_with_resources(
         return_value=[{"ResourceArn": "test-arn"}],
     ):
         # Test data
-        group = {"GroupName": "test-group", "GroupArn": "test-group-arn"}
+        group = {"Name": "test-group", "GroupArn": "test-group-arn"}
         kind = "AWS::ResourceGroups::Group"
         region = "us-west-2"
 
@@ -136,7 +136,7 @@ async def test_enrich_group_with_resources(
         assert result[CustomProperties.KIND.value] == kind
         assert result[CustomProperties.ACCOUNT_ID.value] == mock_account_id
         assert result[CustomProperties.REGION.value] == region
-        assert result["GroupName"] == "test-group"
+        assert result["Name"] == "test-group"
         assert result["GroupArn"] == "test-group-arn"
         assert result["__Resources"] == [{"ResourceArn": "test-arn"}]
 
