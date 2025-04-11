@@ -44,10 +44,10 @@ class GitHubClient:
                 return wait_time
         return 0.0
 
-    async def _request(self, method: str, url: str, params: Optional[Dict[str, str]] = None) -> Any:
+    async def _request(self, method: str, url: str, json: Optional[Dict[str, str]] = None) -> Any:
         try:
             async with self._semaphore:
-                response = await self.client.request(method, url, params=params)
+                response = await self.client.request(method, url, json=json)
         except httpx.HTTPError as exc:
             logger.error(f"HTTP request failed: {method} {url} - {exc}")
             raise
@@ -56,7 +56,7 @@ class GitHubClient:
         if wait_time:
             await asyncio.sleep(wait_time)
             # After waiting, retry the request recursively.
-            return await self._request(method, url, params)
+            return await self._request(method, url, json)
 
         try:
             response.raise_for_status()
@@ -125,7 +125,7 @@ class GitHubClient:
         }
 
         # Create the new webhook using a POST request.
-        await self._request("POST", self.webhook_url, params=body)
+        await self._request("POST", self.webhook_url, json=body)
         logger.info("GitHub webhook created")
 
     async def fetch_repositories(self) -> AsyncGenerator[dict[str, Any], None]:

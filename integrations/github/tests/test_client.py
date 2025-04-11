@@ -73,7 +73,7 @@ async def test_request_success(mock_github_client: GitHubClient) -> None:
     result = await mock_github_client._request("GET", url)
     assert result.json() == response_data
 
-    mock_github_client.client.request.assert_called_once_with("GET", url, params=None)
+    mock_github_client.client.request.assert_called_once_with("GET", url, json=None)
 
 @pytest.mark.asyncio
 async def test_request_failure(mock_github_client: GitHubClient) -> None:

@@ -69,7 +69,7 @@ async def test_request_success(mock_github_client: GitHubClient) -> None:
     assert result.json() == response_data
 
     # Use built-in assertion instead of manually inspecting call_args.
-    mock_github_client.client.request.assert_called_once_with("GET", url, params=None)
+    mock_github_client.client.request.assert_called_once_with("GET", url, json=None)
 
 @pytest.mark.asyncio
 async def test_request_failure(mock_github_client: GitHubClient) -> None:
@@ -187,7 +187,7 @@ async def test_create_webhooks_creates_new(mock_github_client: GitHubClient) -> 
         assert method_post == "POST"
         assert url_post == mock_github_client.webhook_url
 
-        post_params = post_call.kwargs["params"]
+        post_params = post_call.kwargs["json"]
         assert post_params["config"]["url"] == webhook_target
         assert post_params["events"] == WEBHOOK_EVENTS
 
