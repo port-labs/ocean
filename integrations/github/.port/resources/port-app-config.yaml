@@ -1,0 +1,179 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: repository
+    selector:
+      query: "true"
+      includeArchived: false
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: ".name"
+          blueprint: '"githubRepository"'
+          properties:
+            htmlUrl: ".html_url"
+            fullName: ".full_name"
+            private: ".private"
+            visibility: ".visibility"
+            defaultBranch: ".default_branch"
+            size: ".size"
+            archived: ".archived"
+            createdAt: ".created_at"
+            updatedAt: ".updated_at"
+
+  - kind: pull-request
+    selector:
+      query: "true"
+      state: "open"
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: ".title"
+          blueprint: '"githubPullRequest"'
+          properties:
+            url: .html_url
+            state: .state
+            repo: .name
+            author: .login
+            number: .number
+            createdAt: .created_at
+            updatedAt: .updated_at
+            base: .ref
+            head: .ref
+            merged: .merged
+            draft: .draft
+
+  - kind: issue
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: ".title"
+          blueprint: '"githubIssue"'
+          properties:
+            url: ".html_url // .url"
+            state: .state
+            repo: .name
+            number: .number
+            author: .login
+            labels: .labels
+            createdAt: .created_at
+            updatedAt: .updated_at
+            body: .body
+
+  - kind: team
+    selector:
+      query: "true"
+      includeMembers: true
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: ".name"
+          blueprint: '"githubTeam"'
+          properties:
+            url: .url
+            description: .description
+            privacy: .privacy
+            organization: .login
+            createdAt: .created_at
+            updatedAt: .updated_at
+            permission: .permission
+          relations:
+            members: "if .__members != null then .__members | map(.id) else [] end"
+
+  - kind: workflow
+    selector:
+      query: "true"
+      state: "active"
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: ".name"
+          blueprint: '"githubWorkflow"'
+          properties:
+            url: ".workflow_url"
+            runUrl: ".url"
+            status: .status
+            conclusion: .conclusion
+            headBranch: .head_branch
+            headSha: .head_sha
+            runNumber: .run_number
+            event: .event
+            createdAt: .created_at
+            updatedAt: .updated_at
+            runStartedAt: .run_started_at
+            repository: .full_name
+
+  - kind: file
+    selector:
+      query: "true"
+      fileType: null
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: '(.repository.full_name // "") + ": " + (.head_commit.message // .commit.message // "Repository update")'
+          blueprint: '"githubFile"'
+          properties:
+            commitId: ".id | tostring"
+            commitMessage: .head_commit.message // .commit.message
+            commitAuthor: .head_commit.author.username // .author.login
+            repository: .repository.full_name
+            branch: 'if .ref then (.ref | tostring | split("/") | .[2]) else "main" end'
+            timestamp: .head_commit.timestamp // .commit.author.date
+
+              # The multi-line string for file objects:
+              # This checks if we have an already-enriched commit with .files (API style)
+              # or if we only have .commits[0].added/modified/removed (webhook style).
+            files: >
+              if .files then
+                # If the commit already has an array of .files (API-enriched),
+                # just map over them:
+                .files
+                | map({
+                    action: .status,
+                    path: .filename,
+                    name: (.filename | split("/") | .[-1]),
+                    url: .blob_url
+                  })
+              else
+                # Otherwise, combine added/modified/removed from webhook data:
+                (
+                  [
+                    (
+                      .commits[0].added // []
+                      | map({
+                          action: "added",
+                          path: .,
+                          name: (. | split("/") | .[-1]),
+                          url: (.repository.html_url + "/blob/" + (.commits[0].id) + "/" + .)
+                        })
+                    ),
+                    (
+                      .commits[0].modified // []
+                      | map({
+                          action: "modified",
+                          path: .,
+                          name: (. | split("/") | .[-1]),
+                          url: (.repository.html_url + "/blob/" + (.commits[0].id) + "/" + .)
+                        })
+                    ),
+                    (
+                      .commits[0].removed // []
+                      | map({
+                          action: "removed",
+                          path: .,
+                          name: (. | split("/") | .[-1]),
+                          url: (.repository.html_url + "/blob/" + (.commits[0].id) + "/" + .)
+                        })
+                    )
+                  ]
+                  | flatten
+                )
+              end
