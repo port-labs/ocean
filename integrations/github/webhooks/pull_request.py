@@ -18,8 +18,7 @@ from utils import PortGithubResources
 class GithubPRWebhookHandler(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         header = event.headers
-        print(header)
-        return header.get("X_GitHub_Event") == "pull_request"
+        return header.get("x-github-event") == "pull_request"
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [PortGithubResources.PR]

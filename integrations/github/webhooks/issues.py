@@ -17,15 +17,15 @@ from utils import PortGithubResources
 class GithubIssueWebhookHandler(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         header = event.headers
-        print(header)
-        return header.get("X_GitHub_Event") == "issues"
+        return header.get("x-github-event") == "issues"
 
-    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+    async def get_matching_kinds(self, e: WebhookEvent) -> list[str]:
         return [PortGithubResources.ISSUE]
 
     async def handle_event(
         self, event: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
+        print("this is called")
         match event.get("action"):
             case "deleted":
                 return WebhookEventRawResults(
