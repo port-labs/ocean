@@ -43,15 +43,13 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 )
                 continue
             # Check if this pattern applies to the event's repo and branch
-            matching_repo = next(
-                (
-                    repo
-                    for repo in pattern.repos
-                    if repo.name == repo_path
-                    and (not repo.branch or repo.branch == branch)
-                ),
-                None,
-            )
+            matching_repo = None
+            for repo in pattern.repos:
+                if repo.name == repo_path and (
+                    repo.branch is None or repo.branch == branch
+                ):
+                    matching_repo = repo
+                    break
             if not matching_repo:
                 continue
 
