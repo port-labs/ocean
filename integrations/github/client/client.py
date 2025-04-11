@@ -122,7 +122,7 @@ class GitHub:
         This method will follow pagination until all items have been retrieved
 
         args:
-            owner - Owner of the account, could either be a user or an organization.
+            owner - Owner of the account, must be an organization.
 
         """
         url = f"{self._base_url}/orgs/{owner}/repos"

@@ -36,7 +36,7 @@
           "title": "Creator"
         },
         "assignees": {
-          "type": "string",
+          "type": "array",
           "title": "Assignees"
         },
         "reviewers": {
@@ -46,11 +46,7 @@
         "status": {
           "type": "string",
           "title": "Status",
-          "enum": [
-            "merged",
-            "open",
-            "closed"
-          ],
+          "enum": ["merged", "open", "closed"],
           "enumColors": {
             "merged": "purple",
             "open": "green",
@@ -117,10 +113,7 @@
         "status": {
           "title": "Status",
           "type": "string",
-          "enum": [
-            "open",
-            "closed"
-          ],
+          "enum": ["open", "closed"],
           "enumColors": {
             "open": "green",
             "closed": "purple"

@@ -31,7 +31,7 @@ resources:
             creator: .user.login
             assignees: "[.assignees[]?.login]"
             reviewers: "[.requested_reviewers[]?.login]"
-            status: .status
+            status: .state
             closedAt: .closed_at
             updatedAt: .updated_at
             mergedAt: .merged_at
