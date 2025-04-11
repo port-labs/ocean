@@ -1,7 +1,6 @@
 from typing import Literal, Any, Type
 from pydantic import BaseModel, Field
 
-from loguru import logger
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import (
@@ -22,8 +21,6 @@ from gitlab.entity_processors.search_entity_processor import SearchEntityProcess
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
-MAX_REQUESTS_PER_TIME_WINDOW = 10
-
 
 class ProjectSelector(Selector):
     include_languages: bool = Field(
