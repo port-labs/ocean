@@ -120,7 +120,6 @@ class GitLabClient:
         async def _get_jobs(
             project: dict[str, Any]
         ) -> AsyncIterator[list[dict[str, Any]]]:
-            logger.warning(f"Project : {project}")
             async for batch in self.rest.get_paginated_project_resource(
                 str(project["id"]), "jobs"
             ):
