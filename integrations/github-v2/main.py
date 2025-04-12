@@ -15,88 +15,82 @@ from integration import (
     GithubWorkflowResourceConfig,
 )
 from client import GitHub
-from utils import PortGithubResources
-from webhooks import GithubIssueWebhookHandler, GithubPRWebhookHandler
-
-
-def create_github_client() -> GitHub:
-    github = GitHub(ocean.integration_config.get("github_token"))
-    return github
+from utils import ObjectKind, create_github_client
+from webhooks import (
+    GithubIssueWebhookProcessor,
+    GithubPRWebhookProcessor,
+    GithubRepoWebhookProcessor,
+)
 
 
 async def setup_application(app_host: str) -> None:
     gitHub = create_github_client()
-    orgs: list[str] = ocean.integration_config.get("orgs", "").split(",")
+    org = ocean.integration_config.get("org", "")
     try:
-        await gitHub.configure_webhooks(app_host, orgs=orgs)
+        await gitHub.configure_webhooks(app_host, org=org)
     except Exception as e:
-        logger.error("error occured while configuring webhooks.")
+        logger.error("error occured while configuring webhook.")
         logger.error(e)
         traceback.print_exc()
+        return
 
 
-@ocean.on_resync(PortGithubResources.REPO)
+@ocean.on_resync(ObjectKind.REPO)
 async def get_owner_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github = create_github_client()
-    orgs = ocean.integration_config.get("orgs", "").split(",")
+    org = ocean.integration_config.get("org", "")
     selector = cast(GithubRepositoryResourceConfig, event.resource_config).selector
-    tasks = (github.get_repositories(org, repo_type=selector.repo_type) for org in orgs)
-    async for data in stream_async_iterators_tasks(*tasks):
+    async for data in github.get_repositories(org, repo_type=selector.repo_type):
         yield data
 
 
-@ocean.on_resync(PortGithubResources.TEAM)
+@ocean.on_resync(ObjectKind.TEAM)
 async def get_org_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github = create_github_client()
-    orgs = ocean.integration_config.get("orgs", "").split(",")
-    for org in orgs:
-        async for data in github.get_teams(org):
-            yield data
+    org = ocean.integration_config.get("org", "")
+    async for data in github.get_teams(org):
+        yield data
 
 
-@ocean.on_resync(PortGithubResources.PR)
+@ocean.on_resync(ObjectKind.PR)
 async def get_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github = create_github_client()
     resource_config = cast(GithubPullRequestResourceConfig, event.resource_config)
-    orgs = ocean.integration_config.get("orgs", "").split(",")
+    org = ocean.integration_config.get("org", "")
     selector = resource_config.selector
-    for org in orgs:
-        async for data in github.get_repositories(org, repo_type=selector.repo_type):
-            tasks = (
-                github.get_pull_requests(org, repo["name"], pr_state=selector.state)
-                for repo in data
-            )
-            async for pr in stream_async_iterators_tasks(*tasks):
-                yield pr
+    async for data in github.get_repositories(org, repo_type=selector.repo_type):
+        tasks = (
+            github.get_pull_requests(org, repo["name"], pr_state=selector.state)
+            for repo in data
+        )
+        async for pr in stream_async_iterators_tasks(*tasks):
+            yield pr
 
 
-@ocean.on_resync(PortGithubResources.ISSUE)
+@ocean.on_resync(ObjectKind.ISSUE)
 async def get_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github = create_github_client()
     resource_config = cast(GithubIssueResourceConfig, event.resource_config)
-    orgs = ocean.integration_config.get("orgs", "").split(",")
+    org = ocean.integration_config.get("org", "")
     selector = resource_config.selector
-    for org in orgs:
-        async for data in github.get_repositories(org, repo_type=selector.repo_type):
-            tasks = (
-                github.get_issues(org, repo["name"], state=selector.state)
-                for repo in data
-            )
-            async for issue in stream_async_iterators_tasks(*tasks):
-                yield issue
+    async for data in github.get_repositories(org, repo_type=selector.repo_type):
+        tasks = (
+            github.get_issues(org, repo["name"], state=selector.state) for repo in data
+        )
+        async for issue in stream_async_iterators_tasks(*tasks):
+            yield issue
 
 
-@ocean.on_resync(PortGithubResources.WORKFLOW)
+@ocean.on_resync(ObjectKind.WORKFLOW)
 async def get_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github = GitHub(ocean.integration_config.get("github_token"))
     resource_config = cast(GithubWorkflowResourceConfig, event.resource_config)
     selector = resource_config.selector
-    orgs = ocean.integration_config.get("orgs", "").split(",")
-    for org in orgs:
-        async for data in github.get_repositories(org, repo_type=selector.repo_type):
-            tasks = (github.get_workflows(org, repo["name"]) for repo in data)
-            async for workflow in stream_async_iterators_tasks(*tasks):
-                yield workflow
+    org = ocean.integration_config.get("org", "")
+    async for data in github.get_repositories(org, repo_type=selector.repo_type):
+        tasks = (github.get_workflows(org, repo["name"]) for repo in data)
+        async for workflow in stream_async_iterators_tasks(*tasks):
+            yield workflow
 
 
 @ocean.on_start()
@@ -113,5 +107,6 @@ async def on_start() -> None:
     await setup_application(app_url)
 
 
-ocean.add_webhook_processor("/webhook", GithubIssueWebhookHandler)
-ocean.add_webhook_processor("/webhook", GithubPRWebhookHandler)
+ocean.add_webhook_processor("/webhook", GithubIssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", GithubPRWebhookProcessor)
+ocean.add_webhook_processor("/webhook", GithubRepoWebhookProcessor)

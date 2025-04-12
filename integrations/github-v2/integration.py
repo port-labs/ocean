@@ -10,7 +10,7 @@ from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from pydantic import Field
 
 from client.client import GithubState, GithubRepositoryTypes
-from utils import PortGithubResources
+from utils import ObjectKind
 
 
 class RepositorySelector(Selector):
@@ -54,22 +54,22 @@ class WorkflowSelector(Selector):
 
 class GithubRepositoryResourceConfig(ResourceConfig):
     selector: RepositorySelector
-    kind: Literal[PortGithubResources.REPO]
+    kind: Literal[ObjectKind.REPO]
 
 
 class GithubPullRequestResourceConfig(ResourceConfig):
     selector: PullRequestSelector
-    kind: Literal[PortGithubResources.PR]
+    kind: Literal[ObjectKind.PR]
 
 
 class GithubIssueResourceConfig(ResourceConfig):
     selector: IssueSelector
-    kind: Literal[PortGithubResources.ISSUE]
+    kind: Literal[ObjectKind.ISSUE]
 
 
 class GithubWorkflowResourceConfig(ResourceConfig):
     selector: WorkflowSelector
-    kind: Literal[PortGithubResources.WORKFLOW]
+    kind: Literal[ObjectKind.WORKFLOW]
 
 
 class GithubPortAppConfig(PortAppConfig):

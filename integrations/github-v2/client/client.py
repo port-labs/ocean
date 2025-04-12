@@ -72,12 +72,15 @@ class GitHub:
     ) -> httpx.Response:
         async with self.rate_limitter:
             try:
-                return await self._http_client.request(
+                res = await self._http_client.request(
                     method, url, params=params, json=json
                 )
+                res.raise_for_status()
+                return res
             except httpx.HTTPStatusError as e:
+                data = e.response.json()
                 logger.error(f"Error occured while fetching {e.request.url}")
-                f"status code: {e.response.status_code} - {e.response.text}"
+                f"status code: {e.response.status_code} - {data.get('message')}"
                 raise
             except httpx.HTTPError as e:
                 logger.error(
@@ -132,6 +135,12 @@ class GitHub:
         ):
             yield repositories
 
+    async def get_repository(self, repo_fullname: str) -> dict[str, Any]:
+        url = f"{self._base_url}/repos/{repo_fullname}"
+        logger.info(f"fetching repository - {repo_fullname}")
+        res = await self._make_request(url)
+        return res.json()
+
     @cache_iterator_result()
     async def get_pull_requests(
         self, owner: str, repo: str, pr_state: GithubState = GithubState.ALL
@@ -151,6 +160,16 @@ class GitHub:
         ):
             yield pull_requests
 
+    async def get_pull_request(
+        self, repo_fullname: str, pr_number: int
+    ) -> dict[str, Any]:
+        url = f"{self._base_url}/repos/{repo_fullname}/pulls/{pr_number}"
+        logger.info(
+            f"fetching pull request in {repo_fullname} with PR number of - ${pr_number}"
+        )
+        res = await self._make_request(url)
+        return res.json()
+
     @cache_iterator_result()
     async def get_issues(
         self, owner: str, repo: str, state: GithubState = GithubState.ALL
@@ -165,6 +184,16 @@ class GitHub:
         logger.info(f"fetching issues for repository - {repo}")
         async for issues in self._get_paginated_data(url, params={"state": state}):
             yield issues
+
+    async def get_issue(self, repo_fullname: str, issue_number: int) -> dict[str, Any]:
+        """Return an issue using the issue number"""
+
+        url = f"{self._base_url}/repos/{repo_fullname}/issues/{issue_number}"
+        logger.info(
+            f"fetching issue in {repo_fullname} with issue number of - {issue_number}"
+        )
+        res = await self._make_request(url)
+        return res.json()
 
     async def get_teams(self, org: str) -> AsyncGenerator[list[dict[str, Any]], None]:
         """fetch the teams in an organization.
@@ -186,7 +215,7 @@ class GitHub:
             owner - workflow owner, can be an organization or a user
             repo - workflow repo - repository where workflows should be fetched from
         """
-        url = f"{self._base_url}/repos/{owner}/{repo}/workflows"
+        url = f"{self._base_url}/repos/{owner}/{repo}/actions/workflows"
         logger.info(f"fetching teams in the organization - {owner}")
         async for workflows in self._get_paginated_data(url):
             yield workflows
@@ -267,11 +296,9 @@ class GitHub:
         res = await self._make_request(gh_webhook_endpoint, "POST", json=body)
         logger.info(f"Ocean real time reporting webhook created for org: {org}")
 
-    async def configure_webhooks(self, app_host: str, orgs: list[str]) -> None:
+    async def configure_webhooks(self, app_host: str, org: str) -> None:
         if not self._bearer_token:
             logger.error("Can't configure webhooks, access token is required")
             return
 
-        async with asyncio.TaskGroup() as tg:
-            for org in orgs:
-                tg.create_task(self.register_org_webhook(app_host, org, WEBHOOK_EVENTS))
+        await self.register_org_webhook(app_host, org, WEBHOOK_EVENTS)

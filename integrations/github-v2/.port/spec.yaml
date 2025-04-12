@@ -12,11 +12,11 @@ features:
       - kind: workflows
 configurations:
   - name: githubToken
-    required: false
+    required: true
     type: string
     sensitive: true
-  - name: orgs
+  - name: org
     type: string
-    description: command seperated list of organizations to ingest data from.
+    description: organization to ingest data from.
     required: true
     sensitive: false

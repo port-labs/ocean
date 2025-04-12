@@ -11,21 +11,20 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from client.client import GithubRepositoryTypes
 from integration import GithubIssueResourceConfig
-from utils import PortGithubResources
+from utils import ObjectKind, create_github_client
 
 
-class GithubIssueWebhookHandler(AbstractWebhookProcessor):
+class GithubIssueWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         header = event.headers
         return header.get("x-github-event") == "issues"
 
     async def get_matching_kinds(self, e: WebhookEvent) -> list[str]:
-        return [PortGithubResources.ISSUE]
+        return [ObjectKind.ISSUE]
 
     async def handle_event(
         self, event: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        print("this is called")
         match event.get("action"):
             case "deleted":
                 return WebhookEventRawResults(
@@ -34,27 +33,31 @@ class GithubIssueWebhookHandler(AbstractWebhookProcessor):
             case _:
                 config = cast(GithubIssueResourceConfig, resource_config)
                 issue_repo = event["repository"]
+                github = create_github_client()
+                issue = await github.get_issue(
+                    issue_repo["fullname"], event["issue"]["issue_number"]
+                )
                 match config.selector.repo_type:
                     case GithubRepositoryTypes.ALL:
                         return WebhookEventRawResults(
-                            updated_raw_results=[event["issue"]], deleted_raw_results=[]
+                            updated_raw_results=[issue], deleted_raw_results=[]
                         )
                     case GithubRepositoryTypes.PRIVATE:
                         if issue_repo["private"]:
                             return WebhookEventRawResults(
-                                updated_raw_results=[event["issue"]],
+                                updated_raw_results=[issue],
                                 deleted_raw_results=[],
                             )
                     case GithubRepositoryTypes.PUBLIC:
                         if not issue_repo["private"]:
                             return WebhookEventRawResults(
-                                updated_raw_results=[event["issue"]],
+                                updated_raw_results=[issue],
                                 deleted_raw_results=[],
                             )
                     case GithubRepositoryTypes.FORKS:
                         if issue_repo["fork"]:
                             return WebhookEventRawResults(
-                                updated_raw_results=[event["issue"]],
+                                updated_raw_results=[issue],
                                 deleted_raw_results=[],
                             )
                 return WebhookEventRawResults(
@@ -65,4 +68,6 @@ class GithubIssueWebhookHandler(AbstractWebhookProcessor):
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
+        if not payload.get("repository") or not payload.get("issue"):
+            return False
         return True
