@@ -10,7 +10,7 @@ from port_ocean.utils.async_iterators import (
 )
 from urllib.parse import quote
 
-from gitlab.helpers.utils import parse_file_content
+from gitlab.helpers.utils import parse_file_content, resolve_file_references
 
 from gitlab.clients.rest_client import RestClient
 
@@ -249,9 +249,14 @@ class GitLabClient:
             and "content" in file_data
             and file_path.endswith(PARSEABLE_EXTENSIONS)
         ):
-            file_data["content"] = await anyio.to_thread.run_sync(
+            parsed_content = await anyio.to_thread.run_sync(
                 parse_file_content, file_data["content"], file_path, context
             )
+            parsed_content = await resolve_file_references(
+                parsed_content, self, project_id, ref
+            )
+            file_data["content"] = parsed_content
+
         return file_data
 
     async def _process_file_batch(

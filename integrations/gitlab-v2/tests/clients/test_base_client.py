@@ -338,3 +338,51 @@ class TestGitLabClient:
                     "repository/tree",
                     {"ref": "develop", "path": "src", "recursive": False},
                 )
+
+    async def test_process_file_with_file_reference(self, client: GitLabClient) -> None:
+        """Test that parsed file content with file:// reference fetches and resolves content."""
+        # Arrange
+        file = {
+            "path": "config.yaml",
+            "project_id": "123",
+            "ref": "main",
+        }
+        mock_file_content = """
+        key: value
+        ref: file://other_file.txt
+        """
+        mock_referenced_content = "Referenced content"
+        mock_file_data = {
+            "content": mock_file_content,
+            "path": "config.yaml",
+        }
+        expected_parsed_content = {
+            "key": "value",
+            "ref": mock_referenced_content,
+        }
+
+        with (
+            patch.object(
+                client.rest,
+                "get_file_data",
+                AsyncMock(return_value=mock_file_data),
+            ) as mock_get_file_data,
+            patch.object(
+                client,
+                "get_file_content",
+                AsyncMock(return_value=mock_referenced_content),
+            ) as mock_get_file_content,
+        ):
+            # Act
+            result = await client._process_file(
+                file, context="test_context", skip_parsing=False
+            )
+
+            # Assert
+            assert result["path"] == "config.yaml"
+            assert result["project_id"] == "123"
+            assert result["content"] == expected_parsed_content
+            mock_get_file_data.assert_called_once_with("123", "config.yaml", "main")
+            mock_get_file_content.assert_called_once_with(
+                "123", "other_file.txt", "main"
+            )
