@@ -37,11 +37,6 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         folders = []
         for pattern in folder_patterns:
-            if not pattern.repos:
-                logger.info(
-                    f"No repositories specified for path {pattern.path}; skipping folder processing"
-                )
-                continue
             # Check if this pattern applies to the event's repo and branch
             matching_repo = None
             for repo in pattern.repos:
@@ -70,9 +65,6 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         else:
             logger.info(f"Completed push event processing; updated {len(folders)} folders")
 
-       return WebhookEventRawResults(
-                updated_raw_results=folders, deleted_raw_results=[]
-       )
         return WebhookEventRawResults(
             updated_raw_results=folders, deleted_raw_results=[]
         )
