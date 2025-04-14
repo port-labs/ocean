@@ -5,18 +5,46 @@
     "icon": "GitLab",
     "schema": {
       "properties": {
+        "readme": {
+          "title": "README",
+          "type": "string",
+          "format": "markdown",
+          "icon": "Book"
+        },
         "url": {
           "title": "URL",
+          "format": "url",
           "type": "string",
+          "icon": "Link"
+        },
+        "language": {
+          "type": "string",
+          "title": "Language",
+          "icon": "Git"
+        },
+        "slack": {
+          "icon": "Slack",
+          "type": "string",
+          "title": "Slack",
           "format": "url"
         },
-        "description": {
-          "title": "Description",
-          "type": "string"
-        },
-        "defaultBranch": {
-          "title": "Default Branch",
-          "type": "string"
+        "tier": {
+          "title": "Tier",
+          "type": "string",
+          "description": "How mission-critical the service is",
+          "enum": [
+            "Mission Critical",
+            "Customer Facing",
+            "Internal Service",
+            "Other"
+          ],
+          "enumColors": {
+            "Mission Critical": "turquoise",
+            "Customer Facing": "green",
+            "Internal Service": "darkGray",
+            "Other": "yellow"
+          },
+          "icon": "DefaultProperty"
         }
       },
       "required": []
