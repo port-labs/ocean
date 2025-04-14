@@ -325,7 +325,7 @@ class TestGitLabClient:
             assert result["__members"][0]["username"] == "user1"
             assert result["__members"][1]["username"] == "user2"
             assert result["__members"][0]["email"] == "user1@example.com"
-            assert result["__members"][1]["email"] == ""
+            assert result["__members"][1]["email"] is None
             mock_get_members.assert_called_once_with("456", True)
 
     async def test_enrich_batch(self, client: GitLabClient) -> None:

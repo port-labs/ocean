@@ -315,7 +315,7 @@ class GitLabClient:
             for member in members_batch:
                 members.append(
                     {
-                        "email": member.get("email", ""),
+                        "email": member.get("email"),
                         "username": member["username"],
                         "name": member["name"],
                         "id": member["id"],
