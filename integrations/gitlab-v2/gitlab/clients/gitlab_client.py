@@ -95,7 +95,12 @@ class GitLabClient:
         tasks = [
             semaphore_async_iterator(
                 semaphore,
-                partial(self._get_group_resource, group, resource_type, params),
+                partial(
+                    self.rest.get_paginated_group_resource,
+                    str(group["id"]),
+                    resource_type,
+                    params,
+                ),
             )
             for group in groups_batch
         ]
@@ -220,24 +225,6 @@ class GitLabClient:
         logger.info(f"Fetched languages for {project_path}: {languages}")
         project["__languages"] = languages
         return project
-
-    async def _get_group_resource(
-        self,
-        group: dict[str, Any],
-        resource_type: str,
-        params: Optional[dict[str, Any]] = None,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        group_id = group["id"]
-
-        logger.debug(f"Starting fetch for {resource_type} in group {group_id}")
-        async for resource_batch in self.rest.get_paginated_group_resource(
-            group_id, resource_type, params
-        ):
-            if resource_batch:
-                logger.info(
-                    f"Fetched {len(resource_batch)} {resource_type} for group {group_id}"
-                )
-                yield resource_batch
 
     async def get_group_members(
         self, group_id: str, include_bot_members: bool

@@ -40,14 +40,15 @@ from port_ocean.utils.async_iterators import (
 
 import asyncio
 
-RESYNC_BATCH_SIZE = 10
-
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
 )
 from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
     FolderPushWebhookProcessor,
 )
+
+
+RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
 
 
 @ocean.on_start()
@@ -123,8 +124,8 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     include_bot_members = bool(selector.include_bot_members)
 
     async for groups_batch in client.get_groups():
-        for i in range(0, len(groups_batch), RESYNC_BATCH_SIZE):
-            current_batch = groups_batch[i : i + RESYNC_BATCH_SIZE]
+        for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
+            current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
             logger.info(
                 f"Processing members for {i + len(current_batch)}/{len(groups_batch)} groups"
             )
@@ -144,8 +145,8 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_bot_members = bool(selector.include_bot_members)
 
     async for groups_batch in client.get_groups():
-        for i in range(0, len(groups_batch), RESYNC_BATCH_SIZE):
-            current_batch = groups_batch[i : i + RESYNC_BATCH_SIZE]
+        for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
+            current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
             tasks = [
                 client.get_group_members(group["id"], include_bot_members)
                 for group in current_batch
