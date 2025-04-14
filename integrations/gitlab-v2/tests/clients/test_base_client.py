@@ -337,7 +337,6 @@ class TestGitLabClient:
                     {"ref": "develop", "path": "src", "recursive": False},
                 )
 
-
     async def test_get_project_jobs(self, client: GitLabClient) -> None:
         """Test fetching project jobs"""
         # Arrange
@@ -356,7 +355,9 @@ class TestGitLabClient:
             assert len(results) == 1
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Job"
-            mock_get_paginated.assert_called_once_with("1", "jobs")
+            mock_get_paginated.assert_called_once_with(
+                "1", "jobs", params={"per_page": 100}
+            )
 
     async def test_project_resource(self, client: GitLabClient) -> None:
         """Test project resource fetching delegates to REST client"""

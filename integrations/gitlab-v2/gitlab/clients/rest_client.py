@@ -92,8 +92,10 @@ class RestClient(HTTPBaseClient):
     ) -> AsyncIterator[list[dict[str, Any]]]:
         page = 1
         params_dict: dict[str, Any] = params or {}
+        if "per_page" not in params_dict:
+            params_dict["per_page"] = page_size
         while True:
-            request_params = {**params_dict, "per_page": page_size, "page": page}
+            request_params = {**params_dict, "page": page}
             logger.debug(f"Fetching page {page} from {path}")
             response = await self.send_api_request("GET", path, params=request_params)
             # HTTP API returns a list directly, or empty dict for 404

@@ -121,7 +121,7 @@ class GitLabClient:
             project: dict[str, Any]
         ) -> AsyncIterator[list[dict[str, Any]]]:
             async for batch in self.rest.get_paginated_project_resource(
-                str(project["id"]), "jobs"
+                str(project["id"]), "jobs", params={"per_page": 100}
             ):
                 yield batch
                 break  # only yield first page
