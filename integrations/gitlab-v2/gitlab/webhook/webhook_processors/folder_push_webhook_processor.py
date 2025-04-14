@@ -63,7 +63,9 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 f"No folders found matching patterns for {repo_path} at ref {ref}"
             )
         else:
-            logger.info(f"Completed push event processing; updated {len(folders)} folders")
+            logger.info(
+                f"Completed push event processing; updated {len(folders)} folders"
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=folders, deleted_raw_results=[]
