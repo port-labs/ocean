@@ -14,7 +14,7 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
 
 class JobWebhookProcessor(_GitlabAbstractWebhookProcessor):
     events = ["build"]
-    hook = "Job Hook"
+    hooks = ["Job Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.JOB]

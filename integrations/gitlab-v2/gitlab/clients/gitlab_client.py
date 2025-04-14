@@ -54,6 +54,7 @@ class GitLabClient:
     async def get_job(self, project_id: int, job_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request(
             "GET", f"projects/{project_id}/jobs/{job_id}"
+        )
 
     async def get_group_member(self, group_id: int, member_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request(
@@ -285,7 +286,6 @@ class GitLabClient:
         logger.info(f"Fetched languages for {project_path}: {languages}")
         project["__languages"] = languages
         return project
-
 
     async def get_group_members(
         self, group_id: str, include_bot_members: bool

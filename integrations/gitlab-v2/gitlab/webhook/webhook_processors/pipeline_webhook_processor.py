@@ -14,7 +14,7 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
 
 class PipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
     events = ["pipeline"]
-    hook = "Pipeline Hook"
+    hooks = ["Pipeline Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.PIPELINE]
