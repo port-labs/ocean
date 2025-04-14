@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.131 (2025-04-14)
+
+### Bug Fixes
+
+- [Integration][ServiceNow] - Sanity check on a more generic api
+
+
 ## 0.1.130 (2025-04-07)
 
 
