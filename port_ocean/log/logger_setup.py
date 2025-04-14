@@ -13,10 +13,14 @@ from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.utils.signal import signal_handler
 
 
-def setup_logger(level: LogLevelType, enable_http_handler: bool) -> None:
+def setup_logger(
+    level: LogLevelType, enable_http_handler: bool, integration_id: str
+) -> None:
     try:
         logger.remove()
-        logger.configure(extra={"hostname": os.uname().nodename})
+        logger.configure(
+            extra={"hostname": os.uname().nodename, "integration_id": integration_id}
+        )
         _stdout_loguru_handler(level)
         if enable_http_handler:
             _http_loguru_handler(level)
@@ -31,6 +35,7 @@ def _stdout_loguru_handler(level: LogLevelType) -> None:
     logger_format = (
         "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "
+        "<cyan>{extra[integration_id]}</cyan> | "
         "<level>{message}</level>"
     )
     if level == "DEBUG":
