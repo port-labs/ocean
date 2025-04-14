@@ -298,7 +298,7 @@ class TestGitLabClient:
         # Arrange
         group = {"id": "456", "name": "Test Group"}
         mock_members = [
-            {"id": 1, "username": "user1", "name": "User One"},
+            {"id": 1, "username": "user1", "name": "User One", "email": "user1@example.com"},
             {"id": 2, "username": "user2", "name": "User Two"},
         ]
 
@@ -319,6 +319,8 @@ class TestGitLabClient:
             assert len(result["__members"]) == 2
             assert result["__members"][0]["username"] == "user1"
             assert result["__members"][1]["username"] == "user2"
+            assert result["__members"][0]["email"] == "user1@example.com"
+            assert result["__members"][1]["email"] == ""
             mock_get_members.assert_called_once_with("456", True)
 
     async def test_enrich_batch(self, client: GitLabClient) -> None:
