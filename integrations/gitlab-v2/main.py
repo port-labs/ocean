@@ -31,6 +31,12 @@ from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.pipeline_webhook_processor import (
+    PipelineWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.job_webhook_processor import (
+    JobWebhookProcessor,
+)
 from gitlab.webhook.webhook_processors.member_webhook_processor import (
     MemberWebhookProcessor,
 )
@@ -94,6 +100,32 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Processing batch of {len(groups_batch)} groups for issues")
         async for issues_batch in client.get_groups_resource(groups_batch, "issues"):
             yield issues_batch
+
+
+@ocean.on_resync(ObjectKind.PIPELINE)
+async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+
+    async for projects_batch in client.get_projects():
+        logger.info(f"Processing batch of {len(projects_batch)} projects for pipelines")
+        async for pipelines_batch in client.get_projects_resource(
+            projects_batch, "pipelines"
+        ):
+            yield pipelines_batch
+
+
+@ocean.on_resync(ObjectKind.JOB)
+async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Limit the number of jobs that are yielded to 100.
+    Results will be approximately 100 (more or less).
+    """
+    client = create_gitlab_client()
+
+    async for projects_batch in client.get_projects():
+        logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
+        async for jobs_batch in client.get_project_jobs(projects_batch):
+            yield jobs_batch
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
@@ -202,6 +234,8 @@ ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", PipelineWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", JobWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MemberWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)

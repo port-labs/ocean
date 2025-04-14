@@ -298,7 +298,12 @@ class TestGitLabClient:
         # Arrange
         group = {"id": "456", "name": "Test Group"}
         mock_members = [
-            {"id": 1, "username": "user1", "name": "User One"},
+            {
+                "id": 1,
+                "username": "user1",
+                "name": "User One",
+                "email": "user1@example.com",
+            },
             {"id": 2, "username": "user2", "name": "User Two"},
         ]
 
@@ -319,6 +324,8 @@ class TestGitLabClient:
             assert len(result["__members"]) == 2
             assert result["__members"][0]["username"] == "user1"
             assert result["__members"][1]["username"] == "user2"
+            assert result["__members"][0]["email"] == "user1@example.com"
+            assert result["__members"][1]["email"] is None
             mock_get_members.assert_called_once_with("456", True)
 
     async def test_enrich_batch(self, client: GitLabClient) -> None:
@@ -587,3 +594,47 @@ class TestGitLabClient:
             mock_get_file_content.assert_called_once_with(
                 "123", "other_file.txt", "main"
             )
+
+    async def test_get_project_jobs(self, client: GitLabClient) -> None:
+        """Test fetching project jobs"""
+        # Arrange
+        mock_projects = [{"id": 1, "name": "Test Project"}]
+        mock_jobs = [{"id": 1, "name": "Test Job"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_jobs]),
+        ) as mock_get_paginated:
+            results = []
+            async for batch in client.get_project_jobs(mock_projects):
+                results.extend(batch)
+
+            assert len(results) == 1
+            assert results[0]["id"] == 1
+            assert results[0]["name"] == "Test Job"
+            mock_get_paginated.assert_called_once_with(
+                "1", "jobs", params={"per_page": 100}
+            )
+
+    async def test_project_resource(self, client: GitLabClient) -> None:
+        """Test project resource fetching delegates to REST client"""
+        # Arrange
+        mock_pipelines = [{"id": 1, "name": "Test Pipeline"}]
+        mock_projects = [{"id": 1, "name": "Test Project"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_pipelines]),
+        ) as mock_get_project_resource:
+            # Act
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_projects_resource(mock_projects, "pipelines"):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1
+            assert results[0]["id"] == 1
+            assert results[0]["name"] == "Test Pipeline"
+            mock_get_project_resource.assert_called_once_with("1", "pipelines")

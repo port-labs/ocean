@@ -46,6 +46,16 @@ class GitLabClient:
             "GET", f"projects/{project_id}/issues/{issue_id}"
         )
 
+    async def get_pipeline(self, project_id: int, pipeline_id: int) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/pipelines/{pipeline_id}"
+        )
+
+    async def get_job(self, project_id: int, job_id: int) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/jobs/{job_id}"
+        )
+
     async def get_group_member(self, group_id: int, member_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request(
             "GET", f"groups/{group_id}/members/{member_id}"
@@ -83,6 +93,57 @@ class GitLabClient:
         params = {**self.DEFAULT_PARAMS, "top_level_only": top_level_only}
         async for batch in self.rest.get_paginated_resource("groups", params=params):
             yield batch
+
+    async def get_projects_resource(
+        self,
+        projects_batch: list[dict[str, Any]],
+        resource_type: str,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        semaphore = asyncio.Semaphore(max_concurrent)
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(
+                    self.rest.get_paginated_project_resource,
+                    str(project["id"]),
+                    resource_type,
+                ),
+            )
+            for project in projects_batch
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            if batch:
+                yield batch
+
+    async def get_project_jobs(
+        self, project_batch: list[dict[str, Any]], max_concurrent: int = 10
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch jobs for each project in the batch, limited to first page (<=100 jobs per project)."""
+
+        async def _get_jobs(
+            project: dict[str, Any]
+        ) -> AsyncIterator[list[dict[str, Any]]]:
+            async for batch in self.rest.get_paginated_project_resource(
+                str(project["id"]), "jobs", params={"per_page": 100}
+            ):
+                yield batch
+                break  # only yield first page
+
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(_get_jobs, project),
+            )
+            for project in project_batch
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            if batch:
+                yield batch
 
     async def get_groups_resource(
         self,
@@ -254,6 +315,7 @@ class GitLabClient:
             for member in members_batch:
                 members.append(
                     {
+                        "email": member.get("email"),
                         "username": member["username"],
                         "name": member["name"],
                         "id": member["id"],

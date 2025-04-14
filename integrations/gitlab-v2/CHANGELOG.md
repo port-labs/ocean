@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced webhook processing with `GitlabLiveEventsProcessorManager` to utilize the `GitManipulationHandler` for Entity Processing
 
 
+## 0.1.10-dev (2025-04-14)
+
+
+### Features
+
+- Added support for pipeline and job kinds
+
+### Improvements
+
+- Added email field to group member enrichment for better user identification
+
+
 ## 0.1.9-dev (2025-04-14)
 
 
