@@ -2,6 +2,7 @@ from os import path
 from typing import Any, Callable, Dict, List, Tuple, Union
 
 import pytest
+import pytest_asyncio
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -25,7 +26,7 @@ def port_client_for_fake_integration() -> Tuple[SmokeTestDetails, PortClient]:
     return smoke_test_details, port_client
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def get_mocked_ocean_app(request: Any) -> Callable[[], Ocean]:
     test_dir = path.join(path.dirname(request.module.__file__), "..")
 
@@ -35,7 +36,7 @@ def get_mocked_ocean_app(request: Any) -> Callable[[], Ocean]:
     return get_ocean_app
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def get_mock_ocean_resource_configs(request: Any) -> Callable[[], List[ResourceConfig]]:
     module_dir = path.join(path.dirname(request.module.__file__), "..")
 

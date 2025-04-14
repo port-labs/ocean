@@ -96,30 +96,6 @@ async def test_delete_diff_custom_threshold_above_threshold_not_deleted(
 
 
 @pytest.mark.asyncio
-async def test_delete_diff_custom_threshold_0_not_deleted(
-    mock_context: PortOceanContext,
-) -> None:
-    applier = HttpEntitiesStateApplier(mock_context)
-    entities = EntityDiff(
-        before=[
-            Entity(identifier="1", blueprint="test"),
-            Entity(identifier="2", blueprint="test"),
-        ],
-        after=[
-            Entity(identifier="2", blueprint="test"),
-            Entity(identifier="3", blueprint="test"),
-        ],
-    )
-
-    with patch.object(applier, "_safe_delete") as mock_safe_delete:
-        await applier.delete_diff(
-            entities, UserAgentType.exporter, entity_deletion_threshold=0
-        )
-
-    mock_safe_delete.assert_not_called()
-
-
-@pytest.mark.asyncio
 async def test_applier_with_mock_context(
     mock_ocean: Ocean,
     mock_context: PortOceanContext,

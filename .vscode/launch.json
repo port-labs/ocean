@@ -1,7 +1,6 @@
 {
   "version": "0.2.0",
   "configurations": [
-
     {
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira",
@@ -135,28 +134,6 @@
     },
     {
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/gitlab-v2",
-      "envFile": "${workspaceFolder}/integrations/gitlab-v2/.env",
-      "justMyCode": true,
-      "name": "Run gitlab-v2 integration",
-      "program": "${workspaceFolder}/integrations/gitlab-v2/debug.py",
-      "python": "${workspaceFolder}/integrations/gitlab-v2/.venv/bin/python",
-      "request": "launch",
-      "type": "debugpy"
-    },
-    {
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/bitbucket-cloud",
-      "envFile": "${workspaceFolder}/integrations/bitbucket-cloud/.env",
-      "justMyCode": true,
-      "name": "Run bitbucket-cloud integration",
-      "program": "${workspaceFolder}/integrations/bitbucket-cloud/debug.py",
-      "python": "${workspaceFolder}/integrations/bitbucket-cloud/.venv/bin/python",
-      "request": "launch",
-      "type": "debugpy"
-    },
-    {
-      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/port_ocean/cli",
       "justMyCode": true,
       "name": "Run ocean new command",
@@ -164,20 +141,7 @@
       "python": "${workspaceFolder}/.venv/bin/python",
       "request": "launch",
       "type": "debugpy",
-      "args": [
-        "new"
-      ]
-    },
-    {
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/github-copilot",
-      "envFile": "${workspaceFolder}/integrations/github-copilot/.env",
-      "justMyCode": true,
-      "name": "Run github-copilot integration",
-      "program": "${workspaceFolder}/integrations/github-copilot/debug.py",
-      "python": "${workspaceFolder}/integrations/github-copilot/.venv/bin/python",
-      "request": "launch",
-      "type": "debugpy"
+      "args": ["new"]
     }
   ]
 }

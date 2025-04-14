@@ -1,4 +1,3 @@
-import asyncio
 from loguru import logger
 from clients.pagerduty import PagerDutyClient
 from consts import SERVICE_DELETE_EVENTS, SERVICE_UPSERT_EVENTS
@@ -12,8 +11,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-
-MAX_RETRIES = 5
 
 
 class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
@@ -40,20 +37,11 @@ class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
         logger.info(
             f"Got event for service {service_id}: {payload.get('event', {}).get('event_type')}"
         )
-        services = []
-        for attempt in range(MAX_RETRIES):
-            response = await client.get_single_resource(
-                object_type=Kinds.SERVICES, identifier=service_id
-            )
-            service = response.get("service")
-            if service:
-                services = await client.update_oncall_users([service])
-                break
-            else:
-                # When creating a service, PagerDuty can take some time to sync the api data with the new service.
-                # We need to retry to avoid false negatives.
-                wait_time = 2**attempt
-                await asyncio.sleep(wait_time)
+        response = await client.get_single_resource(
+            object_type=Kinds.SERVICES, identifier=service_id
+        )
+        services = await client.update_oncall_users([response["service"]])
+
         return WebhookEventRawResults(
             updated_raw_results=services, deleted_raw_results=[]
         )
