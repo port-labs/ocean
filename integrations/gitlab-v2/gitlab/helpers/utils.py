@@ -1,6 +1,6 @@
 from enum import StrEnum
 from loguru import logger
-from typing import Any, Union, Protocol, Optional
+from typing import Any, Union
 import json
 import yaml
 
@@ -12,14 +12,6 @@ class ObjectKind(StrEnum):
     MERGE_REQUEST = "merge-request"
     FILE = "file"
     FOLDER = "folder"
-
-
-class FileClientProtocol(Protocol):
-    async def get_file_content(
-        self, project_id: str, file_path: str, ref: str
-    ) -> Optional[str]:
-        """Method to fetch file content."""
-        ...
 
 
 def parse_file_content(
@@ -67,29 +59,3 @@ def parse_file_content(
             "Returning raw content."
         )
         return content
-
-
-async def resolve_file_references(
-    data: Union[dict[str, Any], list[Any], Any],
-    client: FileClientProtocol,
-    project_id: str,
-    ref: str,
-) -> Union[dict[str, Any], list[Any], Any]:
-    """Find and replace file:// references with their content."""
-    if isinstance(data, dict):
-        for key, value in data.items():
-            if isinstance(value, str) and value.startswith("file://"):
-                file_path = value[7:]
-
-                content = await client.get_file_content(project_id, file_path, ref)
-                data[key] = content
-            elif isinstance(value, (dict, list)):
-                data[key] = await resolve_file_references(
-                    value, client, project_id, ref
-                )
-
-    elif isinstance(data, list):
-        for index, item in enumerate(data):
-            data[index] = await resolve_file_references(item, client, project_id, ref)
-
-    return data
