@@ -2,7 +2,6 @@ from enum import StrEnum
 from loguru import logger
 from typing import Any, Union
 import json
-
 import yaml
 
 
@@ -17,8 +16,8 @@ class ObjectKind(StrEnum):
 
 def parse_file_content(
     content: str,
-    file_path: str = "unknown",
-    context: str = "unknown",
+    file_path: str,
+    context: str,
 ) -> Union[str, dict[str, Any], list[Any]]:
     """
     Attempt to parse a string as JSON or YAML. If both parse attempts fail or the content
