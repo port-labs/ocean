@@ -4,6 +4,10 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+)
+import asyncio
 from gitlab.clients.client_factory import create_gitlab_client
 from gitlab.helpers.utils import ObjectKind
 from integration import (
@@ -33,13 +37,6 @@ from gitlab.webhook.webhook_processors.member_webhook_processor import (
 from gitlab.webhook.webhook_processors.group_with_member_webhook_processor import (
     GroupWithMemberWebhookProcessor,
 )
-
-from port_ocean.utils.async_iterators import (
-    stream_async_iterators_tasks,
-)
-
-import asyncio
-
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
 )
@@ -154,7 +151,6 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for batch in stream_async_iterators_tasks(*tasks):
                 if batch:
                     yield batch
-            del tasks
 
 
 @ocean.on_resync(ObjectKind.FILE)

@@ -34,7 +34,7 @@ class GitlabMemberSelector(Selector):
     include_bot_members: bool = Field(
         alias="includeBotMembers",
         default=False,
-        description="If set to false, bots will be filtered out from the members list. Default value is true",
+        description="If set to false, bots will be filtered out from the members list. Default value is false",
     )
 
 
