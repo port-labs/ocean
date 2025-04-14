@@ -35,6 +35,9 @@ from gitlab.webhook.webhook_processors.job_webhook_processor import (
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
+    FolderPushWebhookProcessor,
+)
 
 
 @ocean.on_start()
@@ -179,3 +182,4 @@ ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", PipelineWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", JobWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
