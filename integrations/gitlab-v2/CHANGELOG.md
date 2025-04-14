@@ -7,12 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.6-dev (2025-04-09)
+## 0.1.7-dev (2025-04-14)
 
 
 ### Features
 
 - Add support for gitlab members
+
+
+## 0.1.6-dev (2025-04-09)
+
+
+### Features
+
+- Added support for live events for file kind
+
+### Improvements
+
+- Added file enrichment
+- Added filtering for merge requests
+- Enhanced concurrency control
+
+### Bug Fixes
+
+- Updated default branch from "default" to "main" in FilesResourceConfig
 
 
 ## 0.1.5-dev (2025-04-09)
