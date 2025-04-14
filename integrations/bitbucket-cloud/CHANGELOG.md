@@ -7,12 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.6 (2025-04-10)
+## 0.1.7 (2025-04-14)
 
 
 ### Features
 
 - Added support for live events for file kind and file:// prefix in file
+
+
+## 0.1.6 (2025-04-10)
+
+
+### Improvements
+
+- Added pull request as a default resource 
+- Improved descriptions for configurations defined in `spec.yaml`
 
 
 ## 0.1.5 (2025-04-08)
