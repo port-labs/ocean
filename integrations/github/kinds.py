@@ -12,4 +12,4 @@ class Kinds(StrEnum):
     ISSUE = "issue"
     TEAM = "team"
     WORKFLOW = "workflow"
-    FILE = "file"
+

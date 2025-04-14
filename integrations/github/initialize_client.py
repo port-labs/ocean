@@ -11,6 +11,5 @@ def create_github_client() -> GitHubClient:
     config = ocean.integration_config
     return GitHubClient(
         token=config["github_token"],
-        org=config["github_org"],
-        repo=config["github_repo"]
+        org=config["github_org"]
     )

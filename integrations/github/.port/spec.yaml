@@ -12,12 +12,7 @@ features:
       - kind: issue
       - kind: team
       - kind: workflow
-      - kind: file
 configurations:
-  - name: appHost
-    required: false
-    type: url
-    description: "This field is deprecated. Please use the OCEAN__PORT__BASE_URL field instead."
   - name: githubApiUrl
     required: true
     type: url
@@ -31,21 +26,11 @@ configurations:
     required: true
     type: string
     description: "The GitHub organization name to sync, e.g. RetailloopAfrica."
-  - name: githubRepo
-    required: true
-    type: string
-    description: "The GitHub repo name to sync, e.g. RetailloopAfrica."
   - name: githubWebhookSecret
     required: true
     type: string
     description: "Secret used for verifying GitHub webhook payload signatures."
     sensitive: true
-  - name: base_url
-    required: true
-    type: url
-    description: >
-      The publicly accessible base URL where your integration is hosted.
-      This URL will be used to form the webhook endpoint (appended with /integration/webhook) so that GitHub can deliver webhook events.
 saas:
   enabled: true
   liveEvents:

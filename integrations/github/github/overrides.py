@@ -64,15 +64,6 @@ class GitHubWorkflowConfig(ResourceConfig):
     kind: Literal["workflow"]
 
 
-class GitHubFileSelector(Selector):
-    fileType: Literal["file", "folder"] | None = Field(
-        default=None,
-        description="Specify the type of repository content to sync; e.g., 'file' or 'folder'. If omitted, both are synced."
-    )
-
-class GitHubFileConfig(ResourceConfig):
-    selector: GitHubFileSelector
-    kind: Literal["file"]
 
 
 class GitHubPortAppConfig(PortAppConfig):
@@ -82,6 +73,5 @@ class GitHubPortAppConfig(PortAppConfig):
         | GitHubPullRequestConfig
         | GitHubTeamConfig
         | GitHubWorkflowConfig
-        | GitHubFileConfig
         | ResourceConfig  # Fallback for additional resource configurations
     ]

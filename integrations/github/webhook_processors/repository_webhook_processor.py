@@ -11,11 +11,12 @@ import hashlib
 from loguru import logger
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (AbstractWebhookProcessor,)
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload, EventHeaders,WebhookEvent, WebhookEventRawResults
-from ..kinds import Kinds
-from ..initialize_client import create_github_client
+from kinds import Kinds
+from initialize_client import create_github_client
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from dotenv import load_dotenv
 from port_ocean.context.ocean import ocean
+from authenticate import authenticate_github_webhook
 
 load_dotenv()
 
@@ -56,12 +57,11 @@ class RepositoryWebhookProcessor(AbstractWebhookProcessor):
             # If the repo is not deleted, try to enrich the data from GitHub
             if owner_login and repo_name:
                 logger.debug(f"Fetching updated repo data from GitHub for owner={owner_login}, repo={repo_name}")
-                repo_data = await client.fetch_repository(owner_login, repo_name)
-
-                if repo_data:
-                    repository = repo_data  # Overwrite with the fresh data
-                else:
-                    logger.warning("Could not fetch updated repository data, using webhook payload.")
+                async for  repo_data in client.fetch_resource("repository", owner = owner_login, repo=repo_name):
+                    if repo_data:
+                        repository = repo_data  # Overwrite with the fresh data
+                    else:
+                        logger.warning("Could not fetch updated repository data, using webhook payload.")
             else:
                 logger.warning("No owner or repository name in payload, skipping GitHub fetch.")
 
@@ -72,24 +72,7 @@ class RepositoryWebhookProcessor(AbstractWebhookProcessor):
             )
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        secret = ocean.integration_config.get("github_webhook_secret")
-        if not secret:
-            logger.error("GITHUB_WEBHOOK_SECRET is not set")
-            return False
-
-        received_signature = headers.get("x-hub-signature-256")
-        if not received_signature:
-            logger.error("Missing X-Hub-Signature-256 header")
-            return False
-
-        payload_bytes = json.dumps(payload, separators=(',', ':')).encode('utf-8')
-        computed_signature = "sha256=" + hmac.new(secret.encode(), payload_bytes, hashlib.sha256).hexdigest()
-
-        if not hmac.compare_digest(received_signature, computed_signature):
-            logger.error("Signature verification failed for repository event")
-            return False
-
-        return True
+        return authenticate_github_webhook(payload, headers)
 
     async def validate_payload(self, payload: dict) -> bool:
         # Additional validation logic may be added here.

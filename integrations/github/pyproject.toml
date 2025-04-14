@@ -20,6 +20,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+rich = ">=13.4.1,<14.0.0"
 
 [tool.towncrier]
 directory = "changelog"

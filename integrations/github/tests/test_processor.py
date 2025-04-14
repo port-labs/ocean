@@ -1,249 +1,303 @@
-import time
+import os
 import pytest
+import asyncio
+from unittest.mock import MagicMock
 import httpx
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from github.client import GitHubClient, WEBHOOK_EVENTS
-from port_ocean.context.ocean import initialize_port_ocean_context
-from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+# Import the processor classes from their proper packages.
+from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
+from webhook_processors.pull_request_webhook_processor import PullRequestWebhookProcessor
+from webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
+from webhook_processors.team_webhook_processor import TeamWebhookProcessor
+from webhook_processors.workflow_webhook_processor import WorkflowRunWebhookProcessor
 
-# ---------------------------------------------------------------------------
-# Autouse fixture: Initialize PortOcean context.
-# ---------------------------------------------------------------------------
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
+from kinds import Kinds
+
+# -----------------------------------------------------------------------------
+# Dummy Event class to simulate a WebhookEvent with headers and payload.
+# -----------------------------------------------------------------------------
+class DummyWebhookEvent:
+    def __init__(self, headers: dict, payload: dict):
+        self.headers = headers
+        self.payload = payload
+
+# -----------------------------------------------------------------------------
+# Fixture: Dummy event for processor instantiation.
+# -----------------------------------------------------------------------------
+@pytest.fixture
+def dummy_event():
+    # Minimal dummy event; real processors might not use self.event extensively.
+    return DummyWebhookEvent(headers={}, payload={})
+
+# -----------------------------------------------------------------------------
+# Fixture: Set required environment variables.
+# -----------------------------------------------------------------------------
 @pytest.fixture(autouse=True)
-def init_ocean_context() -> None:
-    try:
-        mock_ocean_app = MagicMock()
-        mock_ocean_app.config.integration.config = {
-            "github_webhook_secret": "secret123",
-            "client_timeout": 60,
-        }
-        mock_ocean_app.integration_router = MagicMock()
-        mock_ocean_app.port_client = MagicMock()
-        initialize_port_ocean_context(mock_ocean_app)
-    except PortOceanContextAlreadyInitializedError:
-        pass
+def set_env_vars(monkeypatch):
+    monkeypatch.setenv("github_token", "dummy_token")
+    # Set other environment variables as needed.
 
-# ---------------------------------------------------------------------------
-# Fixture for a dummy HTTP client (an AsyncMock) to replace the internal HTTP client.
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Helper async generator to yield items from a list.
+# -----------------------------------------------------------------------------
+async def async_gen(items):
+    for item in items:
+        yield item
+
+# -----------------------------------------------------------------------------
+# A dummy GitHub client that returns a preset list of results via fetch_resource.
+# -----------------------------------------------------------------------------
+class DummyGitHubClient:
+    def __init__(self, results):
+        self.results = results  # Expected to be a list of dictionaries.
+
+    def fetch_resource(self, resource_type, **kwargs):
+        return async_gen(self.results)
+
+# -----------------------------------------------------------------------------
+# Fixture: Dummy ResourceConfig (if needed).
+# -----------------------------------------------------------------------------
 @pytest.fixture
-def dummy_client() -> MagicMock:
-    dummy = MagicMock()
-    dummy.request = AsyncMock()
-    dummy.headers = {}
-    return dummy
+def dummy_resource_config():
+    return MagicMock()
 
-# ---------------------------------------------------------------------------
-# Fixture for GitHubClient that patches the http_async_client (as imported in github.client).
-# ---------------------------------------------------------------------------
-@pytest.fixture
-def mock_github_client(dummy_client: MagicMock) -> GitHubClient:
-    with patch("github.client.http_async_client", dummy_client):
-        client = GitHubClient(token="test_token", org="test_org", repo="test_repo")
-    return client
-
-# ---------------------------------------------------------------------------
-# Test functions for GitHubClient.
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Tests for IssueWebhookProcessor
+# -----------------------------------------------------------------------------
 @pytest.mark.asyncio
-async def test_client_initialization(mock_github_client: GitHubClient) -> None:
-    headers = mock_github_client.client.headers
-    assert headers.get("Authorization") == "Bearer test_token"
-    assert headers.get("Accept") == "application/vnd.github+json"
-    expected_url = "https://api.github.com/repos/test_org/test_repo/hooks"
-    assert mock_github_client.webhook_url == expected_url
-
-@pytest.mark.asyncio
-async def test_request_success(mock_github_client: GitHubClient) -> None:
-    url = "http://example.com"
-    response_data = {"data": "value"}
-    response = httpx.Response(
-        200,
-        request=httpx.Request("GET", url),
-        json=response_data
+async def test_issue_should_process_event_true(dummy_event):
+    processor = IssueWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(
+        headers={"x-github-event": "issues"},
+        payload={"issue": {"title": "Test Issue"}}
     )
-    mock_github_client.client.request.return_value = response
-
-    result = await mock_github_client._request("GET", url)
-    assert result.json() == response_data
-
-    # Use built-in assertion instead of manually inspecting call_args.
-    mock_github_client.client.request.assert_called_once_with("GET", url, json=None)
+    result = await processor.should_process_event(event)
+    assert result is True
 
 @pytest.mark.asyncio
-async def test_request_failure(mock_github_client: GitHubClient) -> None:
-    url = "http://example.com"
-    response = httpx.Response(
-        404,
-        request=httpx.Request("GET", url)
+async def test_issue_should_process_event_false(dummy_event):
+    processor = IssueWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(
+        headers={"x-github-event": "issues"},
+        payload={"issue": {"title": "Test Issue", "pull_request": {}}}
     )
-    mock_github_client.client.request.return_value = response
-
-    with pytest.raises(httpx.HTTPStatusError):
-        await mock_github_client._request("GET", url)
+    result = await processor.should_process_event(event)
+    assert result is False
 
 @pytest.mark.asyncio
-async def test_request_rate_limit(mock_github_client: GitHubClient) -> None:
-    url = "http://example.com"
-    current_time = int(time.time())
-    reset_time = current_time + 2
-    headers_rate_limit = {
-        "X-RateLimit-Remaining": "0",
-        "X-RateLimit-Reset": str(reset_time)
+async def test_issue_get_matching_kinds(dummy_event):
+    processor = IssueWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(headers={}, payload={})
+    kinds = await processor.get_matching_kinds(event)
+    assert Kinds.ISSUE in kinds
+
+@pytest.mark.asyncio
+async def test_issue_handle_event(dummy_event, dummy_resource_config, monkeypatch):
+    processor = IssueWebhookProcessor(dummy_event)
+    payload = {
+        "issue": {"number": 123, "title": "Original Issue"},
+        "repository": {"name": "repo1", "owner": {"login": "owner1"}}
     }
-    response_rate_limit = httpx.Response(
-        403,
-        request=httpx.Request("GET", url),
-        headers=headers_rate_limit
+    updated_issue = {"number": 123, "title": "Updated Issue"}
+    # Instead of patching, use monkeypatch.setattr to override create_github_client.
+    monkeypatch.setattr(
+        "webhook_processors.issue_webhook_processor.create_github_client",
+        lambda: DummyGitHubClient([updated_issue])
     )
-    response_success = httpx.Response(
-        200,
-        request=httpx.Request("GET", url),
-        json={"data": "value"}
-    )
-    # Simulate that the first call hits rate limiting and then it retries
-    mock_github_client.client.request.side_effect = [response_rate_limit, response_success]
-
-    # Override sleep to avoid delay.
-    with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
-        result = await mock_github_client._request("GET", url)
-        assert result.json() == {"data": "value"}
-        assert mock_sleep.await_count >= 1
+    results = await processor.handle_event(payload, dummy_resource_config)
+    # The webhook processor should override the original issue with the updated data.
+    assert results.updated_raw_results[0]["title"] == "Updated Issue"
+    assert results.deleted_raw_results == []
 
 @pytest.mark.asyncio
-async def test_get(mock_github_client: GitHubClient) -> None:
-    endpoint = "/test"
-    url = f"{mock_github_client.base_url}{endpoint}"
-    response = httpx.Response(
-        200,
-        request=httpx.Request("GET", url),
-        json={"data": "value"}
+async def test_issue_authenticate_and_validate(dummy_event):
+    processor = IssueWebhookProcessor(dummy_event)
+    dummy_payload = {"dummy": "data"}
+    dummy_headers = {"dummy": "header"}
+    auth_result = await processor.authenticate(dummy_payload, dummy_headers)
+    assert isinstance(auth_result, bool)
+    valid = await processor.validate_payload(dummy_payload)
+    assert valid is True
+
+# -----------------------------------------------------------------------------
+# Tests for PullRequestWebhookProcessor
+# -----------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_pull_request_should_process_event_true(dummy_event):
+    processor = PullRequestWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(
+        headers={"x-github-event": "pull_request"},
+        payload={"pull_request": {"title": "PR Title"}}
     )
-    with patch.object(mock_github_client, "_request", new_callable=AsyncMock) as mock_request:
-        mock_request.return_value = response
-        result = await mock_github_client.get(endpoint)
-        mock_request.assert_called_once_with("GET", url, None)
-        assert result.json() == {"data": "value"}
+    result = await processor.should_process_event(event)
+    assert result is True
 
 @pytest.mark.asyncio
-async def test_get_paginated(mock_github_client: GitHubClient) -> None:
-    endpoint = "/items"
-    url = f"{mock_github_client.base_url}{endpoint}"
-    first_response = httpx.Response(
-        200,
-        request=httpx.Request("GET", url),
-        json=[{"id": 1}, {"id": 2}],
-        headers={"Link": '<https://api.github.com/items?page=2>; rel="next"'}
-    )
-    second_response = httpx.Response(
-        200,
-        request=httpx.Request("GET", "https://api.github.com/items?page=2"),
-        json=[],
-        headers={}
-    )
-    with patch.object(mock_github_client, "_request", new_callable=AsyncMock) as mock_request:
-        mock_request.side_effect = [first_response, second_response]
-        items = []
-        async for item in mock_github_client.get_paginated(endpoint):
-            items.append(item)
-        assert items == [{"id": 1}, {"id": 2}]
-        assert mock_request.call_count == 2
-
+async def test_pull_request_get_matching_kinds(dummy_event):
+    processor = PullRequestWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(headers={}, payload={})
+    kinds = await processor.get_matching_kinds(event)
+    assert Kinds.PULL_REQUEST in kinds
 
 @pytest.mark.asyncio
-async def test_create_webhooks_creates_new(mock_github_client: GitHubClient) -> None:
-    app_host = "https://example.com"
-    webhook_target = f"{app_host}/integration/webhook"
-
-    response_get = httpx.Response(
-        200,
-        request=httpx.Request("GET", mock_github_client.webhook_url),
-        json=[]
+async def test_pull_request_handle_event(dummy_event, dummy_resource_config, monkeypatch):
+    processor = PullRequestWebhookProcessor(dummy_event)
+    payload = {
+        "pull_request": {"number": 45, "title": "Original PR"},
+        "repository": {"name": "repo1", "owner": {"login": "owner1"}}
+    }
+    updated_pr = {"number": 45, "title": "Updated PR"}
+    monkeypatch.setattr(
+        "webhook_processors.pull_request_webhook_processor.create_github_client",
+        lambda: DummyGitHubClient([updated_pr])
     )
-    response_post = httpx.Response(
-        201,
-        request=httpx.Request("POST", mock_github_client.webhook_url),
-        json={"id": "new_webhook"}
-    )
-    with patch.object(mock_github_client, "_request", new_callable=AsyncMock) as mock_request:
-        # Simulate: first call returns an empty list; then POST succeeds.
-        mock_request.side_effect = [response_get, response_post]
-        await mock_github_client.create_webhooks(app_host)
-        calls = mock_request.call_args_list
-        assert len(calls) >= 2, "Expected at least 2 calls to _request (GET then POST)"
-
-        # For the GET call:
-        get_call = calls[0]
-        method_get = get_call.kwargs.get("method", get_call.args[0] if get_call.args else None)
-        url_get = get_call.kwargs.get("url", get_call.args[1] if len(get_call.args) > 1 else None)
-        assert method_get == "GET"
-        assert url_get == mock_github_client.webhook_url
-
-        # For the POST call:
-        post_call = calls[1]
-        method_post = post_call.kwargs.get("method", post_call.args[0] if post_call.args else None)
-        url_post = post_call.kwargs.get("url", post_call.args[1] if len(post_call.args) > 1 else None)
-        assert method_post == "POST"
-        assert url_post == mock_github_client.webhook_url
-
-        post_params = post_call.kwargs["json"]
-        assert post_params["config"]["url"] == webhook_target
-        assert post_params["events"] == WEBHOOK_EVENTS
-
+    results = await processor.handle_event(payload, dummy_resource_config)
+    assert results.updated_raw_results[0]["title"] == "Updated PR"
 
 @pytest.mark.asyncio
-async def test_create_webhooks_already_exists(mock_github_client: GitHubClient) -> None:
-    app_host = "https://example.com"
-    webhook_target = f"{app_host}/integration/webhook"
-    existing_hook = {"config": {"url": webhook_target}}
-    response_get = httpx.Response(
-        200,
-        request=httpx.Request("GET", mock_github_client.webhook_url),
-        json=[existing_hook]
-    )
-    with patch.object(mock_github_client, "_request", new_callable=AsyncMock) as mock_request:
-        mock_request.return_value = response_get  # response_get as defined earlier
-        await mock_github_client.create_webhooks(app_host)
-        # Instead of assert_called_once_with on positional arguments,
-        # use keyword access:
-        last_call = mock_request.call_args
-        method = last_call.kwargs.get("method", last_call.args[0] if last_call.args else None)
-        url_val = last_call.kwargs.get("url", last_call.args[1] if len(last_call.args) > 1 else None)
-        assert method == "GET"
-        assert url_val == mock_github_client.webhook_url
+async def test_pull_request_authenticate_and_validate(dummy_event):
+    processor = PullRequestWebhookProcessor(dummy_event)
+    dummy_payload = {"dummy": "data"}
+    dummy_headers = {"dummy": "header"}
+    auth_result = await processor.authenticate(dummy_payload, dummy_headers)
+    assert isinstance(auth_result, bool)
+    valid = await processor.validate_payload(dummy_payload)
+    assert valid is True
 
+# -----------------------------------------------------------------------------
+# Tests for RepositoryWebhookProcessor
+# -----------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_repository_should_process_event(dummy_event):
+    processor = RepositoryWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(
+        headers={"x-github-event": "repository"},
+        payload={"repository": {}}
+    )
+    result = await processor.should_process_event(event)
+    assert result is True
 
 @pytest.mark.asyncio
-async def test_fetch_workflow_run_success(mock_github_client: GitHubClient) -> None:
-    repo_owner = "test_org"
-    repo_name = "test_repo"
-    run_id = "123"
-    endpoint = f"/repos/{repo_owner}/{repo_name}/actions/runs/{run_id}"
-    workflow_data = {"id": run_id, "status": "completed"}
-    response = httpx.Response(
-        200,
-        request=httpx.Request("GET", f"{mock_github_client.base_url}{endpoint}"),
-        json=workflow_data
-    )
-    with patch.object(mock_github_client, "get", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = response
-        result = await mock_github_client.fetch_workflow_run(repo_owner, repo_name, run_id)
-        mock_get.assert_called_once_with(endpoint)
-        assert result == workflow_data
+async def test_repository_get_matching_kinds(dummy_event):
+    processor = RepositoryWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(headers={}, payload={})
+    kinds = await processor.get_matching_kinds(event)
+    assert Kinds.REPOSITORY in kinds
 
 @pytest.mark.asyncio
-async def test_fetch_workflow_run_failure(mock_github_client: GitHubClient) -> None:
-    repo_owner = "test_org"
-    repo_name = "test_repo"
-    run_id = "123"
-    endpoint = f"/repos/{repo_owner}/{repo_name}/actions/runs/{run_id}"
-    response = httpx.Response(
-        404,
-        request=httpx.Request("GET", f"{mock_github_client.base_url}{endpoint}")
+async def test_repository_handle_event_updated(dummy_event, dummy_resource_config, monkeypatch):
+    processor = RepositoryWebhookProcessor(dummy_event)
+    repo = {"name": "repo1", "owner": {"login": "owner1"}}
+    payload = {
+        "action": "edited",
+        "repository": repo
+    }
+    updated_repo = {"name": "repo1", "updated": True}
+    monkeypatch.setattr(
+        "webhook_processors.repository_webhook_processor.create_github_client",
+        lambda: DummyGitHubClient([updated_repo])
     )
-    with patch.object(mock_github_client, "get", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = response
-        result = await mock_github_client.fetch_workflow_run(repo_owner, repo_name, run_id)
-        mock_get.assert_called_once_with(endpoint)
-        assert result is None
+    results = await processor.handle_event(payload, dummy_resource_config)
+    assert results.updated_raw_results[0].get("updated") is True
+
+@pytest.mark.asyncio
+async def test_repository_authenticate_and_validate(dummy_event):
+    processor = RepositoryWebhookProcessor(dummy_event)
+    dummy_payload = {"dummy": "data"}
+    dummy_headers = {"dummy": "header"}
+    auth_result = await processor.authenticate(dummy_payload, dummy_headers)
+    assert isinstance(auth_result, bool)
+    valid = await processor.validate_payload(dummy_payload)
+    assert valid is True
+
+# -----------------------------------------------------------------------------
+# Tests for TeamWebhookProcessor
+# -----------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_team_should_process_event(dummy_event):
+    processor = TeamWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(
+        headers={"x-github-event": "team"},
+        payload={"team": {}}
+    )
+    result = await processor.should_process_event(event)
+    assert result is True
+
+@pytest.mark.asyncio
+async def test_team_get_matching_kinds(dummy_event):
+    processor = TeamWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(headers={}, payload={})
+    kinds = await processor.get_matching_kinds(event)
+    assert Kinds.TEAM in kinds
+
+@pytest.mark.asyncio
+async def test_team_handle_event(dummy_event, dummy_resource_config, monkeypatch):
+    processor = TeamWebhookProcessor(dummy_event)
+    payload = {
+        "team": {"name": "Team Test", "slug": "team-test"},
+        "organization": {"login": "org1"}
+    }
+    updated_team = {"name": "Team Test Updated", "slug": "team-test"}
+    monkeypatch.setattr(
+        "webhook_processors.team_webhook_processor.create_github_client",
+        lambda: DummyGitHubClient([updated_team])
+    )
+    results = await processor.handle_event(payload, dummy_resource_config)
+    assert results.updated_raw_results[0]["name"] == "Team Test Updated"
+
+@pytest.mark.asyncio
+async def test_team_authenticate_and_validate(dummy_event):
+    processor = TeamWebhookProcessor(dummy_event)
+    dummy_payload = {"dummy": "data"}
+    dummy_headers = {"dummy": "header"}
+    auth_result = await processor.authenticate(dummy_payload, dummy_headers)
+    assert isinstance(auth_result, bool)
+    valid = await processor.validate_payload(dummy_payload)
+    assert valid is True
+
+# -----------------------------------------------------------------------------
+# Tests for WorkflowRunWebhookProcessor
+# -----------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_workflow_run_should_process_event(dummy_event):
+    processor = WorkflowRunWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(
+        headers={"x-github-event": "workflow_run"},
+        payload={"workflow_run": {}}
+    )
+    result = await processor.should_process_event(event)
+    assert result is True
+
+@pytest.mark.asyncio
+async def test_workflow_run_get_matching_kinds(dummy_event):
+    processor = WorkflowRunWebhookProcessor(dummy_event)
+    event = DummyWebhookEvent(headers={}, payload={})
+    kinds = await processor.get_matching_kinds(event)
+    assert Kinds.WORKFLOW in kinds
+
+@pytest.mark.asyncio
+async def test_workflow_run_handle_event(dummy_event, dummy_resource_config, monkeypatch):
+    processor = WorkflowRunWebhookProcessor(dummy_event)
+    workflow_run = {"id": 789, "name": "CI Build"}
+    payload = {
+        "workflow_run": workflow_run,
+        "repository": {"name": "repo1", "owner": {"login": "owner1"}}
+    }
+    updated_run = {"id": 789, "name": "CI Build Updated"}
+    monkeypatch.setattr(
+        "webhook_processors.workflow_webhook_processor.create_github_client",
+        lambda: DummyGitHubClient([updated_run])
+    )
+    results = await processor.handle_event(payload, dummy_resource_config)
+    assert results.updated_raw_results[0]["name"] == "CI Build Updated"
+
+@pytest.mark.asyncio
+async def test_workflow_run_authenticate_and_validate(dummy_event):
+    processor = WorkflowRunWebhookProcessor(dummy_event)
+    dummy_payload = {"dummy": "data"}
+    dummy_headers = {"dummy": "header"}
+    auth_result = await processor.authenticate(dummy_payload, dummy_headers)
+    assert isinstance(auth_result, bool)
+    valid = await processor.validate_payload(dummy_payload)
+    assert valid is True

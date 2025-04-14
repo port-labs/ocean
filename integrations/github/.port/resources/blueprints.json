@@ -138,14 +138,14 @@
         "required": ["url", "state", "repo", "author"]
       },
       "mirrorProperties": {},
-      "calculationProperties": {
-        "prLink": {
-          "title": "PR Link",
-          "calculation": "return `<a href=\"${properties.url}\" target=\"_blank\">#${properties.number}</a>`",
-          "type": "string"
-        }
-      },
-      "relations": {}
+      "relations": {
+        "target": "githubRepository",
+        "title": "Repository",
+        "description": "The repository this pull request belongs to",
+        "required": false,
+        "many": false
+
+      }
     },
     {
       "identifier": "githubIssue",
@@ -205,13 +205,14 @@
       },
       "mirrorProperties": {},
       "calculationProperties": {
-        "issueLink": {
-          "title": "Issue Link",
-          "calculation": "return `<a href=\"${properties.url}\" target=\"_blank\">#${properties.number}</a>`",
-          "type": "string"
-        }
       },
-      "relations": {}
+      "relations": {
+        "target": "githubRepository",
+        "title": "Repository",
+        "description": "The repository this pull request belongs to",
+        "required": false,
+        "many": false
+      }
     },
     {
       "identifier": "githubTeam",
@@ -258,12 +259,7 @@
       "mirrorProperties": {},
       "calculationProperties": {},
       "relations": {
-        "members": {
-          "title": "Members",
-          "target": "githubUser",
-          "required": false,
-          "many": true
-        }
+
       }
     },
     {
@@ -336,10 +332,6 @@
             "title": "Run Started At",
             "type": "string",
             "format": "date-time"
-          },
-          "repository": {
-            "title": "Repository",
-            "type": "string"
           }
         },
         "required": ["url", "status", "repository"]
@@ -352,78 +344,12 @@
           "type": "string"
         }
       },
-      "relations": {}
-    },
-    {
-    "identifier": "githubFile",
-    "title": "GitHub File",
-    "icon": "Github",
-    "description": "Represents a file in a GitHub repository, including file changes.",
-    "schema": {
-      "properties": {
-        "commitId": {
-          "title": "Commit ID (SHA)",
-          "type": "string",
-          "description": "Unique commit SHA identifier."
-        },
-        "commitMessage": {
-          "title": "Commit Message",
-          "type": "string",
-          "description": "The commit message or description."
-        },
-        "commitAuthor": {
-          "title": "Author",
-          "type": "string",
-          "description": "Username of the commit author."
-        },
-        "repository": {
-          "title": "Repository",
-          "type": "string",
-          "description": "Full repository name, e.g. owner/repo."
-        },
-        "branch": {
-          "title": "Branch",
-          "type": "string",
-          "description": "The branch or ref this commit belongs to."
-        },
-        "timestamp": {
-          "title": "Commit Timestamp",
-          "type": "string",
-          "format": "date-time",
-          "description": "When the commit was created/pushed."
-        },
-        "files": {
-          "title": "Changed Files",
-          "type": "array",
-          "description": "List of file changes in this commit (added, modified, removed).",
-          "items": {
-            "type": "object",
-            "properties": {
-              "action": {
-                "type": "string",
-                "description": "The type of change: added, modified, or removed."
-              },
-              "path": {
-                "type": "string",
-                "description": "The file path relative to the repository root."
-              },
-              "name": {
-                "type": "string",
-                "description": "The file’s short name (last portion of path)."
-              },
-              "url": {
-                "type": "string",
-                "format": "url",
-                "description": "URL to view the file on GitHub (blob URL)."
-              }
-            }
-          }
-        }
+      "relations": {
+         "target": "githubRepository",
+         "title": "Repository",
+         "description": "The repository containing this workflow",
+         "required": false,
+         "many": false
       }
-    },
-    "calculationProperties": {},
-    "mirrorProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
   }
 ]

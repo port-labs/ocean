@@ -4,7 +4,6 @@ resources:
   - kind: repository
     selector:
       query: "true"
-      includeArchived: false
     port:
       entity:
         mappings:
@@ -25,7 +24,6 @@ resources:
   - kind: pull-request
     selector:
       query: "true"
-      state: "open"
     port:
       entity:
         mappings:
@@ -44,6 +42,8 @@ resources:
             head: .ref
             merged: .merged
             draft: .draft
+          relations:
+            repository: .repo_name
 
   - kind: issue
     selector:
@@ -64,11 +64,12 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
             body: .body
+          relations:
+            repository: .repo_name
 
   - kind: team
     selector:
       query: "true"
-      includeMembers: true
     port:
       entity:
         mappings:
@@ -89,7 +90,6 @@ resources:
   - kind: workflow
     selector:
       query: "true"
-      state: "active"
     port:
       entity:
         mappings:
@@ -108,72 +108,5 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
             runStartedAt: .run_started_at
-            repository: .full_name
-
-  - kind: file
-    selector:
-      query: "true"
-      fileType: null
-    port:
-      entity:
-        mappings:
-          identifier: ".id | tostring"
-          title: '(.repository.full_name // "") + ": " + (.head_commit.message // .commit.message // "Repository update")'
-          blueprint: '"githubFile"'
-          properties:
-            commitId: ".id | tostring"
-            commitMessage: .head_commit.message // .commit.message
-            commitAuthor: .head_commit.author.username // .author.login
-            repository: .repository.full_name
-            branch: 'if .ref then (.ref | tostring | split("/") | .[2]) else "main" end'
-            timestamp: .head_commit.timestamp // .commit.author.date
-
-              # The multi-line string for file objects:
-              # This checks if we have an already-enriched commit with .files (API style)
-              # or if we only have .commits[0].added/modified/removed (webhook style).
-            files: >
-              if .files then
-                # If the commit already has an array of .files (API-enriched),
-                # just map over them:
-                .files
-                | map({
-                    action: .status,
-                    path: .filename,
-                    name: (.filename | split("/") | .[-1]),
-                    url: .blob_url
-                  })
-              else
-                # Otherwise, combine added/modified/removed from webhook data:
-                (
-                  [
-                    (
-                      .commits[0].added // []
-                      | map({
-                          action: "added",
-                          path: .,
-                          name: (. | split("/") | .[-1]),
-                          url: (.repository.html_url + "/blob/" + (.commits[0].id) + "/" + .)
-                        })
-                    ),
-                    (
-                      .commits[0].modified // []
-                      | map({
-                          action: "modified",
-                          path: .,
-                          name: (. | split("/") | .[-1]),
-                          url: (.repository.html_url + "/blob/" + (.commits[0].id) + "/" + .)
-                        })
-                    ),
-                    (
-                      .commits[0].removed // []
-                      | map({
-                          action: "removed",
-                          path: .,
-                          name: (. | split("/") | .[-1]),
-                          url: (.repository.html_url + "/blob/" + (.commits[0].id) + "/" + .)
-                        })
-                    )
-                  ]
-                  | flatten
-                )
-              end
+          relations:
+            repository: .repo_name
