@@ -13,10 +13,14 @@ from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from port_ocean.core.handlers import JQEntityProcessor
 from aiolimiter import AsyncLimiter
+import asyncio
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
+MAX_REQUESTS_PER_TIME_WINDOW = 10
 MAX_REQUESTS_PER_SECOND = 5
+_rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_TIME_WINDOW, 0.25)
+_semaphore = asyncio.Semaphore(5)
 
 
 class ProjectSelector(Selector):
@@ -56,28 +60,73 @@ class GitLabFilesResourceConfig(ResourceConfig):
     kind: Literal["file"]
 
 
+class RepositoryBranchMapping(BaseModel):
+    name: str = Field(
+        default="",
+        alias="name",
+        description="Specify the repository name",
+    )
+    branch: str = Field(
+        default="main",
+        alias="branch",
+        description="Specify the branch to bring the folders from",
+    )
+    repos: list[str] = Field(
+        description="A list of repositories to search files in", default_factory=list
+    )
+    skip_parsing: bool = Field(
+        default=False,
+        alias="skipParsing",
+        description="Skip parsing the files and just return the raw file content",
+    )
+
+
+class FolderPattern(BaseModel):
+    path: str = Field(
+        alias="path",
+        description="Specify the repositories and folders to include under this relative path",
+    )
+    repos: list[RepositoryBranchMapping] = Field(
+        default_factory=list,
+        alias="repos",
+        description="Specify the repositories and branches to include under this relative path",
+    )
+
+
+class GitlabFolderSelector(Selector):
+    folders: list[FolderPattern] = Field(
+        default_factory=list,
+        alias="folders",
+        description="Specify the repositories, branches and folders to include under this relative path",
+    )
+
+
+class GitLabFoldersResourceConfig(ResourceConfig):
+    selector: GitlabFolderSelector
+    kind: Literal["folder"]
+
+
 class GitlabPortAppConfig(PortAppConfig):
     resources: list[
-        GitLabFilesResourceConfig | ProjectResourceConfig | ResourceConfig
+        GitLabFoldersResourceConfig
+        | GitLabFilesResourceConfig
+        | ProjectResourceConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 
 class GitManipulationHandler(JQEntityProcessor):
-    _rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_SECOND, 1)
-
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         entity_processor: Type[JQEntityProcessor]
+
         if pattern.startswith(FILE_PROPERTY_PREFIX):
             entity_processor = FileEntityProcessor
-            async with self._rate_limiter:
-                return await entity_processor(self.context)._search(data, pattern)
         elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
             entity_processor = SearchEntityProcessor
-            async with self._rate_limiter:
-                return await entity_processor(self.context)._search(data, pattern)
         else:
             entity_processor = JQEntityProcessor
-            return await entity_processor(self.context)._search(data, pattern)
+
+        return await entity_processor(self.context)._search(data, pattern)
 
 
 class GitlabIntegration(BaseIntegration):

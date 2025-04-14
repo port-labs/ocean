@@ -27,15 +27,12 @@ class GitLabClient:
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
 
-    async def get_project(self, project_id: int) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"projects/{project_id}", params=self.DEFAULT_PARAMS
-        )
+    async def get_project(self, project_path: str | int) -> dict[str, Any]:
+        encoded_path = quote(str(project_path), safe="")
+        return await self.rest.send_api_request("GET", f"projects/{encoded_path}")
 
     async def get_group(self, group_id: int) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"groups/{group_id}", params=self.DEFAULT_PARAMS
-        )
+        return await self.rest.send_api_request("GET", f"groups/{group_id}")
 
     async def get_merge_request(
         self, project_id: int, merge_request_id: int
@@ -87,18 +84,19 @@ class GitLabClient:
         groups_batch: list[dict[str, Any]],
         resource_type: str,
         max_concurrent: int = 10,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         semaphore = asyncio.Semaphore(max_concurrent)
         tasks = [
             semaphore_async_iterator(
-                semaphore, partial(self._process_single_group, group, resource_type)
+                semaphore,
+                partial(self._get_group_resource, group, resource_type, params),
             )
             for group in groups_batch
         ]
 
         async for batch in stream_async_iterators_tasks(*tasks):
-            if batch:
-                yield batch
+            yield batch
 
     async def get_file_content(
         self, project_id: str, file_path: str, ref: str
@@ -108,9 +106,8 @@ class GitLabClient:
     async def file_exists(self, project_id: str, scope: str, query: str) -> bool:
         params = {"scope": scope, "search": query}
         encoded_project_path = quote(project_id, safe="")
-        response = await self.rest.send_api_request(
-            "GET", f"projects/{encoded_project_path}/search", params
-        )
+        path = f"projects/{encoded_project_path}/search"
+        response = await self.rest.send_api_request("GET", path, params=params)
         return bool(response)
 
     async def search_files(
@@ -142,28 +139,72 @@ class GitLabClient:
                     ):
                         yield batch
 
+    async def get_repository_tree(
+        self,
+        project: dict[str, Any],
+        path: str,
+        ref: str = "main",
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch repository tree (folders only) for a project."""
+        project_path = project["path_with_namespace"]
+        params = {"ref": ref, "path": path, "recursive": False}
+        async for batch in self.rest.get_paginated_project_resource(
+            project_path, "repository/tree", params
+        ):
+            if folders_batch := [item for item in batch if item["type"] == "tree"]:
+                yield [
+                    {"folder": folder, "repo": project, "__branch": ref}
+                    for folder in folders_batch
+                ]
+
+    async def get_repository_folders(
+        self, path: str, repository: str, branch: Optional[str] = None
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Search for folders in specified repositories only."""
+        project = await self.get_project(repository)
+        if project:
+            effective_branch = branch or project["default_branch"]
+            async for folders_batch in self.get_repository_tree(
+                project, path, effective_branch
+            ):
+                yield folders_batch
+
     async def _enrich_batch(
         self,
         batch: list[dict[str, Any]],
         enrich_func: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]],
-        max_concurrent: int,
+        max_concurrent: int = 10,
     ) -> list[dict[str, Any]]:
         semaphore = asyncio.Semaphore(max_concurrent)
-
-        tasks = [
-            self._enrich_project(project, enrich_func, semaphore) for project in batch
-        ]
-
+        tasks = [self._enrich_item(item, enrich_func, semaphore) for item in batch]
         return await asyncio.gather(*tasks)
 
-    async def _enrich_project(
+    async def _enrich_item(
         self,
-        project: dict[str, Any],
+        item: dict[str, Any],
         enrich_func: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]],
         semaphore: asyncio.Semaphore,
     ) -> dict[str, Any]:
         async with semaphore:
-            return await enrich_func(project)
+            return await enrich_func(item)
+
+    async def _enrich_file_with_repo(
+        self,
+        file: dict[str, Any],
+    ) -> dict[str, Any]:
+
+        repo = await self.get_project(file["project_id"])
+        return {"file": file, "repo": repo}
+
+    async def _enrich_files_with_repos(
+        self,
+        files_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+    ) -> list[dict[str, Any]]:
+        enriched_batch = await self._enrich_batch(
+            files_batch, self._enrich_file_with_repo, max_concurrent
+        )
+        return [item for item in enriched_batch if item["repo"] is not None]
 
     async def _enrich_project_with_languages(
         self, project: dict[str, Any]
@@ -175,16 +216,17 @@ class GitLabClient:
         project["__languages"] = languages
         return project
 
-    async def _process_single_group(
+    async def _get_group_resource(
         self,
         group: dict[str, Any],
         resource_type: str,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         group_id = group["id"]
 
         logger.debug(f"Starting fetch for {resource_type} in group {group_id}")
         async for resource_batch in self.rest.get_paginated_group_resource(
-            group_id, resource_type
+            group_id, resource_type, params
         ):
             if resource_batch:
                 logger.info(
@@ -198,18 +240,18 @@ class GitLabClient:
         file_path = file.get("path", "")
         project_id = str(file["project_id"])
         ref = file.get("ref", "main")
-
-        file["content"] = await self.get_file_content(project_id, file_path, ref)
+        file_data = await self.rest.get_file_data(project_id, file_path, ref)
+        file_data["project_id"] = project_id
 
         if (
             not skip_parsing
-            and file["content"] is not None
+            and "content" in file_data
             and file_path.endswith(PARSEABLE_EXTENSIONS)
         ):
-            file["content"] = await anyio.to_thread.run_sync(
-                parse_file_content, file["content"], file_path, context
+            file_data["content"] = await anyio.to_thread.run_sync(
+                parse_file_content, file_data["content"], file_path, context
             )
-        return file
+        return file_data
 
     async def _process_file_batch(
         self,
@@ -236,13 +278,12 @@ class GitLabClient:
         path = f"projects/{encoded_repo}/search"
 
         async for file_batch in self.rest.get_paginated_resource(path, params=params):
-            if file_batch:
-                logger.debug(f"Found {len(file_batch)} files in '{repo}'")
-                processed_batch = await self._process_file_batch(
-                    file_batch, repo, skip_parsing
-                )
-                if processed_batch:
-                    yield processed_batch
+            logger.debug(f"Found {len(file_batch)} files in '{repo}'")
+            processed_batch = await self._process_file_batch(
+                file_batch, repo, skip_parsing
+            )
+            if processed_batch:
+                yield processed_batch
 
     async def _search_files_in_group(
         self,
@@ -259,10 +300,9 @@ class GitLabClient:
         path = f"groups/{encoded_group}/search"
 
         async for file_batch in self.rest.get_paginated_resource(path, params=params):
-            if file_batch:
-                logger.debug(f"Found {len(file_batch)} files in group '{group_id}'")
-                processed_batch = await self._process_file_batch(
-                    file_batch, group_id, skip_parsing
-                )
-                if processed_batch:
-                    yield processed_batch
+            logger.debug(f"Found {len(file_batch)} files in group '{group_id}'")
+            processed_batch = await self._process_file_batch(
+                file_batch, group_id, skip_parsing
+            )
+            if processed_batch:
+                yield processed_batch
