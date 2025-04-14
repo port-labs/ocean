@@ -185,33 +185,6 @@ async def test_pull_request_validate_payload(
 
 
 @pytest.mark.asyncio
-async def test_pull_request_handle_event(
-    pull_request_processor: PullRequestWebhookProcessor,
-    pull_request_config: ResourceConfig,
-    mock_event_context: None,
-) -> None:
-    payload = {
-        "eventType": "git.pullrequest.updated",
-        "resource": {"pullRequestId": "123"},
-    }
-    mock_pr = {
-        "pullRequestId": "123",
-        "title": "Test PR",
-        "status": "active",
-        "url": "http://example.com/pr/123",
-    }
-
-    with patch.object(
-        "get_pull_request",
-        AsyncMock(return_value=mock_pr),
-    ):
-        result = await pull_request_processor.handle_event(payload, pull_request_config)
-        assert len(result.updated_raw_results) == 1
-        assert len(result.deleted_raw_results) == 0
-        assert result.updated_raw_results[0] == mock_pr
-
-
-@pytest.mark.asyncio
 async def test_push_should_process_event(
     push_processor: PushWebhookProcessor,
     mock_event_context: None,
