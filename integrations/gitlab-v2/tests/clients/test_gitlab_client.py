@@ -298,7 +298,12 @@ class TestGitLabClient:
         # Arrange
         group = {"id": "456", "name": "Test Group"}
         mock_members = [
-            {"id": 1, "username": "user1", "name": "User One", "email": "user1@example.com"},
+            {
+                "id": 1,
+                "username": "user1",
+                "name": "User One",
+                "email": "user1@example.com",
+            },
             {"id": 2, "username": "user2", "name": "User Two"},
         ]
 
