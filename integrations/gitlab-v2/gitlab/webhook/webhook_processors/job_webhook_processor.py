@@ -12,25 +12,25 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
 )
 
 
-class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
-    events = ["issue"]
-    hooks = ["Issue Hook"]
+class JobWebhookProcessor(_GitlabAbstractWebhookProcessor):
+    events = ["build"]
+    hooks = ["Job Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.ISSUE]
+        return [ObjectKind.JOB]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        issue_id = payload["object_attributes"]["iid"]
+        job_id = payload["build_id"]
         project_id = payload["project"]["id"]
         logger.info(
-            f"Handling issue webhook event for project {project_id} and issue {issue_id}"
+            f"Handling job webhook event for project {project_id} and job {job_id}"
         )
 
-        issue = await self._gitlab_webhook_client.get_issue(project_id, issue_id)
+        job = await self._gitlab_webhook_client.get_job(project_id, job_id)
 
         return WebhookEventRawResults(
-            updated_raw_results=[issue],
+            updated_raw_results=[job],
             deleted_raw_results=[],
         )

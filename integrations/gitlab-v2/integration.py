@@ -12,14 +12,9 @@ from pydantic import BaseModel, Field
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from port_ocean.core.handlers import JQEntityProcessor
-from aiolimiter import AsyncLimiter
-import asyncio
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
-MAX_REQUESTS_PER_TIME_WINDOW = 10
-_rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_TIME_WINDOW, 0.25)
-_semaphore = asyncio.Semaphore(5)
 
 
 class ProjectSelector(Selector):
@@ -33,6 +28,24 @@ class ProjectSelector(Selector):
 class ProjectResourceConfig(ResourceConfig):
     kind: Literal["project"]
     selector: ProjectSelector
+
+
+class GitlabMemberSelector(Selector):
+    include_bot_members: bool = Field(
+        alias="includeBotMembers",
+        default=False,
+        description="If set to false, bots will be filtered out from the members list. Default value is false",
+    )
+
+
+class GitlabGroupWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["group-with-members"]
+    selector: GitlabMemberSelector
+
+
+class GitlabMemberResourceConfig(ResourceConfig):
+    kind: Literal["member"]
+    selector: GitlabMemberSelector
 
 
 class FilesSelector(BaseModel):
@@ -99,9 +112,11 @@ class GitLabFoldersResourceConfig(ResourceConfig):
 
 class GitlabPortAppConfig(PortAppConfig):
     resources: list[
-        GitLabFoldersResourceConfig
+        ProjectResourceConfig
+        | GitlabGroupWithMembersResourceConfig
+        | GitlabMemberResourceConfig
+        | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
-        | ProjectResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
