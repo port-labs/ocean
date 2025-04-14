@@ -22,12 +22,6 @@
           "title": "Language",
           "icon": "Git"
         },
-        "slack": {
-          "icon": "Slack",
-          "type": "string",
-          "title": "Slack",
-          "format": "url"
-        },
         "tier": {
           "title": "Tier",
           "type": "string",
