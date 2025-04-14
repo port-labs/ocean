@@ -1,5 +1,4 @@
 import pytest
-from typing import Any, AsyncGenerator, Dict, List, Optional, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -7,7 +6,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers import JQEntityProcessor
 from integration import (
     GitlabIntegration,
     GitManipulationHandler,
@@ -73,7 +71,7 @@ async def test_gitlab_integration_uses_gitmanipulation_handler(
 async def test_gitlab_webhook_manager_uses_gitmanipulation_handler(
     mock_context: MagicMock, mock_signal_handler: AsyncMock
 ) -> None:
-    """Test that GitlabLiveEventsProcessorManager uses GitManipulationHandler"""
+    """Test that GitlabLiveEventsProcessorManager uses GitManipulationHandler as its EntityProcessorClass"""
     # Arrange & Act
     with patch("integration.signal_handler", mock_signal_handler):
         integration = GitlabIntegration(mock_context)
