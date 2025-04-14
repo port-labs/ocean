@@ -10,7 +10,11 @@ class ObjectKind(StrEnum):
     GROUP = "group"
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
+    GROUP_WITH_MEMBERS = "group-with-members"
+    MEMBER = "member"
     FILE = "file"
+    PIPELINE = "pipeline"
+    JOB = "job"
     FOLDER = "folder"
 
 

@@ -12,25 +12,27 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
 )
 
 
-class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
-    events = ["issue"]
-    hooks = ["Issue Hook"]
+class PipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
+    events = ["pipeline"]
+    hooks = ["Pipeline Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.ISSUE]
+        return [ObjectKind.PIPELINE]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        issue_id = payload["object_attributes"]["iid"]
+        pipeline_id = payload["object_attributes"]["id"]
         project_id = payload["project"]["id"]
         logger.info(
-            f"Handling issue webhook event for project {project_id} and issue {issue_id}"
+            f"Handling pipeline webhook event for project {project_id} and pipeline {pipeline_id}"
         )
 
-        issue = await self._gitlab_webhook_client.get_issue(project_id, issue_id)
+        pipeline = await self._gitlab_webhook_client.get_pipeline(
+            project_id, pipeline_id
+        )
 
         return WebhookEventRawResults(
-            updated_raw_results=[issue],
+            updated_raw_results=[pipeline],
             deleted_raw_results=[],
         )
