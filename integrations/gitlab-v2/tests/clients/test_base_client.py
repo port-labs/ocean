@@ -110,30 +110,30 @@ class TestHTTPBaseClient:
             )
 
     async def test_send_api_request_404(self, client: HTTPBaseClient) -> None:
-         """Test API request with 404 response"""
-         # Arrange
-         method = "GET"
-         path = "projects/999"
-         mock_response = MagicMock()
-         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-             "Not Found", request=MagicMock(), response=MagicMock(status_code=404)
-         )
+        """Test API request with 404 response"""
+        # Arrange
+        method = "GET"
+        path = "projects/999"
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Not Found", request=MagicMock(), response=MagicMock(status_code=404)
+        )
 
-         with patch.object(
-             client._client, "request", AsyncMock(return_value=mock_response)
-         ) as mock_request:
-             # Act
-             result = await client.send_api_request(method, path)
+        with patch.object(
+            client._client, "request", AsyncMock(return_value=mock_response)
+        ) as mock_request:
+            # Act
+            result = await client.send_api_request(method, path)
 
-             # Assert
-             assert result == {}
-             mock_request.assert_called_once_with(
-                 method=method,
-                 url=f"{client.base_url}/{path}",
-                 headers=client._headers,
-                 params=None,
-                 json=None,
-             )
+            # Assert
+            assert result == {}
+            mock_request.assert_called_once_with(
+                method=method,
+                url=f"{client.base_url}/{path}",
+                headers=client._headers,
+                params=None,
+                json=None,
+            )
 
     async def test_send_api_request_other_error(self, client: HTTPBaseClient) -> None:
         """Test API request with other HTTP error"""
