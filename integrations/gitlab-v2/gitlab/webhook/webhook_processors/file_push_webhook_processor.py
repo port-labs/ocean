@@ -16,7 +16,7 @@ from integration import GitLabFilesResourceConfig
 
 class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
     events = ["push"]
-    hook = "Push Hook"
+    hooks = ["Push Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.FILE]
