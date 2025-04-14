@@ -1,0 +1,72 @@
+[
+  {
+    "identifier": "github_copilot_usage",
+    "title": "GitHub Copilot Usage",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "record_date": {
+          "type": "string",
+          "title": "Record Date",
+          "format": "date-time"
+        },
+        "breakdown": {
+          "type": "object",
+          "title": "Breakdown"
+        },
+        "total_suggestions_count": {
+          "type": "number",
+          "title": "Total Suggestions Count"
+        },
+        "total_acceptances_count": {
+          "type": "number",
+          "title": "Total Acceptances Count"
+        },
+        "total_lines_suggested": {
+          "type": "number",
+          "title": "Total Lines Suggested"
+        },
+        "total_lines_accepted": {
+          "type": "number",
+          "title": "Total Lines Accepted"
+        },
+        "total_active_users": {
+          "type": "number",
+          "title": "Total Active Users"
+        },
+        "total_chat_acceptances": {
+          "type": "number",
+          "title": "Total Chat Acceptances"
+        },
+        "total_chat_turns": {
+          "type": "number",
+          "title": "Total Chat Turns"
+        },
+        "total_active_chat_users": {
+          "type": "number",
+          "title": "Total Active Chat Users"
+        },
+        "git_hub_org": {
+          "type": "string",
+          "title": "GitHub Org"
+        },
+        "git_hub_team": {
+          "type": "string",
+          "title": "GitHub Team"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "acceptance_rate": {
+        "title": "Acceptance Rate",
+        "icon": "DefaultProperty",
+        "calculation": "if (.properties.total_suggestions_count == 0)  then 0  else    ((.properties.total_acceptances_count / .properties.total_suggestions_count) * 100     | round)  end",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  }
+]

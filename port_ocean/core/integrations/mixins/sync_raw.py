@@ -671,7 +671,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
                     await self.entities_state_applier.delete_diff(
                         {"before": entities_at_port, "after": generated_entities},
-                        user_agent_type, app_config.entity_deletion_threshold
+                        user_agent_type, app_config.get_entity_deletion_threshold()
                     )
 
                     logger.info("Resync finished successfully")
