@@ -281,4 +281,77 @@ class TestHTTPBaseClient:
                 headers=client._headers,
                 params=None,
                 json=None,
+            client, "get_project", AsyncMock(return_value=mock_project)
+        ) as mock_get_project:
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                # Act
+                results = []
+                async for batch in client.get_repository_folders(
+                    path, repository, branch
+                ):
+                    results.extend(batch)
+
+                # Assert
+                assert len(results) == 1  # Only one folder from mock_tree
+                assert results[0]["folder"]["name"] == "folder1"
+                assert results[0]["repo"] == mock_project
+                assert results[0]["__branch"] == "develop"
+
+                mock_get_project.assert_called_once_with("group/project1")
+                mock_get_paginated.assert_called_once_with(
+                    "group/project1",
+                    "repository/tree",
+                    {"ref": "develop", "path": "src", "recursive": False},
+                )
+
+    async def test_process_file_with_file_reference(self, client: GitLabClient) -> None:
+        """Test that parsed file content with file:// reference fetches and resolves content."""
+        # Arrange
+        file = {
+            "path": "config.yaml",
+            "project_id": "123",
+            "ref": "main",
+        }
+        mock_file_content = """
+        key: value
+        ref: file://other_file.txt
+        """
+        mock_referenced_content = "Referenced content"
+        mock_file_data = {
+            "content": mock_file_content,
+            "path": "config.yaml",
+        }
+        expected_parsed_content = {
+            "key": "value",
+            "ref": mock_referenced_content,
+        }
+
+        with (
+            patch.object(
+                client.rest,
+                "get_file_data",
+                AsyncMock(return_value=mock_file_data),
+            ) as mock_get_file_data,
+            patch.object(
+                client,
+                "get_file_content",
+                AsyncMock(return_value=mock_referenced_content),
+            ) as mock_get_file_content,
+        ):
+            # Act
+            result = await client._process_file(
+                file, context="test_context", skip_parsing=False
+            )
+
+            # Assert
+            assert result["path"] == "config.yaml"
+            assert result["project_id"] == "123"
+            assert result["content"] == expected_parsed_content
+            mock_get_file_data.assert_called_once_with("123", "config.yaml", "main")
+            mock_get_file_content.assert_called_once_with(
+                "123", "other_file.txt", "main"
             )

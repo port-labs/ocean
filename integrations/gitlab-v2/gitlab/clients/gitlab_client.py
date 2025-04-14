@@ -1,6 +1,6 @@
 import asyncio
 from functools import partial
-from typing import Any, AsyncIterator, Callable, Optional, Awaitable
+from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
 
 import anyio
 from loguru import logger
@@ -291,9 +291,14 @@ class GitLabClient:
             and "content" in file_data
             and file_path.endswith(PARSEABLE_EXTENSIONS)
         ):
-            file_data["content"] = await anyio.to_thread.run_sync(
+            parsed_content = await anyio.to_thread.run_sync(
                 parse_file_content, file_data["content"], file_path, context
             )
+            parsed_content = await self._resolve_file_references(
+                parsed_content, project_id, ref
+            )
+            file_data["content"] = parsed_content
+
         return file_data
 
     async def _process_file_batch(
@@ -349,3 +354,24 @@ class GitLabClient:
             )
             if processed_batch:
                 yield processed_batch
+
+    async def _resolve_file_references(
+        self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str
+    ) -> Union[dict[str, Any], list[Any], Any]:
+        """Find and replace file:// references with their content."""
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if isinstance(value, str) and value.startswith("file://"):
+                    file_path = value[7:]
+                    content = await self.get_file_content(project_id, file_path, ref)
+                    data[key] = content
+                elif isinstance(value, (dict, list)):
+                    data[key] = await self._resolve_file_references(
+                        value, project_id, ref
+                    )
+
+        elif isinstance(data, list):
+            for index, item in enumerate(data):
+                data[index] = await self._resolve_file_references(item, project_id, ref)
+
+        return data
