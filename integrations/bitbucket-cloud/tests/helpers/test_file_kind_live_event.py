@@ -109,7 +109,7 @@ async def test_check_and_load_file_prefix() -> None:
             {"name": "test-repo"},
             "main",
         )
-        assert result["content"] == test_data
+        assert result["content"] == {"key": "value"}
         assert result["metadata"] == {"commit": {"hash": "test-hash"}}
         assert result["repo"] == {"name": "test-repo"}
         assert result["branch"] == "main"
@@ -125,8 +125,10 @@ async def test_check_and_load_file_prefix() -> None:
             {"name": "test-repo"},
             "main",
         )
-        assert result["content"] == test_list
+        assert result["content"] == [{"key": "value"}]
         assert result["metadata"] == {"commit": {"hash": "test-hash"}}
+        assert result["repo"] == {"name": "test-repo"}
+        assert result["branch"] == "main"
 
 
 @pytest.mark.asyncio
@@ -143,7 +145,8 @@ async def test_process_file_changes() -> None:
         yield [SAMPLE_DIFF_STAT]
 
     mock_webhook_client.retrieve_diff_stat = mock_retrieve_diff_stat
-    mock_webhook_client.get_repository_files.return_value = "test content"
+    # Return a list of dictionaries instead of a string
+    mock_webhook_client.get_repository_files.return_value = [{"test": "test content"}]
 
     # Mock selector
     mock_selector = MagicMock()

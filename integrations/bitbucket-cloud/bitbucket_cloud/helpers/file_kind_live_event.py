@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 from initialize_client import init_client
-from typing import Any, Optional, Union
+from typing import Any, TypedDict
 import json
 import yaml
 from loguru import logger
@@ -14,7 +14,22 @@ JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
 
 
-FileObject = dict[str, Any]
+class FileObject(TypedDict):
+    """Represents a processed file object with its associated metadata."""
+
+    content: dict[str, Any]  # The actual content of the file (parsed JSON/YAML)
+    metadata: dict[str, Any]  # Diff statistics and file information
+    repo: dict[str, Any]  # Repository information
+    branch: str  # Branch name
+
+
+class FileObjectList(TypedDict):
+    """Represents a list of processed file objects with their associated metadata."""
+
+    content: list[dict[str, Any]]  # List of file contents
+    metadata: dict[str, Any]  # Diff statistics and file information
+    repo: dict[str, Any]  # Repository information
+    branch: str  # Branch name
 
 
 def extract_hash_from_payload(changes: dict[str, Any]) -> tuple[str, str, str]:
@@ -58,15 +73,15 @@ async def process_file_value(
 
 
 async def process_dict_items(
-    data: FileObject,
+    data: dict[str, Any],
     parent_directory: str,
     repository: str,
     hash: str,
     client: BitbucketClient,
-    diff_stat: Optional[dict[str, Any]] = None,
-    repo: Optional[dict[str, Any]] = None,
-    branch: Optional[str] = None,
-) -> dict[str, Any]:
+    diff_stat: dict[str, Any],
+    repo: dict[str, Any],
+    branch: str,
+) -> FileObject:
     tasks = [
         process_file_value(value, parent_directory, repository, hash, client)
         for value in data.values()
@@ -74,18 +89,16 @@ async def process_dict_items(
     processed_values = await asyncio.gather(*tasks)
 
     result = dict(zip(data.keys(), processed_values))
-    if diff_stat and repo and branch:
-        result = {
-            "content": result,
-            "metadata": diff_stat,
-            "repo": repo,
-            "branch": branch,
-        }
-    return result
+    return FileObject(
+        content=result,
+        metadata=diff_stat,
+        repo=repo,
+        branch=branch,
+    )
 
 
 async def process_list_items(
-    data: list[FileObject],
+    data: list[dict[str, Any]],
     parent_directory: str,
     repository: str,
     hash: str,
@@ -93,29 +106,49 @@ async def process_list_items(
     diff_stat: dict[str, Any],
     repo: dict[str, Any],
     branch: str,
-) -> dict[str, Any]:
-    tasks = [
-        process_dict_items(item, parent_directory, repository, hash, client)
-        for item in data
-    ]
-    results = await asyncio.gather(*tasks)
-    return {
-        "content": results,
-        "metadata": diff_stat,
-        "repo": repo,
-        "branch": branch,
-    }
+) -> FileObjectList:
+    # Process each file object's content directly
+    all_tasks = []
+    for file_obj in data:
+        tasks = [
+            process_file_value(value, parent_directory, repository, hash, client)
+            for value in file_obj.values()
+        ]
+        all_tasks.extend(tasks)
+
+    processed_values = await asyncio.gather(*all_tasks)
+
+    # Reconstruct the results maintaining the original structure
+    results = []
+    current_index = 0
+    for file_obj in data:
+        content_length = len(file_obj)
+        processed_content = dict(
+            zip(
+                file_obj.keys(),
+                processed_values[current_index : current_index + content_length],
+            )
+        )
+        results.append(processed_content)
+        current_index += content_length
+
+    return FileObjectList(
+        content=results,
+        metadata=diff_stat,
+        repo=repo,
+        branch=branch,
+    )
 
 
 async def check_and_load_file_prefix(
-    raw_data: Union[FileObject, list[FileObject]],
+    raw_data: dict[str, Any] | list[dict[str, Any]],
     parent_directory: str,
     repository: str,
     hash: str,
     diff_stat: dict[str, Any],
     repo: dict[str, Any],
     branch: str,
-) -> dict[str, Any]:
+) -> FileObject | FileObjectList:
     client = init_client()
 
     if isinstance(raw_data, dict):
@@ -129,7 +162,7 @@ async def check_and_load_file_prefix(
             repo,
             branch,
         )
-    elif isinstance(raw_data, list):
+    else:
         return await process_list_items(
             raw_data,
             parent_directory,
@@ -140,8 +173,6 @@ async def check_and_load_file_prefix(
             repo,
             branch,
         )
-
-    return raw_data
 
 
 def check_single_path(file_path: str, filenames: list[str], config_path: str) -> bool:
@@ -222,7 +253,7 @@ async def process_file_changes(
                         "repo": repo,
                         "branch": branch,
                     }
-                updated_raw_results.append(full_raw_data)
+                updated_raw_results.append(dict(full_raw_data))
     return updated_raw_results, deleted_raw_results
 
 

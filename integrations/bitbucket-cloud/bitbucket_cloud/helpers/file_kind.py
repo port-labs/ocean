@@ -136,7 +136,7 @@ async def retrieve_file_content(
             "branch": branch,
             "metadata": file_info,
         }
-    yield result
+    yield dict(result)
 
 
 def validate_file_match(file_path: str, filename: str, expected_path: str) -> bool:
