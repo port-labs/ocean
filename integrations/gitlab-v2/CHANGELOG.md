@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.9-dev (2025-04-14)
+## 0.1.10-dev (2025-04-14)
 
 
 ### Features
 
 - Added support for pipeline and job kinds
+
+
+## 0.1.9-dev (2025-04-14)
+
+
+### Features
+
+- Add support for gitlab members
 
 
 ## 0.1.8-dev (2025-04-14)

@@ -19,6 +19,8 @@ class GroupEvents(EventConfig):
     tag_push_events: bool = True
     pipeline_events: bool = True
     job_events: bool = True
+    member_events: bool = True
+    confidential_issues_events: bool = True
 
     def to_dict(self) -> dict[str, bool]:
         return asdict(self)

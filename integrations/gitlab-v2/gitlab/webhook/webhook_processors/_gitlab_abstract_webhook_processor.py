@@ -11,7 +11,7 @@ from gitlab.clients.client_factory import create_gitlab_client
 
 class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
     events: list[str]
-    hook: str
+    hooks: list[str]
 
     _gitlab_webhook_client = create_gitlab_client()
 
@@ -25,8 +25,7 @@ class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
             or event.payload.get("object_kind")
         )
         return bool(
-            self.hook == event.headers["x-gitlab-event"]
-            and event_identifier in self.events
+            event.headers["x-gitlab-event"] in self.hooks and event_name in self.events
         )
 
     async def validate_payload(self, payload: EventPayload) -> bool:

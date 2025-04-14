@@ -30,6 +30,24 @@ class ProjectResourceConfig(ResourceConfig):
     selector: ProjectSelector
 
 
+class GitlabMemberSelector(Selector):
+    include_bot_members: bool = Field(
+        alias="includeBotMembers",
+        default=False,
+        description="If set to false, bots will be filtered out from the members list. Default value is false",
+    )
+
+
+class GitlabGroupWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["group-with-members"]
+    selector: GitlabMemberSelector
+
+
+class GitlabMemberResourceConfig(ResourceConfig):
+    kind: Literal["member"]
+    selector: GitlabMemberSelector
+
+
 class FilesSelector(BaseModel):
     path: str = Field(
         alias="path",
@@ -94,9 +112,11 @@ class GitLabFoldersResourceConfig(ResourceConfig):
 
 class GitlabPortAppConfig(PortAppConfig):
     resources: list[
-        GitLabFoldersResourceConfig
+        ProjectResourceConfig
+        | GitlabGroupWithMembersResourceConfig
+        | GitlabMemberResourceConfig
+        | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
-        | ProjectResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
