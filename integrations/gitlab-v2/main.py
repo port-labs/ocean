@@ -4,13 +4,18 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+)
+import asyncio
 from gitlab.clients.client_factory import create_gitlab_client
 from gitlab.helpers.utils import ObjectKind
 from integration import (
     GitLabFilesResourceConfig,
     ProjectResourceConfig,
     GitLabFoldersResourceConfig,
+    GitlabGroupWithMembersResourceConfig,
+    GitlabMemberResourceConfig,
 )
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
@@ -26,12 +31,21 @@ from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.member_webhook_processor import (
+    MemberWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.group_with_member_webhook_processor import (
+    GroupWithMemberWebhookProcessor,
+)
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
 )
 from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
     FolderPushWebhookProcessor,
 )
+
+
+RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
 
 
 @ocean.on_start()
@@ -98,6 +112,47 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield merge_requests_batch
 
 
+@ocean.on_resync(ObjectKind.GROUP_WITH_MEMBERS)
+async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(
+        GitlabGroupWithMembersResourceConfig, event.resource_config
+    ).selector
+    include_bot_members = bool(selector.include_bot_members)
+
+    async for groups_batch in client.get_groups():
+        for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
+            current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
+            logger.info(
+                f"Processing members for {i + len(current_batch)}/{len(groups_batch)} groups"
+            )
+
+            tasks = [
+                client.enrich_group_with_members(group, include_bot_members)
+                for group in current_batch
+            ]
+            results = await asyncio.gather(*tasks)
+            yield results
+
+
+@ocean.on_resync(ObjectKind.MEMBER)
+async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(GitlabMemberResourceConfig, event.resource_config).selector
+    include_bot_members = bool(selector.include_bot_members)
+
+    async for groups_batch in client.get_groups():
+        for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
+            current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
+            tasks = [
+                client.get_group_members(group["id"], include_bot_members)
+                for group in current_batch
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                if batch:
+                    yield batch
+
+
 @ocean.on_resync(ObjectKind.FILE)
 async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -147,5 +202,7 @@ ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", MemberWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
