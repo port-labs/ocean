@@ -202,7 +202,6 @@ async def test_pull_request_handle_event(
     }
 
     with patch.object(
-        pull_request_processor.client,
         "get_pull_request",
         AsyncMock(return_value=mock_pr),
     ):

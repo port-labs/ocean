@@ -1,5 +1,5 @@
 import base64
-from typing import Optional, Dict
+from typing import Dict
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -8,15 +8,8 @@ from port_ocean.core.handlers.webhook.webhook_event import EventPayload, Webhook
 
 
 class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
-    def __init__(self, event: Optional[WebhookEvent] = None) -> None:
-        super().__init__(
-            event
-            or WebhookEvent(
-                trace_id="azure-devops-webhook",
-                payload={},
-                headers={},
-            )
-        )
+    def __init__(self, event: WebhookEvent) -> None:
+        super().__init__(event)
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         """Base validation for all Azure DevOps webhook events"""

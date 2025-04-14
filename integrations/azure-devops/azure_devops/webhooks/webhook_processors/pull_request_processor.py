@@ -1,4 +1,3 @@
-from typing import Optional
 from loguru import logger
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.webhooks.webhook_processors.base_processor import (
@@ -19,9 +18,8 @@ class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         "git.pullrequest.created",
     ]
 
-    def __init__(self, event: Optional[WebhookEvent] = None):
+    def __init__(self, event: WebhookEvent):
         super().__init__(event)
-        self.client = AzureDevopsClient.create_from_ocean_config()
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         if not await super().should_process_event(event):

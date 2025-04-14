@@ -23,7 +23,7 @@ from azure_devops.client.file_processing import parse_file_content
 class PushWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     EVENT_TYPES = ["git.push"]
 
-    def __init__(self, event: Optional[WebhookEvent] = None):
+    def __init__(self, event: WebhookEvent):
         super().__init__(event)
         self.client = AzureDevopsClient.create_from_ocean_config()
 
