@@ -25,6 +25,7 @@ resources:
           properties:
             url: ".links.html.href"
             defaultBranch: .mainbranch.name
+            readme: file://README.md
           relations:
             project: '.project.uuid | gsub("[{-}]"; "")'
   - kind: pull-request
@@ -38,6 +39,8 @@ resources:
           blueprint: '"bitbucketPullRequest"'
           properties:
             creator: ".author.display_name"
+            assignees: "[.participants[].user.display_name]"
+            reviewers: "[.reviewers[].user.display_name]"
             status: ".state"
             createdAt: ".created_on"
             updatedAt: ".updated_on"

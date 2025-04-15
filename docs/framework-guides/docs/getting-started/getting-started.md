@@ -47,10 +47,10 @@ $ 2023-08-06
 is_private_integration [y/n] (y):
 $ n
 
-port_client_id (you can find it using: https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials):
+port_client_id (you can find it using: https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials):
 $ <your-port-client-id>
 
-port_client_secret (you can find it using: https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials):
+port_client_secret (you can find it using: https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials):
 $ <your-port-client-secret>
 
 is_us_region [y/n] (n):

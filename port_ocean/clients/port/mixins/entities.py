@@ -2,6 +2,7 @@ import asyncio
 from typing import Any, Literal
 from urllib.parse import quote_plus
 
+
 import httpx
 from loguru import logger
 
@@ -99,7 +100,6 @@ class EntityClientMixin:
         # We return None to ignore the entity later in the delete process
         if result_entity.is_using_search_identifier:
             return None
-
         return self._reduce_entity(result_entity)
 
     @staticmethod
@@ -125,7 +125,6 @@ class EntityClientMixin:
             key: None if isinstance(relation, dict) else relation
             for key, relation in entity.relations.items()
         }
-
         return reduced_entity
 
     async def batch_upsert_entities(
@@ -134,7 +133,7 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> list[Entity]:
+    ) -> list[tuple[bool, Entity]]:
         modified_entities_results = await asyncio.gather(
             *(
                 self.upsert_entity(
@@ -147,17 +146,17 @@ class EntityClientMixin:
             ),
             return_exceptions=True,
         )
-        entity_results = [
-            entity for entity in modified_entities_results if isinstance(entity, Entity)
-        ]
-        if not should_raise:
-            return entity_results
 
-        for entity_result in modified_entities_results:
-            if isinstance(entity_result, Exception):
-                raise entity_result
+        entities_results: list[tuple[bool, Entity]] = []
+        for original_entity, result in zip(entities, modified_entities_results):
+            if isinstance(result, Exception) and should_raise:
+                raise result
+            elif isinstance(result, Entity):
+                entities_results.append((True, result))
+            elif result is False:
+                entities_results.append((False, original_entity))
 
-        return entity_results
+        return entities_results
 
     async def delete_entity(
         self,

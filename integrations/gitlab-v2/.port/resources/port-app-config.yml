@@ -1,0 +1,16 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .path_with_namespace | gsub(" "; "")
+          title: .name
+          blueprint: '"service"'
+          properties:
+            url: .web_url
+            readme: file://README.md
+            language: .__languages | to_entries | max_by(.value) | .key

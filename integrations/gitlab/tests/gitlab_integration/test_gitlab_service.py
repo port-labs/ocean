@@ -195,9 +195,11 @@ async def test_get_and_parse_single_file_json(
 
 
 class MockMember(RESTObject):
-    def __init__(self, id, username):
+    def __init__(self, id, username, email, name):
         self.id = id
         self.username = username
+        self.email = email
+        self.name = name
 
     def asdict(self):
         return self.__dict__
@@ -217,18 +219,18 @@ class MockGroup(RESTObject):
         def list(self, page, *args: Any, **kwargs: Any):
             if page == 1:
                 return [
-                    MockMember(1, "user1"),
-                    MockMember(1, "bot_user1"),
+                    MockMember(1, "user1", "user1@example.com", "user1"),
+                    MockMember(1, "bot_user1", "bot_user1@example.com", "bot_user1"),
                 ]
             elif page == 2:
                 return [
-                    MockMember(2, "user2"),
-                    MockMember(2, "bot_user2"),
+                    MockMember(2, "user2", "user2@example.com", "user2"),
+                    MockMember(2, "bot_user2", "bot_user2@example.com", "bot_user2"),
                 ]
             elif page == 3:
                 return [
-                    MockMember(3, "user3"),
-                    MockMember(3, "bot_user3"),
+                    MockMember(3, "user3", "user3@example.com", "user3"),
+                    MockMember(3, "bot_user3", "bot_user3@example.com", "bot_user3"),
                 ]
             return
 
@@ -236,21 +238,36 @@ class MockGroup(RESTObject):
         def list(self, page, *args: Any, **kwargs: Any):
             if page == 1:
                 return [
-                    MockMember(1, "user1"),
-                    MockMember(1, "bot_user1"),
-                    MockMember(1, "inherited_member_1"),
+                    MockMember(1, "user1", "user1@example.com", "user1"),
+                    MockMember(1, "bot_user1", "bot_user1@example.com", "bot_user1"),
+                    MockMember(
+                        1,
+                        "inherited_member_1",
+                        "inherited_member_1@example.com",
+                        "inherited_member_1",
+                    ),
                 ]
             elif page == 2:
                 return [
-                    MockMember(2, "user2"),
-                    MockMember(2, "bot_user2"),
-                    MockMember(2, "inherited_member_2"),
+                    MockMember(2, "user2", "user2@example.com", "user2"),
+                    MockMember(2, "bot_user2", "bot_user2@example.com", "bot_user2"),
+                    MockMember(
+                        2,
+                        "inherited_member_2",
+                        "inherited_member_2@example.com",
+                        "inherited_member_2",
+                    ),
                 ]
             elif page == 3:
                 return [
-                    MockMember(3, "user3"),
-                    MockMember(3, "bot_user3"),
-                    MockMember(3, "inherited_member_3"),
+                    MockMember(3, "user3", "user3@example.com", "user3"),
+                    MockMember(3, "bot_user3", "bot_user3@example.com", "bot_user3"),
+                    MockMember(
+                        3,
+                        "inherited_member_3",
+                        "inherited_member_3@example.com",
+                        "inherited_member_3",
+                    ),
                 ]
             return
 
@@ -338,5 +355,34 @@ async def test_enrich_object_with_members(
 
     # Assert
     assert enriched_obj.name == "test_group"
-    assert len(enriched_obj.__members) == 6
-    assert enriched_obj.__members[0] == {"id": 1, "username": "user1"}
+    assert len(enriched_obj.__members) == 3
+    assert enriched_obj.__members[0] == {
+        "id": 1,
+        "username": "user1",
+        "email": "user1@example.com",
+    }
+
+
+@pytest.mark.asyncio
+async def test_enrich_object_with_members_verbose(
+    monkeypatch: Any, mocked_gitlab_service: GitlabService
+) -> None:
+    obj = MockGroup(123, "test_group")
+
+    # Act
+    enriched_obj: RESTObject = await mocked_gitlab_service.enrich_object_with_members(
+        obj,
+        include_inherited_members=False,
+        include_bot_members=True,
+        include_verbose_member_object=True,
+    )
+
+    # Assert
+    assert enriched_obj.name == "test_group"
+    assert len(enriched_obj.__members) == 3
+    assert enriched_obj.__members[0] == {
+        "id": 1,
+        "username": "user1",
+        "email": "user1@example.com",
+        "name": "user1",
+    }

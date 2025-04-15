@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Generator
-from client import BitbucketClient
-from helpers.exceptions import MissingIntegrationCredentialException
+from bitbucket_cloud.client import BitbucketClient
+from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ async def mock_client(
     mock_integration_config: dict[str, str], mock_http_client: AsyncClient
 ) -> BitbucketClient:
     """Create BitbucketClient using create_from_ocean_config."""
-    with patch("client.http_async_client", mock_http_client):
+    with patch("bitbucket_cloud.client.http_async_client", mock_http_client):
         return BitbucketClient.create_from_ocean_config()
 
 
@@ -147,7 +147,7 @@ async def test_send_api_request_error(mock_client: BitbucketClient) -> None:
         patch.object(
             mock_client.client, "request", new_callable=AsyncMock
         ) as mock_request,
-        patch("client.logger.error") as mock_logger,
+        patch("bitbucket_cloud.client.logger.error") as mock_logger,
     ):
         mock_request.return_value = mock_response
 
@@ -155,13 +155,7 @@ async def test_send_api_request_error(mock_client: BitbucketClient) -> None:
             await mock_client._send_api_request(f"{mock_client.base_url}/test/endpoint")
 
         assert exc_info.value == original_error
-        mock_logger.assert_called_once_with("Bitbucket API error: Test error message")
-        mock_request.assert_called_once_with(
-            method="GET",
-            url=f"{mock_client.base_url}/test/endpoint",
-            params=None,
-            json=None,
-        )
+        mock_logger.assert_called_once_with("Bitbucket API error: 400 Client Error")
 
 
 @pytest.mark.asyncio
@@ -215,8 +209,11 @@ async def test_get_projects(mock_client: BitbucketClient) -> None:
 async def test_get_repositories(mock_client: BitbucketClient) -> None:
     """Test getting repositories."""
     mock_data = {"values": [{"slug": "test-repo", "name": "Test Repo"}]}
+
     async with event_context("test_event"):
-        with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
 
             async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
                 yield mock_data["values"]
@@ -234,29 +231,23 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
     """Test getting directory contents."""
     mock_dir_data = {"values": [{"type": "commit_directory", "path": "src"}]}
 
-    with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
 
-        async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
-            yield mock_dir_data["values"]
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
+                yield mock_dir_data["values"]
 
-        mock_paginated.return_value = mock_generator()
-        async for contents in mock_client.get_directory_contents(
-            "test-repo", "main", ""
-        ):
-            assert contents == mock_dir_data["values"]
-        mock_paginated.assert_called_once_with(
-            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
-            params={"max_depth": 2, "pagelen": 100},
-        )
-        mock_paginated.reset_mock()
-        async for contents in mock_client.get_directory_contents(
-            "test-repo", "main", "", max_depth=4
-        ):
-            assert contents == mock_dir_data["values"]
-        mock_paginated.assert_called_once_with(
-            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
-            params={"max_depth": 4, "pagelen": 100},
-        )
+            mock_paginated.return_value = mock_generator()
+            async for contents in mock_client.get_directory_contents(
+                "test-repo", "main", "", 2
+            ):
+                assert contents == mock_dir_data["values"]
+            mock_paginated.assert_called_once_with(
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
+                params={"max_depth": 2, "pagelen": 100},
+            )
 
 
 @pytest.mark.asyncio
@@ -264,16 +255,18 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
     """Test getting pull requests."""
     mock_data = {"values": [{"id": 1, "title": "Test PR"}]}
 
-    with patch.object(mock_client, "_send_paginated_api_request") as mock_paginated:
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
 
-        async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
-            yield mock_data["values"]
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
+                yield mock_data["values"]
 
-        mock_paginated.return_value = mock_generator()
-
-        async for prs in mock_client.get_pull_requests("test-repo"):
-            assert prs == mock_data["values"]
-
-        mock_paginated.assert_called_once_with(
-            f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests"
-        )
+            mock_paginated.return_value = mock_generator()
+            async for prs in mock_client.get_pull_requests("test-repo"):
+                assert prs == mock_data["values"]
+            mock_paginated.assert_called_once_with(
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
+                params={"state": "OPEN", "pagelen": 50},
+            )

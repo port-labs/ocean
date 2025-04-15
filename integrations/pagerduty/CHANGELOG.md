@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.11 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.3.10 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
+## 0.3.9 (2025-04-09)
+
+
+### Bugfix
+
+- Introduced retry mechanism for the services webhook process when ingesting service data from PagerDuty.
+
+
+## 0.3.8 (2025-04-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.2
+
+
+## 0.3.7 (2025-04-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.1
+
+
+## 0.3.6 (2025-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.0
+
+
+## 0.3.5 (2025-03-21)
+
+### Bug Fixes
+
+- Fixed URL validation by changing apiUrl and appHost configuration types from string to url
+
+
 ## 0.3.4 (2025-03-13)
 
 

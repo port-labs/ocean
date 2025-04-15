@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.167 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.1.166 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
+## 0.1.165 (2025-04-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.2
+
+
+## 0.1.164 (2025-04-03)
+
+
+### Bug Fixes
+
+- Fixed a bug where `projects_ga` kind wasn't passing `enrich_project=True`
+
+
+## 0.1.163 (2025-04-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.1
+
+
+## 0.1.162 (2024-03-27)
+
+
+### Improvements
+
+- Transitioned live events management to ocean’s `LiveEventProcessorManager` to streamline processing
+
+
+## 0.1.161 (2025-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.0
+
+
 ## 0.1.160 (2025-03-13)
 
 

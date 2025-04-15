@@ -7,6 +7,62 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.58 (2025-04-15)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+0.2.57 (2025-04-15)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
+0.2.56 (2025-04-07)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.2
+
+
+0.2.55 (2025-04-03)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.1
+
+
+0.2.54 (2025-03-25)
+===================
+
+### Improvements
+
+- Changed default value of `include_bot_members` selector from True to False to reduce memory usage by excluding bot members by default
+
+
+0.2.53 (2025-03-24)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.0
+
+
+0.2.52 (2025-03-18)
+===================
+
+### Improvements
+
+- Improve memory usage for gitlab members kind
+
+
 0.2.51 (2025-03-13)
 ===================
 

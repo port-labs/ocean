@@ -1,6 +1,7 @@
 title: Datadog
 type: datadog
 description: Datadog integration for Port Ocean
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/datadog
 icon: Datadog
 features:
   - type: exporter
@@ -36,8 +37,8 @@ configurations:
     type: url
     required: false
     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in the 3rd party service"
-  - name: datadogWebhookToken
-    description: Datadog webhook token (optional). This is used to secure webhook communication between Datadog and Port. To learn more, see the <a target="_blank" href="https://docs.datadoghq.com/integrations/webhooks/#setup">Datadog documentation</a>.
+  - name: webhookSecret
+    description: Secret token for securing webhook communication between Datadog and Port (optional). This is used to secure webhook communication between Datadog and Port. To learn more, see the <a target="_blank" href="https://docs.datadoghq.com/integrations/webhooks/#setup">Datadog documentation</a>.
     type: string
     required: false
     sensitive: true
@@ -49,6 +50,8 @@ configurations:
 
 saas:
   enabled: true
+  liveEvents:
+    enabled: true
   oauthConfiguration:
     requiredSecrets:
       - name: datadogApiKey

@@ -78,10 +78,22 @@
           "type": "string",
           "format": "user"
         },
+        "assignees": {
+          "title": "Assignees",
+          "type": "array"
+        },
+        "reviewers": {
+          "title": "Reviewers",
+          "type": "array"
+        },
         "status": {
           "title": "Status",
           "type": "string",
-          "enum": ["MERGED", "OPEN", "DECLINED"],
+          "enum": [
+            "MERGED",
+            "OPEN",
+            "DECLINED"
+          ],
           "enumColors": {
             "MERGED": "purple",
             "OPEN": "green",

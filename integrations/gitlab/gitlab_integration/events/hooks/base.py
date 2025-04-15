@@ -52,12 +52,16 @@ class HookHandler(ABC):
             include_inherited_members = (
                 resource_config.selector.include_inherited_members
             )
+            include_verbose_member_object = (
+                resource_config.selector.include_verbose_member_object
+            )
 
             object_result: RESTObject = (
                 await self.gitlab_service.enrich_object_with_members(
                     gitlab_object,
                     include_bot_members,
                     include_inherited_members,
+                    include_verbose_member_object=include_verbose_member_object,
                 )
             )
             await ocean.register_raw(resource_config.kind, [object_result.asdict()])

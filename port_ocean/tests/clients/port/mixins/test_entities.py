@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -37,17 +37,20 @@ async def entity_client(monkeypatch: Any) -> EntityClientMixin:
 async def test_batch_upsert_entities_read_timeout_should_raise_false(
     entity_client: EntityClientMixin,
 ) -> None:
-    result_entities = await entity_client.batch_upsert_entities(
-        entities=all_entities, request_options=MagicMock(), should_raise=False
-    )
+    with patch("port_ocean.context.event.event", MagicMock()):
+        result_entities = await entity_client.batch_upsert_entities(
+            entities=all_entities, request_options=MagicMock(), should_raise=False
+        )
+        entities_only = [entity for _, entity in result_entities]
 
-    assert result_entities == expected_result_entities
+        assert entities_only == expected_result_entities
 
 
 async def test_batch_upsert_entities_read_timeout_should_raise_true(
     entity_client: EntityClientMixin,
 ) -> None:
-    with pytest.raises(ReadTimeout):
-        await entity_client.batch_upsert_entities(
-            entities=all_entities, request_options=MagicMock(), should_raise=True
-        )
+    with patch("port_ocean.context.event.event", MagicMock()):
+        with pytest.raises(ReadTimeout):
+            await entity_client.batch_upsert_entities(
+                entities=all_entities, request_options=MagicMock(), should_raise=True
+            )

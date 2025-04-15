@@ -10,6 +10,9 @@ from port_ocean.context.ocean import ocean
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
 from azure_devops.misc import GitPortAppConfig, Kind, extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_event import WebhookEvent
+from azure_devops.client.file_processing import (
+    parse_file_content,
+)
 
 from .listener import HookListener
 
@@ -81,6 +84,88 @@ class PushHookListener(HookListener):
             {"before": old_entities, "after": new_entities},
             UserAgentType.gitops,
         )
+
+        await self.sync_changed_files_in_commit(repo_id, new_commit)
+
+    async def sync_changed_files_in_commit(self, repo_id: str, commit_id: str) -> None:
+        logger.info(f"Fetching file changes for commit {commit_id} in repo {repo_id}")
+
+        try:
+            repo_info = await self._client.get_repository(repo_id)
+            if repo_info is None:
+                logger.warning(f"Could not find repository with ID {repo_id}")
+                return
+
+            project_id = repo_info["project"]["id"]
+
+            # Get file changes from commit
+            url = f"{self._client._organization_base_url}/{project_id}/_apis/git/repositories/{repo_id}/commits/{commit_id}/changes"
+            response = await self._client.send_request(
+                "GET", url, params={"api-version": "7.1"}
+            )
+
+            if response is None:
+                logger.warning(
+                    f"No response when fetching changes for commit {commit_id}"
+                )
+                return
+
+            changed_files = response.json().get("changes", [])
+
+            for changed_file in changed_files:
+                await self.ingest_file_to_port(repo_info, commit_id, changed_file)
+
+        except Exception as e:
+            logger.error(f"Error fetching file changes: {e}")
+
+    async def ingest_file_to_port(
+        self,
+        repo_info: dict[str, Any],
+        commit_id: str,
+        changed_file: dict[str, Any],
+    ) -> None:
+        """Retrieves, parses, and registers a file with Port."""
+        logger.info(
+            f"Ingesting file {changed_file.get('item', {}).get('path')} to Port"
+        )
+        try:
+            file_path = changed_file["item"]["path"]
+            file_content = await self._client.get_file_by_commit(
+                file_path, repo_info["id"], commit_id
+            )
+            if not file_content:
+                logger.warning(f"No content found for file {file_path}")
+                return
+
+            file_metadata = {
+                **changed_file.get("item", {}),
+                "size": len(file_content),
+            }
+            logger.debug(f"File metadata: {file_metadata}")
+
+            parsed_content = await parse_file_content(file_content)
+
+            processed_file = {
+                "file": {
+                    **file_metadata,
+                    "content": {
+                        "raw": file_content.decode("utf-8"),
+                        "parsed": parsed_content,
+                    },
+                    "size": len(file_content),
+                },
+                "repo": repo_info,
+            }
+            logger.info(
+                f"Downloaded file {file_path} of size {file_metadata['size']} bytes "
+                f"({file_metadata['size'] / 1024:.2f} KB, {file_metadata['size'] / (1024 * 1024):.2f} MB)"
+            )
+            if processed_file:
+                await ocean.register_raw(Kind.FILE, [processed_file])
+                logger.info(f"Successfully ingested file {file_path} to Port")
+
+        except Exception as e:
+            logger.error(f"Error ingesting file {changed_file['item']['path']}: {e}")
 
     async def register_repository(self, push_data: Dict[str, Any]) -> None:
         repository_id = push_data["repository"]["id"]

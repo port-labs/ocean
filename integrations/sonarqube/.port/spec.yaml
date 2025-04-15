@@ -1,7 +1,7 @@
 title: SonarQube
 description: SonarQube integration for Port Ocean
 icon: sonarqube
-docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/sonarqube
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/sonarqube
 features:
   - type: exporter
     section: Code Quality & Security
@@ -37,3 +37,12 @@ configurations:
     required: false
     description: Whether the SonarQube instance is on-premise. If set to true, the sonarUrl configuration is required.
     default: false
+  - name: webhookSecret
+    type: string
+    sensitive: true
+    required: false
+    description: The secret token used to authenticate incoming webhook requests from SonarQube. This is required if webhook authentication is enabled in SonarQube to verify the integrity of received payloads.
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
