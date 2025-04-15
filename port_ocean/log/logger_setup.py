@@ -85,5 +85,5 @@ def exception_deserializer(record: "loguru.Record") -> None:
 def try_get_hostname() -> str:
     try:
         return os.uname().nodename
-    except AttributeError:
+    except Exception:
         return "unknown"
