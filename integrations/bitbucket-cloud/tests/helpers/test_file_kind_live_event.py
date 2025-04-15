@@ -43,26 +43,26 @@ async def test_determine_action() -> None:
         "new": {"path": "new/path/file.txt"},
         "old": {},
     }
-    action, old_path, new_path = determine_action(diff_stat_added)
-    assert action == "added"
-    assert old_path == ""
-    assert new_path == "new/path/file.txt"
+    is_added, is_modified, is_deleted = determine_action(diff_stat_added)
+    assert is_added is True
+    assert is_modified is False
+    assert is_deleted is False
 
     # Test deleted file
     diff_stat_deleted: Dict[str, Any] = {
         "new": {},
         "old": {"path": "old/path/file.txt"},
     }
-    action, old_path, new_path = determine_action(diff_stat_deleted)
-    assert action == "deleted"
-    assert old_path == "old/path/file.txt"
-    assert new_path == ""
+    is_added, is_modified, is_deleted = determine_action(diff_stat_deleted)
+    assert is_added is False
+    assert is_modified is False
+    assert is_deleted is True
 
     # Test modified file
-    action, old_path, new_path = determine_action(SAMPLE_DIFF_STAT)
-    assert action == "modified"
-    assert old_path == "old/path/file.txt"
-    assert new_path == "new/path/file.txt"
+    is_added, is_modified, is_deleted = determine_action(SAMPLE_DIFF_STAT)
+    assert is_added is False
+    assert is_modified is True
+    assert is_deleted is False
 
 
 @pytest.mark.asyncio

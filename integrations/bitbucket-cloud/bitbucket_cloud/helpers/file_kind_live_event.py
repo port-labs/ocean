@@ -17,16 +17,9 @@ YAML_FILE_SUFFIX = (".yaml", ".yml")
 class FileObject(TypedDict):
     """Represents a processed file object with its associated metadata."""
 
-    content: dict[str, Any] | list[dict[str,Any]]  # The actual content of the file (parsed JSON/YAML)
-    metadata: dict[str, Any]  # Diff statistics and file information
-    repo: dict[str, Any]  # Repository information
-    branch: str  # Branch name
-
-
-class FileObjectList(TypedDict):
-    """Represents a list of processed file objects with their associated metadata."""
-
-    content: list[dict[str, Any]]  # List of file contents
+    content: (
+        dict[str, Any] | list[dict[str, Any]]
+    )  # The actual content of the file (parsed JSON/YAML)
     metadata: dict[str, Any]  # Diff statistics and file information
     repo: dict[str, Any]  # Repository information
     branch: str  # Branch name
@@ -39,16 +32,22 @@ def extract_hash_from_payload(changes: dict[str, Any]) -> tuple[str, str, str]:
     return new_hash, old_hash, branch
 
 
-def determine_action(diff_stat: dict[str, Any]) -> tuple[str, str, str]:
+def get_file_paths(diff_stat: dict[str, Any]) -> tuple[str, str]:
+    """
+    Extract file paths from diff statistics.
+    """
     old = diff_stat.get("old", {})
     new = diff_stat.get("new", {})
-    old_file_path = old["path"] if old else ""
-    new_file_path = new["path"] if new else ""
-    if not old:
-        return "added", old_file_path, new_file_path
-    elif not new:
-        return "deleted", old_file_path, new_file_path
-    return "modified", old_file_path, new_file_path
+    return old.get("path", ""), new.get("path", "")
+
+
+def determine_action(diff_stat: dict[str, Any]) -> tuple[bool, bool, bool]:
+    """
+    Determine the type of change made to a file based on diff statistics.
+    """
+    old = diff_stat.get("old", {})
+    new = diff_stat.get("new", {})
+    return not old, bool(old and new), not new
 
 
 async def process_file_value(
@@ -106,7 +105,7 @@ async def process_list_items(
     diff_stat: dict[str, Any],
     repo: dict[str, Any],
     branch: str,
-) -> FileObjectList:
+) -> FileObject:
     # Process each file object's content directly
     all_tasks = []
     for file_obj in data:
@@ -132,7 +131,7 @@ async def process_list_items(
         results.append(processed_content)
         current_index += content_length
 
-    return FileObjectList(
+    return FileObject(
         content=results,
         metadata=diff_stat,
         repo=repo,
@@ -148,7 +147,7 @@ async def check_and_load_file_prefix(
     diff_stat: dict[str, Any],
     repo: dict[str, Any],
     branch: str,
-) -> FileObject | FileObjectList:
+) -> FileObject:
     client = init_client()
 
     if isinstance(raw_data, dict):
@@ -215,9 +214,10 @@ async def process_file_changes(
         ):
             for diff_stat in diff_stats:
                 logger.debug(f"Diff stats: {diff_stat}")
-                action, old_file_path, new_file_path = determine_action(diff_stat)
+                is_added, is_modified, is_deleted = determine_action(diff_stat)
+                old_file_path, new_file_path = get_file_paths(diff_stat)
                 diff_stat["commit"] = {"hash": new_hash}
-                file_path = old_file_path if action == "deleted" else new_file_path
+                file_path = new_file_path if is_added or is_modified else old_file_path
                 diff_stat["path"] = file_path
 
                 if not check_single_path(
@@ -231,7 +231,7 @@ async def process_file_changes(
                     continue
 
                 raw_data = await webhook_client.get_repository_files(
-                    repository, old_hash if action == "deleted" else new_hash, file_path
+                    repository, old_hash if is_deleted else new_hash, file_path
                 )
 
                 if not skip_parsing:
@@ -241,7 +241,7 @@ async def process_file_changes(
                         raw_data,
                         str(directory_path),
                         repository,
-                        old_hash if action == "deleted" else new_hash,
+                        old_hash if is_deleted else new_hash,
                         diff_stat,
                         repo,
                         branch,
