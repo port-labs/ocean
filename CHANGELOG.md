@@ -10,11 +10,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Features
 - Added inctance and hostname to logger configuration.
-
 - Updated setup_logger function to include inctance.
-
 - Generated unique inctance in run function.
-
 - Enhanced log format to include inctance.
 
 ## 0.22.2 (2025-04-06)

@@ -3,6 +3,7 @@ import os
 from logging import LogRecord
 from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
+import uuid
 
 import loguru
 from loguru import logger
@@ -13,9 +14,11 @@ from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.utils.signal import signal_handler
 
 
-def setup_logger(level: LogLevelType, enable_http_handler: bool, instance: str) -> None:
+def setup_logger(level: LogLevelType, enable_http_handler: bool) -> None:
     logger.remove()
-    logger.configure(extra={"hostname": try_get_hostname(), "instance": instance})
+    logger.configure(
+        extra={"hostname": resolve_hostname(), "instance": str(uuid.uuid4())}
+    )
     _stdout_loguru_handler(level)
     if enable_http_handler:
         _http_loguru_handler(level)
@@ -78,7 +81,7 @@ def exception_deserializer(record: "loguru.Record") -> None:
         record["exception"] = exception._replace(value=fixed)
 
 
-def try_get_hostname() -> str:
+def resolve_hostname() -> str:
     try:
         return os.uname().nodename
     except Exception:
