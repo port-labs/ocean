@@ -126,8 +126,8 @@ async def resync_resources_for_account(
                     yield batch
 
         except Exception as exc:
-            logger.warning(
-                f"Failed to initialize resync for {kind} in region {session.region_name}: {exc}",
+            logger.error(
+                f"Failed to complete resync for {kind} in region {session.region_name}: {exc}",
                 exc_info=True,
             )
             failed_regions.append(session.region_name)
