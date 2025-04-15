@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.10 (2025-04-15)
+
+
+### Features
+
+- Added support for live events for file kind and file:// prefix in file
+
+
 ## 0.1.9 (2025-04-15)
 
 
