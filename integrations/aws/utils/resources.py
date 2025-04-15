@@ -264,18 +264,9 @@ async def fetch_group_resources(
 
     group_resources = []
 
-    try:
-        async for resources_batch in resources_paginator.paginate(Group=group_name):
-            if resources_batch:
-                group_resources.extend(resources_batch)
-    except Exception as e:
-        if is_access_denied_exception(e):
-            logger.warning(
-                f"Skipping fetching resources for group {group_name} in region {region} due to missing access permissions"
-            )
-        else:
-            raise e
-
+    async for resources_batch in resources_paginator.paginate(Group=group_name):
+        if resources_batch:
+            group_resources.extend(resources_batch)
     return group_resources
 
 
@@ -340,7 +331,6 @@ async def resync_resource_group(
                     groups_batch, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
                 ):
                     if list_group_resources:
-                        logger.warning(f"Chunk groups: {chunk_groups}")
                         tasks = [
                             enrich_group_with_resources(
                                 client, group, kind, account_id, region
@@ -360,7 +350,6 @@ async def resync_resource_group(
                         ]
 
                     if processed_groups:
-                        logger.warning(f"Results: {processed_groups}")
                         yield processed_groups
                         logger.info(
                             f"Processed batch of {len(processed_groups)} {kind} resource groups from region {region} in account {account_id}"
