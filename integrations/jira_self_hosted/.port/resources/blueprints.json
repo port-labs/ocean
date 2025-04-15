@@ -1,0 +1,113 @@
+[
+    {
+      "identifier": "jiraProject",
+      "title": "Jira Project",
+      "icon": "Jira",
+      "description": "A Jira project",
+      "schema": {
+        "properties": {
+          "url": {
+            "title": "Project URL",
+            "type": "string",
+            "format": "url",
+            "description": "URL to the project in Jira"
+          },
+          "projectType": {
+            "title": "Type",
+            "type": "string",
+            "description": "The type of the project"
+          }
+        }
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {},
+      "relations": {}
+    },
+    {
+      "identifier": "jiraIssue",
+      "title": "Jira Issue",
+      "icon": "Jira",
+      "description": "A Jira issue blueprint",
+      "schema": {
+        "properties": {
+          "url": {
+            "title": "Issue URL",
+            "type": "string",
+            "format": "url",
+            "description": "URL to the issue in Jira"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string",
+            "description": "The status of the issue"
+          },
+          "issueType": {
+            "title": "Type",
+            "type": "string",
+            "description": "The type of the issue",
+            "enum": ["Story", "Bug", "Task", "New Feature", "Epic", "Improvement"],
+            "enumColors": {
+              "Story": "green",
+              "Bug": "red",
+              "Task": "blue",
+              "New Feature": "turquoise",
+              "Epic": "purple",
+              "Improvement": "yellow"
+            }
+          },
+          "components": {
+            "title": "Components",
+            "type": "array",
+            "description": "The components related to this issue"
+          },
+          "assignee": {
+            "title": "Assignee",
+            "type": "string",
+            "format": "user",
+            "description": "The user assigned to the issue"
+          },
+          "reporter": {
+            "title": "Reporter",
+            "type": "string",
+            "description": "The user that reported to the issue",
+            "format": "user"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string",
+            "description": "The priority of the issue",
+            "format": "user"
+          },
+          "creator": {
+            "title": "Creator",
+            "type": "string",
+            "description": "The user that created to the issue",
+            "format": "user"
+          }
+        }
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {},
+      "relations": {
+        "project": {
+          "target": "jiraProject",
+          "title": "Project",
+          "description": "The Jira project that contains this issue",
+          "required": false,
+          "many": false
+        },
+        "parentIssue": {
+          "target": "jiraIssue",
+          "title": "Parent Issue",
+          "required": false,
+          "many": false
+        },
+        "subtasks": {
+          "target": "jiraIssue",
+          "title": "Subtasks",
+          "required": false,
+          "many": true
+        }
+      }
+    }
+]
