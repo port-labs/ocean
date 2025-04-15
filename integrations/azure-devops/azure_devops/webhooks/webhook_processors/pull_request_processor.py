@@ -18,9 +18,6 @@ class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         "git.pullrequest.created",
     ]
 
-    def __init__(self, event: WebhookEvent):
-        super().__init__(event)
-
     async def should_process_event(self, event: WebhookEvent) -> bool:
         if not await super().should_process_event(event):
             return False

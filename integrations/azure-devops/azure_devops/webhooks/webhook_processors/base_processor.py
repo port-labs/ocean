@@ -8,9 +8,6 @@ from port_ocean.core.handlers.webhook.webhook_event import EventPayload, Webhook
 
 
 class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
-    def __init__(self, event: WebhookEvent) -> None:
-        super().__init__(event)
-
     async def should_process_event(self, event: WebhookEvent) -> bool:
         """Base validation for all Azure DevOps webhook events"""
         if not event.payload:

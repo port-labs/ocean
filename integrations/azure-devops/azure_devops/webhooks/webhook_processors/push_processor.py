@@ -23,10 +23,6 @@ from azure_devops.client.file_processing import parse_file_content
 class PushWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     EVENT_TYPES = ["git.push"]
 
-    def __init__(self, event: WebhookEvent):
-        super().__init__(event)
-        self.client = AzureDevopsClient.create_from_ocean_config()
-
     async def should_process_event(self, event: WebhookEvent) -> bool:
         if not await super().should_process_event(event):
             return False
@@ -43,7 +39,7 @@ class PushWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         config = cast(GitPortAppConfig, event.port_app_config)
         push_url = payload["resource"]["url"]
         push_params = {"includeRefUpdates": True}
-
+        self.client = AzureDevopsClient.create_from_ocean_config()
         response = await self.client.send_request("GET", push_url, params=push_params)
         if not response:
             logger.warning(f"Couldn't get push data from url {push_url}")
@@ -112,12 +108,12 @@ class PushWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         new_commit = update["newObjectId"]
 
         new_entities = await generate_entities_from_commit_id(
-            self.client, config.spec_path, repo_id, new_commit
+            config.spec_path, repo_id, new_commit
         )
         logger.info(f"Got {len(new_entities)} new entities")
 
         old_entities = await generate_entities_from_commit_id(
-            self.client, config.spec_path, repo_id, old_commit
+            config.spec_path, repo_id, old_commit
         )
         logger.info(f"Got {len(old_entities)} old entities")
 
