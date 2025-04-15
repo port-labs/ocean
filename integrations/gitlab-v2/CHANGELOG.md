@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
+- Bumped ocean version to ^0.22.3
 - Updated service blueprint schema with new fields:
   - readme (markdown format)
   - language
