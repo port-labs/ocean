@@ -15,7 +15,7 @@ from gitlab.helpers.utils import ObjectKind
 
 class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
     events = ["push"]
-    hook = "Push Hook"
+    hooks = ["Push Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.FOLDER]
