@@ -16,19 +16,13 @@ from port_ocean.utils.signal import signal_handler
 def setup_logger(
     level: LogLevelType, enable_http_handler: bool, integration_id: str
 ) -> None:
-    try:
-        logger.remove()
-        logger.configure(
-            extra={"hostname": os.uname().nodename, "integration_id": integration_id}
-        )
-        _stdout_loguru_handler(level)
-        if enable_http_handler:
-            _http_loguru_handler(level)
-    except Exception:
-        logger.remove()
-        _stdout_loguru_handler(level)
-        if enable_http_handler:
-            _http_loguru_handler(level)
+    logger.remove()
+    logger.configure(
+        extra={"hostname": try_get_hostname(), "integration_id": integration_id}
+    )
+    _stdout_loguru_handler(level)
+    if enable_http_handler:
+        _http_loguru_handler(level)
 
 
 def _stdout_loguru_handler(level: LogLevelType) -> None:
@@ -86,3 +80,10 @@ def exception_deserializer(record: "loguru.Record") -> None:
     if exception is not None:
         fixed = Exception(str(exception.value))
         record["exception"] = exception._replace(value=fixed)
+
+
+def try_get_hostname() -> str:
+    try:
+        return os.uname().nodename
+    except AttributeError:
+        return "unknown"
