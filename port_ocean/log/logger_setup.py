@@ -13,13 +13,9 @@ from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.utils.signal import signal_handler
 
 
-def setup_logger(
-    level: LogLevelType, enable_http_handler: bool, integration_id: str
-) -> None:
+def setup_logger(level: LogLevelType, enable_http_handler: bool, instance: str) -> None:
     logger.remove()
-    logger.configure(
-        extra={"hostname": try_get_hostname(), "integration_id": integration_id}
-    )
+    logger.configure(extra={"hostname": try_get_hostname(), "instance": instance})
     _stdout_loguru_handler(level)
     if enable_http_handler:
         _http_loguru_handler(level)

@@ -34,13 +34,13 @@ def run(
     config_override: Dict[str, Any] | None = None,
 ) -> None:
     application_settings = ApplicationSettings(log_level=log_level, port=port)
-    integration_id = str(uuid.uuid4())
+    instance = str(uuid.uuid4())
 
     init_signal_handler()
     setup_logger(
         application_settings.log_level,
         enable_http_handler=application_settings.enable_http_logging,
-        integration_id=integration_id,
+        instance=instance,
     )
 
     config_factory = _get_default_config_factory()
