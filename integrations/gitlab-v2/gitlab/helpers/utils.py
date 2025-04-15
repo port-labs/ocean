@@ -13,6 +13,8 @@ class ObjectKind(StrEnum):
     GROUP_WITH_MEMBERS = "group-with-members"
     MEMBER = "member"
     FILE = "file"
+    PIPELINE = "pipeline"
+    JOB = "job"
     FOLDER = "folder"
 
 

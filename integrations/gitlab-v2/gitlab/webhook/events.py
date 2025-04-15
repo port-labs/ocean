@@ -17,6 +17,8 @@ class GroupEvents(EventConfig):
     subgroup_events: bool = True
     push_events: bool = True
     tag_push_events: bool = True
+    pipeline_events: bool = True
+    job_events: bool = True
     member_events: bool = True
     confidential_issues_events: bool = True
 
