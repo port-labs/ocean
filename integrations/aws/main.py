@@ -46,7 +46,9 @@ from aioboto3 import Session
 
 import functools
 
-RESYNC_BATCH_SIZE = 100
+
+CONCURRENT_RESYNC_ACCOUNTS = 10
+CONCURRENT_RESYNC_REGIONS = 10
 
 
 async def _handle_global_resource_resync(
@@ -119,7 +121,7 @@ async def resync_resources_for_account(
         try:
             tasks.append(resync_func(kind, session, aws_resource_config))
 
-            if len(tasks) >= RESYNC_BATCH_SIZE:
+            if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
                 async for batch in _process_tasks(
                     tasks, failed_regions, errors, session.region_name
                 ):
@@ -182,7 +184,7 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             resync_resources_for_account(credentials, kind, resync_cloudcontrol)
         )
 
-        if len(tasks) == RESYNC_BATCH_SIZE:  # Process 10 at a time
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process 10 at a time
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
             tasks.clear()
@@ -210,19 +212,29 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         pagination_token_name="Marker",
     )
 
+    tasks = []
     async for credentials in get_accounts():
-        async for batch in resync_resources_for_account(
-            credentials=credentials,
-            kind=kind,
-            aws_resource_config=aws_resource_config,
-            resync_func=elasticache_resync_func,
-        ):
+        tasks.append(
+            resync_resources_for_account(
+                credentials=credentials,
+                kind=kind,
+                aws_resource_config=aws_resource_config,
+                resync_func=elasticache_resync_func,
+            )
+        )
+
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            tasks.clear()
+
+    if tasks:  # Process any remaining tasks
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER)
 async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     elbv2_resync_func = functools.partial(
         resync_custom_kind,
         service_name="elbv2",
@@ -231,18 +243,28 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         pagination_token_name="Marker",
     )
 
+    tasks = []
     async for credentials in get_accounts():
-        async for batch in resync_resources_for_account(
-            credentials=credentials,
-            kind=kind,
-            resync_func=elbv2_resync_func,
-        ):
+        tasks.append(
+            resync_resources_for_account(
+                credentials=credentials,
+                kind=kind,
+                resync_func=elbv2_resync_func,
+            )
+        )
+
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            tasks.clear()
+
+    if tasks:  # Process any remaining tasks
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM_CERTIFICATE)
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     acm_resync_func = functools.partial(
         resync_custom_kind,
         service_name="acm",
@@ -251,18 +273,28 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         pagination_token_name="NextToken",
     )
 
+    tasks = []
     async for credentials in get_accounts():
-        async for batch in resync_resources_for_account(
-            credentials=credentials,
-            kind=kind,
-            resync_func=acm_resync_func,
-        ):
+        tasks.append(
+            resync_resources_for_account(
+                credentials=credentials,
+                kind=kind,
+                resync_func=acm_resync_func,
+            )
+        )
+
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            tasks.clear()
+
+    if tasks:  # Process any remaining tasks
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.AMI_IMAGE)
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     ami_resync_func = functools.partial(
         resync_custom_kind,
         service_name="ec2",
@@ -272,18 +304,28 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         extra_params={"Owners": ["self"]},
     )
 
+    tasks = []
     async for credentials in get_accounts():
-        async for batch in resync_resources_for_account(
-            credentials=credentials,
-            kind=kind,
-            resync_func=ami_resync_func,
-        ):
+        tasks.append(
+            resync_resources_for_account(
+                credentials=credentials,
+                kind=kind,
+                resync_func=ami_resync_func,
+            )
+        )
+
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            tasks.clear()
+
+    if tasks:  # Process any remaining tasks
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     cloudformation_resync_func = functools.partial(
         resync_custom_kind,
         service_name="cloudformation",
@@ -292,24 +334,45 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         pagination_token_name="NextToken",
     )
 
+    tasks = []
     async for credentials in get_accounts():
-        async for batch in resync_resources_for_account(
-            credentials=credentials,
-            kind=kind,
-            resync_func=cloudformation_resync_func,
-        ):
-            yield
+        tasks.append(
+            resync_resources_for_account(
+                credentials=credentials,
+                kind=kind,
+                resync_func=cloudformation_resync_func,
+            )
+        )
+
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            tasks.clear()
+
+    if tasks:  # Process any remaining tasks
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.SQS_QUEUE)
 async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
+    tasks = []
     async for credentials in get_accounts():
-        async for batch in resync_resources_for_account(
-            credentials=credentials,
-            kind=kind,
-            resync_func=resync_sqs_queue,
-        ):
+        tasks.append(
+            resync_resources_for_account(
+                credentials=credentials,
+                kind=kind,
+                resync_func=resync_sqs_queue,
+            )
+        )
+
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            tasks.clear()
+
+    if tasks:  # Process any remaining tasks
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
 
