@@ -28,8 +28,6 @@ def _stdout_loguru_handler(level: LogLevelType) -> None:
     logger_format = (
         "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "
-        "<cyan>{extra[integration_id]}</cyan> | "
-        "<magenta>{extra[hostname]}</magenta> | "
         "<level>{message}</level>"
     )
     if level == "DEBUG":
