@@ -27,8 +27,12 @@ class RestClient(HTTPBaseClient):
         """Fetch a paginated project resource (e.g., labels)."""
         encoded_project_path = quote(project_path, safe="")
         path = f"projects/{encoded_project_path}/{resource_type}"
+
         async for batch in self._make_paginated_request(path, params=params):
             if batch:
+                logger.info(
+                    f"Received batch of {len(batch)} {resource_type} for project {project_path}"
+                )
                 yield batch
 
     async def get_paginated_group_resource(
@@ -41,6 +45,9 @@ class RestClient(HTTPBaseClient):
         path = f"groups/{group_id}/{resource_type}"
         async for batch in self._make_paginated_request(path, params=params):
             if batch:
+                logger.info(
+                    f"Received batch of {len(batch)} {resource_type} for group {group_id}"
+                )
                 yield batch
 
     async def get_project_languages(
@@ -50,8 +57,21 @@ class RestClient(HTTPBaseClient):
         path = f"projects/{encoded_project_path}/languages"
         return await self.send_api_request("GET", path, params=params or {})
 
+    async def get_file_data(
+        self, project_id: str, file_path: str, ref: str
+    ) -> dict[str, Any]:
+        encoded_project_id = quote(project_id, safe="")
+        encoded_file_path = quote(file_path, safe="")
+        path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
+        params = {"ref": ref}
+
+        response = await self.send_api_request("GET", path, params=params)
+
+        response["content"] = base64.b64decode(response["content"]).decode("utf-8")
+        return response
+
     async def get_file_content(
-        self, project_id: str, file_path: str, ref: str = "main"
+        self, project_id: str, file_path: str, ref: str
     ) -> Optional[str]:
         encoded_project_id = quote(project_id, safe="")
         encoded_file_path = quote(file_path, safe="")
@@ -72,8 +92,10 @@ class RestClient(HTTPBaseClient):
     ) -> AsyncIterator[list[dict[str, Any]]]:
         page = 1
         params_dict: dict[str, Any] = params or {}
+        if "per_page" not in params_dict:
+            params_dict["per_page"] = page_size
         while True:
-            request_params = {**params_dict, "per_page": page_size, "page": page}
+            request_params = {**params_dict, "page": page}
             logger.debug(f"Fetching page {page} from {path}")
             response = await self.send_api_request("GET", path, params=request_params)
             # HTTP API returns a list directly, or empty dict for 404

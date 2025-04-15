@@ -1,22 +1,26 @@
 from typing import Literal, Any, Type
+from pydantic import BaseModel, Field
 
-from port_ocean.core.handlers import APIPortAppConfig
+from port_ocean.context.ocean import PortOceanContext
+from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic import BaseModel, Field
+from port_ocean.core.integrations.mixins.handler import HandlerMixin
+from port_ocean.utils.signal import signal_handler
 
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
-from port_ocean.core.handlers import JQEntityProcessor
-from aiolimiter import AsyncLimiter
+
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
-MAX_REQUESTS_PER_SECOND = 5
 
 
 class ProjectSelector(Selector):
@@ -30,6 +34,24 @@ class ProjectSelector(Selector):
 class ProjectResourceConfig(ResourceConfig):
     kind: Literal["project"]
     selector: ProjectSelector
+
+
+class GitlabMemberSelector(Selector):
+    include_bot_members: bool = Field(
+        alias="includeBotMembers",
+        default=False,
+        description="If set to false, bots will be filtered out from the members list. Default value is false",
+    )
+
+
+class GitlabGroupWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["group-with-members"]
+    selector: GitlabMemberSelector
+
+
+class GitlabMemberResourceConfig(ResourceConfig):
+    kind: Literal["member"]
+    selector: GitlabMemberSelector
 
 
 class FilesSelector(BaseModel):
@@ -56,28 +78,75 @@ class GitLabFilesResourceConfig(ResourceConfig):
     kind: Literal["file"]
 
 
+class RepositoryBranchMapping(BaseModel):
+    name: str = Field(
+        default="",
+        alias="name",
+        description="Specify the repository name",
+    )
+    branch: str = Field(
+        default="main",
+        alias="branch",
+        description="Specify the branch to bring the folders from",
+    )
+
+
+class FolderPattern(BaseModel):
+    path: str = Field(
+        alias="path",
+        description="Specify the repositories and folders to include under this relative path",
+    )
+    repos: list[RepositoryBranchMapping] = Field(
+        default_factory=list,
+        alias="repos",
+        description="Specify the repositories and branches to include under this relative path",
+    )
+
+
+class GitlabFolderSelector(Selector):
+    folders: list[FolderPattern] = Field(
+        default_factory=list,
+        alias="folders",
+        description="Specify the repositories, branches and folders to include under this relative path",
+    )
+
+
+class GitLabFoldersResourceConfig(ResourceConfig):
+    selector: GitlabFolderSelector
+    kind: Literal["folder"]
+
+
 class GitlabPortAppConfig(PortAppConfig):
     resources: list[
-        GitLabFilesResourceConfig | ProjectResourceConfig | ResourceConfig
+        ProjectResourceConfig
+        | GitlabGroupWithMembersResourceConfig
+        | GitlabMemberResourceConfig
+        | GitLabFoldersResourceConfig
+        | GitLabFilesResourceConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 
 class GitManipulationHandler(JQEntityProcessor):
-    _rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_SECOND, 1)
-
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         entity_processor: Type[JQEntityProcessor]
+
         if pattern.startswith(FILE_PROPERTY_PREFIX):
             entity_processor = FileEntityProcessor
-            async with self._rate_limiter:
-                return await entity_processor(self.context)._search(data, pattern)
         elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
             entity_processor = SearchEntityProcessor
-            async with self._rate_limiter:
-                return await entity_processor(self.context)._search(data, pattern)
         else:
             entity_processor = JQEntityProcessor
-            return await entity_processor(self.context)._search(data, pattern)
+
+        return await entity_processor(self.context)._search(data, pattern)
+
+
+class GitlabHandlerMixin(HandlerMixin):
+    EntityProcessorClass = GitManipulationHandler
+
+
+class GitlabLiveEventsProcessorManager(LiveEventsProcessorManager, GitlabHandlerMixin):
+    pass
 
 
 class GitlabIntegration(BaseIntegration):
@@ -85,3 +154,14 @@ class GitlabIntegration(BaseIntegration):
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitlabPortAppConfig
+
+    def __init__(self, context: PortOceanContext):
+        super().__init__(context)
+
+        # Replace default webhook manager with GitLab-specific one
+        self.context.app.webhook_manager = GitlabLiveEventsProcessorManager(
+            self.context.app.integration_router,
+            signal_handler,
+            self.context.config.max_event_processing_seconds,
+            self.context.config.max_wait_seconds_before_shutdown,
+        )
