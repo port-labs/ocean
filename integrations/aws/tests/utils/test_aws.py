@@ -83,7 +83,7 @@ class TestAwsSessions(unittest.IsolatedAsyncioTestCase):
         mock_resource_config.selector.is_region_allowed = lambda region: True
 
         sessions: List[Session] = [
-            s async for s in get_sessions(aws_resource_config=mock_resource_config)
+            session async for session in get_sessions(aws_resource_config=mock_resource_config)
         ]
 
         # Verify create_session_for_each_region was called for both credentials
