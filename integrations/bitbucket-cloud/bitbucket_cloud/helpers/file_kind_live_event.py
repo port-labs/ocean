@@ -17,7 +17,7 @@ YAML_FILE_SUFFIX = (".yaml", ".yml")
 class FileObject(TypedDict):
     """Represents a processed file object with its associated metadata."""
 
-    content: dict[str, Any]  # The actual content of the file (parsed JSON/YAML)
+    content: dict[str, Any] | list[dict[str,Any]]  # The actual content of the file (parsed JSON/YAML)
     metadata: dict[str, Any]  # Diff statistics and file information
     repo: dict[str, Any]  # Repository information
     branch: str  # Branch name
