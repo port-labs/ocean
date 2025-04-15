@@ -1,7 +1,6 @@
 import asyncio
 from inspect import getmembers
 from typing import Dict, Any, Type
-import uuid
 
 import uvicorn
 from pydantic import BaseModel
@@ -34,13 +33,11 @@ def run(
     config_override: Dict[str, Any] | None = None,
 ) -> None:
     application_settings = ApplicationSettings(log_level=log_level, port=port)
-    instance = str(uuid.uuid4())
 
     init_signal_handler()
     setup_logger(
         application_settings.log_level,
         enable_http_handler=application_settings.enable_http_logging,
-        instance=instance,
     )
 
     config_factory = _get_default_config_factory()

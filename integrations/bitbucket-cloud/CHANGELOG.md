@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.7 (2025-04-14)
+## 0.1.9 (2025-04-15)
 
 
 ### Improvements
 
 - Improved `integration.py` to handle to use custom jq processor while initializing the integration
+
+
+## 0.1.8 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.1.7 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
 
 
 ## 0.1.6 (2025-04-10)
