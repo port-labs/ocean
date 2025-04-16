@@ -3,10 +3,13 @@ from loguru import logger
 
 from clients.azure_client import AzureClient
 
+
 def build_full_sync_query(resource_types: list[str] | None = None) -> str:
     filter_clause = ""
     if resource_types:
-        resource_types_filter = " or ".join([f"type == '{rt}'" for rt in resource_types])
+        resource_types_filter = " or ".join(
+            [f"type == '{rt}'" for rt in resource_types]
+        )
         filter_clause = f"| where {resource_types_filter}"
 
     query = f"""
@@ -19,6 +22,7 @@ def build_full_sync_query(resource_types: list[str] | None = None) -> str:
     """
 
     return query
+
 
 class Resources:
     def __init__(self, azure_client: AzureClient):

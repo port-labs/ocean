@@ -3,13 +3,14 @@ from typing import Any, AsyncGenerator
 from loguru import logger
 from clients.azure_client import AzureClient
 
-FULL_SYNC_QUERY: str = f"""
+FULL_SYNC_QUERY: str = """
 resourcecontainers
 | extend resourceId=tolower(id)
 | project resourceId, type, name, location, tags, subscriptionId, resourceGroup
 | extend resourceGroup=tolower(resourceGroup)
 | extend type=tolower(type)
 """
+
 
 class ResourceContainers:
 

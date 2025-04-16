@@ -20,8 +20,7 @@ class TokenBucketRateLimiter:
         self.tokens = int(
             min(
                 self.capacity,
-                self.tokens
-                + (current_time - self.last_refill_time) * self.refill_rate,
+                self.tokens + (current_time - self.last_refill_time) * self.refill_rate,
             )
         )
         self.last_refill_time = current_time

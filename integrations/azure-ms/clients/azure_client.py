@@ -15,6 +15,7 @@ from azure.mgmt.subscription.aio import SubscriptionClient
 from azure.mgmt.subscription.models._models_py3 import Subscription
 from port_ocean.context.ocean import ocean
 
+
 class AzureClient:
     def __init__(self) -> None:
         self._credentials: ClientSecretCredential | None = None
@@ -68,7 +69,7 @@ class AzureClient:
                 query_request
             )
 
-            logger.info(f"Query ran successfully")
+            logger.info("Query ran successfully")
             yield response.data
             skip_token = response.skip_token
             if not skip_token:

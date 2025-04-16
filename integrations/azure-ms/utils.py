@@ -1,6 +1,7 @@
-from typing import Any, Generator, TypedDict, TypeVar
+from typing import Generator, TypeVar
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 def turn_sequence_to_chunks(
     sequence: list[T], chunk_size: int
