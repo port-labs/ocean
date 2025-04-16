@@ -760,7 +760,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 return_exceptions=True,
             )
 
-            errors = [r for r in results if isinstance(r, Exception)]
+            errors = [result for result in results if isinstance(result, Exception)]
             if errors:
                 logger.error(f"Failed to create {len(errors)} webhooks:")
                 for idx, error in enumerate(errors, start=1):
