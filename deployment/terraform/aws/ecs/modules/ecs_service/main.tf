@@ -47,7 +47,7 @@ resource "aws_ssm_parameter" "ocean_port_credentials" {
     client_secret : var.port.client_secret,
     client_id : var.port.client_id,
   })
-  tags = locals.tags
+  tags = local.tags
 }
 
 
@@ -125,16 +125,19 @@ data "aws_iam_policy_document" "task_execution_role_policy" {
 resource "aws_iam_role" "task_role" {
   name               = "ecs-${local.service_name}"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume_role_policy.json
+  tags = local.tags
 }
 
 resource "aws_iam_policy" "execution-policy" {
   name   = local.service_name
   policy = data.aws_iam_policy_document.task_execution_role_policy.json
+  tags = local.tags
 }
 
 resource "aws_iam_role" "task_execution_role" {
   name               = "ecs-execution-${local.service_name}"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume_role_policy.json
+  tags = local.tags
 }
 
 resource "aws_iam_role_policy_attachment" "attachment" {
@@ -192,6 +195,7 @@ resource "aws_ecs_task_definition" "service_task_definition" {
         ]
       }
   ])
+  tags = local.tags
 }
 
 resource "aws_ecs_service" "ecs_service" {
@@ -238,4 +242,5 @@ resource "aws_ecs_service" "ecs_service" {
     update = "10m"
     delete = "20m"
   }
+  tags = local.tags
 }

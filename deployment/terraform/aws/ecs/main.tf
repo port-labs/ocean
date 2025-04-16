@@ -16,10 +16,10 @@ module "port_ocean_ecs_lb" {
   source                   = "./modules/ecs_lb"
   vpc_id                   = var.vpc_id
   subnets                  = var.subnets
-  create_egress_default_sg = create_egress_default_sg
+  create_egress_default_sg = var.create_egress_default_sg
   certificate_domain_name  = var.certificate_domain_name
-  create_default_sg        = create_default_sg
-  tags                     = locals.tags
+  create_default_sg        = var.create_default_sg
+  tags                     = local.tags
 }
 
 module "port_ocean_ecs" {
@@ -27,7 +27,7 @@ module "port_ocean_ecs" {
 
   subnets          = var.subnets
   cluster_name     = var.cluster_name
-  assign_public_ip = assign_public_ip
+  assign_public_ip = var.assign_public_ip
 
   lb_targ_group_arn          = var.allow_incoming_requests ? module.port_ocean_ecs_lb[0].target_group_arn : ""
   additional_security_groups = local.security_groups
@@ -53,5 +53,5 @@ module "port_ocean_ecs" {
   }
 
   additional_secrets = var.additional_secrets
-  tags                     = locals.tags
+  tags                     = local.tags
 }
