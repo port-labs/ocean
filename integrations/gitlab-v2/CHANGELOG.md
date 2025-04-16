@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.0-beta (2025-04-15)
+
+
+### Improvement
+
+- Bumped integration version from dev to beta
+
+
+## 0.1.13-dev (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.1.12-dev (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+- Updated service blueprint schema with new fields:
+  - readme (markdown format)
+  - language
+  - slack (URL format)
+  - tier (enum with colors)
+- Removed description and defaultBranch fields from service blueprint
+
+
+## 0.1.11-dev (2025-04-14)
+
+
+
+### Improvements
+
+- Enhanced webhook processing with `GitlabLiveEventsProcessorManager` to utilize the `GitManipulationHandler` for Entity Processing
+
+### Bug Fixes
+
+- Renamed 'hook' class attribute to 'hooks' in file and folder webhook processors
+
+
+## 0.1.10-dev (2025-04-14)
+
+
+### Features
+
+- Added support for pipeline and job kinds
+
+### Improvements
+
+- Added email field to group member enrichment for better user identification
+
+
+## 0.1.9-dev (2025-04-14)
+
+
+### Features
+
+- Add support for gitlab members
+
+
+## 0.1.8-dev (2025-04-14)
+
+
+### Features
+
+- Added support for live events for folder kind
+
+
+## 0.1.7-dev (2025-04-14)
+
+
+### Improvements
+
+- Added support for resolving `file://` references in parsed JSON and YAML files.
+
+
 ## 0.1.6-dev (2025-04-09)
 
 

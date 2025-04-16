@@ -19,7 +19,7 @@ class GroupWebhookProcessor(_GitlabAbstractWebhookProcessor):
         "subgroup_create",
         "subgroup_destroy",
     ]
-    hook = "Subgroup Hook"
+    hooks = ["Subgroup Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.GROUP]

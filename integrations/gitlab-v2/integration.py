@@ -1,25 +1,26 @@
 from typing import Literal, Any, Type
+from pydantic import BaseModel, Field
 
-from port_ocean.core.handlers import APIPortAppConfig
+from port_ocean.context.ocean import PortOceanContext
+from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic import BaseModel, Field
+from port_ocean.core.integrations.mixins.handler import HandlerMixin
+from port_ocean.utils.signal import signal_handler
 
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
-from port_ocean.core.handlers import JQEntityProcessor
-from aiolimiter import AsyncLimiter
-import asyncio
+
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
-MAX_REQUESTS_PER_TIME_WINDOW = 10
-_rate_limiter = AsyncLimiter(MAX_REQUESTS_PER_TIME_WINDOW, 0.25)
-_semaphore = asyncio.Semaphore(5)
 
 
 class ProjectSelector(Selector):
@@ -33,6 +34,24 @@ class ProjectSelector(Selector):
 class ProjectResourceConfig(ResourceConfig):
     kind: Literal["project"]
     selector: ProjectSelector
+
+
+class GitlabMemberSelector(Selector):
+    include_bot_members: bool = Field(
+        alias="includeBotMembers",
+        default=False,
+        description="If set to false, bots will be filtered out from the members list. Default value is false",
+    )
+
+
+class GitlabGroupWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["group-with-members"]
+    selector: GitlabMemberSelector
+
+
+class GitlabMemberResourceConfig(ResourceConfig):
+    kind: Literal["member"]
+    selector: GitlabMemberSelector
 
 
 class FilesSelector(BaseModel):
@@ -99,9 +118,11 @@ class GitLabFoldersResourceConfig(ResourceConfig):
 
 class GitlabPortAppConfig(PortAppConfig):
     resources: list[
-        GitLabFoldersResourceConfig
+        ProjectResourceConfig
+        | GitlabGroupWithMembersResourceConfig
+        | GitlabMemberResourceConfig
+        | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
-        | ProjectResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
@@ -120,8 +141,27 @@ class GitManipulationHandler(JQEntityProcessor):
         return await entity_processor(self.context)._search(data, pattern)
 
 
+class GitlabHandlerMixin(HandlerMixin):
+    EntityProcessorClass = GitManipulationHandler
+
+
+class GitlabLiveEventsProcessorManager(LiveEventsProcessorManager, GitlabHandlerMixin):
+    pass
+
+
 class GitlabIntegration(BaseIntegration):
     EntityProcessorClass = GitManipulationHandler
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitlabPortAppConfig
+
+    def __init__(self, context: PortOceanContext):
+        super().__init__(context)
+
+        # Replace default webhook manager with GitLab-specific one
+        self.context.app.webhook_manager = GitlabLiveEventsProcessorManager(
+            self.context.app.integration_router,
+            signal_handler,
+            self.context.config.max_event_processing_seconds,
+            self.context.config.max_wait_seconds_before_shutdown,
+        )
