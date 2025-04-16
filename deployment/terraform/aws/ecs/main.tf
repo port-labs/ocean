@@ -19,6 +19,7 @@ module "port_ocean_ecs_lb" {
   create_egress_default_sg = var.create_egress_default_sg
   certificate_domain_name  = var.certificate_domain_name
   create_default_sg        = var.create_default_sg
+  is_internal              = var.is_internal
   tags                     = local.tags
 }
 
@@ -53,5 +54,5 @@ module "port_ocean_ecs" {
   }
 
   additional_secrets = var.additional_secrets
-  tags                     = local.tags
+  tags               = local.tags
 }
