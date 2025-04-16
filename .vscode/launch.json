@@ -178,6 +178,17 @@
       "python": "${workspaceFolder}/integrations/github-copilot/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/azure-ms",
+      "envFile": "${workspaceFolder}/integrations/azure-ms/.env",
+      "justMyCode": true,
+      "name": "Run azure-ms integration",
+      "program": "${workspaceFolder}/integrations/azure-ms/debug.py",
+      "python": "${workspaceFolder}/integrations/azure-ms/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }

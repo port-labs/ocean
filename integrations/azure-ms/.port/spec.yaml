@@ -1,0 +1,33 @@
+title: Azure Multi Subscription
+description: Azure Multi Subscription integration for Port Ocean
+icon: azure  # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Under Development  # Should be one of the available sections in Port
+    resources:
+      - kind: resourceContainer
+      - kind: resource
+configurations:
+  - name: resourceTypes
+    type: array
+    required: false
+  - name: changeWindowMinutes
+    type: string
+    required: false
+    default: 15
+  - name: subscriptionBatchSize
+    type: string
+    required: false
+    default: 1000
+  - name: azureClientId
+    type: string
+    required: true
+    sensitive: true
+  - name: azureClientSecret
+    type: string
+    required: true
+    sensitive: true
+  - name: azureTenantId
+    type: string
+    required: true
+    sensitive: true
