@@ -1,7 +1,7 @@
 import base64
 from typing import Any, Generator
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
@@ -16,13 +16,32 @@ from azure_devops.webhooks.webhook_processors.pull_request_processor import (
     PullRequestWebhookProcessor,
 )
 from azure_devops.webhooks.webhook_processors.push_processor import PushWebhookProcessor
+from azure_devops.webhooks.webhook_processors._base_processor import (
+    _AzureDevOpsBaseWebhookProcessor,
+)
 from azure_devops.misc import GitPortAppConfig
 from port_ocean.context.event import _event_context_stack, EventContext
+
+
+class AzureDevOpsWebhookProcessorImpl(_AzureDevOpsBaseWebhookProcessor):
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        return ["test-kind"]
+
+    async def handle_event(self, event: WebhookEvent) -> None:
+        pass
+
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        return True
 
 
 @pytest.fixture
 def event() -> WebhookEvent:
     return WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
+
+
+@pytest.fixture
+def base_processor(event: WebhookEvent) -> AzureDevOpsWebhookProcessorImpl:
+    return AzureDevOpsWebhookProcessorImpl(event)
 
 
 @pytest.fixture
@@ -123,15 +142,73 @@ def mock_event_context() -> Generator[None, None, None]:
 @pytest.fixture
 def mock_ocean(monkeypatch: pytest.MonkeyPatch) -> None:
     mock_ocean_instance = MagicMock()
-    mock_ocean_instance.config = MagicMock()
+    mock_ocean_instance.integration_config = {"webhook_secret": "test-secret"}
     monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean_instance)
+
+
+@pytest.mark.asyncio
+async def test_base_authenticate_failure_wrong_secret(
+    base_processor: AzureDevOpsWebhookProcessorImpl, mock_ocean: None
+):
+    encoded = base64.b64encode(b":wrong-secret").decode("utf-8")
+    headers = {"authorization": f"Basic {encoded}"}
+    assert await base_processor.authenticate({}, headers) is False
+
+
+@pytest.mark.asyncio
+async def test_base_authenticate_failure_wrong_auth_type(
+    base_processor: AzureDevOpsWebhookProcessorImpl, mock_ocean: None
+):
+    headers = {"authorization": "Bearer token"}
+    assert await base_processor.authenticate({}, headers) is False
+
+
+@pytest.mark.asyncio
+async def test_base_authenticate_failure_malformed(
+    base_processor: AzureDevOpsWebhookProcessorImpl, mock_ocean: None
+):
+    headers = {"authorization": "Basic malformed_token"}
+    assert await base_processor.authenticate({}, headers) is False
+
+
+@pytest.mark.asyncio
+async def test_base_authenticate_failure_no_auth(
+    base_processor: AzureDevOpsWebhookProcessorImpl, mock_ocean: None
+):
+    assert await base_processor.authenticate({}, {}) is True
+
+
+@pytest.mark.asyncio
+async def test_base_validate_payload_success(
+    base_processor: AzureDevOpsWebhookProcessorImpl,
+):
+    valid_payload = {
+        "eventType": "user.created",
+        "publisherId": "tfs",
+        "resource": {"id": "123"},
+    }
+    assert await base_processor.validate_payload(valid_payload) is True
+
+
+@pytest.mark.asyncio
+async def test_base_validate_payload_failure(
+    base_processor: AzureDevOpsWebhookProcessorImpl,
+):
+    invalid_payloads = [
+        {"eventType": "user.created"},
+        {"publisherId": "tfs", "resource": {}},
+        {"eventType": "user.created", "publisherId": "tfs"},
+    ]
+
+    for payload in invalid_payloads:
+        assert await base_processor.validate_payload(payload) is False
 
 
 @pytest.mark.asyncio
 async def test_pull_request_should_process_event(
     pull_request_processor: PullRequestWebhookProcessor,
     mock_event_context: None,
-) -> None:
+):
     event = WebhookEvent(
         trace_id="test-trace-id",
         payload={
@@ -151,7 +228,7 @@ async def test_pull_request_should_process_event(
 async def test_pull_request_get_matching_kinds(
     pull_request_processor: PullRequestWebhookProcessor,
     mock_event_context: None,
-) -> None:
+):
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     assert await pull_request_processor.get_matching_kinds(event) == ["pull-request"]
 
@@ -161,7 +238,7 @@ async def test_pull_request_authenticate(
     pull_request_processor: PullRequestWebhookProcessor,
     mock_ocean: None,
     mock_event_context: None,
-) -> None:
+):
     headers = {
         "authorization": "Basic " + base64.b64encode(b":wrong-secret").decode("utf-8")
     }
@@ -172,7 +249,7 @@ async def test_pull_request_authenticate(
 async def test_pull_request_validate_payload(
     pull_request_processor: PullRequestWebhookProcessor,
     mock_event_context: None,
-) -> None:
+):
     valid_payload = {
         "eventType": "git.pullrequest.updated",
         "publisherId": "tfs",
@@ -188,7 +265,7 @@ async def test_pull_request_validate_payload(
 async def test_push_should_process_event(
     push_processor: PushWebhookProcessor,
     mock_event_context: None,
-) -> None:
+):
     event = WebhookEvent(
         trace_id="test-trace-id",
         payload={
@@ -208,7 +285,7 @@ async def test_push_should_process_event(
 async def test_push_get_matching_kinds(
     push_processor: PushWebhookProcessor,
     mock_event_context: None,
-) -> None:
+):
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     kinds = await push_processor.get_matching_kinds(event)
     assert "repository" in kinds
@@ -219,7 +296,7 @@ async def test_push_get_matching_kinds(
 async def test_push_validate_payload(
     push_processor: PushWebhookProcessor,
     mock_event_context: None,
-) -> None:
+):
     valid_payload = {
         "eventType": "git.push",
         "publisherId": "tfs",
