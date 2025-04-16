@@ -4,22 +4,10 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
+from port_ocean.core.handlers.webhook.webhook_event import EventPayload
 
 
-class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        """Base validation for all Azure DevOps webhook events"""
-        if not event.payload:
-            return False
-
-        publisher_id = event.payload.get("publisherId")
-        event_type = event.payload.get("eventType")
-
-        if not publisher_id or not event_type:
-            return False
-
-        return True
+class _AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
 
     async def authenticate(
         self, payload: EventPayload, headers: Dict[str, str]

@@ -14,24 +14,24 @@ from port_ocean.clients.port.types import UserAgentType
 from azure_devops.client.azure_devops_client import API_PARAMS, AzureDevopsClient
 from azure_devops.misc import GitPortAppConfig, extract_branch_name_from_ref, Kind
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
-from azure_devops.webhooks.webhook_processors.base_processor import (
-    AzureDevOpsBaseWebhookProcessor,
+from azure_devops.webhooks.webhook_processors._base_processor import (
+    _AzureDevOpsBaseWebhookProcessor,
 )
 from azure_devops.client.file_processing import parse_file_content
+from azure_devops.webhooks.events import PushEvents
 
 
-class PushWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
-    EVENT_TYPES = ["git.push"]
-
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        if not await super().should_process_event(event):
-            return False
-
-        event_type = event.payload.get("eventType")
-        return event_type in self.EVENT_TYPES
+class PushWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.REPOSITORY, Kind.FILE]
+
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        try:
+            event_type = event.payload["eventType"]
+            return bool(PushEvents(event_type))
+        except ValueError:
+            return False
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
