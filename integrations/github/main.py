@@ -29,24 +29,18 @@ async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kinds.PULL_REQUEST)
 async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
-    async for repo in client.get_organization_repos():
-        for single_repo in repo:
-            repo_name = single_repo["name"]
-            if not repo_name:
-                continue
-            async for pr in client.get_pull_requests(repo=repo_name):
+    async for repo_batch in client.get_organization_repos():
+        for repo in repo_batch:
+            async for pr in client.get_pull_requests(repo=repo["name"]):
                 yield pr
 
 
 @ocean.on_resync(Kinds.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
-    async for repo in client.get_organization_repos():
-        for single_repo in repo:
-            repo_name = single_repo["name"]
-            if not repo_name:
-                continue
-            async for issue in client.get_issues(repo=repo_name):
+    async for repo_batch in client.get_organization_repos():
+        for repo in repo_batch:
+            async for issue in client.get_issues(repo=repo["name"]):
                 if "pull_request" in issue:
                     continue
                 yield issue
@@ -62,12 +56,9 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kinds.WORKFLOW)
 async def on_resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
-    async for repo in client.get_organization_repos():
-        for single_repo in repo:
-            repo_name = single_repo["name"]
-            if not repo_name:
-                continue
-            async for workflow in client.get_workflows(repo=repo_name):
+    async for repo_batch in client.get_organization_repos():
+        for repo in repo_batch:
+            async for workflow in client.get_workflows(repo=repo["name"]):
                 yield workflow
 
 
