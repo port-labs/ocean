@@ -102,7 +102,7 @@ async def resync_resources_for_account(
 
     logger.info(
         f"Starting resync of {kind} for account {credentials.account_id} "
-        f"across {len(allowed_regions)} allowed regions"
+        f"across {len(allowed_regions)} allowed regions: {', '.join(allowed_regions)}"
     )
 
     if is_global_resource(kind):
@@ -189,7 +189,7 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield batch
             tasks.clear()
 
-    if tasks:  # Process any remaining tasks
+    if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
@@ -228,7 +228,7 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield batch
             tasks.clear()
 
-    if tasks:  # Process any remaining tasks
+    if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
@@ -258,7 +258,7 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield batch
             tasks.clear()
 
-    if tasks:  # Process any remaining tasks
+    if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
@@ -288,7 +288,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield batch
             tasks.clear()
 
-    if tasks:  # Process any remaining tasks
+    if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
@@ -319,7 +319,7 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield batch
             tasks.clear()
 
-    if tasks:  # Process any remaining tasks
+    if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
@@ -344,12 +344,12 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
         )
 
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
             tasks.clear()
 
-    if tasks:  # Process any remaining tasks
+    if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
@@ -371,7 +371,7 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield batch
             tasks.clear()
 
-    if tasks:  # Process any remaining tasks
+    if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
