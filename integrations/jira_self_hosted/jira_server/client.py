@@ -1,5 +1,3 @@
-# jira_server.py
-
 from enum import StrEnum
 from typing import Any, AsyncGenerator
 import httpx
@@ -21,62 +19,47 @@ class JiraServerClient:
         self.client = http_async_client
         self.client.auth = httpx.BasicAuth(username, password)
 
-    async def get_projects(self, params: dict[str, Any] | None = None) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get all projects from Jira Server with pagination."""
-        logger.info("Getting projects from Jira Server")
-        page = 0
+    async def _send_api_request(
+        self,
+        method: str,
+        url: str,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> Any:
+        response = await self.client.request(method=method, url=url, params=params, json=json, headers=headers)
+        response.raise_for_status()
+        return response.json()
 
+    @staticmethod
+    def _generate_base_req_params(maxResults: int = PAGE_SIZE, startAt: int = 0) -> dict[str, Any]:
+        return {"maxResults": maxResults, "startAt": startAt}
+
+    async def _get_paginated_data(
+        self,
+        url: str,
+        extract_key: str | None = None,
+        initial_params: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        params = initial_params or {}
+        params |= self._generate_base_req_params()
+
+        start_at = 0
         while True:
-            request_params = {
-                "maxResults": PAGE_SIZE,
-                "startAt": page * PAGE_SIZE,
-                **(params or {})
-            }
+            params["startAt"] = start_at
+            response_data = await self._send_api_request("GET", url, params=params)
+            items = response_data.get(extract_key, []) if extract_key else response_data
 
-            response = await self.client.get(f"{self.api_url}/project", params=request_params)
-            response.raise_for_status()
-            projects = response.json()
-
-            if not projects:
+            if not items:
                 break
 
-            yield projects
+            yield items
 
-            if len(projects) < PAGE_SIZE:
+            start_at += len(items)
+            if "total" in response_data and start_at >= response_data["total"]:
                 break
 
-            page += 1
-
-    async def get_issues(self, params: dict[str, Any] | None = None) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get all issues from Jira Server with pagination."""
-        logger.info("Getting issues from Jira Server")
-        if params and "jql" in params:
-            logger.info(f"Using JQL filter: {params['jql']}")
-
-        page = 0
-
-        while True:
-            request_params = {
-                "maxResults": PAGE_SIZE,
-                "startAt": page * PAGE_SIZE,
-                **(params or {})
-            }
-
-            response = await self.client.get(f"{self.api_url}/search", params=request_params)
-            response.raise_for_status()
-            data = response.json()
-            issues = data.get("issues", [])
-
-            if not issues:
-                break
-
-            yield issues
-
-            if len(issues) < PAGE_SIZE:
-                break
-
-            page += 1
-
+    # Single item lookups
     async def get_single_project(self, project_key: str) -> dict[str, Any]:
         """Get a single project by its key."""
         response = await self.client.get(f"{self.api_url}/project/{project_key}")
@@ -92,19 +75,37 @@ class JiraServerClient:
     async def get_single_user(self, username: str) -> dict[str, Any]:
         """
         Get a single user from Jira Server by username.
-        Jira Server’s API requires 'username' (legacy identifier) rather than 'accountId'.
+        Jira Server’s API requires the legacy 'username' parameter.
         """
         response = await self.client.get(f"{self.api_url}/user", params={"username": username})
         response.raise_for_status()
         return response.json()
 
-    async def get_users(self, username: str = "") -> list[dict[str, Any]]:
+    # Non-paginated endpoint for all projects
+    async def get_all_projects(self) -> list[dict[str, Any]]:
+        """Get all visible projects from Jira Server (no pagination)."""
+        logger.info("Getting all projects from Jira Server")
+        return await self._send_api_request("GET", f"{self.api_url}/project")
+
+    async def get_paginated_issues(
+        self, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get issues from Jira Server with pagination using the search endpoint."""
+        logger.info("Getting issues from Jira Server (paginated)")
+        params = params or {}
+        if "jql" in params:
+            logger.info(f"Using JQL filter: {params['jql']}")
+        async for issues in self._get_paginated_data(
+            f"{self.api_url}/search", "issues", initial_params=params
+        ):
+            yield issues
+
+    async def get_paginated_users(self, username: str = "''") -> AsyncGenerator[list[dict[str, Any]], None]:
         """
-        Get users from Jira Server.
-        If a username is provided, the results are filtered by that username.
-        Otherwise, the endpoint should return a default set of users.
-        Note: This does not implement custom pagination.
+        Get users from Jira Server with pagination.
+        The API endpoint is `/user/search` and accepts a 'username' query parameter.
         """
-        response = await self.client.get(f"{self.api_url}/user/search?username=")
-        response.raise_for_status()
-        return response.json()
+        logger.info("Getting users from Jira Server (paginated)")
+        initial_params = {"username": username}
+        async for users in self._get_paginated_data(f"{self.api_url}/user/search", None, initial_params):
+            yield users
