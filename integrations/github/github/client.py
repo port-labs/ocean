@@ -28,6 +28,8 @@ GITHUB_EVENTS = [
     "public",
     "repository",
     "member",
+    "team",
+    "workflow_run"
 ]
 
 
