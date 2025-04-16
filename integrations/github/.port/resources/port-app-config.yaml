@@ -1,3 +1,4 @@
+
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
@@ -8,7 +9,7 @@ resources:
       entity:
         mappings:
           identifier: ".id | tostring"
-          title: ".name"
+          title: ".name | tostring"
           blueprint: '"githubRepository"'
           properties:
             htmlUrl: ".html_url"
@@ -28,12 +29,11 @@ resources:
       entity:
         mappings:
           identifier: ".id | tostring"
-          title: ".title"
+          title: ".title | tostring"
           blueprint: '"githubPullRequest"'
           properties:
             url: .html_url
             state: .state
-            repo: .name
             author: .login
             number: .number
             createdAt: .created_at
@@ -43,7 +43,7 @@ resources:
             merged: .merged
             draft: .draft
           relations:
-            repository: .repo_name
+            repository: .name
 
   - kind: issue
     selector:
@@ -52,12 +52,11 @@ resources:
       entity:
         mappings:
           identifier: ".id | tostring"
-          title: ".title"
+          title: ".title | tostring"
           blueprint: '"githubIssue"'
           properties:
             url: ".html_url // .url"
             state: .state
-            repo: .name
             number: .number
             author: .login
             labels: .labels
@@ -65,7 +64,7 @@ resources:
             updatedAt: .updated_at
             body: .body
           relations:
-            repository: .repo_name
+            repository: .name
 
   - kind: team
     selector:
@@ -74,7 +73,7 @@ resources:
       entity:
         mappings:
           identifier: ".id | tostring"
-          title: ".name"
+          title: ".name | tostring"
           blueprint: '"githubTeam"'
           properties:
             url: .url
@@ -84,8 +83,6 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
             permission: .permission
-          relations:
-            members: "if .__members != null then .__members | map(.id) else [] end"
 
   - kind: workflow
     selector:
@@ -94,7 +91,7 @@ resources:
       entity:
         mappings:
           identifier: ".id | tostring"
-          title: ".name"
+          title: ".name | tostring"
           blueprint: '"githubWorkflow"'
           properties:
             url: ".workflow_url"
@@ -109,4 +106,9 @@ resources:
             updatedAt: .updated_at
             runStartedAt: .run_started_at
           relations:
-            repository: .repo_name
+            repository: .name
+
+
+
+
+

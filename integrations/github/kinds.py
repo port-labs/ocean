@@ -1,10 +1,5 @@
-"""
-kinds.py
---------
-Defines an enumeration for GitHub entity kinds.
-"""
-
 from enum import StrEnum
+
 
 class Kinds(StrEnum):
     REPOSITORY = "repository"
@@ -12,4 +7,3 @@ class Kinds(StrEnum):
     ISSUE = "issue"
     TEAM = "team"
     WORKFLOW = "workflow"
-

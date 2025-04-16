@@ -77,279 +77,270 @@
     "relations": {}
   },
   {
-      "identifier": "githubPullRequest",
-      "title": "GitHub Pull Request",
-      "icon": "GitHub",
-      "schema": {
-        "properties": {
-          "url": {
-            "title": "URL",
-            "type": "string",
-            "format": "url"
-          },
-          "state": {
-            "title": "State",
-            "type": "string",
-            "enum": ["open", "closed"],
-            "enumColors": {
-              "open": "green",
-              "closed": "red"
-            }
-          },
-          "repo": {
-            "title": "Repository",
-            "type": "string"
-          },
-          "author": {
-            "title": "Author",
-            "type": "string"
-          },
-          "number": {
-            "title": "PR Number",
-            "type": "number"
-          },
-          "createdAt": {
-            "title": "Created At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "title": "Updated At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "base": {
-            "title": "Base Branch",
-            "type": "string"
-          },
-          "head": {
-            "title": "Head Branch",
-            "type": "string"
-          },
-          "merged": {
-            "title": "Merged",
-            "type": "boolean"
-          },
-          "draft": {
-            "title": "Draft",
-            "type": "boolean"
+    "identifier": "githubPullRequest",
+    "title": "GitHub Pull Request",
+    "icon": "GitHub",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "state": {
+          "title": "State",
+          "type": "string",
+          "enum": ["open", "closed"],
+          "enumColors": {
+            "open": "green",
+            "closed": "red"
           }
         },
-        "required": ["url", "state", "repo", "author"]
-      },
-      "mirrorProperties": {},
-      "relations": {
+        "author": {
+          "title": "Author",
+          "type": "string"
+        },
+        "number": {
+          "title": "PR Number",
+          "type": "number"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "base": {
+          "title": "Base Branch",
+          "type": "string"
+        },
+        "head": {
+          "title": "Head Branch",
+          "type": "string"
+        },
+        "merged": {
+          "title": "Merged",
+          "type": "boolean"
+        },
+        "draft": {
+          "title": "Draft",
+          "type": "boolean"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "relations": {
+      "repository": {
         "target": "githubRepository",
         "title": "Repository",
         "description": "The repository this pull request belongs to",
         "required": false,
         "many": false
-
-      }
-    },
-    {
-      "identifier": "githubIssue",
-      "title": "GitHub Issue",
-      "icon": "GitHub",
-      "schema": {
-        "properties": {
-          "url": {
-            "title": "URL",
-            "type": "string",
-            "format": "url"
-          },
-          "state": {
-            "title": "State",
-            "type": "string",
-            "enum": ["open", "closed"],
-            "enumColors": {
-              "open": "green",
-              "closed": "red"
-            }
-          },
-          "repo": {
-            "title": "Repository",
-            "type": "string"
-          },
-          "number": {
-            "title": "Issue Number",
-            "type": "number"
-          },
-          "author": {
-            "title": "Author",
-            "type": "string"
-          },
-          "labels": {
-            "title": "Labels",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "createdAt": {
-            "title": "Created At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "title": "Updated At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "body": {
-            "title": "Description",
+    }
+  }
+  },
+  {
+    "identifier": "githubIssue",
+    "title": "GitHub Issue",
+    "icon": "Git",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "state": {
+          "title": "State",
+          "type": "string",
+          "enum": ["open", "closed"],
+          "enumColors": {
+            "open": "green",
+            "closed": "red"
+          }
+        },
+        "number": {
+          "title": "Issue Number",
+          "type": "number"
+        },
+        "author": {
+          "title": "Author",
+          "type": "string"
+        },
+        "labels": {
+          "title": "Labels",
+          "type": "array",
+          "items": {
             "type": "string"
           }
         },
-        "required": ["url", "state", "repo", "number", "author"]
-      },
-      "mirrorProperties": {},
-      "calculationProperties": {
-      },
-      "relations": {
-        "target": "githubRepository",
-        "title": "Repository",
-        "description": "The repository this pull request belongs to",
-        "required": false,
-        "many": false
-      }
-    },
-    {
-      "identifier": "githubTeam",
-      "title": "GitHub Team",
-      "icon": "GitHub",
-      "schema": {
-        "properties": {
-          "url": {
-            "title": "URL",
-            "type": "string",
-            "format": "url"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "privacy": {
-            "title": "Privacy",
-            "type": "string",
-            "enum": ["secret", "closed", "open"]
-          },
-          "organization": {
-            "title": "Organization",
-            "type": "string"
-          },
-          "createdAt": {
-            "title": "Created At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "title": "Updated At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "permission": {
-            "title": "Permission",
-            "type": "string",
-            "enum": ["pull", "push", "admin"]
-          }
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
         },
-        "required": ["url", "organization"]
-      },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "relations": {
-
-      }
-    },
-    {
-      "identifier": "githubWorkflow",
-      "title": "GitHub Workflow",
-      "icon": "GitHub",
-      "schema": {
-        "properties": {
-          "url": {
-            "title": "Workflow URL",
-            "type": "string",
-            "format": "url"
-          },
-          "runUrl": {
-            "title": "Run URL",
-            "type": "string",
-            "format": "url"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string",
-            "enum": ["queued", "in_progress", "completed"],
-            "enumColors": {
-              "queued": "yellow",
-              "in_progress": "blue",
-              "completed": "green"
-            }
-          },
-          "conclusion": {
-            "title": "Conclusion",
-            "type": "string",
-            "enum": ["success", "failure", "neutral", "cancelled", "skipped", "timed_out", "action_required"],
-            "enumColors": {
-              "success": "green",
-              "failure": "red",
-              "neutral": "gray",
-              "cancelled": "gray",
-              "skipped": "yellow",
-              "timed_out": "red",
-              "action_required": "orange"
-            }
-          },
-          "headBranch": {
-            "title": "Head Branch",
-            "type": "string"
-          },
-          "headSha": {
-            "title": "Head SHA",
-            "type": "string"
-          },
-          "runNumber": {
-            "title": "Run Number",
-            "type": "number"
-          },
-          "event": {
-            "title": "Trigger Event",
-            "type": "string"
-          },
-          "createdAt": {
-            "title": "Created At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "title": "Updated At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "runStartedAt": {
-            "title": "Run Started At",
-            "type": "string",
-            "format": "date-time"
-          }
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
         },
-        "required": ["url", "status", "repository"]
-      },
-      "mirrorProperties": {},
-      "calculationProperties": {
-        "statusBadge": {
-          "title": "Status Badge",
-          "calculation": "return `<span class=\"badge ${properties.conclusion === 'success' ? 'badge-success' : properties.conclusion === 'failure' ? 'badge-error' : 'badge-warning'}\">${properties.conclusion || properties.status}</span>`",
+        "body": {
+          "title": "Description",
           "type": "string"
         }
-      },
-      "relations": {
-         "target": "githubRepository",
-         "title": "Repository",
-         "description": "The repository containing this workflow",
-         "required": false,
-         "many": false
       }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "repository": {
+        "target": "githubRepository",
+        "title": "Repository",
+        "description": "The repository this issue belongs to",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "githubTeam",
+    "title": "GitHub Team",
+    "icon": "GitHub",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "privacy": {
+          "title": "Privacy",
+          "type": "string",
+          "enum": ["secret", "closed", "open"]
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "permission": {
+          "title": "Permission",
+          "type": "string",
+          "enum": ["pull", "push", "admin"]
+        }
+      },
+      "required": ["url", "organization"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "githubWorkflow",
+    "title": "GitHub Workflow",
+    "icon": "Git",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Workflow URL",
+          "type": "string",
+          "format": "url"
+        },
+        "runUrl": {
+          "title": "Run URL",
+          "type": "string",
+          "format": "url"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": ["queued", "in_progress", "completed"],
+          "enumColors": {
+            "queued": "yellow",
+            "in_progress": "blue",
+            "completed": "green"
+          }
+        },
+        "conclusion": {
+          "title": "Conclusion",
+          "type": "string",
+          "enum": ["success", "failure", "neutral", "cancelled", "skipped", "timed_out", "action_required"],
+          "enumColors": {
+            "success": "green",
+            "failure": "red",
+            "neutral": "blue",
+            "cancelled": "blue",
+            "skipped": "yellow",
+            "timed_out": "red",
+            "action_required": "orange"
+          }
+        },
+        "headBranch": {
+          "title": "Head Branch",
+          "type": "string"
+        },
+        "headSha": {
+          "title": "Head SHA",
+          "type": "string"
+        },
+        "runNumber": {
+          "title": "Run Number",
+          "type": "number"
+        },
+        "event": {
+          "title": "Trigger Event",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "runStartedAt": {
+          "title": "Run Started At",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "statusBadge": {
+        "title": "Status Badge",
+        "calculation": "return `<span class=\"badge ${properties.conclusion === 'success' ? 'badge-success' : properties.conclusion === 'failure' ? 'badge-error' : 'badge-warning'}\">${properties.conclusion || properties.status}</span>`",
+        "type": "string"
+      }
+    },
+    "relations": {
+      "repository": {
+        "target": "githubRepository",
+        "title": "Repository",
+        "description": "The repository containing this workflow",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
