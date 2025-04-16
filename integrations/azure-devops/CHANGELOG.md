@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.145 (2025-04-09)
+## 0.1.147 (2025-04-16)
 
 
 ### Improvements
 
 - Transitioned live events management to ocean’s `LiveEventProcessorManager` to streamline processing
+
+
+## 0.1.146 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.1.145 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
 
 
 ## 0.1.144 (2025-04-07)
