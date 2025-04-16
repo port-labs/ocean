@@ -5,6 +5,7 @@ from typing import Any, AsyncGenerator, Dict, Optional, Tuple, List
 import httpx
 from port_ocean.utils import http_async_client
 from loguru import logger
+from port_ocean.context.ocean import ocean
 
 ENDPOINT_TEMPLATES = {
     "teams": "/orgs/{org}/teams/{team_slug}",
@@ -13,6 +14,21 @@ ENDPOINT_TEMPLATES = {
     "pull_request": "/repos/{owner}/{repo}/pulls/{pull_number}",
     "workflow_run": "/repos/{owner}/{repo}/actions/runs/{run_id}",
 }
+
+GITHUB_EVENTS = [
+    "push",
+    "pull_request",
+    "issues",
+    "issue_comment",
+    "create",
+    "delete",
+    "fork",
+    "watch",
+    "release",
+    "public",
+    "repository",
+    "member",
+]
 
 
 class GitHubClient:
@@ -32,6 +48,7 @@ class GitHubClient:
         self.max_concurrent_requests = 10
         self._semaphore = asyncio.Semaphore(self.max_concurrent_requests)
         self.max_retries = max_retries
+        self.webhook_url = f"https://api.github.com/orgs/{self.org}/hooks"
 
     @staticmethod
     def _handle_rate_limit(response: httpx.Response) -> float:
@@ -125,59 +142,43 @@ class GitHubClient:
         return None
 
     async def get_organization_repos(
-        self, params: Optional[Dict[str, Any]] = None
+        self
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         endpoint = f"/orgs/{self.org}/repos"
-        if params is None:
-            async for repo in self.get_paginated(endpoint):
-                yield repo
-        else:
-            async for repo in self.get_paginated(endpoint, params=params):
-                yield repo
+        async for repo in self.get_paginated(endpoint):
+            yield repo
+
 
     async def get_pull_requests(
-        self, owner: str, repo: str, params: Optional[Dict[str, Any]] = None
+        self, repo: str
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        endpoint = f"/repos/{owner}/{repo}/pulls"
-        if params is None:
-            async for pr in self.get_paginated(endpoint):
-                yield pr
-        else:
-            async for pr in self.get_paginated(endpoint, params=params):
-                yield pr
+        endpoint = f"/repos/{self.org}/{repo}/pulls"
+        async for pr in self.get_paginated(endpoint):
+            yield pr
+
 
     async def get_issues(
-        self, owner: str, repo: str, params: Optional[Dict[str, Any]] = None
+        self, repo: str
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        endpoint = f"/repos/{owner}/{repo}/issues"
-        if params is None:
-            async for issue in self.get_paginated(endpoint):
-                yield issue
-        else:
-            async for issue in self.get_paginated(endpoint, params=params):
-                yield issue
+        endpoint = f"/repos/{self.org}/{repo}/issues"
+        async for issue in self.get_paginated(endpoint):
+            yield issue
+
 
     async def get_workflows(
-        self, owner: str, repo: str, params: Optional[Dict[str, Any]] = None
+        self, repo: str
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        endpoint = f"/repos/{owner}/{repo}/actions/workflows"
-        if params is None:
-            async for workflow in self.get_paginated(endpoint):
-                yield workflow
-        else:
-            async for workflow in self.get_paginated(endpoint, params=params):
-                yield workflow
+        endpoint = f"/repos/{self.org}/{repo}/actions/workflows"
+        async for workflow in self.get_paginated(endpoint):
+            yield workflow
+
 
     async def get_teams(
-        self, params: Optional[Dict[str, Any]] = None
+        self
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         endpoint = f"/orgs/{self.org}/teams"
-        if params is None:
-            async for team in self.get_paginated(endpoint):
-                yield team
-        else:
-            async for team in self.get_paginated(endpoint, params=params):
-                yield team
+        async for team in self.get_paginated(endpoint):
+            yield team
 
     async def fetch_single_github_resource(
         self, resource_type: str, **kwargs
@@ -193,3 +194,32 @@ class GitHubClient:
         except httpx.HTTPError as exc:
             logger.warning(f"Failed to fetch {resource_type} => {kwargs}: {str(exc)}")
             return
+
+    async def create_github_webhook(self, app_host: str) -> None:
+        webhook_target = f"{app_host}/integration/webhook"
+        await self._ensure_webhook_exists(self.webhook_url, webhook_target, "GitHub organization")
+        github_repo = ocean.integration_config.get("github_repo")
+        if github_repo:
+            repo_hooks_url = f"https://api.github.com/repos/{self.org}/{github_repo}/hooks"
+            await self._ensure_webhook_exists(repo_hooks_url, webhook_target, "GitHub repository")
+
+
+    async def _ensure_webhook_exists(self, webhooks_url: str, webhook_target: str, webhook_type: str) -> None:
+        hooks, resp = await self._send_api_request("GET", url=webhooks_url)
+        for hook in hooks:
+            if hook.get("config", {}).get("url") == webhook_target:
+                logger.info(f"{webhook_type} webhook already exists")
+                return
+        body = {
+            "name": "web",
+            "active": True,
+            "events": GITHUB_EVENTS,
+            "config": {
+                "url": webhook_target,
+                "content_type": "json",
+                "secret": ocean.integration_config.get("github_webhook_secret", "default_secret"),
+                "insecure_ssl": "0"
+            }
+        }
+        await self._send_api_request("POST", webhooks_url, json_data=body)
+        logger.info(f"{webhook_type} webhook created")

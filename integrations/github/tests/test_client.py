@@ -200,7 +200,7 @@ async def test_fetch_repositories(mock_github_client: GitHubClient) -> None:
         mock_github_client, "get_paginated", return_value=make_async_gen(pages)
     ) as mock_paginated:
         repos = []
-        async for page in mock_github_client.get_organization_repos(params=None):
+        async for page in mock_github_client.get_organization_repos():
             repos.extend(page)
         assert repos == [{"id": 1, "name": "repo1"}, {"id": 2, "name": "repo2"}]
         mock_paginated.assert_called_once_with(endpoint)
@@ -219,7 +219,7 @@ async def test_fetch_pull_requests(mock_github_client: GitHubClient) -> None:
     ) as mock_paginated:
         pulls = []
         async for page in mock_github_client.get_pull_requests(
-            owner="test_org", repo=repo_name, params=None
+            repo=repo_name
         ):
             pulls.extend(page)
         assert pulls == [
@@ -242,7 +242,7 @@ async def test_fetch_issues(mock_github_client: GitHubClient) -> None:
     ) as mock_paginated:
         issues = []
         async for page in mock_github_client.get_issues(
-            owner="test_org", repo=repo_name, params=None
+            repo=repo_name
         ):
             issues.extend(page)
         assert issues == [
@@ -260,7 +260,7 @@ async def test_fetch_teams(mock_github_client: GitHubClient) -> None:
         mock_github_client, "get_paginated", return_value=make_async_gen(pages)
     ) as mock_paginated:
         teams = []
-        async for page in mock_github_client.get_teams(params=None):
+        async for page in mock_github_client.get_teams():
             teams.extend(page)
         assert teams == [{"id": 301, "name": "Team A"}, {"id": 302, "name": "Team B"}]
         mock_paginated.assert_called_once_with(endpoint)

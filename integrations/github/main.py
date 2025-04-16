@@ -11,6 +11,13 @@ from webhook_processors.team_webhook_processor import TeamWebhookProcessor
 from webhook_processors.workflow_webhook_processor import WorkflowRunWebhookProcessor
 from webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
 
+async def setup_application() -> None:
+    base_url = ocean.app.base_url
+    if not base_url:
+        return
+
+    client = create_github_client()
+    await client.create_github_webhook(base_url)
 
 @ocean.on_resync(Kinds.REPOSITORY)
 async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -22,26 +29,24 @@ async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kinds.PULL_REQUEST)
 async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
-    org = client.org
     async for repo in client.get_organization_repos():
         for single_repo in repo:
-            repo_name = single_repo.get("name")
+            repo_name = single_repo["name"]
             if not repo_name:
                 continue
-            async for pr in client.get_pull_requests(owner=org, repo=repo_name):
+            async for pr in client.get_pull_requests(repo=repo_name):
                 yield pr
 
 
 @ocean.on_resync(Kinds.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
-    org = client.org
     async for repo in client.get_organization_repos():
         for single_repo in repo:
-            repo_name = single_repo.get("name")
+            repo_name = single_repo["name"]
             if not repo_name:
                 continue
-            async for issue in client.get_issues(owner=org, repo=repo_name):
+            async for issue in client.get_issues(repo=repo_name):
                 if "pull_request" in issue:
                     continue
                 yield issue
@@ -57,19 +62,24 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kinds.WORKFLOW)
 async def on_resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
-    org = client.org
     async for repo in client.get_organization_repos():
         for single_repo in repo:
-            repo_name = single_repo.get("name")
+            repo_name = single_repo["name"]
             if not repo_name:
                 continue
-            async for workflow in client.get_workflows(owner=org, repo=repo_name):
+            async for workflow in client.get_workflows(repo=repo_name):
                 yield workflow
 
 
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting GitHub integration")
+
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    await setup_application()
 
 
 @ocean.router.get("/health")
