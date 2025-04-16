@@ -125,3 +125,9 @@ variable "allow_incoming_requests" {
   type = bool
   default = true
 }
+
+variable "tags" {
+  description = "A map of tags to apply to all resources"
+  type        = map(string)
+  default     = {}
+}

@@ -142,6 +142,7 @@ variable "integration" {
   })
 }
 
+// TODO: var not used - delete or implment
 variable "lb_targ_group_arn" {
   type    = string
   default = ""
@@ -158,4 +159,10 @@ variable "additional_policy_statements" {
 variable "allow_incoming_requests" {
   type = bool
   default = true
+}
+
+variable "tags" {
+  description = "A map of tags to apply to all resources"
+  type        = map(string)
+  default     = {}
 }
