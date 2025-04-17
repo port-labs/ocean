@@ -1,0 +1,26 @@
+[
+    {
+      "identifier": "apiItem",
+      "title": "API Item",
+      "icon": "Document",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "url": {
+            "type": "string",
+            "title": "URL",
+            "format": "url"
+          }
+        }
+      },
+      "calculationProperties": {}
+    }
+  ]
+  

@@ -1,0 +1,20 @@
+type: custom-api
+description: Ingests structured data from a custom API endpoint into Port
+icon: Cloud
+features:
+  - type: exporter
+section: Monitoring
+
+resources:
+  - kind: apiItem
+
+configurations:
+  - name: api_url
+    type: url
+    required: true
+    description: The API endpoint to ingest from
+  - name: auth_token
+    type: string
+    sensitive: true
+    required: false
+    description: Optional Bearer token for authorization
