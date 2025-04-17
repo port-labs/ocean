@@ -12,15 +12,16 @@ data "jsonschema_validator" "event_listener_validation" {
 }
 
 module "port_ocean_ecs_lb" {
-  count                    = var.allow_incoming_requests ? 1 : 0
-  source                   = "./modules/ecs_lb"
-  vpc_id                   = var.vpc_id
-  subnets                  = var.subnets
-  create_egress_default_sg = var.create_egress_default_sg
-  certificate_domain_name  = var.certificate_domain_name
-  create_default_sg        = var.create_default_sg
-  is_internal              = var.is_internal
-  tags                     = local.tags
+  count                      = var.allow_incoming_requests ? 1 : 0
+  source                     = "./modules/ecs_lb"
+  vpc_id                     = var.vpc_id
+  subnets                    = var.subnets
+  create_egress_default_sg   = var.create_egress_default_sg
+  certificate_domain_name    = var.certificate_domain_name
+  create_default_sg          = var.create_default_sg
+  is_internal                = var.is_internal
+  additional_security_groups = local.security_groups
+  tags                       = local.tags
 }
 
 module "port_ocean_ecs" {
