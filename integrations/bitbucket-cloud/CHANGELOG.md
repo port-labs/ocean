@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.10 (2025-04-15)
+
+
+### Features
+
+- Added support for live events for file kind and file:// prefix in file
+
+
+## 0.1.9 (2025-04-15)
+
+
+### Improvements
+
+- Improved `integration.py` to handle to use custom jq processor while initializing the integration
+
+
+## 0.1.8 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.1.7 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
+## 0.1.6 (2025-04-10)
+
+
+### Improvements
+
+- Added pull request as a default resource 
+- Improved descriptions for configurations defined in `spec.yaml`
+
+
+## 0.1.5 (2025-04-08)
+
+
+### Features
+
+- Added support for ingesting file kind and parsing JSON and YAML files
+
+
+## 0.1.4 (2025-04-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.2
+
+
+## 0.1.3 (2025-04-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.1
+
+
 ## 0.1.2 (2025-03-27)
 
 ### Improvements

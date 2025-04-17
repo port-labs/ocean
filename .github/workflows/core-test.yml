@@ -1,6 +1,9 @@
 name: 🌊 Ocean Core Tests
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
 
@@ -31,7 +34,7 @@ jobs:
 
       - name: Unit Test Core
         env:
-          PYTEST_ADDOPTS: --junitxml=junit/unit-test-results-ocean/core.xml
+          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/unit-test-results-ocean/core.xml
         run: |
           make test
 
@@ -50,7 +53,7 @@ jobs:
 
       - name: Smoke Test Core
         env:
-          PYTEST_ADDOPTS: --junitxml=junit/smoke-test-results-ocean/core.xml
+          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
@@ -61,7 +64,7 @@ jobs:
       - name: Cleanup Smoke Test
         if: always()
         env:
-          PYTEST_ADDOPTS: --junitxml=junit/smoke-test-results-ocean/core.xml
+          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
@@ -77,7 +80,119 @@ jobs:
       - name: Test all integrations with current core
         run: |
           echo "Testing all integrations with local core"
-          SCRIPT_TO_RUN="PYTEST_ADDOPTS=--junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml make test" make execute/all
+          SCRIPT_TO_RUN="PYTEST_ADDOPTS=\"--cov --cov-report= --cov-append --junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml\" make test" make execute/all
+
+      - name: Get PR_NUMBER
+        id: pr-number
+        run: |
+          if [ ! -z ${{ inputs.PR_NUMBER }} ]; then
+            echo "PR_NUMBER=${{ inputs.PR_NUMBER }}" >> $GITHUB_OUTPUT
+          elif [ ! -z ${{ github.event.pull_request.number }} ]; then
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else
+            echo "PR_NUMBER=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Produce coverage report
+        run: |
+          mkdir -p coverage-merge
+          i=0
+          find . -type f -name ".coverage" | while read -r file; do
+            i=$((i + 1))
+            cp "$file" "coverage-merge/.coverage.$i"
+          done
+          make coverage
+
+      - name: Upload coverage report
+        id: upload-coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov
+
+      - name: Set repo code coverage percentage by the percentage of statements covered in the tests
+        id: set-stmts-coverage
+        run: |
+          stmts=$(jq '.totals.percent_covered | . * 100 | round | . / 100' coverage.json)
+          echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
+
+      - name: Comment PR with code coverage summary
+        uses: actions/github-script@v7
+        env:
+          CODE_COVERAGE_ARTIFACT_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
+          PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Code Coverage Artifact 📈: ${{ env.CODE_COVERAGE_ARTIFACT_URL }}
+            #### Code Coverage Total Percentage: \`${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}%\``;
+
+            github.rest.issues.createComment({
+              issue_number: ${{ env.PR_NUMBER }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Get current repo coverage percentage from Port
+        uses: port-labs/port-github-action@v1
+        id: get-current-coverage
+        with:
+          clientId: ${{ secrets.PORT_MAIN_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_MAIN_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: GET
+          identifier: ocean
+          blueprint: repository
+
+      - name: Set current code coverage
+        id: set-current-coverage
+        run: echo "CURRENT_COVERAGE=${{ fromJson(steps.get-current-coverage.outputs.entity).properties.coverage_percent }}" >> $GITHUB_OUTPUT
+
+      - name: Comment if Coverage Regression
+        if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }}
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
+          CURRENT_COVERAGE: ${{ steps.set-current-coverage.outputs.CURRENT_COVERAGE }}
+          NEW_COVERAGE: ${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `🚨 The new code coverage percentage is lower than the current one. Current coverage: \`${{ env.CURRENT_COVERAGE }}\`\n While the new one is: \`${{ env.NEW_COVERAGE }}\``;
+
+            github.rest.issues.createComment({
+              issue_number: ${{ env.PR_NUMBER }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Calculate minimum required coverage with tolerance
+        run: |
+          STMT_COVERAGE=${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}
+          THRESHOLD_DELTA=${{ vars.COVERAGE_THRESHOLD_DELTA }}
+          MIN_REQUIRED=$(echo "$STMT_COVERAGE + $THRESHOLD_DELTA" | bc)
+          echo "MIN_REQUIRED_COVERAGE=$MIN_REQUIRED" >> $GITHUB_ENV
+
+      - name: Fail PR if current code coverage percentage is higher than the new one
+        if: ${{ (fromJson(env.MIN_REQUIRED_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true') }}
+        run: exit 1
+
+      - name: Update service code coverage percentage in Port
+        if: ${{ (github.event_name == 'push') }}
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_MAIN_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_MAIN_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          identifier: ocean
+          blueprint: repository
+          properties: |-
+            {
+              "coverage_percent": "${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}"
+            }
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5

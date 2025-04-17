@@ -12,5 +12,5 @@ resources:
           blueprint: '"service"'
           properties:
             url: .web_url
-            description: .description
-            defaultBranch: .default_branch
+            readme: file://README.md
+            language: .__languages | to_entries | max_by(.value) | .key
