@@ -85,7 +85,7 @@ async def test_get_all_services_multiple_pages(
 
 
 async def generate_service_response(num_of_pages: int) -> list[dict[str, Any]]:
-    pages = []
+    pages: list[dict[str, Any]] = []
     for page in range(num_of_pages):
         pages.append(
             {
@@ -94,5 +94,6 @@ async def generate_service_response(num_of_pages: int) -> list[dict[str, Any]]:
             }
         )
         if page < num_of_pages:
-            pages[page]["meta"].update({"nextPage": page + 1})
+            meta_dict: dict[str, Any] = pages[page]["meta"]
+            meta_dict.update({"nextPage": page + 1})
     return pages
