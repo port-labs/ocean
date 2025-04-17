@@ -1,0 +1,245 @@
+[
+  {
+    "identifier": "ghRepo",
+    "title": "Repository",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "url": {
+          "type": "string",
+          "format": "url",
+          "title": "Repository URL"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "ghPR",
+    "title": "Pull Request",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "creator": {
+          "type": "string",
+          "title": "Creator"
+        },
+        "assignees": {
+          "type": "array",
+          "title": "Assignees"
+        },
+        "reviewers": {
+          "type": "array",
+          "title": "Reviewers"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["merged", "open", "closed"],
+          "enumColors": {
+            "merged": "purple",
+            "open": "green",
+            "closed": "red"
+          }
+        },
+        "ClosedAt": {
+          "type": "string",
+          "title": "Closed At",
+          "format": "date-time"
+        },
+        "UpdatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        },
+        "MergedAt": {
+          "type": "string",
+          "title": "Merged At",
+          "format": "date-time"
+        },
+        "CreatedAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Link"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "days_old": {
+        "title": "Days Old",
+        "icon": "DefaultProperty",
+        "calculation": "(now / 86400) - (.properties.createdAt | capture(\"(?<date>\\\\d{4}-\\\\d{2}-\\\\d{2})\") | .date | strptime(\"%Y-%m-%d\") | mktime / 86400) | floor",
+        "type": "number"
+      }
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "ghIssues",
+    "title": "Issue",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "creator": {
+          "title": "Creator",
+          "type": "string"
+        },
+        "assignees": {
+          "title": "Assignees",
+          "type": "array"
+        },
+        "labels": {
+          "title": "Labels",
+          "type": "array"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": ["open", "closed"],
+          "enumColors": {
+            "open": "green",
+            "closed": "purple"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "title": "Closed At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "format": "markdown"
+        },
+        "issueNumber": {
+          "title": "Issue Number",
+          "type": "number"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "ghTeam",
+    "title": "GitHub Team",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "link": {
+          "title": "Link",
+          "icon": "Link",
+          "type": "string",
+          "format": "url"
+        },
+        "permission": {
+          "title": "Permission",
+          "type": "string"
+        },
+        "notification_setting": {
+          "title": "Notification Setting",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "ghWorkflow",
+    "title": "Workflow",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "active",
+            "deleted",
+            "disabled_fork",
+            "disabled_inactivity",
+            "disabled_manually"
+          ],
+          "enumColors": {
+            "active": "green",
+            "deleted": "red"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "deletedAt": {
+          "title": "Deleted At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  }
+]
