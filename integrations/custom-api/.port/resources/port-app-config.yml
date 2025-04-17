@@ -1,0 +1,17 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
+resources:
+  - kind: apiItem
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"apiItem"'
+          properties:
+            name: .name
+            status: .status
+            url: .url
