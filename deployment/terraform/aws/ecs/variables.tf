@@ -26,6 +26,7 @@ variable "additional_secrets" {
 }
 
 variable "subnets" {
+  description = "List of subnet IDs where the ECS tasks and load balancer will be deployed. Use private subnets when 'is_internal' is true and public subnets when 'is_internal' is false."
   type = list(string)
 }
 
