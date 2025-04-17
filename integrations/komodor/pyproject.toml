@@ -6,7 +6,7 @@ authors = ["Yotam Dekel <yotam@komodor.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = "^0.22.4"
+port_ocean = {extras = ["cli"], version = "^0.22.4"}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
