@@ -1,6 +1,6 @@
 from loguru import logger
 
-from integrations.komodor.models import KomoObjectKind
+from models import KomoObjectKind
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
