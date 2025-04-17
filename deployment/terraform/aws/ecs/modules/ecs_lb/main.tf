@@ -45,7 +45,7 @@ resource "aws_lb" "ocean_lb" {
   internal           = var.is_internal
   load_balancer_type = "application"
   security_groups = var.create_default_sg ? concat(
-    var.additional_security_groups, var.create_default_sg ? [aws_security_group.default_ocean_sg[0].id] : []
+    var.additional_security_groups, [aws_security_group.default_ocean_sg[0].id]
   ) : var.additional_security_groups
   subnets = var.subnets
   tags    = local.tags
