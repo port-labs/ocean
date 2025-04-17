@@ -418,6 +418,30 @@ async def test_map_entities_compared_with_port_no_port_entities_all_entities_are
 
 
 @pytest.mark.asyncio
+async def test_map_entities_compared_with_port_returns_original_entities_when_using_team_search_query(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+) -> None:
+
+    team_search_query = {
+        "combinator": "and",
+        "rules": [{"property": "$team", "operator": "=", "value": "my-team"}],
+    }
+
+    entities = [
+        create_entity("entity_1", "service", {}, False, team=team_search_query),
+        create_entity("entity_2", "service", {}, False, team=team_search_query),
+    ]
+
+    changed_entities = await mock_sync_raw_mixin._map_entities_compared_with_port(
+        entities, mock_resource_config, UserAgentType.exporter
+    )
+
+    assert len(changed_entities) == 2
+    assert changed_entities == entities
+
+
+@pytest.mark.asyncio
 async def test_map_entities_compared_with_port_with_existing_entities_only_changed_third_party_entities_are_mapped(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_ocean: Ocean,
