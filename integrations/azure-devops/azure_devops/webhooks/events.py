@@ -9,7 +9,3 @@ class PullRequestEvents(StrEnum):
 class PushEvents(StrEnum):
     PUSH = "git.push"
 
-
-if __name__ == "__main__":
-    print(bool(PullRequestEvents("git.pullrequest.created")))
-    print(bool(PushEvents("git.nothing")))
