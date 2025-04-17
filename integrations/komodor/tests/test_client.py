@@ -2,7 +2,7 @@ import pytest
 from typing import Any
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from client import KomodorClient, DEFAULT_PAGE_SIZE
+from client import KomodorClient, SERVICES_PAGE_SIZE
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
@@ -35,7 +35,7 @@ def mock_komodor_client() -> KomodorClient:
 @pytest.mark.asyncio
 async def test_get_all_services(mock_komodor_client: KomodorClient) -> None:
     pages = await generate_service_response(NUM_OF_PAGES)
-    page_data = [page["services"] for entry in pages for page in entry["data"]]
+    page_data = [entry["data"]["services"] for entry in pages]
     api_response = {
         "data": {"services": page_data},
         "meta": {"page": 0, "page_size": NUM_OF_PAGES},
@@ -53,10 +53,10 @@ async def test_get_all_services(mock_komodor_client: KomodorClient) -> None:
         assert len(services) == NUM_OF_PAGES
         assert services == page_data
         mock_request.assert_called_with(
-            f"{mock_komodor_client.api_url}/services/search",
+            url=f"{mock_komodor_client.api_url}/services/search",
             data={
-                "kind": ["Deployment"],
-                "pagination": {"pageSize": DEFAULT_PAGE_SIZE, "page": 0},
+                "kind": ["Deployment", "StatefulSet", "DaemonSet", "Rollout"],
+                "pagination": {"pageSize": SERVICES_PAGE_SIZE, "page": 0},
             },
             method="POST",
         )
@@ -66,12 +66,13 @@ async def test_get_all_services(mock_komodor_client: KomodorClient) -> None:
 async def test_get_all_services_multiple_pages(
     mock_komodor_client: KomodorClient,
 ) -> None:
+
     pages = await generate_service_response(NUM_OF_PAGES)
 
     with patch.object(
         mock_komodor_client, "_send_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = pages
+        mock_request.side_effect = [pages[0], pages[1], pages[2]]
 
         services = []
         async for service_batch in mock_komodor_client.get_all_services():
@@ -79,9 +80,10 @@ async def test_get_all_services_multiple_pages(
 
         assert len(services) == NUM_OF_PAGES
         assert services == [
-            page["services"] for entry in pages for page in entry["data"]
+            service for entry in pages for service in entry["data"]["services"]
         ]
-        assert mock_request.call_count == 4
+
+        assert mock_request.call_count == NUM_OF_PAGES
 
 
 async def generate_service_response(num_of_pages: int) -> list[dict[str, Any]]:
@@ -93,7 +95,6 @@ async def generate_service_response(num_of_pages: int) -> list[dict[str, Any]]:
                 "meta": {"page": page},
             }
         )
-        if page < num_of_pages:
-            meta_dict: dict[str, Any] = pages[page]["meta"]
-            meta_dict.update({"nextPage": page + 1})
+        if page + 1 < num_of_pages:
+            pages[page]["meta"].update({"nextPage": page + 1})
     return pages
