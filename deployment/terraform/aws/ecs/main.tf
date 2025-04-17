@@ -20,7 +20,7 @@ module "port_ocean_ecs_lb" {
   certificate_domain_name    = var.certificate_domain_name
   create_default_sg          = var.create_default_sg
   is_internal                = var.is_internal
-  additional_security_groups = local.security_groups
+  additional_security_groups = var.additional_security_groups
   tags                       = local.tags
 }
 
