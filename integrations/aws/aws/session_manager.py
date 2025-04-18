@@ -1,4 +1,5 @@
 from typing import Any
+import asyncio
 import typing
 import aioboto3
 from aws.aws_credentials import AwsCredentials
@@ -135,6 +136,7 @@ class SessionManager:
         ):
             try:
                 paginator = organizations_client.get_paginator("list_accounts")
+                tasks = []
                 async for page in paginator.paginate():
                     for account in page["Accounts"]:
                         if account["Id"] == self._application_account_id:
@@ -142,9 +144,17 @@ class SessionManager:
                             # Replace the Temp account details with the current account details
                             self._aws_accessible_accounts[0] = account
                             continue
-                        await self._assume_role_and_update_credentials(
+                        tasks.append(self._assume_role_and_update_credentials(
                             sts_client, account
-                        )
+                        ))
+                        if len(tasks) >= 20:
+                            await asyncio.gather(*tasks)
+                            tasks.clear()
+
+                if tasks:
+                    await asyncio.gather(*tasks)
+                    tasks.clear()
+
             except organizations_client.exceptions.AccessDeniedException:
                 logger.warning(
                     "Caller is not a member of an AWS organization. Assuming role in the current account."

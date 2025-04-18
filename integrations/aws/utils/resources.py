@@ -186,16 +186,9 @@ async def process_resources_chunk(
 async def resync_sqs_queue(
     kind: str,
     session: aioboto3.Session,
-    resource_config: AWSResourceConfig,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
-    resource_config_selector = resource_config.selector
-    if not resource_config_selector.is_region_allowed(region):
-        logger.info(
-            f"Skipping resyncing {kind} in region {region} in account {account_id} because it's not allowed"
-        )
-        return
 
     async with (
         session.client(
@@ -323,11 +316,8 @@ async def resync_custom_kind(
 async def resync_cloudcontrol(
     kind: str,
     session: aioboto3.Session,
-    resource_config: AWSResourceConfig,
+    use_get_resource_api: bool,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    resource_config_selector = resource_config.selector
-    use_get_resource_api = resource_config_selector.use_get_resource_api
-
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
 

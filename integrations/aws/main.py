@@ -119,8 +119,7 @@ async def resync_resources_for_account(
     tasks: list[Awaitable] = []
     async for session in credentials.create_session_for_each_region(allowed_regions):
         try:
-            tasks.append(resync_func(kind, session, aws_resource_config))
-
+            tasks.append(resync_func(kind = kind, session = session))
             if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
                 async for batch in _process_tasks(
                     tasks, failed_regions, errors, session.region_name
@@ -179,9 +178,12 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
 
     tasks = []
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    use_get_resource_api = aws_resource_config.selector.use_get_resource_api
+    resync_cloud_controlfunc = functools.partial(resync_cloudcontrol, use_get_resource_api = use_get_resource_api)
     async for credentials in get_accounts():
         tasks.append(
-            resync_resources_for_account(credentials, kind, resync_cloudcontrol)
+            resync_resources_for_account(credentials, kind, resync_cloud_controlfunc)
         )
 
         if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process 10 at a time
@@ -202,14 +204,13 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER)
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
     elasticache_resync_func = functools.partial(
         resync_custom_kind,
         service_name="elasticache",
         describe_method="describe_cache_clusters",
-        result_key="CacheClusters",
-        pagination_token_name="Marker",
+        list_param="CacheClusters",
+        marker_param="Marker",
     )
 
     tasks = []
@@ -218,7 +219,6 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             resync_resources_for_account(
                 credentials=credentials,
                 kind=kind,
-                aws_resource_config=aws_resource_config,
                 resync_func=elasticache_resync_func,
             )
         )
@@ -239,8 +239,8 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         resync_custom_kind,
         service_name="elbv2",
         describe_method="describe_load_balancers",
-        result_key="LoadBalancers",
-        pagination_token_name="Marker",
+        list_param="LoadBalancers",
+        marker_param="Marker",
     )
 
     tasks = []
@@ -269,8 +269,8 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         resync_custom_kind,
         service_name="acm",
         describe_method="list_certificates",
-        result_key="CertificateSummaryList",
-        pagination_token_name="NextToken",
+        list_param="CertificateSummaryList",
+        marker_param="NextToken",
     )
 
     tasks = []
@@ -299,9 +299,9 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         resync_custom_kind,
         service_name="ec2",
         describe_method="describe_images",
-        result_key="Images",
-        pagination_token_name="NextToken",
-        extra_params={"Owners": ["self"]},
+        list_param="Images",
+        marker_param="NextToken",
+        describe_method_params={"Owners": ["self"]},
     )
 
     tasks = []
@@ -330,8 +330,8 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         resync_custom_kind,
         service_name="cloudformation",
         describe_method="describe_stacks",
-        result_key="Stacks",
-        pagination_token_name="NextToken",
+        list_param="Stacks",
+        marker_param="NextToken",
     )
 
     tasks = []
