@@ -136,3 +136,136 @@ class AwsCredentials:
         regions = allowed_regions or self.enabled_regions
         for region in regions:
             yield await self.create_session(region)
+
+
+# from __future__ import annotations
+# import asyncio, aioboto3
+# from aiobotocore.credentials import AioRefreshableCredentials
+# from aiobotocore.session import get_session
+# from loguru import logger
+# from datetime import datetime, timezone, timedelta
+# from functools import lru_cache
+# import asyncio
+
+
+# class AwsCredentials:
+#     def __init__(self, *, account_id: str,
+#                  access_key_id: str | None = None,
+#                  secret_access_key: str | None = None,
+#                  role_arn: str | None = None,
+#                  session_name: str | None = "port‑session",
+#                  duration: int = 3600):
+#         self.account_id = account_id
+#         self.role_arn = role_arn
+#         self.session_name = session_name
+#         self.duration = duration
+#         self._base_credentials = {
+#             "aws_access_key_id": access_key_id,
+#             "aws_secret_access_key": secret_access_key,
+#         }
+
+#         # one aioboto3.Session for *all* calls without a region override
+#         self._base_session: aioboto3.Session = aioboto3.Session(
+#             **self._base_credentials
+#         )
+#         self._session_cache: dict[str, aioboto3.Session] = {}
+#         self._sts_session: aioboto3.Session | None = None     # reused in refresh
+
+#         self.enabled_regions: list[str] = []
+#         self.default_regions: list[str] = []
+#     # ---------- helpers --------------------------------------------------
+
+#     async def update_enabled_regions(self) -> None:
+#         session = await self.create_session()
+#         async with session.client("account") as account_client:
+#             response = await account_client.list_regions(
+#                 RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"]
+#             )
+#             regions = response.get("Regions", [])
+#             self.enabled_regions = [region["RegionName"] for region in regions]
+#             self.default_regions = [
+#                 region["RegionName"]
+#                 for region in regions
+#                 if region["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
+#             ]
+
+#     def _expiry_iso(self) -> str:
+#         return (datetime.now(timezone.utc) + timedelta(seconds=self.duration)).isoformat()
+
+#     async def _sts(self):
+#         """Get or create the session used only for AssumeRole."""
+#         if self._sts_session is None:
+#             self._sts_session = aioboto3.Session(**self._base_credentials)
+#         return self._sts_session
+
+#     # ---------- refresh ---------------------------------------------------
+
+#     async def _refresh(self) -> dict[str, str]:
+#         if self.role_arn:
+#             async with (await self._sts()).client("sts") as sts:
+#                 creds = (await sts.assume_role(
+#                     RoleArn=self.role_arn,
+#                     RoleSessionName=self.session_name,
+#                     DurationSeconds=self.duration,
+#                 ))["Credentials"]
+#             expiry = creds["Expiration"] - timedelta(minutes=5)
+#             return {
+#                 "access_key": creds["AccessKeyId"],
+#                 "secret_key": creds["SecretAccessKey"],
+#                 "token": creds["SessionToken"],
+#                 "expiry_time": expiry.isoformat(),
+#             }
+#         # plain credentials path
+#         c = await (await self._base_session.get_credentials()).get_frozen_credentials()
+#         return {
+#             "access_key": c.access_key,
+#             "secret_key": c.secret_key,
+#             "token": c.token,
+#             "expiry_time": self._expiry_iso(),
+#         }
+
+#     # ---------- public API -----------------------------------------------
+
+#     async def create_session(self, region: str | None = None) -> aioboto3.Session:
+#         """
+#         Return (and cache) a refreshable aioboto3.Session for the given region.
+#         """
+#         key = region or "*"
+#         if key in self._session_cache:
+#             return self._session_cache[key]
+
+#         creds = AioRefreshableCredentials.create_from_metadata(
+#             metadata=await self._refresh(),
+#             refresh_using=self._refresh,
+#             method="sts-assume-role",
+#         )
+
+#         bc_session = get_session()
+#         bc_session._credentials = creds            # noqa: SLF001 – accepted hack
+#         if region:
+#             bc_session.set_config_variable("region", region)
+
+#         sess = aioboto3.Session(botocore_session=bc_session)
+#         self._session_cache[key] = sess
+#         return sess
+
+
+#     async def create_session_for_each_region(self, allowed_regions: Optional[Iterable[str]] = None) -> AsyncIterator[aioboto3.Session]:
+#         regions = allowed_regions or self.enabled_regions
+#         for region in regions:
+#             yield await self.create_session(region)
+
+
+#     async def close(self) -> None:
+#         """Clean up all connector pools early."""
+#         async def _safe_close(sess: aioboto3.Session):
+#             try:
+#                 await sess._session.close()        # aiobotocore API
+#             except Exception as exc:               # noqa: BLE001
+#                 logger.warning(f"Failed to close session: {exc}")
+
+#         await asyncio.gather(
+#             *[_safe_close(s) for s in self._session_cache.values()],
+#             _safe_close(self._base_session),
+#             _safe_close(self._sts_session) if self._sts_session else asyncio.sleep(0),
+#         )

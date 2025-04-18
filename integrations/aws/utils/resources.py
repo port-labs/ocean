@@ -19,7 +19,6 @@ from utils.aws import get_sessions
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.aws import _session_manager
-from utils.overrides import AWSResourceConfig
 from botocore.config import Config as Boto3Config
 from botocore.exceptions import ClientError
 

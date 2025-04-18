@@ -1,6 +1,6 @@
 import json
 import typing
-from typing import Optional, Iterable, Callable, Awaitable
+from typing import Optional, Iterable, Callable, Any, AsyncIterator
 
 from fastapi import Response, status
 import fastapi
@@ -22,7 +22,6 @@ from utils.resources import (
 from utils.aws import (
     describe_accessible_accounts,
     get_accounts,
-    get_sessions,
     initialize_access_credentials,
     validate_request,
 )
@@ -54,13 +53,13 @@ CONCURRENT_RESYNC_REGIONS = 10
 async def _handle_global_resource_resync(
     kind: str,
     credentials: AwsCredentials,
+    resync_func: Callable[[str, Session], ASYNC_GENERATOR_RESYNC_TYPE],
     allowed_regions: Optional[Iterable[str]] = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
     async for session in credentials.create_session_for_each_region(allowed_regions):
         try:
-            async for batch in resync_cloudcontrol(kind, session, aws_resource_config):
+            async for batch in resync_func(kind, session):
                 yield batch
             return
         except Exception as e:
@@ -73,9 +72,7 @@ async def _handle_global_resource_resync(
 async def resync_resources_for_account(
     credentials: AwsCredentials,
     kind: str,
-    resync_func: Callable[
-        [str, Session, AWSResourceConfig], ASYNC_GENERATOR_RESYNC_TYPE
-    ],
+    resync_func: Callable[[str, Session], ASYNC_GENERATOR_RESYNC_TYPE],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Fetch and yield batches of resources for a single AWS account.
 
@@ -110,16 +107,16 @@ async def resync_resources_for_account(
             f"Processing global resource {kind} for account {credentials.account_id}"
         )
         async for batch in _handle_global_resource_resync(
-            kind, credentials, allowed_regions
+            kind, credentials, resync_func, allowed_regions
         ):
             yield batch
         return
 
     # Process regional resources
-    tasks: list[Awaitable] = []
+    tasks: list[AsyncIterator[list[dict[Any, Any]]]] = []
     async for session in credentials.create_session_for_each_region(allowed_regions):
         try:
-            tasks.append(resync_func(kind = kind, session = session))
+            tasks.append(resync_func(kind, session))
             if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
                 async for batch in _process_tasks(
                     tasks, failed_regions, errors, session.region_name
@@ -152,7 +149,7 @@ async def resync_resources_for_account(
 
 
 async def _process_tasks(
-    tasks: list[Awaitable],
+    tasks: list[AsyncIterator[list[dict[Any, Any]]]],
     failed_regions: list[str],
     errors: list[Exception],
     current_region: str,
@@ -180,7 +177,9 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     tasks = []
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     use_get_resource_api = aws_resource_config.selector.use_get_resource_api
-    resync_cloud_controlfunc = functools.partial(resync_cloudcontrol, use_get_resource_api = use_get_resource_api)
+    resync_cloud_controlfunc = functools.partial(
+        resync_cloudcontrol, use_get_resource_api=use_get_resource_api
+    )
     async for credentials in get_accounts():
         tasks.append(
             resync_resources_for_account(credentials, kind, resync_cloud_controlfunc)

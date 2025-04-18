@@ -44,7 +44,7 @@ async def test_resync_cloudcontrol(
 ) -> None:
     """Test that resync_cloudcontrol produces valid output."""
     # Configure the mock resource config to use get_resource_api
-    mock_resource_config.selector.use_get_resource_api = True
+    use_get_resource_api = True
 
     with patch(
         "utils.resources._session_manager.find_account_id_by_session",
@@ -53,7 +53,7 @@ async def test_resync_cloudcontrol(
         async for result in resync_cloudcontrol(
             kind="AWS::S3::Bucket",
             session=mock_session,
-            resource_config=mock_resource_config,
+            use_get_resource_api=use_get_resource_api,
         ):
             assert isinstance(result, list)
             for resource in result:
@@ -71,7 +71,7 @@ async def test_resync_cloudcontrol_without_get_resource_api(
 ) -> None:
     """Test that resync_cloudcontrol produces valid output when not using get_resource_api."""
     # Configure the mock resource config to not use get_resource_api
-    mock_resource_config.selector.use_get_resource_api = False
+    use_get_resource_api = False
 
     with patch(
         "utils.resources._session_manager.find_account_id_by_session",
@@ -80,7 +80,7 @@ async def test_resync_cloudcontrol_without_get_resource_api(
         async for result in resync_cloudcontrol(
             kind="AWS::S3::Bucket",
             session=mock_session,
-            resource_config=mock_resource_config,
+            use_get_resource_api=use_get_resource_api,
         ):
             assert isinstance(result, list)
             for resource in result:

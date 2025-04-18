@@ -4,7 +4,6 @@ import aioboto3
 from starlette.requests import Request
 
 from port_ocean.context.ocean import ocean
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from aws.aws_credentials import AwsCredentials
 from aws.session_manager import SessionManager

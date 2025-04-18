@@ -144,9 +144,11 @@ class SessionManager:
                             # Replace the Temp account details with the current account details
                             self._aws_accessible_accounts[0] = account
                             continue
-                        tasks.append(self._assume_role_and_update_credentials(
-                            sts_client, account
-                        ))
+                        tasks.append(
+                            self._assume_role_and_update_credentials(
+                                sts_client, account
+                            )
+                        )
                         if len(tasks) >= 20:
                             await asyncio.gather(*tasks)
                             tasks.clear()
