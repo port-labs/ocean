@@ -67,7 +67,6 @@ async def test_resync_cloudcontrol(
 async def test_resync_cloudcontrol_without_get_resource_api(
     mock_session: AsyncMock,
     mock_account_id: str,
-    mock_resource_config: MagicMock,
 ) -> None:
     """Test that resync_cloudcontrol produces valid output when not using get_resource_api."""
     # Configure the mock resource config to not use get_resource_api
