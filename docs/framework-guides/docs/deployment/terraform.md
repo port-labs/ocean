@@ -26,8 +26,11 @@ provider.
 
 <UIInstallation/>
 
-All installation options can be found in the Ocean integration factory Terraform
-provider [examples](https://registry.terraform.io/modules/port-labs/integration-factory/ocean/latest).
+For detailed installation instructions and examples, please refer to the official Port documentation:
+
+- [AWS ECS Installation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws/installations/installation?installation-platforms=terraform)
+- [Azure ContainerApp Installation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/azure/installation?installation-methods=terraform)
+- [Google Cloud CloudRun Installation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/gcp/installation?installation-platforms=terraform)
 
 <IntegrationsLibraryLink/>
 
