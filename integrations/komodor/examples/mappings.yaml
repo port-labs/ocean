@@ -46,7 +46,7 @@ resources:
             workload_name: .komodorUid | split("|") | .[3]
   - kind: komodorHealthMonitoring
     selector:
-      query: (.komodorUid | split("|") | length) == 4
+      query: ( .komodorUid | split("|") as $parts | (length == 4 and all($parts[]; length > 0)) )
     port:
       entity:
         mappings:
