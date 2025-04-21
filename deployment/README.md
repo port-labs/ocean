@@ -8,9 +8,9 @@ This deployment code is the generic, integration-agnostic deployment framework f
 
 For the three cloud provider integrations (AWS, GCP, and Azure), we maintain dedicated repositories that handle both the integration and the cloud infrastructure deployment:
 
-- [AWS Ocean Integration](https://github.com/port-labs/terraform-aws-ocean)
-- [GCP Ocean Integration](https://github.com/port-labs/terraform-gcp-ocean)
-- [Azure Ocean Integration](https://github.com/port-labs/terraform-azure-ocean)
+- [AWS Ocean Integration](https://github.com/port-labs/terraform-ocean-integration-factory/tree/main/examples/aws_container_app)
+- [GCP Ocean Integration](https://github.com/port-labs/terraform-ocean-integration-factory/tree/main/examples/azure_container_app_azure_integration)
+- [Azure Ocean Integration](https://github.com/port-labs/terraform-ocean-integration-factory/tree/main/examples/gcp_cloud_run)
 
 ## Purpose
 
