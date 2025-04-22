@@ -287,18 +287,27 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     Includes both the groups and their member resources.
     """
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    tasks = [
-        semaphore_async_iterator(
-            semaphore,
-            functools.partial(
-                resync_resource_group,
-                kind,
-                session,
-                aws_resource_config,
-            ),
-        )
-        async for session in get_sessions()
-    ]
+    if not (aws_resource_config.selector.list_group_resources):
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                functools.partial(resync_resources_for_account, credentials, kind),
+            )
+            async for credentials in get_accounts()
+        ]
+    else:
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                functools.partial(
+                    resync_resource_group,
+                    kind,
+                    session,
+                    aws_resource_config,
+                ),
+            )
+            async for session in get_sessions()
+        ]
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):

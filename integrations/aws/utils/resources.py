@@ -321,8 +321,6 @@ async def resync_resource_group(
             list_param="Groups",
         )
 
-        list_group_resources = bool(resource_config_selector.list_group_resources)
-
         try:
             async for groups_batch in paginator.paginate():
                 if not groups_batch:
@@ -330,24 +328,13 @@ async def resync_resource_group(
                 for chunk_groups in process_list_in_chunks(
                     groups_batch, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
                 ):
-                    if list_group_resources:
-                        tasks = [
-                            enrich_group_with_resources(
-                                client, group, kind, account_id, region
-                            )
-                            for group in chunk_groups
-                        ]
-                        processed_groups = await asyncio.gather(*tasks)
-                    else:
-                        processed_groups = [
-                            {
-                                CustomProperties.KIND.value: kind,
-                                CustomProperties.ACCOUNT_ID.value: account_id,
-                                CustomProperties.REGION.value: region,
-                                **fix_unserializable_date_properties(group),
-                            }
-                            for group in chunk_groups
-                        ]
+                    tasks = [
+                        enrich_group_with_resources(
+                            client, group, kind, account_id, region
+                        )
+                        for group in chunk_groups
+                    ]
+                    processed_groups = await asyncio.gather(*tasks)
 
                     if processed_groups:
                         yield processed_groups
