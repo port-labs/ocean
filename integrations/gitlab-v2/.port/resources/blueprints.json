@@ -71,10 +71,11 @@
           "format": "url",
           "description": "Link to the member's GitLab profile"
         },
-        "created_by": {
+        "locked": {
           "type": "string",
-          "title": "Created By",
-          "description": "Name of the user who added this member"
+          "title": "Locked",
+          "icon": "GitLab",
+          "description": "Indicates if the GitLab member is locked."
         }
       },
       "required": []
