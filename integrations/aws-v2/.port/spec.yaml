@@ -1,0 +1,15 @@
+description: AWS V2 integration for Port Ocean
+icon: Cookiecutter  # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Under Development  # Should be one of the available sections in Port
+    resources:
+      - kind: aws_v2-example-kind
+      # - kind: <ResourceName2>
+configurations:
+  - name: myaws_v2Token
+    # required: true
+    type: string
+    sensitive: true
+  - name: someApplicationUrl
+    type: url
