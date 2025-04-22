@@ -1,10 +1,5 @@
 from typing import cast
 
-from loguru import logger
-from port_ocean.context.event import event
-from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
     PULL_REQUEST_SEARCH_CRITERIA,
@@ -15,11 +10,19 @@ from azure_devops.misc import (
     Kind,
 )
 
-
 from azure_devops.webhooks.webhook_processors.pull_request_processor import (
     PullRequestWebhookProcessor,
 )
+
 from azure_devops.webhooks.webhook_processors.push_processor import PushWebhookProcessor
+from azure_devops.webhooks.webhook_processors.file_webhook_processor import (
+    FileWebhookProcessor,
+)
+
+from loguru import logger
+from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 @ocean.on_resync(Kind.PROJECT)
@@ -182,3 +185,4 @@ async def setup_webhooks() -> None:
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PushWebhookProcessor)
+ocean.add_webhook_processor("/webhook", FileWebhookProcessor)

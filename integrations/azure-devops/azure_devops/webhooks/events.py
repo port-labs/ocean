@@ -9,3 +9,6 @@ class PullRequestEvents(StrEnum):
 class PushEvents(StrEnum):
     PUSH = "git.push"
 
+
+class RepositoryEvents(StrEnum):
+    REPO_CREATED = "git.repo.created"

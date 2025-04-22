@@ -44,7 +44,6 @@ async def test_push_get_matching_kinds(
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     kinds = await push_processor.get_matching_kinds(event)
     assert "repository" in kinds
-    assert "file" in kinds
 
 
 @pytest.mark.asyncio

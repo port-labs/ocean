@@ -9,6 +9,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
+from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
 
 from .base_client import HTTPBaseClient
 from .file_processing import (
@@ -729,9 +730,16 @@ class AzureDevopsClient(HTTPBaseClient):
         subs_to_delete = []
 
         webhook_subs = [
-            WebhookSubscription(publisherId="tfs", eventType="git.pullrequest.updated"),
-            WebhookSubscription(publisherId="tfs", eventType="git.pullrequest.created"),
-            WebhookSubscription(publisherId="tfs", eventType="git.push"),
+            WebhookSubscription(
+                publisherId="tfs", eventType=PullRequestEvents.PULL_REQUEST_CREATED
+            ),
+            WebhookSubscription(
+                publisherId="tfs", eventType=PullRequestEvents.PULL_REQUEST_UPDATED
+            ),
+            WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH),
+            WebhookSubscription(
+                publisherId="tfs", eventType=RepositoryEvents.REPO_CREATED
+            ),
         ]
 
         for sub in webhook_subs:
