@@ -1,4 +1,4 @@
-from .issue_processor import LinearIssueWebhookProcessor
-from .label_processor import LinearLabelWebhookProcessor
+from .issue_processor import IssueWebhookProcessor
+from .label_processor import LabelWebhookProcessor
 
-__all__ = ["LinearIssueWebhookProcessor", "LinearLabelWebhookProcessor"]
+__all__ = ["IssueWebhookProcessor", "LabelWebhookProcessor"]

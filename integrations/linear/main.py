@@ -7,17 +7,16 @@ from webhook_processors import LabelWebhookProcessor, IssueWebhookProcessor
 
 
 async def setup_application() -> None:
-    logic_settings = ocean.integration_config
-    app_host = logic_settings.get("app_host")
-    if not app_host:
+    base_url = ocean.app.base_url
+    if not base_url:
         logger.warning(
             "No app host provided, skipping webhook creation. "
             "Without setting up the webhook, the integration will not export live changes from Linear"
         )
         return
 
-    linear_client = LinearClient(logic_settings["linear_api_key"])
-    await linear_client.create_events_webhook(logic_settings["app_host"])
+    linear_client = LinearClient.from_ocean_configuration()
+    await linear_client.create_events_webhook(base_url)
 
 
 @ocean.on_resync(ObjectKind.TEAM)

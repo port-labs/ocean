@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Any, Dict, Generator
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -20,7 +20,7 @@ def label_processor(mock_webhook_event: WebhookEvent) -> LabelWebhookProcessor:
 
 
 @pytest.fixture
-def valid_label_payload():
+def valid_label_payload() -> Dict[str, Any]:
     return {
         "type": "IssueLabel",
         "data": {"id": "label-123", "name": "Bug", "color": "#FF0000"},
@@ -28,7 +28,7 @@ def valid_label_payload():
 
 
 @pytest.fixture
-def invalid_label_payload():
+def invalid_label_payload() -> Dict[str, Any]:
     return {
         "type": "IssueLabel",
         "data": {"name": "Bug", "color": "#FF0000"},  # Missing id
@@ -36,12 +36,12 @@ def invalid_label_payload():
 
 
 @pytest.fixture
-def non_label_payload():
+def non_label_payload() -> Dict[str, Any]:
     return {"type": "Issue", "data": {"identifier": "ABC-123", "title": "Test Issue"}}
 
 
 @pytest.fixture
-def mock_resource_config():
+def mock_resource_config() -> ResourceConfig:
     return ResourceConfig(
         kind=ObjectKind.LABEL,
         selector=Selector(query="true"),
@@ -70,33 +70,35 @@ def mock_client() -> Generator[AsyncMock, None, None]:
 class TestLabelWebhookProcessor:
     async def test_should_process_event_valid_payload(
         self, label_processor, valid_label_payload
-    ):
+    ) -> None:
         event = WebhookEvent(trace_id="test", payload=valid_label_payload, headers={})
         should_process = await label_processor.should_process_event(event)
         assert should_process is True
 
     async def test_should_process_event_invalid_payload(
         self, label_processor, invalid_label_payload
-    ):
+    ) -> None:
         event = WebhookEvent(trace_id="test", payload=invalid_label_payload, headers={})
         should_process = await label_processor.should_process_event(event)
         assert should_process is False
 
     async def test_should_process_event_non_label_payload(
         self, label_processor, non_label_payload
-    ):
+    ) -> None:
         event = WebhookEvent(trace_id="test", payload=non_label_payload, headers={})
         should_process = await label_processor.should_process_event(event)
         assert should_process is False
 
-    async def test_get_matching_kinds(self, label_processor, valid_label_payload):
+    async def test_get_matching_kinds(
+        self, label_processor, valid_label_payload
+    ) -> None:
         event = WebhookEvent(trace_id="test", payload=valid_label_payload, headers={})
         kinds = await label_processor.get_matching_kinds(event)
         assert kinds == [ObjectKind.LABEL]
 
     async def test_handle_event_success(
         self, mock_client, label_processor, valid_label_payload, mock_resource_config
-    ):
+    ) -> None:
         # Mock response data
         mock_label_data = {
             "id": "label-123",
