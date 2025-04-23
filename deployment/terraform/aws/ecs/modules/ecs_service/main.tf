@@ -1,6 +1,6 @@
 locals {
-  service_name     = "port-ocean-${var.integration.type}-${var.integration.identifier}"
-  awslogs_group    = var.logs_cloudwatch_group == "" ? "/ecs/${local.service_name}" : var.logs_cloudwatch_group
+  service_name  = "port-ocean-${var.integration.type}-${var.integration.identifier}"
+  awslogs_group = var.logs_cloudwatch_group == "" ? "/ecs/${local.service_name}" : var.logs_cloudwatch_group
   port_credentials = [
     {
       name      = "OCEAN__PORT"
@@ -18,7 +18,7 @@ locals {
       value = tostring(var.scheduled_resync_interval)
     },
     {
-      name  = upper("OCEAN__EVENT_LISTENER")
+      name = upper("OCEAN__EVENT_LISTENER")
       value = jsonencode({
         for key, value in var.event_listener : key => value if value != null
       })
@@ -28,6 +28,7 @@ locals {
       value = jsonencode(var.integration)
     }
   ]
+  tags = var.tags
 }
 
 data "aws_region" "current" {}
@@ -40,12 +41,13 @@ resource "aws_ssm_parameter" "additional_secrets" {
 }
 
 resource "aws_ssm_parameter" "ocean_port_credentials" {
-  name  = "ocean.${var.integration.type}.${var.integration.identifier}.port_credentials"
-  type  = "SecureString"
+  name = "ocean.${var.integration.type}.${var.integration.identifier}.port_credentials"
+  type = "SecureString"
   value = jsonencode({
     client_secret : var.port.client_secret,
     client_id : var.port.client_id,
   })
+  tags = local.tags
 }
 
 
@@ -53,10 +55,10 @@ resource "aws_cloudwatch_log_group" "log_group" {
   name              = local.awslogs_group
   retention_in_days = var.logs_cloudwatch_retention
 
-  tags = {
+  tags = merge({
     Name       = local.service_name
     Automation = "Terraform"
-  }
+  }, local.tags)
 }
 
 
@@ -67,7 +69,7 @@ data "aws_iam_policy_document" "ecs_assume_role_policy" {
     ]
 
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = [
         "ecs-tasks.amazonaws.com",
         "ecs.amazonaws.com"
@@ -93,7 +95,7 @@ data "aws_iam_policy_document" "task_execution_role_policy" {
 
     resources = concat([
       aws_ssm_parameter.ocean_port_credentials.arn
-    ], [
+      ], [
       for secret in aws_ssm_parameter.additional_secrets : secret.arn
     ])
   }
@@ -123,16 +125,19 @@ data "aws_iam_policy_document" "task_execution_role_policy" {
 resource "aws_iam_role" "task_role" {
   name               = "ecs-${local.service_name}"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume_role_policy.json
+  tags = local.tags
 }
 
 resource "aws_iam_policy" "execution-policy" {
   name   = local.service_name
   policy = data.aws_iam_policy_document.task_execution_role_policy.json
+  tags = local.tags
 }
 
 resource "aws_iam_role" "task_execution_role" {
   name               = "ecs-execution-${local.service_name}"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume_role_policy.json
+  tags = local.tags
 }
 
 resource "aws_iam_role_policy_attachment" "attachment" {
@@ -166,7 +171,7 @@ resource "aws_ecs_task_definition" "service_task_definition" {
         name        = local.service_name,
         networkMode = var.network_mode,
         environment = local.env,
-        secrets     = concat(local.port_credentials, [
+        secrets = concat(local.port_credentials, [
           for secret in keys(var.additional_secrets) : {
             name      = secret
             valueFrom = aws_ssm_parameter.additional_secrets[secret].name
@@ -174,7 +179,7 @@ resource "aws_ecs_task_definition" "service_task_definition" {
         ])
         logConfiguration = {
           logDriver = "awslogs",
-          options   = {
+          options = {
             awslogs-create-group  = "true",
             awslogs-group         = "/ecs/${local.service_name}",
             awslogs-region        = data.aws_region.current.name,
@@ -189,7 +194,8 @@ resource "aws_ecs_task_definition" "service_task_definition" {
           }
         ]
       }
-    ])
+  ])
+  tags = local.tags
 }
 
 resource "aws_ecs_service" "ecs_service" {
@@ -215,7 +221,7 @@ resource "aws_ecs_service" "ecs_service" {
   launch_type                        = "FARGATE"
 
   dynamic "load_balancer" {
-    for_each = var.lb_targ_group_arn  != ""? [1] : []
+    for_each = var.lb_targ_group_arn != "" ? [1] : []
     content {
       container_name   = local.service_name
       container_port   = var.container_port
@@ -236,4 +242,5 @@ resource "aws_ecs_service" "ecs_service" {
     update = "10m"
     delete = "20m"
   }
+  tags = local.tags
 }

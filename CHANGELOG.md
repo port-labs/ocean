@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.22.4 (2025-04-15)
+
+### Features
+-Refactored logger setup to generate unique instance IDs.
+-Renamed try_get_hostname to resolve_hostname for clarity.
+-Removed redundant instance parameter from setup_logger.
+
+## 0.22.3 (2025-04-15)
+
+### Features
+- Added inctance and hostname to logger configuration.
+- Updated setup_logger function to include inctance.
+- Generated unique inctance in run function.
+- Enhanced log format to include inctance.
+
+## 0.22.2 (2025-04-06)
+
+### Bug Fixes
+
+- Fixed entityDeletionThreshold not sent as part of the initial port app configuration.
+
 ## 0.22.1 (2025-04-02)
 
 ### Features
