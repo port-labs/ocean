@@ -33,6 +33,10 @@ class LinearClient:
         self.client = http_async_client
         self.client.headers.update(self.api_auth_header)
 
+    @classmethod
+    def from_ocean_configuration(cls) -> "LinearClient":
+        return cls(ocean.integration_config["linear_api_key"])
+
     async def _get_paginated_objects(
         self, object_type: str, page_size: int, end_cursor: Optional[str]
     ) -> dict[str, Any]:
