@@ -69,35 +69,45 @@ def mock_client() -> Generator[AsyncMock, None, None]:
 @pytest.mark.asyncio
 class TestLabelWebhookProcessor:
     async def test_should_process_event_valid_payload(
-        self, label_processor, valid_label_payload
+        self,
+        label_processor: LabelWebhookProcessor,
+        valid_label_payload: dict[str, Any],
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=valid_label_payload, headers={})
         should_process = await label_processor.should_process_event(event)
         assert should_process is True
 
     async def test_should_process_event_invalid_payload(
-        self, label_processor, invalid_label_payload
+        self,
+        label_processor: LabelWebhookProcessor,
+        invalid_label_payload: dict[str, Any],
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=invalid_label_payload, headers={})
         should_process = await label_processor.should_process_event(event)
         assert should_process is False
 
     async def test_should_process_event_non_label_payload(
-        self, label_processor, non_label_payload
+        self, label_processor: LabelWebhookProcessor, non_label_payload: dict[str, Any]
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=non_label_payload, headers={})
         should_process = await label_processor.should_process_event(event)
         assert should_process is False
 
     async def test_get_matching_kinds(
-        self, label_processor, valid_label_payload
+        self,
+        label_processor: LabelWebhookProcessor,
+        valid_label_payload: dict[str, Any],
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=valid_label_payload, headers={})
         kinds = await label_processor.get_matching_kinds(event)
-        assert kinds == [ObjectKind.LABEL]
+        assert kinds == ["label"]
 
     async def test_handle_event_success(
-        self, mock_client, label_processor, valid_label_payload, mock_resource_config
+        self,
+        mock_client: AsyncMock,
+        label_processor: LabelWebhookProcessor,
+        valid_label_payload: dict[str, Any],
+        mock_resource_config: ResourceConfig,
     ) -> None:
         # Mock response data
         mock_label_data = {

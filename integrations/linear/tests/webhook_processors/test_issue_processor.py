@@ -76,36 +76,52 @@ def mock_client() -> Generator[AsyncMock, None, None]:
 @pytest.mark.asyncio
 class TestIssueWebhookProcessor:
 
+    @pytest.mark.asyncio
     async def test_should_process_event_valid_payload(
-        self, issue_processor, valid_issue_payload
+        self,
+        issue_processor: IssueWebhookProcessor,
+        valid_issue_payload: dict[str, Any],
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=valid_issue_payload, headers={})
         should_process = await issue_processor.should_process_event(event)
         assert should_process is True
 
+    @pytest.mark.asyncio
     async def test_should_process_event_invalid_payload(
-        self, issue_processor, invalid_issue_payload
+        self,
+        issue_processor: IssueWebhookProcessor,
+        invalid_issue_payload: dict[str, Any],
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=invalid_issue_payload, headers={})
         should_process = await issue_processor.should_process_event(event)
         assert should_process is False
 
+    @pytest.mark.asyncio
     async def test_should_process_event_non_issue_payload(
-        self, issue_processor, non_issue_payload
+        self, issue_processor: IssueWebhookProcessor, non_issue_payload: dict[str, Any]
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=non_issue_payload, headers={})
         should_process = await issue_processor.should_process_event(event)
         assert should_process is False
 
+    @pytest.mark.asyncio
     async def test_get_matching_kinds(
-        self, issue_processor, valid_issue_payload
+        self,
+        issue_processor: IssueWebhookProcessor,
+        valid_issue_payload: dict[str, Any],
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=valid_issue_payload, headers={})
         kinds = await issue_processor.get_matching_kinds(event)
-        assert kinds == [ObjectKind.ISSUE]
+        assert kinds == ["issue"]
 
+    @pytest.mark.asyncio
+    @patch("linear.client.LinearClient.from_ocean_configuration")
     async def test_handle_event_success(
-        self, mock_client, issue_processor, valid_issue_payload, mock_resource_config
+        self,
+        mock_client: AsyncMock,
+        issue_processor: IssueWebhookProcessor,
+        valid_issue_payload: dict[str, Any],
+        mock_resource_config: ResourceConfig,
     ) -> None:
         # Mock response data
         mock_issue_data = {
