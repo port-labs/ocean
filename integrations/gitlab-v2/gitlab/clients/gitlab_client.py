@@ -46,6 +46,21 @@ class GitLabClient:
             "GET", f"projects/{project_id}/issues/{issue_id}"
         )
 
+    async def get_pipeline(self, project_id: int, pipeline_id: int) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/pipelines/{pipeline_id}"
+        )
+
+    async def get_job(self, project_id: int, job_id: int) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/jobs/{job_id}"
+        )
+
+    async def get_group_member(self, group_id: int, member_id: int) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"groups/{group_id}/members/{member_id}"
+        )
+
     async def get_projects(
         self,
         params: Optional[dict[str, Any]] = None,
@@ -79,6 +94,57 @@ class GitLabClient:
         async for batch in self.rest.get_paginated_resource("groups", params=params):
             yield batch
 
+    async def get_projects_resource(
+        self,
+        projects_batch: list[dict[str, Any]],
+        resource_type: str,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        semaphore = asyncio.Semaphore(max_concurrent)
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(
+                    self.rest.get_paginated_project_resource,
+                    str(project["id"]),
+                    resource_type,
+                ),
+            )
+            for project in projects_batch
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            if batch:
+                yield batch
+
+    async def get_project_jobs(
+        self, project_batch: list[dict[str, Any]], max_concurrent: int = 10
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch jobs for each project in the batch, limited to first page (<=100 jobs per project)."""
+
+        async def _get_jobs(
+            project: dict[str, Any]
+        ) -> AsyncIterator[list[dict[str, Any]]]:
+            async for batch in self.rest.get_paginated_project_resource(
+                str(project["id"]), "jobs", params={"per_page": 100}
+            ):
+                yield batch
+                break  # only yield first page
+
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(_get_jobs, project),
+            )
+            for project in project_batch
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            if batch:
+                yield batch
+
     async def get_groups_resource(
         self,
         groups_batch: list[dict[str, Any]],
@@ -90,7 +156,12 @@ class GitLabClient:
         tasks = [
             semaphore_async_iterator(
                 semaphore,
-                partial(self._get_group_resource, group, resource_type, params),
+                partial(
+                    self.rest.get_paginated_group_resource,
+                    str(group["id"]),
+                    resource_type,
+                    params,
+                ),
             )
             for group in groups_batch
         ]
@@ -216,23 +287,43 @@ class GitLabClient:
         project["__languages"] = languages
         return project
 
-    async def _get_group_resource(
-        self,
-        group: dict[str, Any],
-        resource_type: str,
-        params: Optional[dict[str, Any]] = None,
+    async def get_group_members(
+        self, group_id: str, include_bot_members: bool
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        group_id = group["id"]
-
-        logger.debug(f"Starting fetch for {resource_type} in group {group_id}")
-        async for resource_batch in self.rest.get_paginated_group_resource(
-            group_id, resource_type, params
-        ):
-            if resource_batch:
+        async for batch in self.rest.get_paginated_group_resource(group_id, "members"):
+            if batch:
+                filtered_batch = batch
+                if not include_bot_members:
+                    filtered_batch = [
+                        member
+                        for member in batch
+                        if "bot" not in member["username"].lower()
+                    ]
                 logger.info(
-                    f"Fetched {len(resource_batch)} {resource_type} for group {group_id}"
+                    f"Received batch of {len(filtered_batch)} members for group {group_id}"
                 )
-                yield resource_batch
+                yield filtered_batch
+
+    async def enrich_group_with_members(
+        self, group: dict[str, Any], include_bot_members: bool
+    ) -> dict[str, Any]:
+        logger.info(f"Enriching group {group['id']} with members")
+        members = []
+        async for members_batch in self.get_group_members(
+            group["id"], include_bot_members
+        ):
+            for member in members_batch:
+                members.append(
+                    {
+                        "email": member.get("email"),
+                        "username": member["username"],
+                        "name": member["name"],
+                        "id": member["id"],
+                    }
+                )
+
+        group["__members"] = members
+        return group
 
     async def _process_file(
         self, file: dict[str, Any], context: str, skip_parsing: bool = False

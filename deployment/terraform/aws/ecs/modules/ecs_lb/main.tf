@@ -1,9 +1,10 @@
 locals {
-  lb_protocol  = var.certificate_domain_name == "" ? "HTTP" : "HTTPS"
-  lb_port      = var.certificate_domain_name == "" ? "80" : "443"
+  lb_protocol = var.certificate_domain_name == "" ? "HTTP" : "HTTPS"
+  lb_port     = var.certificate_domain_name == "" ? "80" : "443"
   egress_ports = var.create_egress_default_sg ? concat([
     443, 9196, var.container_port
   ], var.egress_ports) : concat(var.egress_ports, [var.container_port])
+  tags = var.tags
 }
 
 data "aws_acm_certificate" "acm_certificate" {
@@ -37,15 +38,17 @@ resource "aws_security_group" "default_ocean_sg" {
       ipv6_cidr_blocks = ["::/0"]
     }
   }
+  tags = local.tags
 }
 
 resource "aws_lb" "ocean_lb" {
   internal           = var.is_internal
   load_balancer_type = "application"
-  security_groups    = var.create_default_sg ? concat(
+  security_groups = var.create_default_sg ? concat(
     var.additional_security_groups, [aws_security_group.default_ocean_sg[0].id]
   ) : var.additional_security_groups
   subnets = var.subnets
+  tags    = local.tags
 }
 
 resource "aws_lb_target_group" "ocean_tg" {
@@ -67,6 +70,7 @@ resource "aws_lb_target_group" "ocean_tg" {
   lifecycle {
     create_before_destroy = true
   }
+  tags = local.tags
 }
 
 resource "aws_lb_listener" "lb_listener" {
@@ -78,5 +82,6 @@ resource "aws_lb_listener" "lb_listener" {
   load_balancer_arn = aws_lb.ocean_lb.arn
   port              = local.lb_port
   protocol          = local.lb_protocol
-  certificate_arn   = var.certificate_domain_name != ""? data.aws_acm_certificate.acm_certificate[0].arn : null
+  certificate_arn   = var.certificate_domain_name != "" ? data.aws_acm_certificate.acm_certificate[0].arn : null
+  tags              = local.tags
 }
