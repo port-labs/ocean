@@ -76,7 +76,6 @@ def mock_client() -> Generator[AsyncMock, None, None]:
 @pytest.mark.asyncio
 class TestIssueWebhookProcessor:
 
-    @pytest.mark.asyncio
     async def test_should_process_event_valid_payload(
         self,
         issue_processor: IssueWebhookProcessor,
@@ -86,7 +85,6 @@ class TestIssueWebhookProcessor:
         should_process = await issue_processor.should_process_event(event)
         assert should_process is True
 
-    @pytest.mark.asyncio
     async def test_should_process_event_invalid_payload(
         self,
         issue_processor: IssueWebhookProcessor,
@@ -96,7 +94,6 @@ class TestIssueWebhookProcessor:
         should_process = await issue_processor.should_process_event(event)
         assert should_process is False
 
-    @pytest.mark.asyncio
     async def test_should_process_event_non_issue_payload(
         self, issue_processor: IssueWebhookProcessor, non_issue_payload: dict[str, Any]
     ) -> None:
@@ -104,7 +101,6 @@ class TestIssueWebhookProcessor:
         should_process = await issue_processor.should_process_event(event)
         assert should_process is False
 
-    @pytest.mark.asyncio
     async def test_get_matching_kinds(
         self,
         issue_processor: IssueWebhookProcessor,
@@ -112,10 +108,8 @@ class TestIssueWebhookProcessor:
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=valid_issue_payload, headers={})
         kinds = await issue_processor.get_matching_kinds(event)
-        assert kinds == ["issue"]
+        assert kinds == [ObjectKind.ISSUE]
 
-    @pytest.mark.asyncio
-    @patch("linear.client.LinearClient.from_ocean_configuration")
     async def test_handle_event_success(
         self,
         mock_client: AsyncMock,
