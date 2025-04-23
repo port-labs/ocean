@@ -1,9 +1,9 @@
 title: Azure Multi Subscription
 description: Azure Multi Subscription integration for Port Ocean
-icon: azure  # Should be one of the available icons in Port
+icon: Azure
 features:
   - type: exporter
-    section: Under Development  # Should be one of the available sections in Port
+    section: Cloud Providers
     resources:
       - kind: resourceContainer
       - kind: resource
