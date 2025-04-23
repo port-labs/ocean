@@ -20,7 +20,7 @@ def issue_processor(mock_webhook_event: WebhookEvent) -> IssueWebhookProcessor:
 
 
 @pytest.fixture
-def valid_label_payload() -> Dict[str, Any]:
+def valid_issue_payload() -> Dict[str, Any]:
     return {
         "type": "Issue",
         "data": {
