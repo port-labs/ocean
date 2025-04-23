@@ -1,1 +1,1 @@
-/Users/nivm/Documents/repos/ocean/port_ocean/cli/cookiecutter/../../../integrations/_infra/Makefile
+../_infra/Makefile
