@@ -34,7 +34,7 @@ class LinearClient:
         self.client.headers.update(self.api_auth_header)
 
     @classmethod
-    def from_ocean_configuration(cls) -> "LinearClient":
+    def create_from_ocean_configuration(cls) -> "LinearClient":
         return cls(ocean.integration_config["linear_api_key"])
 
     async def _get_paginated_objects(
