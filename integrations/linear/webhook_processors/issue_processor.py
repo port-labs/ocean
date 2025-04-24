@@ -13,17 +13,10 @@ from loguru import logger
 class IssueWebhookProcessor(LinearAbstractWebhookProcessor):
     """Processes issue-related webhook events from Linear."""
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        """Validate that the payload contains required fields and is an issue event."""
-
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        """Validate that the event payload contains required fields and is an issue event."""
         payload = event.payload
-        return (
-            isinstance(payload, dict)
-            and "type" in payload
-            and payload["type"] == "Issue"
-            and "data" in payload
-            and "identifier" in payload["data"]
-        )
+        return payload["type"] == "Issue" and "identifier" in payload["data"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ISSUE]
@@ -32,7 +25,7 @@ class IssueWebhookProcessor(LinearAbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         """Process the issue webhook event and return the raw results."""
-        client = LinearClient.from_ocean_configuration()
+        client = LinearClient.create_from_ocean_configuration()
         event_data = payload["data"]
 
         logger.info(f'Processing webhook event for issue: {event_data["identifier"]}')

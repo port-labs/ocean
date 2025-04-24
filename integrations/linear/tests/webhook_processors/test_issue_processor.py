@@ -1,6 +1,6 @@
 from typing import Any, Dict, Generator
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.core.handlers.port_app_config.models import (
@@ -69,7 +69,7 @@ def mock_resource_config() -> ResourceConfig:
 def mock_client() -> Generator[AsyncMock, None, None]:
     with patch("webhook_processors.issue_processor.LinearClient") as mock:
         client = AsyncMock()
-        mock.from_ocean_configuration.return_value = client
+        mock.create_from_ocean_configuration.return_value = client
         yield client
 
 
@@ -82,6 +82,7 @@ class TestIssueWebhookProcessor:
         valid_issue_payload: dict[str, Any],
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=valid_issue_payload, headers={})
+        event._original_request = MagicMock()
         should_process = await issue_processor.should_process_event(event)
         assert should_process is True
 

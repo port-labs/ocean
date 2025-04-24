@@ -15,13 +15,13 @@ async def setup_application() -> None:
         )
         return
 
-    linear_client = LinearClient.from_ocean_configuration()
+    linear_client = LinearClient.create_from_ocean_configuration()
     await linear_client.create_events_webhook(base_url)
 
 
 @ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = LinearClient.from_ocean_configuration()
+    client = LinearClient.create_from_ocean_configuration()
 
     async for teams in client.get_paginated_teams():
         logger.info(f"Received team batch with {len(teams)} teams")
@@ -30,7 +30,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.LABEL)
 async def on_resync_labels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = LinearClient.from_ocean_configuration()
+    client = LinearClient.create_from_ocean_configuration()
 
     async for labels in client.get_paginated_labels():
         logger.info(f"Received label batch with {len(labels)} labels")
@@ -39,7 +39,7 @@ async def on_resync_labels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = LinearClient.from_ocean_configuration()
+    client = LinearClient.create_from_ocean_configuration()
 
     async for issues in client.get_paginated_issues():
         logger.info(f"Received issue batch with {len(issues)} issues")

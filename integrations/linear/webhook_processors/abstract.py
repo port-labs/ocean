@@ -1,18 +1,34 @@
+from abc import abstractmethod
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPayload
+from port_ocean.core.handlers.webhook.webhook_event import (
+    EventHeaders,
+    EventPayload,
+    WebhookEvent,
+)
 
 
 class LinearAbstractWebhookProcessor(AbstractWebhookProcessor):
     """Abstract base class for Linear webhook processors."""
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        """
-        Linear doesn't provide webhook authentication by default.
-        Authentication is handled through the webhook URL which contains a secret.
-        """
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         return True
+
+    @abstractmethod
+    async def _should_process_event(self, event: WebhookEvent) -> bool: ...
+
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        """Validate webhook event has required structure and passes processor-specific checks."""
+        payload = event.payload
+
+        if not (isinstance(payload, dict) and "type" in payload and "data" in payload):
+            return False
+
+        if not event._original_request:
+            return False
+
+        return await self._should_process_event(event)

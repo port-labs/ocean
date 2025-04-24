@@ -13,17 +13,10 @@ from loguru import logger
 class LabelWebhookProcessor(LinearAbstractWebhookProcessor):
     """Processes label-related webhook events from Linear."""
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        """Validate that the payload contains required fields and is a label event."""
-
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        """Validate that the event payload contains required fields and is a label event."""
         payload = event.payload
-        return (
-            isinstance(payload, dict)
-            and "type" in payload
-            and payload["type"] == "IssueLabel"
-            and "data" in payload
-            and "id" in payload["data"]
-        )
+        return payload["type"] == "IssueLabel" and "id" in payload["data"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.LABEL]
@@ -32,7 +25,7 @@ class LabelWebhookProcessor(LinearAbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         """Process the label webhook event and return the raw results."""
-        client = LinearClient.from_ocean_configuration()
+        client = LinearClient.create_from_ocean_configuration()
         event_data = payload["data"]
 
         logger.info(
