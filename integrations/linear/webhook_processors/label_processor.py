@@ -14,9 +14,9 @@ class LabelWebhookProcessor(LinearAbstractWebhookProcessor):
     """Processes label-related webhook events from Linear."""
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        """Validate that the event payload contains required fields and is a label event."""
-        payload = event.payload
-        return payload["type"] == "IssueLabel" and "id" in payload["data"]
+        """Validate that the event header contains required IssueLabel event type."""
+
+        return event.headers.get("linear-event") == "IssueLabel"
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.LABEL]
@@ -35,4 +35,14 @@ class LabelWebhookProcessor(LinearAbstractWebhookProcessor):
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_update], deleted_raw_results=[]
+        )
+
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        """Validate that the payload contains required fields for a label event."""
+        return (
+            isinstance(payload, dict)
+            and "type" in payload
+            and payload["type"] == "IssueLabel"
+            and "data" in payload
+            and "id" in payload["data"]
         )

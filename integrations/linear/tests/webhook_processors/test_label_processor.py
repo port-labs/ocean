@@ -68,29 +68,37 @@ def mock_client() -> Generator[AsyncMock, None, None]:
 
 @pytest.mark.asyncio
 class TestLabelWebhookProcessor:
-    async def test_should_process_event_valid_payload(
+    async def test_should_process_event_valid_event(
+        self,
+        label_processor: LabelWebhookProcessor,
+        valid_label_payload: dict[str, Any],
+    ) -> None:
+        event = WebhookEvent(
+            trace_id="test",
+            payload=valid_label_payload,
+            headers={"linear-event": "IssueLabel"},
+        )
+        event._original_request = MagicMock()
+        should_process = await label_processor.should_process_event(event)
+        assert should_process is True
+
+    async def test_should_process_event_invalid_event(
         self,
         label_processor: LabelWebhookProcessor,
         valid_label_payload: dict[str, Any],
     ) -> None:
         event = WebhookEvent(trace_id="test", payload=valid_label_payload, headers={})
-        event._original_request = MagicMock()
-        should_process = await label_processor.should_process_event(event)
-        assert should_process is True
-
-    async def test_should_process_event_invalid_payload(
-        self,
-        label_processor: LabelWebhookProcessor,
-        invalid_label_payload: dict[str, Any],
-    ) -> None:
-        event = WebhookEvent(trace_id="test", payload=invalid_label_payload, headers={})
         should_process = await label_processor.should_process_event(event)
         assert should_process is False
 
     async def test_should_process_event_non_label_payload(
         self, label_processor: LabelWebhookProcessor, non_label_payload: dict[str, Any]
     ) -> None:
-        event = WebhookEvent(trace_id="test", payload=non_label_payload, headers={})
+        event = WebhookEvent(
+            trace_id="test",
+            payload=non_label_payload,
+            headers={"linear-event": "IssueLabel"},
+        )
         should_process = await label_processor.should_process_event(event)
         assert should_process is False
 

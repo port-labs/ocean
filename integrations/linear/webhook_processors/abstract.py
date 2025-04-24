@@ -15,18 +15,11 @@ class LinearAbstractWebhookProcessor(AbstractWebhookProcessor):
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
 
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        return True
-
     @abstractmethod
     async def _should_process_event(self, event: WebhookEvent) -> bool: ...
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         """Validate webhook event has required structure and passes processor-specific checks."""
-        payload = event.payload
-
-        if not (isinstance(payload, dict) and "type" in payload and "data" in payload):
-            return False
 
         if not event._original_request:
             return False
