@@ -4,12 +4,12 @@ This directory contains example Terraform implementations demonstrating how Ocea
 
 ## ⚠️ Important Note
 
-These examples are provided for educational purposes and to demonstrate deployment patterns. For production deployments, we recommend using our dedicated cloud provider repositories:
+These examples are provided to demonstrate deployment patterns. For production deployments, we recommend using our dedicated cloud provider installation:
 
-- [AWS Ocean Integration](https://github.com/port-labs/terraform-ocean-integration-factory/tree/main/examples/aws_container_app)
-- [GCP Ocean Integration](https://github.com/port-labs/terraform-ocean-integration-factory/tree/main/examples/azure_container_app_azure_integration)
-- [Azure Ocean Integration](https://github.com/port-labs/terraform-ocean-integration-factory/tree/main/examples/gcp_cloud_run)
-
+- [AWS Ocean Integration](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws/installations/installation)
+- [GCP Ocean Integration](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/gcp/installation)
+- [Azure Ocean Integration](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/azure/installation)
+  
 ## Purpose
 
 These examples demonstrate:
@@ -34,7 +34,7 @@ These examples are primarily intended for:
 2. Understanding common deployment patterns
 3. Reference when building custom deployment solutions
 
-For production deployments, please use the dedicated cloud provider repositories mentioned above.
+For production deployments, please use the dedicated cloud provider installations mentioned above.
 
 ## Contributing
 
