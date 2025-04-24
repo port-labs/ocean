@@ -26,6 +26,7 @@ variable "additional_secrets" {
 }
 
 variable "subnets" {
+  description = "List of subnet IDs where the ECS tasks and load balancer will be deployed. Use private subnets when 'is_internal' is true and public subnets when 'is_internal' is false."
   type = list(string)
 }
 
@@ -142,6 +143,7 @@ variable "integration" {
   })
 }
 
+// TODO: var not used - delete or implment
 variable "lb_targ_group_arn" {
   type    = string
   default = ""
@@ -158,4 +160,10 @@ variable "additional_policy_statements" {
 variable "allow_incoming_requests" {
   type = bool
   default = true
+}
+
+variable "tags" {
+  description = "A map of tags to apply to all resources"
+  type        = map(string)
+  default     = {}
 }
