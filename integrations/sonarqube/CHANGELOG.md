@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.168 (2025-04-25)
+
+
+### Bug Fixes
+
+- Fixed bug where the integration was trying to fetch more than 10,000 issues from SonarQube API
+
+
 ## 0.1.167 (2025-04-15)
 
 
