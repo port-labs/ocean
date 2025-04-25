@@ -47,5 +47,161 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "gitlabMember",
+    "title": "GitLab Member",
+    "icon": "GitLab",
+    "schema": {
+      "properties": {
+        "state": {
+          "type": "string",
+          "title": "State",
+          "description": "The state of the member's account"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "format": "email",
+          "description": "The member's email address"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url",
+          "description": "Link to the member's GitLab profile"
+        },
+        "locked": {
+          "type": "string",
+          "title": "Locked",
+          "icon": "GitLab",
+          "description": "Indicates if the GitLab member is locked."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "gitlabGroup",
+    "title": "Group",
+    "icon": "GitLab",
+    "schema": {
+      "properties": {
+        "visibility": {
+          "icon": "Lock",
+          "title": "Visibility",
+          "type": "string",
+          "enum": [
+            "public",
+            "internal",
+            "private"
+          ],
+          "enumColors": {
+            "public": "red",
+            "internal": "yellow",
+            "private": "green"
+          }
+        },
+        "url": {
+          "title": "URL",
+          "format": "url",
+          "type": "string",
+          "icon": "Link"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "icon": "BlankPage"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "gitlabMembers": {
+        "title": "Members",
+        "target": "gitlabMember",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "gitlabMergeRequest",
+    "title": "Merge Request",
+    "icon": "GitVersion",
+    "schema": {
+      "properties": {
+        "creator": {
+          "title": "Creator",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "opened",
+            "closed",
+            "merged",
+            "locked"
+          ],
+          "enumColors": {
+            "opened": "yellow",
+            "closed": "red",
+            "merged": "green",
+            "locked": "blue"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "mergedAt": {
+          "title": "Merged At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "title": "Link",
+          "format": "url",
+          "type": "string"
+        },
+        "leadTimeHours": {
+          "title": "Lead Time in hours",
+          "type": "number"
+        },
+        "reviewers": {
+          "title": "Reviewers",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Service",
+        "target": "service",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
