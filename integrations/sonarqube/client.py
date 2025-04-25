@@ -65,15 +65,17 @@ class SonarQubeClient:
         is_onpremise: bool = False,
         metrics: list[str] | None = None,
     ):
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.organization_id = organization_id
-        self.app_host = app_host
+        self.app_host = app_host.rstrip("/") if app_host else None
         self.is_onpremise = is_onpremise
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_params["headers"])
         self.metrics: list[str] = [] if not metrics else metrics
-        self.webhook_invoke_url = f"{self.app_host}/integration/webhook"
+        self.webhook_invoke_url = (
+            f"{self.app_host}/integration/webhook" if self.app_host else ""
+        )
 
     @property
     def api_auth_params(self) -> dict[str, Any]:
