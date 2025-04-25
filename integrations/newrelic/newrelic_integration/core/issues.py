@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Any, Tuple
+from typing import List, Optional, Any, Tuple
 from loguru import logger
 
 import httpx
@@ -12,15 +12,18 @@ from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.query_templates.issues import (
     LIST_ISSUES_BY_ENTITY_GUIDS_MINIMAL_QUERY,
     LIST_ISSUES_QUERY,
+    GET_ISSUE_ENTITY_GUIDS_QUERY,
 )
 from newrelic_integration.core.paging import send_paginated_graph_api_request
+from newrelic_integration.utils import render_query
+from newrelic_integration.core.utils import send_graph_api_request
 
 
 class IssueEvent(BaseModel, extra=Extra.allow):
-    id: str = Field(..., alias="issueId")
-    title: list[str]
+    id: str = Field(..., alias="id")
+    title: str
     state: str
-    entity_guids: list[str] = Field(..., alias="entityGuids")
+    entity_guids: Optional[list[str]] = Field(default=None, alias="entityGuids")
 
 
 class IssueState(Enum):
@@ -103,6 +106,32 @@ class IssuesHandler:
 
                 matching_issues.append(issue)
         return matching_issues
+
+    async def get_issue_entity_guids(self, issue_id: str) -> Optional[List[str]]:
+        """Fetch and return the entityGuids for a given issue ID."""
+        account_id = int(ocean.integration_config["new_relic_account_id"])
+        query = await render_query(
+            GET_ISSUE_ENTITY_GUIDS_QUERY, account_id=account_id, issue_id=issue_id
+        )
+
+        response = await send_graph_api_request(
+            self.http_client,
+            query,
+            request_type="get_issue_entity_guids",
+            account_id=account_id,
+            issue_id=issue_id,
+        )
+        data = response.get("data", {})
+        issues_data = (
+            data.get("actor", {})
+            .get("account", {})
+            .get("aiIssues", {})
+            .get("issues", {})
+            .get("issues", [])
+        )
+        if issues_data and len(issues_data) > 0:
+            return issues_data[0].get("entityGuids")
+        return None
 
     @staticmethod
     async def _extract_issues(
