@@ -1012,3 +1012,35 @@ async def test_get_custom_projects_with_enrich_project(
             assert "__link" in project
 
         assert all(project["key"] in ["project1", "project2"] for project in results)
+
+
+@pytest.mark.asyncio
+async def test_sonarqube_client_normalizes_trailing_slashes(
+    mock_ocean_context: Any,
+) -> None:
+    """Test that SonarQubeClient strips trailing slashes from base_url and app_host, and handles app_host=None"""
+    # Test 1: Trailing slashes in base_url and app_host
+    client = SonarQubeClient(
+        base_url="https://sonarqube.com/",
+        api_key="token",
+        organization_id="organization_id",
+        app_host="http://app.host//",
+        is_onpremise=False,
+        metrics=["coverage"],
+    )
+    assert client.base_url == "https://sonarqube.com"
+    assert client.app_host == "http://app.host"
+    assert client.webhook_invoke_url == "http://app.host/integration/webhook"
+
+    # Test 2: app_host=None
+    client_without_app_host = SonarQubeClient(
+        base_url="https://sonarqube.com/",
+        api_key="token",
+        organization_id="organization_id",
+        app_host=None,
+        is_onpremise=False,
+        metrics=["coverage"],
+    )
+    assert client_without_app_host.base_url == "https://sonarqube.com"
+    assert client_without_app_host.app_host is None
+    assert client_without_app_host.webhook_invoke_url == ""
