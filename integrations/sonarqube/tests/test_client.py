@@ -1054,7 +1054,7 @@ async def test_issues_pagination_limit(
         int(issue["key"][5:]) < 10000 for issue in issues
     )  # All issue numbers < 10000
 
-    
+
 @pytest.mark.asyncio
 async def test_sonarqube_client_normalizes_trailing_slashes(
     mock_ocean_context: Any,
