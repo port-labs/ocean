@@ -188,7 +188,6 @@ class CustomResourceConfig(ResourceConfig):
     selector: CustomSelector
     kind: Literal[
         "analysis",
-        "onprem_analysis",
         "saas_analysis",
         "portfolios",
     ]
@@ -260,11 +259,37 @@ class SonarQubeIssueResourceConfig(CustomResourceConfig):
     selector: SonarQubeIssueSelector
 
 
+class SonarQubeOnPremAnalysisSelector(CustomSelector):
+    @staticmethod
+    def default_metrics() -> list[str]:
+        return [
+            "code_smells",
+            "coverage",
+            "bugs",
+            "vulnerabilities",
+            "duplicated_files",
+            "security_hotspots",
+            "new_violations",
+            "new_coverage",
+            "new_duplicated_lines_density",
+        ]
+
+    metrics: list[str] = Field(
+        description="List of metric keys", default=default_metrics()
+    )
+
+
+class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):
+    kind: Literal["onprem_analysis"]  # type: ignore
+    selector: SonarQubeOnPremAnalysisSelector
+
+
 SonarResourcesConfig = Annotated[
     Union[
         SonarQubeProjectResourceConfig,
         SonarQubeIssueResourceConfig,
         SonarQubeGAProjectResourceConfig,
+        SonarQubeOnPremAnalysisResourceConfig,
         CustomResourceConfig,
     ],
     Field(discriminator="kind"),
