@@ -288,6 +288,7 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     if not (aws_resource_config.selector.list_group_resources):
+        logger.info("Resyncing resource groups with cloudcontrol")
         tasks = [
             semaphore_async_iterator(
                 semaphore,
@@ -296,6 +297,7 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for credentials in get_accounts()
         ]
     else:
+        logger.info("Resyncing resource groups with resource groups api")
         tasks = [
             semaphore_async_iterator(
                 semaphore,
