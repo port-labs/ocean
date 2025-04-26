@@ -1014,6 +1014,60 @@ async def test_get_custom_projects_with_enrich_project(
         assert all(project["key"] in ["project1", "project2"] for project in results)
 
 
+async def test_issues_pagination_limit(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test that issue pagination stops when reaching the maximum limit of 10,000 issues"""
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    # Mock responses that would exceed the 10,000 issue limit
+    # Using PAGE_SIZE of 100 as defined in the code
+    mock_responses = [
+        *[
+            {
+                "status_code": 200,
+                "json": {
+                    "paging": {"pageIndex": i, "pageSize": 100, "total": 15000},
+                    "issues": [
+                        {"key": f"issue{j}"} for j in range((i - 1) * 100, i * 100)
+                    ],
+                },
+            }
+            for i in range(1, 101)  # 100 pages of 100 issues each = 10,000 issues
+        ],
+        # This response should never be reached due to the limit
+        {
+            "status_code": 200,
+            "json": {
+                "paging": {"pageIndex": 101, "pageSize": 100, "total": 15000},
+                "issues": [{"key": f"issue{i}"} for i in range(10000, 10100)],
+            },
+        },
+    ]
+
+    sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
+
+    # Test with issues endpoint
+    component = {"key": "test-project"}
+    issues = []
+    async for batch in sonarqube_client.get_issues_by_component(component):
+        issues.extend(batch)
+
+    # Verify we only got 10,000 issues and stopped pagination
+    assert len(issues) == 10000
+    assert all(issue["key"].startswith("issue") for issue in issues)
+    assert all(
+        int(issue["key"][5:]) < 10000 for issue in issues
+    )  # All issue numbers < 10000
+
+
 @pytest.mark.asyncio
 async def test_sonarqube_client_normalizes_trailing_slashes(
     mock_ocean_context: Any,
