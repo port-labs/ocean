@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.59 (2025-04-27)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
 0.2.58 (2025-04-15)
 ===================
 
