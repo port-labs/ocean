@@ -1,4 +1,5 @@
 description: gitlab-v2 integration for Port Ocean
+title: Gitlab (Beta)
 icon: GitLab
 features:
   - type: exporter

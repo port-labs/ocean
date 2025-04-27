@@ -1,4 +1,5 @@
 description: Ocean integration for Bitbucket Cloud
+title: Bitbucket Cloud
 icon: BitBucket
 features:
   - type: exporter
