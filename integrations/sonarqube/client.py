@@ -26,6 +26,7 @@ def turn_sequence_to_chunks(
 
 
 MAX_PORTFOLIO_REQUESTS = 20
+MAX_ISSUES_REQUESTS = 10000
 
 
 class Endpoints:
@@ -159,7 +160,16 @@ class SonarQubeClient:
                 page_size = paging_info.get("pageSize", PAGE_SIZE)
                 total_records = paging_info.get("total", 0)
                 # Check if we have fetched all records
-                if page_index * page_size >= total_records:
+                records_fetched = page_index * page_size
+                if records_fetched >= total_records:
+                    break
+                if (
+                    endpoint == Endpoints.ISSUES_SEARCH
+                    and records_fetched >= MAX_ISSUES_REQUESTS
+                ):
+                    logger.info(
+                        "The request exceeded the maximum number of issues that can be returned (10,000) from SonarQube API. Returning accumulated issues and skipping further results."
+                    )
                     break
                 query_params["p"] = page_index + 1
         except httpx.HTTPStatusError as e:
