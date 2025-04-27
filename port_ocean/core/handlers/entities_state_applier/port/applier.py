@@ -123,7 +123,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         modified_entities: list[Entity] = []
         upserted_entities: list[tuple[bool, Entity]] = []
 
-        upserted_entities = await self.context.port_client.batch_upsert_entities(
+        upserted_entities = await self.context.port_client.upsert_entities_in_batches(
             entities,
             event.port_app_config.get_port_request_options(),
             user_agent_type,

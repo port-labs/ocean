@@ -94,6 +94,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
 
+    upsert_entities_batch_size: int = 20
+
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:
         if v is None:
