@@ -1,3 +1,10 @@
+## 0.1.63-beta (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+
 ## 0.1.62-beta (2025-04-27)
 
 
