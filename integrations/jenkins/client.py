@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, TypeVar, Callable
 from urllib.parse import urlparse, urljoin
 import httpx
 
@@ -7,14 +7,19 @@ from loguru import logger
 
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
+from port_ocean.context.ocean import ocean
+
 
 PAGE_SIZE = 50
+
+T = TypeVar("T")
 
 
 class ResourceKey(StrEnum):
     JOBS = "jobs"
     BUILDS = "builds"
     STAGES = "stages"
+    USERS = "users"
 
 
 class JenkinsClient:
@@ -25,13 +30,113 @@ class JenkinsClient:
         self.client = http_async_client
         self.client.auth = httpx.BasicAuth(jenkins_user, jenkins_token)
 
+    @classmethod
+    def create_from_ocean_configuration(cls) -> "JenkinsClient":
+        logger.info(f"Initializing JenkinsClient {ocean.integration_config}")
+        return cls(
+            ocean.integration_config["jenkins_host"],
+            ocean.integration_config["jenkins_user"],
+            ocean.integration_config["jenkins_token"],
+        )
+
+    async def _send_api_request(
+        self,
+        method: str,
+        endpoint: str,
+        params: Optional[dict[str, Any]] = None,
+        json: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """
+        Common method for making API requests to Jenkins.
+
+        Args:
+            method: HTTP method (GET, POST, etc.)
+            endpoint: API endpoint (will be joined with base URL)
+            params: Query parameters
+            json: JSON body for POST requests
+        """
+        url = urljoin(self.jenkins_base_url, endpoint)
+        logger.debug(f"Making {method} request to {url} with params {params}")
+
+        try:
+            response = await self.client.request(
+                method=method, url=url, params=params, json=json
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to make request to {url}: {str(e)}")
+            raise
+
+    async def _paginate(
+        self,
+        endpoint: str,
+        extract_items: Callable[[dict[str, Any]], list[T]],
+        params_builder: Callable[[int, int], dict[str, Any]],
+        page_size: int = PAGE_SIZE,
+    ) -> AsyncGenerator[list[T], None]:
+        """
+        Generic pagination method.
+
+        Args:
+            endpoint: API endpoint
+            extract_items: Function to extract items from response
+            params_builder: Function to build pagination parameters
+            page_size: Number of items per page
+        """
+        page = 0
+
+        while True:
+            start_idx = page_size * page
+            end_idx = start_idx + page_size
+
+            params = params_builder(start_idx, end_idx)
+
+            response_data = await self._send_api_request("GET", endpoint, params=params)
+            items = extract_items(response_data)
+
+            if not items:
+                break
+
+            yield items
+
+            if len(items) < page_size:
+                break
+
+            page += 1
+
+    async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get users with pagination support for both old and new endpoints."""
+        if cache := event.attributes.get(ResourceKey.USERS):
+            logger.info("picking jenkins users from cache")
+            yield cache
+            return
+
+        url = "people/api/json"
+
+        async for users in self._paginate(
+            url,
+            lambda response: response.get("users", []),
+            lambda start, end: {"tree": f"users[user[*],*]{{{start},{end}}}"},
+        ):
+            event.attributes.setdefault(ResourceKey.USERS, []).extend(users)
+            yield users
+
     async def get_jobs(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(ResourceKey.JOBS):
             logger.info("picking jenkins jobs from cache")
             yield cache
             return
 
-        async for jobs in self.fetch_resources(ResourceKey.JOBS):
+        def extract_jobs(response: dict[str, Any]) -> list[dict[str, Any]]:
+            return response.get("jobs", [])
+
+        def build_params(start: int, end: int) -> dict[str, Any]:
+            return self._build_api_params(
+                ResourceKey.JOBS, end - start, start // PAGE_SIZE
+            )
+
+        async for jobs in self._paginate("api/json", extract_jobs, build_params):
             event.attributes.setdefault(ResourceKey.JOBS, []).extend(jobs)
             yield jobs
 
@@ -48,9 +153,8 @@ class JenkinsClient:
             yield builds
 
     async def _get_build_stages(self, build_url: str) -> list[dict[str, Any]]:
-        response = await self.client.get(f"{build_url}/wfapi/describe")
-        response.raise_for_status()
-        stages = response.json().get("stages", [])
+        response = await self._send_api_request("GET", f"{build_url}/wfapi/describe")
+        stages = response.get("stages", [])
         return stages
 
     async def _get_job_builds(self, job_url: str) -> AsyncGenerator[Any, None]:
@@ -83,41 +187,26 @@ class JenkinsClient:
     async def fetch_resources(
         self, resource: str, parent_job: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        page_size = PAGE_SIZE
-        page = 0
 
-        child_jobs = []
+        base_url = self._build_base_url(parent_job)
 
-        while True:
-            params = self._build_api_params(resource, page_size, page)
-            base_url = self._build_base_url(parent_job)
-            logger.info(f"Fetching {resource} from {base_url} with params {params}")
-
-            job_response = await self.client.get(f"{base_url}/api/json", params=params)
-            job_response.raise_for_status()
-            logger.debug(f"Fetched {job_response.json()}")
-            jobs = job_response.json().get("jobs", [])
-            logger.info(f"Fetched {len(jobs)} jobs")
-
-            if not jobs:
-                break
+        async for jobs in self._paginate(
+            endpoint=f"{base_url}/api/json",
+            extract_items=lambda response: response.get("jobs", []),
+            params_builder=lambda start, end: self._build_api_params(
+                resource, end - start, start // PAGE_SIZE
+            ),
+        ):
+            logger.info(f"Fetching {resource} from {base_url}")
+            logger.info(f"Fetched jobs: {jobs} of length {len(jobs)}")
 
             enriched_jobs = self.enrich_jobs(jobs, parent_job)
-
-            # immediately return buildable jobs
             yield [job for job in enriched_jobs if job.get("buildable")]
 
             folder_jobs = [job for job in enriched_jobs if job.get("jobs")]
-            child_jobs.extend(folder_jobs)
-
-            page += 1
-
-            if len(jobs) < page_size:
-                break
-
-        for job in child_jobs:
-            async for fetched_jobs in self.fetch_resources(resource, job):
-                yield fetched_jobs
+            for job in folder_jobs:
+                async for fetched_jobs in self.fetch_resources(resource, job):
+                    yield fetched_jobs
 
     def _build_api_params(
         self, resource: str, page_size: int, page: int
@@ -161,32 +250,4 @@ class JenkinsClient:
         # Construct the full URL using urljoin
         fetch_url = urljoin(self.jenkins_base_url, f"{resource_url}api/json")
 
-        response = await self.client.get(fetch_url)
-        response.raise_for_status()
-        return response.json()
-
-    async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        page_size = PAGE_SIZE
-        page = 0
-
-        while True:
-            start_idx = page_size * page
-            end_idx = start_idx + page_size
-
-            params = {"tree": f"users[user[*],*]{{{start_idx},{end_idx}}}"}
-
-            response = await self.client.get(
-                f"{self.jenkins_base_url}/people/api/json", params=params
-            )
-            response.raise_for_status()
-            users = response.json()["users"]
-
-            if not users:
-                break
-
-            yield users
-
-            page += 1
-
-            if len(users) < page_size:
-                break
+        return await self._send_api_request("GET", fetch_url)
