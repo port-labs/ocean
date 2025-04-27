@@ -3,8 +3,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
-    ResourceConfig,
 )
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from webhook_processors.abstract import JenkinsAbstractWebhookProcessor
 from client import JenkinsClient
 from kinds import ObjectKind
@@ -29,7 +29,7 @@ class JobWebhookProcessor(JenkinsAbstractWebhookProcessor):
         """Process the job webhook event and return the raw results."""
 
         event_type = payload.get("type")
-        url = payload.get("url")
+        url = payload.get("url", "")
         client = JenkinsClient.create_from_ocean_configuration()
 
         logger.info(f"Processing job event: {event_type} for job {url}")

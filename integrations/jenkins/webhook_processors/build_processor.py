@@ -4,8 +4,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
-    ResourceConfig,
 )
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from client import JenkinsClient
 from kinds import ObjectKind
 from loguru import logger
@@ -30,7 +30,7 @@ class BuildWebhookProcessor(JenkinsAbstractWebhookProcessor):
 
         event_type = payload.get("type")
         source = payload.get("source")
-        url = payload.get("url")
+        url = payload.get("url", "")
         build_data = payload.get("data", {})
         client = JenkinsClient.create_from_ocean_configuration()
 
