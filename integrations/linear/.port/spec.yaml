@@ -13,9 +13,13 @@ configurations:
   - name: appHost
     required: false
     type: url
-    description: "This field is deprecated. Please use the OCEAN__BASE_URL field instead."
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Linear. This field is deprecated. Please use the OCEAN__BASE_URL field instead."
   - name: linearApiKey
     required: true
     type: string
     description: Linear personal API key. To create an API key, see the <a target="_blank" href="https://developers.linear.app/docs/graphql/working-with-the-graphql-api#personal-api-keys">Linear API documentation</a>.
     sensitive: true
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
