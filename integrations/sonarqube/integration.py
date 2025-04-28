@@ -175,20 +175,21 @@ class CustomSelector(Selector):
         return {}
 
 
+def default_metrics() -> list[str]:
+    return [
+        "code_smells",
+        "coverage",
+        "bugs",
+        "vulnerabilities",
+        "duplicated_files",
+        "security_hotspots",
+        "new_violations",
+        "new_coverage",
+        "new_duplicated_lines_density",
+    ]
+
+
 class SonarQubeMetricsSelector(CustomSelector):
-    @staticmethod
-    def default_metrics() -> list[str]:
-        return [
-            "code_smells",
-            "coverage",
-            "bugs",
-            "vulnerabilities",
-            "duplicated_files",
-            "security_hotspots",
-            "new_violations",
-            "new_coverage",
-            "new_duplicated_lines_density",
-        ]
     metrics: list[str] = Field(
         default_factory=default_metrics,
         description="List of metrics to retrieve",
@@ -217,6 +218,7 @@ class SonarQubeComponentProjectSelector(
     SonarQubeMetricsSelector, SelectorWithApiFilters
 ):
     api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
+
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
     kind: Literal["projects"]  # type: ignore
