@@ -1,11 +1,11 @@
 from aws.helpers.paginator import AsyncPaginator
 from aws.resources import (
-    BaseResyncStrategy,
+    BaseResyncHandler,
     ResyncContext,
     SessionManagerProtocol,
-    SQSResyncStrategy,
-    CloudControlResyncStrategy,
-    BotoDescribePaginatedStrategy,
+    SQSResyncHandler,
+    CloudControlResyncHandler,
+    BotoDescribePaginatedHandler,
 )
 from typing import Any, AsyncIterator
 import aioboto3
@@ -28,7 +28,7 @@ class ResyncStrategyFactory:
         kind: str,
         session: aioboto3.Session,
         resource_config: "AWSResourceConfig",
-    ) -> BaseResyncStrategy:
+    ) -> BaseResyncHandler:
         ctx = ResyncContext(
             kind=kind,
             region=session.region_name,
@@ -38,7 +38,7 @@ class ResyncStrategyFactory:
         selector = resource_config.selector  # expected attr → bool flags etc.
 
         if kind == "AWS::SQS::Queue":
-            return SQSResyncStrategy(
+            return SQSResyncHandler(
                 context=ctx,
                 session=session,
                 session_manager=self._sessions,
@@ -60,7 +60,7 @@ class ResyncStrategyFactory:
             ),
         }
         if kind in CUSTOM_DESCRIBE:
-            return BotoDescribePaginatedStrategy(
+            return BotoDescribePaginatedHandler(
                 context=ctx,
                 session=session,
                 session_manager=self._sessions,
@@ -68,17 +68,13 @@ class ResyncStrategyFactory:
             )
 
         # Fallback to CloudControl
-        return CloudControlResyncStrategy(
+        return CloudControlResyncHandler(
             context=ctx,
             session=session,
             session_manager=self._sessions,
             use_get_resource_api=selector.use_get_resource_api,
         )
 
-
-# ---------------------------------------------------------------------------
-# Public façade – what the caller uses.
-# ---------------------------------------------------------------------------
 
 
 async def resync(
@@ -96,10 +92,10 @@ async def resync(
     )
 
     async for session in session_manager.iter_sessions(account_id, region):
-        strategy = await factory.create(
+        resync_handler = await factory.create(
             kind=kind, session=session, resource_config=resource_config
         )
-        async for batch in strategy:
+        async for batch in resync_handler:
             yield batch
 
 
