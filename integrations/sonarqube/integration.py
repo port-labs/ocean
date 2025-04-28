@@ -177,7 +177,7 @@ class CustomSelector(Selector):
 
 class SonarQubeMetricsSelector(CustomSelector):
     @staticmethod
-    def default_metrics() -> list[str]:
+    def _default_metrics() -> list[str]:
         return [
             "code_smells",
             "coverage",
@@ -191,7 +191,7 @@ class SonarQubeMetricsSelector(CustomSelector):
         ]
 
     metrics: list[str] = Field(
-        default_factory=lambda: SonarQubeMetricsSelector.default_metrics(),
+        default_factory=lambda: SonarQubeMetricsSelector._default_metrics(),
         description="List of metrics to retrieve",
     )
 
