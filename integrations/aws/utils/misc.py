@@ -1,7 +1,4 @@
 import enum
-
-
-from port_ocean.context.ocean import ocean
 from utils.overrides import AWSResourceConfig
 from typing import (
     List,
@@ -14,7 +11,6 @@ from typing import (
     AsyncGenerator,
     Iterator,
 )
-import asyncio
 from collections import deque
 from loguru import logger
 
@@ -43,14 +39,6 @@ class ResourceGroupsClientProtocol(Protocol):
 class CloudControlThrottlingConfig(enum.Enum):
     MAX_RETRY_ATTEMPTS: int = 100
     RETRY_MODE: Literal["legacy", "standard", "adaptive"] = "adaptive"
-
-
-def get_semaphore() -> asyncio.BoundedSemaphore:
-    max_concurrent_accounts: int = int(
-        ocean.integration_config["maximum_concurrent_accounts"]
-    )
-    semaphore = asyncio.BoundedSemaphore(max_concurrent_accounts)
-    return semaphore
 
 
 class CustomProperties(enum.StrEnum):
