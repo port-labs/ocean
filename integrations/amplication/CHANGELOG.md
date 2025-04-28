@@ -1,3 +1,14 @@
+## 0.1.14 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
 ## 0.1.13 (2025-04-15)
 
 
