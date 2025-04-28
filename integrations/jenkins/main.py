@@ -71,5 +71,9 @@ async def on_start() -> None:
     logger.info("Starting Port Ocean Jenkins integration")
 
 
+ocean.add_webhook_processor("/webhook", BuildWebhookProcessor)
+ocean.add_webhook_processor("/webhook", JobWebhookProcessor)
+# DEPRECATED: The /events endpoint is deprecated and will be removed in a future version.
+# Please use /webhook endpoint instead.
 ocean.add_webhook_processor("/events", BuildWebhookProcessor)
 ocean.add_webhook_processor("/events", JobWebhookProcessor)
