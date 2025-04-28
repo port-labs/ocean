@@ -22,11 +22,13 @@ def issue_processor(mock_webhook_event: WebhookEvent) -> IssueWebhookProcessor:
 @pytest.fixture
 def valid_issue_payload() -> Dict[str, Any]:
     return {
+        "action": "create",
         "type": "Issue",
         "data": {
             "identifier": "ABC-123",
             "title": "Test Issue",
             "description": "Test Description",
+            "team": {"name": "Test Org"},
         },
     }
 
@@ -44,7 +46,11 @@ def invalid_issue_payload() -> Dict[str, Any]:
 
 @pytest.fixture
 def non_issue_payload() -> Dict[str, Any]:
-    return {"type": "IssueLabel", "data": {"id": "label-123", "name": "Test Label"}}
+    return {
+        "action": "create",
+        "type": "IssueLabel",
+        "data": {"id": "label-123", "name": "Test Label"},
+    }
 
 
 @pytest.fixture
@@ -115,12 +121,25 @@ class TestIssueWebhookProcessor:
         kinds = await issue_processor.get_matching_kinds(event)
         assert kinds == [ObjectKind.ISSUE]
 
+    @pytest.mark.parametrize(
+        "action, expected_results",
+        [
+            ("create", {"updated_count": 1, "deleted_count": 0, "client_called": True}),
+            (
+                "remove",
+                {"updated_count": 0, "deleted_count": 1, "client_called": False},
+            ),
+        ],
+        ids=["add_action", "remove_action"],
+    )
     async def test_handle_event_success(
         self,
         mock_client: AsyncMock,
         issue_processor: IssueWebhookProcessor,
-        valid_issue_payload: dict[str, Any],
+        valid_issue_payload: Dict[str, Any],
         mock_resource_config: ResourceConfig,
+        action: str,
+        expected_results: Dict[str, Any],
     ) -> None:
         # Mock response data
         mock_issue_data = {
@@ -131,13 +150,20 @@ class TestIssueWebhookProcessor:
         }
         mock_client.get_single_issue.return_value = mock_issue_data
 
+        # Modify payload
+        valid_issue_payload["action"] = action
+
         # Process the event
         result = await issue_processor.handle_event(
             valid_issue_payload, mock_resource_config
         )
 
-        assert len(result.updated_raw_results) == 1
-        assert result.updated_raw_results[0] == mock_issue_data
-        assert len(result.deleted_raw_results) == 0
+        # Assert results
+        assert len(result.updated_raw_results) == expected_results["updated_count"]
+        assert len(result.deleted_raw_results) == expected_results["deleted_count"]
 
-        mock_client.get_single_issue.assert_called_once_with("ABC-123")
+        if expected_results["client_called"]:
+            mock_client.get_single_issue.assert_called_once_with("ABC-123")
+            assert result.updated_raw_results[0] == mock_issue_data
+        else:
+            mock_client.get_single_issue.assert_not_called()

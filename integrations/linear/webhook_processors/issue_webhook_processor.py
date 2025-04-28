@@ -1,4 +1,6 @@
-from webhook_processors.linear_abstract_webhook_processor import _LinearAbstractWebhookProcessor
+from webhook_processors.linear_abstract_webhook_processor import (
+    _LinearAbstractWebhookProcessor,
+)
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -16,7 +18,9 @@ class IssueWebhookProcessor(_LinearAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         """Validate that the event header contains required Issue event type."""
 
-        return event.headers.get("linear-event") == "Issue"
+        return event.headers.get(
+            "linear-event"
+        ) == "Issue" and await self.is_action_allowed(event.payload.get("action", ""))
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ISSUE]
@@ -31,15 +35,17 @@ class IssueWebhookProcessor(_LinearAbstractWebhookProcessor):
         action = payload["action"]
 
         logger.info(f"Processing webhook event for issue: {identifier}")
-        
+
         if action == "remove":
-            logger.info(f"Issue #{identifier} was deleted from {event_data["team"]["name"]}")
+            logger.info(
+                f"Issue #{identifier} was deleted from {event_data["team"]["name"]}"
+            )
 
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[event_data],
             )
-        
+
         data_to_update = await client.get_single_issue(identifier)
 
         return WebhookEventRawResults(
@@ -50,8 +56,7 @@ class IssueWebhookProcessor(_LinearAbstractWebhookProcessor):
         """Validate that the payload contains required fields for an issue event."""
         return (
             isinstance(payload, dict)
-            and "type" in payload
+            and all(key in payload for key in ("type", "data", "action"))
             and payload["type"] == "Issue"
-            and "data" in payload
             and "identifier" in payload["data"]
         )

@@ -22,6 +22,7 @@ def label_processor(mock_webhook_event: WebhookEvent) -> LabelWebhookProcessor:
 @pytest.fixture
 def valid_label_payload() -> Dict[str, Any]:
     return {
+        "action": "create",
         "type": "IssueLabel",
         "data": {"id": "label-123", "name": "Bug", "color": "#FF0000"},
     }
@@ -37,7 +38,11 @@ def invalid_label_payload() -> Dict[str, Any]:
 
 @pytest.fixture
 def non_label_payload() -> Dict[str, Any]:
-    return {"type": "Issue", "data": {"identifier": "ABC-123", "title": "Test Issue"}}
+    return {
+        "action": "create",
+        "type": "Issue",
+        "data": {"identifier": "ABC-123", "title": "Test Issue"},
+    }
 
 
 @pytest.fixture
@@ -106,12 +111,25 @@ class TestLabelWebhookProcessor:
         kinds = await label_processor.get_matching_kinds(event)
         assert kinds == ["label"]
 
+    @pytest.mark.parametrize(
+        "action, expected_results",
+        [
+            ("create", {"updated_count": 1, "deleted_count": 0, "client_called": True}),
+            (
+                "remove",
+                {"updated_count": 0, "deleted_count": 1, "client_called": False},
+            ),
+        ],
+        ids=["add_action", "remove_action"],
+    )
     async def test_handle_event_success(
         self,
         mock_client: AsyncMock,
         label_processor: LabelWebhookProcessor,
-        valid_label_payload: dict[str, Any],
+        valid_label_payload: Dict[str, Any],
         mock_resource_config: ResourceConfig,
+        action: str,
+        expected_results: Dict[str, Any],
     ) -> None:
         # Mock response data
         mock_label_data = {
@@ -122,14 +140,20 @@ class TestLabelWebhookProcessor:
         }
         mock_client.get_single_label.return_value = mock_label_data
 
+        # Modify payload
+        valid_label_payload["action"] = action
+
         # Process the event
         result = await label_processor.handle_event(
             valid_label_payload, mock_resource_config
         )
 
-        # Verify the results
-        assert len(result.updated_raw_results) == 1
-        assert result.updated_raw_results[0] == mock_label_data
-        assert len(result.deleted_raw_results) == 0
+        # Assert results
+        assert len(result.updated_raw_results) == expected_results["updated_count"]
+        assert len(result.deleted_raw_results) == expected_results["deleted_count"]
 
-        mock_client.get_single_label.assert_called_once_with("label-123")
+        if expected_results["client_called"]:
+            mock_client.get_single_label.assert_called_once_with("label-123")
+            assert result.updated_raw_results[0] == mock_label_data
+        else:
+            mock_client.get_single_label.assert_not_called()
