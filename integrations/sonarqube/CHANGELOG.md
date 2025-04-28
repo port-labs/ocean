@@ -7,12 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.169 (2025-04-25)
+## 0.1.171 (2025-04-25)
 
 
 ### Bug Fixes
 
 - Added metrics selector for on-premise analysis to ensure explicit setting of required metricsKey.
+
+
+## 0.1.170 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
 
 
 ## 0.1.169 (2025-04-15)
