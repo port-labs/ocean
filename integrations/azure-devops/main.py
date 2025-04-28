@@ -14,7 +14,9 @@ from azure_devops.webhooks.webhook_processors.pull_request_processor import (
     PullRequestWebhookProcessor,
 )
 
-from azure_devops.webhooks.webhook_processors.push_processor import PushWebhookProcessor
+from azure_devops.webhooks.webhook_processors.repository_processor import (
+    RepositoryWebhookProcessor,
+)
 from azure_devops.webhooks.webhook_processors.file_webhook_processor import (
     FileWebhookProcessor,
 )
@@ -184,5 +186,5 @@ async def setup_webhooks() -> None:
 
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
-ocean.add_webhook_processor("/webhook", PushWebhookProcessor)
+ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FileWebhookProcessor)

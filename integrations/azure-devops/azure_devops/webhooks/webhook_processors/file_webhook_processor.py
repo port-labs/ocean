@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional, cast
 import asyncio
 from loguru import logger
-from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -9,7 +8,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.clients.port.types import UserAgentType
 from azure_devops.client.azure_devops_client import API_PARAMS, AzureDevopsClient
 from azure_devops.misc import GitPortAppConfig, extract_branch_name_from_ref, Kind
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
@@ -17,7 +15,7 @@ from azure_devops.webhooks.webhook_processors._base_processor import (
     _AzureDevOpsBaseWebhookProcessor,
 )
 from azure_devops.client.file_processing import parse_file_content
-from azure_devops.webhooks.events import RepositoryEvents
+from azure_devops.webhooks.events import PushEvents
 
 
 class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
@@ -27,7 +25,7 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             event_type = event.payload["eventType"]
-            return bool(RepositoryEvents(event_type))
+            return bool(PushEvents(event_type))
         except ValueError:
             return False
 
@@ -48,13 +46,13 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
 
         push_data = response.json()
         updates = push_data["refUpdates"]
-        processed_entities = await self._process_push_updates(
+        created, modified, deleted = await self._process_push_updates(
             config, push_data, updates
         )
 
         return WebhookEventRawResults(
-            updated_raw_results=processed_entities,
-            deleted_raw_results=[],
+            updated_raw_results=created + modified,
+            deleted_raw_results=deleted,
         )
 
     async def _process_push_updates(
@@ -62,8 +60,10 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         config: GitPortAppConfig,
         push_data: Dict[str, Any],
         updates: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        processed_entities: List[Dict[str, Any]] = []
+    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+        created_files: List[Dict[str, Any]] = []
+        modified_files: List[Dict[str, Any]] = []
+        deleted_files: List[Dict[str, Any]] = []
         tasks = []
 
         for update in updates:
@@ -80,55 +80,53 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
                 logger.info("Skipping ref update for non-default branch")
                 continue
 
-            task = self._handle_gitops_diff_for_ref(config, push_data, update)
+            task = self._process_changed_files_for_ref(config, push_data, update)
             tasks.append(task)
 
         if tasks:
             results = await asyncio.gather(*tasks)
             for result in results:
-                processed_entities.extend(result)
+                created, modified, deleted = result
+                created_files.extend(created)
+                modified_files.extend(modified)
+                deleted_files.extend(deleted)
 
-        return processed_entities
+        return created_files, modified_files, deleted_files
 
-    async def _handle_gitops_diff_for_ref(
+    async def _process_changed_files_for_ref(
         self,
         config: GitPortAppConfig,
         push_data: Dict[str, Any],
         update: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
+    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         logger.info(f"Processing ref update: {update}")
         repo_id = update["repositoryId"]
-        old_commit = update["oldObjectId"]
         new_commit = update["newObjectId"]
+        created, modified, deleted = await self._get_file_changes(repo_id, new_commit)
 
         new_entities = await generate_entities_from_commit_id(
             config.spec_path, repo_id, new_commit
         )
         logger.info(f"Got {len(new_entities)} new entities")
 
-        old_entities = await generate_entities_from_commit_id(
-            config.spec_path, repo_id, old_commit
-        )
-        logger.info(f"Got {len(old_entities)} old entities")
-
-        await ocean.update_diff(
-            {"before": old_entities, "after": new_entities},
-            UserAgentType.gitops,
-        )
-
-        file_entities = await self._sync_changed_files(repo_id, new_commit)
-
-        all_entities = new_entities + file_entities
-        return [
+        all_created = created + [
             entity.dict() if hasattr(entity, "dict") else entity
-            for entity in all_entities
+            for entity in new_entities
         ]
 
-    async def _sync_changed_files(
+        return (
+            [item for item in all_created if isinstance(item, dict)],
+            [item for item in modified if isinstance(item, dict)],
+            [item for item in deleted if isinstance(item, dict)],
+        )
+
+    async def _get_file_changes(
         self, repo_id: str, commit_id: str
-    ) -> List[Dict[str, Any]]:
+    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         logger.info(f"Fetching file changes for commit {commit_id} in repo {repo_id}")
-        file_entities: List[Dict[str, Any]] = []
+        created_files: List[Dict[str, Any]] = []
+        modified_files: List[Dict[str, Any]] = []
+        deleted_files: List[Dict[str, Any]] = []
 
         try:
             repo_info = (
@@ -138,7 +136,7 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
             )
             if not repo_info:
                 logger.warning(f"Could not find repository with ID {repo_id}")
-                return file_entities
+                return created_files, modified_files, deleted_files
 
             project_id = repo_info["project"]["id"]
             url = f"{AzureDevopsClient.create_from_ocean_config()._organization_base_url}/{project_id}/_apis/git/repositories/{repo_id}/commits/{commit_id}/changes"
@@ -150,23 +148,36 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
                 logger.warning(
                     f"No response when fetching changes for commit {commit_id}"
                 )
-                return file_entities
+                return created_files, modified_files, deleted_files
 
             changed_files = response.json().get("changes", [])
 
             for changed_file in changed_files:
-                file_entity = await self._build_file_entity_from_commit(
-                    repo_info, commit_id, changed_file
-                )
-                if file_entity:
-                    file_entities.append(file_entity)
+                change_type = changed_file.get("changeType", "")
+
+                if "add" in change_type:
+                    file_entity = await self._build_file_entity(
+                        repo_info, commit_id, changed_file
+                    )
+                    if file_entity:
+                        created_files.append(file_entity)
+                elif "delete" in change_type:
+                    deleted_files.append(
+                        self._build_deleted_file_entity(repo_info, changed_file)
+                    )
+                else:
+                    file_entity = await self._build_file_entity(
+                        repo_info, commit_id, changed_file
+                    )
+                    if file_entity:
+                        modified_files.append(file_entity)
 
         except Exception as e:
             logger.error(f"Error fetching file changes: {e}")
 
-        return file_entities
+        return created_files, modified_files, deleted_files
 
-    async def _build_file_entity_from_commit(
+    async def _build_file_entity(
         self, repo_info: Dict[str, Any], commit_id: str, changed_file: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         try:
@@ -204,3 +215,15 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         except Exception as e:
             logger.error(f"Error processing file {changed_file['item']['path']}: {e}")
             return None
+
+    def _build_deleted_file_entity(
+        self, repo_info: Dict[str, Any], changed_file: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        return {
+            "kind": Kind.FILE,
+            "file": {
+                "path": changed_file["item"]["path"],
+                "isDeleted": True,
+            },
+            "repo": repo_info,
+        }

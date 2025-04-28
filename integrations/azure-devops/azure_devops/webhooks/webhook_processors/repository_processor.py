@@ -11,34 +11,23 @@ from azure_devops.webhooks.webhook_processors._base_processor import (
     _AzureDevOpsBaseWebhookProcessor,
 )
 from azure_devops.misc import Kind
-from azure_devops.webhooks.events import PushEvents
+from azure_devops.webhooks.events import RepositoryEvents
 
 
-class PushWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
+class RepositoryWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.REPOSITORY]
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             event_type = event.payload["eventType"]
-            return bool(PushEvents(event_type))
+            return bool(RepositoryEvents(event_type))
         except ValueError:
             return False
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        client = AzureDevopsClient.create_from_ocean_config()
-        push_url = payload["resource"]["url"]
-        push_params = {"includeRefUpdates": True}
-
-        response = await client.send_request("GET", push_url, params=push_params)
-        if not response:
-            logger.warning(f"Couldn't get push data from url {push_url}")
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
         repository_id = payload["resource"]["repository"]["id"]
         repository = await self._get_repository_data(repository_id)
 
