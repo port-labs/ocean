@@ -1,7 +1,4 @@
 import enum
-
-
-from port_ocean.context.ocean import ocean
 from utils.overrides import AWSResourceConfig
 from typing import (
     List,
@@ -14,7 +11,6 @@ from typing import (
     AsyncGenerator,
     Iterator,
 )
-import asyncio
 from collections import deque
 from loguru import logger
 

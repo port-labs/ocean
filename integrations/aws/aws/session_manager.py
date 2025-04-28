@@ -17,6 +17,7 @@ class AccountNotFoundError(OceanAbortException):
 
 
 DURATION_SECONDS = 3600  # 1 hour
+CONCURRENT_ACCOUNTS = 20
 
 
 class SessionManager:
@@ -149,7 +150,7 @@ class SessionManager:
                                 sts_client, account
                             )
                         )
-                        if len(tasks) >= 20:
+                        if len(tasks) >= CONCURRENT_ACCOUNTS:
                             await asyncio.gather(*tasks)
                             tasks.clear()
 

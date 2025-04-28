@@ -181,10 +181,10 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     async for credentials in get_accounts():
         tasks.append(
-            resync_resources_for_account(credentials, kind, resync_cloud_controlfunc)
+            resync_resources_for_account(credentials, kind, resync_cloud_control_func)
         )
 
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process 10 at a time
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
             tasks.clear()
