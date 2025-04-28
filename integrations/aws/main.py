@@ -90,7 +90,6 @@ async def resync_resources_for_account(
     failed_regions: list[str] = []
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
-    # Filter regions based on resource config selector
     allowed_regions = list(
         filter(
             aws_resource_config.selector.is_region_allowed, credentials.enabled_regions
@@ -222,7 +221,7 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
         )
 
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
             tasks.clear()
@@ -252,7 +251,7 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
         )
 
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
             tasks.clear()
@@ -282,7 +281,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
         )
 
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
             tasks.clear()
@@ -313,7 +312,7 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
         )
 
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
             tasks.clear()
@@ -365,7 +364,7 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
         )
 
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:  # Process accounts in batches
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
             tasks.clear()

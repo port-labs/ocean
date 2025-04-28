@@ -37,14 +37,6 @@ class CloudControlThrottlingConfig(enum.Enum):
     RETRY_MODE: Literal["legacy", "standard", "adaptive"] = "adaptive"
 
 
-def get_semaphore() -> asyncio.BoundedSemaphore:
-    max_concurrent_accounts: int = int(
-        ocean.integration_config["maximum_concurrent_accounts"]
-    )
-    semaphore = asyncio.BoundedSemaphore(max_concurrent_accounts)
-    return semaphore
-
-
 class CustomProperties(enum.StrEnum):
     ACCOUNT_ID = "__AccountId"
     KIND = "__Kind"
