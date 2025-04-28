@@ -189,8 +189,9 @@ class SonarQubeMetricsSelector(CustomSelector):
             "new_coverage",
             "new_duplicated_lines_density",
         ]
+
     metrics: list[str] = Field(
-        default_factory=default_metrics,
+        default_factory=lambda: SonarQubeMetricsSelector.default_metrics(),
         description="List of metrics to retrieve",
     )
 
@@ -218,7 +219,8 @@ class SonarQubeComponentProjectSelector(
 ):
     api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
 
-class SonarQubeProjectResourceConfig(CustomResourceConfig):
+
+class SonarQubeProjectResourceConfig(ResourceConfig):
     kind: Literal["projects"]
     selector: SonarQubeComponentProjectSelector
 
@@ -227,7 +229,7 @@ class SonarQubeGAProjectSelector(SonarQubeMetricsSelector):
     api_filters: SonarQubeGAProjectAPIFilter | None = Field(alias="apiFilters")
 
 
-class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
+class SonarQubeGAProjectResourceConfig(ResourceConfig):
     kind: Literal["projects_ga"]
     selector: SonarQubeGAProjectSelector
 
@@ -240,7 +242,7 @@ class SonarQubeIssueSelector(SelectorWithApiFilters):
     )
 
 
-class SonarQubeIssueResourceConfig(CustomResourceConfig):
+class SonarQubeIssueResourceConfig(ResourceConfig):
     kind: Literal["issues"]
     selector: SonarQubeIssueSelector
 
@@ -248,7 +250,7 @@ class SonarQubeIssueResourceConfig(CustomResourceConfig):
 class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector): ...
 
 
-class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):
+class SonarQubeOnPremAnalysisResourceConfig(ResourceConfig):
     kind: Literal["onprem_analysis"]
     selector: SonarQubeOnPremAnalysisSelector
 
