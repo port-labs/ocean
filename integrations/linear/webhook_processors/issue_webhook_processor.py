@@ -1,6 +1,4 @@
-from webhook_processors._linear_abstract_webhook_processor import (
-    _LinearAbstractWebhookProcessor,
-)
+from webhook_processors.linear_abstract_webhook_processor import _LinearAbstractWebhookProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -29,9 +27,20 @@ class IssueWebhookProcessor(_LinearAbstractWebhookProcessor):
         """Process the issue webhook event and return the raw results."""
         client = LinearClient.create_from_ocean_configuration()
         event_data = payload["data"]
+        identifier = event_data["identifier"]
+        action = payload["action"]
 
-        logger.info(f'Processing webhook event for issue: {event_data["identifier"]}')
-        data_to_update = await client.get_single_issue(event_data["identifier"])
+        logger.info(f"Processing webhook event for issue: {identifier}")
+        
+        if action == "remove":
+            logger.info(f"Issue #{identifier} was deleted from {event_data["team"]["name"]}")
+
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[event_data],
+            )
+        
+        data_to_update = await client.get_single_issue(identifier)
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_update], deleted_raw_results=[]

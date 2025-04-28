@@ -9,10 +9,6 @@ from webhook_processors import LabelWebhookProcessor, IssueWebhookProcessor
 async def setup_application() -> None:
     base_url = ocean.app.base_url
     if not base_url:
-        logger.warning(
-            "No app host provided, skipping webhook creation. "
-            "Without setting up the webhook, the integration will not export live changes from Linear"
-        )
         return
 
     linear_client = LinearClient.create_from_ocean_configuration()
