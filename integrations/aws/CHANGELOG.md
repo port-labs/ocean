@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.119 (2025-04-28)
+
+
+### Improvements
+
+- Enhanced memory efficiency and processing speed across the integration
+- Added region filtering optimization to prevent unnecessary region iteration
+- Improved logging clarity by only showing relevant region information for active regions
+
+
 ## 0.2.118 (2025-04-27)
+
 
 ### Bug Fixes
 
