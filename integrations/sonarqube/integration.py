@@ -175,6 +175,22 @@ class CustomSelector(Selector):
         return {}
 
 
+class SonarQubeSelectorWithMetrics(CustomSelector):
+    @staticmethod
+    def default_metrics() -> list[str]:
+        return [
+            "code_smells",
+            "coverage",
+            "bugs",
+            "vulnerabilities",
+            "duplicated_files",
+            "security_hotspots",
+            "new_violations",
+            "new_coverage",
+            "new_duplicated_lines_density",
+        ]
+
+
 class SelectorWithApiFilters(CustomSelector):
     api_filters: BaseSonarQubeApiFilter | None = Field(alias="apiFilters")
 
@@ -193,24 +209,13 @@ class CustomResourceConfig(ResourceConfig):
     ]
 
 
-class SonarQubeComponentProjectSelector(SelectorWithApiFilters):
-    @staticmethod
-    def default_metrics() -> list[str]:
-        return [
-            "code_smells",
-            "coverage",
-            "bugs",
-            "vulnerabilities",
-            "duplicated_files",
-            "security_hotspots",
-            "new_violations",
-            "new_coverage",
-            "new_duplicated_lines_density",
-        ]
-
+class SonarQubeComponentProjectSelector(
+    SonarQubeSelectorWithMetrics, SelectorWithApiFilters
+):
     api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
     metrics: list[str] = Field(
-        description="List of metric keys", default=default_metrics()
+        description="List of metric keys",
+        default_factory=SonarQubeSelectorWithMetrics.default_metrics,
     )
 
 
@@ -219,25 +224,12 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
     selector: SonarQubeComponentProjectSelector
 
 
-class SonarQubeGAProjectSelector(CustomSelector):
-    @staticmethod
-    def default_metrics() -> list[str]:
-        return [
-            "code_smells",
-            "coverage",
-            "bugs",
-            "vulnerabilities",
-            "duplicated_files",
-            "security_hotspots",
-            "new_violations",
-            "new_coverage",
-            "new_duplicated_lines_density",
-        ]
-
+class SonarQubeGAProjectSelector(SonarQubeSelectorWithMetrics, CustomSelector):
     api_filters: SonarQubeGAProjectAPIFilter | None = Field(alias="apiFilters")
 
     metrics: list[str] = Field(
-        description="List of metric keys", default=default_metrics()
+        description="List of metric keys",
+        default_factory=SonarQubeSelectorWithMetrics.default_metrics,
     )
 
 
@@ -259,23 +251,10 @@ class SonarQubeIssueResourceConfig(CustomResourceConfig):
     selector: SonarQubeIssueSelector
 
 
-class SonarQubeOnPremAnalysisSelector(CustomSelector):
-    @staticmethod
-    def default_metrics() -> list[str]:
-        return [
-            "code_smells",
-            "coverage",
-            "bugs",
-            "vulnerabilities",
-            "duplicated_files",
-            "security_hotspots",
-            "new_violations",
-            "new_coverage",
-            "new_duplicated_lines_density",
-        ]
-
+class SonarQubeOnPremAnalysisSelector(SonarQubeSelectorWithMetrics, CustomSelector):
     metrics: list[str] = Field(
-        description="List of metric keys", default=default_metrics()
+        description="List of metric keys",
+        default_factory=SonarQubeSelectorWithMetrics.default_metrics,
     )
 
 
