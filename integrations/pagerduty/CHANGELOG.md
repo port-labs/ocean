@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.13 (2025-04-27)
+
+### Bug Fixes
+
+- Removed httpx dependency to resolve h11 vulnerability
+
+## 0.3.12 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
 ## 0.3.11 (2025-04-15)
 
 

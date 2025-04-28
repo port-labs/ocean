@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.2 (2025-04-28)
+
+### Improvements
+
+- Added title to the integration to be viewed in the data sources page
+
+
+## 0.1.1 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
+## 0.1.0 (2025-23-04)
+
+
+### Improvement
+
+- Bumped integration version from beta to GA
+
+
+## 0.1.2-beta (2025-04-17)
+
+
+### Improvements
+
+- Adds Groups, Members and Merge Requests to integration defaults
+
+
+## 0.1.1-beta (2025-04-17)
+
+
+### Bug Fixes
+
+- Fixed integration icon
+
+
+## 0.1.0-beta (2025-04-15)
+
+
+### Improvement
+
+- Bumped integration version from dev to beta
+
+
 ## 0.1.13-dev (2025-04-15)
 
 

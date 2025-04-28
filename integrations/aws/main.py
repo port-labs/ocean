@@ -176,7 +176,7 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     tasks = []
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     use_get_resource_api = aws_resource_config.selector.use_get_resource_api
-    resync_cloud_controlfunc = functools.partial(
+    resync_cloud_control_func = functools.partial(
         resync_cloudcontrol, use_get_resource_api=use_get_resource_api
     )
     async for credentials in get_accounts():
