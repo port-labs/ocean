@@ -19,7 +19,6 @@ from utils.aws import get_sessions
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.aws import _session_manager
-from utils.overrides import AWSResourceConfig
 from botocore.config import Config as Boto3Config
 from botocore.exceptions import ClientError
 
@@ -186,18 +185,30 @@ async def process_resources_chunk(
 async def resync_sqs_queue(
     kind: str,
     session: aioboto3.Session,
-    resource_config: AWSResourceConfig,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
-    resource_config_selector = resource_config.selector
-    if not resource_config_selector.is_region_allowed(region):
-        logger.info(
-            f"Skipping resyncing {kind} in region {region} in account {account_id} because it's not allowed"
-        )
-        return
 
-    async with session.client("sqs") as sqs_client:
+    async with (
+        session.client(
+            "sqs",
+            config=Boto3Config(
+                retries={
+                    "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS.value,
+                    "mode": CloudControlThrottlingConfig.RETRY_MODE.value,
+                },
+            ),
+        ) as sqs_client,
+        session.client(
+            "cloudcontrol",
+            config=Boto3Config(
+                retries={
+                    "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS.value,
+                    "mode": CloudControlThrottlingConfig.RETRY_MODE.value,
+                },
+            ),
+        ) as cloudcontrol,
+    ):
         paginator = AsyncPaginator(
             client=sqs_client,
             method_name="list_queues",
@@ -205,43 +216,32 @@ async def resync_sqs_queue(
             MaxResults=1000,
         )
         try:
-            async with session.client(
-                "cloudcontrol",
-                config=Boto3Config(
-                    retries={
-                        "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS.value,
-                        "mode": CloudControlThrottlingConfig.RETRY_MODE.value,
-                    },
-                ),
-            ) as cloudcontrol:
-                async for page in paginator.paginate():
-                    if not page:  # Skip empty pages
-                        continue
-                    logger.info(
-                        f"Received {len(page)} {kind} resources in region {region}"
+            async for page in paginator.paginate():
+                if not page:  # Skip empty pages
+                    continue
+                logger.info(f"Received {len(page)} {kind} resources in region {region}")
+                queues_in_batch = len(page)
+                processed_count = 0
+                # For SQS, each item is a string (the queue URL), so the extractor returns it as is.
+                for chunk in process_list_in_chunks(
+                    page, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
+                ):
+                    processed_chunk = await process_resources_chunk(
+                        chunk,
+                        kind,
+                        account_id,
+                        region,
+                        cloudcontrol,
+                        identifier_extractor=lambda queue_url: queue_url,  # queue_url is already a string
                     )
-                    queues_in_batch = len(page)
-                    processed_count = 0
-                    # For SQS, each item is a string (the queue URL), so our extractor returns it as is.
-                    for chunk in process_list_in_chunks(
-                        page, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
-                    ):
-                        processed_chunk = await process_resources_chunk(
-                            chunk,
-                            kind,
-                            account_id,
-                            region,
-                            cloudcontrol,
-                            identifier_extractor=lambda queue_url: queue_url,  # queue_url is already a string
-                        )
-                        processed_count += len(chunk)
-                        logger.info(
-                            f"Processed {processed_count}/{queues_in_batch} {kind} resources in batch from region {region} in account {account_id}"
-                        )
-                        yield processed_chunk
+                    processed_count += len(chunk)
                     logger.info(
-                        f"Finished processing all {kind} resources from region {region} in account {account_id}"
+                        f"Processed {processed_count}/{queues_in_batch} {kind} resources in batch from region {region} in account {account_id}"
                     )
+                    yield processed_chunk
+                logger.info(
+                    f"Finished processing all {kind} resources from region {region} in account {account_id}"
+                )
 
         except sqs_client.exceptions.ClientError as e:
             if is_access_denied_exception(e):
@@ -259,7 +259,6 @@ async def resync_custom_kind(
     describe_method: str,
     list_param: str,
     marker_param: Literal["NextToken", "Marker"],
-    resource_config: AWSResourceConfig,
     describe_method_params: dict[str, Any] | None = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
@@ -276,14 +275,6 @@ async def resync_custom_kind(
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
     next_token = None
-
-    resource_config_selector = resource_config.selector
-
-    if not resource_config_selector.is_region_allowed(region):
-        logger.info(
-            f"Skipping resyncing {kind} in region {region} in account {account_id} because it's not allowed"
-        )
-        return
 
     if not describe_method_params:
         describe_method_params = {}
@@ -324,24 +315,24 @@ async def resync_custom_kind(
 async def resync_cloudcontrol(
     kind: str,
     session: aioboto3.Session,
-    resource_config: AWSResourceConfig,
+    use_get_resource_api: bool,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    resource_config_selector = resource_config.selector
-    use_get_resource_api = resource_config_selector.use_get_resource_api
-
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
-    if not resource_config_selector.is_region_allowed(region):
-        logger.info(
-            f"Skipping resyncing {kind} in region {region} in account {account_id} because it's not allowed"
-        )
-        return
 
     logger.info(f"Resyncing {kind} in account {account_id} in region {region}")
 
-    async with session.client("cloudcontrol") as cloudcontrol:
+    async with session.client(
+        "cloudcontrol",
+        config=Boto3Config(
+            retries={
+                "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS.value,
+                "mode": CloudControlThrottlingConfig.RETRY_MODE.value,
+            },
+        ),
+    ) as cloudcontrol_client:
         paginator = AsyncPaginator(
-            client=cloudcontrol,
+            client=cloudcontrol_client,
             method_name="list_resources",
             list_param="ResourceDescriptions",
         )
@@ -352,33 +343,24 @@ async def resync_cloudcontrol(
 
                 if use_get_resource_api:
                     # Use the get resource API, processing in chunks of RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE.
-                    async with session.client(
-                        "cloudcontrol",
-                        config=Boto3Config(
-                            retries={
-                                "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS.value,
-                                "mode": CloudControlThrottlingConfig.RETRY_MODE.value,
-                            },
-                        ),
-                    ) as cloudcontrol_get_resource_client:
-                        total_resources = len(resources_batch)
-                        processed_count = 0
-                        for chunk in process_list_in_chunks(
-                            resources_batch, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
-                        ):
-                            processed_chunk = await process_resources_chunk(
-                                chunk,
-                                kind,
-                                account_id,
-                                region,
-                                cloudcontrol_get_resource_client,
-                            )
-                            processed_count += len(chunk)
-                            logger.info(
-                                f"Processed {processed_count}/{total_resources} {kind} resources in batch from region {region} in account {account_id}"
-                            )
+                    total_resources = len(resources_batch)
+                    processed_count = 0
+                    for chunk in process_list_in_chunks(
+                        resources_batch, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
+                    ):
+                        processed_chunk = await process_resources_chunk(
+                            chunk,
+                            kind,
+                            account_id,
+                            region,
+                            cloudcontrol_client,
+                        )
+                        processed_count += len(chunk)
+                        logger.info(
+                            f"Processed {processed_count}/{total_resources} {kind} resources in batch from region {region} in account {account_id}"
+                        )
 
-                            yield processed_chunk
+                        yield processed_chunk
                 else:
                     # If not using get_resource_api, deserialize and update each resource in one go.
                     page_resources = []
