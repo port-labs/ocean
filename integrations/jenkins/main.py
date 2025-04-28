@@ -10,7 +10,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from overrides import JenkinStagesResourceConfig
 from webhook_processors import BuildWebhookProcessor, JobWebhookProcessor
-from kinds import ObjectKind
+from utils import ObjectKind
 
 
 @ocean.on_resync(ObjectKind.JOB)

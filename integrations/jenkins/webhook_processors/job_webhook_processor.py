@@ -5,13 +5,15 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from webhook_processors.abstract import JenkinsAbstractWebhookProcessor
+from webhook_processors._jenkins_abstract_webhook_processor import (
+    _JenkinsAbstractWebhookProcessor,
+)
 from client import JenkinsClient
-from kinds import ObjectKind
+from utils import ObjectKind
 from loguru import logger
 
 
-class JobWebhookProcessor(JenkinsAbstractWebhookProcessor):
+class JobWebhookProcessor(_JenkinsAbstractWebhookProcessor):
     """Processes job-related webhook events from Jenkins."""
 
     async def should_process_event(self, event: WebhookEvent) -> bool:

@@ -1,5 +1,7 @@
 from consts import BUILD_DELETE_EVENTS, BUILD_UPSERT_EVENTS
-from webhook_processors.abstract import JenkinsAbstractWebhookProcessor
+from webhook_processors._jenkins_abstract_webhook_processor import (
+    _JenkinsAbstractWebhookProcessor,
+)
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -7,11 +9,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from client import JenkinsClient
-from kinds import ObjectKind
+from utils import ObjectKind
 from loguru import logger
 
 
-class BuildWebhookProcessor(JenkinsAbstractWebhookProcessor):
+class BuildWebhookProcessor(_JenkinsAbstractWebhookProcessor):
     """Processes build-related webhook events from Jenkins."""
 
     async def should_process_event(self, event: WebhookEvent) -> bool:

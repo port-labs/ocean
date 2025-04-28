@@ -7,7 +7,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class JenkinsAbstractWebhookProcessor(AbstractWebhookProcessor):
+class _JenkinsAbstractWebhookProcessor(AbstractWebhookProcessor):
     """Abstract base class for Jenkins webhook processors."""
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
