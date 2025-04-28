@@ -1,6 +1,6 @@
 from typing import Any, Dict, Generator
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.core.handlers.port_app_config.models import (
@@ -10,8 +10,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
-from webhook_processors.label_processor import LabelWebhookProcessor
-from kinds import ObjectKind
+from webhook_processors.label_webhook_processor import LabelWebhookProcessor
+from linear.utils import ObjectKind
 
 
 @pytest.fixture
@@ -60,7 +60,7 @@ def mock_resource_config() -> ResourceConfig:
 
 @pytest.fixture
 def mock_client() -> Generator[AsyncMock, None, None]:
-    with patch("webhook_processors.label_processor.LinearClient") as mock:
+    with patch("webhook_processors.label_webhook_processor.LinearClient") as mock:
         client = AsyncMock()
         mock.create_from_ocean_configuration.return_value = client
         yield client
@@ -78,7 +78,6 @@ class TestLabelWebhookProcessor:
             payload=valid_label_payload,
             headers={"linear-event": "IssueLabel"},
         )
-        event._original_request = MagicMock()
         should_process = await label_processor.should_process_event(event)
         assert should_process is True
 
@@ -94,12 +93,8 @@ class TestLabelWebhookProcessor:
     async def test_should_process_event_non_label_payload(
         self, label_processor: LabelWebhookProcessor, non_label_payload: dict[str, Any]
     ) -> None:
-        event = WebhookEvent(
-            trace_id="test",
-            payload=non_label_payload,
-            headers={"linear-event": "IssueLabel"},
-        )
-        should_process = await label_processor.should_process_event(event)
+
+        should_process = await label_processor.validate_payload(non_label_payload)
         assert should_process is False
 
     async def test_get_matching_kinds(
