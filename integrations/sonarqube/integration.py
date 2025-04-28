@@ -175,23 +175,23 @@ class CustomSelector(Selector):
         return {}
 
 
-class SonarQubeMetricsSelector(CustomSelector):
-    @staticmethod
-    def _default_metrics() -> list[str]:
-        return [
-            "code_smells",
-            "coverage",
-            "bugs",
-            "vulnerabilities",
-            "duplicated_files",
-            "security_hotspots",
-            "new_violations",
-            "new_coverage",
-            "new_duplicated_lines_density",
-        ]
+def default_metrics() -> list[str]:
+    return [
+        "code_smells",
+        "coverage",
+        "bugs",
+        "vulnerabilities",
+        "duplicated_files",
+        "security_hotspots",
+        "new_violations",
+        "new_coverage",
+        "new_duplicated_lines_density",
+    ]
 
+
+class SonarQubeMetricsSelector(CustomSelector):
     metrics: list[str] = Field(
-        default_factory=lambda: SonarQubeMetricsSelector._default_metrics(),
+        default_factory=default_metrics,
         description="List of metrics to retrieve",
     )
 
@@ -220,8 +220,8 @@ class SonarQubeComponentProjectSelector(
     api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
 
 
-class SonarQubeProjectResourceConfig(ResourceConfig):
-    kind: Literal["projects"]
+class SonarQubeProjectResourceConfig(CustomResourceConfig):
+    kind: Literal["projects"]  # type: ignore
     selector: SonarQubeComponentProjectSelector
 
 
@@ -229,8 +229,8 @@ class SonarQubeGAProjectSelector(SonarQubeMetricsSelector):
     api_filters: SonarQubeGAProjectAPIFilter | None = Field(alias="apiFilters")
 
 
-class SonarQubeGAProjectResourceConfig(ResourceConfig):
-    kind: Literal["projects_ga"]
+class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
+    kind: Literal["projects_ga"]  # type: ignore
     selector: SonarQubeGAProjectSelector
 
 
@@ -242,16 +242,16 @@ class SonarQubeIssueSelector(SelectorWithApiFilters):
     )
 
 
-class SonarQubeIssueResourceConfig(ResourceConfig):
-    kind: Literal["issues"]
+class SonarQubeIssueResourceConfig(CustomResourceConfig):
+    kind: Literal["issues"]  # type: ignore
     selector: SonarQubeIssueSelector
 
 
 class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector): ...
 
 
-class SonarQubeOnPremAnalysisResourceConfig(ResourceConfig):
-    kind: Literal["onprem_analysis"]
+class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):
+    kind: Literal["onprem_analysis"]  # type: ignore
     selector: SonarQubeOnPremAnalysisSelector
 
 
