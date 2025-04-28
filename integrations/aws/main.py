@@ -382,29 +382,32 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     Includes both the groups and their member resources.
     """
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    if not (aws_resource_config.selector.list_group_resources):
+    tasks = []
+
+    # Determine which resync function to use based on configuration
+    if not aws_resource_config.selector.list_group_resources:
         logger.info("Resyncing resource groups with cloudcontrol")
-        tasks = [
-            semaphore_async_iterator(
-                semaphore,
-                functools.partial(resync_resources_for_account, credentials, kind),
-            )
-            async for credentials in get_accounts()
-        ]
+        use_get_resource_api = aws_resource_config.selector.use_get_resource_api
+        resync_func = functools.partial(
+            resync_cloudcontrol, use_get_resource_api=use_get_resource_api
+        )
     else:
         logger.info("Resyncing resource groups with resource groups api")
-        tasks = [
-            semaphore_async_iterator(
-                semaphore,
-                functools.partial(
-                    resync_resource_group,
-                    kind,
-                    session,
-                    aws_resource_config,
-                ),
+        resync_func = resync_resource_group  # type: ignore
+
+    async for credentials in get_accounts():
+        tasks.append(
+            resync_resources_for_account(
+                credentials=credentials,
+                kind=kind,
+                resync_func=resync_func,
             )
-            async for session in get_sessions()
-        ]
+        )
+
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            tasks.clear()
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):

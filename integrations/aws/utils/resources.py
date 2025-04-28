@@ -291,20 +291,12 @@ async def enrich_group_with_resources(
 async def resync_resource_group(
     kind: str,
     session: aioboto3.Session,
-    resource_config: AWSResourceConfig,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Batch resources from AWS Resource Groups service, including both the groups and their member resources.
     """
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
-    resource_config_selector = resource_config.selector
-
-    if not resource_config_selector.is_region_allowed(region):
-        logger.info(
-            f"Skipping resyncing {kind} in region {region} in account {account_id} because it's not allowed"
-        )
-        return
 
     async with session.client(
         "resource-groups",

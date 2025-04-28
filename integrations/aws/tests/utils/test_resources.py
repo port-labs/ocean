@@ -168,33 +168,25 @@ async def test_enrich_group_with_resources(
 async def test_resync_resource_group(
     mock_session: AsyncMock,
     mock_account_id: str,
-    mock_resource_config: MagicMock,
 ) -> None:
     """Test that resync_resource_group produces valid output."""
-    # Create a mock client with a properly configured paginator
     mock_client = AsyncMock()
 
-    # Create a mock paginator with a properly configured paginate method
     mock_paginator = AsyncMock()
 
-    # Create a mock paginate method that returns an async generator
     async def mock_paginate_generator(
         **kwargs: Any,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         yield {"Groups": [{"GroupName": "test-group", "GroupArn": "test-group-arn"}]}
 
-    # Set up the paginator's paginate method
     mock_paginator.paginate = mock_paginate_generator
 
-    # Set up the client's get_paginator method
     mock_client.get_paginator.return_value = mock_paginator
 
-    # Set up the session's client method to return a context manager
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
     mock_session.client.return_value = mock_context_manager
 
-    # Mock the enrich_group_with_resources function
     with (
         patch(
             "utils.resources._session_manager.find_account_id_by_session",
@@ -215,7 +207,6 @@ async def test_resync_resource_group(
         async for result in resync_resource_group(
             kind="AWS::ResourceGroups::Group",
             session=mock_session,
-            resource_config=mock_resource_config,
         ):
             assert isinstance(result, list)
             assert len(result) == 1
