@@ -175,7 +175,7 @@ class CustomSelector(Selector):
         return {}
 
 
-class SonarQubeSelectorWithMetrics(CustomSelector):
+class SonarQubeMetricsSelector(CustomSelector):
     @staticmethod
     def default_metrics() -> list[str]:
         return [
@@ -189,6 +189,10 @@ class SonarQubeSelectorWithMetrics(CustomSelector):
             "new_coverage",
             "new_duplicated_lines_density",
         ]
+    metrics: list[str] = Field(
+        default_factory=default_metrics,
+        description="List of metrics to retrieve",
+    )
 
 
 class SelectorWithApiFilters(CustomSelector):
@@ -210,27 +214,17 @@ class CustomResourceConfig(ResourceConfig):
 
 
 class SonarQubeComponentProjectSelector(
-    SonarQubeSelectorWithMetrics, SelectorWithApiFilters
+    SonarQubeMetricsSelector, SelectorWithApiFilters
 ):
     api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
-    metrics: list[str] = Field(
-        description="List of metric keys",
-        default_factory=SonarQubeSelectorWithMetrics.default_metrics,
-    )
-
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
     kind: Literal["projects"]  # type: ignore
     selector: SonarQubeComponentProjectSelector
 
 
-class SonarQubeGAProjectSelector(SonarQubeSelectorWithMetrics, CustomSelector):
+class SonarQubeGAProjectSelector(SonarQubeMetricsSelector):
     api_filters: SonarQubeGAProjectAPIFilter | None = Field(alias="apiFilters")
-
-    metrics: list[str] = Field(
-        description="List of metric keys",
-        default_factory=SonarQubeSelectorWithMetrics.default_metrics,
-    )
 
 
 class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
@@ -251,11 +245,7 @@ class SonarQubeIssueResourceConfig(CustomResourceConfig):
     selector: SonarQubeIssueSelector
 
 
-class SonarQubeOnPremAnalysisSelector(SonarQubeSelectorWithMetrics, CustomSelector):
-    metrics: list[str] = Field(
-        description="List of metric keys",
-        default_factory=SonarQubeSelectorWithMetrics.default_metrics,
-    )
+class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector): ...
 
 
 class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):
