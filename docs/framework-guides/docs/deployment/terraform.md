@@ -26,8 +26,14 @@ provider.
 
 <UIInstallation/>
 
-All installation options can be found in the Ocean integration factory Terraform
-provider [examples](https://registry.terraform.io/modules/port-labs/integration-factory/ocean/latest).
+:::note Example Implementations
+The Ocean repository contains example Terraform implementations demonstrating deployment patterns. These examples serve as reference implementations and learning resources.
+
+For production deployments, we recommend using our dedicated cloud provider repositories:
+- [AWS Ocean Integration](https://github.com/port-labs/terraform-ocean-integration-factory/tree/main/examples/aws_container_app)
+- [GCP Ocean Integration](https://github.com/port-labs/terraform-ocean-integration-factory/tree/main/examples/azure_container_app_azure_integration)
+- [Azure Ocean Integration](https://github.com/port-labs/terraform-ocean-integration-factory/tree/main/examples/gcp_cloud_run)
+:::
 
 <IntegrationsLibraryLink/>
 

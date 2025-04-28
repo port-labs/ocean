@@ -1,5 +1,4 @@
-from typing import Any
-
+from typing import Any, AsyncGenerator
 from bitbucket_cloud.client import BitbucketClient
 from loguru import logger
 from bitbucket_cloud.webhook_processors.events import (
@@ -104,3 +103,21 @@ class BitbucketWebhookClient(BitbucketClient):
                 webhook_url,
                 err,
             )
+
+    async def retrieve_diff_stat(
+        self, repo: str, old_hash: str, new_hash: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Retrieve diff statistics between two commits using Bitbucket API
+        """
+        logger.debug(
+            f"Retrieving diff stat for workspace: {self.workspace}, repo: {repo}, old_hash: {old_hash}, new_hash: {new_hash}; retrieve_diff_stat"
+        )
+        async for diff_stat in self._fetch_paginated_api_with_rate_limiter(
+            f"{self.base_url}/repositories/{self.workspace}/{repo}/diffstat/{new_hash}..{old_hash}",
+            params={"pagelen": 500},
+        ):
+            logger.info(
+                f"Fetched batch of {len(diff_stat)} diff stat from repository {repo} in workspace {self.workspace}"
+            )
+            yield diff_stat
