@@ -219,7 +219,7 @@ class SonarQubeComponentProjectSelector(
     api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
-    kind: Literal["projects"]  # type: ignore
+    kind: Literal["projects"]
     selector: SonarQubeComponentProjectSelector
 
 
@@ -228,7 +228,7 @@ class SonarQubeGAProjectSelector(SonarQubeMetricsSelector):
 
 
 class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
-    kind: Literal["projects_ga"]  # type: ignore
+    kind: Literal["projects_ga"]
     selector: SonarQubeGAProjectSelector
 
 
@@ -241,7 +241,7 @@ class SonarQubeIssueSelector(SelectorWithApiFilters):
 
 
 class SonarQubeIssueResourceConfig(CustomResourceConfig):
-    kind: Literal["issues"]  # type: ignore
+    kind: Literal["issues"]
     selector: SonarQubeIssueSelector
 
 
@@ -249,7 +249,7 @@ class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector): ...
 
 
 class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):
-    kind: Literal["onprem_analysis"]  # type: ignore
+    kind: Literal["onprem_analysis"]
     selector: SonarQubeOnPremAnalysisSelector
 
 
