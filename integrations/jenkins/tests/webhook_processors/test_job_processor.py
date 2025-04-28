@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 from typing import Any, Generator
 
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from webhook_processors.job_processor import JobWebhookProcessor
+from webhook_processors.job_webhook_processor import JobWebhookProcessor
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
@@ -11,7 +11,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
-from kinds import ObjectKind
+from utils import ObjectKind
 from consts import JOB_UPSERT_EVENTS, JOB_DELETE_EVENTS
 
 
@@ -50,7 +50,7 @@ def mock_resource_config() -> ResourceConfig:
 
 @pytest.fixture
 def mock_client() -> Generator[AsyncMock, None, None]:
-    with patch("webhook_processors.job_processor.JenkinsClient") as mock:
+    with patch("webhook_processors.job_webhook_processor.JenkinsClient") as mock:
         client = AsyncMock()
         mock.create_from_ocean_configuration.return_value = client
         yield client
