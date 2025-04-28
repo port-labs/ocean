@@ -2,7 +2,7 @@ from loguru import logger
 from linear.client import LinearClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from kinds import ObjectKind
+from linear.utils import ObjectKind
 from webhook_processors import LabelWebhookProcessor, IssueWebhookProcessor
 
 

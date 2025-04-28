@@ -1,4 +1,6 @@
-from webhook_processors.abstract import LinearAbstractWebhookProcessor
+from webhook_processors._linear_abstract_webhook_processor import (
+    _LinearAbstractWebhookProcessor,
+)
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -6,14 +8,14 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from linear.client import LinearClient
-from kinds import ObjectKind
+from linear.utils import ObjectKind
 from loguru import logger
 
 
-class IssueWebhookProcessor(LinearAbstractWebhookProcessor):
+class IssueWebhookProcessor(_LinearAbstractWebhookProcessor):
     """Processes issue-related webhook events from Linear."""
 
-    async def _should_process_event(self, event: WebhookEvent) -> bool:
+    async def should_process_event(self, event: WebhookEvent) -> bool:
         """Validate that the event header contains required Issue event type."""
 
         return event.headers.get("linear-event") == "Issue"
