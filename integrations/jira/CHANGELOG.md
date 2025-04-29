@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- towncrier release notes start -->
 ## 0.3.19 (2025-04-29)
 
-### Features
+### Improvements
 
 - Updated Jira integration to use new JQL search endpoint (/rest/api/3/search/jql) in preparation for May 1st, 2025 deprecation
 - Added support for token-based pagination using nextPageToken
