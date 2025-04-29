@@ -17,6 +17,7 @@ class AWSDescribeResourcesSelector(Selector):
     region_policy: RegionPolicy = Field(
         alias="regionPolicy", default_factory=RegionPolicy
     )
+    list_group_resources: bool = Field(alias="listGroupResources", default=False)
 
     def is_region_allowed(self, region: str) -> bool:
         """

@@ -17,6 +17,7 @@ from utils.resources import (
     fix_unserializable_date_properties,
     resync_cloudcontrol,
     resync_sqs_queue,
+    resync_resource_group,
 )
 
 from utils.aws import (
@@ -361,6 +362,41 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 credentials=credentials,
                 kind=kind,
                 resync_func=resync_sqs_queue,
+            )
+        )
+
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            tasks.clear()
+
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUP)
+async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    tasks = []
+
+    # Determine which resync function to use based on configuration
+    if not aws_resource_config.selector.list_group_resources:
+        logger.info("Resyncing resource groups with cloudcontrol")
+        use_get_resource_api = aws_resource_config.selector.use_get_resource_api
+        resync_func = functools.partial(
+            resync_cloudcontrol, use_get_resource_api=use_get_resource_api
+        )
+    else:
+        logger.info("Resyncing resource groups with resource groups api")
+        resync_func = resync_resource_group  # type: ignore
+
+    async for credentials in get_accounts():
+        tasks.append(
+            resync_resources_for_account(
+                credentials=credentials,
+                kind=kind,
+                resync_func=resync_func,
             )
         )
 
