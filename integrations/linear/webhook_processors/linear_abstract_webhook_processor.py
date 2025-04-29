@@ -1,4 +1,4 @@
-from linear.utils import WebhookAction
+from webhook_processors.utils import WebhookAction
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -15,4 +15,7 @@ class _LinearAbstractWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def is_action_allowed(self, action: str) -> bool:
-        return WebhookAction(action) in WebhookAction
+        try:
+            return WebhookAction(action) in WebhookAction
+        except ValueError:
+            return False
