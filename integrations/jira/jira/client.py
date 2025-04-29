@@ -246,7 +246,7 @@ class JiraClient(OAuthClient):
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
         return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
-    async def _get_jql_paginated_data(
+    async def _get_paginated_data_using_next_page_token(
         self,
         url: str,
         extract_key: str | None = None,
@@ -280,7 +280,7 @@ class JiraClient(OAuthClient):
         if "jql" in params:
             logger.info(f"Using JQL filter: {params['jql']}")
 
-        async for issues in self._get_jql_paginated_data(
+        async for issues in self._get_paginated_data_using_next_page_token(
             f"{self.api_url}/search/jql", "issues", initial_params=params
         ):
             yield issues
