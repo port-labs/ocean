@@ -2,7 +2,7 @@
 name = "azure-devops"
 version = "0.1.147"
 description = "An Azure Devops Ocean integration"
-authors = ["Matan Geva <matang@getport.io>", "Habib Nuhu <habib.nuhu@getport.io>"]
+authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
