@@ -31,7 +31,6 @@ class LabelWebhookProcessor(_LinearAbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         """Process the label webhook event and return the raw results."""
-        client = LinearClient.create_from_ocean_configuration()
         event_data = payload["data"]
         label_id = event_data["id"]
         action = payload["action"]
@@ -50,6 +49,7 @@ class LabelWebhookProcessor(_LinearAbstractWebhookProcessor):
                 deleted_raw_results=[event_data],
             )
 
+        client = LinearClient.create_from_ocean_configuration()
         data_to_update = await client.get_single_label(label_id)
 
         return WebhookEventRawResults(
