@@ -14,7 +14,6 @@ from azure_devops.webhooks.events import PullRequestEvents
 
 
 class PullRequestWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
-
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.PULL_REQUEST]
 

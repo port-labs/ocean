@@ -8,7 +8,6 @@ from port_ocean.core.handlers.webhook.webhook_event import EventPayload
 
 
 class _AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
-
     async def authenticate(
         self, payload: EventPayload, headers: Dict[str, str]
     ) -> bool:

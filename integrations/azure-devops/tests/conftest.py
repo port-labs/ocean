@@ -1,6 +1,7 @@
 from typing import Any, Generator
-import pytest
 from unittest.mock import MagicMock, AsyncMock
+import pytest
+from integration import GitPortAppConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
@@ -12,7 +13,6 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.context.event import _event_context_stack, EventContext
 from port_ocean.context.ocean import PortOceanContext
-from azure_devops.misc import GitPortAppConfig
 
 
 @pytest.fixture

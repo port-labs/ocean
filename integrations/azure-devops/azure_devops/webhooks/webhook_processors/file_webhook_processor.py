@@ -9,7 +9,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from azure_devops.client.azure_devops_client import API_PARAMS, AzureDevopsClient
-from azure_devops.misc import GitPortAppConfig, extract_branch_name_from_ref, Kind
+from integration import GitPortAppConfig
+from azure_devops.misc import Kind, extract_branch_name_from_ref
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
 from azure_devops.webhooks.webhook_processors._base_processor import (
     _AzureDevOpsBaseWebhookProcessor,

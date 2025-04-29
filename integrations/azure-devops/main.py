@@ -3,11 +3,13 @@ from typing import cast
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
     PULL_REQUEST_SEARCH_CRITERIA,
+    Kind,
+)
+from integration import (
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
-    Kind,
 )
 
 from azure_devops.webhooks.webhook_processors.pull_request_processor import (
