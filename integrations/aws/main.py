@@ -377,10 +377,6 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUP)
 async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Re-syncs AWS resource groups, which are used to organize AWS resources.
-    Includes both the groups and their member resources.
-    """
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = []
 
