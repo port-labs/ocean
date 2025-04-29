@@ -10,6 +10,48 @@ from aws.resources import (
 from typing import Any, AsyncIterator
 import aioboto3
 from overrides import AWSResourceConfig
+from typing import TypedDict
+
+class ElastiCacheCacheClusterQueryParams(TypedDict):
+    __name__="AWS::ElastiCache::CacheCluster"
+
+    service_name="elasticache"
+    describe_method="describe_cache_clusters"
+    list_param="CacheClusters"
+    marker_param="Marker"
+
+class ElasticLoadBalancingV2LoadBalancerQueryParams(TypedDict):
+    __name__="AWS::ELBV2::LoadBalancer"
+
+    service_name="elbv2"
+    describe_method="describe_load_balancers"
+    list_param="LoadBalancers"
+    marker_param="NextMarker"
+
+class ACMCertificateQueryParams(TypedDict):
+    __name__="AWS::ACM::Certificate"
+
+    service_name="acm"
+    describe_method="list_certificates"
+    list_param="CertificateSummaryList"
+    marker_param="NextToken"
+
+class CloudFormationStackQueryParams(TypedDict):
+    __name__="AWS::CloudFormation::Stack"
+
+    service_name="cloudformation"
+    describe_method="list_stacks"
+    list_param="Stacks"
+    marker_param="NextToken"
+
+class OrganizationsAccountQueryParams(TypedDict):
+    __name__="AWS::Organizations::Account"
+
+    service_name="organizations"
+    describe_method="list_accounts"
+    list_param="Accounts"
+    marker_param="NextToken"
+
 
 
 class ResyncStrategyFactory:
@@ -35,7 +77,7 @@ class ResyncStrategyFactory:
             account_id=await self._sessions.get_account_id(session),
         )
 
-        selector = resource_config.selector  # expected attr → bool flags etc.
+        selector = resource_config.selector
 
         if kind == "AWS::SQS::Queue":
             return SQSResyncHandler(
@@ -44,27 +86,25 @@ class ResyncStrategyFactory:
                 session_manager=self._sessions,
             )
 
-        # Example mapping for a few custom described kinds – make configurable.
+        # Mapping for custom described kinds using TypedDict classes
         CUSTOM_DESCRIBE: dict[str, dict[str, Any]] = {
-            "AWS::ElasticLoadBalancingV2::LoadBalancer": dict(
-                service_name="elbv2",
-                describe_method="describe_load_balancers",
-                list_param="LoadBalancers",
-                marker_param="NextMarker",
-            ),
-            "AWS::ElastiCache::CacheCluster": dict(
-                service_name="elasticache",
-                describe_method="describe_cache_clusters",
-                list_param="CacheClusters",
-                marker_param="Marker",
-            ),
+            "AWS::ElasticLoadBalancingV2::LoadBalancer": ElasticLoadBalancingV2LoadBalancerQueryParams,
+            "AWS::ElastiCache::CacheCluster": ElastiCacheCacheClusterQueryParams,
+            "AWS::ACM::Certificate": ACMCertificateQueryParams,
+            "AWS::CloudFormation::Stack": CloudFormationStackQueryParams,
+            "AWS::Organizations::Account": OrganizationsAccountQueryParams,
         }
+
         if kind in CUSTOM_DESCRIBE:
+            params = CUSTOM_DESCRIBE[kind]
             return BotoDescribePaginatedHandler(
                 context=ctx,
                 session=session,
                 session_manager=self._sessions,
-                **CUSTOM_DESCRIBE[kind],
+                service_name=params["service_name"],
+                describe_method=params["describe_method"],
+                list_param=params["list_param"],
+                marker_param=params["marker_param"],
             )
 
         # Fallback to CloudControl
@@ -75,15 +115,13 @@ class ResyncStrategyFactory:
             use_get_resource_api=selector.use_get_resource_api,
         )
 
-
-
 async def resync(
     *,
     kind: str,
     account_id: str | None,
     region: str | None,
     resource_config: "AWSResourceConfig",
-    session_manager: SessionManagerProtocol,
+    session_manager
 ) -> AsyncIterator[list[dict[str, Any]]]:
     """High‑level helper that hides strategy lookup & session iteration."""
 

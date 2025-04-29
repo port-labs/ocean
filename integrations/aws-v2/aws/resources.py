@@ -5,6 +5,7 @@ import abc
 import asyncio
 import json
 from collections.abc import AsyncIterator, Callable, Iterable, Sequence
+from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable, TypedDict
 
@@ -21,17 +22,6 @@ class MaterializedResource(TypedDict):
     CustomProperties.ACCOUNT_ID
     CustomProperties.REGION
 
-
-
-@runtime_checkable
-class SessionManagerProtocol(Protocol):
-    async def get_account_id(self, session: aioboto3.Session) -> str: ...
-
-    async def iter_sessions(
-        self, account_id: str | None = None, region: str | None = None
-    ) -> AsyncIterator[aioboto3.Session]: ...
-
-
 @runtime_checkable
 class CloudControlClientProtocol(Protocol):
     async def get_resource(
@@ -43,10 +33,8 @@ class CloudControlClientProtocol(Protocol):
     ) -> dict[str, Any]: ...
 
 
-
 def json_safe(obj: Any) -> Any:
     """Recursively convert (de)serialisable objects so `json.dumps` does not crash."""
-
     return json.loads(json.dumps(obj, default=str))
 
 
@@ -86,13 +74,38 @@ class BaseResyncHandler(abc.ABC):
         self._ctx = context
         self._session = session
         self._session_mgr = session_manager
+        self._exit_stack = AsyncExitStack()
+        self._clients = {}  # Cache for service clients
 
     async def __aiter__(self) -> AsyncIterator[list[dict[str, Any]]]:
-        async for raw_batch in self._fetch_batches():
-            if not raw_batch:
-                continue
-            materialised = [await self._materialise_item(item) for item in raw_batch]
-            yield materialised
+        async with self._exit_stack:
+            async for raw_batch in self._fetch_batches():
+                if not raw_batch:
+                    continue
+                materialised = [await self._materialise_item(item) for item in raw_batch]
+                yield materialised
+
+    async def __aenter__(self) -> "BaseResyncHandler":
+        # Nothing to do yet –  clients are lazily created – but returning
+        # self lets users write:     async with handler as h:
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:          # noqa: D401
+        """Close every AWS client even if the iterator was never consumed."""
+        await self._exit_stack.aclose()
+
+    async def close(self) -> None:
+        """Explicitly close open clients (syntactic sugar for reuse)."""
+        await self._exit_stack.aclose()
+        self._clients.clear()
+
+    async def _get_client(self, service_name: str, config: Boto3Config = None) -> Any:
+        """Get or create a client for the specified service."""
+        if service_name not in self._clients:
+            client_ctx = self._session.client(service_name, config=config)
+            client = await self._exit_stack.enter_async_context(client_ctx)
+            self._clients[service_name] = client
+        return self._clients[service_name]
 
     @abc.abstractmethod
     async def _fetch_batches(self) -> AsyncIterator[Sequence[Any]]: ...
@@ -131,14 +144,14 @@ class CloudControlResyncHandler(BaseResyncHandler):
         self._batch_size = batch_size
 
     async def _fetch_batches(self) -> AsyncIterator[Sequence[Any]]:
-        async with self._session.client("cloudcontrol") as cloudcontrol_client:
-            paginator = AsyncPaginator(
-                cloudcontrol_client,
-                method_name="list_resources",
-                list_param="ResourceDescriptions",
-            )
-            async for batch in paginator.paginate(TypeName=self._ctx.kind):
-                yield batch
+        cloudcontrol_client = await self._get_client("cloudcontrol")
+        paginator = AsyncPaginator(
+            cloudcontrol_client,
+            method_name="list_resources",
+            list_param="ResourceDescriptions",
+        )
+        async for batch in paginator.paginate(TypeName=self._ctx.kind):
+            yield batch
 
     async def _materialise_item(self, item: AWS_RAW_ITEM) -> MaterializedResource:
         # When use_get_resource_api is False, the `list_resources` response already contains the properties.
@@ -150,20 +163,18 @@ class CloudControlResyncHandler(BaseResyncHandler):
             )
 
         # Otherwise we must re‑query each identifier (potentially expensive → batched by caller).
-        async with self._session.client(
+        cloudcontrol = await self._get_client(
             "cloudcontrol",
-            config=Boto3Config(
-                retries={"max_attempts": 20, "mode": "adaptive"}
-            ),  # TODO: pull constants from cfg
-        ) as cloudcontrol:
-            response = await cloudcontrol.get_resource(
-                TypeName=self._ctx.kind, Identifier=item["Identifier"]
-            )
-            identifier = response["ResourceDescription"]["Identifier"]
-            props = json.loads(response["ResourceDescription"]["Properties"])
-            return await self._default_materialise(
-                identifier=identifier, properties=props
-            )
+            config=Boto3Config(retries={"max_attempts": 20, "mode": "adaptive"})
+        )
+        response = await cloudcontrol.get_resource(
+            TypeName=self._ctx.kind, Identifier=item["Identifier"]
+        )
+        identifier = response["ResourceDescription"]["Identifier"]
+        props = json.loads(response["ResourceDescription"]["Properties"])
+        return await self._default_materialise(
+            identifier=identifier, properties=props
+        )
 
 
 class SQSResyncHandler(BaseResyncHandler):
@@ -175,26 +186,26 @@ class SQSResyncHandler(BaseResyncHandler):
     async def _fetch_batches(
         self,
     ) -> AsyncIterator[Sequence[str]]:  # batch of QueueUrls
-        async with self._session.client("sqs") as sqs:
-            paginator = AsyncPaginator(
-                client=sqs,
-                method_name="list_queues",
-                list_param="QueueUrls",
-                MaxResults=self._LIST_BATCH_SIZE,
-            )
-            async for urls in paginator.paginate():
-                yield urls
+        sqs = await self._get_client("sqs")
+        paginator = AsyncPaginator(
+            client=sqs,
+            method_name="list_queues",
+            list_param="QueueUrls",
+            MaxResults=self._LIST_BATCH_SIZE,
+        )
+        async for urls in paginator.paginate():
+            yield urls
 
     async def _materialise_item(self, queue_url: str) -> MaterializedResource:
         # Use CloudControl to fetch the Properties because SQS API keeps them minimal.
-        async with self._session.client("cloudcontrol") as cc:
-            response = await cc.get_resource(
-                TypeName=self._ctx.kind, Identifier=queue_url
-            )
-            props = json.loads(response["ResourceDescription"]["Properties"])
-            return await self._default_materialise(
-                identifier=queue_url, properties=props
-            )
+        cc = await self._get_client("cloudcontrol")
+        response = await cc.get_resource(
+            TypeName=self._ctx.kind, Identifier=queue_url
+        )
+        props = json.loads(response["ResourceDescription"]["Properties"])
+        return await self._default_materialise(
+            identifier=queue_url, properties=props
+        )
 
 
 class BotoDescribePaginatedHandler(BaseResyncHandler):
@@ -224,29 +235,16 @@ class BotoDescribePaginatedHandler(BaseResyncHandler):
         self._describe_kwargs = describe_kwargs or {}
 
     async def _fetch_batches(self) -> AsyncIterator[Sequence[Any]]:
-        async with self._session.client(self._service_name) as client:
-            paginator = AsyncPaginator(
-                client=client,
-                method_name=self._describe_method,
-                list_param=self._list_param,
-                marker_param=self._marker_param,
-                **self._describe_kwargs,
-            )
-            async for batch in paginator.paginate():
-                yield batch
-
-    # async def _fetch_batches(self) -> AsyncIterator[Sequence[Any]]:
-    #     async with self._session.client(self._service_name) as client:
-    #         next_token: str | None = None
-    #         while True:
-    #             params = dict(self._describe_kwargs)
-    #             if next_token:
-    #                 params[self._marker_param] = next_token
-    #             response = await getattr(client, self._describe_method)(**params)
-    #             next_token = response.get(self._marker_param)
-    #             yield response.get(self._list_param, [])
-    #             if not next_token:
-    #                 break
+        client = await self._get_client(self._service_name)
+        paginator = AsyncPaginator(
+            client=client,
+            method_name=self._describe_method,
+            list_param=self._list_param,
+            marker_param=self._marker_param,
+            **self._describe_kwargs,
+        )
+        async for batch in paginator.paginate():
+            yield batch
 
     async def _materialise_item(self, item: AWS_RAW_ITEM) -> MaterializedResource:
         # Items are already expanded dicts (e.g. ELBv2 load balancer description)

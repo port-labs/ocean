@@ -1,6 +1,7 @@
 from typing import Any
 
 from port_ocean.context.ocean import ocean
+from aws.resync_factory import resync, CloudControlResyncHandler
 
 
 # Required
@@ -8,29 +9,14 @@ from port_ocean.context.ocean import ocean
 # Called each time with a different kind that should be returned from the source system.
 @ocean.on_resync()
 async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-
-    # Initial stub to show complete flow, replace this with your own logic
-    if kind == "aws_v2-example-kind":
-        return [
-            {
-                "my_custom_id": f"id_{x}",
-                "my_custom_text": f"very long text with {x} in it",
-                "my_special_score": x * 32 % 3,
-                "my_component": f"component-{x}",
-                "my_service": f"service-{x %2}",
-                "my_enum": "VALID" if x % 2 == 0 else "FAILED",
-            }
-            for x in range(25)
-        ]
-
-    return []
+    async for session in get_sessions():
+        handler = CloudControlResyncHandler(
+            context=ctx,
+            session=session,
+            use_get_resource_api=selector.use_get_resource_api,
+        )
+        async for batch in handler.resync(kind=kind):
+            yield batch
 
 
 # The same sync logic can be registered for one of the kinds that are available in the mapping in port.
