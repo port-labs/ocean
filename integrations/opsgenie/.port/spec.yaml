@@ -13,6 +13,8 @@ features:
       - kind: team
       - kind: schedule-on-call
       - kind: user
+      - kind: policies/alert
+      - kind: policies/notification
 configurations:
   - name: apiToken
     required: true
