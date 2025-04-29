@@ -2,12 +2,13 @@ from typing import Any
 import httpx
 import asyncio
 from loguru import logger
+from newrelic_integration.webhook.webhook_manager import NewRelicWebhookManager
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.issues import IssuesHandler, IssueState
 from newrelic_integration.core.service_levels import ServiceLevelsHandler
-from newrelic_integration.webhook_processors.issue_webhook_processor import (
+from newrelic_integration.webhook.processors.issue_webhook_processor import (
     IssueWebhookProcessor,
 )
 
@@ -95,6 +96,29 @@ async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 ]
                 enriched_service_levels = await asyncio.gather(*tasks)
                 yield enriched_service_levels
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    if not ocean.integration_config.get("new_relic_api_key"):
+        logger.error("New Relic API key is not configured")
+        return
+
+    if not ocean.integration_config.get("new_relic_account_id"):
+        logger.error("New Relic account ID is not configured")
+        return
+
+    if not ocean.app.base_url:
+        logger.info("No app base URL configured, skipping webhook creation")
+        return
+
+    async with httpx.AsyncClient() as http_client:
+        webhook_manager = NewRelicWebhookManager(http_client)
+        await webhook_manager.ensure_webhook_exists()
 
 
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from newrelic_integration.webhook_processors.issue_webhook_processor import (
+from newrelic_integration.webhook.processors.issue_webhook_processor import (
     IssueWebhookProcessor,
 )
 from port_ocean.core.handlers.port_app_config.models import (
@@ -149,11 +149,11 @@ async def test_handle_event_without_existing_guids(
 
     with (
         patch(
-            "newrelic_integration.webhook_processors.issue_webhook_processor.IssuesHandler",
+            "newrelic_integration.webhook.processors.issue_webhook_processor.IssuesHandler",
             return_value=mock_webhook_manager,
         ),
         patch(
-            "newrelic_integration.webhook_processors.issue_webhook_processor.EntitiesHandler",
+            "newrelic_integration.webhook.processors.issue_webhook_processor.EntitiesHandler",
             return_value=mock_entities_handler,
         ),
     ):
@@ -201,11 +201,11 @@ async def test_handle_event_with_existing_guids(
 
     with (
         patch(
-            "newrelic_integration.webhook_processors.issue_webhook_processor.IssuesHandler",
+            "newrelic_integration.webhook.processors.issue_webhook_processor.IssuesHandler",
             return_value=mock_webhook_manager,
         ),
         patch(
-            "newrelic_integration.webhook_processors.issue_webhook_processor.EntitiesHandler",
+            "newrelic_integration.webhook.processors.issue_webhook_processor.EntitiesHandler",
             return_value=mock_entities_handler,
         ),
     ):
@@ -241,11 +241,11 @@ async def test_handle_event_fetch_guids_fails(
 
     with (
         patch(
-            "newrelic_integration.webhook_processors.issue_webhook_processor.IssuesHandler",
+            "newrelic_integration.webhook.processors.issue_webhook_processor.IssuesHandler",
             return_value=mock_webhook_manager,
         ),
         patch(
-            "newrelic_integration.webhook_processors.issue_webhook_processor.EntitiesHandler",
+            "newrelic_integration.webhook.processors.issue_webhook_processor.EntitiesHandler",
             return_value=mock_entities_handler,
         ),
     ):
@@ -281,11 +281,11 @@ async def test_handle_event_entity_enrichment_fails(
 
     with (
         patch(
-            "newrelic_integration.webhook_processors.issue_webhook_processor.IssuesHandler",
+            "newrelic_integration.webhook.processors.issue_webhook_processor.IssuesHandler",
             return_value=mock_webhook_manager,
         ),
         patch(
-            "newrelic_integration.webhook_processors.issue_webhook_processor.EntitiesHandler",
+            "newrelic_integration.webhook.processors.issue_webhook_processor.EntitiesHandler",
             return_value=mock_entities_handler,
         ),
     ):
