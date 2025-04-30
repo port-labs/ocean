@@ -26,6 +26,7 @@ def turn_sequence_to_chunks(
 
 
 MAX_PORTFOLIO_REQUESTS = 20
+MAX_ISSUES_REQUESTS = 10000
 
 
 class Endpoints:
@@ -64,15 +65,17 @@ class SonarQubeClient:
         is_onpremise: bool = False,
         metrics: list[str] | None = None,
     ):
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.organization_id = organization_id
-        self.app_host = app_host
+        self.app_host = app_host.rstrip("/") if app_host else None
         self.is_onpremise = is_onpremise
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_params["headers"])
         self.metrics: list[str] = [] if not metrics else metrics
-        self.webhook_invoke_url = f"{self.app_host}/integration/webhook"
+        self.webhook_invoke_url = (
+            f"{self.app_host}/integration/webhook" if self.app_host else ""
+        )
 
     @property
     def api_auth_params(self) -> dict[str, Any]:
@@ -157,7 +160,16 @@ class SonarQubeClient:
                 page_size = paging_info.get("pageSize", PAGE_SIZE)
                 total_records = paging_info.get("total", 0)
                 # Check if we have fetched all records
-                if page_index * page_size >= total_records:
+                records_fetched = page_index * page_size
+                if records_fetched >= total_records:
+                    break
+                if (
+                    endpoint == Endpoints.ISSUES_SEARCH
+                    and records_fetched >= MAX_ISSUES_REQUESTS
+                ):
+                    logger.info(
+                        "The request exceeded the maximum number of issues that can be returned (10,000) from SonarQube API. Returning accumulated issues and skipping further results."
+                    )
                     break
                 query_params["p"] = page_index + 1
         except httpx.HTTPStatusError as e:
@@ -241,6 +253,8 @@ class SonarQubeClient:
 
         :return: A list of measures associated with the specified component.
         """
+        if not self.metrics:
+            raise ValueError("metrics cannot be empty")
         logger.info(f"Fetching all measures in : {project_key}")
         response = await self._send_api_request(
             endpoint=Endpoints.MEASURES,
@@ -468,6 +482,8 @@ class SonarQubeClient:
     async def get_pull_request_measures(
         self, project_key: str, pull_request_key: str
     ) -> list[dict[str, Any]]:
+        if not self.metrics:
+            raise ValueError("metrics cannot be empty")
         logger.info(f"Fetching measures for pull request: {pull_request_key}")
         response = await self._send_api_request(
             endpoint=Endpoints.MEASURES,

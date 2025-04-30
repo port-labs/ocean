@@ -1,5 +1,6 @@
 description: Ocean integration for Bitbucket Cloud
 icon: BitBucket
+title: Bitbucket Cloud
 features:
   - type: exporter
     section: Git Providers
@@ -9,8 +10,6 @@ features:
       - kind: pull-request
       - kind: folder
       - kind: file
-  - type: gitops
-    section: GitOps
 configurations:
   - name: bitbucketWorkspace
     description: Unique identifier (slug) for your Bitbucket workspace. It links the integration to your specific workspace. Learn more in the <a href="https://support.atlassian.com/bitbucket-cloud/docs/what-is-a-workspace/" target="_blank">Bitbucket documentation</a>.
