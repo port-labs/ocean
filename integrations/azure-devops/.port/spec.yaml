@@ -34,3 +34,7 @@ configurations:
     sensitive: true
 deploymentMethodOverride:
   - type: helm
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
