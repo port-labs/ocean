@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.4.0 (2025-04-29)
+
+
+### Improvements
+
+- Updated Jira integration to use new JQL search endpoint (/rest/api/3/search/jql) in preparation for May 1st, 2025 deprecation
+- Added support for token-based pagination using nextPageToken
+- Ensured consistent field selection with *all default
+
+### Bug Fixes
+
+- Fixed issue where fields parameter wasn't being passed correctly in webhook processor
+- Updated tests to properly handle new endpoint parameters
+
+
 ## 0.3.18 (2025-04-27)
 
 ### Bug Fixes
