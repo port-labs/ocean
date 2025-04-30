@@ -14,6 +14,7 @@ from utils.misc import (
     CloudControlClientProtocol,
     AsyncPaginator,
     process_list_in_chunks,
+    ResourceGroupsClientProtocol,
 )
 from utils.aws import get_sessions
 
@@ -244,6 +245,96 @@ async def resync_sqs_queue(
                 )
 
         except sqs_client.exceptions.ClientError as e:
+            if is_access_denied_exception(e):
+                logger.warning(
+                    f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
+                )
+            else:
+                raise e
+
+
+async def fetch_group_resources(
+    client: ResourceGroupsClientProtocol, group_name: str, region: str
+) -> list[dict[str, Any]]:
+    resources_paginator = AsyncPaginator(
+        client=client,
+        method_name="list_group_resources",
+        list_param="Resources",
+    )
+
+    group_resources = []
+
+    async for resources_batch in resources_paginator.paginate(Group=group_name):
+        if resources_batch:
+            group_resources.extend(resources_batch)
+    return group_resources
+
+
+async def enrich_group_with_resources(
+    client: ResourceGroupsClientProtocol,
+    group: dict[str, Any],
+    kind: str,
+    account_id: str,
+    region: str,
+) -> dict[str, Any]:
+    group_resources = await fetch_group_resources(client, group["Name"], region)
+
+    return {
+        CustomProperties.KIND.value: kind,
+        CustomProperties.ACCOUNT_ID.value: account_id,
+        CustomProperties.REGION.value: region,
+        **fix_unserializable_date_properties(group),
+        "__Resources": group_resources,
+    }
+
+
+async def resync_resource_group(
+    kind: str,
+    session: aioboto3.Session,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Batch resources from AWS Resource Groups service, including both the groups and their member resources.
+    """
+    region = session.region_name
+    account_id = await _session_manager.find_account_id_by_session(session)
+
+    async with session.client(
+        "resource-groups",
+        config=Boto3Config(
+            retries={
+                "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS.value,
+                "mode": CloudControlThrottlingConfig.RETRY_MODE.value,
+            },
+        ),
+    ) as client:
+        paginator = AsyncPaginator(
+            client=client,
+            method_name="list_groups",
+            list_param="Groups",
+        )
+
+        try:
+            async for groups_batch in paginator.paginate():
+                if not groups_batch:
+                    continue
+                for chunk_groups in process_list_in_chunks(
+                    groups_batch, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
+                ):
+                    tasks = [
+                        enrich_group_with_resources(
+                            client, group, kind, account_id, region
+                        )
+                        for group in chunk_groups
+                    ]
+                    processed_groups = await asyncio.gather(*tasks)
+
+                    if processed_groups:
+                        yield processed_groups
+                        logger.info(
+                            f"Processed batch of {len(processed_groups)} {kind} resource groups from region {region} in account {account_id}"
+                        )
+
+        except client.exceptions.ClientError as e:
             if is_access_denied_exception(e):
                 logger.warning(
                     f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
