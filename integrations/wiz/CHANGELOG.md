@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.125 (2025-04-27)
+
+
+### Bug Fixes
+
+- Added extensions={"retryable": True} to the HTTP request to enable retry logic for transient errors
+
+
 ## 0.1.124 (2025-04-27)
 
 ### Bug Fixes
