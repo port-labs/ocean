@@ -1,5 +1,9 @@
 from pydantic import Field, BaseModel, validator
+from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
 from port_ocean.core.integrations.base import BaseIntegration
 
 from azure_devops.gitops.file_entity_processor import GitManipulationHandler
@@ -11,6 +15,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from port_ocean.utils.signal import signal_handler
+from port_ocean.core.integrations.mixins.handler import HandlerMixin
 
 
 class AzureDevopsProjectResourceConfig(ResourceConfig):
@@ -176,8 +182,26 @@ class GitPortAppConfig(PortAppConfig):
     ] = Field(default_factory=list)
 
 
-class AzureDevopsIntegration(BaseIntegration):
+class AzureDevopsHandlerMixin(HandlerMixin):
     EntityProcessorClass = GitManipulationHandler
+
+
+class AzureDevopsLiveEventsProcessorManager(
+    LiveEventsProcessorManager, AzureDevopsHandlerMixin
+):
+    pass
+
+
+class AzureDevopsIntegration(BaseIntegration, AzureDevopsHandlerMixin):
+    def __init__(self, context: PortOceanContext):
+        super().__init__(context)
+        # Replace the Ocean's webhook manager with our custom one
+        self.context.app.webhook_manager = AzureDevopsLiveEventsProcessorManager(
+            self.context.app.integration_router,
+            signal_handler,
+            self.context.config.max_event_processing_seconds,
+            self.context.config.max_wait_seconds_before_shutdown,
+        )
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitPortAppConfig

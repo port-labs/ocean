@@ -11,8 +11,8 @@ from port_ocean.utils.cache import cache_iterator_result
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
 
-from .base_client import HTTPBaseClient
-from .file_processing import (
+from azure_devops.client.base_client import HTTPBaseClient
+from azure_devops.client.file_processing import (
     parse_file_content,
 )
 from port_ocean.utils.async_iterators import (
@@ -36,9 +36,15 @@ MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 
 
 class AzureDevopsClient(HTTPBaseClient):
-    def __init__(self, organization_url: str, personal_access_token: str) -> None:
+    def __init__(
+        self,
+        organization_url: str,
+        personal_access_token: str,
+        webhook_auth_username: str,
+    ) -> None:
         super().__init__(personal_access_token)
         self._organization_base_url = organization_url
+        self.webhook_auth_username = webhook_auth_username
 
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
@@ -47,6 +53,7 @@ class AzureDevopsClient(HTTPBaseClient):
         azure_devops_client = cls(
             ocean.integration_config["organization_url"].strip("/"),
             ocean.integration_config["personal_access_token"],
+            ocean.integration_config["webhook_auth_username"],
         )
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
@@ -715,6 +722,13 @@ class AzureDevopsClient(HTTPBaseClient):
             logger.error(f"Failed to process file {file_path}: {str(e)}")
             raise
 
+    async def get_commit_changes(
+        self, project_id: str, repository_id: str, commit_id: str
+    ) -> list[dict[str, Any]]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/commits/{commit_id}/changes"
+        response = await self.send_request("GET", url, params=API_PARAMS)
+        return response.json() if response else []
+
     async def create_webhook_subscriptions(
         self,
         base_url: str,
@@ -722,7 +736,7 @@ class AzureDevopsClient(HTTPBaseClient):
         webhook_secret: Optional[str] = None,
     ) -> None:
         """Create or update webhook subscriptions"""
-        auth_username = "port"
+        auth_username = self.auth_username
 
         existing_subscriptions = await self.generate_subscriptions_webhook_events()
 

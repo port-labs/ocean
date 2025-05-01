@@ -32,6 +32,11 @@ configurations:
     type: string
     required: false
     sensitive: true
+  - name: webhookAuthUsername
+    description: The username used by Azure DevOps to authenticate webhook requests.
+    type: string
+    required: false
+    default: port
 deploymentMethodOverride:
   - type: helm
 saas:

@@ -128,23 +128,17 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         created_files: List[Dict[str, Any]] = []
         modified_files: List[Dict[str, Any]] = []
         deleted_files: List[Dict[str, Any]] = []
+        client = AzureDevopsClient.create_from_ocean_config()
 
         try:
-            repo_info = (
-                await AzureDevopsClient.create_from_ocean_config().get_repository(
-                    repo_id
-                )
-            )
+            repo_info = await client.get_repository(repo_id)
             if not repo_info:
                 logger.warning(f"Could not find repository with ID {repo_id}")
                 return created_files, modified_files, deleted_files
 
             project_id = repo_info["project"]["id"]
-            url = f"{AzureDevopsClient.create_from_ocean_config()._organization_base_url}/{project_id}/_apis/git/repositories/{repo_id}/commits/{commit_id}/changes"
 
-            response = await AzureDevopsClient.create_from_ocean_config().send_request(
-                "GET", url, params=API_PARAMS
-            )
+            response = await client.get_commit_changes(project_id, repo_id, commit_id)
             if not response:
                 logger.warning(
                     f"No response when fetching changes for commit {commit_id}"
@@ -156,22 +150,23 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
             for changed_file in changed_files:
                 change_type = changed_file.get("changeType", "")
 
-                if "add" in change_type:
-                    file_entity = await self._build_file_entity(
-                        repo_info, commit_id, changed_file
-                    )
-                    if file_entity:
-                        created_files.append(file_entity)
-                elif "delete" in change_type:
-                    deleted_files.append(
-                        self._build_deleted_file_entity(repo_info, changed_file)
-                    )
-                else:
-                    file_entity = await self._build_file_entity(
-                        repo_info, commit_id, changed_file
-                    )
-                    if file_entity:
-                        modified_files.append(file_entity)
+                match change_type:
+                    case "add":
+                        file_entity = await self._build_file_entity(
+                            repo_info, commit_id, changed_file
+                        )
+                        if file_entity:
+                            created_files.append(file_entity)
+                    case "delete":
+                        deleted_files.append(
+                            self._build_deleted_file_entity(repo_info, changed_file)
+                        )
+                    case _:
+                        file_entity = await self._build_file_entity(
+                            repo_info, commit_id, changed_file
+                        )
+                        if file_entity:
+                            modified_files.append(file_entity)
 
         except Exception as e:
             logger.error(f"Error fetching file changes: {e}")

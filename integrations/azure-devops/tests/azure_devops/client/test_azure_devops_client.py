@@ -183,6 +183,7 @@ MOCK_FILE_PATH = "/path/to/file.txt"
 MOCK_REPOSITORY_ID = "repo123"
 MOCK_BRANCH_NAME = "main"
 MOCK_COMMIT_ID = "abc123"
+MOCK_AUTH_USERNAME = "port"
 
 
 async def async_generator(items: List[Any]) -> AsyncGenerator[Any, None]:
@@ -220,7 +221,9 @@ def mock_event_context() -> Generator[MagicMock, None, None]:
 
 @pytest.fixture
 def mock_azure_client() -> AzureDevopsClient:
-    return AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    return AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
 
 @pytest.mark.parametrize(
@@ -318,7 +321,9 @@ def test_repository_is_healthy(repository: Dict[str, Any], is_healthy: bool) -> 
 
 @pytest.mark.asyncio
 async def test_get_single_project() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -340,7 +345,9 @@ async def test_get_single_project() -> None:
 
 @pytest.mark.asyncio
 async def test_generate_projects(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_get_paginated_by_top_and_continuation_token(
@@ -366,7 +373,9 @@ async def test_generate_projects(mock_event_context: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_generate_teams(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_get_paginated_by_top_and_skip(
@@ -392,7 +401,9 @@ async def test_generate_teams(mock_event_context: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_get_team_members() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     test_team = {"id": "team1", "projectId": "proj1", "name": "Team One"}
 
@@ -423,7 +434,9 @@ async def test_get_team_members() -> None:
 
 @pytest.mark.asyncio
 async def test_enrich_teams_with_members() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     test_teams = [
         {"id": "team1", "projectId": "proj1", "name": "Team One"},
@@ -452,7 +465,9 @@ async def test_enrich_teams_with_members() -> None:
 
 @pytest.mark.asyncio
 async def test_generate_repositories(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -479,7 +494,9 @@ async def test_generate_repositories(mock_event_context: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_repositories(
@@ -523,7 +540,9 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
 async def test_generate_projects_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://google.com"))
@@ -542,7 +561,9 @@ async def test_generate_projects_will_skip_404(
 async def test_generate_teams_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://google.com"))
@@ -561,7 +582,9 @@ async def test_generate_teams_will_skip_404(
 async def test_generate_repositories_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [{"id": "proj1", "name": "Project One"}]
@@ -586,7 +609,9 @@ async def test_generate_repositories_will_skip_404(
 async def test_generate_members_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://google.com"))
@@ -614,7 +639,9 @@ async def test_generate_members_will_skip_404(
 async def test_generate_users_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://google.com"))
@@ -633,7 +660,9 @@ async def test_generate_users_will_skip_404(
 async def test_generate_pull_requests_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_generate_repositories(
         *args: Any, **kwargs: Any
@@ -668,7 +697,9 @@ async def test_generate_pull_requests_will_skip_404(
 async def test_generate_pipelines_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [{"id": "proj1", "name": "Project One"}]
@@ -695,7 +726,9 @@ async def test_generate_pipelines_will_skip_404(
 async def test_generate_repository_policies_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_generate_repositories(
         *args: Any, **kwargs: Any
@@ -730,7 +763,9 @@ async def test_generate_repository_policies_will_skip_404(
 async def test_generate_releases_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [{"id": "proj1", "name": "Project One"}]
@@ -759,7 +794,7 @@ async def test_generate_work_items_will_skip_404(mock_event_context: MagicMock) 
     Tests that if a 404 is encountered anywhere in the pipeline (e.g. retrieving the WIQL
     or fetching work items), the client logs a warning and yields no items.
     """
-    client = AzureDevopsClient("https://fake_org_url.com", "fake_pat")
+    client = AzureDevopsClient("https://fake_org_url.com", "fake_pat", "fake_username")
 
     async def mock_make_request(**kwargs: Any) -> Response:
         # Return a 404 every time
@@ -777,7 +812,9 @@ async def test_generate_work_items_will_skip_404(mock_event_context: MagicMock) 
 
 @pytest.mark.asyncio
 async def test_get_columns_will_skip_404(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
@@ -795,7 +832,9 @@ async def test_get_columns_will_skip_404(mock_event_context: MagicMock) -> None:
 async def test_get_boards_in_organization_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
@@ -817,7 +856,9 @@ async def test_generate_subscriptions_webhook_events_will_skip_404(
     generate_subscriptions_webhook_events fetches a single endpoint and returns a list of WebhookSubscription.
     On 404, it should skip and return [].
     """
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async with event_context("test_event"):
         with patch.object(client, "send_request") as mock_send_request:
@@ -835,7 +876,9 @@ async def test_generate_subscriptions_webhook_events_will_skip_404(
 
 @pytest.mark.asyncio
 async def test_get_file_by_branch_will_skip_404(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
@@ -851,7 +894,9 @@ async def test_get_file_by_branch_will_skip_404(mock_event_context: MagicMock) -
 
 @pytest.mark.asyncio
 async def test_generate_pipelines() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -884,7 +929,9 @@ async def test_generate_pipelines() -> None:
 
 @pytest.mark.asyncio
 async def test_generate_repository_policies() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_repositories(
@@ -926,7 +973,9 @@ async def test_generate_repository_policies() -> None:
 
 @pytest.mark.asyncio
 async def test_generate_releases(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -960,7 +1009,9 @@ async def test_generate_releases(mock_event_context: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_get_pull_request() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -982,7 +1033,9 @@ async def test_get_pull_request() -> None:
 
 @pytest.mark.asyncio
 async def test_get_repository() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -1004,7 +1057,9 @@ async def test_get_repository() -> None:
 
 @pytest.mark.asyncio
 async def test_get_columns() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_get_boards_in_organization() -> (
@@ -1028,7 +1083,9 @@ async def test_get_columns() -> None:
 
 @pytest.mark.asyncio
 async def test_get_boards_in_organization(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -1058,7 +1115,9 @@ async def test_get_boards_in_organization(mock_event_context: MagicMock) -> None
 
 @pytest.mark.asyncio
 async def test_generate_subscriptions_webhook_events() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -1076,7 +1135,9 @@ async def test_generate_subscriptions_webhook_events() -> None:
 
 @pytest.mark.asyncio
 async def test_create_subscription() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
     webhook_event = WebhookSubscription(
         id=None,
         eventType="git.push",
@@ -1108,7 +1169,9 @@ async def test_create_subscription() -> None:
 
 @pytest.mark.asyncio
 async def test_delete_subscription() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
     webhook_event = WebhookSubscription(
         id="subscription123",
         publisherId="tfs",
@@ -1137,7 +1200,9 @@ async def test_delete_subscription() -> None:
 
 @pytest.mark.asyncio
 async def test_get_file_by_branch() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -1164,7 +1229,9 @@ async def test_get_file_by_branch() -> None:
 
 @pytest.mark.asyncio
 async def test_get_file_by_commit() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
