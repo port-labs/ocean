@@ -724,10 +724,14 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def get_commit_changes(
         self, project_id: str, repository_id: str, commit_id: str
-    ) -> list[dict[str, Any]]:
-        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/commits/{commit_id}/changes"
-        response = await self.send_request("GET", url, params=API_PARAMS)
-        return response.json() if response else []
+    ) -> dict[str, Any]:
+        try:
+            url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/commits/{commit_id}/changes"
+            response = await self.send_request("GET", url, params=API_PARAMS)
+            return response.json() if response else {}
+        except Exception as e:
+            logger.error(f"Failed to extract response from {url}: {str(e)}")
+            raise
 
     async def create_webhook_subscriptions(
         self,
@@ -736,7 +740,7 @@ class AzureDevopsClient(HTTPBaseClient):
         webhook_secret: Optional[str] = None,
     ) -> None:
         """Create or update webhook subscriptions"""
-        auth_username = self.auth_username
+        auth_username = self.webhook_auth_username
 
         existing_subscriptions = await self.generate_subscriptions_webhook_events()
 

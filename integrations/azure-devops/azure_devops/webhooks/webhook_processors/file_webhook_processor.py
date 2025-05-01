@@ -8,7 +8,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from azure_devops.client.azure_devops_client import API_PARAMS, AzureDevopsClient
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 from integration import GitPortAppConfig
 from azure_devops.misc import Kind, extract_branch_name_from_ref
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
@@ -145,7 +145,7 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
                 )
                 return created_files, modified_files, deleted_files
 
-            changed_files = response.json().get("changes", [])
+            changed_files = response.get("changes", []) if response else []
 
             for changed_file in changed_files:
                 change_type = changed_file.get("changeType", "")
