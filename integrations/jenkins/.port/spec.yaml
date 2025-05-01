@@ -29,6 +29,6 @@ configurations:
 deploymentMethodOverride:
   - type: helm
 saas:
-  enabled: true
+  enabled: false
   liveEvents:
     enabled: true
