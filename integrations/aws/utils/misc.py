@@ -1,7 +1,4 @@
 import enum
-
-
-from port_ocean.context.ocean import ocean
 from utils.overrides import AWSResourceConfig
 from typing import (
     List,
@@ -14,7 +11,6 @@ from typing import (
     AsyncGenerator,
     Iterator,
 )
-import asyncio
 from collections import deque
 from loguru import logger
 
@@ -32,17 +28,17 @@ class CloudControlClientProtocol(Protocol):
     ) -> Dict[str, Any]: ...
 
 
+class ResourceGroupsClientProtocol(Protocol):
+    async def list_groups(self, *, NextToken: str | None = None) -> Dict[str, Any]: ...
+
+    async def list_group_resources(
+        self, *, Group: str, NextToken: str | None = None
+    ) -> Dict[str, Any]: ...
+
+
 class CloudControlThrottlingConfig(enum.Enum):
     MAX_RETRY_ATTEMPTS: int = 100
     RETRY_MODE: Literal["legacy", "standard", "adaptive"] = "adaptive"
-
-
-def get_semaphore() -> asyncio.BoundedSemaphore:
-    max_concurrent_accounts: int = int(
-        ocean.integration_config["maximum_concurrent_accounts"]
-    )
-    semaphore = asyncio.BoundedSemaphore(max_concurrent_accounts)
-    return semaphore
 
 
 class CustomProperties(enum.StrEnum):
@@ -59,6 +55,7 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
     ELBV2_LOAD_BALANCER = "AWS::ELBV2::LoadBalancer"
     SQS_QUEUE = "AWS::SQS::Queue"
+    RESOURCE_GROUP = "AWS::ResourceGroups::Group"
 
 
 def is_access_denied_exception(e: Exception) -> bool:
