@@ -1,5 +1,5 @@
-from consts import BUILD_DELETE_EVENTS, BUILD_UPSERT_EVENTS
-from webhook_processors._jenkins_abstract_webhook_processor import (
+from webhook_processors.consts import BUILD_DELETE_EVENTS, BUILD_UPSERT_EVENTS
+from webhook_processors.jenkins_abstract_webhook_processor import (
     _JenkinsAbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -33,7 +33,6 @@ class BuildWebhookProcessor(_JenkinsAbstractWebhookProcessor):
         event_type = payload.get("type")
         source = payload.get("source")
         url = payload.get("url", "")
-        build_data = payload.get("data", {})
         client = JenkinsClient.create_from_ocean_configuration()
 
         logger.info(
@@ -41,19 +40,8 @@ class BuildWebhookProcessor(_JenkinsAbstractWebhookProcessor):
         )
 
         if event_type in BUILD_DELETE_EVENTS:
-            jenkins_host = client.jenkins_base_url
-            build_url = f"{jenkins_host}/{url}"
-            job_url = f"{jenkins_host}/{source}"
-
-            deleted_build = {
-                "url": build_url,
-                "displayName": build_data.get("displayName"),
-                "result": build_data.get("result"),
-                "duration": build_data.get("duration"),
-                "timestamp": build_data.get("timestamp"),
-                "parentJob": {"url": job_url},
-                "previousBuild": {"url": build_url},
-            }
+            deleted_build = payload.get("data", {})
+            deleted_build["url"] = f"{client.jenkins_base_url}/{url}"
 
             logger.info(f"Build #{url} was deleted from {source}")
 

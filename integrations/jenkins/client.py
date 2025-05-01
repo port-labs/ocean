@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, AsyncGenerator, Optional, TypeVar, Callable
+from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urljoin
 import httpx
 
@@ -12,14 +12,11 @@ from port_ocean.context.ocean import ocean
 
 PAGE_SIZE = 50
 
-T = TypeVar("T")
-
 
 class ResourceKey(StrEnum):
     JOBS = "jobs"
     BUILDS = "builds"
     STAGES = "stages"
-    USERS = "users"
 
 
 class JenkinsClient:
@@ -68,75 +65,13 @@ class JenkinsClient:
             logger.error(f"Failed to make request to {url}: {str(e)}")
             raise
 
-    async def _paginate(
-        self,
-        endpoint: str,
-        extract_items: Callable[[dict[str, Any]], list[T]],
-        params_builder: Callable[[int, int], dict[str, Any]],
-        page_size: int = PAGE_SIZE,
-    ) -> AsyncGenerator[list[T], None]:
-        """
-        Generic pagination method.
-
-        Args:
-            endpoint: API endpoint
-            extract_items: Function to extract items from response
-            params_builder: Function to build pagination parameters
-            page_size: Number of items per page
-        """
-        page = 0
-
-        while True:
-            start_idx = page_size * page
-            end_idx = start_idx + page_size
-
-            params = params_builder(start_idx, end_idx)
-
-            response_data = await self._send_api_request("GET", endpoint, params=params)
-            items = extract_items(response_data)
-
-            if not items:
-                break
-
-            yield items
-
-            if len(items) < page_size:
-                break
-
-            page += 1
-
-    async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get users with pagination support for both old and new endpoints."""
-        if cache := event.attributes.get(ResourceKey.USERS):
-            logger.info("picking jenkins users from cache")
-            yield cache
-            return
-
-        url = "people/api/json"
-
-        async for users in self._paginate(
-            url,
-            lambda response: response.get("users", []),
-            lambda start, end: {"tree": f"users[user[*],*]{{{start},{end}}}"},
-        ):
-            event.attributes.setdefault(ResourceKey.USERS, []).extend(users)
-            yield users
-
     async def get_jobs(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(ResourceKey.JOBS):
             logger.info("picking jenkins jobs from cache")
             yield cache
             return
 
-        def extract_jobs(response: dict[str, Any]) -> list[dict[str, Any]]:
-            return response.get("jobs", [])
-
-        def build_params(start: int, end: int) -> dict[str, Any]:
-            return self._build_api_params(
-                ResourceKey.JOBS, end - start, start // PAGE_SIZE
-            )
-
-        async for jobs in self._paginate("api/json", extract_jobs, build_params):
+        async for jobs in self._get_paginated_resources(ResourceKey.JOBS):
             event.attributes.setdefault(ResourceKey.JOBS, []).extend(jobs)
             yield jobs
 
@@ -146,7 +81,7 @@ class JenkinsClient:
             yield cache
             return
 
-        async for _jobs in self.fetch_resources(ResourceKey.BUILDS):
+        async for _jobs in self._get_paginated_resources(ResourceKey.BUILDS):
             builds = [build for job in _jobs for build in job.get("builds", [])]
             logger.debug(f"Builds received {builds}")
             event.attributes.setdefault(ResourceKey.BUILDS, []).extend(builds)
@@ -163,7 +98,7 @@ class JenkinsClient:
             yield job_details.get("builds")
 
         job = {"url": job_url}
-        async for _jobs in self.fetch_resources(ResourceKey.BUILDS, job):
+        async for _jobs in self._get_paginated_resources(ResourceKey.BUILDS, job):
             builds = [build for job in _jobs for build in job.get("builds", [])]
             yield builds
 
@@ -184,29 +119,45 @@ class JenkinsClient:
                         f"Failed to get stages for build {build_url}: {e.args[0]}"
                     )
 
-    async def fetch_resources(
+    async def _get_paginated_resources(
         self, resource: str, parent_job: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        page_size = PAGE_SIZE
+        page = 0
 
-        base_url = self._build_base_url(parent_job)
+        child_jobs = []
 
-        async for jobs in self._paginate(
-            endpoint=f"{base_url}/api/json",
-            extract_items=lambda response: response.get("jobs", []),
-            params_builder=lambda start, end: self._build_api_params(
-                resource, end - start, start // PAGE_SIZE
-            ),
-        ):
-            logger.info(f"Fetching {resource} from {base_url}")
-            logger.info(f"Fetched jobs: {jobs} of length {len(jobs)}")
+        while True:
+            params = self._build_api_params(resource, page_size, page)
+            base_url = self._build_base_url(parent_job)
+            logger.info(f"Fetching {resource} from {base_url} with params {params}")
+
+            job_response = await self._send_api_request(
+                "GET", f"{base_url}/api/json", params=params
+            )
+            logger.debug(f"Fetched {job_response}")
+            jobs = job_response.get("jobs", [])
+            logger.info(f"Fetched {len(jobs)} jobs")
+
+            if not jobs:
+                break
 
             enriched_jobs = self.enrich_jobs(jobs, parent_job)
+
+            # immediately return buildable jobs
             yield [job for job in enriched_jobs if job.get("buildable")]
 
             folder_jobs = [job for job in enriched_jobs if job.get("jobs")]
-            for job in folder_jobs:
-                async for fetched_jobs in self.fetch_resources(resource, job):
-                    yield fetched_jobs
+            child_jobs.extend(folder_jobs)
+
+            page += 1
+
+            if len(jobs) < page_size:
+                break
+
+        for job in child_jobs:
+            async for fetched_jobs in self._get_paginated_resources(resource, job):
+                yield fetched_jobs
 
     def _build_api_params(
         self, resource: str, page_size: int, page: int
@@ -251,3 +202,28 @@ class JenkinsClient:
         fetch_url = urljoin(self.jenkins_base_url, f"{resource_url}api/json")
 
         return await self._send_api_request("GET", fetch_url)
+
+    async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        page_size = PAGE_SIZE
+        page = 0
+
+        while True:
+            start_idx = page_size * page
+            end_idx = start_idx + page_size
+
+            params = {"tree": f"users[user[*],*]{{{start_idx},{end_idx}}}"}
+
+            response = await self._send_api_request(
+                "GET", f"{self.jenkins_base_url}/people/api/json", params=params
+            )
+            users = response.get("users")
+
+            if not users:
+                break
+
+            yield users
+
+            page += 1
+
+            if len(users) < page_size:
+                break

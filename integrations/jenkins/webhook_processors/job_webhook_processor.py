@@ -1,11 +1,11 @@
-from consts import JOB_DELETE_EVENTS, JOB_UPSERT_EVENTS
+from webhook_processors.consts import JOB_DELETE_EVENTS, JOB_UPSERT_EVENTS
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from webhook_processors._jenkins_abstract_webhook_processor import (
+from webhook_processors.jenkins_abstract_webhook_processor import (
     _JenkinsAbstractWebhookProcessor,
 )
 from client import JenkinsClient
@@ -37,19 +37,8 @@ class JobWebhookProcessor(_JenkinsAbstractWebhookProcessor):
         logger.info(f"Processing job event: {event_type} for job {url}")
 
         if event_type in JOB_DELETE_EVENTS:
-            build_data = payload.get("data", {})
-            jenkins_host = client.jenkins_base_url
-            color = build_data.get("color")
-            color = "notbuilt" if color == "disabled" else color
-
-            deleted_job = {
-                "url": f"{jenkins_host}/{url}",
-                "fullName": build_data.get("fullName"),
-                "name": build_data.get("name"),
-                "color": color,
-                "time": payload.get("time"),
-                "__parentJob": payload.get("source"),
-            }
+            deleted_job = payload.get("data", {})
+            deleted_job["url"] = f"{client.jenkins_base_url}/{url}"
 
             logger.info(f"Job #{url} was deleted")
 
