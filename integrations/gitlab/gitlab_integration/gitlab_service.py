@@ -243,7 +243,7 @@ class GitlabService:
             )
 
             entities = await anyio.to_thread.run_sync(
-                yaml.safe_load, file_content.
+                yaml.safe_load, file_content.decode()
             )
             raw_entities = [
                 Entity(**entity_data)
