@@ -243,7 +243,7 @@ class GitlabService:
             )
 
             entities = await anyio.to_thread.run_sync(
-                yaml.safe_load, file_content.decode()
+                yaml.safe_load, file_content.
             )
             raw_entities = [
                 Entity(**entity_data)
@@ -897,14 +897,14 @@ class GitlabService:
                         f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as YAML,"
                         f" returning raw content"
                     )
-                    return file.decode().decode("utf-8")
+                    return file.decode()
                 return documents if len(documents) > 1 else documents[0]
             except yaml.YAMLError:
                 logger.debug(
                     f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as JSON or YAML,"
                     f" returning raw content"
                 )
-                return file.decode().decode("utf-8")
+                return file.decode()
 
     async def get_and_parse_single_file(
         self, project: Project, file_path: str, branch: str
