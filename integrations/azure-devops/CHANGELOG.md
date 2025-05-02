@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.148 (2025-05-02)
+
+
+### Bug Fixes
+
+- Fixed `AzureDevopsClient` to support self-hosted Azure DevOps instances to preserve base URLs for self-hosted cases.
+
+
 ## 0.1.147 (2025-04-27)
 
 ### Bug Fixes
