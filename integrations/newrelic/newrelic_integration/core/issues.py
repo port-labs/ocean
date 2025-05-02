@@ -121,14 +121,8 @@ class IssuesHandler:
             account_id=account_id,
             issue_id=issue_id,
         )
-        data = response.get("data", {})
-        issues_data = (
-            data.get("actor", {})
-            .get("account", {})
-            .get("aiIssues", {})
-            .get("issues", {})
-            .get("issues", [])
-        )
+        issues_data = response["data"]["actor"]["account"]["aiIssues"]["issues"]["issues"]
+
         if issues_data and len(issues_data) > 0:
             return issues_data[0].get("entityGuids")
         return None
