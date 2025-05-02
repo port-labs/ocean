@@ -1,3 +1,27 @@
+GET_EXISTING_CHANNEL_QUERY = """
+{
+  actor {
+    account(id: {{ account_id }}) {
+      aiNotifications {
+        channels(filters: { name: "{{ channel_name }}" }) {
+          entities {
+            id
+            name
+            type
+            product
+            destinationId
+            properties {
+              key
+              value
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
 GET_EXISTING_WEBHOOKS_QUERY = """
 {
   actor {
@@ -39,28 +63,6 @@ GET_EXISTING_WORKFLOWS_QUERY = """
 }
 """
 
-GET_EXISTING_CHANNEL_QUERY = """
-{
-  actor {
-    account(id: {{ account_id }}) {
-      aiNotifications {
-        channels(filters: { name: "{{ channel_name }}" }) {
-          entities {
-            id
-            name
-            destinationId
-            properties {
-              key
-              value
-            }
-          }
-        }
-      }
-    }
-  }
-}
-"""
-
 GET_ISSUE_ENTITY_GUIDS_QUERY = """
 {
   actor {
@@ -75,4 +77,80 @@ GET_ISSUE_ENTITY_GUIDS_QUERY = """
     }
   }
 }
+"""
+
+CREATE_WEBHOOK_MUTATION = """
+mutation {
+  aiNotificationsCreateDestination(
+    accountId: {{ accountId }},
+    destination: {
+      type: WEBHOOK,
+      name: "{{ name }}",
+      {% if auth %}
+      auth: {
+        type: BASIC,
+        basic: {
+          user: "port",
+          password: "{{ auth.basic.password }}"
+        }
+      }
+      {% endif %}
+      properties: [
+        {
+          key: "url",
+          value: "{{ url }}"
+        }
+      ]
+    }
+  ) {
+    destination {
+      id
+      name
+      type
+      properties {
+        key
+        value
+      }
+    }
+    error {
+      ... on AiNotificationsResponseError {
+        description
+        details
+        type
+      }
+    }
+  }
+}
+"""
+
+CREATE_CHANNEL_MUTATION = """
+  mutation {
+    aiNotificationsCreateChannel(
+      channel: {
+        product: IINT,
+        properties: {
+          key: "payload",
+          displayValue: null,
+          label: null,
+          value: {{ payloadValue }}
+        },
+        name: "{{ channelName }}",
+        destinationId: "{{ destinationId }}",
+        type: WEBHOOK
+      }
+      accountId: {{ accountId }}
+    ) {
+      channel {
+        id
+        destinationId
+      }
+      error {
+        ... on AiNotificationsResponseError {
+          description
+          details
+          type
+        }
+      }
+    }
+  }
 """

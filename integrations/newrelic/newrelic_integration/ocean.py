@@ -104,18 +104,6 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    if not ocean.integration_config.get("new_relic_api_key"):
-        logger.error("New Relic API key is not configured")
-        return
-
-    if not ocean.integration_config.get("new_relic_account_id"):
-        logger.error("New Relic account ID is not configured")
-        return
-
-    if not ocean.app.base_url:
-        logger.info("No app base URL configured, skipping webhook creation")
-        return
-
     async with httpx.AsyncClient() as http_client:
         webhook_manager = NewRelicWebhookManager(http_client)
         await webhook_manager.ensure_webhook_exists()
