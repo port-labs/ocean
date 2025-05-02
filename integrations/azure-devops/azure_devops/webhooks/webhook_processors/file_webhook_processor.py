@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional, cast
 import asyncio
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -9,9 +8,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from azure_devops.client.azure_devops_client import AzureDevopsClient
-from integration import GitPortAppConfig
+from integration import AzureDevopsFileResourceConfig
 from azure_devops.misc import Kind, extract_branch_name_from_ref
-from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
 from azure_devops.webhooks.webhook_processors._base_processor import (
     _AzureDevOpsBaseWebhookProcessor,
 )
@@ -33,24 +31,22 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        config = cast(GitPortAppConfig, event.port_app_config)
-        client = AzureDevopsClient.create_from_ocean_config()
-        push_url = payload["resource"]["url"]
-        push_params = {"includeRefUpdates": True}
-
-        response = await client.send_request("GET", push_url, params=push_params)
-        if not response:
-            logger.warning(f"Couldn't get push data from url {push_url}")
+        matching_resource_config = cast(AzureDevopsFileResourceConfig, resource_config)
+        selector = matching_resource_config.selector
+        tracked_repository = selector.files.repos
+        repository_name = payload["resource"]["repository"]["name"]
+        if tracked_repository and (repository_name not in tracked_repository):
+            logger.info(
+                f"Skipping push event for repository {repository_name} because it is not in {tracked_repository}"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        push_data = response.json()
-        updates = push_data["refUpdates"]
+        updates = payload["resource"]["refUpdates"]
         created, modified, deleted = await self._process_push_updates(
-            config, push_data, updates
+            matching_resource_config, payload, updates
         )
-
         return WebhookEventRawResults(
             updated_raw_results=created + modified,
             deleted_raw_results=deleted,
@@ -58,7 +54,7 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
 
     async def _process_push_updates(
         self,
-        config: GitPortAppConfig,
+        config: AzureDevopsFileResourceConfig,
         push_data: Dict[str, Any],
         updates: List[Dict[str, Any]],
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -69,14 +65,10 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
 
         for update in updates:
             branch = extract_branch_name_from_ref(update["name"])
-            if config.use_default_branch:
-                default_branch_with_ref = push_data["resource"]["repository"][
-                    "defaultBranch"
-                ]
-                default_branch = extract_branch_name_from_ref(default_branch_with_ref)
-            else:
-                default_branch = config.branch
-
+            default_branch = extract_branch_name_from_ref(
+                push_data["resource"]["repository"]["defaultBranch"]
+            )
+            logger.info(f"Branch: {branch}, Default branch: {default_branch}")
             if branch != default_branch:
                 logger.info("Skipping ref update for non-default branch")
                 continue
@@ -96,30 +88,16 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
 
     async def _process_changed_files_for_ref(
         self,
-        config: GitPortAppConfig,
+        config: AzureDevopsFileResourceConfig,
         push_data: Dict[str, Any],
         update: Dict[str, Any],
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         logger.info(f"Processing ref update: {update}")
-        repo_id = update["repositoryId"]
+        repo_id = push_data["resource"]["repository"]["id"]
         new_commit = update["newObjectId"]
         created, modified, deleted = await self._get_file_changes(repo_id, new_commit)
 
-        new_entities = await generate_entities_from_commit_id(
-            config.spec_path, repo_id, new_commit
-        )
-        logger.info(f"Got {len(new_entities)} new entities")
-
-        all_created = created + [
-            entity.dict() if hasattr(entity, "dict") else entity
-            for entity in new_entities
-        ]
-
-        return (
-            [item for item in all_created if isinstance(item, dict)],
-            [item for item in modified if isinstance(item, dict)],
-            [item for item in deleted if isinstance(item, dict)],
-        )
+        return created, modified, deleted
 
     async def _get_file_changes(
         self, repo_id: str, commit_id: str
@@ -149,7 +127,7 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
 
             for changed_file in changed_files:
                 change_type = changed_file.get("changeType", "")
-
+                logger.info(f"Change type: {change_type}")
                 match change_type:
                     case "add":
                         file_entity = await self._build_file_entity(
