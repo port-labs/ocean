@@ -6,6 +6,8 @@ from enum import StrEnum
 import asyncio
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.context.ocean import ocean
+
 
 PAGE_SIZE = 100
 
@@ -31,6 +33,14 @@ class LaunchDarklyClient:
             "Authorization": f"{self.api_token}",
             "Content-Type": "application/json",
         }
+
+    @classmethod
+    def create_from_ocean_configuration(cls) -> "LaunchDarklyClient":
+        logger.info(f"Initializing LaunchDarklyClient {ocean.integration_config}")
+        return LaunchDarklyClient(
+            launchdarkly_url=ocean.integration_config["launchdarkly_host"],
+            api_token=ocean.integration_config["launchdarkly_token"],
+        )
 
     async def get_paginated_resource(
         self, kind: str, resource_path: str | None = None, page_size: int = PAGE_SIZE
@@ -198,8 +208,9 @@ class LaunchDarklyClient:
             feature_flags.extend(updated_batch)
         return feature_flags
 
-    async def create_launchdarkly_webhook(self, app_host: str) -> None:
-        webhook_target_url = f"{app_host}/integration/webhook"
+    async def create_launchdarkly_webhook(self, base_url: str) -> None:
+
+        webhook_target_url = f"{base_url}/integration/webhook"
         notifications_response = await self.send_api_request(endpoint="webhooks")
 
         existing_configs = notifications_response.get("items", [])
