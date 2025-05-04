@@ -253,6 +253,8 @@ class SonarQubeClient:
 
         :return: A list of measures associated with the specified component.
         """
+        if not self.metrics:
+            raise ValueError("metrics cannot be empty")
         logger.info(f"Fetching all measures in : {project_key}")
         response = await self._send_api_request(
             endpoint=Endpoints.MEASURES,
@@ -480,6 +482,8 @@ class SonarQubeClient:
     async def get_pull_request_measures(
         self, project_key: str, pull_request_key: str
     ) -> list[dict[str, Any]]:
+        if not self.metrics:
+            raise ValueError("metrics cannot be empty")
         logger.info(f"Fetching measures for pull request: {pull_request_key}")
         response = await self._send_api_request(
             endpoint=Endpoints.MEASURES,

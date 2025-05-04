@@ -138,7 +138,7 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesReturnedFromClient_upda
         async def mock_paginated_issues(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            assert args[0] == {"jql": "key = TEST-123"}
+            assert args[0] == {"jql": "key = TEST-123", "fields": "*all"}
             yield [mock_issue]
 
         mock_client.get_paginated_issues = mock_paginated_issues
@@ -171,7 +171,7 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesNotReturnedFromClient_d
         async def mock_paginated_issues(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            assert args[0] == {"jql": "key = TEST-123"}
+            assert args[0] == {"jql": "key = TEST-123", "fields": "*all"}
             yield []
 
         mock_client.get_paginated_issues = mock_paginated_issues
@@ -206,7 +206,10 @@ async def test_handleEvent_issueUpdated_filterIssuesReturnedFromClient_updatedRa
         async def mock_paginated_issues(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            assert args[0] == {"jql": "project = TEST AND key = TEST-123"}
+            assert args[0] == {
+                "jql": "project = TEST AND key = TEST-123",
+                "fields": "*all",
+            }
             yield [mock_issue]
 
         mock_client.get_paginated_issues = mock_paginated_issues
@@ -237,7 +240,10 @@ async def test_handleEvent_issueUpdated_filterIssuesNotReturnedFromClient_delete
         async def mock_paginated_issues(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            assert args[0] == {"jql": "project = TEST AND key = TEST-123"}
+            assert args[0] == {
+                "jql": "project = TEST AND key = TEST-123",
+                "fields": "*all",
+            }
             yield []
 
         mock_client.get_paginated_issues = mock_paginated_issues

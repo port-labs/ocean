@@ -39,12 +39,13 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[payload["issue"]],
             )
 
-        params = {}
+        params = {
+            "jql": f"key = {issue_key}",
+            "fields": config.selector.fields or "*all",
+        }
 
         if config.selector.jql:
-            params["jql"] = f"{config.selector.jql} AND key = {payload['issue']['key']}"
-        else:
-            params["jql"] = f"key = {payload['issue']['key']}"
+            params["jql"] = f"{config.selector.jql} AND key = {issue_key}"
 
         issues: list[dict[str, Any]] = []
         async for issues_batch in client.get_paginated_issues(params):
