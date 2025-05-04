@@ -107,7 +107,7 @@ async def test_get_and_parse_single_file(
     # Arrange
     mock_file = MagicMock()
     monkeypatch.setattr(mock_file, "size", 1)
-    mock_file.decode.return_value = "file content"
+    mock_file.decode.return_value = b"file content"
     mock_file.asdict.return_value = {"content": "this should be overwritten"}
 
     mock_project = MagicMock()
@@ -134,10 +134,11 @@ async def test_get_and_parse_single_file_yaml(
     # Arrange
     mock_file = MagicMock()
     monkeypatch.setattr(mock_file, "size", 1)
+    monkeypatch.setattr(mock_file, "file_name", "test.yml")
     monkeypatch.setattr(
         mock_file,
         "decode",
-        lambda: """project: data
+        lambda: b"""project: data
 hello:
     value: world""",
     )
