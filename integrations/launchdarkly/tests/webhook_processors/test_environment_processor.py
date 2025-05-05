@@ -30,7 +30,9 @@ def environment_processor(
 def valid_environment_payload() -> Dict[str, Any]:
     return {
         "kind": ObjectKind.ENVIRONMENT,
-        "_links": {"canonical": {"href": "/api/v2/projects/project-1/environments/env-1"}},
+        "_links": {
+            "canonical": {"href": "/api/v2/projects/project-1/environments/env-1"}
+        },
         "titleVerb": "created",
         "name": "Test Environment",
         "key": "env-1",
@@ -40,7 +42,7 @@ def valid_environment_payload() -> Dict[str, Any]:
         "defaultTrackEvents": True,
         "requireComments": False,
         "confirmChanges": False,
-        "tags": ["test", "environment"]
+        "tags": ["test", "environment"],
     }
 
 
@@ -53,7 +55,7 @@ def mock_environment_resource_config() -> ResourceConfig:
             entity=MappingsConfig(
                 mappings=EntityMapping(
                     identifier='.key + "-" + .__projectKey',
-                    title='.name',
+                    title=".name",
                     blueprint='"launchDarklyEnvironment"',
                     properties={},
                 )
@@ -130,7 +132,7 @@ class TestEnvironmentWebhookProcessor:
                 "defaultTrackEvents": True,
                 "requireComments": False,
                 "confirmChanges": False,
-                "tags": ["test", "environment"]
+                "tags": ["test", "environment"],
             }
 
         # Execute

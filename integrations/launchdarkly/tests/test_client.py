@@ -1,10 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
-from port_ocean.context.event import event_context
-from typing import Any, AsyncIterator, Generator
-from client import LaunchDarklyClient, ObjectKind
-from port_ocean.utils import http_async_client
+from typing import Generator
+from client import LaunchDarklyClient
 
 
 @pytest.fixture
@@ -69,7 +67,9 @@ async def test_send_api_request_with_params(mock_client: LaunchDarklyClient) -> 
         mock_client.http_client, "request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.return_value = mock_response
-        result = await mock_client.send_api_request("test/endpoint", query_params=params)
+        result = await mock_client.send_api_request(
+            "test/endpoint", query_params=params
+        )
         assert result == {"data": "test"}
         mock_request.assert_called_once_with(
             method="GET",
@@ -137,10 +137,7 @@ async def test_get_feature_flag_status(mock_client: LaunchDarklyClient) -> None:
     """Test getting feature flag status."""
     mock_response = {
         "key": "test-flag",
-        "environments": {
-            "env1": {"on": True},
-            "env2": {"on": False}
-        }
+        "environments": {"env1": {"on": True}, "env2": {"on": False}},
     }
     with patch.object(
         mock_client, "send_api_request", new_callable=AsyncMock
@@ -161,7 +158,7 @@ async def test_patch_webhook(mock_client: LaunchDarklyClient) -> None:
         mock_request.assert_called_once_with(
             endpoint="webhooks/webhook-1",
             method="PATCH",
-            json_data=[{"op": "replace", "path": "/secret", "value": "new-secret"}]
+            json_data=[{"op": "replace", "path": "/secret", "value": "new-secret"}],
         )
 
 
@@ -182,19 +179,23 @@ async def test_create_launchdarkly_webhook_new(mock_client: LaunchDarklyClient) 
                 "description": "Port Integration Webhook",
                 "sign": True,
                 "secret": "test_secret",
-            }
+            },
         )
 
 
 @pytest.mark.asyncio
-async def test_create_launchdarkly_webhook_existing(mock_client: LaunchDarklyClient) -> None:
+async def test_create_launchdarkly_webhook_existing(
+    mock_client: LaunchDarklyClient,
+) -> None:
     """Test handling existing webhook."""
     mock_response = {
-        "items": [{
-            "_id": "webhook-1",
-            "url": "https://test.com/integration/webhook",
-            "secret": None
-        }]
+        "items": [
+            {
+                "_id": "webhook-1",
+                "url": "https://test.com/integration/webhook",
+                "secret": None,
+            }
+        ]
     }
     with patch.object(
         mock_client, "send_api_request", new_callable=AsyncMock
@@ -204,5 +205,5 @@ async def test_create_launchdarkly_webhook_existing(mock_client: LaunchDarklyCli
         mock_request.assert_called_with(
             endpoint="webhooks/webhook-1",
             method="PATCH",
-            json_data=[{"op": "replace", "path": "/secret", "value": "test_secret"}]
-        ) 
+            json_data=[{"op": "replace", "path": "/secret", "value": "test_secret"}],
+        )

@@ -37,9 +37,9 @@ def valid_project_payload() -> Dict[str, Any]:
         "includeInSnippetByDefault": True,
         "defaultClientSideAvailability": {
             "usingEnvironmentId": True,
-            "usingMobileKey": True
+            "usingMobileKey": True,
         },
-        "tags": ["test", "project"]
+        "tags": ["test", "project"],
     }
 
 
@@ -61,8 +61,8 @@ def mock_project_resource_config() -> ResourceConfig:
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
-                    identifier='.key',
-                    title='.name',
+                    identifier=".key",
+                    title=".name",
                     blueprint='"launchDarklyProject"',
                     properties={},
                 )
@@ -98,9 +98,7 @@ class TestProjectWebhookProcessor:
     async def test_get_matching_kinds(
         self, project_processor: ProjectWebhookProcessor
     ) -> None:
-        kinds = await project_processor.get_matching_kinds(
-            project_processor.event
-        )
+        kinds = await project_processor.get_matching_kinds(project_processor.event)
         assert ObjectKind.PROJECT in kinds
 
     @pytest.mark.parametrize(
@@ -136,9 +134,9 @@ class TestProjectWebhookProcessor:
                 "includeInSnippetByDefault": True,
                 "defaultClientSideAvailability": {
                     "usingEnvironmentId": True,
-                    "usingMobileKey": True
+                    "usingMobileKey": True,
                 },
-                "tags": ["test", "project"]
+                "tags": ["test", "project"],
             }
 
         # Execute
