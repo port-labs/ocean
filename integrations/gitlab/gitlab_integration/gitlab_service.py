@@ -46,6 +46,8 @@ if TYPE_CHECKING:
 
 MAXIMUM_CONCURRENT_TASK = 10
 semaphore = asyncio.BoundedSemaphore(MAXIMUM_CONCURRENT_TASK)
+JSON_SUFFIX = (".json",)
+YAML_SUFFIX = (".yaml", ".yml")
 
 
 class GitlabService:
@@ -880,9 +882,16 @@ class GitlabService:
                 f"Maximum size allowed is 1MB. Actual size of file: {file.size}"
             )
             return None
-        try:
-            return await anyio.to_thread.run_sync(json.loads, file.decode())
-        except json.JSONDecodeError:
+        if file.file_name.endswith(JSON_SUFFIX):
+            try:
+                return await anyio.to_thread.run_sync(json.loads, file.decode())
+            except json.JSONDecodeError:
+                logger.debug(
+                    f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as JSON,"
+                    f" returning raw content"
+                )
+                return file.decode().decode("utf-8")
+        elif file.file_name.endswith(YAML_SUFFIX):
             try:
                 logger.debug(
                     f"Trying to process file {file.file_path} in project {project.path_with_namespace} as YAML"
@@ -901,10 +910,16 @@ class GitlabService:
                 return documents if len(documents) > 1 else documents[0]
             except yaml.YAMLError:
                 logger.debug(
-                    f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as JSON or YAML,"
+                    f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as YAML,"
                     f" returning raw content"
                 )
                 return file.decode().decode("utf-8")
+        else:
+            logger.debug(
+                f"File {file.file_path} in project {project.path_with_namespace} is not a JSON or YAML file,"
+                f" returning raw content"
+            )
+            return file.decode().decode("utf-8")
 
     async def get_and_parse_single_file(
         self, project: Project, file_path: str, branch: str
