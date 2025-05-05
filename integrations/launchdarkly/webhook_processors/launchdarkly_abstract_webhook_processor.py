@@ -12,7 +12,7 @@ import hashlib
 import hmac
 
 from fastapi import Request
-from client import LaunchDarklyClient
+from port_ocean.context.ocean import ocean
 
 
 class _LaunchDarklyAbstractWebhookProcessor(AbstractWebhookProcessor):
@@ -26,8 +26,8 @@ class _LaunchDarklyAbstractWebhookProcessor(AbstractWebhookProcessor):
         Validate the authenticity of the webhook payload using HMAC and the webhook secret.
         If no secret is configured, validation is bypassed.
         """
-        client = LaunchDarklyClient.create_from_ocean_configuration()
-        secret = client.webhook_secret
+
+        secret = ocean.integration_config["webhook_secret"]
 
         if not secret:
             logger.warning(

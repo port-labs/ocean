@@ -2,13 +2,16 @@ import pytest
 import json
 import hashlib
 import hmac
-from unittest.mock import MagicMock, patch, AsyncMock
-from typing import Any, Generator
+from unittest.mock import MagicMock
+from typing import Any
 from fastapi import Request
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from webhook_processors.launchdarkly_abstract_webhook_processor import (
     _LaunchDarklyAbstractWebhookProcessor,
 )
+from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+from port_ocean.context.ocean import ocean
 
 
 class MockLaunchDarklyAbstractProcessor(_LaunchDarklyAbstractWebhookProcessor):
@@ -67,14 +70,19 @@ def ld_processor(ld_event: WebhookEvent) -> MockLaunchDarklyAbstractProcessor:
     return processor
 
 
-@pytest.fixture
-def mock_client() -> Generator[AsyncMock, None, None]:
-    with patch(
-        "webhook_processors.launchdarkly_abstract_webhook_processor.LaunchDarklyClient"
-    ) as mock:
-        client = AsyncMock()
-        mock.create_from_ocean_configuration.return_value = client
-        yield client
+@pytest.fixture(autouse=True)
+def mock_ocean_context() -> None:
+    """Mock the PortOcean context to prevent initialization errors."""
+    try:
+        mock_ocean_app: MagicMock = MagicMock()
+        mock_ocean_app.config.integration.config = {
+            "webhook_secret": "test-secret",
+        }
+        mock_ocean_app.integration_router = MagicMock()
+        mock_ocean_app.port_client = MagicMock()
+        initialize_port_ocean_context(mock_ocean_app)
+    except PortOceanContextAlreadyInitializedError:
+        pass
 
 
 @pytest.mark.asyncio
@@ -82,11 +90,12 @@ class TestLaunchDarklyAbstractWebhookProcessor:
     """Tests for the _LaunchDarklyAbstractWebhookProcessor class."""
 
     async def test_verify_webhook_signature_no_secret(
-        self, ld_processor: MockLaunchDarklyAbstractProcessor, mock_client: AsyncMock
+        self, ld_processor: MockLaunchDarklyAbstractProcessor, mock_ocean_context: Any
     ) -> None:
         """Test signature verification when no secret is configured."""
         # Mock the webhook client with no secret
-        mock_client.webhook_secret = None
+
+        ocean.integration_config["webhook_secret"] = None
 
         mock_request = MagicMock(spec=Request)
         mock_request.headers = {"X-LaunchDarkly-Signature": "test-signature"}
@@ -95,28 +104,28 @@ class TestLaunchDarklyAbstractWebhookProcessor:
         assert result is True
 
     async def test_verify_webhook_signature_no_headers(
-        self, ld_processor: MockLaunchDarklyAbstractProcessor, mock_client: AsyncMock
+        self, ld_processor: MockLaunchDarklyAbstractProcessor, mock_ocean_context: Any
     ) -> None:
         """Test signature verification when no signature headers are provided."""
         # Set up the test
-        mock_client.webhook_secret = "test-secret"
+
         mock_request = create_ld_mock_request(b"{}", {})
 
         result = await ld_processor._verify_webhook_signature(mock_request)
         assert result is False
 
     async def test_verify_webhook_signature_valid(
-        self, ld_processor: MockLaunchDarklyAbstractProcessor, mock_client: AsyncMock
+        self, ld_processor: MockLaunchDarklyAbstractProcessor, mock_ocean_context: Any
     ) -> None:
         """Test signature verification with a valid signature."""
         # Set up the test
-        secret = "test-secret"
-        mock_client.webhook_secret = secret
 
         payload = {"test": "data"}
         payload_bytes = json.dumps(payload).encode("utf-8")
 
-        valid_signature = generate_ld_signature(secret, payload)
+        valid_signature = generate_ld_signature(
+            ocean.integration_config["webhook_secret"], payload
+        )
         headers = {"x-ld-signature": valid_signature}
 
         mock_request = create_ld_mock_request(payload_bytes, headers)
@@ -125,13 +134,10 @@ class TestLaunchDarklyAbstractWebhookProcessor:
         assert result is True
 
     async def test_verify_webhook_signature_invalid(
-        self, ld_processor: MockLaunchDarklyAbstractProcessor, mock_client: AsyncMock
+        self, ld_processor: MockLaunchDarklyAbstractProcessor, mock_ocean_context: Any
     ) -> None:
         """Test signature verification with an invalid signature."""
         # Set up the test
-        secret = "test-secret"
-        mock_client.webhook_secret = secret
-
         payload = {"test": "data"}
         payload_bytes = json.dumps(payload).encode("utf-8")
 

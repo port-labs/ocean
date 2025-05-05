@@ -48,16 +48,17 @@ class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
             deleted_records = (
                 [
                     {
-                        "__environmentKey": self._extract_environment_key(
-                            env["resource"]
-                        ),
+                        "__environmentKey": env_key,
                         **payload,
                     }
                     for env in payload["accesses"]
+                    if (env_key := self._extract_environment_key(env["resource"]))
+                    is not None
                 ]
                 if resource_config_kind == ObjectKind.FEATURE_FLAG_STATUS
                 else [feature_flag]
             )
+
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=deleted_records
             )
@@ -83,12 +84,13 @@ class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
             deleted_raw_results=[],
         )
 
-    def _extract_environment_key(self, resource: str) -> str:
+    def _extract_environment_key(self, resource: str) -> str | None:
         """Extract the environment key from a LaunchDarkly resource string."""
         try:
             env_part = resource.split(":env/")[1]
             return env_part.split(":")[0]
-        except (IndexError, AttributeError):
-            raise ValueError(
-                f"Invalid resource format, cannot extract environment key: {resource}"
+        except (IndexError, AttributeError) as e:
+            logger.warning(
+                f"Failed to extract environment key from resource: {resource!r} - {e}"
             )
+            return None
