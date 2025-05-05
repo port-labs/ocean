@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
-from typing import Generator
+from typing import Any, Generator
 from client import LaunchDarklyClient
 
 
@@ -165,7 +165,7 @@ async def test_patch_webhook(mock_client: LaunchDarklyClient) -> None:
 @pytest.mark.asyncio
 async def test_create_launchdarkly_webhook_new(mock_client: LaunchDarklyClient) -> None:
     """Test creating a new webhook."""
-    mock_response = {"items": []}
+    mock_response: dict[str, list[Any]] = {"items": []}
     with patch.object(
         mock_client, "send_api_request", new_callable=AsyncMock
     ) as mock_request:
