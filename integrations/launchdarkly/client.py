@@ -29,10 +29,6 @@ class LaunchDarklyClient:
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
         self.webhook_secret = webhook_secret
-        if self.webhook_secret:
-            logger.info(
-                "Received secret for authenticating incoming webhooks. Only authenticated webhooks will be synced."
-            )
 
     @property
     def api_auth_header(self) -> dict[str, Any]:

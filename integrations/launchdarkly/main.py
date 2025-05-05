@@ -61,6 +61,11 @@ async def on_start() -> None:
         return
 
     client = LaunchDarklyClient.create_from_ocean_configuration()
+    if client.webhook_secret:
+        logger.info(
+            "Received secret for authenticating incoming webhooks. Only authenticated webhooks will be synced."
+        )
+
     await client.create_launchdarkly_webhook(base_url)
 
 
