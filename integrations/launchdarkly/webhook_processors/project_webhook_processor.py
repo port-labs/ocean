@@ -15,7 +15,7 @@ from webhook_processors.utils import extract_project_key_from_endpoint
 class ProjectWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
     """Processes project-related webhook events from LaunchDarkly."""
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Validate that the event header contains required Project event type."""
         return event.payload.get("kind") == ObjectKind.PROJECT
 

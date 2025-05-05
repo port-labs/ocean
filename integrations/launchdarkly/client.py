@@ -1,6 +1,6 @@
 from port_ocean.utils import http_async_client
 import httpx
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, Union
 from loguru import logger
 from enum import StrEnum
 import asyncio
@@ -21,11 +21,18 @@ class ObjectKind(StrEnum):
 
 
 class LaunchDarklyClient:
-    def __init__(self, api_token: str, launchdarkly_url: str):
+    def __init__(
+        self, api_token: str, launchdarkly_url: str, webhook_secret: str | None = None
+    ):
         self.api_url = f"{launchdarkly_url}/api/v2"
         self.api_token = api_token
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
+        self.webhook_secret = webhook_secret
+        if self.webhook_secret:
+            logger.info(
+                "Received secret for authenticating incoming webhooks. Only authenticated webhooks will be synced."
+            )
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -40,6 +47,7 @@ class LaunchDarklyClient:
         return LaunchDarklyClient(
             launchdarkly_url=ocean.integration_config["launchdarkly_host"],
             api_token=ocean.integration_config["launchdarkly_token"],
+            webhook_secret=ocean.integration_config["webhook_secret"],
         )
 
     async def get_paginated_resource(
@@ -84,7 +92,7 @@ class LaunchDarklyClient:
         endpoint: str,
         method: str = "GET",
         query_params: Optional[dict[str, Any]] = None,
-        json_data: Optional[dict[str, Any]] = None,
+        json_data: Optional[Union[dict[str, Any], list[Any]]] = None,
     ) -> dict[str, Any]:
         try:
             endpoint = endpoint.replace("/api/v2/", "")
@@ -208,25 +216,53 @@ class LaunchDarklyClient:
             feature_flags.extend(updated_batch)
         return feature_flags
 
+    async def patch_webhook(self, webhook_id: str, webhook_secret: str) -> None:
+        """Patch a webhook to add a secret."""
+
+        patch_data = [{"op": "replace", "path": "/secret", "value": webhook_secret}]
+
+        logger.info(f"Patching webhook {webhook_id} to add secret")
+        await self.send_api_request(
+            endpoint=f"webhooks/{webhook_id}", method="PATCH", json_data=patch_data
+        )
+        logger.info(f"Successfully patched webhook {webhook_id} with secret")
+
     async def create_launchdarkly_webhook(self, base_url: str) -> None:
-
+        """Create or update a webxhook in LaunchDarkly."""
         webhook_target_url = f"{base_url}/integration/webhook"
-        notifications_response = await self.send_api_request(endpoint="webhooks")
+        logger.info(f"Checking for existing webhook at {webhook_target_url}")
 
+        notifications_response = await self.send_api_request(endpoint="webhooks")
         existing_configs = notifications_response.get("items", [])
 
-        webhook_exists = any(
-            config["url"] == webhook_target_url for config in existing_configs
+        existing_webhook = next(
+            (
+                config
+                for config in existing_configs
+                if config["url"] == webhook_target_url
+            ),
+            None,
         )
-        if webhook_exists:
-            logger.info("Webhook already exists")
-        else:
+
+        if not existing_webhook:
+            logger.info("Creating new webhook")
             webhook_body = {
                 "url": webhook_target_url,
-                "description": "",
-                "sign": False,
+                "description": "Port Integration Webhook",
+                "sign": bool(self.webhook_secret),
+                "secret": self.webhook_secret,
             }
             await self.send_api_request(
                 endpoint="webhooks", method="POST", json_data=webhook_body
             )
-            logger.info("Webhook created")
+            logger.info("Successfully created new webhook")
+            return
+
+        logger.info(f"Found existing webhook with ID: {existing_webhook['_id']}")
+
+        if self.webhook_secret and not existing_webhook.get("secret"):
+            logger.info("Existing webhook has no secret, adding one")
+            await self.patch_webhook(existing_webhook["_id"], self.webhook_secret)
+            return
+
+        logger.info("Webhook already exists with appropriate configuration")

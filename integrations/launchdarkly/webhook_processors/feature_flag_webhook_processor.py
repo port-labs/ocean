@@ -18,7 +18,7 @@ from webhook_processors.utils import (
 class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
     """Processes feature flag-related webhook events from LaunchDarkly."""
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Validate that the event header contains required FeatureFlag event type."""
         return event.payload.get("kind") == ObjectKind.FEATURE_FLAG
 
