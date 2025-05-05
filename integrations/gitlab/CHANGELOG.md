@@ -7,8 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.60 (2025-05-01)
+===================
+
+### Bug Fixes
+
+- Fixed the Gitlab integration stripping `\n` from the file content
+
+
 0.2.59 (2025-04-27)
 ===================
+
 ### Bug Fixes
 
 - Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
