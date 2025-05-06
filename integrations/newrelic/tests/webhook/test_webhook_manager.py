@@ -28,9 +28,14 @@ def ocean_mock(integration_config_mock: Dict[str, Any]) -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_get_existing_webhooks_true(
-    manager: NewRelicWebhookManager, ocean_mock: MagicMock
+async def test_get_existing_webhooks_returns_id_if_found(
+    ocean_mock: MagicMock,
 ) -> None:
+    mock_http_client = MagicMock()
+    manager = NewRelicWebhookManager(http_client=mock_http_client)
+
+    ocean_mock.integration_config = {"new_relic_account_id": "123456"}
+
     with (
         patch("newrelic_integration.webhook.webhook_manager.ocean", ocean_mock),
         patch(
@@ -47,6 +52,7 @@ async def test_get_existing_webhooks_true(
                                     "destinations": {
                                         "entities": [
                                             {
+                                                "id": "webhook-123",
                                                 "type": "WEBHOOK",
                                                 "name": "Port - Something",
                                                 "properties": [
@@ -69,7 +75,7 @@ async def test_get_existing_webhooks_true(
         result = await manager.get_existing_webhooks(
             "https://port.app/integration/webhook"
         )
-        assert result is True
+        assert result == "webhook-123"
 
 
 @pytest.mark.asyncio
@@ -162,36 +168,6 @@ async def test_get_or_create_webhook_create_flow(
             "Port - 123456", "https://port.app/integration/webhook"
         )
         assert webhook_id == "webhook-xyz"
-
-
-@pytest.mark.asyncio
-async def test_get_existing_webhooks_false(
-    manager: NewRelicWebhookManager, ocean_mock: MagicMock
-) -> None:
-    with (
-        patch("newrelic_integration.webhook.webhook_manager.ocean", ocean_mock),
-        patch(
-            "newrelic_integration.webhook.webhook_manager.render_query", new=AsyncMock()
-        ),
-        patch(
-            "newrelic_integration.webhook.webhook_manager.send_graph_api_request",
-            new=AsyncMock(
-                return_value={
-                    "data": {
-                        "actor": {
-                            "account": {
-                                "aiNotifications": {"destinations": {"entities": []}}
-                            }
-                        }
-                    }
-                }
-            ),
-        ),
-    ):
-        result = await manager.get_existing_webhooks(
-            "https://port.app/integration/webhook"
-        )
-        assert result is False
 
 
 @pytest.mark.asyncio
@@ -442,20 +418,6 @@ async def test_create_webhook_full_flow_success(
                     }
                 }
             ),
-        ),
-    ):
-        result = await manager.create_webhook()
-        assert result is True
-
-
-@pytest.mark.asyncio
-async def test_create_webhook_full_flow_webhook_exists(
-    manager: NewRelicWebhookManager, ocean_mock: MagicMock
-) -> None:
-    with (
-        patch("newrelic_integration.webhook.webhook_manager.ocean", ocean_mock),
-        patch.object(
-            manager, "get_existing_webhooks", new=AsyncMock(return_value=True)
         ),
     ):
         result = await manager.create_webhook()
