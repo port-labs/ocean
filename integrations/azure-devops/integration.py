@@ -122,7 +122,7 @@ class FilePattern(BaseModel):
 class AzureDevopsFileSelector(Selector):
     """Selector for Azure DevOps file resources."""
 
-    files: FileSelector = Field(
+    files: FilePattern = Field(
         description="""Configuration for file selection and scanning.
 
         Specify explicit file paths to fetch from repositories.
