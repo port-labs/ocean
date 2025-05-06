@@ -1,3 +1,4 @@
+import fnmatch
 from typing import Any, Dict, List, Optional, cast
 import asyncio
 from loguru import logger
@@ -95,12 +96,12 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         logger.info(f"Processing ref update: {update}")
         repo_id = push_data["resource"]["repository"]["id"]
         new_commit = update["newObjectId"]
-        created, modified, deleted = await self._get_file_changes(repo_id, new_commit)
+        created, modified, deleted = await self._get_file_changes(repo_id, new_commit, config)
 
         return created, modified, deleted
 
     async def _get_file_changes(
-        self, repo_id: str, commit_id: str
+        self, repo_id: str, commit_id: str, config: AzureDevopsFileResourceConfig
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         logger.info(f"Fetching file changes for commit {commit_id} in repo {repo_id}")
         created_files: List[Dict[str, Any]] = []
@@ -113,9 +114,14 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
             if not repo_info:
                 logger.warning(f"Could not find repository with ID {repo_id}")
                 return created_files, modified_files, deleted_files
-
             project_id = repo_info["project"]["id"]
-
+            if not config.selector.files.path:
+                return created_files, modified_files, deleted_files
+            if isinstance(config.selector.files.path, str):
+                path_to_track = [config.selector.files.path]
+            else:
+                path_to_track = config.selector.files.path
+            
             response = await client.get_commit_changes(project_id, repo_id, commit_id)
             if not response:
                 logger.warning(
@@ -126,6 +132,10 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
             changed_files = response.get("changes", []) if response else []
 
             for changed_file in changed_files:
+                file_path = changed_file["item"]["path"]
+                if not any(fnmatch.fnmatch(file_path.strip("/"), pattern.strip("/")) for pattern in path_to_track):
+                    logger.info(f"Skipping file {file_path} as it doesn't match any patterns in {path_to_track}")
+                    continue
                 change_type = changed_file.get("changeType", "")
                 logger.info(f"Change type: {change_type}")
                 match change_type:
