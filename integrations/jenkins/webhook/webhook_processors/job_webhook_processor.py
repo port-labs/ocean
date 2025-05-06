@@ -1,4 +1,4 @@
-from webhook.consts import JOB_DELETE_EVENTS, JOB_UPSERT_EVENTS
+from webhook.events import JOB_DELETE_EVENTS, JOB_UPSERT_EVENTS
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,

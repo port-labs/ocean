@@ -12,7 +12,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from utils import ObjectKind
-from webhook.consts import BUILD_UPSERT_EVENTS, BUILD_DELETE_EVENTS
+from webhook.events import BUILD_UPSERT_EVENTS, BUILD_DELETE_EVENTS
 
 
 @pytest.fixture

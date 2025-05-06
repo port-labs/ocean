@@ -29,7 +29,6 @@ class JenkinsClient:
 
     @classmethod
     def create_from_ocean_configuration(cls) -> "JenkinsClient":
-        logger.info(f"Initializing JenkinsClient {ocean.integration_config}")
         return cls(
             ocean.integration_config["jenkins_host"],
             ocean.integration_config["jenkins_user"],
