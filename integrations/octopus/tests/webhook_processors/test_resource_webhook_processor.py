@@ -14,7 +14,7 @@ async def test_handle_event_deleted() -> None:
     resource_config = Mock(spec=ResourceConfig)
     processor = ResourceWebhookProcessor(
         event=event
-    )  # Keep this if Base class expects it
+    )
 
     with patch.object(processor, "get_client", return_value=AsyncMock()):
         payload = {
