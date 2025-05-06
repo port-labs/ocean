@@ -49,7 +49,7 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
     selector: AzureDevopsSelector
 
 
-class FileSelector(BaseModel):
+class FilePattern(BaseModel):
     """Configuration for file selection in Azure DevOps repositories."""
 
     path: Union[str, List[str]] = Field(
