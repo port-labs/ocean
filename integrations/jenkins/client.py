@@ -99,8 +99,9 @@ class JenkinsClient:
 
     async def _get_build_stages(self, build_url: str) -> list[dict[str, Any]]:
         response = await self._send_api_request("GET", f"{build_url}/wfapi/describe")
-        stages = response["stages"]
-        return stages
+        if response:
+            stages = response["stages"]
+            return stages
 
     async def _get_job_builds(self, job_url: str) -> AsyncGenerator[Any, None]:
         job_details = await self.get_single_resource(job_url)
