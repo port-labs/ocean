@@ -40,9 +40,7 @@ def mock_event_context() -> Generator[None, None, None]:
 @pytest.fixture
 def mock_context(monkeypatch: Any) -> PortOceanContext:
     mock_context = AsyncMock()
-    mock_context.port_app_config = GitPortAppConfig(
-        spec_path="port.yml", branch="main", use_default_branch=True
-    )
+    mock_context.port_app_config = GitPortAppConfig()
     monkeypatch.setattr(PortOceanContext, "app", mock_context)
     return mock_context
 

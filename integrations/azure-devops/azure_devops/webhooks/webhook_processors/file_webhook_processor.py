@@ -96,7 +96,9 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         logger.info(f"Processing ref update: {update}")
         repo_id = push_data["resource"]["repository"]["id"]
         new_commit = update["newObjectId"]
-        created, modified, deleted = await self._get_file_changes(repo_id, new_commit, config)
+        created, modified, deleted = await self._get_file_changes(
+            repo_id, new_commit, config
+        )
 
         return created, modified, deleted
 
@@ -121,7 +123,7 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
                 path_to_track = [config.selector.files.path]
             else:
                 path_to_track = config.selector.files.path
-            
+
             response = await client.get_commit_changes(project_id, repo_id, commit_id)
             if not response:
                 logger.warning(
@@ -133,8 +135,13 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
 
             for changed_file in changed_files:
                 file_path = changed_file["item"]["path"]
-                if not any(fnmatch.fnmatch(file_path.strip("/"), pattern.strip("/")) for pattern in path_to_track):
-                    logger.info(f"Skipping file {file_path} as it doesn't match any patterns in {path_to_track}")
+                if not any(
+                    fnmatch.fnmatch(file_path.strip("/"), pattern.strip("/"))
+                    for pattern in path_to_track
+                ):
+                    logger.info(
+                        f"Skipping file {file_path} as it doesn't match any patterns in {path_to_track}"
+                    )
                     continue
                 change_type = changed_file.get("changeType", "")
                 logger.info(f"Change type: {change_type}")
