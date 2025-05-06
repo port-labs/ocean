@@ -11,7 +11,7 @@ from newrelic_integration.core.service_levels import ServiceLevelsHandler
 from newrelic_integration.webhook.processors.issue_webhook_processor import (
     IssueWebhookProcessor,
 )
-
+from port_ocean.utils import http_async_client
 from newrelic_integration.utils import (
     get_port_resource_configuration_by_port_kind,
 )
@@ -104,9 +104,9 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    async with httpx.AsyncClient() as http_client:
+    async with http_async_client as http_client:
         webhook_manager = NewRelicWebhookManager(http_client)
-        await webhook_manager.ensure_webhook_exists()
+        await webhook_manager.create_webhook()
 
 
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)

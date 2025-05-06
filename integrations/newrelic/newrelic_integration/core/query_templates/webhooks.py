@@ -154,3 +154,40 @@ CREATE_CHANNEL_MUTATION = """
     }
   }
 """
+
+CREATE_WORKFLOW_MUTATION = """
+mutation {
+    aiWorkflowsCreateWorkflow(
+        accountId: {{ accountId }}
+        createWorkflowData: {
+            name: "{{ workflowName }}"
+            destinationConfigurations: {
+                channelId: "{{ channelId }}"
+                notificationTriggers: [ACTIVATED, ACKNOWLEDGED, CLOSED, PRIORITY_CHANGED, INVESTIGATING, OTHER_UPDATES]
+            }
+            mutingRulesHandling: DONT_NOTIFY_FULLY_MUTED_ISSUES
+            issuesFilter: {
+                name: "team specific issues"
+                predicates: [
+                    {
+                        attribute: "accumulations.tag.team"
+                        operator: EXACTLY_MATCHES
+                        values: ["security"]
+                    }
+                ]
+                type: FILTER
+            }
+            destinationsEnabled: true
+            workflowEnabled: true
+        }
+    ) {
+        workflow {
+            id
+        }
+        errors {
+            description
+            type
+        }
+    }
+}
+"""

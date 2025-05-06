@@ -5,6 +5,7 @@ from loguru import logger
 from newrelic_integration.utils import render_query
 from newrelic_integration.core.utils import send_graph_api_request
 from newrelic_integration.core.query_templates.webhooks import (
+    CREATE_WORKFLOW_MUTATION,
     GET_EXISTING_CHANNEL_QUERY,
     GET_EXISTING_WEBHOOKS_QUERY,
     GET_EXISTING_WORKFLOWS_QUERY,
@@ -18,8 +19,11 @@ class NewRelicWebhookManager:
     def __init__(self, http_client: httpx.AsyncClient):
         self.http_client = http_client
 
-    async def get_existing_webhooks(self) -> list[dict[str, Any]]:
-        """Get all existing webhooks in New Relic"""
+    async def get_existing_webhooks(self, base_url: str) -> Optional[str]:
+        """
+        Check if a webhook with the given base_url and a name containing 'Port -'
+        already exists in New Relic.
+        """
         account_id = int(ocean.integration_config["new_relic_account_id"])
         query = await render_query(GET_EXISTING_WEBHOOKS_QUERY, account_id=account_id)
         response = await send_graph_api_request(
@@ -31,14 +35,10 @@ class NewRelicWebhookManager:
         destinations = response["data"]["actor"]["account"]["aiNotifications"][
             "destinations"
         ]["entities"]
-        webhooks = []
+
         for dest in destinations:
             if dest.get("type") == "WEBHOOK":
-                webhook_data = {
-                    "id": dest.get("id"),
-                    "name": dest.get("name"),
-                    "notifications": [],
-                }
+                name = dest.get("name", "")
                 url_property = next(
                     (
                         prop
@@ -47,12 +47,13 @@ class NewRelicWebhookManager:
                     ),
                     None,
                 )
-                if url_property:
-                    webhook_data["notifications"].append(
-                        {"baseUrl": url_property.get("value")}
-                    )
-                webhooks.append(webhook_data)
-        return webhooks
+                if (
+                    "Port -" in name
+                    and url_property
+                    and url_property.get("value") == base_url
+                ):
+                    return dest.get("id")
+        return None
 
     async def get_existing_workflows(
         self, workflow_name: str
@@ -106,7 +107,7 @@ class NewRelicWebhookManager:
             return channels_data[0]
         return None
 
-    async def create_webhook(
+    async def create_destination_webhook(
         self, webhook_name: str, webhook_url: str
     ) -> Optional[Dict[str, Any]]:
         """Create a new webhook in New Relic"""
@@ -182,26 +183,16 @@ class NewRelicWebhookManager:
 
     async def get_or_create_webhook(
         self, webhook_name: str, webhook_url: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get existing webhook or create a new one if it doesn't exist."""
-        existing_webhooks = await self.get_existing_webhooks()
-        existing_webhook = next(
-            (
-                wh
-                for wh in existing_webhooks
-                if any(
-                    notif.get("baseUrl") == webhook_url
-                    for notif in wh.get("notifications", [])
-                )
-            ),
-            None,
+        webhook_data = await self.get_existing_webhooks(webhook_url)
+        if webhook_data:
+            logger.info("Webhook already exist")
+            return webhook_data
+
+        webhook_creation_result = await self.create_destination_webhook(
+            webhook_name, webhook_url
         )
-
-        if existing_webhook:
-            logger.info(f"Webhook already exists with ID: {existing_webhook['id']}")
-            return existing_webhook["id"]
-
-        webhook_creation_result = await self.create_webhook(webhook_name, webhook_url)
         if not webhook_creation_result or not webhook_creation_result.get("data"):
             logger.error("Failed to create New Relic webhook: No data in response")
             return None
@@ -308,7 +299,7 @@ class NewRelicWebhookManager:
 
         return False
 
-    async def ensure_webhook_exists(self) -> bool:
+    async def create_webhook(self) -> bool:
         """Ensure the webhook, channel, and workflow exist, create them if they don't"""
         account_id = int(ocean.integration_config["new_relic_account_id"])
         webhook_name = f"Port - {account_id}"
@@ -391,44 +382,8 @@ class NewRelicWebhookManager:
         self, account_id: int, channel_id: str, workflow_name: str
     ) -> Optional[Dict[str, Any]]:
         """Create a notification workflow in New Relic."""
-        mutation = """
-                mutation {
-                    aiWorkflowsCreateWorkflow(
-                        accountId: {{ accountId }}
-                        createWorkflowData: {
-                            name: "{{ workflowName }}"
-                            destinationConfigurations: {
-                                channelId: "{{ channelId }}"
-                                notificationTriggers: [ACTIVATED, ACKNOWLEDGED, CLOSED, PRIORITY_CHANGED, INVESTIGATING, OTHER_UPDATES]
-                            }
-                            mutingRulesHandling: DONT_NOTIFY_FULLY_MUTED_ISSUES
-                            issuesFilter: {
-                                name: "team specific issues"
-                                predicates: [
-                                    {
-                                        attribute: "accumulations.tag.team"
-                                        operator: EXACTLY_MATCHES
-                                        values: ["security"]
-                                    }
-                                ]
-                                type: FILTER
-                            }
-                            destinationsEnabled: true
-                            workflowEnabled: true
-                        }
-                    ) {
-                        workflow {
-                            id
-                        }
-                        errors {
-                            description
-                            type
-                        }
-                    }
-                }
-                """
         query = await render_query(
-            mutation,
+            CREATE_WORKFLOW_MUTATION,
             accountId=account_id,
             channelId=channel_id,
             workflowName=workflow_name,
