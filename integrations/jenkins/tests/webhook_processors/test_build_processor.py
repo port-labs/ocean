@@ -12,7 +12,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from utils import ObjectKind
-from webhook_processors.consts import BUILD_UPSERT_EVENTS, BUILD_DELETE_EVENTS
+from webhook.consts import BUILD_UPSERT_EVENTS, BUILD_DELETE_EVENTS
 
 
 @pytest.fixture
@@ -21,6 +21,7 @@ def valid_build_payload() -> dict[str, Any]:
         "url": "http://jenkins/job/test/1",
         "id": "test-build-1",
         "type": "run.started",
+        "source": "test",
     }
 
 
