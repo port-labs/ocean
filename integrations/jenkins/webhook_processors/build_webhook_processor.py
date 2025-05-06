@@ -1,4 +1,4 @@
-from webhook_processors.consts import BUILD_DELETE_EVENTS, BUILD_UPSERT_EVENTS
+from webhook.consts import BUILD_DELETE_EVENTS, BUILD_UPSERT_EVENTS
 from webhook_processors.jenkins_abstract_webhook_processor import (
     _JenkinsAbstractWebhookProcessor,
 )
@@ -30,9 +30,9 @@ class BuildWebhookProcessor(_JenkinsAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         """Process the build webhook event and return the raw results."""
 
-        event_type = payload.get("type")
-        source = payload.get("source")
-        url = payload.get("url", "")
+        event_type = payload["type"]
+        source = payload["source"]
+        url = payload["url"]
         client = JenkinsClient.create_from_ocean_configuration()
 
         logger.info(
@@ -40,7 +40,7 @@ class BuildWebhookProcessor(_JenkinsAbstractWebhookProcessor):
         )
 
         if event_type in BUILD_DELETE_EVENTS:
-            deleted_build = payload.get("data", {})
+            deleted_build = payload["data"]
             deleted_build["url"] = f"{client.jenkins_base_url}/{url}"
 
             logger.info(f"Build #{url} was deleted from {source}")

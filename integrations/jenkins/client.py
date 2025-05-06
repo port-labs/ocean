@@ -61,8 +61,18 @@ class JenkinsClient:
             )
             response.raise_for_status()
             return response.json()
+
         except httpx.HTTPStatusError as e:
-            logger.error(f"Failed to make request to {url}: {str(e)}")
+            if e.response.status_code == 404:
+                logger.warning(
+                    f"Resource not found at {url} for the following params {params}"
+                )
+                return {}
+            logger.error(f"HTTP status error for {method} request to {endpoint}: {e}")
+            raise
+
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error for {method} request to {endpoint}: {e}")
             raise
 
     async def get_jobs(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -89,7 +99,7 @@ class JenkinsClient:
 
     async def _get_build_stages(self, build_url: str) -> list[dict[str, Any]]:
         response = await self._send_api_request("GET", f"{build_url}/wfapi/describe")
-        stages = response.get("stages", [])
+        stages = response["stages"]
         return stages
 
     async def _get_job_builds(self, job_url: str) -> AsyncGenerator[Any, None]:
@@ -135,7 +145,10 @@ class JenkinsClient:
             job_response = await self._send_api_request(
                 "GET", f"{base_url}/api/json", params=params
             )
-            logger.debug(f"Fetched {job_response}")
+            logger.debug(
+                f"Fetched job data from {base_url}/api/json with params {params}"
+            )
+
             jobs = job_response.get("jobs", [])
             logger.info(f"Fetched {len(jobs)} jobs")
 

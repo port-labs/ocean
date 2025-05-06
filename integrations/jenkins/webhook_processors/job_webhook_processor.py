@@ -1,4 +1,4 @@
-from webhook_processors.consts import JOB_DELETE_EVENTS, JOB_UPSERT_EVENTS
+from webhook.consts import JOB_DELETE_EVENTS, JOB_UPSERT_EVENTS
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -30,14 +30,14 @@ class JobWebhookProcessor(_JenkinsAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         """Process the job webhook event and return the raw results."""
 
-        event_type = payload.get("type")
-        url = payload.get("url", "")
+        event_type = payload["type"]
+        url = payload["url"]
         client = JenkinsClient.create_from_ocean_configuration()
 
         logger.info(f"Processing job event: {event_type} for job {url}")
 
         if event_type in JOB_DELETE_EVENTS:
-            deleted_job = payload.get("data", {})
+            deleted_job = payload["data"]
             deleted_job["url"] = f"{client.jenkins_base_url}/{url}"
 
             logger.info(f"Job #{url} was deleted")
