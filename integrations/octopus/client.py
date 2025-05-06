@@ -1,9 +1,11 @@
+import base64
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Timeout
+from port_ocean.context.ocean import ocean
 
 PAGE_SIZE = 50
 WEBHOOK_TIMEOUT = "00:00:50"
@@ -98,17 +100,21 @@ class OctopusClient:
             yield spaces
 
     async def _create_subscription(
-        self, space_id: str, app_host: str
+        self, space_id: str, base_url: str
     ) -> dict[str, Any]:
         """Create a new subscription for a space."""
+        secret = ocean.integration_config["webhook_secret"]
+        encoded_secret = base64.b64encode(secret.encode()).decode()
         endpoint = "subscriptions"
         subscription_data = {
             "EventNotificationSubscription": {
-                "WebhookURI": f"{app_host}/integration/webhook",
+                "WebhookURI": f"{base_url}/integration/webhook",
                 "WebhookTimeout": WEBHOOK_TIMEOUT,
+                "WebhookHeaderKey": "X-Octopus-Webhook-Id",
+                "WebhookHeaderValue": encoded_secret,
             },
             "IsDisabled": False,
-            "Name": f"Port Subscription - {app_host}",
+            "Name": f"Port Subscription - {base_url}",
             "SpaceId": space_id,
         }
         logger.info(
@@ -118,10 +124,10 @@ class OctopusClient:
             endpoint, json_data=subscription_data, method="POST"
         )
 
-    async def create_webhook_subscription(self, app_host: str, space_id: str) -> None:
+    async def create_webhook_subscription(self, base_url: str, space_id: str) -> None:
         """Create a new subscription for all spaces."""
         try:
-            response = await self._create_subscription(space_id, app_host)
+            response = await self._create_subscription(space_id, base_url)
             if response.get("Id"):
                 logger.info(
                     f"Subscription created for space '{space_id}' with ID {response['Id']}"
