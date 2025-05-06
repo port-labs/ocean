@@ -13,8 +13,10 @@ class _JenkinsAbstractWebhookProcessor(AbstractWebhookProcessor):
     """Abstract base class for Jenkins webhook processors."""
 
     def __init__(self, event: WebhookEvent) -> None:
-        path = event._original_request.url.path
-        if "integration/events" in path:
+        if (
+            event._original_request
+            and "integration/events" in event._original_request.url.path
+        ):
             logger.warning(
                 "'integration/events' webhook endpoint path is deprecated. Please use 'integration/webhook' instead."
             )

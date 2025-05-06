@@ -5,7 +5,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from webhook_processors.jenkins_abstract_webhook_processor import (
+from webhook.webhook_processors.jenkins_abstract_webhook_processor import (
     _JenkinsAbstractWebhookProcessor,
 )
 from client import JenkinsClient

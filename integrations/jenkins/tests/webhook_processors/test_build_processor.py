@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 from typing import Any, Generator
 
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from webhook_processors.build_webhook_processor import BuildWebhookProcessor
+from webhook.webhook_processors.build_webhook_processor import BuildWebhookProcessor
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
@@ -55,7 +55,9 @@ def mock_resource_config() -> ResourceConfig:
 
 @pytest.fixture
 def mock_client() -> Generator[AsyncMock, None, None]:
-    with patch("webhook_processors.build_webhook_processor.JenkinsClient") as mock:
+    with patch(
+        "webhook.webhook_processors.build_webhook_processor.JenkinsClient"
+    ) as mock:
         client = AsyncMock()
         mock.create_from_ocean_configuration.return_value = client
         yield client

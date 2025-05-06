@@ -1,5 +1,5 @@
 from webhook.consts import BUILD_DELETE_EVENTS, BUILD_UPSERT_EVENTS
-from webhook_processors.jenkins_abstract_webhook_processor import (
+from webhook.webhook_processors.jenkins_abstract_webhook_processor import (
     _JenkinsAbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
