@@ -12,9 +12,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 async def test_handle_event_deleted() -> None:
     event = WebhookEvent(payload={}, headers={}, trace_id="test-trace-id")
     resource_config = Mock(spec=ResourceConfig)
-    processor = ResourceWebhookProcessor(
-        event=event
-    )
+    processor = ResourceWebhookProcessor(event=event)
 
     with patch.object(processor, "get_client", return_value=AsyncMock()):
         payload = {
