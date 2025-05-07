@@ -14,7 +14,6 @@ from loguru import logger
 from urllib.parse import urljoin
 
 
-
 class BuildWebhookProcessor(_JenkinsAbstractWebhookProcessor):
     """Processes build-related webhook events from Jenkins."""
 
