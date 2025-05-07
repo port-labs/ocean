@@ -11,6 +11,8 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from client import JenkinsClient
 from utils import ObjectKind
 from loguru import logger
+from urllib.parse import urljoin
+
 
 
 class BuildWebhookProcessor(_JenkinsAbstractWebhookProcessor):
@@ -41,7 +43,7 @@ class BuildWebhookProcessor(_JenkinsAbstractWebhookProcessor):
 
         if event_type in BUILD_DELETE_EVENTS:
             deleted_build = payload["data"]
-            deleted_build["url"] = f"{client.jenkins_base_url}/{url}"
+            deleted_build["url"] = urljoin(client.jenkins_base_url, url)
 
             logger.info(f"Build #{url} was deleted from {source}")
 

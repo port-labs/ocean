@@ -11,6 +11,8 @@ from webhook.webhook_processors.jenkins_abstract_webhook_processor import (
 from client import JenkinsClient
 from utils import ObjectKind
 from loguru import logger
+from urllib.parse import urljoin
+
 
 
 class JobWebhookProcessor(_JenkinsAbstractWebhookProcessor):
@@ -38,7 +40,8 @@ class JobWebhookProcessor(_JenkinsAbstractWebhookProcessor):
 
         if event_type in JOB_DELETE_EVENTS:
             deleted_job = payload["data"]
-            deleted_job["url"] = f"{client.jenkins_base_url}/{url}"
+            deleted_job["url"] = urljoin(client.jenkins_base_url, url)
+
 
             logger.info(f"Job #{url} was deleted")
 
