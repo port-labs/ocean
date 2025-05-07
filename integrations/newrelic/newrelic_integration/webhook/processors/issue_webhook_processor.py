@@ -20,43 +20,42 @@ class IssueWebhookProcessor(_NewRelicAbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        async with http_async_client as http_client:
-            issues_handler = IssuesHandler(http_client)
-            issue_event = IssueEvent(**payload)
-            issue_record = issue_event.dict(by_alias=True)
+        issues_handler = IssuesHandler(http_async_client)
+        issue_event = IssueEvent(**payload)
+        issue_record = issue_event.dict(by_alias=True)
 
-            # Fetch entityGuids if not already present
-            if "entityGuids" not in issue_record or not isinstance(
-                issue_record["entityGuids"], list
-            ):
-                entity_guids = await issues_handler.get_issue_entity_guids(
-                    issue_record["id"]
-                )
-                if entity_guids:
-                    issue_record["entityGuids"] = entity_guids
-                else:
-                    issue_record["entityGuids"] = []
-
-            if "entityGuids" in issue_record and isinstance(
-                issue_record["entityGuids"], list
-            ):
-                for entity_guid in issue_record["entityGuids"]:
-                    try:
-                        entity = await EntitiesHandler(http_client).get_entity(
-                            entity_guid
-                        )
-                        entity_type = entity["type"]
-                        issue_record.setdefault(
-                            f"__{entity_type}",
-                            {},
-                        ).setdefault(
-                            "entity_guids", []
-                        ).append(entity_guid)
-                    except Exception as e:
-                        logger.error(f"Error fetching entity {entity_guid}: {e}")
-                        continue
-
-            return WebhookEventRawResults(
-                updated_raw_results=[issue_record],
-                deleted_raw_results=[],
+        # Fetch entityGuids if not already present
+        if "entityGuids" not in issue_record or not isinstance(
+            issue_record["entityGuids"], list
+        ):
+            entity_guids = await issues_handler.get_issue_entity_guids(
+                issue_record["id"]
             )
+            if entity_guids:
+                issue_record["entityGuids"] = entity_guids
+            else:
+                issue_record["entityGuids"] = []
+
+        if "entityGuids" in issue_record and isinstance(
+            issue_record["entityGuids"], list
+        ):
+            for entity_guid in issue_record["entityGuids"]:
+                try:
+                    entity = await EntitiesHandler(http_async_client).get_entity(
+                        entity_guid
+                    )
+                    entity_type = entity["type"]
+                    issue_record.setdefault(
+                        f"__{entity_type}",
+                        {},
+                    ).setdefault(
+                        "entity_guids", []
+                    ).append(entity_guid)
+                except Exception as e:
+                    logger.error(f"Error fetching entity {entity_guid}: {e}")
+                    continue
+
+        return WebhookEventRawResults(
+            updated_raw_results=[issue_record],
+            deleted_raw_results=[],
+        )

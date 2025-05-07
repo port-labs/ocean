@@ -104,9 +104,8 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    async with http_async_client as http_client:
-        webhook_manager = NewRelicWebhookManager(http_client)
-        await webhook_manager.create_webhook()
+    webhook_manager = NewRelicWebhookManager(http_async_client)
+    await webhook_manager.create_webhook()
 
 
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)

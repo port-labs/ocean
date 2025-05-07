@@ -28,9 +28,7 @@ def ocean_mock(integration_config_mock: Dict[str, Any]) -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_get_existing_webhooks_returns_id_if_found(
-    ocean_mock: MagicMock,
-) -> None:
+async def test_get_existing_webhooks_returns_id_if_found(ocean_mock: MagicMock) -> None:
     mock_http_client = MagicMock()
     manager = NewRelicWebhookManager(http_client=mock_http_client)
 
@@ -38,9 +36,6 @@ async def test_get_existing_webhooks_returns_id_if_found(
 
     with (
         patch("newrelic_integration.webhook.webhook_manager.ocean", ocean_mock),
-        patch(
-            "newrelic_integration.webhook.webhook_manager.render_query", new=AsyncMock()
-        ),
         patch(
             "newrelic_integration.webhook.webhook_manager.send_graph_api_request",
             new=AsyncMock(
@@ -55,6 +50,7 @@ async def test_get_existing_webhooks_returns_id_if_found(
                                                 "id": "webhook-123",
                                                 "type": "WEBHOOK",
                                                 "name": "Port - Something",
+                                                "active": True,
                                                 "properties": [
                                                     {
                                                         "key": "url",
@@ -283,21 +279,29 @@ async def test_create_channel_success(
 
 
 @pytest.mark.asyncio
-async def test_get_or_create_channel_exists(
+async def test_create_new_channel_success(
     manager: NewRelicWebhookManager, ocean_mock: MagicMock
 ) -> None:
     with (
         patch("newrelic_integration.webhook.webhook_manager.ocean", ocean_mock),
         patch.object(
             manager,
-            "get_existing_channel",
-            new=AsyncMock(return_value={"id": "existing-channel"}),
+            "create_channel",
+            new=AsyncMock(
+                return_value={
+                    "data": {
+                        "aiNotificationsCreateChannel": {
+                            "channel": {"id": "new-channel-id"}
+                        }
+                    }
+                }
+            ),
         ),
     ):
-        channel_id = await manager.get_or_create_channel(
+        channel_id = await manager.create_new_channel(
             123456, "webhook-123", "port-channel"
         )
-        assert channel_id == "existing-channel"
+        assert channel_id == "new-channel-id"
 
 
 @pytest.mark.asyncio

@@ -44,6 +44,31 @@ GET_EXISTING_WEBHOOKS_QUERY = """
 }
 """
 
+FIND_DESTINATION_BY_URL_QUERY = """
+{
+  actor {
+    account(id: {{ account_id }}) {
+      aiNotifications {
+        destinations(
+          filters: {type: WEBHOOK, property: {key: "url", value:"{{ channel_name }}"}}
+        ) {
+          entities {
+            id
+            name
+            createdAt
+            active
+            type
+            properties {
+              key
+              value
+            }
+          }
+        }
+      }
+    }
+  }
+}"""
+
 GET_EXISTING_WORKFLOWS_QUERY = """
 {
   actor {

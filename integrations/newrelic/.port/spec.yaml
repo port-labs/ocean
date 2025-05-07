@@ -30,3 +30,9 @@ configurations:
     type: string
     required: false
     sensitive: true
+  - name: webhookUsername
+    description: Optional Username for securing webhook communication between newrelic and Port.
+    type: string
+    required: false
+    default: port
+    sensitive: false
