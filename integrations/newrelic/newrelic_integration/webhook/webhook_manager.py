@@ -6,7 +6,6 @@ from newrelic_integration.utils import render_query
 from newrelic_integration.core.utils import send_graph_api_request
 from newrelic_integration.core.query_templates.webhooks import (
     CREATE_WORKFLOW_MUTATION,
-    GET_EXISTING_CHANNEL_QUERY,
     GET_EXISTING_WORKFLOWS_QUERY,
     GET_ISSUE_ENTITY_GUIDS_QUERY,
     CREATE_CHANNEL_MUTATION,
@@ -83,32 +82,6 @@ class NewRelicWebhookManager:
             .get("entities", [])
         )
         return workflows_data if workflows_data else None
-
-    async def get_existing_channel(
-        self, account_id: int, channel_name: str
-    ) -> Optional[Dict[str, Any]]:
-        """Get an existing channel by name."""
-        query = await render_query(
-            GET_EXISTING_CHANNEL_QUERY, account_id=account_id, channel_name=channel_name
-        )
-        response = await send_graph_api_request(
-            self.http_client,
-            query,
-            request_type="get_existing_channel",
-            account_id=account_id,
-            channel_name=channel_name,
-        )
-        data = response.get("data", {})
-        channels_data = (
-            data.get("actor", {})
-            .get("account", {})
-            .get("aiNotifications", {})
-            .get("channels", {})
-            .get("entities")
-        )
-        if channels_data and len(channels_data) > 0:
-            return channels_data[0]
-        return None
 
     async def create_destination_webhook(
         self, webhook_name: str, webhook_url: str

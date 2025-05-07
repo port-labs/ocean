@@ -203,45 +203,6 @@ async def test_create_destination_webhook_failure(
 
 
 @pytest.mark.asyncio
-async def test_get_existing_channel_found(
-    manager: NewRelicWebhookManager, ocean_mock: MagicMock
-) -> None:
-    with (
-        patch("newrelic_integration.webhook.webhook_manager.ocean", ocean_mock),
-        patch(
-            "newrelic_integration.webhook.webhook_manager.render_query", new=AsyncMock()
-        ),
-        patch(
-            "newrelic_integration.webhook.webhook_manager.send_graph_api_request",
-            new=AsyncMock(
-                return_value={
-                    "data": {
-                        "actor": {
-                            "account": {
-                                "aiNotifications": {
-                                    "channels": {
-                                        "entities": [
-                                            {
-                                                "id": "channel-123",
-                                                "name": "port-channel",
-                                                "type": "WEBHOOK",
-                                            }
-                                        ]
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            ),
-        ),
-    ):
-        result = await manager.get_existing_channel(123456, "port-channel")
-        assert result is not None
-        assert result["id"] == "channel-123"
-
-
-@pytest.mark.asyncio
 async def test_create_channel_success(
     manager: NewRelicWebhookManager, ocean_mock: MagicMock
 ) -> None:

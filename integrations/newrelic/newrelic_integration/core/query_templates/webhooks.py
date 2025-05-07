@@ -1,27 +1,3 @@
-GET_EXISTING_CHANNEL_QUERY = """
-{
-  actor {
-    account(id: {{ account_id }}) {
-      aiNotifications {
-        channels(filters: { name: "{{ channel_name }}" }) {
-          entities {
-            id
-            name
-            type
-            product
-            destinationId
-            properties {
-              key
-              value
-            }
-          }
-        }
-      }
-    }
-  }
-}
-"""
-
 GET_EXISTING_WEBHOOKS_QUERY = """
 {
   actor {
