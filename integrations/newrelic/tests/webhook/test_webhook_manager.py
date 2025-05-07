@@ -354,7 +354,6 @@ async def test_create_webhook_full_flow_success(
                 }
             ),
         ),
-        patch.object(manager, "get_existing_channel", new=AsyncMock(return_value=None)),
         patch.object(
             manager,
             "create_channel",
