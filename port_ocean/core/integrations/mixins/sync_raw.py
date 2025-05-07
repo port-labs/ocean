@@ -1,11 +1,12 @@
 import asyncio
 from graphlib import CycleError
 import inspect
+import tracemalloc
 import typing
 from typing import Callable, Awaitable, Any
-
 import httpx
 from loguru import logger
+import multiprocessing
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
@@ -33,6 +34,7 @@ from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gath
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.helpers.metric.utils import TimeMetric
+from port_ocean.ocean import Ocean
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 
@@ -223,10 +225,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0
     ) -> CalculationResult:
+        # Take initial snapshot
+        snapshot_start = tracemalloc.take_snapshot()
+
         objects_diff = await self._calculate_raw(
             [(resource, results)], parse_all, send_raw_data_examples_amount
         )
         modified_objects = []
+
+        # Take snapshot after calculate_raw
+        snapshot_calculate_raw = tracemalloc.take_snapshot()
+
+        # Calculate and print memory difference
+        stats = snapshot_calculate_raw.compare_to(snapshot_start, 'lineno')
+        total_size = sum(stat.size_diff for stat in stats)
+        print(f"Memory increase after _calculate_raw: {total_size / 1024:.2f} KB")
 
         if event.event_type == EventType.RESYNC:
             try:
@@ -235,12 +248,29 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     resource,
                     user_agent_type
                 )
+
+                # Take snapshot after map_entities
+                snapshot_map_entities = tracemalloc.take_snapshot()
+
+                # Calculate and print memory difference
+                stats = snapshot_map_entities.compare_to(snapshot_calculate_raw, 'lineno')
+                total_size = sum(stat.size_diff for stat in stats)
+                print(f"Memory increase after _map_entities_compared_with_port: {total_size / 1024:.2f} KB")
+
                 if changed_entities:
                     logger.info("Upserting changed entities", changed_entities=len(changed_entities),
                         total_entities=len(objects_diff[0].entity_selector_diff.passed))
                     await self.entities_state_applier.upsert(
                         changed_entities, user_agent_type
                     )
+
+                    # Take snapshot after upsert
+                    upsert_snapshot = tracemalloc.take_snapshot()
+
+                    # Calculate and print memory difference
+                    stats = upsert_snapshot.compare_to(snapshot_map_entities, 'lineno')
+                    total_size = sum(stat.size_diff for stat in stats)
+                    print(f"Memory increase after upsert: {total_size / 1024:.2f} KB")
                 else:
                     logger.info("Entities in batch didn't changed since last sync, skipping", total_entities=len(objects_diff[0].entity_selector_diff.passed))
                 modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
@@ -336,6 +366,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     number_of_transformed_entities += calculation_result.number_of_transformed_entities
             except* OceanAbortException as error:
                 errors.append(error)
+        tracemalloc.stop()
 
         logger.info(
             f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
@@ -358,6 +389,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM],
             value=number_of_transformed_entities
         )
+
 
         return passed_entities, errors
 
@@ -388,7 +420,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if not resource_mappings:
             return []
 
-        diffs, errors, _, misconfigured_entity_keys = zip(
+        diffs, errors, _ = zip(
             *await asyncio.gather(
                 *(
                     self._register_resource_raw(
@@ -401,8 +433,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         diffs = list(diffs)
         errors = sum(errors, [])
-        misconfigured_entity_keys = list(misconfigured_entity_keys)
-
 
         if errors:
             message = f"Failed to register {len(errors)} entities. Skipping delete phase due to incomplete state"
@@ -558,6 +588,54 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for entity in event.entity_topological_sorter.get_entities(False):
                     await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
 
+    @staticmethod
+    def _process_resource_worker(
+        resource_data: dict,
+        user_agent_type: UserAgentType,
+        ocean_config: dict
+    ) -> tuple[list[Entity], list[Exception]]:
+        """Worker function that runs in a separate process."""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            # Initialize Ocean context in the worker process
+            ocean = Ocean(**ocean_config)
+
+            # Create a new instance of the class in the worker process
+            instance = SyncRawMixin()
+            return loop.run_until_complete(
+                instance._register_in_batches(resource_data, user_agent_type)
+            )
+        finally:
+            loop.close()
+
+    async def _process_resource_in_separate_process(
+        self,
+        resource: ResourceConfig,
+        index: int,
+        user_agent_type: UserAgentType
+    ) -> tuple[list[Entity], list[Exception]]:
+        """Process a resource in a separate process to isolate memory usage."""
+        # Convert resource to a serializable format
+        resource_data = resource.dict()
+
+        # Get Ocean configuration
+        ocean_config = ocean.config.dict()
+
+        # Create and start the process
+        process = multiprocessing.Process(
+            target=self._process_resource_worker,
+            args=(resource_data, user_agent_type, ocean_config)
+        )
+        process.start()
+        process.join()
+
+        if process.exitcode != 0:
+            logger.error(f"Process for resource {resource.kind}-{index} failed with exit code {process.exitcode}")
+            return [], [Exception(f"Process failed with exit code {process.exitcode}")]
+
+        return self._process_resource_worker(resource_data, user_agent_type, ocean_config)
 
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
@@ -567,31 +645,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType = UserAgentType.exporter,
         silent: bool = True,
     ) -> bool:
-        """Perform a full synchronization of raw entities.
-
-        This method performs a full synchronization of raw entities, including registration, unregistration,
-        and state updates.
-
-        Args:
-            _ (dict[Any, Any] | None): Unused parameter.
-            trigger_type (TriggerType): The type of trigger for the synchronization.
-            user_agent_type (UserAgentType): The type of user agent.
-            silent (bool): Whether to raise exceptions or handle them silently.
-        """
+        """Perform a full synchronization of raw entities."""
         logger.info("Resync was triggered")
 
         async with event_context(
             EventType.RESYNC,
             trigger_type=trigger_type,
         ):
-            # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
-            # rather than the old cache
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
 
-            # Execute resync_start hooks
             for resync_start_fn in self.event_strategy["resync_start"]:
                 await resync_start_fn()
 
@@ -609,19 +674,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
-
             try:
-                for index,resource in enumerate(app_config.resources):
-                    # create resource context per resource kind, so resync method could have access to the resource
-                    # config as we might have multiple resources in the same event
-                    async with resource_context(resource,index):
+                for index, resource in enumerate(app_config.resources):
+                    async with resource_context(resource, index):
                         resource_kind_id = f"{resource.kind}-{index}"
-                        task = asyncio.create_task(
-                            self._register_in_batches(resource, user_agent_type)
+
+                        # Process resource in separate process
+                        kind_results = await self._process_resource_in_separate_process(
+                            resource, index, user_agent_type
                         )
 
-                        event.on_abort(lambda: task.cancel())
-                        kind_results: tuple[list[Entity], list[Exception]] = await task
                         ocean.metrics.set_metric(
                             name=MetricType.OBJECT_COUNT_NAME,
                             labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
@@ -629,7 +691,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         )
 
                         creation_results.append(kind_results)
-
                         await ocean.metrics.flush(kind=resource_kind_id)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
@@ -643,46 +704,34 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         "Due to an error before the resync, the previous state of entities at Port is unknown."
                         " Skipping delete phase due to unknown initial state."
                     )
-                    return
+                    return False
 
                 logger.info("Starting resync diff calculation")
-                generated_entities, errors = zip_and_sum(creation_results) or [
-                    [],
-                    [],
-                ]
+                generated_entities, errors = zip_and_sum(creation_results) or [[], []]
 
                 if errors:
                     message = f"Resync failed with {len(errors)} errors, skipping delete phase due to incomplete state"
-                    error_group = ExceptionGroup(
-                        message,
-                        errors,
-                    )
+                    error_group = ExceptionGroup(message, errors)
                     if not silent:
                         raise error_group
-
                     logger.error(message, exc_info=error_group)
                     return False
                 else:
                     logger.info(
                         f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
                     )
-                    entities_at_port = await ocean.port_client.search_entities(
-                        user_agent_type
-                    )
+                    entities_at_port = await ocean.port_client.search_entities(user_agent_type)
                     await self.entities_state_applier.delete_diff(
                         {"before": entities_at_port, "after": generated_entities},
-                        user_agent_type, app_config.get_entity_deletion_threshold()
+                        user_agent_type
                     )
 
                     logger.info("Resync finished successfully")
 
-                    # Execute resync_complete hooks
                     if "resync_complete" in self.event_strategy:
                         logger.info("Executing resync_complete hooks")
-
                         for resync_complete_fn in self.event_strategy["resync_complete"]:
                             await resync_complete_fn()
-
                         logger.info("Finished executing resync_complete hooks")
 
                     return True
