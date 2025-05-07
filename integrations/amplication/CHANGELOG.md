@@ -1,3 +1,11 @@
+## 0.1.15 (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
 ## 0.1.14 (2025-04-27)
 
 ### Bug Fixes

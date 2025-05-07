@@ -119,6 +119,7 @@ class WizClient:
                 url=self.api_url,
                 json={"query": query, "variables": variables},
                 headers=await self.auth_headers,
+                extensions={"retryable": True},
             )
             response.raise_for_status()
             response_json = response.json()
