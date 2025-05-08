@@ -22,5 +22,13 @@ configurations:
     description: The host of the Gitlab instance. If not specified, the default will be https://gitlab.com.
 saas:
   enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: gitlabToken
+        value: '.oauthData.accessToken'
+        description: 'The Gitlab token to authenticate with the Gitlab API.'
+    valuesOverride:
+      integrationSpec:
+        gitlabHost: '"https://gitlab.com"'
   liveEvents:
     enabled: true
