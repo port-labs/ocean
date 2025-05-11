@@ -10,7 +10,7 @@ from port_ocean.clients.port.types import RequestOptions
 class Rule(BaseModel):
     property: str
     operator: str
-    value: str
+    value: str | None
 
 
 class IngestSearchQuery(BaseModel):
