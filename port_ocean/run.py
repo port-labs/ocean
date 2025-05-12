@@ -21,7 +21,6 @@ def _get_default_config_factory() -> None | Type[BaseModel]:
     config_factory = None
     if spec is not None:
         config_factory = default_config_factory(spec.get("configurations", []))
-
     return config_factory
 
 
@@ -44,6 +43,7 @@ def run(
     default_app = create_default_app(path, config_factory, config_override)
 
     main_path = f"{path}/main.py" if path else "main.py"
+    print(f"main_path: {main_path}")
     app_module = load_module(main_path)
     app: Ocean = {name: item for name, item in getmembers(app_module)}.get(
         "app", default_app

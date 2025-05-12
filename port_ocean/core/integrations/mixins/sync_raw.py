@@ -3,10 +3,9 @@ from graphlib import CycleError
 import inspect
 import typing
 from typing import Callable, Awaitable, Any
-
+import multiprocessing
 import httpx
 from loguru import logger
-
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.ocean import ocean
@@ -254,7 +253,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     objects_diff[0].entity_selector_diff.passed, user_agent_type
                     )
 
-
         return CalculationResult(
             number_of_transformed_entities=len(objects_diff[0].entity_selector_diff.passed),
             entity_selector_diff=objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
@@ -316,7 +314,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         number_of_raw_results = 0
         number_of_transformed_entities = 0
-        for generator in async_generators:
+        while len(async_generators) > 0:
+
+            generator = async_generators.pop()
             try:
                 async for items in generator:
                     number_of_raw_results += len(items)
@@ -558,6 +558,26 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for entity in event.entity_topological_sorter.get_entities(False):
                     await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
 
+    async def process_resource(self,resource,index,user_agent_type):
+        async with resource_context(resource,index):
+            resource_kind_id = f"{resource.kind}-{index}"
+            # loop = asyncio.new_event_loop()
+            # asyncio.set_event_loop(loop)
+            task = asyncio.create_task(
+                self._register_in_batches(resource, user_agent_type)
+            )
+
+            event.on_abort(lambda: task.cancel())
+            kind_results: tuple[list[Entity], list[Exception]] = await task
+            # ocean.metrics.set_metric(
+            #     name=MetricType.OBJECT_COUNT_NAME,
+            #     labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
+            #     value=len(kind_results[0])
+            # )
+
+
+            # await ocean.metrics.flush(kind=resource_kind_id)
+            return kind_results
 
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
@@ -610,27 +630,23 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
 
+            from port_ocean.run_task import run_task
+            manager = multiprocessing.Manager()
             try:
-                for index,resource in enumerate(app_config.resources):
-                    # create resource context per resource kind, so resync method could have access to the resource
-                    # config as we might have multiple resources in the same event
-                    async with resource_context(resource,index):
-                        resource_kind_id = f"{resource.kind}-{index}"
-                        task = asyncio.create_task(
-                            self._register_in_batches(resource, user_agent_type)
-                        )
+                with multiprocessing.Manager() as manager:
+                    for index,resource in enumerate(app_config.resources):
+                        # create resource context per resource kind, so resync method could have access to the resource
+                        # config as we might have multiple resources in the same event
+                        logger.info(f"Starting resource {resource.kind} with index {index}")
 
-                        event.on_abort(lambda: task.cancel())
-                        kind_results: tuple[list[Entity], list[Exception]] = await task
-                        ocean.metrics.set_metric(
-                            name=MetricType.OBJECT_COUNT_NAME,
-                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
-                            value=len(kind_results[0])
-                        )
-
-                        creation_results.append(kind_results)
-
-                        await ocean.metrics.flush(kind=resource_kind_id)
+                        result = manager.dict()
+                        process = multiprocessing.Process(target=run_task, args=(resource,index,user_agent_type,result))
+                        process.start()
+                        process.join()
+                        creation_results.append(result.get("task"))
+                        result.clear()
+                        process.terminate()
+                        # creation_results.append(await self.process_resource(resource,index,user_agent_type))
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
 
