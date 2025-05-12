@@ -290,7 +290,9 @@ async def test_create_workflow_success(
     ):
         result = cast(
             Dict[str, Any],
-            await manager._create_notification_workflow_request(123456, "channel-123", "port-workflow"),
+            await manager._create_notification_workflow_request(
+                123456, "channel-123", "port-workflow"
+            ),
         )
         assert (
             result["data"]["aiWorkflowsCreateWorkflow"]["workflow"]["id"]
