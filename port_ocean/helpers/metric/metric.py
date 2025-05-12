@@ -43,7 +43,7 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
     MetricType.OBJECT_COUNT_NAME: (
         MetricType.OBJECT_COUNT_NAME,
         "object_count description",
-        ["kind", "phase"],
+        ["kind", "phase", "type"],
     ),
     MetricType.ERROR_COUNT_NAME: (
         MetricType.ERROR_COUNT_NAME,

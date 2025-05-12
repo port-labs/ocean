@@ -349,14 +349,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         ocean.metrics.set_metric(
             name=MetricType.OBJECT_COUNT_NAME,
-            labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT],
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT , "raw"],
             value=number_of_raw_results
         )
 
         ocean.metrics.set_metric(
             name=MetricType.OBJECT_COUNT_NAME,
-            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM],
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , "transformed"],
             value=number_of_transformed_entities
+        )
+
+        ocean.metrics.set_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , "filtered out"],
+            value=number_of_raw_results -number_of_transformed_entities
         )
 
         return passed_entities, errors
@@ -624,7 +630,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         kind_results: tuple[list[Entity], list[Exception]] = await task
                         ocean.metrics.set_metric(
                             name=MetricType.OBJECT_COUNT_NAME,
-                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
+                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, "loaded"],
                             value=len(kind_results[0])
                         )
 
