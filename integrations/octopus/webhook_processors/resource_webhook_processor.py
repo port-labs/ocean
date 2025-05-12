@@ -33,7 +33,7 @@ class ResourceWebhookProcessor(BaseOctopusWebhookProcessor):
         space_id = event_data["SpaceId"]
         related_document_ids = event_data.get("RelatedDocumentIds", [])
 
-        if event_data.get("Category") == "Deleted":
+        if event_data["Category"] == "Deleted":
             resource_id = event_data["ChangeDetails"]["DocumentContext"]["Id"]
             if resource_id:
                 return WebhookEventRawResults(

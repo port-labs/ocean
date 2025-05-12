@@ -11,11 +11,6 @@ from webhook_processors.resource_webhook_processor import ResourceWebhookProcess
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean Octopus integration")
-
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
-        return
-
     await setup_application()
 
 
@@ -24,7 +19,6 @@ async def setup_application() -> None:
     app_host = ocean.integration_config.get("app_host")
     base_url = app_host or ocean.app.base_url
     if not base_url:
-        logger.warning("Base url was not provided, skipping webhook creation")
         return
 
     async for spaces in client.get_all_spaces():
