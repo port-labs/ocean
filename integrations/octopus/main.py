@@ -21,7 +21,8 @@ async def on_start() -> None:
 
 async def setup_application() -> None:
     client = init_octopus_client()
-    base_url = ocean.app.base_url
+    app_host = ocean.integration_config.get("app_host")
+    base_url = app_host or ocean.app.base_url
     if not base_url:
         logger.warning("Base url was not provided, skipping webhook creation")
         return
