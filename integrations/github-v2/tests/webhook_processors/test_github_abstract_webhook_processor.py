@@ -82,7 +82,7 @@ def mock_ocean_context() -> None:
 @pytest.mark.asyncio
 class TestGitHubAbstractWebhookProcessor:
     async def test_verify_webhook_signature_no_secret(
-        self, gh_processor: MockGithubAbstractProcessor, mock_ocean_context: None
+        self, gh_processor: MockGithubAbstractProcessor, mock_ocean_context: Any
     ) -> None:
         ocean.integration_config["webhook_secret"] = None
 
@@ -92,15 +92,16 @@ class TestGitHubAbstractWebhookProcessor:
         result: bool = await gh_processor._verify_webhook_signature(mock_request)
         assert result is True
 
-    async def test_verify_webhook_signature_no_headers(
-        self, gh_processor: MockGithubAbstractProcessor, mock_ocean_context: None
+    async def test_verify_webhook_signature_invalid_headers(
+        self, gh_processor: MockGithubAbstractProcessor, mock_ocean_context: Any
     ) -> None:
+        ocean.integration_config["webhook_secret"] = "test-secret"
         mock_request: Request = create_gh_mock_request(b"{}", {})
         result: bool = await gh_processor._verify_webhook_signature(mock_request)
         assert result is False
 
     async def test_verify_webhook_signature_valid(
-        self, gh_processor: MockGithubAbstractProcessor, mock_ocean_context: None
+        self, gh_processor: MockGithubAbstractProcessor, mock_ocean_context: Any
     ) -> None:
         payload: Dict[str, Any] = {"test": "data"}
         payload_bytes: bytes = json.dumps(payload).encode("utf-8")
@@ -113,7 +114,7 @@ class TestGitHubAbstractWebhookProcessor:
         assert result is True
 
     async def test_verify_webhook_signature_invalid(
-        self, gh_processor: MockGithubAbstractProcessor, mock_ocean_context: None
+        self, gh_processor: MockGithubAbstractProcessor, mock_ocean_context: Any
     ) -> None:
         payload: Dict[str, Any] = {"test": "data"}
         payload_bytes: bytes = json.dumps(payload).encode("utf-8")

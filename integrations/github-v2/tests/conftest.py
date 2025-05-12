@@ -9,7 +9,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 from github.clients.client_factory import create_github_client
 
 
-from github.clients.base_client import GithubClient
+from github.clients.base_client import AbstractGithubClient
 
 TEST_INTEGRATION_CONFIG: Dict[str, str] = {
     "github_token": "mock-github-token",
@@ -39,7 +39,7 @@ def mock_ocean_context() -> None:
 
 
 @pytest.fixture
-def client(mock_ocean_context: Any) -> GithubClient:
+def client(mock_ocean_context: Any) -> AbstractGithubClient:
     """Provide a GitHubClient instance with mocked Ocean context."""
     return create_github_client()
 
@@ -52,5 +52,6 @@ def mock_http_response() -> MagicMock:
     mock_response.headers = {
         "X-RateLimit-Remaining": "5000",
         "X-RateLimit-Reset": str(int(time.time()) + 3600),
+        "Link": "",
     }
     return mock_response

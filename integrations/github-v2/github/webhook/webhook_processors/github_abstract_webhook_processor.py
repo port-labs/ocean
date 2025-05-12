@@ -23,6 +23,7 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
         """Verify that the payload was sent from GitHub by validating SHA256."""
 
         secret = ocean.integration_config["webhook_secret"]
+        print("Sec", secret, request.headers.get("x-hub-signature-256"))
 
         if not secret:
             logger.warning(

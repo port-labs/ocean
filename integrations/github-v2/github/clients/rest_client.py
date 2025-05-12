@@ -1,15 +1,26 @@
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
-from github.clients.base_client import GithubClient
+from github.clients.base_client import AbstractGithubClient
 from loguru import logger
 from port_ocean.utils.cache import cache_iterator_result
+import re
+from httpx import Response
+from urllib.parse import urlparse, urlunparse
 
 
 PAGE_SIZE = 100
 
+ENDPOINTS = {
+    "repository": "repos/{org}/{identifier}",
+    "pull_request": "repos/{org}/{identifier}/pulls",
+    "issue": "repos/{org}/{identifier}/issues",
+    "team": "orgs/{org}/teams/{identifier}",
+    "workflow": "repos/{org}/{identifier}/actions/workflows",
+}
 
-class GithubRestClient(GithubClient):
+
+class GithubRestClient(AbstractGithubClient):
     """REST API implementation of GitHub client."""
 
     async def _send_api_request(
@@ -18,40 +29,53 @@ class GithubRestClient(GithubClient):
         method: str = "GET",
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+    ) -> Response:
         """Send request to GitHub API with error handling and rate limiting."""
         url = f"{self.base_url}/{endpoint}"
 
-        async with self.rate_limiter:
-            try:
-                response = await self.client.request(
-                    method=method,
-                    url=url,
-                    params=params,
-                    json=json_data,
-                )
-                response.raise_for_status()
+        try:
+            response = await self.client.request(
+                method=method,
+                url=url,
+                params=params,
+                json=json_data,
+            )
+            response.raise_for_status()
 
-                logger.debug(f"Successfully fetched {method} {endpoint}")
+            logger.debug(f"Successfully fetched {method} {endpoint}")
 
-                # Update rate limit info
-                self.rate_limiter.update_rate_limit(response.headers)
-                return response.json() if response.text else {}
+            return response
 
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    logger.debug(f"Resource not found at endpoint '{endpoint}'")
-                    return {}
-                logger.error(
-                    f"GitHub API error for endpoint '{endpoint}': Status {e.response.status_code}, "
-                    f"Method: {method}, Response: {e.response.text}"
-                )
-                raise
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error for endpoint '{endpoint}': {str(e)}")
-                raise
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.debug(f"Resource not found at endpoint '{endpoint}'")
+                return e.response
+            logger.error(
+                f"GitHub API error for endpoint '{endpoint}': Status {e.response.status_code}, "
+                f"Method: {method}, Response: {e.response.text}"
+            )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error for endpoint '{endpoint}': {str(e)}")
+            raise
 
-    async def _paginate_request(
+    def get_next_link(self, link_header: str) -> Optional[str]:
+        """
+        Extracts the path and query from the 'next' link in a GitHub Link header,
+        removing the leading slash.
+        """
+
+        match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
+        if not match:
+            return None
+
+        parsed_url = urlparse(match.group(1))
+        path_and_query = urlunparse(
+            ("", "", parsed_url.path, parsed_url.params, parsed_url.query, "")
+        )
+        return path_and_query.lstrip("/")
+
+    async def _send_paginated_request(
         self,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
@@ -62,58 +86,65 @@ class GithubRestClient(GithubClient):
             params = {}
 
         params["per_page"] = PAGE_SIZE
-        page = 1
 
         logger.info(f"Starting pagination for {method} {endpoint}")
 
-        try:
-            while True:
-                params["page"] = page
-                response = await self._send_api_request(
-                    endpoint, method=method, params=params
-                )
+        while True:
+            response = await self._send_api_request(
+                endpoint, method=method, params=params
+            )
+            items = response.json()
+            if not items:
+                return
 
-                if not response:
-                    return
+            yield items
 
-                items = (
-                    response
-                    if isinstance(response, list)
-                    else response.get("items", [])
-                )
+            # Get the Link header from the response object
+            link_header = response.headers.get("Link")
+            if not link_header:
+                return
 
-                if not items:
-                    return
+            next_endpoint = self.get_next_link(link_header)
+            if not next_endpoint:
+                return
 
-                yield items
+            endpoint = next_endpoint
 
-                # Check for next page in Link header
-                if isinstance(response, dict) and not response.get("next"):
-                    return
-                page += 1
-        except StopAsyncIteration:
-            logger.debug(f"Pagination stopped for {method} {endpoint}")
+    async def _get_existing_webhook(self, webhook_url: str) -> Dict[str, Any] | None:
+        """Return the existing webhook matching the given URL, or None if not found."""
+        async for hooks in self._send_paginated_request(
+            f"orgs/{self.organization}/hooks"
+        ):
+            existing_webhook = next(
+                (hook for hook in hooks if hook["config"]["url"] == webhook_url),
+                None,
+            )
+            if existing_webhook:
+                return existing_webhook
+        return None
 
     async def _patch_webhook(
-        self, webhook_url: str, webhook_id: str, webhook_secret: str
+        self, webhook_id: str, config_data: dict[str, str]
     ) -> None:
-        """Patch a webhook to add a secret."""
 
-        webhook_data = {
-            "config": {
-                "url": webhook_url,
-                "content_type": "json",
-                "secret": webhook_secret,
-            },
-        }
+        webhook_data = {"config": config_data}
 
-        logger.info(f"Patching webhook {webhook_id} to add secret")
+        logger.info(f"Patching webhook {webhook_id} to modify config data")
         await self._send_api_request(
             f"orgs/{self.organization}/hooks/{webhook_id}",
             method="PATCH",
             json_data=webhook_data,
         )
         logger.info(f"Successfully patched webhook {webhook_id} with secret")
+
+    def build_webhook_config(self, webhook_url: str) -> dict[str, str]:
+        config = {
+            "url": webhook_url,
+            "content_type": "json",
+        }
+        if self.webhook_secret:
+            config["secret"] = self.webhook_secret
+        return config
 
     async def create_or_update_webhook(
         self, base_url: str, webhook_events: List[str]
@@ -122,27 +153,16 @@ class GithubRestClient(GithubClient):
 
         webhook_url = f"{base_url}/integration/webhook"
 
-        existing_webhook = None
-        async for hooks in self._paginate_request(f"orgs/{self.organization}/hooks"):
-            existing_webhook = next(
-                (hook for hook in hooks if hook["config"].get("url") == webhook_url),
-                None,
-            )
-            if existing_webhook:
-                break
+        existing_webhook = await self._get_existing_webhook(webhook_url)
 
-        # Create new webhook with all events
+        # Create new webhook with events
         if not existing_webhook:
             logger.info("Creating new GitHub webhook")
             webhook_data = {
                 "name": "web",
                 "active": True,
                 "events": webhook_events,
-                "config": {
-                    "url": webhook_url,
-                    "content_type": "json",
-                    **({"secret": self.webhook_secret} if self.webhook_secret else {}),
-                },
+                "config": self.build_webhook_config(webhook_url),
             }
 
             await self._send_api_request(
@@ -162,9 +182,9 @@ class GithubRestClient(GithubClient):
         ):
             logger.info(f"Patching webhook {existing_webhook_id} to update secret")
 
-            await self._patch_webhook(
-                webhook_url, existing_webhook_id, str(self.webhook_secret)
-            )
+            config_data = self.build_webhook_config(webhook_url)
+
+            await self._patch_webhook(existing_webhook_id, config_data)
             return
 
         logger.info("Webhook already exists with appropriate configuration")
@@ -174,21 +194,17 @@ class GithubRestClient(GithubClient):
     ) -> dict[str, Any]:
         """Fetch a single resource from GitHub API."""
 
-        endpoints = {
-            "repository": f"repos/{self.organization}/{identifier}",
-            "pull_request": f"repos/{self.organization}/{identifier}/pulls",
-            "issue": f"repos/{self.organization}/{identifier}/issues",
-            "team": f"orgs/{self.organization}/teams/{identifier}",
-            "workflow": f"repos/{self.organization}/{identifier}/actions/workflows",
-        }
-
-        if object_type not in endpoints:
+        if object_type not in ENDPOINTS:
             raise ValueError(f"Unsupported resource type: {object_type}")
 
-        endpoint = endpoints[object_type]
+        endpoint_template = ENDPOINTS[object_type]
+        endpoint = endpoint_template.format(
+            org=self.organization, identifier=identifier
+        )
+
         response = await self._send_api_request(endpoint)
-        logger.debug(f"Fetched {object_type} {identifier}: {response}")
-        return response
+        logger.debug(f"Fetched {object_type} with identifier: {identifier}:")
+        return response.json()
 
     @cache_iterator_result()
     async def get_repositories(
@@ -196,7 +212,7 @@ class GithubRestClient(GithubClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the organization with pagination."""
         params = params or {}
-        async for repos in self._paginate_request(
+        async for repos in self._send_paginated_request(
             f"orgs/{self.organization}/repos", params
         ):
             logger.info(

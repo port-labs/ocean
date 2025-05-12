@@ -1,11 +1,11 @@
+from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, List, Optional
 
-from github.rate_limiter import GithubRateLimiter
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 
 
-class GithubClient:
+class AbstractGithubClient(ABC):
 
     def __init__(
         self,
@@ -26,25 +26,19 @@ class GithubClient:
             "X-GitHub-Api-Version": "2022-11-28",
         }
         self.client.headers.update(self.headers)
-        self.rate_limiter = GithubRateLimiter()
 
+    @abstractmethod
     async def get_single_resource(
         self, object_type: str, identifier: str
-    ) -> dict[str, Any]:
-        """Get a single resource"""
-        raise NotImplementedError("Subclasses must implement get_single_resource()")
+    ) -> dict[str, Any]: ...
 
+    @abstractmethod
     async def create_or_update_webhook(
         self, base_url: str, webhook_events: List[str]
-    ) -> None:
-        """Create webhooks if they don't exist."""
-        raise NotImplementedError(
-            "Subclasses must implement create_webhooks_if_not_exists()"
-        )
+    ) -> None: ...
 
     @cache_iterator_result()  # type: ignore
+    @abstractmethod
     async def get_repositories(
         self, params: Optional[dict[str, Any]] = None
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get all repositories in the organization."""
-        raise NotImplementedError("Subclasses must implement get_repositories()")
+    ) -> AsyncGenerator[list[dict[str, Any]], None]: ...

@@ -8,7 +8,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
-from github.clients.base_client import GithubClient
+from github.clients.base_client import AbstractGithubClient
 from github.webhook.events import REPOSITORY_UPSERT_EVENTS, REPOSITORY_DELETE_EVENTS
 
 
@@ -107,7 +107,7 @@ class TestRepositoryWebhookProcessor:
                 payload, resource_config
             )
         else:
-            mock_client = AsyncMock(spec=GithubClient)
+            mock_client = AsyncMock(spec=AbstractGithubClient)
             mock_client.get_single_resource.return_value = repo_data
 
             with patch(

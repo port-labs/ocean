@@ -1,9 +1,9 @@
 from github.clients.rest_client import GithubRestClient
-from github.clients.base_client import GithubClient
+from github.clients.base_client import AbstractGithubClient
 from port_ocean.context.ocean import ocean
 
 
-def create_github_client() -> GithubClient:
+def create_github_client() -> AbstractGithubClient:
     """Create a client instance from Ocean configuration."""
 
     return GithubRestClient(
