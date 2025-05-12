@@ -1,0 +1,47 @@
+# spec.yaml
+title: "GitHub Cloud Integration"
+description: "Integration with GitHub Cloud to ingest repositories, pull requests, issues, teams, workflows, and repository contents into Port."
+icon: "GitHub"
+docs: "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/github"
+features:
+  - type: exporter
+    section: "Source Code Management"
+    resources:
+      - kind: repository
+      - kind: pull-request
+      - kind: issue
+      - kind: team
+      - kind: workflow
+configurations:
+  - name: githubApiUrl
+    required: true
+    type: url
+    description: "The GitHub API URL, for example: https://api.github.com"
+  - name: githubToken
+    required: true
+    type: string
+    description: "Personal Access Token for GitHub."
+    sensitive: true
+  - name: githubOrg
+    required: true
+    type: string
+    description: "The GitHub organization name to sync, e.g. RetailloopAfrica."
+  - name: githubWebhookSecret
+    required: true
+    type: string
+    description: "Secret used for verifying GitHub webhook payload signatures."
+    sensitive: true
+  - name: githubRepo
+    required: false
+    type: string
+    description: "optional repository for repository level webhooks."
+    sensitive: true
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
+  oauthConfiguration:
+    # GitHub integrations often use Personal Access Tokens rather than OAuth2 for API access.
+    # You may remove this section if OAuth is not used.
+    requiredSecrets: []
+    valuesOverride: {}
