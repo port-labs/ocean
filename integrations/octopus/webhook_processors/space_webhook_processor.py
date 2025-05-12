@@ -19,7 +19,7 @@ class SpaceWebhookProcessor(BaseOctopusWebhookProcessor):
         event_data = payload["Payload"]["Event"]
         space_id = event_data["SpaceId"]
 
-        if event_data.get("Category") == "Deleted":
+        if event_data["Category"] == "Deleted":
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[{"Id": space_id}],

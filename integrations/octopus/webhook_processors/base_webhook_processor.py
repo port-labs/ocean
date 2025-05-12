@@ -31,10 +31,6 @@ class BaseOctopusWebhookProcessor(AbstractWebhookProcessor):
             except (ValueError, UnicodeDecodeError) as e:
                 logger.warning(f"Failed to decode webhook ID: {e}")
                 return False
-        elif webhook_id:
-            logger.warning("Webhook secret is not configured or is not a string.")
-            return False
-
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:

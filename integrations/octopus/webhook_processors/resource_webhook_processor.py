@@ -35,9 +35,7 @@ class ResourceWebhookProcessor(BaseOctopusWebhookProcessor):
         related_document_ids = event_data.get("RelatedDocumentIds", [])
 
         if event_data.get("Category") == "Deleted":
-            resource_id = (
-                event_data.get("ChangeDetails", {}).get("DocumentContext", {}).get("Id")
-            )
+            resource_id = event_data["ChangeDetails"]["DocumentContext"]["Id"]
             if resource_id:
                 return WebhookEventRawResults(
                     updated_raw_results=[],
@@ -49,13 +47,10 @@ class ResourceWebhookProcessor(BaseOctopusWebhookProcessor):
         for resource_id in related_document_ids:
             resource_prefix = resource_id.split("-")[0].lower()
             if resource_prefix in TRACKED_EVENTS:
-                try:
-                    resource_data = await client.get_single_resource(
-                        resource_prefix, resource_id, space_id
-                    )
-                    results.append(resource_data)
-                except Exception as e:
-                    logger.error(f"Failed to process resource {resource_id}: {e}")
+                resource_data = await client.get_single_resource(
+                    resource_prefix, resource_id, space_id
+                )
+                results.append(resource_data)
 
         return WebhookEventRawResults(
             updated_raw_results=results,
