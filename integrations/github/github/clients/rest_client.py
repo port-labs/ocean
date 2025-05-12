@@ -163,7 +163,7 @@ class GithubRestClient(GithubClient):
             logger.info(f"Patching webhook {existing_webhook_id} to update secret")
 
             await self._patch_webhook(
-                webhook_url, existing_webhook_id, self.webhook_secret
+                webhook_url, existing_webhook_id, str(self.webhook_secret)
             )
             return
 
@@ -192,8 +192,8 @@ class GithubRestClient(GithubClient):
 
     @cache_iterator_result()
     async def get_repositories(
-        self, params: dict[str, Any] | None = None
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        self, params: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the organization with pagination."""
         params = params or {}
         async for repos in self._paginate_request(

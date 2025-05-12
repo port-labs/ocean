@@ -51,19 +51,19 @@ def repository_webhook_processor(
 class TestRepositoryWebhookProcessor:
 
     @pytest.mark.parametrize(
-        "event,result", [(ObjectKind.REPOSITORY, True), ("invalid", False)]
+        "github_event,result", [(ObjectKind.REPOSITORY, True), ("invalid", False)]
     )
     async def test_should_process_event(
         self,
         repository_webhook_processor: RepositoryWebhookProcessor,
-        event: str,
+        github_event: str,
         result: bool,
     ) -> None:
         mock_request = AsyncMock()
         event = WebhookEvent(
             trace_id="test-trace-id",
             payload={},
-            headers={"x-github-event": event},
+            headers={"x-github-event": github_event},
         )
         event._original_request = mock_request
 

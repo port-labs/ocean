@@ -1,5 +1,5 @@
 import time
-from typing import Dict
+from typing import Any, Dict
 from unittest.mock import MagicMock
 
 import httpx
@@ -39,7 +39,7 @@ def mock_ocean_context() -> None:
 
 
 @pytest.fixture
-def client(mock_ocean_context) -> GithubClient:
+def client(mock_ocean_context: Any) -> GithubClient:
     """Provide a GitHubClient instance with mocked Ocean context."""
     return create_github_client()
 

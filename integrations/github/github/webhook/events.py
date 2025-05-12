@@ -40,3 +40,18 @@ ALL_EVENTS = (
     + TEAM_DELETE_EVENTS
     + WORKFLOW_EVENTS
 )
+
+
+WEBHOOK_CREATE_EVENTS = [
+    "repository",
+    "pull_request",
+    "issues",
+    "team",
+    "workflow_run",
+    "deployment",
+    "dependabot_alert",
+    "push",
+    "code_scanning_alert",
+    "release",
+    "create",
+]

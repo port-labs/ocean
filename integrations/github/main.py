@@ -7,6 +7,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from github.clients.client_factory import create_github_client
 from github.utils import ObjectKind
+from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
@@ -26,21 +27,9 @@ async def on_start() -> None:
         return
 
     client = create_github_client()
-    webhook_events = [
-        "repository",
-        "pull_request",
-        "issues",
-        "team",
-        "workflow_run",
-        "deployment",
-        "dependabot_alert",
-        "push",
-        "code_scanning_alert",
-        "release",
-        "create",
-    ]
+
     logger.info("Subscribing to GitHub webhooks")
-    await client.create_or_update_webhook(base_url, webhook_events)
+    await client.create_or_update_webhook(base_url, WEBHOOK_CREATE_EVENTS)
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)

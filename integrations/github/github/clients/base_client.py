@@ -1,7 +1,8 @@
-from typing import Any, List
+from typing import Any, AsyncGenerator, List, Optional
 
 from github.rate_limiter import GithubRateLimiter
 from port_ocean.utils import http_async_client
+from port_ocean.utils.cache import cache_iterator_result
 
 
 class GithubClient:
@@ -12,7 +13,7 @@ class GithubClient:
         organization: str,
         github_host: str,
         webhook_secret: str | None,
-    ):
+    ) -> None:
         self.organization = organization
         self.github_host = github_host
         self.webhook_secret = webhook_secret
@@ -33,12 +34,17 @@ class GithubClient:
         """Get a single resource"""
         raise NotImplementedError("Subclasses must implement get_single_resource()")
 
-    async def create_or_update_webhook(self, base_url: str, webhook_events: List[str]):
+    async def create_or_update_webhook(
+        self, base_url: str, webhook_events: List[str]
+    ) -> None:
         """Create webhooks if they don't exist."""
         raise NotImplementedError(
             "Subclasses must implement create_webhooks_if_not_exists()"
         )
 
-    async def get_repositories(self, **kwargs):
+    @cache_iterator_result()  # type: ignore
+    async def get_repositories(
+        self, params: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the organization."""
         raise NotImplementedError("Subclasses must implement get_repositories()")

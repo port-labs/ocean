@@ -1,12 +1,11 @@
-from typing import Any, Dict
+from typing import Any
 import pytest
 from unittest.mock import patch, MagicMock
 import httpx
-from github.clients.base_client import GithubClient
+from github.clients.rest_client import GithubRestClient
 from port_ocean.context.event import event_context
 
-
-TEST_DATA: Dict[str, list[Dict[str, Any]]] = {
+TEST_DATA: dict[str, list[dict[str, Any]]] = {
     "repositories": [
         {"id": 1, "name": "repo1", "full_name": "test-org/repo1"},
         {"id": 2, "name": "repo2", "full_name": "test-org/repo2"},
@@ -26,8 +25,10 @@ TEST_DATA: Dict[str, list[Dict[str, Any]]] = {
 
 
 @pytest.mark.asyncio
-class TestGitHubClient:
-    async def test_rate_limiting(self, client: GithubClient, mock_http_response):
+class TestGithubRestClient:
+    async def test_rate_limiting(
+        self, client: GithubRestClient, mock_http_response: MagicMock
+    ) -> None:
         mock_http_response.status_code = 429
         mock_http_response.headers.update(
             {
@@ -42,8 +43,8 @@ class TestGitHubClient:
             await client._send_api_request("/test")
 
     async def test_create_or_update_webhook(
-        self, client: GithubClient, mock_http_response
-    ):
+        self, client: GithubRestClient, mock_http_response: MagicMock
+    ) -> None:
         mock_http_response.json.return_value = []
         create_hook_response = MagicMock()
         create_hook_response.json.return_value = {"id": "new-hook"}
@@ -69,7 +70,9 @@ class TestGitHubClient:
             await client.create_or_update_webhook(client.base_url, ["event"])
 
     @pytest.mark.asyncio
-    async def test_get_repositories(self, client: GithubClient, mock_http_response):
+    async def test_get_repositories(
+        self, client: GithubRestClient, mock_http_response: MagicMock
+    ) -> None:
         mock_http_response.json.side_effect = [
             TEST_DATA["repositories"],  # Page 1
             [],  # Page 2 (empty, stops pagination)
@@ -80,12 +83,16 @@ class TestGitHubClient:
             return_value=mock_http_response,
         ):
             async with event_context("test_event"):
-                repos = [batch async for batch in client.get_repositories()]
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in client.get_repositories()
+                ]
                 assert len(repos) == 1
                 assert len(repos[0]) == 2
                 assert repos[0] == TEST_DATA["repositories"]
 
-    async def test_paginate_request_multiple_pages(self, client: GithubClient):
+    async def test_paginate_request_multiple_pages(
+        self, client: GithubRestClient
+    ) -> None:
         page1 = MagicMock()
         page1.json.return_value = TEST_DATA["repositories"]
         page2 = MagicMock()
@@ -93,7 +100,7 @@ class TestGitHubClient:
         with patch(
             "port_ocean.utils.http_async_client.request", side_effect=[page1, page2]
         ):
-            repos = [
+            repos: list[list[dict[str, Any]]] = [
                 batch
                 async for batch in client._paginate_request(
                     f"orgs/{client.organization}/repos"
@@ -101,7 +108,7 @@ class TestGitHubClient:
             ]
             assert len(repos[0]) == 2
 
-    async def test_send_api_request_403(self, client: GithubClient):
+    async def test_send_api_request_403(self, client: GithubRestClient) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 403
         mock_response.text = '{"message": "Forbidden"}'
@@ -116,8 +123,8 @@ class TestGitHubClient:
 
     @pytest.mark.asyncio
     async def test_get_repositories_caching(
-        self, client: GithubClient, mock_http_response
-    ):
+        self, client: GithubRestClient, mock_http_response: MagicMock
+    ) -> None:
         mock_http_response.json.side_effect = [TEST_DATA["repositories"], []]
 
         with patch(
@@ -126,9 +133,13 @@ class TestGitHubClient:
         ) as mock_request:
             async with event_context("test_event"):
                 # First call: fetches from API and caches
-                repos1 = [batch async for batch in client.get_repositories()]
+                repos1: list[list[dict[str, Any]]] = [
+                    batch async for batch in client.get_repositories()
+                ]
                 # Second call: should use cache
-                repos2 = [batch async for batch in client.get_repositories()]
+                repos2: list[list[dict[str, Any]]] = [
+                    batch async for batch in client.get_repositories()
+                ]
 
             assert repos1 == repos2
             assert len(repos1) == 1
