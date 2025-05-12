@@ -88,7 +88,7 @@ async def test_get_existing_workflows_none(
             new=AsyncMock(return_value={"data": {}}),
         ),
     ):
-        result = await manager.get_existing_workflows("workflow-name")
+        result = await manager._notification_workflow_exists("workflow-name")
         assert result is None
 
 
@@ -290,7 +290,7 @@ async def test_create_workflow_success(
     ):
         result = cast(
             Dict[str, Any],
-            await manager.create_workflow(123456, "channel-123", "port-workflow"),
+            await manager._create_notification_workflow_request(123456, "channel-123", "port-workflow"),
         )
         assert (
             result["data"]["aiWorkflowsCreateWorkflow"]["workflow"]["id"]
@@ -368,11 +368,11 @@ async def test_create_webhook_full_flow_success(
             ),
         ),
         patch.object(
-            manager, "get_existing_workflows", new=AsyncMock(return_value=None)
+            manager, "_notification_workflow_exists", new=AsyncMock(return_value=None)
         ),
         patch.object(
             manager,
-            "create_workflow",
+            "_create_notification_workflow_request",
             new=AsyncMock(
                 return_value={
                     "data": {
