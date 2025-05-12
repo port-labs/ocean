@@ -238,11 +238,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 if changed_entities:
                     logger.info("Upserting changed entities", changed_entities=len(changed_entities),
                         total_entities=len(objects_diff[0].entity_selector_diff.passed))
+                    ocean.metrics.set_metric(
+                            name=MetricType.OBJECT_COUNT_NAME,
+                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, "skipped"],
+                            value=len(objects_diff[0].entity_selector_diff.passed) - len(changed_entities)
+                        )
                     await self.entities_state_applier.upsert(
                         changed_entities, user_agent_type
                     )
                 else:
                     logger.info("Entities in batch didn't changed since last sync, skipping", total_entities=len(objects_diff[0].entity_selector_diff.passed))
+                    ocean.metrics.set_metric(
+                            name=MetricType.OBJECT_COUNT_NAME,
+                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, "skipped"],
+                            value=len(objects_diff[0].entity_selector_diff.passed)
+                        )
                 modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
             except Exception as e:
                 logger.warning(f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}")
@@ -353,11 +363,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             value=number_of_raw_results
         )
 
-        ocean.metrics.set_metric(
-            name=MetricType.OBJECT_COUNT_NAME,
-            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , "transformed"],
-            value=number_of_transformed_entities
-        )
+        # ocean.metrics.set_metric(
+        #     name=MetricType.OBJECT_COUNT_NAME,
+        #     labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , "transformed"],
+        #     value=number_of_transformed_entities
+        # )
 
         ocean.metrics.set_metric(
             name=MetricType.OBJECT_COUNT_NAME,
@@ -628,11 +638,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                         event.on_abort(lambda: task.cancel())
                         kind_results: tuple[list[Entity], list[Exception]] = await task
-                        ocean.metrics.set_metric(
-                            name=MetricType.OBJECT_COUNT_NAME,
-                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, "loaded"],
-                            value=len(kind_results[0])
-                        )
 
                         creation_results.append(kind_results)
 
