@@ -7,6 +7,8 @@ from port_ocean.core.event_listener import (
     PollingEventListener,
     OnceEventListenerSettings,
     OnceEventListener,
+    TaskEventListener,
+    TaskEventListenerSettings,
 )
 from port_ocean.core.event_listener import (
     HttpEventListenerSettings,
@@ -97,6 +99,12 @@ class EventListenerFactory:
                     config, WebhooksOnlyEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = WebhooksOnlyEventListener(wrapped_events, config)
+            case "task":
+                print(f"confiasdadsg: {config}")
+                assert isinstance(
+                    config, TaskEventListenerSettings
+                ), assert_message.format(type(config))
+                event_listener = TaskEventListener(wrapped_events, config)
             case _:
                 raise UnsupportedEventListenerTypeException(
                     f"Event listener {_type} not supported"
