@@ -10,7 +10,7 @@ from newrelic_integration.core.query_templates.webhooks import (
     GET_ISSUE_ENTITY_GUIDS_QUERY,
     CREATE_CHANNEL_MUTATION,
     CREATE_WEBHOOK_MUTATION,
-    FIND_DESTINATION_BY_URL_QUERY,
+    FIND_DESTINATION_BY_TYPE_AND_URL_QUERY,
 )
 from port_ocean.context.ocean import ocean
 
@@ -25,9 +25,9 @@ class NewRelicWebhookManager:
         Filters by URL.
         """
         account_id = int(ocean.integration_config["new_relic_account_id"])
-        query = FIND_DESTINATION_BY_URL_QUERY.replace(
+        query = FIND_DESTINATION_BY_TYPE_AND_URL_QUERY.replace(
             "{{ account_id }}", str(account_id)
-        ).replace("{{ channel_name }}", base_url)
+        ).replace("{{ destination_url }}", base_url)
         response = await send_graph_api_request(
             self.http_client,
             query,
@@ -170,15 +170,21 @@ class NewRelicWebhookManager:
         )
         if creation_data and creation_data.get("channel"):
             channel_id = creation_data["channel"]["id"]
-            logger.success(
+            logger.info(
                 f"Created new channel with ID: {channel_id} for webhook ID: {webhook_id}"
             )
             return channel_id
         elif creation_data and creation_data.get("error"):
             error_info = creation_data["error"]
             logger.error(
-                f"Failed to create New Relic channel: Type={error_info.get('type')}, "
-                f"Description={error_info.get('description')}, Details={error_info.get('details')}"
+                "Unable to create the New Relic notification channel. "
+                "Error Type: '{type}', Description: '{description}', Details: '{details}'.".format(
+                    type=error_info.get("type", "N/A"),
+                    description=error_info.get(
+                        "description", "No description provided"
+                    ),
+                    details=error_info.get("details", "No additional details provided"),
+                )
             )
         else:
             logger.error(
@@ -187,7 +193,7 @@ class NewRelicWebhookManager:
 
         return None
 
-    async def get_or_create_workflow(
+    async def create_notification_workflow(
         self, account_id: int, channel_id: str, workflow_name: str
     ) -> bool:
         """Get existing workflow or create a new one if it doesn't exist."""
@@ -243,7 +249,9 @@ class NewRelicWebhookManager:
         if not channel_id:
             return False
 
-        return await self.get_or_create_workflow(account_id, channel_id, workflow_name)
+        return await self.create_notification_workflow(
+            account_id, channel_id, workflow_name
+        )
 
     async def get_issue_entity_guids(self, issue_id: str) -> Optional[List[str]]:
         """Fetch and return the entityGuids for a given issue ID."""
