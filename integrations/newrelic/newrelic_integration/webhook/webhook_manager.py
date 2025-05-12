@@ -57,7 +57,7 @@ class NewRelicWebhookManager:
                     return entity["id"]
         return None
 
-    async def get_existing_workflows(
+    async def _notification_workflow_exists(
         self, workflow_name: str
     ) -> Optional[List[Dict[str, Any]]]:
         """Get existing workflows by name."""
@@ -197,14 +197,14 @@ class NewRelicWebhookManager:
         self, account_id: int, channel_id: str, workflow_name: str
     ) -> bool:
         """Get existing workflow or create a new one if it doesn't exist."""
-        existing_workflows = await self.get_existing_workflows(workflow_name)
-        if existing_workflows:
+        workflows_exist = await self._notification_workflow_exists(workflow_name)
+        if workflows_exist:
             logger.info(
-                f"Workflow with name '{workflow_name}' already exists with ID: {existing_workflows[0]['id']}"
+                f"Workflow with name '{workflow_name}' already exists with ID: {workflows_exist[0]['id']}"
             )
             return True
 
-        workflow_creation_result = await self.create_workflow(
+        workflow_creation_result = await self._create_notification_workflow_request(
             account_id=account_id, channel_id=channel_id, workflow_name=workflow_name
         )
         if not workflow_creation_result or not workflow_creation_result.get("data"):
@@ -312,7 +312,7 @@ class NewRelicWebhookManager:
         )
         return response
 
-    async def create_workflow(
+    async def _create_notification_workflow_request(
         self, account_id: int, channel_id: str, workflow_name: str
     ) -> Optional[Dict[str, Any]]:
         """Create a notification workflow in New Relic."""
