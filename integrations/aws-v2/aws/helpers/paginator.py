@@ -151,3 +151,12 @@ class AsyncPaginator:
                 f"Buffering the final {len(final_batch)} queried {self.service_name} resources fetched from page {page_count} for account {self.account_id} in {self.region_name}"
             )
             yield final_batch
+
+
+def get_paginator(
+    client: "AioBaseClient",
+    method_name: str,
+    list_param: str,
+    **aws_paginator_kwargs: Any,
+) -> AsyncPaginator:
+    return AsyncPaginator(client, method_name, list_param, **aws_paginator_kwargs)

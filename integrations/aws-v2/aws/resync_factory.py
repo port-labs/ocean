@@ -12,46 +12,50 @@ import aioboto3
 from overrides import AWSResourceConfig
 from typing import TypedDict
 
-class ElastiCacheCacheClusterQueryParams(TypedDict):
-    __name__="AWS::ElastiCache::CacheCluster"
 
-    service_name="elasticache"
-    describe_method="describe_cache_clusters"
-    list_param="CacheClusters"
-    marker_param="Marker"
+class ElastiCacheCacheClusterQueryParams(TypedDict):
+    __name__ = "AWS::ElastiCache::CacheCluster"
+
+    service_name = "elasticache"
+    describe_method = "describe_cache_clusters"
+    list_param = "CacheClusters"
+    marker_param = "Marker"
+
 
 class ElasticLoadBalancingV2LoadBalancerQueryParams(TypedDict):
-    __name__="AWS::ELBV2::LoadBalancer"
+    __name__ = "AWS::ELBV2::LoadBalancer"
 
-    service_name="elbv2"
-    describe_method="describe_load_balancers"
-    list_param="LoadBalancers"
-    marker_param="NextMarker"
+    service_name = "elbv2"
+    describe_method = "describe_load_balancers"
+    list_param = "LoadBalancers"
+    marker_param = "NextMarker"
+
 
 class ACMCertificateQueryParams(TypedDict):
-    __name__="AWS::ACM::Certificate"
+    __name__ = "AWS::ACM::Certificate"
 
-    service_name="acm"
-    describe_method="list_certificates"
-    list_param="CertificateSummaryList"
-    marker_param="NextToken"
+    service_name = "acm"
+    describe_method = "list_certificates"
+    list_param = "CertificateSummaryList"
+    marker_param = "NextToken"
+
 
 class CloudFormationStackQueryParams(TypedDict):
-    __name__="AWS::CloudFormation::Stack"
+    __name__ = "AWS::CloudFormation::Stack"
 
-    service_name="cloudformation"
-    describe_method="list_stacks"
-    list_param="Stacks"
-    marker_param="NextToken"
+    service_name = "cloudformation"
+    describe_method = "list_stacks"
+    list_param = "Stacks"
+    marker_param = "NextToken"
+
 
 class OrganizationsAccountQueryParams(TypedDict):
-    __name__="AWS::Organizations::Account"
+    __name__ = "AWS::Organizations::Account"
 
-    service_name="organizations"
-    describe_method="list_accounts"
-    list_param="Accounts"
-    marker_param="NextToken"
-
+    service_name = "organizations"
+    describe_method = "list_accounts"
+    list_param = "Accounts"
+    marker_param = "NextToken"
 
 
 class ResyncStrategyFactory:
@@ -115,13 +119,14 @@ class ResyncStrategyFactory:
             use_get_resource_api=selector.use_get_resource_api,
         )
 
+
 async def resync(
     *,
     kind: str,
     account_id: str | None,
     region: str | None,
     resource_config: "AWSResourceConfig",
-    session_manager
+    session_manager,
 ) -> AsyncIterator[list[dict[str, Any]]]:
     """High‑level helper that hides strategy lookup & session iteration."""
 

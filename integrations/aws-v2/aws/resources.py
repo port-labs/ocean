@@ -1,13 +1,13 @@
 from __future__ import annotations
-from aws.helpers.utils import CustomProperties
+from aws.helpers.models import CustomProperties, MaterializedResource
 from aws.helpers.paginator import AsyncPaginator
 import abc
 import asyncio
 import json
-from collections.abc import AsyncIterator, Callable, Iterable, Sequence
+from collections.abc import AsyncIterator, Sequence
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
-from typing import Any, Protocol, runtime_checkable, TypedDict
+from typing import Any
 
 import aioboto3
 from botocore.config import Config as Boto3Config
@@ -15,27 +15,6 @@ from botocore.exceptions import ClientError
 from loguru import logger
 
 AWS_RAW_ITEM = dict[str, Any]
-
-class MaterializedResource(TypedDict):
-    """A dictionary type that must have a 'CustomProperties' key."""
-    CustomProperties.KIND
-    CustomProperties.ACCOUNT_ID
-    CustomProperties.REGION
-
-@runtime_checkable
-class CloudControlClientProtocol(Protocol):
-    async def get_resource(
-        self, *, TypeName: str, Identifier: str
-    ) -> dict[str, Any]: ...
-
-    async def list_resources(
-        self, *, TypeName: str, **kwargs: Any
-    ) -> dict[str, Any]: ...
-
-
-def json_safe(obj: Any) -> Any:
-    """Recursively convert (de)serialisable objects so `json.dumps` does not crash."""
-    return json.loads(json.dumps(obj, default=str))
 
 
 @dataclass(slots=True)
@@ -82,7 +61,9 @@ class BaseResyncHandler(abc.ABC):
             async for raw_batch in self._fetch_batches():
                 if not raw_batch:
                     continue
-                materialised = [await self._materialise_item(item) for item in raw_batch]
+                materialised = [
+                    await self._materialise_item(item) for item in raw_batch
+                ]
                 yield materialised
 
     async def __aenter__(self) -> "BaseResyncHandler":
@@ -90,7 +71,7 @@ class BaseResyncHandler(abc.ABC):
         # self lets users write:     async with handler as h:
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:          # noqa: D401
+    async def __aexit__(self, exc_type, exc, tb) -> None:  # noqa: D401
         """Close every AWS client even if the iterator was never consumed."""
         await self._exit_stack.aclose()
 
@@ -165,16 +146,14 @@ class CloudControlResyncHandler(BaseResyncHandler):
         # Otherwise we must re‑query each identifier (potentially expensive → batched by caller).
         cloudcontrol = await self._get_client(
             "cloudcontrol",
-            config=Boto3Config(retries={"max_attempts": 20, "mode": "adaptive"})
+            config=Boto3Config(retries={"max_attempts": 20, "mode": "adaptive"}),
         )
         response = await cloudcontrol.get_resource(
             TypeName=self._ctx.kind, Identifier=item["Identifier"]
         )
         identifier = response["ResourceDescription"]["Identifier"]
         props = json.loads(response["ResourceDescription"]["Properties"])
-        return await self._default_materialise(
-            identifier=identifier, properties=props
-        )
+        return await self._default_materialise(identifier=identifier, properties=props)
 
 
 class SQSResyncHandler(BaseResyncHandler):
@@ -199,13 +178,9 @@ class SQSResyncHandler(BaseResyncHandler):
     async def _materialise_item(self, queue_url: str) -> MaterializedResource:
         # Use CloudControl to fetch the Properties because SQS API keeps them minimal.
         cc = await self._get_client("cloudcontrol")
-        response = await cc.get_resource(
-            TypeName=self._ctx.kind, Identifier=queue_url
-        )
+        response = await cc.get_resource(TypeName=self._ctx.kind, Identifier=queue_url)
         props = json.loads(response["ResourceDescription"]["Properties"])
-        return await self._default_materialise(
-            identifier=queue_url, properties=props
-        )
+        return await self._default_materialise(identifier=queue_url, properties=props)
 
 
 class BotoDescribePaginatedHandler(BaseResyncHandler):
