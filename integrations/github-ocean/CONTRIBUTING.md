@@ -1,4 +1,4 @@
-# Contributing to Ocean - github
+# Contributing to Ocean - github-ocean
 
 ## Running locally
 
