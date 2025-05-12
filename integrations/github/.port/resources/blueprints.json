@@ -1,0 +1,50 @@
+[
+    {
+        "identifier": "githubRepository",
+        "title": "GitHub Repository",
+        "icon": "Github",
+        "schema": {
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "visibility": {
+                    "type": "string",
+                    "title": "Visibility",
+                    "enum": ["all", "public", "private"],
+                    "enumColors": {
+                        "all": "green",
+                        "public": "blue",
+                        "private": "red"
+                    }
+                },
+                "defaultBranch": {
+                    "type": "string",
+                    "title": "Default Branch"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL",
+                    "format": "url"
+                },
+                "language": {
+                    "type": "string",
+                    "title": "Primary Language"
+                },
+                "forks": {
+                    "type": "number",
+                    "title": "Forks"
+                },
+                "readme": {
+                    "title": "README",
+                    "type": "string",
+                    "format": "markdown",
+                    "icon": "Book",
+                    "description": "Contents of the repository's README.md file"
+                }
+            },
+            "required": ["visibility", "url"]
+        }
+    }
+]
