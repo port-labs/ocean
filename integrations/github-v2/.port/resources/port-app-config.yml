@@ -1,0 +1,22 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: repository
+    selector:
+      query: 'true'
+      type: "all"
+    port:
+      entity:
+        mappings:
+          identifier: .full_name
+          title: .name
+          blueprint: '"githubRepository"'
+          properties:
+            description: .description
+            visibility: 'if .private then "private" else "public" end'
+            defaultBranch: .default_branch
+            url: .html_url
+            language: .language
+            forks: .forks_count
+            readme: file://README.md
+
