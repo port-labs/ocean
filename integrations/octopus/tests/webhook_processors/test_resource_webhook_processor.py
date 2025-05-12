@@ -45,7 +45,11 @@ async def test_handle_event_with_resources() -> None:
     with patch.object(processor, "get_client", return_value=mock_client):
         payload = {
             "Payload": {
-                "Event": {"SpaceId": "Spaces-1", "RelatedDocumentIds": ["Projects-1"]}
+                "Event": {
+                    "Category": "Updated",
+                    "SpaceId": "Spaces-1",
+                    "RelatedDocumentIds": ["Projects-1"],
+                }
             }
         }
 

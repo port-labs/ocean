@@ -44,6 +44,7 @@ async def test_handle_event_updated() -> None:
         payload = {
             "Payload": {
                 "Event": {
+                    "Category": "Updated",
                     "SpaceId": "Spaces-1",
                 }
             }
