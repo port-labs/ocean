@@ -11,12 +11,10 @@ from urllib.parse import urlparse, urlunparse
 
 PAGE_SIZE = 100
 
-ENDPOINTS = {
+LIST_RESOURCE_ENDPOINTS = {"repository": "orgs/{org}/repos"}
+
+SINGLE_RESOURCE_ENDPOINTS = {
     "repository": "repos/{org}/{identifier}",
-    "pull_request": "repos/{org}/{identifier}/pulls",
-    "issue": "repos/{org}/{identifier}/issues",
-    "team": "orgs/{org}/teams/{identifier}",
-    "workflow": "repos/{org}/{identifier}/actions/workflows",
 }
 
 
@@ -190,21 +188,44 @@ class GithubRestClient(AbstractGithubClient):
         logger.info("Webhook already exists with appropriate configuration")
 
     async def get_single_resource(
-        self, object_type: str, identifier: str
+        self, resource_type: str, identifier: str
     ) -> dict[str, Any]:
         """Fetch a single resource from GitHub API."""
 
-        if object_type not in ENDPOINTS:
-            raise ValueError(f"Unsupported resource type: {object_type}")
+        if resource_type not in SINGLE_RESOURCE_ENDPOINTS:
+            raise ValueError(f"Unsupported resource type: {resource_type}")
 
-        endpoint_template = ENDPOINTS[object_type]
+        endpoint_template = SINGLE_RESOURCE_ENDPOINTS[resource_type]
         endpoint = endpoint_template.format(
             org=self.organization, identifier=identifier
         )
 
         response = await self._send_api_request(endpoint)
-        logger.debug(f"Fetched {object_type} with identifier: {identifier}:")
+        logger.debug(f"Fetched {resource_type} with identifier: {identifier}:")
         return response.json()
+
+    async def list_resources(  # type: ignore
+        self,
+        resource_type: str,
+        query_params: Optional[dict[str, Any]] = None,
+        path_params: Optional[dict[str, str]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generic resource listing method with flexible path parameters."""
+
+        if resource_type not in LIST_RESOURCE_ENDPOINTS:
+            raise ValueError(f"Unsupported resource type: {resource_type}")
+
+        # Default path params include the organization
+        (path_params := path_params or {}).setdefault("org", self.organization)
+
+        endpoint_template = LIST_RESOURCE_ENDPOINTS[resource_type]
+        endpoint = endpoint_template.format(**path_params)
+
+        async for batch in self._send_paginated_request(endpoint, params=query_params):
+            logger.info(
+                f"Fetched batch of {len(batch)} {resource_type} types from organization {self.organization}"
+            )
+            yield batch
 
     @cache_iterator_result()
     async def get_repositories(

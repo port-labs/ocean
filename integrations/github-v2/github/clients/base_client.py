@@ -37,6 +37,14 @@ class AbstractGithubClient(ABC):
         self, base_url: str, webhook_events: List[str]
     ) -> None: ...
 
+    @abstractmethod
+    async def list_resources(
+        self,
+        resource_type: str,
+        query_params: Optional[dict[str, Any]] = None,
+        path_params: Optional[dict[str, str]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]: ...
+
     @cache_iterator_result()  # type: ignore
     @abstractmethod
     async def get_repositories(
