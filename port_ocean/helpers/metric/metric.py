@@ -86,6 +86,9 @@ class EmptyMetric:
     def labels(self, *args: Any) -> None:
         return None
 
+    def inc(self, *args: Any) -> None:
+        return None
+
 
 class Metrics:
     def __init__(
