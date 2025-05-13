@@ -84,25 +84,7 @@ class EntityClientMixin:
             )
             result = response.json()
 
-            ocean.metrics.set_metric(
-                name=MetricType.OBJECT_COUNT_NAME,
-                labels=[
-                    ocean.metrics.current_resource_kind(),
-                    MetricPhase.LOAD,
-                    "failed to load",
-                ],
-                value=1,
-            )
-
-            ocean.metrics.set_metric(
-                name=MetricType.OBJECT_COUNT_NAME,
-                labels=[
-                    ocean.metrics.current_resource_kind(),
-                    MetricPhase.LOAD,
-                    "upserted",
-                ],
-                value=0,
-            )
+            self._set_entity_metrics(failed_upsert_count=1, upserted_count=0)
 
             if (
                 response.status_code == status.HTTP_404_NOT_FOUND
@@ -112,25 +94,7 @@ class EntityClientMixin:
                 # Return false to differentiate from `result_entity.is_using_search_identifier`
                 return False
         else:
-            ocean.metrics.set_metric(
-                name=MetricType.OBJECT_COUNT_NAME,
-                labels=[
-                    ocean.metrics.current_resource_kind(),
-                    MetricPhase.LOAD,
-                    "upserted",
-                ],
-                value=1,
-            )
-
-            ocean.metrics.set_metric(
-                name=MetricType.OBJECT_COUNT_NAME,
-                labels=[
-                    ocean.metrics.current_resource_kind(),
-                    MetricPhase.LOAD,
-                    "failed to load",
-                ],
-                value=0,
-            )
+            self._set_entity_metrics(failed_upsert_count=0, upserted_count=1)
         handle_status_code(response, should_raise)
         result = response.json()
 
@@ -326,4 +290,34 @@ class EntityClientMixin:
                 "combinator": "and",
                 "rules": [{"combinator": "or", "rules": search_rules}],
             },
+        )
+
+    def _set_entity_metrics(
+        self, failed_upsert_count: int, upserted_count: int
+    ) -> None:
+        """
+        Sets metrics for entity operations tracking both failed and successful upserts.
+
+        Args:
+            failed_count: Number of failed upserts
+            upserted_count: Number of successful upserts
+        """
+        ocean.metrics.set_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                "failed to load",
+            ],
+            value=failed_upsert_count,
+        )
+
+        ocean.metrics.set_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                "upserted",
+            ],
+            value=upserted_count,
         )
