@@ -363,11 +363,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             value=number_of_raw_results
         )
 
-        # ocean.metrics.set_metric(
-        #     name=MetricType.OBJECT_COUNT_NAME,
-        #     labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , "transformed"],
-        #     value=number_of_transformed_entities
-        # )
+        ocean.metrics.set_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , "transformed"],
+            value=number_of_transformed_entities
+        )
 
         ocean.metrics.set_metric(
             name=MetricType.OBJECT_COUNT_NAME,

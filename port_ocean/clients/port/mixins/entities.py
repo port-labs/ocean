@@ -94,6 +94,16 @@ class EntityClientMixin:
                 value=1,
             )
 
+            ocean.metrics.set_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.LOAD,
+                    "upserted",
+                ],
+                value=0,
+            )
+
             if (
                 response.status_code == status.HTTP_404_NOT_FOUND
                 and not result.get("ok")

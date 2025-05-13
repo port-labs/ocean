@@ -150,7 +150,7 @@ class Metrics:
         if not self.enabled:
             return None
 
-        self.get_metric(name, labels).set(value)
+        self.get_metric(name, labels).inc(value)
 
     def create_mertic_router(self) -> APIRouter:
         if not self.enabled:
