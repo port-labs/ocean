@@ -5,7 +5,7 @@ features:
   - type: exporter
     section: Git Providers
     resources:
-    - kind: repository
+      - kind: repository
 configurations:
   - name: githubHost
     required: false

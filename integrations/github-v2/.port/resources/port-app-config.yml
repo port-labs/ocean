@@ -19,4 +19,3 @@ resources:
             language: .language
             forks: .forks_count
             readme: file://README.md
-
