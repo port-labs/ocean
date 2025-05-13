@@ -100,6 +100,24 @@ class Metrics:
         self.load_metrics()
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
+        self.event_id = ""
+        self.org_id = ""
+
+    @property
+    def event_id(self) -> str:
+        return self._event_id
+
+    @event_id.setter
+    def event_id(self, value: str) -> None:
+        self._event_id = value
+
+    @property
+    def org_id(self) -> str:
+        return self._org_id
+
+    @org_id.setter
+    def org_id(self, value: str) -> None:
+        self._org_id = value
 
     @property
     def integration_version(self) -> str:
@@ -228,6 +246,8 @@ class Metrics:
                     "ocean_version": self.ocean_version,
                     "kind_identifier": kind_key,
                     "kind": "-".join(kind_key.split("-")[:-1]),
+                    "event_id": self.event_id,
+                    "org_id": self.org_id,
                     "metrics": metrics,
                 }
                 logger.info(f"Sending metrics to webhook {kind_key}: {event}")
