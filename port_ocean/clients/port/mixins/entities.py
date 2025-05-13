@@ -121,6 +121,16 @@ class EntityClientMixin:
                 ],
                 value=1,
             )
+
+            ocean.metrics.set_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.LOAD,
+                    "failed to load",
+                ],
+                value=0,
+            )
         handle_status_code(response, should_raise)
         result = response.json()
 

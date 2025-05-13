@@ -192,6 +192,14 @@ class Metrics:
             self.registry
         ).decode()
 
+    def reset_metrics(self) -> None:
+        """Reset all metrics to zero."""
+        if not self.enabled:
+            return None
+
+        for name, (_, _, labels) in _metrics_registry.items():
+            self.get_metric(name, labels).set(0)
+
     async def flush(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
     ) -> None:

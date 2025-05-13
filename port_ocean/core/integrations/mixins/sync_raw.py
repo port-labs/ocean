@@ -634,6 +634,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     # create resource context per resource kind, so resync method could have access to the resource
                     # config as we might have multiple resources in the same event
                     async with resource_context(resource,index):
+                        ocean.metrics.reset_metrics()
                         resource_kind_id = f"{resource.kind}-{index}"
                         task = asyncio.create_task(
                             self._register_in_batches(resource, user_agent_type)
