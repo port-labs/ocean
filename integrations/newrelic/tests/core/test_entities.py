@@ -50,7 +50,6 @@ async def mock_render_query() -> AsyncGenerator[AsyncMock, None]:
 # Test class using async test cases
 @pytest.mark.asyncio
 class TestEntitiesHandler:
-
     @pytest.fixture
     def entities_handler(self, mock_http_client: AsyncMock) -> EntitiesHandler:
         """Fixture to create an instance of EntitiesHandler."""

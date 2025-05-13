@@ -1,4 +1,4 @@
-GET_EXISTING_WEBHOOKS_QUERY = """
+_webhook_destination_exists_QUERY = """
 {
   actor {
     account(id: {{ account_id }}) {
@@ -45,7 +45,7 @@ FIND_DESTINATION_BY_TYPE_AND_URL_QUERY = """
   }
 }"""
 
-GET_EXISTING_WORKFLOWS_QUERY = """
+FIND_WORKFLOW_BY_NAME_QUERY = """
 {
   actor {
     account(id: {{ account_id }}) {
@@ -80,7 +80,7 @@ GET_ISSUE_ENTITY_GUIDS_QUERY = """
 }
 """
 
-CREATE_WEBHOOK_MUTATION = """
+CREATE_DESTINATION_MUTATION = """
 mutation {
   aiNotificationsCreateDestination(
     accountId: {{ accountId }},

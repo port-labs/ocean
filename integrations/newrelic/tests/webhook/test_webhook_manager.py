@@ -28,7 +28,9 @@ def ocean_mock(integration_config_mock: Dict[str, Any]) -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_get_existing_webhooks_returns_id_if_found(ocean_mock: MagicMock) -> None:
+async def test__webhook_destination_exists_returns_id_if_found(
+    ocean_mock: MagicMock,
+) -> None:
     mock_http_client = MagicMock()
     manager = NewRelicWebhookManager(http_client=mock_http_client)
 
@@ -68,7 +70,7 @@ async def test_get_existing_webhooks_returns_id_if_found(ocean_mock: MagicMock) 
             ),
         ),
     ):
-        result = await manager.get_existing_webhooks(
+        result = await manager._webhook_destination_exists(
             "https://port.app/integration/webhook"
         )
         assert result == "webhook-123"
@@ -93,7 +95,7 @@ async def test_get_existing_workflows_none(
 
 
 @pytest.mark.asyncio
-async def test_create_destination_webhook_success(
+async def test__create_webhook_destination_request_success(
     manager: NewRelicWebhookManager, ocean_mock: MagicMock
 ) -> None:
     with (
@@ -127,7 +129,7 @@ async def test_create_destination_webhook_success(
     ):
         result = cast(
             Dict[str, Any],
-            await manager.create_destination_webhook(
+            await manager._create_webhook_destination_request(
                 "Port - 123456", "https://port.app/integration/webhook"
             ),
         )
@@ -138,17 +140,17 @@ async def test_create_destination_webhook_success(
 
 
 @pytest.mark.asyncio
-async def test_get_or_create_webhook_create_flow(
+async def test_create_webhook_destination_create_flow(
     manager: NewRelicWebhookManager, ocean_mock: MagicMock
 ) -> None:
     with (
         patch("newrelic_integration.webhook.webhook_manager.ocean", ocean_mock),
         patch.object(
-            manager, "get_existing_webhooks", new=AsyncMock(return_value=False)
+            manager, "_webhook_destination_exists", new=AsyncMock(return_value=False)
         ),
         patch.object(
             manager,
-            "create_destination_webhook",
+            "_create_webhook_destination_request",
             new=AsyncMock(
                 return_value={
                     "data": {
@@ -160,14 +162,14 @@ async def test_get_or_create_webhook_create_flow(
             ),
         ),
     ):
-        webhook_id = await manager.get_or_create_webhook(
+        webhook_id = await manager.create_webhook_destination(
             "Port - 123456", "https://port.app/integration/webhook"
         )
         assert webhook_id == "webhook-xyz"
 
 
 @pytest.mark.asyncio
-async def test_create_destination_webhook_failure(
+async def test__create_webhook_destination_request_failure(
     manager: NewRelicWebhookManager, ocean_mock: MagicMock
 ) -> None:
     with (
@@ -195,7 +197,7 @@ async def test_create_destination_webhook_failure(
     ):
         result = cast(
             Dict[str, Any],
-            await manager.create_destination_webhook(
+            await manager._create_webhook_destination_request(
                 "Port - 123456", "http://insecure.url"
             ),
         )
@@ -203,7 +205,7 @@ async def test_create_destination_webhook_failure(
 
 
 @pytest.mark.asyncio
-async def test_create_channel_success(
+async def test__create_channel_request_success(
     manager: NewRelicWebhookManager, ocean_mock: MagicMock
 ) -> None:
     with (
@@ -231,7 +233,9 @@ async def test_create_channel_success(
     ):
         result = cast(
             Dict[str, Any],
-            await manager.create_channel("123456", "webhook-123", "port-channel"),
+            await manager._create_channel_request(
+                "123456", "webhook-123", "port-channel"
+            ),
         )
         assert (
             result["data"]["aiNotificationsCreateChannel"]["channel"]["id"]
@@ -247,7 +251,7 @@ async def test_create_new_channel_success(
         patch("newrelic_integration.webhook.webhook_manager.ocean", ocean_mock),
         patch.object(
             manager,
-            "create_channel",
+            "_create_channel_request",
             new=AsyncMock(
                 return_value={
                     "data": {
@@ -341,11 +345,11 @@ async def test_create_webhook_full_flow_success(
     with (
         patch("newrelic_integration.webhook.webhook_manager.ocean", ocean_mock),
         patch.object(
-            manager, "get_existing_webhooks", new=AsyncMock(return_value=False)
+            manager, "_webhook_destination_exists", new=AsyncMock(return_value=False)
         ),
         patch.object(
             manager,
-            "create_destination_webhook",
+            "_create_webhook_destination_request",
             new=AsyncMock(
                 return_value={
                     "data": {
@@ -358,7 +362,7 @@ async def test_create_webhook_full_flow_success(
         ),
         patch.object(
             manager,
-            "create_channel",
+            "_create_channel_request",
             new=AsyncMock(
                 return_value={
                     "data": {

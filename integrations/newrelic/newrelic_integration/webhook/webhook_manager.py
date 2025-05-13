@@ -6,10 +6,10 @@ from newrelic_integration.utils import render_query
 from newrelic_integration.core.utils import send_graph_api_request
 from newrelic_integration.core.query_templates.webhooks import (
     CREATE_WORKFLOW_MUTATION,
-    GET_EXISTING_WORKFLOWS_QUERY,
+    FIND_WORKFLOW_BY_NAME_QUERY,
     GET_ISSUE_ENTITY_GUIDS_QUERY,
     CREATE_CHANNEL_MUTATION,
-    CREATE_WEBHOOK_MUTATION,
+    CREATE_DESTINATION_MUTATION,
     FIND_DESTINATION_BY_TYPE_AND_URL_QUERY,
 )
 from port_ocean.context.ocean import ocean
@@ -19,7 +19,7 @@ class NewRelicWebhookManager:
     def __init__(self, http_client: httpx.AsyncClient):
         self.http_client = http_client
 
-    async def get_existing_webhooks(self, base_url: str) -> Optional[str]:
+    async def _webhook_destination_exists(self, base_url: str) -> Optional[str]:
         """
         Check if a webhook with the given base_url already exists in New Relic.
         Filters by URL.
@@ -63,7 +63,7 @@ class NewRelicWebhookManager:
         """Get existing workflows by name."""
         account_id = int(ocean.integration_config["new_relic_account_id"])
         query = await render_query(
-            GET_EXISTING_WORKFLOWS_QUERY,
+            FIND_WORKFLOW_BY_NAME_QUERY,
             account_id=account_id,
             workflow_name=workflow_name,
         )
@@ -79,14 +79,15 @@ class NewRelicWebhookManager:
             data.get("actor", {})
             .get("account", {})
             .get("aiWorkflows", {})
-            .get("entities", [])
+            .get("entities")
         )
-        return workflows_data if workflows_data else None
 
-    async def create_destination_webhook(
+        return workflows_data
+
+    async def _create_webhook_destination_request(
         self, webhook_name: str, webhook_url: str
     ) -> Optional[Dict[str, Any]]:
-        """Create a new webhook in New Relic"""
+        """Create a new webhook destination in New Relic"""
         account_id = int(ocean.integration_config["new_relic_account_id"])
         webhook_user = ocean.integration_config.get("webhook_username")
         webhook_secret = ocean.integration_config.get("webhook_secret")
@@ -100,7 +101,7 @@ class NewRelicWebhookManager:
                 },
             }
         mutation = await render_query(
-            CREATE_WEBHOOK_MUTATION,
+            CREATE_DESTINATION_MUTATION,
             accountId=account_id,
             name=webhook_name,
             url=webhook_url,
@@ -116,49 +117,47 @@ class NewRelicWebhookManager:
         )
         return response
 
-    async def get_or_create_webhook(
+    async def create_webhook_destination(
         self, webhook_name: str, webhook_url: str
     ) -> str | None:
         """Get existing webhook or create a new one if it doesn't exist."""
-        webhook_id = await self.get_existing_webhooks(webhook_url)
+        webhook_id = await self._webhook_destination_exists(webhook_url)
         if webhook_id:
-            logger.info("Webhook already exist")
+            logger.info("Webhook destination already exist")
             return webhook_id
 
-        webhook_creation_result = await self.create_destination_webhook(
+        webhook_creation_result = await self._create_webhook_destination_request(
             webhook_name, webhook_url
         )
-        if not webhook_creation_result or not webhook_creation_result.get("data"):
-            logger.error("Failed to create New Relic webhook: No data in response")
-            return None
+        if webhook_creation_result:
+            if not webhook_creation_result.get("data"):
+                logger.error(
+                    "Failed to create New Relic webhook destination, request returned an empty response"
+                )
+                return None
 
-        creation_data = webhook_creation_result["data"].get(
-            "aiNotificationsCreateDestination"
-        )
-        if creation_data and creation_data.get("destination"):
-            webhook_id = creation_data["destination"]["id"]
-            logger.success(f"Created new webhook with ID: {webhook_id}")
-            return webhook_id
-        elif creation_data and creation_data.get("error"):
-            error_info = creation_data["error"]
-            logger.error(
-                f"Failed to create New Relic webhook: Type={error_info.get('type')}, "
-                f"Description={error_info.get('description')}, Details={error_info.get('details')}"
+            creation_data = webhook_creation_result["data"].get(
+                "aiNotificationsCreateDestination"
             )
-        else:
-            logger.error(
-                f"Failed to create New Relic webhook: Unknown error: {webhook_creation_result}"
-            )
+            if creation_data.get("destination"):
+                webhook_id = creation_data["destination"]["id"]
+                logger.success(f"Created new webhook with ID: {webhook_id}")
+                return webhook_id
+            elif creation_data.get("error"):
+                error_info = creation_data["error"]
+                logger.error(
+                    f"Failed to create New Relic webhook destination: Type={error_info.get('type')}, "
+                )
 
         return None
 
     async def create_new_channel(
-        self, account_id: int, webhook_id: str, channel_name: str
+        self, account_id: int, destination_id: str, channel_name: str
     ) -> Optional[str]:
         """Get existing channel or create a new one if it doesn't exist."""
-        channel_creation_result = await self.create_channel(
+        channel_creation_result = await self._create_channel_request(
             account_id=str(account_id),
-            destination_id=webhook_id,
+            destination_id=destination_id,
             channel_name=channel_name,
         )
         if not channel_creation_result or not channel_creation_result.get("data"):
@@ -171,7 +170,7 @@ class NewRelicWebhookManager:
         if creation_data and creation_data.get("channel"):
             channel_id = creation_data["channel"]["id"]
             logger.info(
-                f"Created new channel with ID: {channel_id} for webhook ID: {webhook_id}"
+                f"Created new channel with ID: {channel_id} for webhook destination ID: {destination_id}"
             )
             return channel_id
         elif creation_data and creation_data.get("error"):
@@ -241,7 +240,7 @@ class NewRelicWebhookManager:
         channel_name = "port-webhook-channel"
         workflow_name = "port-webhook-workflow"
 
-        webhook_id = await self.get_or_create_webhook(webhook_name, webhook_url)
+        webhook_id = await self.create_webhook_destination(webhook_name, webhook_url)
         if not webhook_id:
             return False
 
@@ -272,7 +271,7 @@ class NewRelicWebhookManager:
             return issues_data[0].get("entityGuids")
         return None
 
-    async def create_channel(
+    async def _create_channel_request(
         self, account_id: str, destination_id: str, channel_name: str
     ) -> Optional[Dict[str, Any]]:
         """Create a notification channel in New Relic with the specified payload template."""
