@@ -1,4 +1,3 @@
-import typing
 from typing import cast
 from loguru import logger
 from port_ocean.context.ocean import ocean

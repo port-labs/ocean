@@ -1,0 +1,17 @@
+{
+  "self": "http://localhost:8080/rest/api/2/user?username=[REDACTED]",
+  "key": "JIRAUSER10000",
+  "name": "[REDACTED]",
+  "emailAddress": "matarp13@gmail.com",
+  "avatarUrls": {
+    "48x48": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=48",
+    "24x24": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=24",
+    "16x16": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=16",
+    "32x32": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=32"
+  },
+  "displayName": "Matar Peles",
+  "active": true,
+  "deleted": false,
+  "timeZone": "Etc/UTC",
+  "locale": "en_US"
+}
