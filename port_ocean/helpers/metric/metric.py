@@ -62,7 +62,7 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
     MetricType.OBJECT_COUNT_NAME: (
         MetricType.OBJECT_COUNT_NAME,
         "object_count description",
-        ["kind", "phase", "type"],
+        ["kind", "phase", "object_count_type"],
     ),
     MetricType.ERROR_COUNT_NAME: (
         MetricType.ERROR_COUNT_NAME,
@@ -271,14 +271,21 @@ class Metrics:
                         if kind and sample.labels.get("kind") != kind:
                             continue
 
-                        # Create nested dictionary structure based on labels
-                        for key, value in sample.labels.items():
-                            if key not in current_level:
-                                current_level[key] = {}
-                            current_level = current_level[key]
-                            if value not in current_level:
-                                current_level[value] = {}
-                            current_level = current_level[value]
+                        # Get the ordered labels from the registry
+                        ordered_labels = _metrics_registry.get(
+                            sample.name, (None, None, [])
+                        )[2]
+
+                        # Create nested dictionary structure based on ordered labels
+                        for label_name in ordered_labels:
+                            if label_name in sample.labels:
+                                value = sample.labels[label_name]
+                                if label_name not in current_level:
+                                    current_level[label_name] = {}
+                                current_level = current_level[label_name]
+                                if value not in current_level:
+                                    current_level[value] = {}
+                                current_level = current_level[value]
 
                     current_level[sample.name] = sample.value
 
