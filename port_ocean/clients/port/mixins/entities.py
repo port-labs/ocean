@@ -302,7 +302,7 @@ class EntityClientMixin:
             failed_count: Number of failed upserts
             upserted_count: Number of successful upserts
         """
-        ocean.metrics.set_metric(
+        ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
             labels=[
                 ocean.metrics.current_resource_kind(),
@@ -312,7 +312,7 @@ class EntityClientMixin:
             value=failed_upsert_count,
         )
 
-        ocean.metrics.set_metric(
+        ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
             labels=[
                 ocean.metrics.current_resource_kind(),

@@ -184,6 +184,19 @@ class Metrics:
             return EmptyMetric()
         return metrics.labels(*labels)
 
+    def inc_metric(self, name: str, labels: list[str], value: float) -> None:
+        """Increment a metric value in a single method call.
+
+        Args:
+            name (str): The metric name to inc.
+            labels (list[str]): The labels to apply to the metric.
+            value (float): The value to inc.
+        """
+        if not self.enabled:
+            return None
+
+        self.get_metric(name, labels).inc(value)
+
     def set_metric(self, name: str, labels: list[str], value: float) -> None:
         """Set a metric value in a single method call.
 
@@ -195,7 +208,7 @@ class Metrics:
         if not self.enabled:
             return None
 
-        self.get_metric(name, labels).inc(value)
+        self.get_metric(name, labels).set(value)
 
     def create_mertic_router(self) -> APIRouter:
         if not self.enabled:
