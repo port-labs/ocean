@@ -2,10 +2,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from github.clients.base_client import AbstractGithubClient
 from loguru import logger
-from port_ocean.utils.cache import cache_iterator_result
 import re
 from urllib.parse import urlparse, urlunparse
-from github.utils import ResourceEndpoints
 
 
 PAGE_SIZE = 100

@@ -1,13 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from github.clients.base_client import AbstractGithubClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
-from port_ocean.core.handlers.port_app_config.models import Selector
 
 if TYPE_CHECKING:
-    from port_ocean.core.handlers.port_app_config.models import (
-        ResourceConfig,
-    )
+    from port_ocean.core.handlers.port_app_config.models import Selector
 
 
 class AbstractGithubExporter[T: AbstractGithubClient](ABC):

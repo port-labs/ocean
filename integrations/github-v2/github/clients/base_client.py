@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, List, Optional, Dict
+from typing import Any, AsyncGenerator, Optional, Dict
 
 from port_ocean.utils import http_async_client
-from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 import httpx
 from httpx import Response
