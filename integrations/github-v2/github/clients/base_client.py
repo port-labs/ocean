@@ -63,7 +63,7 @@ class AbstractGithubClient(ABC):
             raise
 
     @abstractmethod
-    async def send_paginated_request(
+    def send_paginated_request(
         self,
         endpoint: str,
         params: Optional[dict[str, Any]] = None,

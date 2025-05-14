@@ -37,7 +37,7 @@ async def on_start() -> None:
     )
 
     logger.info("Subscribing to GitHub webhooks")
-    await client.create_or_update_webhook(base_url, WEBHOOK_CREATE_EVENTS)
+    await client.upsert_webhook(base_url, WEBHOOK_CREATE_EVENTS)
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)

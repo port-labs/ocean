@@ -58,7 +58,7 @@ class GithubWebhookClient(GithubRestClient):
         webhook_data = {"config": config_data}
 
         logger.info(f"Patching webhook {webhook_id} to modify config data")
-        await self._send_api_request(
+        await self.send_api_request(
             f"orgs/{self.organization}/hooks/{webhook_id}",
             method="PATCH",
             json_data=webhook_data,
