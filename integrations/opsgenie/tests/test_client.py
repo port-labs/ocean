@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.context.event import event_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from client import OpsGenieClient, ObjectKind, PAGE_SIZE, MAX_OPSGENIE_OFFSET_LIMIT  # type: ignore[attr-defined]
+from client import OpsGenieClient, ObjectKind, PAGE_SIZE, MAX_OPSGENIE_ALERT_OFFSET_LIMIT  # type: ignore[attr-defined]
 
 
 @pytest.fixture(autouse=True)
@@ -166,11 +166,11 @@ class TestOpsGenieClient:
     async def test_get_paginated_alerts_respects_max_offset_limit(
         self, client: OpsGenieClient
     ) -> None:
-        """Test get_paginated_resources stops at MAX_OPSGENIE_OFFSET_LIMIT"""
+        """Test get_paginated_resources stops at MAX_OPSGENIE_ALERT_OFFSET_LIMIT for alerts"""
         # Arrange
         resource_type = ObjectKind.ALERT
         base_url = f"{client.api_url}/v2/alerts"
-        large_offset = MAX_OPSGENIE_OFFSET_LIMIT
+        large_offset = MAX_OPSGENIE_ALERT_OFFSET_LIMIT
         mock_responses = [
             {
                 "data": [{"id": "1"}, {"id": "2"}],
