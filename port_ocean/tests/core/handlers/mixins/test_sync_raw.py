@@ -54,13 +54,14 @@ def mock_sync_raw_mixin_with_jq_processor(
 @pytest.mark.asyncio
 async def test_sync_raw_mixin_self_dependency(
     mock_sync_raw_mixin: SyncRawMixin,
+    mock_ocean: Ocean,
 ) -> None:
     entities_params = [
         ("entity_1", "service", {"service": "entity_1"}, True),
         ("entity_2", "service", {"service": "entity_2"}, False),
     ]
     entities = [create_entity(*entity_param) for entity_param in entities_params]
-
+    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     calc_result_mock = MagicMock()
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
@@ -115,7 +116,7 @@ async def test_sync_raw_mixin_circular_dependency(
         ("entity_2", "service", {"service": "entity_1"}, True),
     ]
     entities = [create_entity(*entity_param) for entity_param in entities_params]
-
+    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     calc_result_mock = MagicMock()
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
@@ -670,9 +671,11 @@ async def test_register_resource_raw_skip_event_type_http_request_upsert_called_
 async def test_on_resync_start_hooks_are_called(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
 ) -> None:
     # Setup
     resync_start_called = False
+    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
 
     async def on_resync_start() -> None:
         nonlocal resync_start_called
@@ -705,6 +708,7 @@ async def test_on_resync_complete_hooks_are_called_on_success(
         nonlocal resync_complete_called
         resync_complete_called = True
 
+    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete)
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
 
@@ -758,6 +762,7 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
 ) -> None:
     # Setup
     call_order: list[str] = []
+    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
 
     async def on_resync_start1() -> None:
         call_order.append("on_resync_start1")
@@ -798,10 +803,12 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
 async def test_on_resync_start_hook_error_prevents_resync(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
 ) -> None:
     # Setup
     resync_complete_called = False
     resync_proceeded = False
+    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
 
     async def on_resync_start() -> None:
         raise Exception("Before resync error")
