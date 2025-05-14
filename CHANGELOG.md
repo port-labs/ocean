@@ -12,6 +12,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Enhanced Ocean metrics event structure for better data organization and analysis
 - Expanded metrics collection points to provide more comprehensive monitoring capabilities
 
+## 0.22.7 (2025-05-12)
+
+### Bug Fixes
+- Fixed case where new installation of an integration resulted with errors on installing a package
+
 ## 0.22.6 (2025-05-06)
 
 ### Improvements

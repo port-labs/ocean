@@ -1,44 +1,21 @@
-from typing import Any, cast
+from typing import cast
 from loguru import logger
-from enum import StrEnum
 
 from client import JenkinsClient
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 
+
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from overrides import JenkinStagesResourceConfig
-
-
-class ObjectKind(StrEnum):
-    JOB = "job"
-    BUILD = "build"
-    USER = "user"
-    STAGE = "stage"
-
-    @staticmethod
-    def get_object_kind_for_event(obj_type: str) -> str | None:
-        if obj_type.startswith("item"):
-            return ObjectKind.JOB
-        elif obj_type.startswith("run"):
-            return ObjectKind.BUILD
-        else:
-            return None
-
-
-def init_client() -> JenkinsClient:
-    logger.info(f"Initializing JenkinsClient {ocean.integration_config}")
-    return JenkinsClient(
-        ocean.integration_config["jenkins_host"],
-        ocean.integration_config["jenkins_user"],
-        ocean.integration_config["jenkins_token"],
-    )
+from webhook.webhook_processors import BuildWebhookProcessor, JobWebhookProcessor
+from utils import ObjectKind
 
 
 @ocean.on_resync(ObjectKind.JOB)
 async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    jenkins_client = init_client()
+    jenkins_client = JenkinsClient.create_from_ocean_configuration()
 
     async for jobs in jenkins_client.get_jobs():
         logger.info(f"Received batch with {len(jobs)} jobs")
@@ -47,7 +24,7 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.BUILD)
 async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    jenkins_client = init_client()
+    jenkins_client = JenkinsClient.create_from_ocean_configuration()
 
     async for builds in jenkins_client.get_builds():
         logger.info(f"Received batch with {len(builds)} builds")
@@ -56,7 +33,7 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    jenkins_client = init_client()
+    jenkins_client = JenkinsClient.create_from_ocean_configuration()
 
     async for users in jenkins_client.get_users():
         logger.info(f"Received {len(users)} users")
@@ -65,7 +42,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.STAGE)
 async def on_resync_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    jenkins_client = init_client()
+    jenkins_client = JenkinsClient.create_from_ocean_configuration()
     stages_count = 0
     max_stages = 10000
 
@@ -89,16 +66,14 @@ async def on_resync_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Total stages synced: {stages_count}")
 
 
-@ocean.router.post("/events")
-async def handle_events(event: dict[str, Any]) -> dict[str, bool]:
-    jenkins_client = init_client()
-    logger.info(f'Received {event["dataType"]} event {event["id"]} | {event["type"]}')
+@ocean.on_start()
+async def on_start() -> None:
+    logger.info("Starting Port Ocean Jenkins integration")
 
-    kind = ObjectKind.get_object_kind_for_event(event["type"])
 
-    if kind:
-        resource = await jenkins_client.get_single_resource(event["url"])
-        await ocean.register_raw(kind, [resource])
-
-    logger.info("Webhook event processed")
-    return {"ok": True}
+ocean.add_webhook_processor("/webhook", BuildWebhookProcessor)
+ocean.add_webhook_processor("/webhook", JobWebhookProcessor)
+# DEPRECATED: The /events endpoint is deprecated and will be removed in a future version.
+# Please use /webhook endpoint instead.
+ocean.add_webhook_processor("/events", BuildWebhookProcessor)
+ocean.add_webhook_processor("/events", JobWebhookProcessor)
