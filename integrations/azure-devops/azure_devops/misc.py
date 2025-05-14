@@ -212,15 +212,24 @@ class RepositoryBranchMapping(BaseModel):
 
 
 class FolderPattern(BaseModel):
-    path: str = Field(description="Base folder path to scan")
-    repos: list[RepositoryBranchMapping] = Field(default_factory=list)
-
+    path: str = Field(
+        default="",
+        alias="path",
+        description="Specify the repositories and folders to include under this relative path",
+    )
+    repos: list[RepositoryBranchMapping] = Field(
+        default_factory=list,
+        alias="repos",
+        description="Specify the repositories and branches to include under this relative path",
+    )
 
 class AzureDevopsFolderSelector(Selector):
     """Selector for Azure DevOps folder scanning configuration"""
 
     folders: list[FolderPattern] = Field(
-        description="List of folder patterns to scan", default_factory=list
+        default_factory=list,
+        alias="folders",
+        description="Specify the repositories, branches and folders to include under this relative path",
     )
 
 
