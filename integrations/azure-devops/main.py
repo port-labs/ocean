@@ -9,11 +9,13 @@ from starlette.requests import Request
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
     PULL_REQUEST_SEARCH_CRITERIA,
+    AzureDevopsFolderSelector,
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     Kind,
+    AzureDevopsFolderResourceConfig,
 )
 from azure_devops.webhooks.webhook_event import WebhookEvent
 from bootstrap import setup_listeners, webhook_event_handler
@@ -174,6 +176,72 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if files_batch:
             logger.info(f"Resyncing batch of {len(files_batch)} files")
             yield files_batch
+
+
+@ocean.on_resync(Kind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync folders based on configuration."""
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(AzureDevopsFolderResourceConfig, event.resource_config).selector
+    if isinstance(selector, AzureDevopsFolderSelector):
+        logger.info(f"Starting folder resync for paths {selector}")
+    # selector = cast(AzureDevopsFolderSelector, config.selector)
+    # class RepoMapping:
+    #     def __init__(self, name, branch):
+    #         self.name = name
+    #         self.branch = branch
+
+    # class FolderPattern:
+    #     def __init__(self, path, repos):
+    #         self.path = path
+    #         self.repos = repos
+
+    # class Selector:
+    #     def __init__(self):
+    #         self.folders = []
+
+    # # Create a new selector instance
+    # selector = Selector()
+
+    # # Sample data structure
+    # selector.folders = [
+    #     FolderPattern(
+    #         path="/frontend",  # Using root path to check if we can access the repo at all
+    #         repos=[RepoMapping(name="habib_test_repo", branch="main")]
+    #     ),
+    #     FolderPattern(
+    #         path="/docs",
+    #         repos=[RepoMapping(name="documentation", branch="master")]
+    #     )
+    # ]
+
+    if not selector.folders:
+        logger.warning("No folder patterns found in configuration")
+        return
+
+    # Add debug logging
+    logger.info(
+        f"Attempting to sync folders with patterns: {[f.path for f in selector.folders]}"
+    )
+    logger.info(
+        f"For repositories: {[r.name for f in selector.folders for r in f.repos]}"
+    )
+
+    async for repositories in azure_devops_client.generate_repositories():
+        logger.info(f"Found repositories: {[repo['name'] for repo in repositories]}")
+        for repo in repositories:
+            # Find folder patterns that match this repository
+            for folder_pattern in selector.folders:
+                for repo_mapping in folder_pattern.repos:
+                    if repo["name"] == repo_mapping.name:
+                        async for folders in azure_devops_client.get_repository_folders(
+                            repo["id"], [folder_pattern.path]
+                        ):
+                            for folder in folders:
+                                folder["__repository"] = repo
+                                folder["__branch"] = repo_mapping.branch
+                                folder["__pattern"] = folder_pattern.path
+                            yield folders
 
 
 @ocean.router.post("/webhook")

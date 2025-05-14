@@ -112,3 +112,38 @@ resources:
             repository: >-
               "\(.repo.project.name | ascii_downcase | gsub("[ ();]";
               ""))/\(.repo.name | ascii_downcase | gsub("[ ();]"; ""))"
+  - kind: folder
+    selector:
+      repository_mappings:
+        - repository_name: "main-monorepo"
+          patterns:
+            - path: "services/user-service/**"
+              description: "User management microservice"
+            - path: "services/payment-service/**"
+              description: "Payment processing service"
+            - path: "services/inventory-service/**"
+              description: "Inventory management service"
+            - path: "apps/customer-portal/**"
+              description: "Customer-facing web application"
+            - path: "apps/admin-dashboard/**"
+              description: "Internal admin dashboard"
+            - path: "libs/common-utils/**"
+              description: "Shared utilities and helpers"
+            - path: "infrastructure/kubernetes/**"
+              description: "Kubernetes manifests and helm charts"
+    port:
+      entity:
+        mappings:
+          identifier: .path
+          title: .path | split("/") | last
+          blueprint: '"folder"'
+          properties:
+            path: .path
+            description: .__patterns[0].description
+            repository: .__repository.name
+            lastModified: .lastModified
+            size: .size
+            type: "folder"
+          relations:
+            repository: >-
+              "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"

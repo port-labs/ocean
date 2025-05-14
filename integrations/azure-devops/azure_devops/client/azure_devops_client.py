@@ -1,16 +1,15 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Optional
-from httpx import HTTPStatusError
+from typing import Any, AsyncGenerator, Optional, List
+from httpx import HTTPStatusError, Response
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookEvent
-
-from .base_client import HTTPBaseClient
+from .base_client import HTTPBaseClient, PAGE_SIZE
 from .file_processing import (
     parse_file_content,
 )
@@ -718,3 +717,113 @@ class AzureDevopsClient(HTTPBaseClient):
         except Exception as e:
             logger.error(f"Failed to process file {file_path}: {str(e)}")
             raise
+
+    async def get_repository_tree(
+        self,
+        repository_id: str,
+        path: str = "/",
+        recursion_level: str = "oneLevel",  # Options: none, oneLevel, full
+        max_depth: int = 3,  # Limit recursion depth
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch repository folder structure with rate limit awareness.
+
+        Args:
+            repository_id: The ID of the repository to scan
+            path: The folder path to start scanning from
+            recursion_level: How deep to scan (none, oneLevel, full)
+            max_depth: Maximum folder depth to traverse
+
+        Yields:
+            Lists of folder information dictionaries
+        """
+        items_batch_url = f"{self._organization_base_url}/_apis/git/repositories/{repository_id}/items"
+
+        params = {
+            "scopePath": path,
+            "recursionLevel": recursion_level,
+            "$top": PAGE_SIZE,
+            "api-version": "7.1",
+        }
+
+        try:
+            async for items in self._get_paginated_by_top_and_continuation_token(
+                items_batch_url, additional_params=params
+            ):
+                # Filter for folders only
+                folders = [
+                    item for item in items if item.get("gitObjectType") == "tree"
+                ]
+
+                if folders:
+                    yield folders
+
+                    # If we need deeper recursion and haven't hit max depth
+                    if recursion_level == "oneLevel" and max_depth > 1:
+                        for folder in folders:
+                            folder_path = folder.get("path", "").lstrip("/")
+                            async for subfolder_batch in self.get_repository_tree(
+                                repository_id,
+                                path=folder_path,
+                                recursion_level="oneLevel",
+                                max_depth=max_depth - 1,
+                            ):
+                                yield subfolder_batch
+
+        except Exception as e:
+            logger.error(
+                f"Error fetching folder tree for repository {repository_id}: {str(e)}"
+            )
+            raise
+
+    @cache_iterator_result()
+    async def get_repository_folders(
+        self,
+        repository_id: str,
+        folder_patterns: List[str],
+        concurrency: int = 5,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get folders matching patterns with concurrency control.
+
+        Args:
+            repository_id: The ID of the repository to scan
+            folder_patterns: List of folder paths to scan
+            concurrency: Maximum number of concurrent requests
+
+        Yields:
+            Lists of folder information dictionaries
+        """
+        semaphore = asyncio.BoundedSemaphore(concurrency)
+
+        async def get_folder_with_semaphore(
+            pattern: str,
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            async with semaphore:
+                recursion_level = "full" if "**" in pattern else "oneLevel"
+                clean_pattern = pattern.replace("**", "").rstrip("/")
+
+                async for folders in self.get_repository_tree(
+                    repository_id, path=clean_pattern, recursion_level=recursion_level
+                ):
+                    yield folders
+
+        tasks = [get_folder_with_semaphore(pattern) for pattern in folder_patterns]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
+
+    async def _check_rate_limits(self, response: Response) -> None:
+        """Monitor rate limit headers from Azure DevOps API.
+
+        Args:
+            response: The response from an API call
+        """
+        remaining = response.headers.get("X-RateLimit-Remaining")
+        if remaining and int(remaining) < 1000:  # Warning threshold
+            logger.warning(
+                f"Azure DevOps API rate limit running low: {remaining} requests remaining"
+            )
+
+        # If rate limit is critically low, add delay
+        if remaining and int(remaining) < 100:
+            logger.warning("Rate limit critically low, adding delay between requests")
+            await asyncio.sleep(1)  # Add 1 second delay
