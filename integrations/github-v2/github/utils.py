@@ -24,11 +24,11 @@ class ResourceEndpoints:
     All methods are class-based, and the class is not intended for instantiation.
     """
 
-    PAGINATED_RESOURCES: Dict[str, str] = {"repository": "orgs/{org}/repos"}
-
     SINGLE_RESOURCES: Dict[str, str] = {
         "repository": "repos/{org}/{identifier}",
     }
+
+    PAGINATED_RESOURCES: Dict[str, str] = {"repository": "orgs/{org}/repos"}
 
     @classmethod
     def get_single_resource_endpoint(cls, resource_type: str) -> str:
