@@ -163,7 +163,7 @@ class TestOpsGenieClient:
                 f"{client.api_url}/v2/teams/{team_identifier}"
             )
 
-    async def test_get_paginated_resources_respects_max_offset_limit(
+    async def test_get_paginated_alerts_respects_max_offset_limit(
         self, client: OpsGenieClient
     ) -> None:
         """Test get_paginated_resources stops at MAX_OPSGENIE_OFFSET_LIMIT"""

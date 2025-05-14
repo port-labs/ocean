@@ -9,7 +9,7 @@ from utils import ObjectKind, RESOURCE_API_VERSIONS
 
 PAGE_SIZE = 100
 CONCURRENT_REQUESTS = 5
-MAX_OPSGENIE_OFFSET_LIMIT = 20000
+MAX_OPSGENIE_ALERT_OFFSET_LIMIT = 20000
 
 
 class OpsGenieClient:
@@ -26,6 +26,9 @@ class OpsGenieClient:
 
     async def get_resource_api_version(self, resource_type: ObjectKind) -> str:
         return RESOURCE_API_VERSIONS.get(resource_type, "v2")
+
+    def get_resource_offset_limit(self, resource_type: ObjectKind) -> Optional[int]:
+        return MAX_OPSGENIE_ALERT_OFFSET_LIMIT if resource_type == ObjectKind.ALERT else None
 
     async def _get_single_resource(
         self,
@@ -60,15 +63,16 @@ class OpsGenieClient:
 
         pagination_params: dict[str, Any] = {"limit": PAGE_SIZE, **(query_params or {})}
         while url:
-
-            offset = int(pagination_params.get("offset", 0))
-            limit = int(pagination_params.get("limit", PAGE_SIZE))
-            if offset + limit > MAX_OPSGENIE_OFFSET_LIMIT:
-                logger.warning(
-                    f"Stopped pagination for {resource_type.value}s at offset {offset}: "
-                    f"reached OpsGenie API limit of {MAX_OPSGENIE_OFFSET_LIMIT} (offset + limit = {offset + limit})"
-                )
-                break
+            max_offset_limit = self.get_resource_offset_limit(resource_type)
+            if max_offset_limit is not None:
+                offset = int(pagination_params.get("offset", 0))
+                limit = int(pagination_params.get("limit", PAGE_SIZE))
+                if offset + limit > max_offset_limit:
+                    logger.warning(
+                        f"Stopped pagination for {resource_type.value}s at offset {offset}: "
+                        f"reached OpsGenie API limit of {max_offset_limit} (offset + limit = {offset + limit})"
+                    )
+                    break
 
             try:
                 response = await self._get_single_resource(
