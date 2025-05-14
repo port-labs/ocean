@@ -9,8 +9,6 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
-from port_ocean.context.ocean import initialize_port_ocean_context
-from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
@@ -60,20 +58,6 @@ def gh_processor(gh_event: WebhookEvent) -> MockGithubAbstractProcessor:
     return MockGithubAbstractProcessor(gh_event)
 
 
-@pytest.fixture(autouse=True)
-def mock_ocean_context() -> None:
-    try:
-        mock_ocean_app = MagicMock()
-        mock_ocean_app.config.integration.config = {
-            "webhook_secret": "test-secret",
-        }
-        mock_ocean_app.integration_router = MagicMock()
-        mock_ocean_app.port_client = MagicMock()
-        initialize_port_ocean_context(mock_ocean_app)
-    except PortOceanContextAlreadyInitializedError:
-        pass
-
-
 @pytest.mark.asyncio
 class TestGitHubAbstractWebhookProcessor:
     async def test_verify_webhook_signature_no_secret(
@@ -90,7 +74,6 @@ class TestGitHubAbstractWebhookProcessor:
     async def test_verify_webhook_signature_invalid_headers(
         self, gh_processor: MockGithubAbstractProcessor, mock_ocean_context: Any
     ) -> None:
-        ocean.integration_config["webhook_secret"] = "test-secret"
         mock_request: Request = create_gh_mock_request(b"{}", {})
         result: bool = await gh_processor._verify_webhook_signature(mock_request)
         assert result is False

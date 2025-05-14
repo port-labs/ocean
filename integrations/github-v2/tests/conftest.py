@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.context.ocean import initialize_port_ocean_context, ocean
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from github.clients.client_factory import create_github_client
 
@@ -21,6 +21,8 @@ TEST_INTEGRATION_CONFIG: Dict[str, str] = {
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
+    """Mock the PortOcean context to prevent initialization errors."""
+
     try:
         mock_ocean_app = MagicMock()
         mock_ocean_app.config.integration.config = {
@@ -36,6 +38,11 @@ def mock_ocean_context() -> None:
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
         pass
+
+    # Reset webhook_secret to its original value to prevent test interference
+    ocean.integration_config["webhook_secret"] = TEST_INTEGRATION_CONFIG[
+        "webhook_secret"
+    ]
 
 
 @pytest.fixture
