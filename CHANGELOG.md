@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.22.7 (2025-05-14)
+
+### Improvements
+- Enhanced Ocean metrics event structure for better data organization and analysis
+- Expanded metrics collection points to provide more comprehensive monitoring capabilities
+
 ## 0.22.6 (2025-05-06)
 
 ### Improvements
