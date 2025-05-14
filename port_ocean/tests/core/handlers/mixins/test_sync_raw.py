@@ -197,7 +197,7 @@ async def test_sync_raw_mixin_dependency(
         ("entity_5", "service", {"service": "entity_1"}, True),
     ]
     entities = [create_entity(*entity_param) for entity_param in entities_params]
-
+    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     calc_result_mock = MagicMock()
     calc_result_mock.entity_selector_diff.passed = entities
     calc_result_mock.errors = []
