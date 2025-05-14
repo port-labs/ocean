@@ -31,7 +31,7 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.helpers.metric.metric import MetricPhaseProgress, MetricType, MetricPhase
+from port_ocean.helpers.metric.metric import SyncState, MetricType, MetricPhase
 from port_ocean.helpers.metric.utils import TimeMetric
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -641,7 +641,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     # config as we might have multiple resources in the same event
                     async with resource_context(resource,index):
                         ocean.metrics.reset_metrics()
-                        ocean.metrics.phase_progress = MetricPhaseProgress.SYNCING
+                        ocean.metrics.sync_state = SyncState.SYNCING
 
                         resource_kind_id = f"{resource.kind}-{index}"
                         task = asyncio.create_task(
@@ -652,7 +652,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         kind_results: tuple[list[Entity], list[Exception]] = await task
 
                         creation_results.append(kind_results)
-                        ocean.metrics.phase_progress = MetricPhaseProgress.DATA_INGESTED
+                        ocean.metrics.sync_state = SyncState.DATA_INGESTED
                         await ocean.metrics.flush(kind=resource_kind_id)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)

@@ -33,7 +33,7 @@ class MetricType:
     DELETION_COUNT_NAME = "deletion_count"
 
 
-class MetricPhaseProgress:
+class SyncState:
     SYNCING = "syncing"
     DATA_INGESTED = "data ingested"
     QUEUED = "queued"
@@ -110,7 +110,7 @@ class Metrics:
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
         self.event_id = ""
-        self.phase_progress = MetricPhaseProgress.QUEUED
+        self.sync_state = SyncState.QUEUED
         self.integration_identifier = ""
 
     @property
@@ -286,7 +286,7 @@ class Metrics:
                     "kind_identifier": kind_key,
                     "kind": "-".join(kind_key.split("-")[:-1]),
                     "event_id": self.event_id,
-                    "phase_progress": self.phase_progress,
+                    "sync_state": self.sync_state,
                     "_id": self.integration_identifier,
                     "metrics": metrics,
                 }
