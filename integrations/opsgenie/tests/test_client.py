@@ -107,7 +107,7 @@ class TestOpsGenieClient:
 
         with patch.object(
             client, "_get_single_resource", AsyncMock(side_effect=mock_responses)
-        ) as mock_get:
+        ):
             # Act
             async with event_context("test_event"):
                 results = []
