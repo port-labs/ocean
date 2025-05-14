@@ -12,9 +12,11 @@ if TYPE_CHECKING:
 class RepositoryExporter(AbstractGithubExporter[AbstractGithubClient]):
 
     async def get_resource(self, resource_id: str) -> dict[str, Any]:
-        endpoint = f"orgs/{self.client.organization}/repos/{resource_id}"
+        endpoint = f"repos/{self.client.organization}/{resource_id}"
         response = await self.client.send_api_request(endpoint)
-        logger.debug(f"Fetched repository with identifier: {resource_id}:")
+
+        logger.debug(f"Fetched repository with identifier: {resource_id}")
+
         return response.json()
 
     @cache_iterator_result()

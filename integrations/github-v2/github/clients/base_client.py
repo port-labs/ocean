@@ -14,17 +14,20 @@ class AbstractGithubClient(ABC):
         organization: str,
         github_host: str,
     ) -> None:
+        self.token = token
         self.organization = organization
         self.github_host = github_host
         self.client = http_async_client
         self.base_url = github_host.rstrip("/")
 
-        self.headers = {
-            "Authorization": f"Bearer {token}",
+    @property
+    def headers(self) -> Dict[str, str]:
+        """Build and return headers for GitHub API requests."""
+        return {
+            "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
-        self.client.headers.update(self.headers)
 
     async def send_api_request(
         self,
@@ -42,6 +45,7 @@ class AbstractGithubClient(ABC):
                 url=url,
                 params=params,
                 json=json_data,
+                headers=self.headers,
             )
             response.raise_for_status()
 

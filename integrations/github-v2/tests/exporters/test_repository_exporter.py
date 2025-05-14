@@ -32,9 +32,7 @@ class TestRepositoryExporter:
 
             assert repo == TEST_REPOS[0]
 
-            mock_request.assert_called_once_with(
-                f"orgs/{client.organization}/repos/repo1"
-            )
+            mock_request.assert_called_once_with(f"repos/{client.organization}/repo1")
 
     async def test_get_paginated_resources(self, client: AbstractGithubClient) -> None:
         selector = GithubRepositorySelector(query="true")

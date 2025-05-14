@@ -71,6 +71,7 @@ class TestAbstractGithubClient:
                 url="https://api.github.com/orgs/test-org/repos",
                 params=params,
                 json=json_data,
+                headers=client.headers,
             )
 
     async def test_send_api_request_404_error(self) -> None:
@@ -161,6 +162,7 @@ class TestAbstractGithubClient:
                 url="https://api.github.com/repos/test-org/test-repo",
                 params=None,
                 json=None,
+                headers=client.headers,
             )
 
             # Test POST
@@ -171,6 +173,7 @@ class TestAbstractGithubClient:
                 url="https://api.github.com/repos/test-org/test-repo",
                 params=None,
                 json=None,
+                headers=client.headers,
             )
 
             # Test PUT
@@ -181,6 +184,7 @@ class TestAbstractGithubClient:
                 url="https://api.github.com/repos/test-org/test-repo",
                 params=None,
                 json=None,
+                headers=client.headers,
             )
 
             # Test PATCH
@@ -191,6 +195,7 @@ class TestAbstractGithubClient:
                 url="https://api.github.com/repos/test-org/test-repo",
                 params=None,
                 json=None,
+                headers=client.headers,
             )
 
             # Test DELETE
@@ -201,4 +206,5 @@ class TestAbstractGithubClient:
                 url="https://api.github.com/repos/test-org/test-repo",
                 params=None,
                 json=None,
+                headers=client.headers,
             )
