@@ -9,7 +9,6 @@ from client import OpsGenieClient, ObjectKind, PAGE_SIZE, MAX_OPSGENIE_OFFSET_LI
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
-    """Initialize mock Ocean context for all tests"""
     try:
         mock_app = MagicMock()
         mock_app.config.integration.config = {
@@ -25,11 +24,9 @@ def mock_ocean_context() -> None:
 class TestOpsGenieClient:
     @pytest.fixture
     def client(self) -> OpsGenieClient:
-        """Initialize OpsGenieClient with test configuration"""
         return OpsGenieClient(token="test-token", api_url="https://api.opsgenie.com")
 
     async def test_api_auth_header(self, client: OpsGenieClient) -> None:
-        """Test api_auth_header property returns correct authorization header"""
         # Arrange
         expected_header = {"Authorization": "GenieKey test-token"}
 
@@ -40,7 +37,6 @@ class TestOpsGenieClient:
         assert result == expected_header
 
     async def test_get_resource_api_version(self, client: OpsGenieClient) -> None:
-        """Test get_resource_api_version returns correct API version"""
         # Arrange
         resource_type = ObjectKind.ALERT
         expected_version = "v2"
@@ -52,7 +48,6 @@ class TestOpsGenieClient:
         assert result == expected_version
 
     async def test_get_single_resource_success(self, client: OpsGenieClient) -> None:
-        """Test _get_single_resource successful request"""
         # Arrange
         url = "https://api.opsgenie.com/v2/alerts/123"
         mock_response = MagicMock()
@@ -74,7 +69,6 @@ class TestOpsGenieClient:
     async def test_get_single_resource_http_status_error(
         self, client: OpsGenieClient
     ) -> None:
-        """Test _get_single_resource with HTTP status error"""
         # Arrange
         url = "https://api.opsgenie.com/v2/alerts/123"
         mock_response = MagicMock()
@@ -118,7 +112,6 @@ class TestOpsGenieClient:
             assert results == [{"id": "1"}, {"id": "2"}, {"id": "3"}]
 
     async def test_get_alert_success(self, client: OpsGenieClient) -> None:
-        """Test get_alert successful request"""
         # Arrange
         identifier = "123"
         mock_response = {"data": {"id": "123", "name": "Test Alert"}}
@@ -135,7 +128,6 @@ class TestOpsGenieClient:
             mock_get.assert_called_once_with(f"{client.api_url}/v2/alerts/{identifier}")
 
     async def test_get_oncall_users_success(self, client: OpsGenieClient) -> None:
-        """Test get_oncall_users successful request"""
         # Arrange
         schedule_identifier = "sched123"
         mock_response = {"data": [{"user": "user1"}, {"user": "user2"}]}
@@ -154,7 +146,6 @@ class TestOpsGenieClient:
             )
 
     async def test_get_team_members_success(self, client: OpsGenieClient) -> None:
-        """Test get_team_members successful request"""
         # Arrange
         team_identifier = "team123"
         mock_response = {"data": {"members": [{"id": "user1"}, {"id": "user2"}]}}
