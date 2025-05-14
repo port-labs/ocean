@@ -142,7 +142,9 @@ class Ocean:
             logger.warning(
                 "The OCEAN__INTEGRATION__CONFIG__APP_HOST field is deprecated. Please use the OCEAN__BASE_URL field instead."
             )
-        return self.config.base_url or integration_config.get("app_host")
+        return (
+            self.config.base_url or integration_config.get("app_host") or ""
+        ).rstrip("/")
 
     def load_external_oauth_access_token(self) -> str | None:
         if self.config.oauth_access_token_file_path is not None:
