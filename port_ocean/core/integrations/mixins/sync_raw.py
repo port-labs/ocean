@@ -240,7 +240,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         total_entities=len(objects_diff[0].entity_selector_diff.passed))
                     ocean.metrics.inc_metric(
                             name=MetricType.OBJECT_COUNT_NAME,
-                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, "skipped"],
+                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.SKIPPED],
                             value=len(objects_diff[0].entity_selector_diff.passed) - len(changed_entities)
                         )
                     await self.entities_state_applier.upsert(
@@ -250,7 +250,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.info("Entities in batch didn't changed since last sync, skipping", total_entities=len(objects_diff[0].entity_selector_diff.passed))
                     ocean.metrics.inc_metric(
                             name=MetricType.OBJECT_COUNT_NAME,
-                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, "skipped"],
+                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.SKIPPED],
                             value=len(objects_diff[0].entity_selector_diff.passed)
                         )
                 modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
@@ -359,25 +359,25 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
-            labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT , "raw"],
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT , MetricPhase.ExtractResult.EXTRACTED],
             value=number_of_raw_results
         )
 
         ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
-            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , "transformed"],
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , MetricPhase.TransformResult.TRANSFORMED],
             value=number_of_transformed_entities
         )
 
         ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
-            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , "filtered out"],
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , MetricPhase.TransformResult.FILTERED_OUT],
             value=number_of_raw_results -number_of_transformed_entities
         )
 
         ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
-            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , "failed"],
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , MetricPhase.TransformResult.FAILED],
             value=len(errors)
         )
 

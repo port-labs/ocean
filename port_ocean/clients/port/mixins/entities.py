@@ -307,7 +307,7 @@ class EntityClientMixin:
             labels=[
                 ocean.metrics.current_resource_kind(),
                 MetricPhase.LOAD,
-                "failed to load",
+                MetricPhase.LoadResult.FAILED,
             ],
             value=failed_upsert_count,
         )
@@ -317,7 +317,7 @@ class EntityClientMixin:
             labels=[
                 ocean.metrics.current_resource_kind(),
                 MetricPhase.LOAD,
-                "upserted",
+                MetricPhase.LoadResult.LOADED,
             ],
             value=upserted_count,
         )

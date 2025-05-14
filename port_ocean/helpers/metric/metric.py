@@ -22,6 +22,19 @@ class MetricPhase:
     RESYNC = "resync"
     DELETE = "delete"
 
+    class TransformResult:
+        TRANSFORMED = "transformed"
+        FILTERED_OUT = "filtered_out"
+        FAILED = "failed"
+
+    class LoadResult:
+        LOADED = "loaded"
+        FAILED = "failed"
+        SKIPPED = "skipped"
+
+    class ExtractResult:
+        EXTRACTED = "raw_extracted"
+
 
 class MetricType:
     # Define metric names as constants
