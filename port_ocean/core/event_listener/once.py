@@ -1,5 +1,6 @@
 import datetime
 import signal
+import sys
 from typing import Literal, Any
 
 from loguru import logger
@@ -11,6 +12,7 @@ from port_ocean.core.event_listener.base import (
 )
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.context.ocean import ocean
+from port_ocean.utils.signal import signal_handler
 from port_ocean.utils.time import convert_str_to_utc_datetime, convert_to_minutes
 from port_ocean.utils.misc import IntegrationStateStatus
 
@@ -43,6 +45,7 @@ class OnceEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self.cached_integration: dict[str, Any] | None = None
+        signal_handler.register(self._shutdown)
 
     async def get_current_integration_cached(self) -> dict[str, Any]:
         if self.cached_integration:
@@ -154,3 +157,7 @@ class OnceEventListener(BaseEventListener):
             signal.raise_signal(signal.SIGINT)
 
         await resync_and_exit()
+
+    def _shutdown(self) -> None:
+        logger.info("Shutting down once event listener")
+        sys.exit(0)
