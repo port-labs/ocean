@@ -112,6 +112,15 @@ class Metrics:
         self.event_id = ""
         self.org_id = ""
         self.phase_progress = MetricPhaseProgress.QUEUED
+        self.integration_identifier = ""
+
+    @property
+    def integration_identifier(self) -> str:
+        return self._integration_identifier
+
+    @integration_identifier.setter
+    def integration_identifier(self, value: str) -> None:
+        self._integration_identifier = value
 
     @property
     def event_id(self) -> str:
@@ -275,6 +284,7 @@ class Metrics:
                     "event_id": self.event_id,
                     "org_id": self.org_id,
                     "phase_progress": self.phase_progress,
+                    "_id": self.integration_identifier,
                     "metrics": metrics,
                 }
                 logger.info(f"Sending metrics to webhook {kind_key}: {event}")

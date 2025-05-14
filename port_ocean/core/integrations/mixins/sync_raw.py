@@ -375,6 +375,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             value=number_of_raw_results -number_of_transformed_entities
         )
 
+        ocean.metrics.set_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , "failed"],
+            value=len(errors)
+        )
+
         return passed_entities, errors
 
     async def register_raw(
@@ -602,6 +608,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         ):
             ocean.metrics.event_id = event.id
             ocean.metrics.org_id = await ocean.port_client.get_org_id()
+            integration = await ocean.app.port_client.get_current_integration()
+            ocean.metrics.integration_identifier = integration["_id"]
             # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
             # rather than the old cache
             app_config = await self.port_app_config_handler.get_port_app_config(
