@@ -5,6 +5,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+
 from github.clients.client_factory import create_github_client
 from github.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS

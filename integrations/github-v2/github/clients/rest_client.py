@@ -1,63 +1,20 @@
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-import httpx
 from github.clients.base_client import AbstractGithubClient
 from loguru import logger
 from port_ocean.utils.cache import cache_iterator_result
 import re
-from httpx import Response
 from urllib.parse import urlparse, urlunparse
+from github.utils import ResourceEndpoints
 
 
 PAGE_SIZE = 100
-
-LIST_RESOURCE_ENDPOINTS = {"repository": "orgs/{org}/repos"}
-
-SINGLE_RESOURCE_ENDPOINTS = {
-    "repository": "repos/{org}/{identifier}",
-}
 
 
 class GithubRestClient(AbstractGithubClient):
     """REST API implementation of GitHub client."""
 
-    async def _send_api_request(
-        self,
-        endpoint: str,
-        method: str = "GET",
-        params: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-    ) -> Response:
-        """Send request to GitHub API with error handling and rate limiting."""
-        url = f"{self.base_url}/{endpoint}"
-
-        try:
-            response = await self.client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json_data,
-            )
-            response.raise_for_status()
-
-            logger.debug(f"Successfully fetched {method} {endpoint}")
-
-            return response
-
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.debug(f"Resource not found at endpoint '{endpoint}'")
-                return e.response
-            logger.error(
-                f"GitHub API error for endpoint '{endpoint}': Status {e.response.status_code}, "
-                f"Method: {method}, Response: {e.response.text}"
-            )
-            raise
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error for endpoint '{endpoint}': {str(e)}")
-            raise
-
-    def get_next_link(self, link_header: str) -> Optional[str]:
+    def _get_next_link(self, link_header: str) -> Optional[str]:
         """
         Extracts the path and query from the 'next' link in a GitHub Link header,
         removing the leading slash.
@@ -102,7 +59,7 @@ class GithubRestClient(AbstractGithubClient):
             if not link_header:
                 return
 
-            next_endpoint = self.get_next_link(link_header)
+            next_endpoint = self._get_next_link(link_header)
             if not next_endpoint:
                 return
 
@@ -135,7 +92,7 @@ class GithubRestClient(AbstractGithubClient):
         )
         logger.info(f"Successfully patched webhook {webhook_id} with secret")
 
-    def build_webhook_config(self, webhook_url: str) -> dict[str, str]:
+    def _build_webhook_config(self, webhook_url: str) -> dict[str, str]:
         config = {
             "url": webhook_url,
             "content_type": "json",
@@ -160,7 +117,7 @@ class GithubRestClient(AbstractGithubClient):
                 "name": "web",
                 "active": True,
                 "events": webhook_events,
-                "config": self.build_webhook_config(webhook_url),
+                "config": self._build_webhook_config(webhook_url),
             }
 
             await self._send_api_request(
@@ -175,12 +132,10 @@ class GithubRestClient(AbstractGithubClient):
         logger.info(f"Found existing webhook with ID: {existing_webhook_id}")
 
         # Check if patching is necessary
-        if (self.webhook_secret and not existing_webhook_secret) or (
-            not self.webhook_secret and existing_webhook_secret
-        ):
+        if bool(self.webhook_secret) ^ bool(existing_webhook_secret):
             logger.info(f"Patching webhook {existing_webhook_id} to update secret")
 
-            config_data = self.build_webhook_config(webhook_url)
+            config_data = self._build_webhook_config(webhook_url)
 
             await self._patch_webhook(existing_webhook_id, config_data)
             return
@@ -192,10 +147,12 @@ class GithubRestClient(AbstractGithubClient):
     ) -> dict[str, Any]:
         """Fetch a single resource from GitHub API."""
 
-        if resource_type not in SINGLE_RESOURCE_ENDPOINTS:
+        if not ResourceEndpoints.supports_single_resource(resource_type):
             raise ValueError(f"Unsupported resource type: {resource_type}")
 
-        endpoint_template = SINGLE_RESOURCE_ENDPOINTS[resource_type]
+        endpoint_template = ResourceEndpoints.get_single_resource_endpoint(
+            resource_type
+        )
         endpoint = endpoint_template.format(
             org=self.organization, identifier=identifier
         )
@@ -204,7 +161,7 @@ class GithubRestClient(AbstractGithubClient):
         logger.debug(f"Fetched {resource_type} with identifier: {identifier}:")
         return response.json()
 
-    async def list_resources(  # type: ignore
+    async def get_paginated_resources(
         self,
         resource_type: str,
         query_params: Optional[dict[str, Any]] = None,
@@ -212,13 +169,15 @@ class GithubRestClient(AbstractGithubClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generic resource listing method with flexible path parameters."""
 
-        if resource_type not in LIST_RESOURCE_ENDPOINTS:
+        if not ResourceEndpoints.supports_paginated_resources(resource_type):
             raise ValueError(f"Unsupported resource type: {resource_type}")
 
         # Default path params include the organization
         (path_params := path_params or {}).setdefault("org", self.organization)
 
-        endpoint_template = LIST_RESOURCE_ENDPOINTS[resource_type]
+        endpoint_template = ResourceEndpoints.get_paginated_resources_endpoint(
+            resource_type
+        )
         endpoint = endpoint_template.format(**path_params)
 
         async for batch in self._send_paginated_request(endpoint, params=query_params):

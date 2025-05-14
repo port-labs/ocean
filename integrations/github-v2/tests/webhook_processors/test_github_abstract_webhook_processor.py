@@ -15,8 +15,6 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
-# --- Mock Processor ---
-
 
 class MockGithubAbstractProcessor(_GithubAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
@@ -34,9 +32,6 @@ class MockGithubAbstractProcessor(_GithubAbstractWebhookProcessor):
 
     async def validate_payload(self, payload: Dict[str, Any]) -> bool:
         return True
-
-
-# --- Helpers ---
 
 
 def create_gh_mock_request(body: bytes, headers: Dict[str, str]) -> Request:
