@@ -130,11 +130,11 @@ class Metrics:
         self._event_id = value
 
     @property
-    def phase_progress(self) -> str:
+    def sync_state(self) -> str:
         return self._phase_status
 
-    @phase_progress.setter
-    def phase_progress(self, value: str) -> None:
+    @sync_state.setter
+    def sync_state(self, value: str) -> None:
         self._phase_status = value
 
     @property
