@@ -33,6 +33,12 @@ class MetricType:
     DELETION_COUNT_NAME = "deletion_count"
 
 
+class MetricPhaseProgress:
+    SYNCING = "syncing"
+    DATA_INGESTED = "data ingested"
+    QUEUED = "queued"
+
+
 # Registry for core and custom metrics
 _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
     MetricType.DURATION_NAME: (
@@ -105,6 +111,7 @@ class Metrics:
         self._ocean_version: Optional[str] = None
         self.event_id = ""
         self.org_id = ""
+        self.phase_progress = MetricPhaseProgress.QUEUED
 
     @property
     def event_id(self) -> str:
@@ -121,6 +128,14 @@ class Metrics:
     @org_id.setter
     def org_id(self, value: str) -> None:
         self._org_id = value
+
+    @property
+    def phase_progress(self) -> str:
+        return self._phase_status
+
+    @phase_progress.setter
+    def phase_progress(self, value: str) -> None:
+        self._phase_status = value
 
     @property
     def integration_version(self) -> str:
@@ -259,6 +274,7 @@ class Metrics:
                     "kind": "-".join(kind_key.split("-")[:-1]),
                     "event_id": self.event_id,
                     "org_id": self.org_id,
+                    "phase_progress": self.phase_progress,
                     "metrics": metrics,
                 }
                 logger.info(f"Sending metrics to webhook {kind_key}: {event}")

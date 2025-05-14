@@ -31,7 +31,7 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.helpers.metric.metric import MetricType, MetricPhase
+from port_ocean.helpers.metric.metric import MetricPhaseProgress, MetricType, MetricPhase
 from port_ocean.helpers.metric.utils import TimeMetric
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -602,7 +602,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         ):
             ocean.metrics.event_id = event.id
             ocean.metrics.org_id = await ocean.port_client.get_org_id()
-
             # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
             # rather than the old cache
             app_config = await self.port_app_config_handler.get_port_app_config(
@@ -635,6 +634,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     # config as we might have multiple resources in the same event
                     async with resource_context(resource,index):
                         ocean.metrics.reset_metrics()
+                        ocean.metrics.phase_progress = MetricPhaseProgress.SYNCING
+
                         resource_kind_id = f"{resource.kind}-{index}"
                         task = asyncio.create_task(
                             self._register_in_batches(resource, user_agent_type)
@@ -644,7 +645,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         kind_results: tuple[list[Entity], list[Exception]] = await task
 
                         creation_results.append(kind_results)
-
+                        ocean.metrics.phase_progress = MetricPhaseProgress.DATA_INGESTED
                         await ocean.metrics.flush(kind=resource_kind_id)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
