@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.15 (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.1.14 (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+## 0.1.13 (2025-04-29)
+
+### Improvements
+
+- Removed Bitbucket from the gitops section of the data sources page
+
+
+## 0.1.12 (2025-04-28)
+
+### Improvements
+
+- Added title to the integration to be viewed in the data sources page
+
+
+## 0.1.11 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
+## 0.1.10 (2025-04-15)
+
+
+### Features
+
+- Added support for live events for file kind and file:// prefix in file
+
+
+## 0.1.9 (2025-04-15)
+
+
+### Improvements
+
+- Improved `integration.py` to handle to use custom jq processor while initializing the integration
+
+
+## 0.1.8 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.1.7 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
+## 0.1.6 (2025-04-10)
+
+
+### Improvements
+
+- Added pull request as a default resource
+- Improved descriptions for configurations defined in `spec.yaml`
+
+
 ## 0.1.5 (2025-04-08)
 
 

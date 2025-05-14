@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.122 (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.2.121 (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+## 0.2.120 (2025-04-28)
+
+
+### Improvements
+
+- Added support for handling `AWS::ResourceGroups::Group` as a special kind, allowing optional resyncing of associated group resources. This improvement facilitates the relationship between individual resources and their respective resource groups.
+
+
+## 0.2.119 (2025-04-28)
+
+
+### Improvements
+
+- Enhanced memory efficiency and processing speed across the integration
+- Added region filtering optimization to prevent unnecessary region iteration
+- Improved logging clarity by only showing relevant region information for active regions
+
+
+## 0.2.118 (2025-04-27)
+
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
+## 0.2.117 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.2.116 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
 ## 0.2.115 (2025-04-07)
 
 

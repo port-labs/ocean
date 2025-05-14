@@ -246,6 +246,32 @@ class JiraClient(OAuthClient):
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
         return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
+    async def _get_paginated_data_using_next_page_token(
+        self,
+        url: str,
+        extract_key: str | None = None,
+        initial_params: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get paginated data using token-based pagination for JQL endpoints."""
+        params = initial_params or {}
+        next_page_token = None
+
+        while True:
+            if next_page_token:
+                params["nextPageToken"] = next_page_token
+
+            response_data = await self._send_api_request("GET", url, params=params)
+            items = response_data.get(extract_key, []) if extract_key else response_data
+
+            if not items:
+                break
+
+            yield items
+
+            next_page_token = response_data.get("nextPageToken")
+            if not next_page_token:
+                break
+
     async def get_paginated_issues(
         self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -254,8 +280,8 @@ class JiraClient(OAuthClient):
         if "jql" in params:
             logger.info(f"Using JQL filter: {params['jql']}")
 
-        async for issues in self._get_paginated_data(
-            f"{self.api_url}/search", "issues", initial_params=params
+        async for issues in self._get_paginated_data_using_next_page_token(
+            f"{self.api_url}/search/jql", "issues", initial_params=params
         ):
             yield issues
 

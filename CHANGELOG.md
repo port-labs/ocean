@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.22.7 (2025-05-12)
+
+### Bug Fixes
+- Fixed case where new installation of an integration resulted with errors on installing a package
+
+## 0.22.6 (2025-05-06)
+
+### Improvements
+- Display a validation error if the mapping is not configured correctly.
+
+
+## 0.22.5 (2025-04-27)
+
+### Bug Fixes
+-Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+## 0.22.4 (2025-04-15)
+
+### Features
+-Refactored logger setup to generate unique instance IDs.
+-Renamed try_get_hostname to resolve_hostname for clarity.
+-Removed redundant instance parameter from setup_logger.
+
+## 0.22.3 (2025-04-15)
+
+### Features
+- Added inctance and hostname to logger configuration.
+- Updated setup_logger function to include inctance.
+- Generated unique inctance in run function.
+- Enhanced log format to include inctance.
+
 ## 0.22.2 (2025-04-06)
 
 ### Bug Fixes
