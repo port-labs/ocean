@@ -110,7 +110,6 @@ class Metrics:
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
         self.event_id = ""
-        self.org_id = ""
         self.phase_progress = MetricPhaseProgress.QUEUED
         self.integration_identifier = ""
 
@@ -129,14 +128,6 @@ class Metrics:
     @event_id.setter
     def event_id(self, value: str) -> None:
         self._event_id = value
-
-    @property
-    def org_id(self) -> str:
-        return self._org_id
-
-    @org_id.setter
-    def org_id(self, value: str) -> None:
-        self._org_id = value
 
     @property
     def phase_progress(self) -> str:
@@ -295,7 +286,6 @@ class Metrics:
                     "kind_identifier": kind_key,
                     "kind": "-".join(kind_key.split("-")[:-1]),
                     "event_id": self.event_id,
-                    "org_id": self.org_id,
                     "phase_progress": self.phase_progress,
                     "_id": self.integration_identifier,
                     "metrics": metrics,

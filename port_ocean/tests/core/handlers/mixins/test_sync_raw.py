@@ -61,7 +61,6 @@ async def test_sync_raw_mixin_self_dependency(
         ("entity_2", "service", {"service": "entity_2"}, False),
     ]
     entities = [create_entity(*entity_param) for entity_param in entities_params]
-    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     mock_ocean.port_client.get_current_integration = AsyncMock(return_value={"_id": "test-integration-id"})  # type: ignore
     calc_result_mock = MagicMock()
     calc_result_mock.entity_selector_diff.passed = entities
@@ -117,7 +116,6 @@ async def test_sync_raw_mixin_circular_dependency(
         ("entity_2", "service", {"service": "entity_1"}, True),
     ]
     entities = [create_entity(*entity_param) for entity_param in entities_params]
-    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     mock_ocean.port_client.get_current_integration = AsyncMock(return_value={"_id": "test-integration-id"})  # type: ignore
 
     calc_result_mock = MagicMock()
@@ -200,7 +198,6 @@ async def test_sync_raw_mixin_dependency(
         ("entity_5", "service", {"service": "entity_1"}, True),
     ]
     entities = [create_entity(*entity_param) for entity_param in entities_params]
-    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     mock_ocean.port_client.get_current_integration = AsyncMock(return_value={"_id": "test-integration-id"})  # type: ignore
 
     calc_result_mock = MagicMock()
@@ -680,7 +677,6 @@ async def test_on_resync_start_hooks_are_called(
 ) -> None:
     # Setup
     resync_start_called = False
-    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     mock_ocean.port_client.get_current_integration = AsyncMock(return_value={"_id": "test-integration-id"})  # type: ignore
 
     async def on_resync_start() -> None:
@@ -714,7 +710,6 @@ async def test_on_resync_complete_hooks_are_called_on_success(
         nonlocal resync_complete_called
         resync_complete_called = True
 
-    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     mock_ocean.port_client.get_current_integration = AsyncMock(return_value={"_id": "test-integration-id"})  # type: ignore
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete)
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
@@ -769,7 +764,6 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
 ) -> None:
     # Setup
     call_order: list[str] = []
-    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     mock_ocean.port_client.get_current_integration = AsyncMock(return_value={"_id": "test-integration-id"})  # type: ignore
 
     async def on_resync_start1() -> None:
@@ -816,7 +810,6 @@ async def test_on_resync_start_hook_error_prevents_resync(
     # Setup
     resync_complete_called = False
     resync_proceeded = False
-    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")  # type: ignore
     mock_ocean.port_client.get_current_integration = AsyncMock(return_value={"_id": "test-integration-id"})  # type: ignore
 
     async def on_resync_start() -> None:
