@@ -11,6 +11,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
+from github.core.exporters.repository_exporter import RepositoryExporter
 
 
 class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
@@ -37,6 +38,7 @@ class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
             )
 
         client = create_github_client()
+        RepositoryExporter(client)
         data_to_upsert = await client.get_single_resource(ObjectKind.REPOSITORY, name)
 
         return WebhookEventRawResults(

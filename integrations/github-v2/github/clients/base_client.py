@@ -14,11 +14,9 @@ class AbstractGithubClient(ABC):
         token: str,
         organization: str,
         github_host: str,
-        webhook_secret: str | None,
     ) -> None:
         self.organization = organization
         self.github_host = github_host
-        self.webhook_secret = webhook_secret
         self.client = http_async_client
         self.base_url = github_host.rstrip("/")
 
@@ -29,7 +27,7 @@ class AbstractGithubClient(ABC):
         }
         self.client.headers.update(self.headers)
 
-    async def _send_api_request(
+    async def send_api_request(
         self,
         endpoint: str,
         method: str = "GET",
@@ -66,25 +64,9 @@ class AbstractGithubClient(ABC):
             raise
 
     @abstractmethod
-    async def get_single_resource(
-        self, object_type: str, identifier: str
-    ) -> dict[str, Any]: ...
-
-    @abstractmethod
-    async def create_or_update_webhook(
-        self, base_url: str, webhook_events: List[str]
-    ) -> None: ...
-
-    @abstractmethod
-    def get_paginated_resources(
+    async def send_paginated_request(
         self,
-        resource_type: str,
-        query_params: Optional[dict[str, Any]] = None,
-        path_params: Optional[dict[str, str]] = None,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]: ...
-
-    @cache_iterator_result()
-    @abstractmethod
-    def get_repositories(
-        self, params: Optional[dict[str, Any]] = None
+        endpoint: str,
+        params: Optional[dict[str, Any]] = None,
+        method: str = "GET",
     ) -> AsyncGenerator[list[dict[str, Any]], None]: ...

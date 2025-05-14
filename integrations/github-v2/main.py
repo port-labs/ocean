@@ -12,6 +12,8 @@ from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
+from github.webhook.webhook_client import GithubWebhookClient
+from github.core.exporters.repository_exporter import RepositoryExporter
 
 
 @ocean.on_start()
@@ -27,7 +29,12 @@ async def on_start() -> None:
     if not base_url:
         return
 
-    client = create_github_client()
+    client = GithubWebhookClient(
+        token=ocean.integration_config["github_token"],
+        organization=ocean.integration_config["github_organization"],
+        github_host=ocean.integration_config["github_host"],
+        webhook_secret=ocean.integration_config["webhook_secret"],
+    )
 
     logger.info("Subscribing to GitHub webhooks")
     await client.create_or_update_webhook(base_url, WEBHOOK_CREATE_EVENTS)
@@ -39,11 +46,13 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     client = create_github_client()
+    exporter = RepositoryExporter(client)
 
     config = typing.cast(GithubRepositoryConfig, event.resource_config)
-    params = {"type": config.selector.type}
 
-    async for repositories in client.get_repositories(params):
+    async for repositories in exporter.get_paginated_resources(
+        selector=config.selector
+    ):
         yield repositories
 
 
