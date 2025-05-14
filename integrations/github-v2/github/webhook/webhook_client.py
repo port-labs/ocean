@@ -1,6 +1,5 @@
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from loguru import logger
-from port_ocean.utils.cache import cache_iterator_result
 import re
 from urllib.parse import urlparse, urlunparse
 from github.clients.rest_client import GithubRestClient
@@ -16,7 +15,7 @@ class GithubWebhookClient(GithubRestClient):
         :param webhook_secret: Optional secret for authenticating incoming webhooks.
         :param kwargs: Additional keyword arguments passed to the parent GitHub Rest Client.
         """
-        GithubRestClient.__init__(**kwargs)
+        GithubRestClient.__init__(self, **kwargs)
         self.webhook_secret = webhook_secret
         if self.webhook_secret:
             logger.info(

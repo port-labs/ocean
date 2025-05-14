@@ -1,5 +1,5 @@
 from core.exporters._abstract_exporter import AbstractGithubExporter
-from typing import Any, AsyncIterator, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
