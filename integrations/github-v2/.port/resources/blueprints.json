@@ -1,8 +1,8 @@
 [
     {
         "identifier": "githubRepository",
-        "title": "GitHub Repository",
-        "icon": "Github",
+        "title": "Repository",
+        "icon": "Microservice",
         "schema": {
             "properties": {
                 "description": {
@@ -31,20 +31,9 @@
                 "language": {
                     "type": "string",
                     "title": "Primary Language"
-                },
-                "forks": {
-                    "type": "number",
-                    "title": "Forks"
-                },
-                "readme": {
-                    "title": "README",
-                    "type": "string",
-                    "format": "markdown",
-                    "icon": "Book",
-                    "description": "Contents of the repository's README.md file"
                 }
             },
-            "required": ["visibility", "url"]
+            "required": []
         }
     }
 ]

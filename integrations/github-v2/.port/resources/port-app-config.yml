@@ -17,5 +17,3 @@ resources:
             defaultBranch: .default_branch
             url: .html_url
             language: .language
-            forks: .forks_count
-            readme: file://README.md

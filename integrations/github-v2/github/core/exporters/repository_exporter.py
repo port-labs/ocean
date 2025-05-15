@@ -1,12 +1,16 @@
-from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from typing import Any, TYPE_CHECKING
+from github.core.exporters.abstract_exporter import (
+    AbstractGithubExporter,
+    AbstractGithubExporterOptions,
+)
+from typing import Any, cast
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 from github.clients.base_client import AbstractGithubClient
 
-if TYPE_CHECKING:
-    from integration import GithubRepositorySelector
+
+class RepositoryExporterOptions(AbstractGithubExporterOptions):
+    type: str
 
 
 class RepositoryExporter(AbstractGithubExporter[AbstractGithubClient]):
@@ -21,11 +25,13 @@ class RepositoryExporter(AbstractGithubExporter[AbstractGithubClient]):
 
     @cache_iterator_result()
     async def get_paginated_resources(
-        self, selector: "GithubRepositorySelector"
+        self,
+        options: RepositoryExporterOptions,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
 
-        params = {"type": selector.type}
+        params = cast(dict[str, Any], options)
+
         async for repos in self.client.send_paginated_request(
             f"orgs/{self.client.organization}/repos", params
         ):
