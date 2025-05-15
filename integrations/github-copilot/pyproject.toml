@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "github-copilot"
-version = "0.1.6"
+version = "0.1.7"
 description = "Github Copilot Metrics integration for Port Ocean"
 authors = ["Niv Meshorer <nivm@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.22.7", extras = ["cli"]}
+port_ocean = {version = "^0.22.8", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
