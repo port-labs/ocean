@@ -223,6 +223,7 @@ class FolderPattern(BaseModel):
         description="Specify the repositories and branches to include under this relative path",
     )
 
+
 class AzureDevopsFolderSelector(Selector):
     """Selector for Azure DevOps folder scanning configuration"""
 
