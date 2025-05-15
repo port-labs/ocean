@@ -34,10 +34,17 @@ def dynamic_parse(value: Any, field: ModelField) -> Any:
                 return json.loads(value)
             except json.JSONDecodeError:
                 pass
-        # Handle URL type specifically
         if field.annotation == AnyUrl:
             return strip_url_trailing_slash(value)
     return value
+
+
+def _parse_obj_as(field_type: Type[Any], value: Any, is_url: bool = False) -> Any:
+    parsed_value = parse_obj_as(field_type, value)
+    if is_url and isinstance(parsed_value, str):
+        parsed_value = strip_url_trailing_slash(parsed_value)
+        parsed_value = parse_obj_as(field_type, parsed_value)
+    return parsed_value
 
 
 def default_config_factory(configurations: Any) -> Type[BaseModel]:
@@ -65,13 +72,17 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
 
         default = ... if config.required else None
         if config.default is not None:
-            default = parse_obj_as(field_type, config.default)
+            default = _parse_obj_as(
+                field_type=field_type,
+                value=config.default,
+                is_url=(config.type == "url"),
+            )
         fields[decamelize(config.name)] = (
             field_type,
             Field(default, sensitive=config.sensitive),
         )
 
-    dynamic_model = create_model(  # type: ignore
+    dynamic_model = create_model(
         __model_name="Config",
         __base__=BaseOceanModel,
         **fields,
