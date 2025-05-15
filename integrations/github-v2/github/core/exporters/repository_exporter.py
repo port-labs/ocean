@@ -1,33 +1,35 @@
 from github.core.exporters.abstract_exporter import (
     AbstractGithubExporter,
-    AbstractGithubExporterOptions,
 )
 from typing import Any, cast
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 from github.clients.base_client import AbstractGithubClient
+from typing import TypedDict
 
 
-class RepositoryExporterOptions(AbstractGithubExporterOptions):
+class ListRepositoryOptions(TypedDict):
     type: str
 
 
+class SingleRepositoryOptions(TypedDict):
+    name: str
+
+
 class RepositoryExporter(AbstractGithubExporter[AbstractGithubClient]):
-
-    async def get_resource(self, resource_id: str) -> dict[str, Any]:
-        endpoint = f"repos/{self.client.organization}/{resource_id}"
+    async def get_resource[
+        OptionT: SingleRepositoryOptions
+    ](self, options: OptionT,) -> RAW_ITEM:
+        endpoint = f"repos/{self.client.organization}/{options['name']}"
         response = await self.client.send_api_request(endpoint)
-
-        logger.debug(f"Fetched repository with identifier: {resource_id}")
-
+        logger.debug(f"Fetched repository with identifier: {options['name']}")
         return response.json()
 
     @cache_iterator_result()
-    async def get_paginated_resources(
-        self,
-        options: RepositoryExporterOptions,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        OptionsT: ListRepositoryOptions
+    ](self, options: OptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
 
         params = cast(dict[str, Any], options)

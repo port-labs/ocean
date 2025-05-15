@@ -1,15 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from github.clients.base_client import AbstractGithubClient
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from typing import TypedDict
-
-if TYPE_CHECKING:
-    pass
-
-
-class AbstractGithubExporterOptions(TypedDict):
-    pass
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 
 class AbstractGithubExporter[T: AbstractGithubClient](ABC):
@@ -18,10 +10,9 @@ class AbstractGithubExporter[T: AbstractGithubClient](ABC):
         self.client = client
 
     @abstractmethod
-    async def get_resource(self, resource_id: str) -> dict[str, Any]: ...
+    async def get_resource[AnyOption: Any](self, options: AnyOption) -> RAW_ITEM: ...
 
     @abstractmethod
-    def get_paginated_resources(
-        self,
-        options: AbstractGithubExporterOptions,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
+    def get_paginated_resources[
+        AnyOption: Any
+    ](self, options: AnyOption,) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
