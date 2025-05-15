@@ -1,4 +1,3 @@
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -6,7 +5,7 @@ from httpx import BasicAuth, Request, Response
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from jira_server.client import PAGE_SIZE, JiraServerClient
+from jira_server.client import JiraServerClient
 
 
 @pytest.fixture(autouse=True)
