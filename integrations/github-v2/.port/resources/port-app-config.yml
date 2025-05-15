@@ -8,7 +8,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .full_name
+          identifier: .name
           title: .name
           blueprint: '"githubRepository"'
           properties:
