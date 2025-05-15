@@ -184,6 +184,24 @@ MOCK_REPOSITORY_ID = "repo123"
 MOCK_BRANCH_NAME = "main"
 MOCK_COMMIT_ID = "abc123"
 
+EXPECTED_TREE_ITEMS = [
+    {
+        "objectId": "abc123",
+        "gitObjectType": "tree",
+        "path": "/src/main",
+    },
+    {
+        "objectId": "def456",
+        "gitObjectType": "tree",
+        "path": "/src/main/code",
+    },
+    {
+        "objectId": "ghi789",
+        "gitObjectType": "blob",
+        "path": "/src/main/code/file.txt",
+    },
+]
+
 
 async def async_generator(items: List[Any]) -> AsyncGenerator[Any, None]:
     for item in items:
@@ -1217,3 +1235,131 @@ def test_format_service_url(
     client = AzureDevopsClient(base_url, MOCK_PERSONAL_ACCESS_TOKEN)
     result = client._format_service_url(subdomain)
     assert result == expected_output
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree() -> None:
+    """Test getting repository tree structure."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        assert url.endswith(f"/_apis/git/repositories/{MOCK_REPOSITORY_ID}/items")
+        assert additional_params is not None
+        assert additional_params["recursionLevel"] == "oneLevel"
+
+        # Return empty list for any path other than root to prevent recursion
+        if additional_params.get("scopePath", "/") != "/":
+            yield []
+            return
+
+        yield [
+            {
+                "objectId": "abc123",
+                "gitObjectType": "tree",
+                "path": "/src/main",
+            },
+            {
+                "objectId": "def456",
+                "gitObjectType": "tree",
+                "path": "/src/main/code",
+            },
+            {
+                "objectId": "ghi789",
+                "gitObjectType": "blob",
+                "path": "/src/main/file.txt",
+            },
+        ]
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(MOCK_REPOSITORY_ID):
+            folders.extend(folder_batch)
+
+        assert len(folders) == 2  # Only tree items
+        assert all(folder["gitObjectType"] == "tree" for folder in folders)
+        assert folders[0]["path"] == "/src/main"
+        assert folders[1]["path"] == "/src/main/code"
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree_with_recursion() -> None:
+    """Test getting repository tree structure with recursion."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    call_count = 0
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        nonlocal call_count
+        assert url.endswith(f"/_apis/git/repositories/{MOCK_REPOSITORY_ID}/items")
+        assert additional_params is not None
+
+        if call_count == 0:
+            call_count += 1
+            yield [
+                {
+                    "objectId": "abc123",
+                    "gitObjectType": "tree",
+                    "path": "/src",
+                }
+            ]
+        elif call_count == 1:
+            call_count += 1
+            yield [
+                {
+                    "objectId": "def456",
+                    "gitObjectType": "tree",
+                    "path": "/src/main",
+                },
+                {
+                    "objectId": "ghi789",
+                    "gitObjectType": "tree",
+                    "path": "/src/test",
+                },
+            ]
+        else:
+            yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID, recursion_level="oneLevel", max_depth=2
+        ):
+            folders.extend(folder_batch)
+
+        assert len(folders) == 3
+        paths = {folder["path"] for folder in folders}
+        assert paths == {"/src", "/src/main", "/src/test"}
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree_will_skip_404(mock_event_context: MagicMock) -> None:
+    """Test that get_repository_tree gracefully handles 404 errors."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(MOCK_REPOSITORY_ID):
+            folders.extend(folder_batch)
+
+        assert len(folders) == 0
