@@ -1,39 +1,109 @@
 [
-    {
-        "identifier": "githubRepository",
-        "title": "Repository",
-        "icon": "Microservice",
-        "schema": {
-            "properties": {
-                "description": {
-                    "type": "string",
-                    "title": "Description"
-                },
-                "visibility": {
-                    "type": "string",
-                    "title": "Visibility",
-                    "enum": ["all", "public", "private"],
-                    "enumColors": {
-                        "all": "green",
-                        "public": "blue",
-                        "private": "red"
-                    }
-                },
-                "defaultBranch": {
-                    "type": "string",
-                    "title": "Default Branch"
-                },
-                "url": {
-                    "type": "string",
-                    "title": "URL",
-                    "format": "url"
-                },
-                "language": {
-                    "type": "string",
-                    "title": "Primary Language"
-                }
-            },
-            "required": []
+  {
+    "identifier": "githubRepository",
+    "title": "GitHub Repository",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "visibility": {
+          "type": "string",
+          "title": "Visibility",
+          "enum": ["all", "public", "private"],
+          "enumColors": {
+            "all": "green",
+            "public": "blue",
+            "private": "red"
+          }
+        },
+        "defaultBranch": {
+          "type": "string",
+          "title": "Default Branch"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url"
+        },
+        "language": {
+          "type": "string",
+          "title": "Primary Language"
+        },
+        "forks": {
+          "type": "number",
+          "title": "Forks"
+        },
+        "readme": {
+          "title": "README",
+          "type": "string",
+          "format": "markdown",
+          "icon": "Book",
+          "description": "Contents of the repository's README.md file"
         }
+      },
+      "required": ["visibility", "url"]
     }
+  },
+  {
+    "identifier": "githubWorkflow",
+    "title": "Workflow",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "active",
+            "deleted",
+            "disabled_fork",
+            "disabled_inactivity",
+            "disabled_manually"
+          ],
+          "enumColors": {
+            "active": "green",
+            "deleted": "red"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "deletedAt": {
+          "title": "Deleted At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "githubRepository",
+        "required": false,
+        "many": false
+      }
+    }
+  }
 ]
