@@ -9,10 +9,6 @@ features:
       - kind: project
       - kind: issue
 configurations:
-  - name: appHost
-    required: false
-    type: url
-    description: "This field is deprecated. Please use the OCEAN__BASE_URL field instead."
   - name: jiraServerHost
     required: true
     type: string

@@ -180,12 +180,12 @@
     },
     {
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/jira_self_hosted",
-      "envFile": "${workspaceFolder}/integrations/jira_self_hosted/.env",
+      "cwd": "${workspaceFolder}/integrations/jira_server",
+      "envFile": "${workspaceFolder}/integrations/jira_server/.env",
       "justMyCode": true,
       "name": "Run jira-self-hosted integration",
-      "program": "${workspaceFolder}/integrations/jira_self_hosted/debug.py",
-      "python": "${workspaceFolder}/integrations/jira_self_hosted/.venv/bin/python",
+      "program": "${workspaceFolder}/integrations/jira_server/debug.py",
+      "python": "${workspaceFolder}/integrations/jira_server/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },
