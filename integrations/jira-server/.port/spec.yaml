@@ -8,6 +8,7 @@ features:
     resources:
       - kind: project
       - kind: issue
+      - kind: user
 configurations:
   - name: jiraServerHost
     required: true
