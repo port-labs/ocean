@@ -79,7 +79,7 @@ class JiraServerClient:
         response.raise_for_status()
         return response.json()
 
-    # Non-paginated endpoint for all projects
+    # Projects API currently doesn't support pagination
     async def get_all_projects(self) -> list[dict[str, Any]]:
         """Get all visible projects from Jira Server (no pagination)."""
         logger.info("Getting all projects from Jira Server")
