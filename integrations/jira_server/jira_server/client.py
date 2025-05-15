@@ -103,12 +103,15 @@ class JiraServerClient:
             yield issues
 
     async def get_paginated_users(
-        self, username: str = "''"
+        self, username: str | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get users from Jira Server with pagination.
         The API endpoint is `/user/search` and accepts a 'username' query parameter.
         """
+        if not username:
+            # This is a workaround for Jira Server's API to get all users
+            username = "''"
         logger.info("Getting users from Jira Server (paginated)")
         initial_params = {"username": username}
         async for users in self._get_paginated_data(
