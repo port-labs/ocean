@@ -25,7 +25,9 @@ class JiraServerClient:
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
     ) -> Any:
-        response = await self.client.request(method=method, url=url, params=params, json=json, headers=headers)
+        response = await self.client.request(
+            method=method, url=url, params=params, json=json, headers=headers
+        )
         response.raise_for_status()
         return response.json()
 
@@ -75,7 +77,9 @@ class JiraServerClient:
         Get a single user from Jira Server by username.
         Jira Server’s API requires the legacy 'username' parameter.
         """
-        response = await self.client.get(f"{self.api_url}/user", params={"username": username})
+        response = await self.client.get(
+            f"{self.api_url}/user", params={"username": username}
+        )
         response.raise_for_status()
         return response.json()
 
@@ -98,12 +102,16 @@ class JiraServerClient:
         ):
             yield issues
 
-    async def get_paginated_users(self, username: str = "''") -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_paginated_users(
+        self, username: str = "''"
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get users from Jira Server with pagination.
         The API endpoint is `/user/search` and accepts a 'username' query parameter.
         """
         logger.info("Getting users from Jira Server (paginated)")
         initial_params = {"username": username}
-        async for users in self._get_paginated_data(f"{self.api_url}/user/search", None, initial_params):
+        async for users in self._get_paginated_data(
+            f"{self.api_url}/user/search", None, initial_params
+        ):
             yield users

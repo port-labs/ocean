@@ -23,9 +23,9 @@ class JiraIssueConfig(ResourceConfig):
 
 class JiraProjectSelector(Selector):
     expand: str = Field(
-        default="",
-        description="A comma-separated list of the parameters to expand"
+        default="", description="A comma-separated list of the parameters to expand"
     )
+
 
 class JiraProjectConfig(ResourceConfig):
     kind: Literal["project"]

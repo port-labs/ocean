@@ -43,7 +43,9 @@ async def test_client_initialization(mock_jira_server_client: JiraServerClient) 
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_success(mock_jira_server_client: JiraServerClient) -> None:
+async def test_send_api_request_success(
+    mock_jira_server_client: JiraServerClient,
+) -> None:
     """Test successful API requests."""
     with patch.object(
         mock_jira_server_client.client, "request", new_callable=AsyncMock
@@ -51,12 +53,16 @@ async def test_send_api_request_success(mock_jira_server_client: JiraServerClien
         mock_request.return_value = Response(
             200, request=Request("GET", "http://example.com"), json={"key": "value"}
         )
-        response = await mock_jira_server_client._send_api_request("GET", "http://example.com")
+        response = await mock_jira_server_client._send_api_request(
+            "GET", "http://example.com"
+        )
         assert response["key"] == "value"
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_failure(mock_jira_server_client: JiraServerClient) -> None:
+async def test_send_api_request_failure(
+    mock_jira_server_client: JiraServerClient,
+) -> None:
     """Test API request raising exceptions."""
     with patch.object(
         mock_jira_server_client.client, "request", new_callable=AsyncMock
@@ -81,7 +87,9 @@ async def test_get_single_project(mock_jira_server_client: JiraServerClient) -> 
         )
         result = await mock_jira_server_client.get_single_project("PROJ")
 
-        mock_get.assert_called_once_with(f"{mock_jira_server_client.api_url}/project/PROJ")
+        mock_get.assert_called_once_with(
+            f"{mock_jira_server_client.api_url}/project/PROJ"
+        )
         assert result == project_data
 
 
@@ -98,7 +106,9 @@ async def test_get_single_issue(mock_jira_server_client: JiraServerClient) -> No
         )
         result = await mock_jira_server_client.get_single_issue("PROJ-1")
 
-        mock_get.assert_called_once_with(f"{mock_jira_server_client.api_url}/issue/PROJ-1")
+        mock_get.assert_called_once_with(
+            f"{mock_jira_server_client.api_url}/issue/PROJ-1"
+        )
         assert result == issue_data
 
 
@@ -132,7 +142,9 @@ async def test_get_all_projects(mock_jira_server_client: JiraServerClient) -> No
         mock_request.return_value = projects_data
         result = await mock_jira_server_client.get_all_projects()
 
-        mock_request.assert_called_once_with("GET", f"{mock_jira_server_client.api_url}/project")
+        mock_request.assert_called_once_with(
+            "GET", f"{mock_jira_server_client.api_url}/project"
+        )
         assert result == projects_data
 
 
@@ -145,10 +157,16 @@ async def test_get_paginated_issues(mock_jira_server_client: JiraServerClient) -
     with patch.object(
         mock_jira_server_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = [issues_data_page1, issues_data_page2, {"issues": []}]
+        mock_request.side_effect = [
+            issues_data_page1,
+            issues_data_page2,
+            {"issues": []},
+        ]
 
         issues = []
-        async for issue_batch in mock_jira_server_client.get_paginated_issues(params={"jql": "project = PROJ"}):
+        async for issue_batch in mock_jira_server_client.get_paginated_issues(
+            params={"jql": "project = PROJ"}
+        ):
             issues.extend(issue_batch)
 
         assert len(issues) == 2
@@ -167,8 +185,14 @@ async def test_get_paginated_users(mock_jira_server_client: JiraServerClient) ->
         mock_request.side_effect = [users_page1, users_page2, []]
 
         users = []
-        async for user_batch in mock_jira_server_client.get_paginated_users(username="testuser"):
+        async for user_batch in mock_jira_server_client.get_paginated_users(
+            username="testuser"
+        ):
             users.extend(user_batch)
 
         assert len(users) == 3
-        assert users == [{"accountId": "user1"}, {"accountId": "user2"}, {"accountId": "user3"}]
+        assert users == [
+            {"accountId": "user1"},
+            {"accountId": "user2"},
+            {"accountId": "user3"},
+        ]
