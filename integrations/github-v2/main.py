@@ -13,10 +13,8 @@ from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
 from github.webhook.webhook_client import GithubWebhookClient
-from github.core.exporters.repository_exporter import (
-    RepositoryExporter,
-    ListRepositoryOptions,
-)
+from github.core.exporters.repository_exporter import RepositoryExporter
+from github.core.options import ListRepositoryOptions
 
 
 @ocean.on_start()

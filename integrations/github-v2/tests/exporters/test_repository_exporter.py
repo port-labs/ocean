@@ -2,14 +2,12 @@ from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import patch, MagicMock
 import httpx
-from github.core.exporters.repository_exporter import (
-    RepositoryExporter,
-    ListRepositoryOptions,
-    SingleRepositoryOptions,
-)
+from github.core.exporters.repository_exporter import RepositoryExporter
 from github.clients.base_client import AbstractGithubClient
 from github.utils import RepositoryType
 from port_ocean.context.event import event_context
+from github.core.options import SingleRepositoryOptions, ListRepositoryOptions
+
 
 TEST_REPOS = [
     {"id": 1, "name": "repo1", "full_name": "test-org/repo1"},

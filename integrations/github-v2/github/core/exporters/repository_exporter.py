@@ -6,15 +6,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 from github.clients.base_client import AbstractGithubClient
-from typing import TypedDict
-
-
-class ListRepositoryOptions(TypedDict):
-    type: str
-
-
-class SingleRepositoryOptions(TypedDict):
-    name: str
+from github.core.options import ListRepositoryOptions, SingleRepositoryOptions
 
 
 class RepositoryExporter(AbstractGithubExporter[AbstractGithubClient]):
