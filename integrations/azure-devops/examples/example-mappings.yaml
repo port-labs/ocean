@@ -114,36 +114,31 @@ resources:
               ""))/\(.repo.name | ascii_downcase | gsub("[ ();]"; ""))"
   - kind: folder
     selector:
-      repository_mappings:
-        - repository_name: "main-monorepo"
-          patterns:
-            - path: "services/user-service/**"
-              description: "User management microservice"
-            - path: "services/payment-service/**"
-              description: "Payment processing service"
-            - path: "services/inventory-service/**"
-              description: "Inventory management service"
-            - path: "apps/customer-portal/**"
-              description: "Customer-facing web application"
-            - path: "apps/admin-dashboard/**"
-              description: "Internal admin dashboard"
-            - path: "libs/common-utils/**"
-              description: "Shared utilities and helpers"
-            - path: "infrastructure/kubernetes/**"
-              description: "Kubernetes manifests and helm charts"
+      query: 'true'
+      folders:
+        - path: measure/
+          repos:
+            - name: habib_test_repo
+              branch: main
+        - path: fulfyldwms/
+          repos:
+            - name: habib_test_repo
+              branch: main
     port:
       entity:
         mappings:
-          identifier: .path
-          title: .path | split("/") | last
+          identifier: .objectId
+          title: .path
+          url: .__repository.url
           blueprint: '"folder"'
           properties:
+            url: .__repository.project.url
+            description: .__repository.project.description
+            project: .__repository.project.name
+            repo: .__repository.name
             path: .path
-            description: .__patterns[0].description
-            repository: .__repository.name
-            lastModified: .lastModified
-            size: .size
-            type: "folder"
+            branch: .__branch
           relations:
             repository: >-
-              "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
+              "\(.__repository.project.name | ascii_downcase | gsub("[ ();]";
+              ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
