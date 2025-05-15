@@ -3,7 +3,7 @@ icon: github
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github/
 features:
   - type: exporter
-    section: Git Providers
+    section: Git
     resources:
       - kind: repository
 configurations:
