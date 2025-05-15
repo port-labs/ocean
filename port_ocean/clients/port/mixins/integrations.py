@@ -5,7 +5,7 @@ from urllib.parse import quote_plus
 import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 
@@ -56,7 +56,7 @@ class IntegrationClientMixin:
             headers=await self.auth.headers(),
         )
 
-        handle_status_code(response, should_raise, should_log)
+        handle_port_status_code(response, should_raise, should_log)
 
         return response.json().get("integrations", [])
 
@@ -75,7 +75,7 @@ class IntegrationClientMixin:
         has_provision_feature_flag: bool = False,
     ) -> dict[str, Any]:
         response = await self._get_current_integration()
-        handle_status_code(response, should_raise, should_log)
+        handle_port_status_code(response, should_raise, should_log)
         integration = response.json().get("integration", {})
         if integration.get("config", None) or not integration:
             return integration
@@ -164,7 +164,7 @@ class IntegrationClientMixin:
             json=json,
             params=query_params,
         )
-        handle_status_code(response)
+        handle_port_status_code(response)
         if create_port_resources_origin_in_port:
             result = (
                 await self._poll_integration_until_default_provisioning_is_complete()
@@ -194,7 +194,7 @@ class IntegrationClientMixin:
             headers=headers,
             json=json,
         )
-        handle_status_code(response)
+        handle_port_status_code(response)
         return response.json()["integration"]
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
@@ -208,7 +208,7 @@ class IntegrationClientMixin:
                 "logs": logs,
             },
         )
-        handle_status_code(response, should_log=False)
+        handle_port_status_code(response, should_log=False)
         logger.debug("Logs successfully ingested")
 
     async def ingest_integration_kind_examples(
@@ -223,7 +223,7 @@ class IntegrationClientMixin:
                 "examples": sensitive_log_filter.mask_object(data, full_hide=True),
             },
         )
-        handle_status_code(response, should_log=should_log)
+        handle_port_status_code(response, should_log=should_log)
         logger.debug(f"Examples for kind {kind} successfully ingested")
 
     async def _delete_current_integration(self) -> httpx.Response:
@@ -238,5 +238,5 @@ class IntegrationClientMixin:
         self, should_raise: bool = True, should_log: bool = True
     ) -> dict[str, Any]:
         response = await self._delete_current_integration()
-        handle_status_code(response, should_raise, should_log)
+        handle_port_status_code(response, should_raise, should_log)
         return response.json()
