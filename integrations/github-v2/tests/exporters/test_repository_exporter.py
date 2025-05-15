@@ -2,9 +2,11 @@ from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import patch, MagicMock
 import httpx
-from github.core.exporters.repository_exporter import RepositoryExporter
+from github.core.exporters.repository_exporter import (
+    RepositoryExporter,
+    RepositoryExporterOptions,
+)
 from github.clients.base_client import AbstractGithubClient
-from integration import GithubRepositorySelector
 from github.utils import RepositoryType
 from port_ocean.context.event import event_context
 
@@ -35,7 +37,7 @@ class TestRepositoryExporter:
             mock_request.assert_called_once_with(f"repos/{client.organization}/repo1")
 
     async def test_get_paginated_resources(self, client: AbstractGithubClient) -> None:
-        selector = GithubRepositorySelector(query="true")
+        options = RepositoryExporterOptions(type=RepositoryType.ALL)
         exporter = RepositoryExporter(client)
 
         # Create an async mock to return the test repos
@@ -50,7 +52,7 @@ class TestRepositoryExporter:
 
             async with event_context("test_event"):
                 repos: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(selector)
+                    batch async for batch in exporter.get_paginated_resources(options)
                 ]
 
                 assert len(repos) == 1
