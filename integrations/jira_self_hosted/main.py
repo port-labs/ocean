@@ -7,12 +7,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from kinds import Kinds
 from initialize_client import create_jira_server_client
 
-
-@ocean.on_start()
-async def on_start() -> None:
-    logger.info("Starting Port Ocean integration for Jira Server")
-
-
 @ocean.on_resync(Kinds.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_server_client()

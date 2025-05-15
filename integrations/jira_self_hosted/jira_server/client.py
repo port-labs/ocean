@@ -4,8 +4,6 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-PAGE_SIZE = 50
-
 
 class ResourceKey(StrEnum):
     PROJECTS = "projects"
@@ -32,8 +30,8 @@ class JiraServerClient:
         return response.json()
 
     @staticmethod
-    def _generate_base_req_params(maxResults: int = PAGE_SIZE, startAt: int = 0) -> dict[str, Any]:
-        return {"maxResults": maxResults, "startAt": startAt}
+    def _generate_base_req_params(startAt: int = 0) -> dict[str, Any]:
+        return {"startAt": startAt}
 
     async def _get_paginated_data(
         self,
