@@ -130,7 +130,7 @@ resources:
           identifier: .objectId
           title: .path
           url: .__repository.url
-          blueprint: '"azureDevopsRepository"'
+          blueprint: '"folder"'
           properties:
             url: .__repository.project.url
             description: .__repository.project.description
@@ -138,3 +138,7 @@ resources:
             repo: .__repository.name
             path: .path
             branch: .__branch
+          relations:
+            repository: >-
+              .__repository.project.name + "/" + .__repository.name | gsub(" ";
+              "")
