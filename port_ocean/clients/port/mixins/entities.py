@@ -5,7 +5,7 @@ from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
-
+from port_ocean.context.ocean import ocean
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
 from port_ocean.clients.port.utils import (
@@ -14,6 +14,8 @@ from port_ocean.clients.port.utils import (
 )
 from port_ocean.core.models import Entity, PortAPIErrorMessage
 from starlette import status
+
+from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 
 
 class EntityClientMixin:
@@ -82,6 +84,8 @@ class EntityClientMixin:
             )
             result = response.json()
 
+            self._inc_entity_count_metrics(failed_upsert_count=1, upserted_count=0)
+
             if (
                 response.status_code == status.HTTP_404_NOT_FOUND
                 and not result.get("ok")
@@ -89,6 +93,8 @@ class EntityClientMixin:
             ):
                 # Return false to differentiate from `result_entity.is_using_search_identifier`
                 return False
+        else:
+            self._inc_entity_count_metrics(failed_upsert_count=0, upserted_count=1)
         handle_status_code(response, should_raise)
         result = response.json()
 
@@ -284,4 +290,34 @@ class EntityClientMixin:
                 "combinator": "and",
                 "rules": [{"combinator": "or", "rules": search_rules}],
             },
+        )
+
+    def _inc_entity_count_metrics(
+        self, failed_upsert_count: int, upserted_count: int
+    ) -> None:
+        """
+        Sets metrics for entity operations tracking both failed and successful upserts.
+
+        Args:
+            failed_count: Number of failed upserts
+            upserted_count: Number of successful upserts
+        """
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                MetricPhase.LoadResult.FAILED,
+            ],
+            value=failed_upsert_count,
+        )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                MetricPhase.LoadResult.LOADED,
+            ],
+            value=upserted_count,
         )
