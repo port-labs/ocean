@@ -118,9 +118,9 @@ resources:
       folders:
         - path: measure/
           repos:
-            - name: habib_test_repo
+            - name: test_repo
               branch: main
-        - path: fulfyldwms/
+        - path: fulfyldwms/**
           repos:
             - name: habib_test_repo
               branch: main
@@ -130,15 +130,8 @@ resources:
           identifier: .objectId
           title: .path
           url: .__repository.url
-          blueprint: '"folder"'
+          blueprint: '"azureDevopsRepository"'
           properties:
-            url: .__repository.project.url
-            description: .__repository.project.description
-            project: .__repository.project.name
-            repo: .__repository.name
-            path: .path
-            branch: .__branch
+            defaultBranch: .__repository.defaultBranch
           relations:
-            repository: >-
-              .__repository.project.name + "/" + .__repository.name | gsub(" ";
-              "")
+            project: .__repository.project.id | gsub(" "; "")
