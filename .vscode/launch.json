@@ -1,7 +1,6 @@
 {
   "version": "0.2.0",
   "configurations": [
-
     {
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira",
@@ -176,6 +175,17 @@
       "name": "Run github-copilot integration",
       "program": "${workspaceFolder}/integrations/github-copilot/debug.py",
       "python": "${workspaceFolder}/integrations/github-copilot/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jira-server",
+      "envFile": "${workspaceFolder}/integrations/jira-server/.env",
+      "justMyCode": true,
+      "name": "Run jira-server integration",
+      "program": "${workspaceFolder}/integrations/jira-server/debug.py",
+      "python": "${workspaceFolder}/integrations/jira-server/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },

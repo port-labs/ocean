@@ -1,0 +1,3 @@
+"""
+Jira Server integration package.
+"""
