@@ -112,3 +112,26 @@ resources:
             repository: >-
               "\(.repo.project.name | ascii_downcase | gsub("[ ();]";
               ""))/\(.repo.name | ascii_downcase | gsub("[ ();]"; ""))"
+  - kind: folder
+    selector:
+      query: 'true'
+      folders:
+        - path: measure/
+          repos:
+            - name: test_repo
+              branch: main
+        - path: fulfyldwms/**
+          repos:
+            - name: habib_test_repo
+              branch: main
+    port:
+      entity:
+        mappings:
+          identifier: .objectId
+          title: .path
+          url: .__repository.url
+          blueprint: '"azureDevopsRepository"'
+          properties:
+            defaultBranch: .__repository.defaultBranch
+          relations:
+            project: .__repository.project.id | gsub(" "; "")

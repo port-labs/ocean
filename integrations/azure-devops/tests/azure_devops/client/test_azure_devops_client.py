@@ -184,6 +184,24 @@ MOCK_REPOSITORY_ID = "repo123"
 MOCK_BRANCH_NAME = "main"
 MOCK_COMMIT_ID = "abc123"
 
+EXPECTED_TREE_ITEMS = [
+    {
+        "objectId": "abc123",
+        "gitObjectType": "tree",
+        "path": "/src/main",
+    },
+    {
+        "objectId": "def456",
+        "gitObjectType": "tree",
+        "path": "/src/main/code",
+    },
+    {
+        "objectId": "ghi789",
+        "gitObjectType": "blob",
+        "path": "/src/main/code/file.txt",
+    },
+]
+
 
 async def async_generator(items: List[Any]) -> AsyncGenerator[Any, None]:
     for item in items:
@@ -510,12 +528,9 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
                 "_get_paginated_by_top_and_skip",
                 side_effect=mock_get_paginated_by_top_and_skip,
             ):
-                # ACT
                 pull_requests: List[Dict[str, Any]] = []
                 async for pr_batch in client.generate_pull_requests():
                     pull_requests.extend(pr_batch)
-
-                # ASSERT
                 assert pull_requests == EXPECTED_PULL_REQUESTS
 
 
@@ -533,8 +548,6 @@ async def test_generate_projects_will_skip_404(
             projects: List[Dict[str, Any]] = []
             async for project_batch in client.generate_projects():
                 projects.extend(project_batch)
-
-            # ASSERT
             assert not projects
 
 
@@ -553,7 +566,6 @@ async def test_generate_teams_will_skip_404(
             async for team_batch in client.generate_teams():
                 teams.extend(team_batch)
 
-            # ASSERT
             assert not teams
 
 
@@ -577,8 +589,6 @@ async def test_generate_repositories_will_skip_404(
                 repositories: List[Dict[str, Any]] = []
                 async for repo_batch in client.generate_repositories():
                     repositories.extend(repo_batch)
-
-                # ASSERT
                 assert not repositories
 
 
@@ -605,8 +615,6 @@ async def test_generate_members_will_skip_404(
             members: List[Dict[str, Any]] = []
             async for member_batch in client.generate_members():
                 members.extend(member_batch)
-
-            # ASSERT
             assert not members
 
 
@@ -624,8 +632,6 @@ async def test_generate_users_will_skip_404(
             users: List[Dict[str, Any]] = []
             async for user_batch in client.generate_users():
                 users.extend(user_batch)
-
-            # ASSERT
             assert not users
 
 
@@ -660,7 +666,6 @@ async def test_generate_pull_requests_will_skip_404(
             async for pr_batch in client.generate_pull_requests():
                 pull_requests.extend(pr_batch)
 
-            # ASSERT
             assert not pull_requests
 
 
@@ -687,7 +692,6 @@ async def test_generate_pipelines_will_skip_404(
             async for pipeline_batch in client.generate_pipelines():
                 pipelines.extend(pipeline_batch)
 
-            # ASSERT
             assert not pipelines
 
 
@@ -722,7 +726,6 @@ async def test_generate_repository_policies_will_skip_404(
             async for policy_batch in client.generate_repository_policies():
                 policies.extend(policy_batch)
 
-            # ASSERT
             assert not policies
 
 
@@ -749,7 +752,6 @@ async def test_generate_releases_will_skip_404(
             async for release_batch in client.generate_releases():
                 releases.extend(release_batch)
 
-            # ASSERT
             assert not releases
 
 
@@ -762,7 +764,6 @@ async def test_generate_work_items_will_skip_404(mock_event_context: MagicMock) 
     client = AzureDevopsClient("https://fake_org_url.com", "fake_pat")
 
     async def mock_make_request(**kwargs: Any) -> Response:
-        # Return a 404 every time
         return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
 
     async with event_context("test_event"):
@@ -770,8 +771,6 @@ async def test_generate_work_items_will_skip_404(mock_event_context: MagicMock) 
             collected_items: List[Dict[str, Any]] = []
             async for item_batch in client.generate_work_items(wiql=None, expand="all"):
                 collected_items.extend(item_batch)
-
-            # Since 404 is hit, we expect an empty result (skip).
             assert not collected_items
 
 
@@ -829,7 +828,6 @@ async def test_generate_subscriptions_webhook_events_will_skip_404(
             )
 
             events = await client.generate_subscriptions_webhook_events()
-            # If we follow the same pattern, that means no exceptions, returns []:
             assert events == []
 
 
@@ -1217,3 +1215,187 @@ def test_format_service_url(
     client = AzureDevopsClient(base_url, MOCK_PERSONAL_ACCESS_TOKEN)
     result = client._format_service_url(subdomain)
     assert result == expected_output
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree() -> None:
+    """Test getting repository tree structure."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        assert url.endswith(f"/_apis/git/repositories/{MOCK_REPOSITORY_ID}/items")
+        assert additional_params is not None
+        assert additional_params["recursionLevel"] == "oneLevel"
+
+        if additional_params.get("scopePath", "/") != "/":
+            yield []
+            return
+
+        yield [
+            {
+                "objectId": "abc123",
+                "gitObjectType": "tree",
+                "path": "/src/main",
+            },
+            {
+                "objectId": "def456",
+                "gitObjectType": "tree",
+                "path": "/src/main/code",
+            },
+            {
+                "objectId": "ghi789",
+                "gitObjectType": "blob",
+                "path": "/src/main/code/file.txt",
+            },
+        ]
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(MOCK_REPOSITORY_ID):
+            folders.extend(folder_batch)
+
+        assert len(folders) == 2  # Only tree items
+        assert all(folder["gitObjectType"] == "tree" for folder in folders)
+        assert folders[0]["path"] == "/src/main"
+        assert folders[1]["path"] == "/src/main/code"
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree_with_recursion() -> None:
+    """Test getting repository tree structure with recursion."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    call_count = 0
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        nonlocal call_count
+        assert url.endswith(f"/_apis/git/repositories/{MOCK_REPOSITORY_ID}/items")
+        assert additional_params is not None
+        assert additional_params["recursionLevel"] == "full"
+
+        yield [
+            {
+                "objectId": "abc123",
+                "gitObjectType": "tree",
+                "path": "/src",
+            },
+            {
+                "objectId": "def456",
+                "gitObjectType": "tree",
+                "path": "/src/main",
+            },
+            {
+                "objectId": "ghi789",
+                "gitObjectType": "tree",
+                "path": "/src/test",
+            },
+        ]
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID, recursion_level="full"
+        ):
+            folders.extend(folder_batch)
+
+        assert len(folders) == 3
+        paths = {folder["path"] for folder in folders}
+        assert paths == {"/src", "/src/main", "/src/test"}
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree_will_skip_404(mock_event_context: MagicMock) -> None:
+    """Test that get_repository_tree gracefully handles 404 errors."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(MOCK_REPOSITORY_ID):
+            folders.extend(folder_batch)
+
+        assert len(folders) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree_with_deep_path() -> None:
+    """Test getting repository tree structure with deep path using **."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        assert url.endswith(f"/_apis/git/repositories/{MOCK_REPOSITORY_ID}/items")
+        assert additional_params is not None
+        assert additional_params["recursionLevel"] == "full"
+        assert additional_params["scopePath"] == "/src/**/*.py"
+
+        yield [
+            {
+                "objectId": "abc123",
+                "gitObjectType": "tree",
+                "path": "/src/main",
+            },
+            {
+                "objectId": "def456",
+                "gitObjectType": "tree",
+                "path": "/src/main/api",
+            },
+            {
+                "objectId": "ghi789",
+                "gitObjectType": "blob",
+                "path": "/src/main/api/app.py",
+            },
+            {
+                "objectId": "jkl012",
+                "gitObjectType": "tree",
+                "path": "/src/test",
+            },
+            {
+                "objectId": "mno345",
+                "gitObjectType": "blob",
+                "path": "/src/test/test_app.py",
+            },
+            {
+                "objectId": "pqr678",
+                "gitObjectType": "blob",
+                "path": "/src/main/utils.py",
+            },
+        ]
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID, path="/src/**/*.py", recursion_level="full"
+        ):
+            folders.extend(folder_batch)
+
+        # Should only get tree (folder) items
+        assert len(folders) == 3
+        paths = {folder["path"] for folder in folders}
+        assert paths == {"/src/main", "/src/main/api", "/src/test"}
+        assert all(folder["gitObjectType"] == "tree" for folder in folders)
