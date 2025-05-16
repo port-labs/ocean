@@ -9,6 +9,9 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from github.core.exporters.workflow_runs_exporter import WorkflowRunExporter
 from integration import GithubWorkflowConfig, GithubWorkflowRunConfig
+from github.webhook.webhook_processors.workflow_run_webhook_processor import (
+    WorkflowRunWebhookProcessor,
+)
 from github.clients.client_factory import create_github_client
 from github.clients.utils import integration_config
 from github.helpers.utils import ObjectKind
@@ -105,3 +108,4 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", WorkflowRunWebhookProcessor)

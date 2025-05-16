@@ -9,9 +9,9 @@ from github.core.options import ListWorkflowOptions, SingleWorkflowOptions
 
 
 class WorkflowRunExporter(AbstractGithubExporter[AbstractGithubClient]):
-    async def get_resource[
-        OptionT: SingleWorkflowOptions
-    ](self, options: OptionT) -> RAW_ITEM:
+    async def get_resource[OptionT: SingleWorkflowOptions](
+        self, options: OptionT
+    ) -> RAW_ITEM:
         endpoint = f"repos/{self.client.organization}/{options['repo']}/actions/runs/{options['resource_id']}"
         response = await self.client.send_api_request(endpoint)
 
@@ -20,9 +20,9 @@ class WorkflowRunExporter(AbstractGithubExporter[AbstractGithubClient]):
         return response.json()
 
     @cache_iterator_result()
-    async def get_paginated_resources[
-        OptionT: ListWorkflowOptions
-    ](self, options: OptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[OptionT: ListWorkflowOptions](
+        self, options: OptionT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
 
         url = f"repos/{self.client.organization}/{options['repo']}/actions/runs"
@@ -31,6 +31,6 @@ class WorkflowRunExporter(AbstractGithubExporter[AbstractGithubClient]):
             # So let's do some type casting here rather than force every other method to handle a rare case
             workflow_batch = cast(dict[str, Any | list[dict[str, Any]]], workflows)
             logger.info(
-                f"fetched batch of {workflow_batch['total_count']} workflows from repository - {options['repo']}"
+                f"fetched batch of {workflow_batch['total_count']} workflow runs from repository - {options['repo']}"
             )
             yield workflow_batch["workflow_runs"]
