@@ -7,7 +7,9 @@ class SingleRepositoryOptions(TypedDict):
     name: str
 
 
-class ListRepositoryOptions(TypedDict):
-    """Options for listing repositories."""
+class ListWorkflowOptions(TypedDict):
+    repo: str
 
-    type: str
+
+class SingleWorkflowOptions(ListWorkflowOptions):
+    resource_id: str

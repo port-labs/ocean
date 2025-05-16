@@ -6,7 +6,7 @@ features:
     section: Git
     resources:
       - kind: repository
-      - kind: workflows
+      - kind: workflow
 configurations:
   - name: githubHost
     required: false

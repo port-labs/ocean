@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Dict, List, Optional, cast
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from github.clients.base_client import AbstractGithubClient
 from loguru import logger
