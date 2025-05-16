@@ -10,8 +10,8 @@ from github.core.options import ListWorkflowOptions, SingleWorkflowOptions
 
 class WorkflowRunExporter(AbstractGithubExporter[AbstractGithubClient]):
     async def get_resource[
-        OptionT: SingleWorkflowOptions
-    ](self, options: OptionT) -> RAW_ITEM:
+        ExporterOptionsT: SingleWorkflowOptions
+    ](self, options: ExporterOptionsT) -> RAW_ITEM:
         endpoint = f"repos/{self.client.organization}/{options['repo']}/actions/runs/{options['resource_id']}"
         response = await self.client.send_api_request(endpoint)
 
@@ -21,8 +21,8 @@ class WorkflowRunExporter(AbstractGithubExporter[AbstractGithubClient]):
 
     @cache_iterator_result()
     async def get_paginated_resources[
-        OptionT: ListWorkflowOptions
-    ](self, options: OptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        ExporterOptionsT: ListWorkflowOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
 
         url = f"repos/{self.client.organization}/{options['repo']}/actions/runs"
