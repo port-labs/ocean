@@ -20,8 +20,8 @@ class RepositoryExporter(AbstractGithubExporter[AbstractGithubClient]):
 
     @cache_iterator_result()
     async def get_paginated_resources[
-        OptionsT: ListRepositoryOptions
-    ](self, options: OptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        RepoOptionsT: ListRepositoryOptions
+    ](self, options: RepoOptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
 
         params = cast(dict[str, Any], options)
