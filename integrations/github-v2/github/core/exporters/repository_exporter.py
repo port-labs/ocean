@@ -11,8 +11,8 @@ from github.core.options import ListRepositoryOptions, SingleRepositoryOptions
 
 class RepositoryExporter(AbstractGithubExporter[AbstractGithubClient]):
     async def get_resource[
-        OptionT: SingleRepositoryOptions
-    ](self, options: OptionT,) -> RAW_ITEM:
+        RepoOptionsT: SingleRepositoryOptions
+    ](self, options: RepoOptionsT,) -> RAW_ITEM:
         endpoint = f"repos/{self.client.organization}/{options['name']}"
         response = await self.client.send_api_request(endpoint)
         logger.debug(f"Fetched repository with identifier: {options['name']}")
