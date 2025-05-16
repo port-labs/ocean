@@ -1,0 +1,123 @@
+resources:
+  - kind: project
+    selector:
+      projectsFilter: []
+      pullRequestState: OPEN
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          properties:
+            public: .public
+            type: .type
+            description: .description
+            link: .links.self[0].href
+
+  - kind: repository
+    selector:
+      projectsFilter: []
+      pullRequestState: OPEN
+    port:
+      entity:
+        mappings:
+          identifier: .slug
+          title: .name
+          properties:
+            description: .description
+            state: .state
+            forkable: .forkable
+            public: .public
+            link: .links.self[0].href
+            documentation: .readme
+          relations:
+            project: .project.key
+            latestCommitAuthor: .latest_commit.author.emailAddress
+
+  - kind: pull_request
+    selector:
+      projectsFilter: []
+      pullRequestState: OPEN
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          properties:
+            created_on: .createdDate | (tonumber / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            updated_on: .updatedDate | (tonumber / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            merge_commit: .fromRef.latestCommit
+            state: .state
+            owner: .author.user.emailAddress
+            link: .links.self[0].href
+            destination: .toRef.displayId
+            source: .fromRef.displayId
+            mergedAt: .closedDate | (tonumber / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            reviewers: "[.reviewers[].user.emailAddress]"
+          relations:
+            repository: .toRef.repository.slug
+            participants: "[.participants[].user.emailAddress]"
+
+  - kind: user
+    selector:
+      projectsFilter: []
+      pullRequestState: OPEN
+    port:
+      entity:
+        mappings:
+          identifier: .emailAddress
+          title: .displayName
+          properties:
+            username: .name
+            url: .links.self[0].href
+
+webhooks:
+  - identifier: bitbucket-server-webhook
+    title: Bitbucket Server Webhook
+    description: Webhook for receiving Bitbucket Server events
+    icon: BitBucket
+    mappings:
+      - blueprint: bitbucketProject
+        filter: .body.eventKey == "project:modified"
+        entity:
+          identifier: .body.new.key | tostring
+          title: .body.new.name
+          properties:
+            public: .body.new.public
+            type: .body.new.type
+            description: .body.new.description
+            link: .body.new.links.self[0].href
+
+      - blueprint: bitbucketRepository
+        filter: .body.eventKey == "repo:modified"
+        entity:
+          identifier: .body.new.slug
+          title: .body.new.name
+          properties:
+            description: .body.new.description
+            state: .body.new.state
+            forkable: .body.new.forkable
+            public: .body.new.public
+            link: .body.new.links.self[0].href
+          relations:
+            project: .body.new.project.key
+
+      - blueprint: bitbucketPullrequest
+        filter: .body.eventKey | startswith("pr:")
+        entity:
+          identifier: .body.pullRequest.id | tostring
+          title: .body.pullRequest.title
+          properties:
+            created_on: .body.pullRequest.createdDate | (tonumber / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            updated_on: .body.pullRequest.updatedDate | (tonumber / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            merge_commit: .body.pullRequest.fromRef.latestCommit
+            state: .body.pullRequest.state
+            owner: .body.pullRequest.author.user.emailAddress
+            link: .body.pullRequest.links.self[0].href
+            destination: .body.pullRequest.toRef.displayId
+            source: .body.pullRequest.fromRef.displayId
+            mergedAt: .body.pullRequest.closedDate | (tonumber / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            reviewers: "[.body.pullRequest.reviewers[].user.emailAddress]"
+          relations:
+            repository: .body.pullRequest.toRef.repository.slug
+            participants: "[.body.pullRequest.participants[].user.emailAddress]"
