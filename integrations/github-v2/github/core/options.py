@@ -11,3 +11,17 @@ class SingleRepositoryOptions(TypedDict):
     """Options for fetching a single repository."""
 
     name: str
+
+
+class SingleIssueOptions(TypedDict):
+    """Options for fetching a single issue."""
+
+    repo_name: str
+    issue_number: int
+
+
+class ListIssueOptions(TypedDict):
+    """Options for listing issues."""
+
+    repo_name: str
+    state: str

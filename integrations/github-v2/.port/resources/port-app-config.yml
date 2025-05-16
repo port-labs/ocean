@@ -17,3 +17,28 @@ resources:
             defaultBranch: .default_branch
             url: .html_url
             language: .language
+
+
+  - kind: issue
+    selector:
+      query: ".pull_request == null"
+      state: "open"
+    port:
+      entity:
+        mappings:
+          identifier: ".repo + (.id|tostring)"
+          title: ".title"
+          blueprint: '"githubIssue"'
+          properties:
+            creator: ".user.login"
+            assignees: "[.assignees[].login]"
+            labels: "[.labels[].name]"
+            status: ".state"
+            createdAt: ".created_at"
+            closedAt: ".closed_at"
+            updatedAt: ".updated_at"
+            description: ".body"
+            issueNumber: ".number"
+            link: ".html_url"
+          relations:
+            repository: ".repo"

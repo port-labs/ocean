@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.2 (2025-05-16)
+
+### Features
+
+- Added support for GitHub Issues with state and label filtering
+- Implemented issue webhook processor for real-time updates
+- Added comprehensive test coverage for issue resources
+
+
 ## 0.1.0-dev (2025-05-12)
 
 ### Features
