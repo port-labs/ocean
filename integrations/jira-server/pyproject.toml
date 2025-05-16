@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "jira_server"
+name = "jira-server"
 version = "0.1.0-beta"
 description = "Integration with Jira Software"
 authors = ["Matar Peles <matar@getport.io>"]
