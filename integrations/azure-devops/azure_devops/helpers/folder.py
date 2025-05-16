@@ -4,13 +4,14 @@ from azure_devops.client.azure_devops_client import AzureDevopsClient
 
 
 async def process_folder_patterns(
-    folder_patterns: list[FolderPattern], client: AzureDevopsClient
+    folder_patterns: list[FolderPattern],
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     """Process folder patterns and yield matching folders.
     Args:
         folder_patterns: List of folder patterns to process
         client: Azure DevOps client instance
     """
+    client = AzureDevopsClient.create_from_ocean_config()
     async for repositories in client.generate_repositories():
         for repo in repositories:
             for folder_pattern in folder_patterns:

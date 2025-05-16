@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from typing import Any, AsyncGenerator, Dict, List
 
 from azure_devops.helpers.folder import process_folder_patterns
@@ -64,38 +64,44 @@ async def test_process_folder_patterns(
     mock_client.generate_repositories = mock_generate_repositories
     mock_client.get_repository_folders = mock_get_repository_folders
 
-    results: List[Dict[str, Any]] = []
-    async for folders in process_folder_patterns(sample_folder_patterns, mock_client):
-        results.extend(folders)
+    with patch.object(
+        AzureDevopsClient, "create_from_ocean_config", return_value=mock_client
+    ):
+        results: List[Dict[str, Any]] = []
+        async for folders in process_folder_patterns(sample_folder_patterns):
+            results.extend(folders)
 
-    assert len(results) > 0
+        assert len(results) > 0
 
-    paths = {folder["path"] for folder in results}
-    assert "/src/main" in paths
-    assert "/docs" in paths
-    repo_branches = {
-        (folder["__repository"]["name"], folder["__branch"]) for folder in results
-    }
-    expected_repo_branches = {
-        ("repo1", "main"),
-        ("repo2", "main"),
-        ("repo3", "develop"),
-    }
-    assert repo_branches.intersection(expected_repo_branches)
+        paths = {folder["path"] for folder in results}
+        assert "/src/main" in paths
+        assert "/docs" in paths
+        repo_branches = {
+            (folder["__repository"]["name"], folder["__branch"]) for folder in results
+        }
+        expected_repo_branches = {
+            ("repo1", "main"),
+            ("repo2", "main"),
+            ("repo3", "develop"),
+        }
+        assert repo_branches.intersection(expected_repo_branches)
 
-    patterns = {folder["__pattern"] for folder in results}
-    assert "/src/main" in patterns
-    assert "/docs" in patterns
+        patterns = {folder["__pattern"] for folder in results}
+        assert "/src/main" in patterns
+        assert "/docs" in patterns
 
 
 @pytest.mark.asyncio
 async def test_process_folder_patterns_empty_folders() -> None:
     """Test with empty folder patterns"""
     mock_client = AsyncMock(spec=AzureDevopsClient)
-    results = []
-    async for folders in process_folder_patterns([], mock_client):
-        results.extend(folders)
-    assert len(results) == 0
+    with patch.object(
+        AzureDevopsClient, "create_from_ocean_config", return_value=mock_client
+    ):
+        results = []
+        async for folders in process_folder_patterns([]):
+            results.extend(folders)
+        assert len(results) == 0
 
 
 @pytest.mark.asyncio
@@ -116,10 +122,14 @@ async def test_process_folder_patterns_no_matching_repos() -> None:
         yield []
 
     mock_client.generate_repositories = mock_generate_repositories
-    results = []
-    async for folders in process_folder_patterns(patterns, mock_client):
-        results.extend(folders)
-    assert len(results) == 0
+
+    with patch.object(
+        AzureDevopsClient, "create_from_ocean_config", return_value=mock_client
+    ):
+        results = []
+        async for folders in process_folder_patterns(patterns):
+            results.extend(folders)
+        assert len(results) == 0
 
 
 @pytest.mark.asyncio
@@ -146,7 +156,10 @@ async def test_process_folder_patterns_no_matching_folders() -> None:
     mock_client.generate_repositories = mock_generate_repositories
     mock_client.get_repository_folders = mock_get_repository_folders
 
-    results = []
-    async for folders in process_folder_patterns(patterns, mock_client):
-        results.extend(folders)
-    assert len(results) == 0
+    with patch.object(
+        AzureDevopsClient, "create_from_ocean_config", return_value=mock_client
+    ):
+        results = []
+        async for folders in process_folder_patterns(patterns):
+            results.extend(folders)
+        assert len(results) == 0
