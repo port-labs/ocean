@@ -6,7 +6,7 @@ from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.utils.misc import get_time
 
 
@@ -58,7 +58,7 @@ class PortAuthentication:
             json=credentials,
             extensions={"retryable": True},
         )
-        handle_status_code(response)
+        handle_port_status_code(response)
         return TokenResponse(**response.json())
 
     def user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
