@@ -1,13 +1,13 @@
 from typing import cast
+import typing
 from loguru import logger
-from github.core.exporters.workflows_exporter import WorkflowExporter
-from integration import GithubRepositoryConfig, GithubWorkflowConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
+from integration import GithubWorkflowConfig
 from github.clients.client_factory import create_github_client
 from github.clients.utils import integration_config
 from github.helpers.utils import ObjectKind
@@ -20,6 +20,7 @@ from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.options import ListRepositoryOptions
 from typing import TYPE_CHECKING
 from port_ocean.context.event import event
+from github.core.exporters.workflows_exporter import WorkflowExporter
 
 if TYPE_CHECKING:
     from integration import GithubPortAppConfig
@@ -67,7 +68,7 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all workflows for specified Github repositories"""
     logger.info(f"Starting resync for kind: {kind}")
     client = create_github_client()
-    repo_exporter = RepositoryExporter(client)
+    repo_exporter = RestRepositoryExporter(client)
     workflow_exporter = WorkflowExporter(client)
 
     config = typing.cast(GithubWorkflowConfig, event.resource_config)

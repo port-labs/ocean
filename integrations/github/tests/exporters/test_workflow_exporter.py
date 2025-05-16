@@ -3,9 +3,11 @@ from httpx import Response
 import pytest
 from unittest.mock import MagicMock, patch
 from github.core.exporters.workflows_exporter import (
-    SingleWorkflowOptions,
     WorkflowExporter,
+)
+from github.core.options import (
     ListWorkflowOptions,
+    SingleWorkflowOptions,
 )
 from github.clients.base_client import AbstractGithubClient
 from port_ocean.context.event import event_context
