@@ -28,10 +28,8 @@ class WorkflowExporter(AbstractGithubExporter[AbstractGithubClient]):
         """Get all workflows in repository with pagination."""
 
         url = f"repos/{self.client.organization}/{options['repo']}/actions/workflows"
-        async for workflows in self.client.send_paginated_request(url, {}):
-            # Unlike almost everywhere else, the result returned by workflows is not actually an array
-            # So let's do some type casting here rather than force every other method to handle a rare case
-            workflow_batch = cast(dict[str, Any | list[dict[str, Any]]], workflows)
+        async for workflows in self.client.send_paginated_request(url):
+            workflow_batch = cast(dict[str, Any], workflows)
             logger.info(
                 f"fetched batch of {workflow_batch['total_count']} workflows from repository - {options['repo']}"
             )
