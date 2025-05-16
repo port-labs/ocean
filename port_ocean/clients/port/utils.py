@@ -62,12 +62,17 @@ def get_internal_http_client(port_client: "PortClient") -> httpx.AsyncClient:
     return _port_internal_async_client
 
 
-def handle_status_code(
+def handle_port_status_code(
     response: httpx.Response, should_raise: bool = True, should_log: bool = True
 ) -> None:
     if should_log and response.is_error:
-        logger.error(
-            f"Request failed with status code: {response.status_code}, Error: {response.text}"
-        )
+        error_message = f"Request failed with status code: {response.status_code}, Error: {response.text}"
+        if response.status_code >= 500 and response.headers.get("x-trace-id"):
+            logger.error(
+                error_message,
+                trace_id=response.headers.get("x-trace-id"),
+            )
+        else:
+            logger.error(error_message)
     if should_raise:
         response.raise_for_status()

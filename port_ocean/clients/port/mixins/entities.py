@@ -9,7 +9,7 @@ from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
 from port_ocean.clients.port.utils import (
-    handle_status_code,
+    handle_port_status_code,
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
 )
 from port_ocean.core.models import Entity, PortAPIErrorMessage
@@ -89,7 +89,7 @@ class EntityClientMixin:
             ):
                 # Return false to differentiate from `result_entity.is_using_search_identifier`
                 return False
-        handle_status_code(response, should_raise)
+        handle_port_status_code(response, should_raise)
         result = response.json()
 
         result_entity = (
@@ -192,7 +192,7 @@ class EntityClientMixin:
                     f"blueprint: {entity.blueprint}"
                 )
 
-            handle_status_code(response, should_raise)
+            handle_port_status_code(response, should_raise)
 
     async def batch_delete_entities(
         self,
@@ -252,7 +252,7 @@ class EntityClientMixin:
             },
             extensions={"retryable": True},
         )
-        handle_status_code(response)
+        handle_port_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
     async def search_batch_entities(
