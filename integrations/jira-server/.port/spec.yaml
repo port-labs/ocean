@@ -1,0 +1,25 @@
+title: Jira Server (Self Hosted)
+description: Jira Server integration for Port Ocean
+icon: Jira
+docs: https://docs.port.io/build-your-software-catalog/custom-integration/webhook/examples/jira-server
+features:
+  - type: exporter
+    section: Project management
+    resources:
+      - kind: project
+      - kind: issue
+      - kind: user
+configurations:
+  - name: jiraServerHost
+    required: true
+    type: string
+    description: "The URL of your Jira, for example: https://example.atlassian.net"
+  - name: username
+    required: true
+    type: string
+    description: "The username of the user used to query Jira Server"
+    sensitive: true
+  - name: password
+    required: true
+    type: string
+    sensitive: true
