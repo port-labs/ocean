@@ -21,8 +21,8 @@ class PullRequestExporter(AbstractGithubExporter[AbstractGithubClient]):
         return response.json()
 
     async def get_paginated_resources[
-        OptionT: ListPullRequestOptions
-    ](self, options: OptionT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        PROptionsT: ListPullRequestOptions
+    ](self, options: PROptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all pull requests in the organization's repositories with pagination."""
 
         repo_name = options["repo_name"]
