@@ -2,7 +2,7 @@ import asyncio
 import functools
 import json
 from typing import Any, AsyncGenerator, Optional, List
-from httpx import HTTPStatusError, Response
+from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -723,7 +723,6 @@ class AzureDevopsClient(HTTPBaseClient):
         repository_id: str,
         path: str = "/",
         recursion_level: str = "oneLevel",  # Options: none, oneLevel, full
-        max_depth: int = 3,  # Limit recursion depth
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch repository folder structure with rate limit awareness.
 
@@ -731,7 +730,6 @@ class AzureDevopsClient(HTTPBaseClient):
             repository_id: The ID of the repository to scan
             path: The folder path to start scanning from
             recursion_level: How deep to scan (none, oneLevel, full)
-            max_depth: Maximum folder depth to traverse
 
         Yields:
             Lists of folder information dictionaries
@@ -757,25 +755,12 @@ class AzureDevopsClient(HTTPBaseClient):
                 if folders:
                     yield folders
 
-                    # If we need deeper recursion and haven't hit max depth
-                    if recursion_level == "oneLevel" and max_depth > 1:
-                        for folder in folders:
-                            folder_path = folder.get("path", "").lstrip("/")
-                            async for subfolder_batch in self.get_repository_tree(
-                                repository_id,
-                                path=folder_path,
-                                recursion_level="oneLevel",
-                                max_depth=max_depth - 1,
-                            ):
-                                yield subfolder_batch
-
         except Exception as e:
             logger.error(
                 f"Error fetching folder tree for repository {repository_id}: {str(e)}"
             )
             raise
 
-    @cache_iterator_result()
     async def get_repository_folders(
         self,
         repository_id: str,
@@ -810,20 +795,3 @@ class AzureDevopsClient(HTTPBaseClient):
 
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
-
-    async def _check_rate_limits(self, response: Response) -> None:
-        """Monitor rate limit headers from Azure DevOps API.
-
-        Args:
-            response: The response from an API call
-        """
-        remaining = response.headers.get("X-RateLimit-Remaining")
-        if remaining and int(remaining) < 1000:  # Warning threshold
-            logger.warning(
-                f"Azure DevOps API rate limit running low: {remaining} requests remaining"
-            )
-
-        # If rate limit is critically low, add delay
-        if remaining and int(remaining) < 100:
-            logger.warning("Rate limit critically low, adding delay between requests")
-            await asyncio.sleep(1)  # Add 1 second delay

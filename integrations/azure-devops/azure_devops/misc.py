@@ -44,7 +44,7 @@ class AzureDevopsProjectResourceConfig(ResourceConfig):
     class AzureDevopsSelector(Selector):
         query: str
         default_team: bool = Field(
-            default=True,
+            default=False,
             description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
             alias="defaultTeam",
         )
