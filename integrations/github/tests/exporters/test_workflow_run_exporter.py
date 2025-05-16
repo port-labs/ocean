@@ -90,5 +90,5 @@ async def test_get_paginated_resources(client: AbstractGithubClient) -> None:
             assert wf[0] == TEST_DATA["workflow_runs"]
 
         mock_request.assert_called_once_with(
-            f"repos/{client.organization}/{options['repo']}/actions/runs", {}
+            f"repos/{client.organization}/{options['repo']}/actions/runs"
         )

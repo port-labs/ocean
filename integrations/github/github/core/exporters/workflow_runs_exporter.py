@@ -2,7 +2,6 @@ from typing import Any, cast
 from loguru import logger
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-from port_ocean.utils.cache import cache_iterator_result
 from github.clients.base_client import AbstractGithubClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import ListWorkflowOptions, SingleWorkflowOptions
@@ -19,7 +18,6 @@ class WorkflowRunExporter(AbstractGithubExporter[AbstractGithubClient]):
 
         return response.json()
 
-    @cache_iterator_result()
     async def get_paginated_resources[
         ExporterOptionsT: ListWorkflowOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:

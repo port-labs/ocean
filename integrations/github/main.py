@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, TYPE_CHECKING
 import typing
 from loguru import logger
 from port_ocean.context.event import event
@@ -21,9 +21,7 @@ from github.webhook.webhook_processors.repository_webhook_processor import (
 )
 from github.webhook.webhook_client import GithubWebhookClient
 from github.core.exporters.repository_exporter import RestRepositoryExporter
-from github.core.options import ListRepositoryOptions
-from typing import TYPE_CHECKING
-from port_ocean.context.event import event
+from github.core.options import ListRepositoryOptions, ListWorkflowOptions
 from github.core.exporters.workflows_exporter import WorkflowExporter
 
 if TYPE_CHECKING:
@@ -80,7 +78,9 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for repositories in repo_exporter.get_paginated_resources(options=options):
         tasks = (
-            workflow_exporter.get_paginated_resources({"repo": repo["name"]})
+            workflow_exporter.get_paginated_resources(
+                options=ListWorkflowOptions(repo=repo["name"])
+            )
             for repo in repositories
         )
         async for workflows in stream_async_iterators_tasks(*tasks):
@@ -100,7 +100,9 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for repositories in repo_exporter.get_paginated_resources(options=options):
         tasks = (
-            workflow_run_exporter.get_paginated_resources({"repo": repo["name"]})
+            workflow_run_exporter.get_paginated_resources(
+                options=ListWorkflowOptions(repo=repo["name"])
+            )
             for repo in repositories
         )
         async for runs in stream_async_iterators_tasks(*tasks):
