@@ -25,3 +25,12 @@ configurations:
     required: false
     type: url
     description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Octopus Deploy.
+  - name: webhookSecret
+    type: string
+    sensitive: true
+    required: false
+    description: The secret token used to authenticate incoming webhook requests from Octopus. This is required if webhook authentication is enabled in Octopus to verify the integrity of received payloads.
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
