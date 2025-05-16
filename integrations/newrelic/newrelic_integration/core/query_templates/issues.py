@@ -49,3 +49,19 @@ LIST_ISSUES_QUERY = """
   }
 }
 """
+
+GET_ISSUE_ENTITY_GUIDS_QUERY = """
+{
+actor {
+    account(id: {{ account_id }}) {
+    aiIssues {
+        issues(filter: {ids: "{{ issue_id }}"}) {
+        issues {
+            entityGuids
+        }
+        }
+    }
+    }
+}
+}
+"""

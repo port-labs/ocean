@@ -78,7 +78,6 @@ class EntitiesHandler:
             entity_query_filter=resource_config.selector.entity_query_filter,
             extra_entity_properties=resource_config.selector.entity_extra_properties_query,
         ):
-
             if entity:
                 self._format_tags(entity)
                 yield entity

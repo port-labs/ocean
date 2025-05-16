@@ -837,7 +837,7 @@ async def test_create_webhooks_for_projects(
     await sonarqube_client._create_webhooks_for_projects(webhook_payloads)
 
 
-async def test_get_or_create_webhook_url_error_handling(
+async def test_create_webhook_destination_url_error_handling(
     mock_ocean_context: Any,
     monkeypatch: Any,
 ) -> None:
@@ -870,7 +870,7 @@ async def test_get_or_create_webhook_url_error_handling(
         sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
 
         with pytest.raises(httpx.HTTPStatusError) as exc_info:
-            await sonarqube_client.get_or_create_webhook_url()
+            await sonarqube_client.create_webhook_destination_url()
 
         assert exc_info.value.response.status_code == 404
 

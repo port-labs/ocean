@@ -655,7 +655,7 @@ class SonarQubeClient:
             )
             logger.info(f"Webhook added to project: {webhook['project']}")
 
-    async def get_or_create_webhook_url(self) -> None:
+    async def create_webhook_destination_url(self) -> None:
         """
         Get or create webhook URL for projects
 
