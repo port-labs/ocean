@@ -1,0 +1,46 @@
+{
+  "Resource #1": {
+    "identifier": "MAT",
+    "title": "matar-new-project",
+    "blueprint": "jiraServerProject",
+    "properties": {
+      "url": "http://localhost:8080/projects/MAT"
+    }
+  },
+  "Resource #2": {
+    "identifier": "JIRAUSER10000",
+    "title": "Matar Peles",
+    "blueprint": "jiraServerUser",
+    "properties": {
+      "emailAddress": "matarp13@gmail.com",
+      "active": true,
+      "timeZone": "Etc/UTC",
+      "locale": "en_US",
+      "avatarUrl": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=48"
+    }
+  },
+  "Resource #3": {
+    "identifier": "MAT-1",
+    "title": "Create a new service",
+    "blueprint": "jiraServerIssue",
+    "properties": {
+      "url": "http://localhost:8080/browse/MAT-1",
+      "status": "To Do",
+      "issueType": "Story",
+      "components": [],
+      "creator": "JIRAUSER10000",
+      "priority": "Medium",
+      "labels": [],
+      "created": "2025-04-10T17:14:56.000+0000",
+      "updated": "2025-04-10T17:14:56.000+0000",
+      "resolutionDate": null
+    },
+    "relations": {
+      "project": "MAT",
+      "parentIssue": null,
+      "subtasks": [],
+      "assignee": null,
+      "reporter": "JIRAUSER10000"
+    }
+  }
+}
