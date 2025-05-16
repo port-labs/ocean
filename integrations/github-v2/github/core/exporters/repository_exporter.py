@@ -15,7 +15,7 @@ class RepositoryExporter(AbstractGithubExporter[AbstractGithubClient]):
     ](self, options: RepoOptionsT,) -> RAW_ITEM:
         endpoint = f"repos/{self.client.organization}/{options['name']}"
         response = await self.client.send_api_request(endpoint)
-        logger.debug(f"Fetched repository with identifier: {options['name']}")
+        logger.info(f"Fetched repository with identifier: {options['name']}")
         return response.json()
 
     @cache_iterator_result()
