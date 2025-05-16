@@ -8,7 +8,7 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 class PullRequestExporter(AbstractGithubExporter[AbstractGithubClient]):
 
     async def get_resource[
-        OptionT: SinglePullRequestOptions
+        PROptionsT: SinglePullRequestOptions
     ](self, options: OptionT,) -> RAW_ITEM:
         repo_name = options["repo_name"]
         pr_number = options["pr_number"]
