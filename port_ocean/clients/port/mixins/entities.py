@@ -14,6 +14,7 @@ from port_ocean.clients.port.utils import (
 )
 from port_ocean.core.models import Entity, PortAPIErrorMessage
 from starlette import status
+from port_ocean.context.ocean import ocean
 
 
 class EntityClientMixin:
@@ -102,6 +103,98 @@ class EntityClientMixin:
             return None
         return self._reduce_entity(result_entity)
 
+    async def upsert_entities_batch(
+        self,
+        entities: list[Entity],
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
+        should_raise: bool = True,
+    ) -> list[tuple[bool | None, Entity]]:
+        """
+        This function upserts a list of entities into Port.
+
+        Usage:
+        ```python
+            upsertedEntities = await self.context.port_client.upsert_entities_batch(
+                            entities,
+                            event.port_app_config.get_port_request_options(),
+                            user_agent_type,
+                            should_raise=False,
+                        )
+        ```
+        :param entities: A list of Entities to be upserted
+        :param request_options: A dictionary specifying how to upsert the entity
+        :param user_agent_type: a UserAgentType specifying who is preforming the action
+        :param should_raise: A boolean specifying whether the error should be raised or handled silently
+        :return: A list of tuples where each tuple contains:
+            - First value: True if entity was created successfully, False if there was an error, None if there was an error and the entity use search identifier
+            - Second value: The original entity (if failed) or the reduced entity with updated identifier (if successful)
+        """
+        validation_only = request_options["validation_only"]
+        async with self.semaphore:
+            blueprint = entities[0].blueprint
+            logger.debug(
+                f"{'Validating' if validation_only else 'Upserting'} {len(entities)} of blueprint: {blueprint}"
+            )
+            headers = await self.auth.headers(user_agent_type)
+            response = await self.client.post(
+                f"{self.auth.api_url}/blueprints/{blueprint}/entities/bulk",
+                json={
+                    "entities": [
+                        entity.dict(exclude_unset=True, by_alias=True)
+                        for entity in entities
+                    ]
+                },
+                headers=headers,
+                params={
+                    "upsert": "true",
+                    "merge": str(request_options["merge"]).lower(),
+                    "create_missing_related_entities": str(
+                        request_options["create_missing_related_entities"]
+                    ).lower(),
+                    "validation_only": str(validation_only).lower(),
+                },
+                extensions={"retryable": True},
+            )
+        if response.is_error:
+            logger.error(
+                f"Error {'Validating' if validation_only else 'Upserting'} "
+                f"{len(entities)} entities of "
+                f"blueprint: {blueprint}"
+            )
+            result = response.json()
+        handle_status_code(response, should_raise)
+        result = response.json()
+        index_to_entity = {i: entity for i, entity in enumerate(entities)}
+
+        successful_entities = {
+            entity_result["index"]: entity_result
+            for entity_result in result.get("entities", [])
+        }
+
+        error_entities = {error["index"]: error for error in result.get("errors", [])}
+
+        result_tuples: list[tuple[bool | None, Entity]] = []
+        for i, original_entity in index_to_entity.items():
+            reduced_entity = self._reduce_entity(original_entity)
+            if i in successful_entities:
+                success_entity = successful_entities[i]
+                # Create a copy of the original entity with the new identifier
+                updated_entity = reduced_entity.copy()
+                updated_entity.identifier = success_entity["identifier"]
+                result_tuples.append((True, updated_entity))
+            elif i in error_entities:
+                error = error_entities[i]
+                if error.get("identifier") == "unknown":
+                    result_tuples.append((None, reduced_entity))
+                else:
+                    result_tuples.append((False, reduced_entity))
+            else:
+                # Entity was not processed (shouldn't happen but handling it)
+                result_tuples.append((False, reduced_entity))
+
+        return result_tuples
+
     @staticmethod
     def _reduce_entity(entity: Entity) -> Entity:
         """
@@ -127,34 +220,58 @@ class EntityClientMixin:
         }
         return reduced_entity
 
-    async def batch_upsert_entities(
+    async def upsert_entities_in_batches(
         self,
         entities: list[Entity],
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
     ) -> list[tuple[bool, Entity]]:
-        modified_entities_results = await asyncio.gather(
-            *(
-                self.upsert_entity(
-                    entity,
-                    request_options,
-                    user_agent_type,
-                    should_raise=should_raise,
-                )
-                for entity in entities
-            ),
-            return_exceptions=True,
-        )
+        """
+        This function upserts a list of entities into Port in batches of 20 entities.
+        It uses the upsert_entities_batch function to process each batch.
 
+        :param entities: A list of Entities to be upserted
+        :param request_options: A dictionary specifying how to upsert the entity
+        :param user_agent_type: a UserAgentType specifying who is preforming the action
+        :param should_raise: A boolean specifying whether the error should be raised or handled silently
+        :return: A list of tuples where each tuple contains:
+            - First value: True if entity was created successfully, False if there was an error
+            - Second value: The reduced entity with updated identifier (if successful) or the original entity (if failed)
+        """
         entities_results: list[tuple[bool, Entity]] = []
-        for original_entity, result in zip(entities, modified_entities_results):
-            if isinstance(result, Exception) and should_raise:
-                raise result
-            elif isinstance(result, Entity):
-                entities_results.append((True, result))
-            elif result is False:
-                entities_results.append((False, original_entity))
+        last_exception = None
+
+        # Process entities in batches
+        for i in range(0, len(entities), ocean.config.upsert_entities_batch_size):
+            batch = entities[i : i + ocean.config.upsert_entities_batch_size]
+            try:
+                batch_results: list[tuple[bool | None, Entity]] = (
+                    await self.upsert_entities_batch(
+                        batch,
+                        request_options,
+                        user_agent_type,
+                        should_raise=should_raise,
+                    )
+                )
+
+                for status, entity in batch_results:
+                    if status is not None:  # Ignore None results
+                        batch_result: tuple[bool, Entity] = (bool(status), entity)
+                        entities_results.append(batch_result)
+            except Exception as e:
+                last_exception = e
+                if not should_raise:
+                    # If should_raise is False, mark all entities in the batch as failed
+                    for entity in batch:
+                        failed_result: tuple[bool, Entity] = (
+                            False,
+                            self._reduce_entity(entity),
+                        )
+                        entities_results.append(failed_result)
+
+        if last_exception is not None and should_raise:
+            raise last_exception
 
         return entities_results
 

@@ -14,10 +14,17 @@ repos:
         args: [--allow-missing-credentials]
   - repo: local
     hooks:
-      - id: fix lint
-        name: Fix linter
-        description: This hooks fixes our linters
-        entry: make lint/fix
+      - id: black
+        name: black
+        description: This hook runs black formatter
+        entry: .venv/bin/black .
+        language: system
+        types:
+          - python
+      - id: ruff
+        name: ruff
+        description: This hook runs ruff linter
+        entry: .venv/bin/ruff check --fix .
         language: system
         types:
           - python
