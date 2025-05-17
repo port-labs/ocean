@@ -20,7 +20,7 @@ resources:
 
   - kind: pull-request
     selector:
-      query: ".pull_request == null"
+      query: 'true'
       state: "open"
     port:
       entity:
