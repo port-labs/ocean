@@ -71,10 +71,10 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
 
     repository_exporter = RepositoryExporter(client)
-    repo_options = ListRepositoryOptions(type="all")
-
-    config = typing.cast(GithubPullRequestConfig, event.resource_config)
     pull_request_exporter = PullRequestExporter(client)
+    
+    config = typing.cast(GithubPullRequestConfig, event.resource_config)
+    repo_options = ListRepositoryOptions(type="all")
 
     async for repos in repository_exporter.get_paginated_resources(
         options=repo_options
