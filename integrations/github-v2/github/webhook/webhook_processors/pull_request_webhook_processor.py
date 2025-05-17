@@ -19,7 +19,10 @@ from integration import GithubPullRequestConfig
 
 class PullRequestWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return event.headers.get("x-github-event") == "pull_request"
+        return (
+            event.headers.get("x-github-event") == "pull_request"
+            and event.payload["action"] in PULL_REQUEST_EVENTS
+        )
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.PULL_REQUEST]
@@ -54,9 +57,6 @@ class PullRequestWebhookProcessor(_GithubAbstractWebhookProcessor):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         if not {"action", "pull_request", "repository"} <= payload.keys():
-            return False
-
-        if payload["action"] not in PULL_REQUEST_EVENTS:
             return False
 
         return bool(

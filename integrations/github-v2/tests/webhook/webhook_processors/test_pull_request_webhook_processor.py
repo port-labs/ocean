@@ -51,6 +51,7 @@ class TestPullRequestWebhookProcessor:
     ) -> None:
         mock_event = MagicMock(spec=WebhookEvent)
         mock_event.headers = {"x-github-event": "pull_request"}
+        mock_event.payload = {"action": "opened"}
 
         assert (
             await pull_request_webhook_processor._should_process_event(mock_event)
@@ -105,14 +106,6 @@ class TestPullRequestWebhookProcessor:
 
         # Missing repository
         payload = {"action": "opened", "pull_request": {"number": 101}}
-        assert await pull_request_webhook_processor.validate_payload(payload) is False
-
-        # Invalid action
-        payload = {
-            "action": "invalid_action",
-            "pull_request": {"number": 101},
-            "repository": {"name": "test-repo"},
-        }
         assert await pull_request_webhook_processor.validate_payload(payload) is False
 
         # Missing pull request number
