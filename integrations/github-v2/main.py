@@ -1,6 +1,7 @@
 import typing
+from typing import Any, AsyncGenerator
 from loguru import logger
-from integration import GithubRepositoryConfig
+from integration import GithubRepositoryConfig, GithubIssueConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -12,9 +13,14 @@ from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
+from github.webhook.webhook_processors.issue_webhook_processor import (
+    IssueWebhookProcessor,
+)
 from github.webhook.webhook_client import GithubWebhookClient
 from github.core.exporters.repository_exporter import RepositoryExporter
-from github.core.options import ListRepositoryOptions
+from github.core.exporters.issue_exporter import IssueExporter
+from github.core.options import ListRepositoryOptions, ListIssueOptions
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
 @ocean.on_start()
@@ -56,4 +62,34 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield repositories
 
 
+@ocean.on_resync(ObjectKind.ISSUE)
+async def resync_issues(kind: str) -> AsyncGenerator[Any, None]:
+    """Resync all issues from repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    client = create_github_client()
+    repository_exporter = RepositoryExporter(client)
+    issue_exporter = IssueExporter(client)
+
+    config = typing.cast(GithubIssueConfig, event.resource_config)
+
+    repo_options = ListRepositoryOptions(type="all")
+
+    async for repos in repository_exporter.get_paginated_resources(
+        options=repo_options
+    ):
+        tasks = [
+            issue_exporter.get_paginated_resources(
+                ListIssueOptions(
+                    repo_name=repo["name"],
+                    state=config.selector.state,
+                )
+            )
+            for repo in repos
+        ]
+        async for issues in stream_async_iterators_tasks(*tasks):
+            yield issues
+
+
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
