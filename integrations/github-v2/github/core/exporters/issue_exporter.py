@@ -16,7 +16,7 @@ class IssueExporter(AbstractGithubExporter[AbstractGithubClient]):
         endpoint = f"repos/{self.client.organization}/{repo_name}/issues/{issue_number}"
         response = await self.client.send_api_request(endpoint)
 
-        logger.debug(f"Fetched issue with identifier: {repo_name}/{issue_number}")
+        logger.info(f"Fetched issue with identifier: {repo_name}/{issue_number}")
 
         issue = response.json()
         return {**issue, "repo": repo_name}
