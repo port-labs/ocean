@@ -18,7 +18,6 @@ resources:
             url: .html_url
             language: .language
 
-
   - kind: issue
     selector:
       query: ".pull_request == null"

@@ -1,5 +1,5 @@
 from github.utils import RepositoryType, IssueState
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 from pydantic import Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -27,6 +27,7 @@ class GithubIssueSelector(Selector):
         default=IssueState.OPEN,
         description="Filter by issue state (open, closed, all)",
     )
+
 
 class GithubIssueConfig(ResourceConfig):
     selector: GithubIssueSelector
