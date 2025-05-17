@@ -19,7 +19,10 @@ from github.webhook.webhook_processors.github_abstract_webhook_processor import 
 
 class IssueWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return event.headers.get("x-github-event") == "issues"
+        return (
+            event.headers.get("x-github-event") == "issues"
+            and event.payload["action"] in ISSUE_EVENTS
+        )
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ISSUE]
@@ -62,10 +65,6 @@ class IssueWebhookProcessor(_GithubAbstractWebhookProcessor):
         Validate that the webhook payload contains all required fields for issue events.
         """
         if not {"action", "issue", "repository"} <= payload.keys():
-            return False
-
-        if payload["action"] not in ISSUE_EVENTS:
-            logger.warning(f"Unhandled issue action: {payload['action']}")
             return False
 
         return bool(

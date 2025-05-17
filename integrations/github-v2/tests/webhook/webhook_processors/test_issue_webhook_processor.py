@@ -53,6 +53,7 @@ class TestIssueWebhookProcessor:
     ) -> None:
         mock_event = MagicMock(spec=WebhookEvent)
         mock_event.headers = {"x-github-event": "issues"}
+        mock_event.payload = {"action": "opened"}
 
         assert await issue_webhook_processor._should_process_event(mock_event) is True
 
@@ -125,14 +126,6 @@ class TestIssueWebhookProcessor:
             "action": "opened",
             "issue": {"number": 101, "state": "open"},
             "repository": {},
-        }
-        assert await issue_webhook_processor.validate_payload(payload) is False
-
-        # Invalid action
-        payload = {
-            "action": "not_real_action",
-            "issue": {"number": 101, "state": "open"},
-            "repository": {"name": "test-repo"},
         }
         assert await issue_webhook_processor.validate_payload(payload) is False
 
