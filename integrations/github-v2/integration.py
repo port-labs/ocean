@@ -27,11 +27,6 @@ class GithubIssueSelector(Selector):
         default=IssueState.OPEN,
         description="Filter by issue state (open, closed, all)",
     )
-    labels: Optional[str] = Field(
-        default=None,
-        description="Filter by issue labels (comma-separated list)",
-    )
-
 
 class GithubIssueConfig(ResourceConfig):
     selector: GithubIssueSelector
