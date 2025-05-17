@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "github-v2"
-version = "0.1.0-dev"
+version = "0.1.1-dev"
 description = "This integration ingest data from github"
 authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>"]
 

@@ -1,4 +1,4 @@
-from github.utils import RepositoryType
+from github.utils import RepositoryType, PullRequestState
 
 from typing import Literal
 from pydantic import Field
@@ -23,8 +23,20 @@ class GithubRepositoryConfig(ResourceConfig):
     kind: Literal["repository"]
 
 
+class GithubPullRequestSelector(Selector):
+    state: PullRequestState = Field(
+        default=PullRequestState.OPEN,
+        description="Filter by pull request state (e.g., open, closed, all)",
+    )
+
+
+class GithubPullRequestConfig(ResourceConfig):
+    selector: GithubPullRequestSelector
+    kind: Literal["pull-request"]
+
+
 class GithubPortAppConfig(PortAppConfig):
-    resources: list[GithubRepositoryConfig | ResourceConfig]
+    resources: list[GithubRepositoryConfig | GithubPullRequestConfig | ResourceConfig]
 
 
 class GithubIntegration(BaseIntegration):
