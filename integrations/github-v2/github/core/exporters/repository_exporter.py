@@ -11,8 +11,8 @@ from github.core.options import ListRepositoryOptions, SingleRepositoryOptions
 
 class RepositoryExporter(AbstractGithubExporter[AbstractGithubClient]):
     async def get_resource[
-        RepoOptionsT: SingleRepositoryOptions
-    ](self, options: RepoOptionsT,) -> RAW_ITEM:
+        ExporterOptionsT: SingleRepositoryOptions
+    ](self, options: ExporterOptionsT,) -> RAW_ITEM:
         endpoint = f"repos/{self.client.organization}/{options['name']}"
         response = await self.client.send_api_request(endpoint)
         logger.info(f"Fetched repository with identifier: {options['name']}")
@@ -20,8 +20,8 @@ class RepositoryExporter(AbstractGithubExporter[AbstractGithubClient]):
 
     @cache_iterator_result()
     async def get_paginated_resources[
-        RepoOptionsT: ListRepositoryOptions
-    ](self, options: RepoOptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        ExporterOptionsT: ListRepositoryOptions
+    ](self, options: ExporterOptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
 
         params = cast(dict[str, Any], options)
