@@ -15,12 +15,12 @@ from github.webhook.webhook_processors.repository_webhook_processor import (
 from github.webhook.webhook_client import GithubWebhookClient
 from github.core.exporters.repository_exporter import RepositoryExporter
 from github.core.options import ListRepositoryOptions
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from github.core.exporters.pull_request_exporter import PullRequestExporter
 from github.webhook.webhook_processors.pull_request_webhook_processor import (
     PullRequestWebhookProcessor,
 )
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from github.core.options import ListPullRequestOptions
 
 
@@ -72,7 +72,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     repository_exporter = RepositoryExporter(client)
     pull_request_exporter = PullRequestExporter(client)
-    
+
     config = typing.cast(GithubPullRequestConfig, event.resource_config)
     repo_options = ListRepositoryOptions(type="all")
 

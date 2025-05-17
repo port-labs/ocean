@@ -18,16 +18,16 @@ class GithubRepositorySelector(Selector):
     )
 
 
+class GithubRepositoryConfig(ResourceConfig):
+    selector: GithubRepositorySelector
+    kind: Literal["repository"]
+
+
 class GithubPullRequestSelector(Selector):
     state: PullRequestState = Field(
         default=PullRequestState.OPEN,
         description="Filter by pull request state (e.g., open, closed, all)",
     )
-
-
-class GithubRepositoryConfig(ResourceConfig):
-    selector: GithubRepositorySelector
-    kind: Literal["repository"]
 
 
 class GithubPullRequestConfig(ResourceConfig):
