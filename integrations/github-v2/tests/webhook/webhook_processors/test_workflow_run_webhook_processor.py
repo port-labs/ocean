@@ -5,10 +5,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.webhook.webhook_processors.repository_webhook_processor import (
-    RepositoryWebhookProcessor,
-)
-from github.webhook.events import REPOSITORY_UPSERT_EVENTS, REPOSITORY_DELETE_EVENTS
+from github.webhook.events import WORKFLOW_DELETE_EVENTS, WORKFLOW_UPSERT_EVENTS
 
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -19,12 +16,15 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from github.utils import ObjectKind
+from github.webhook.webhook_processors.workflow_run_webhook_processor import (
+    WorkflowRunWebhookProcessor,
+)
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
     return ResourceConfig(
-        kind=ObjectKind.REPOSITORY,
+        kind=ObjectKind.WORKFLOW_RUN,
         selector=Selector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -40,20 +40,20 @@ def resource_config() -> ResourceConfig:
 
 
 @pytest.fixture
-def repository_webhook_processor(
+def workflow_webhook_processor(
     mock_webhook_event: WebhookEvent,
-) -> RepositoryWebhookProcessor:
-    return RepositoryWebhookProcessor(event=mock_webhook_event)
+) -> WorkflowRunWebhookProcessor:
+    return WorkflowRunWebhookProcessor(event=mock_webhook_event)
 
 
 @pytest.mark.asyncio
 class TestRepositoryWebhookProcessor:
     @pytest.mark.parametrize(
-        "github_event,result", [(ObjectKind.REPOSITORY, True), ("invalid", False)]
+        "github_event,result", [("workflow_run", True), ("invalid", False)]
     )
     async def test_should_process_event(
         self,
-        repository_webhook_processor: RepositoryWebhookProcessor,
+        workflow_webhook_processor: WorkflowRunWebhookProcessor,
         github_event: str,
         result: bool,
     ) -> None:
@@ -65,26 +65,27 @@ class TestRepositoryWebhookProcessor:
         )
         event._original_request = mock_request
 
-        assert await repository_webhook_processor._should_process_event(event) is result
+        assert await workflow_webhook_processor._should_process_event(event) is result
 
     async def test_get_matching_kinds(
-        self, repository_webhook_processor: RepositoryWebhookProcessor
+        self, workflow_webhook_processor: WorkflowRunWebhookProcessor
     ) -> None:
-        kinds = await repository_webhook_processor.get_matching_kinds(
-            repository_webhook_processor.event
+        kinds = await workflow_webhook_processor.get_matching_kinds(
+            workflow_webhook_processor.event
         )
-        assert ObjectKind.REPOSITORY in kinds
+        assert ObjectKind.WORKFLOW_RUN in kinds
 
     @pytest.mark.parametrize(
         "action,is_deletion,expected_updated,expected_deleted",
         [
-            ("created", False, True, False),
-            ("deleted", True, False, True),
+            ("completed", True, False, True),
+            ("in_progress", False, True, False),
+            ("requested", False, True, False),
         ],
     )
     async def test_handle_event_create_and_delete(
         self,
-        repository_webhook_processor: RepositoryWebhookProcessor,
+        workflow_webhook_processor: WorkflowRunWebhookProcessor,
         resource_config: ResourceConfig,
         action: str,
         is_deletion: bool,
@@ -97,70 +98,97 @@ class TestRepositoryWebhookProcessor:
             "full_name": "test-org/test-repo",
             "description": "Test repository",
         }
+        workflow_run = {"id": 1, "name": "test_worklow"}
 
-        payload = {"action": action, "repository": repo_data}
+        payload = {
+            "action": action,
+            "repository": repo_data,
+            "workflow_run": workflow_run,
+        }
 
         if is_deletion:
-            result = await repository_webhook_processor.handle_event(
+            result = await workflow_webhook_processor.handle_event(
                 payload, resource_config
             )
         else:
-            # Mock the RepositoryExporter
+            # Mock the WorkflowRunExporter
             mock_exporter = AsyncMock()
-            mock_exporter.get_resource.return_value = repo_data
+            mock_exporter.get_resource.return_value = workflow_run
 
             with patch(
-                "github.webhook.webhook_processors.repository_webhook_processor.RepositoryExporter",
+                "github.webhook.webhook_processors.workflow_run_webhook_processor.WorkflowRunExporter",
                 return_value=mock_exporter,
             ):
-                result = await repository_webhook_processor.handle_event(
+                result = await workflow_webhook_processor.handle_event(
                     payload, resource_config
                 )
 
             # Verify exporter was called with correct repo name
-            mock_exporter.get_resource.assert_called_once_with("test-repo")
+            mock_exporter.get_resource.assert_called_once_with(
+                {"repo": "test-repo", "resource_id": 1}
+            )
 
         assert isinstance(result, WebhookEventRawResults)
         assert bool(result.updated_raw_results) is expected_updated
         assert bool(result.deleted_raw_results) is expected_deleted
 
         if expected_updated:
-            assert result.updated_raw_results == [repo_data]
+            assert result.updated_raw_results == [workflow_run]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [repo_data]
+            assert result.deleted_raw_results == [workflow_run]
 
     @pytest.mark.parametrize(
         "payload,expected",
         [
             (
                 {
-                    "action": REPOSITORY_UPSERT_EVENTS[0],
+                    "action": WORKFLOW_UPSERT_EVENTS[0],
                     "repository": {"name": "repo1"},
+                    "workflow_run": {"id": 1, "name": "test"},
                 },
                 True,
             ),
             (
                 {
-                    "action": REPOSITORY_DELETE_EVENTS[0],
+                    "action": WORKFLOW_DELETE_EVENTS[0],
                     "repository": {"name": "repo2"},
+                    "workflow_run": {"id": 2, "name": "test 2"},
                 },
                 True,
             ),
-            ({"action": "unknown_event", "repository": {"name": "repo3"}}, False),
-            ({"action": REPOSITORY_UPSERT_EVENTS[0]}, False),  # missing repository
+            ({"action": "unknown_event", "workflow_run": {"name": "repo3"}}, False),
+            (
+                {
+                    "action": WORKFLOW_DELETE_EVENTS[0],
+                    "repository": {"name": "repo2"},
+                },
+                False,
+            ),  # missing workflow_run
+            (
+                {
+                    "action": WORKFLOW_DELETE_EVENTS[0],
+                    "repository": {"name": "repo2"},
+                    "workflow_run": {},
+                },
+                False,
+            ),  # missing workflow_run id
+            ({"action": WORKFLOW_UPSERT_EVENTS[0]}, False),  # missing repository
             ({"repository": {"name": "repo4"}}, False),  # missing action
             (
-                {"action": REPOSITORY_UPSERT_EVENTS[0], "repository": {}},  # no name
+                {
+                    "action": WORKFLOW_UPSERT_EVENTS[0],
+                    "repository": {},
+                },  # no repository name
                 False,
             ),
         ],
     )
     async def test_validate_payload(
         self,
-        repository_webhook_processor: RepositoryWebhookProcessor,
+        workflow_webhook_processor: WorkflowRunWebhookProcessor,
         payload: Dict[str, str],
         expected: bool,
     ) -> None:
-        result = await repository_webhook_processor.validate_payload(payload)
+        result = await workflow_webhook_processor.validate_payload(payload)
         assert result is expected
