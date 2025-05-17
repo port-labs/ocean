@@ -8,8 +8,8 @@ from github.clients.base_client import AbstractGithubClient
 class IssueExporter(AbstractGithubExporter[AbstractGithubClient]):
 
     async def get_resource[
-        OptionT: SingleIssueOptions
-    ](self, options: OptionT,) -> RAW_ITEM:
+        ExporterOptionsT: SingleIssueOptions
+    ](self, options: ExporterOptionsT,) -> RAW_ITEM:
         repo_name = options["repo_name"]
         issue_number = options["issue_number"]
 
@@ -22,8 +22,8 @@ class IssueExporter(AbstractGithubExporter[AbstractGithubClient]):
         return {**issue, "repo": repo_name}
 
     async def get_paginated_resources[
-        OptionsT: ListIssueOptions
-    ](self, options: OptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        ExporterOptionsT: ListIssueOptions
+    ](self, options: ExporterOptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         repo_name = options["repo_name"]
 
