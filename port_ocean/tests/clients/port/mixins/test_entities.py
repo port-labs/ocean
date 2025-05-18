@@ -25,7 +25,8 @@ all_entities: List[Entity] = [
 @pytest.fixture(autouse=True)
 def mock_ocean() -> Generator[MagicMock, None, None]:
     with patch("port_ocean.clients.port.mixins.entities.ocean") as mock_ocean:
-        mock_ocean.config.upsert_entities_batch_size = 20
+        mock_ocean.config.upsert_entities_batch_max_length = 20
+        mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024  # 1MB
         yield mock_ocean
 
 
@@ -58,6 +59,75 @@ async def entity_client(monkeypatch: Any) -> EntityClientMixin:
     monkeypatch.setattr(entity_client, "upsert_entities_batch", mock)
 
     return entity_client
+
+
+def test_calculate_entities_batch_size_empty_list(
+    entity_client: EntityClientMixin,
+) -> None:
+    """Test that empty list returns batch size of 1"""
+    assert entity_client.calculate_entities_batch_size([]) == 1
+
+
+def test_calculate_entities_batch_size_small_entities(
+    entity_client: EntityClientMixin,
+) -> None:
+    """Test that small entities return max batch size"""
+    small_entities = [
+        Entity(identifier=f"small_{i}", blueprint="test", properties={"small": "value"})
+        for i in range(30)
+    ]
+    # Small entities should allow max batch size
+    assert entity_client.calculate_entities_batch_size(small_entities) == 20
+
+
+def test_calculate_entities_batch_size_large_entities(
+    entity_client: EntityClientMixin,
+) -> None:
+    """Test that large entities reduce batch size"""
+    large_entities = [
+        Entity(
+            identifier=f"large_{i}",
+            blueprint="test",
+            properties={"large": "x" * (100 * 1024)},  # 100KB per entity
+        )
+        for i in range(30)
+    ]
+    # With 1MB limit and 100KB per entity (plus overhead), should get ~9 entities per batch
+    batch_size = entity_client.calculate_entities_batch_size(large_entities)
+    assert 5 <= batch_size <= 15
+
+
+def test_calculate_entities_batch_size_mixed_entities(
+    entity_client: EntityClientMixin,
+) -> None:
+    """Test that mixed size entities calculate correct batch size"""
+    mixed_entities = [
+        Entity(identifier=f"small_{i}", blueprint="test", properties={"small": "value"})
+        for i in range(10)
+    ] + [
+        Entity(
+            identifier=f"large_{i}",
+            blueprint="test",
+            properties={"large": "x" * (50 * 1024)},  # 50KB per entity
+        )
+        for i in range(10)
+    ]
+    # With 1MB limit and mixed sizes, should get a reasonable batch size
+    batch_size = entity_client.calculate_entities_batch_size(mixed_entities)
+    assert 15 <= batch_size <= 20
+
+
+def test_calculate_entities_batch_size_single_large_entity(
+    entity_client: EntityClientMixin,
+) -> None:
+    """Test that single very large entity returns batch size of 1"""
+    large_entity = Entity(
+        identifier="huge",
+        blueprint="test",
+        properties={"huge": "x" * (2 * 1024 * 1024)},  # 2MB entity
+    )
+    # Even though entity is larger than limit, we return 1 to ensure at least one entity is processed
+    assert entity_client.calculate_entities_batch_size([large_entity]) == 1
 
 
 async def test_batch_upsert_entities_read_timeout_should_raise_false(

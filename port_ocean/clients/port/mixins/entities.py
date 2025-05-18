@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any, Literal
 from urllib.parse import quote_plus
-
+import json
 
 import httpx
 from loguru import logger
@@ -27,6 +27,40 @@ class EntityClientMixin:
         self.semaphore = asyncio.Semaphore(
             round(0.5 * PORT_HTTP_MAX_CONNECTIONS_LIMIT)
         )  # 50% of the max connections limit in order to avoid overloading port
+
+    def calculate_entities_batch_size(self, entities: list[Entity]) -> int:
+        """
+        Calculate the optimal batch size based on entity size and configured limits.
+
+        Args:
+            entities: List of entities to calculate batch size for
+
+        Returns:
+            int: The optimal batch size to use
+        """
+        if not entities:
+            return 1
+
+        # Calculate average entity size from a sample
+        SAMPLE_SIZE = min(10, len(entities))
+        sample_entities = entities[:SAMPLE_SIZE]
+        average_entity_size = (
+            sum(
+                len(json.dumps(entity.dict(exclude_unset=True, by_alias=True)).encode())
+                for entity in sample_entities
+            )
+            / SAMPLE_SIZE
+        )
+
+        # Use a conservative estimate (1.5x the average) to ensure we stay under the limit
+        estimated_entity_size = int(average_entity_size * 1.5)
+        max_entities_per_batch = min(
+            ocean.config.upsert_entities_batch_max_length,
+            ocean.config.upsert_entities_batch_max_size_in_bytes
+            // estimated_entity_size,
+        )
+
+        return max(1, max_entities_per_batch)
 
     async def upsert_entity(
         self,
@@ -195,31 +229,6 @@ class EntityClientMixin:
 
         return result_tuples
 
-    @staticmethod
-    def _reduce_entity(entity: Entity) -> Entity:
-        """
-        Reduces an entity to only keep identifier, blueprint and processed relations.
-        This helps save memory by removing unnecessary data.
-
-        Args:
-            entity: The entity to reduce
-
-        Returns:
-            Entity: A new entity with only the essential data
-        """
-        reduced_entity = Entity(
-            identifier=entity.identifier, blueprint=entity.blueprint
-        )
-
-        # Turning dict typed relations (raw search relations) is required
-        # for us to be able to successfully calculate the participation related entities
-        # and ignore the ones that don't as they weren't upserted
-        reduced_entity.relations = {
-            key: None if isinstance(relation, dict) else relation
-            for key, relation in entity.relations.items()
-        }
-        return reduced_entity
-
     async def upsert_entities_in_batches(
         self,
         entities: list[Entity],
@@ -228,8 +237,9 @@ class EntityClientMixin:
         should_raise: bool = True,
     ) -> list[tuple[bool, Entity]]:
         """
-        This function upserts a list of entities into Port in batches of 20 entities.
-        It uses the upsert_entities_batch function to process each batch.
+        This function upserts a list of entities into Port in batches.
+        The batch size is calculated based on both the number of entities and their size.
+        Batches are processed in parallel using asyncio.gather, with concurrency controlled by the semaphore.
 
         :param entities: A list of Entities to be upserted
         :param request_options: A dictionary specifying how to upsert the entity
@@ -240,28 +250,31 @@ class EntityClientMixin:
             - Second value: The reduced entity with updated identifier (if successful) or the original entity (if failed)
         """
         entities_results: list[tuple[bool, Entity]] = []
-        last_exception = None
 
-        # Process entities in batches
-        for i in range(0, len(entities), ocean.config.upsert_entities_batch_size):
-            batch = entities[i : i + ocean.config.upsert_entities_batch_size]
-            try:
-                batch_results: list[tuple[bool | None, Entity]] = (
-                    await self.upsert_entities_batch(
+        if ocean.app.is_saas():
+            batch_size = self.calculate_entities_batch_size(entities)
+            batches = [
+                entities[i : i + batch_size]
+                for i in range(0, len(entities), batch_size)
+            ]
+
+            batch_results = await asyncio.gather(
+                *(
+                    self.upsert_entities_batch(
                         batch,
                         request_options,
                         user_agent_type,
                         should_raise=should_raise,
                     )
-                )
+                    for batch in batches
+                ),
+                return_exceptions=True,
+            )
 
-                for status, entity in batch_results:
-                    if status is not None:  # Ignore None results
-                        batch_result: tuple[bool, Entity] = (bool(status), entity)
-                        entities_results.append(batch_result)
-            except Exception as e:
-                last_exception = e
-                if not should_raise:
+            for batch, result in zip(batches, batch_results):
+                if isinstance(result, Exception):
+                    if should_raise:
+                        raise result
                     # If should_raise is False, mark all entities in the batch as failed
                     for entity in batch:
                         failed_result: tuple[bool, Entity] = (
@@ -269,9 +282,34 @@ class EntityClientMixin:
                             self._reduce_entity(entity),
                         )
                         entities_results.append(failed_result)
+                elif isinstance(
+                    result, list
+                ):  # Ensure result is a list before iterating
+                    for status, entity in result:
+                        if status is not None:  # Ignore None results
+                            batch_result: tuple[bool, Entity] = (bool(status), entity)
+                            entities_results.append(batch_result)
+        else:
+            modified_entities_results = await asyncio.gather(
+                *(
+                    self.upsert_entity(
+                        entity,
+                        request_options,
+                        user_agent_type,
+                        should_raise=should_raise,
+                    )
+                    for entity in entities
+                ),
+                return_exceptions=True,
+            )
 
-        if last_exception is not None and should_raise:
-            raise last_exception
+            for original_entity, result in zip(entities, modified_entities_results):  # type: ignore
+                if isinstance(result, Exception) and should_raise:
+                    raise result
+                elif isinstance(result, Entity):
+                    entities_results.append((True, result))
+                elif result is False:
+                    entities_results.append((False, original_entity))
 
         return entities_results
 
@@ -402,3 +440,28 @@ class EntityClientMixin:
                 "rules": [{"combinator": "or", "rules": search_rules}],
             },
         )
+
+    @staticmethod
+    def _reduce_entity(entity: Entity) -> Entity:
+        """
+        Reduces an entity to only keep identifier, blueprint and processed relations.
+        This helps save memory by removing unnecessary data.
+
+        Args:
+            entity: The entity to reduce
+
+        Returns:
+            Entity: A new entity with only the essential data
+        """
+        reduced_entity = Entity(
+            identifier=entity.identifier, blueprint=entity.blueprint
+        )
+
+        # Turning dict typed relations (raw search relations) is required
+        # for us to be able to successfully calculate the participation related entities
+        # and ignore the ones that don't as they weren't upserted
+        reduced_entity.relations = {
+            key: None if isinstance(relation, dict) else relation
+            for key, relation in entity.relations.items()
+        }
+        return reduced_entity
