@@ -307,33 +307,3 @@ class EntityClientMixin:
                 "rules": [{"combinator": "or", "rules": search_rules}],
             },
         )
-
-    def _inc_entity_count_metrics(
-        self, failed_upsert_count: int, upserted_count: int
-    ) -> None:
-        """
-        Sets metrics for entity operations tracking both failed and successful upserts.
-
-        Args:
-            failed_count: Number of failed upserts
-            upserted_count: Number of successful upserts
-        """
-        ocean.metrics.inc_metric(
-            name=MetricType.OBJECT_COUNT_NAME,
-            labels=[
-                ocean.metrics.current_resource_kind(),
-                MetricPhase.LOAD,
-                MetricPhase.LoadResult.FAILED,
-            ],
-            value=failed_upsert_count,
-        )
-
-        ocean.metrics.inc_metric(
-            name=MetricType.OBJECT_COUNT_NAME,
-            labels=[
-                ocean.metrics.current_resource_kind(),
-                MetricPhase.LOAD,
-                MetricPhase.LoadResult.LOADED,
-            ],
-            value=upserted_count,
-        )
