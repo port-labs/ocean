@@ -580,7 +580,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for entity in event.entity_topological_sorter.get_entities(False):
                     await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
 
-
+    @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
         self,
         _: dict[Any, Any] | None = None,

@@ -135,11 +135,11 @@ class Metrics:
 
     @property
     def sync_state(self) -> str:
-        return self._phase_status
+        return self.sync_state
 
     @sync_state.setter
     def sync_state(self, value: str) -> None:
-        self._phase_status = value
+        self.sync_state = value
 
     @property
     def integration_version(self) -> str:
