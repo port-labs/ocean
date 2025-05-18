@@ -1,4 +1,7 @@
 import asyncio
+import pickle
+import uuid
+import os
 from graphlib import CycleError
 import inspect
 import typing
@@ -331,8 +334,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         user_agent_type,
                         send_raw_data_examples_amount=send_raw_data_examples_amount
                     )
-                    errors.extend(calculation_result.errors)
-                    passed_entities.extend(calculation_result.entity_selector_diff.passed)
+                    if ocean.config.multiprocessing_enabled:
+                        with open(f"/tmp/{uuid.uuid4()}.pkl", "wb") as f:
+                            pickle.dump((calculation_result.entity_selector_diff.passed, calculation_result.errors), f,  protocol=pickle.HIGHEST_PROTOCOL)
+                    else:
+                        passed_entities.extend(calculation_result.entity_selector_diff.passed)
+                        errors.extend(calculation_result.errors)
                     number_of_transformed_entities += calculation_result.number_of_transformed_entities
             except* OceanAbortException as error:
                 errors.append(error)
@@ -340,6 +347,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(
             f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
         )
+
 
         ocean.metrics.set_metric(
             name=MetricType.SUCCESS_NAME,
@@ -358,7 +366,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM],
             value=number_of_transformed_entities
         )
-
         return passed_entities, errors
 
     async def register_raw(
@@ -561,22 +568,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def process_resource(self,resource,index,user_agent_type):
         async with resource_context(resource,index):
             resource_kind_id = f"{resource.kind}-{index}"
-            # loop = asyncio.new_event_loop()
-            # asyncio.set_event_loop(loop)
             task = asyncio.create_task(
                 self._register_in_batches(resource, user_agent_type)
             )
 
             event.on_abort(lambda: task.cancel())
             kind_results: tuple[list[Entity], list[Exception]] = await task
-            # ocean.metrics.set_metric(
-            #     name=MetricType.OBJECT_COUNT_NAME,
-            #     labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
-            #     value=len(kind_results[0])
-            # )
+            ocean.metrics.set_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
+                value=len(kind_results[0])
+            )
 
 
-            # await ocean.metrics.flush(kind=resource_kind_id)
+            await ocean.metrics.flush(kind=resource_kind_id)
             return kind_results
 
     @TimeMetric(MetricPhase.RESYNC)
@@ -628,25 +633,35 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 did_fetched_current_state = False
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
-
-
+            logger.info(f"Starting multiprocessing manager")
             from port_ocean.run_task import run_task
-            manager = multiprocessing.Manager()
-            try:
-                with multiprocessing.Manager() as manager:
-                    for index,resource in enumerate(app_config.resources):
-                        # create resource context per resource kind, so resync method could have access to the resource
-                        # config as we might have multiple resources in the same event
-                        logger.info(f"Starting resource {resource.kind} with index {index}")
 
-                        result = manager.dict()
-                        process = multiprocessing.Process(target=run_task, args=(resource,index,user_agent_type,result))
+            multiprocessing.set_start_method('spawn', True)
+            try:
+                for index,resource in enumerate(app_config.resources):
+                    # create resource context per resource kind, so resync method could have access to the resource
+                    # config as we might have multiple resources in the same event
+                    logger.info(f"Starting resource {resource.kind} with index {index}")
+                    if ocean.config.multiprocessing_enabled:
+
+                        logger.info(f"Starting subprocess task for {resource.kind} with index {index}")
+                        process = multiprocessing.Process(target=run_task, args=(resource,index,user_agent_type),name=f"{resource.kind}-{index}")
                         process.start()
                         process.join()
-                        creation_results.append(result.get("task"))
-                        result.clear()
-                        process.terminate()
-                        # creation_results.append(await self.process_resource(resource,index,user_agent_type))
+                    else:
+                        creation_results.append(await self.process_resource(resource,index,user_agent_type))
+
+                    if ocean.config.multiprocessing_enabled:
+                        for file in os.listdir("/tmp"):
+                            if file.endswith(".pkl"):
+                                with open(f"/tmp/{file}", "rb") as f:
+                                    creation_results.append(pickle.load(f))
+                            if file.endswith(".status"):
+                                with open(f"/tmp/{file}", "r") as f:
+                                    if f.read() == "finished":
+                                        logger.info(f"Process {file} finished")
+                                    if f.read() == "started":
+                                        logger.info(f"Process {file} started but not finished")
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
 

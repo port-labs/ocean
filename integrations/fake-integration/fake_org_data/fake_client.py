@@ -8,14 +8,14 @@ from .types import FakePerson
 from .static import FAKE_DEPARTMENTS
 
 
-API_URL = "http://localhost:8001/integration/department"
+API_URL = "http://localhost:8000/integration/department"
 USER_AGENT = "Ocean Framework Fake Integration (https://github.com/port-labs/ocean)"
 
 
 class FakeIntegrationDefaults(IntEnum):
     ENTITY_AMOUNT = 20
-    ENTITY_KB_SIZE = 100
-    THIRD_PARTY_BATCH_SIZE = 200
+    ENTITY_KB_SIZE = 1
+    THIRD_PARTY_BATCH_SIZE = 1000
     THIRD_PARTY_LATENCY_MS = 0
 
 

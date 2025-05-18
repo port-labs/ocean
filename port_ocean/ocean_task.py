@@ -1,6 +1,5 @@
 from typing import Any, Callable, Dict, Type
 
-from port_ocean.core.handlers.resync_state_updater.updater import ResyncStateUpdater
 import port_ocean.helpers.metric.metric
 
 
@@ -55,23 +54,9 @@ class OceanTask:
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
-        self.resync_state_updater = ResyncStateUpdater(
-            self.port_client, self.config.scheduled_resync_interval
-        )
 
     def is_saas(self) -> bool:
         return self.config.runtime.is_saas_runtime
-
-    @property
-    def base_url(self) -> str:
-        integration_config = self.config.integration.config
-        if isinstance(integration_config, BaseModel):
-            integration_config = integration_config.dict()
-        if integration_config.get("app_host"):
-            logger.warning(
-                "The OCEAN__INTEGRATION__CONFIG__APP_HOST field is deprecated. Please use the OCEAN__BASE_URL field instead."
-            )
-        return self.config.base_url or integration_config.get("app_host")
 
     def load_external_oauth_access_token(self) -> str | None:
         if self.config.oauth_access_token_file_path is not None:
