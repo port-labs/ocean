@@ -145,7 +145,7 @@ async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         include_verbose_member_object = (
             group_with_members_selector.include_verbose_member_object
         )
-
+        raise Exception("test")
         async for groups in service.get_all_groups():
             groups_batch_iter = iter(groups)
             groups_processed_in_full_batch = 0

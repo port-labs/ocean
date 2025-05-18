@@ -345,6 +345,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     passed_entities.extend(calculation_result.entity_selector_diff.passed)
                     number_of_transformed_entities += calculation_result.number_of_transformed_entities
             except* OceanAbortException as error:
+                ocean.metrics.sync_state = SyncState.FAILED
                 errors.append(error)
 
         logger.info(
@@ -651,7 +652,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         kind_results: tuple[list[Entity], list[Exception]] = await task
 
                         creation_results.append(kind_results)
-                        ocean.metrics.sync_state = SyncState.DATA_INGESTED
+                        ocean.metrics.sync_state = SyncState.COMPLETED
                         await ocean.metrics.flush(kind=resource_kind_id)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)

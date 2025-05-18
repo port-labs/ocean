@@ -48,8 +48,9 @@ class MetricType:
 
 class SyncState:
     SYNCING = "syncing"
-    DATA_INGESTED = "data ingested"
+    COMPLETED = "completed"
     QUEUED = "queued"
+    FAILED = "failed"
 
 
 # Registry for core and custom metrics
