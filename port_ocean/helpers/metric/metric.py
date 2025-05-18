@@ -270,19 +270,6 @@ class Metrics:
             self.registry
         ).decode()
 
-    def reset_metrics(self, kinds: Optional[list[str]] = None) -> None:
-        """Reset all metrics to zero."""
-        if not self.enabled:
-            return None
-
-        for metric in list(self.metrics.values()):
-            self.registry.unregister(metric)
-        self.metrics = {}
-        self.load_metrics()
-
-        if kinds:
-            self.initialize_metrics(kinds)
-
     async def flush(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
     ) -> None:

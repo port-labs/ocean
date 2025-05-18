@@ -641,7 +641,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     # config as we might have multiple resources in the same event
                     async with resource_context(resource,index):
                         resource_kind_id = f"{resource.kind}-{index}"
-                        ocean.metrics.reset_metrics(kinds=[resource_kind_id])
                         ocean.metrics.sync_state = SyncState.SYNCING
 
                         task = asyncio.create_task(
