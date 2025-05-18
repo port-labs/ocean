@@ -206,8 +206,8 @@ class Metrics:
 
         self.get_metric(name, labels).set(value)
 
-    def initialize_metrics(self, kinds: list[str]) -> None:
-        for kind in kinds:
+    def initialize_metrics(self, kind_blockes: list[str]) -> None:
+        for kind in kind_blockes:
             self.set_metric(MetricType.SUCCESS_NAME, [kind, MetricPhase.RESYNC], 0)
             self.set_metric(MetricType.DURATION_NAME, [kind, MetricPhase.RESYNC], 0)
 
