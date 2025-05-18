@@ -4,10 +4,11 @@ REPOSITORY_UPSERT_EVENTS = [
     "edited",
     "renamed",
     "transferred",
-    "archived",
     "unarchived",
+    "publicized",
+    "privatized",
 ]
-REPOSITORY_DELETE_EVENTS = ["deleted"]
+REPOSITORY_DELETE_EVENTS = ["archived", "deleted"]
 
 ALL_EVENTS = REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
 

@@ -31,7 +31,7 @@ class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         logger.info(f"Processing repository event: {action} for {name}")
 
         if action in REPOSITORY_DELETE_EVENTS:
-            logger.info(f"Repository {name} was deleted")
+            logger.info(f"Repository {name} was {action}")
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[repo]
