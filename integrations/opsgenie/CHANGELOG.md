@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.71 (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+## 0.2.70 (2025-05-14)
+
+
+### Bug Fixes
+
+- Added safeguard to OpsGenie client to respect maximum offset limit during pagination  
+
+### Improvements
+
+- Introduced test suite for OpsGenie client
+
+
 ## 0.2.69 (2025-05-12)
 
 
