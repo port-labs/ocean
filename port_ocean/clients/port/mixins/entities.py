@@ -197,7 +197,7 @@ class EntityClientMixin:
                 f"blueprint: {blueprint}"
             )
             result = response.json()
-        handle_status_code(response, should_raise)
+        handle_port_status_code(response, should_raise)
         result = response.json()
         index_to_entity = {i: entity for i, entity in enumerate(entities)}
 
@@ -224,7 +224,6 @@ class EntityClientMixin:
                 else:
                     result_tuples.append((False, reduced_entity))
             else:
-                # Entity was not processed (shouldn't happen but handling it)
                 result_tuples.append((False, reduced_entity))
 
         return result_tuples
@@ -282,11 +281,9 @@ class EntityClientMixin:
                             self._reduce_entity(entity),
                         )
                         entities_results.append(failed_result)
-                elif isinstance(
-                    result, list
-                ):  # Ensure result is a list before iterating
+                elif isinstance(result, list):
                     for status, entity in result:
-                        if status is not None:  # Ignore None results
+                        if status is not None:
                             batch_result: tuple[bool, Entity] = (bool(status), entity)
                             entities_results.append(batch_result)
         else:
