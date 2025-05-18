@@ -171,8 +171,6 @@ class Metrics:
                 name, description, labels, registry=self.registry
             )
 
-            self.metrics[name].set(0)
-
     def get_metric(self, name: str, labels: list[str]) -> Gauge | EmptyMetric:
         if not self.enabled:
             return EmptyMetric()
@@ -233,9 +231,11 @@ class Metrics:
         """Reset all metrics to zero."""
         if not self.enabled:
             return None
-
-        for name, (_, _, labels) in _metrics_registry.items():
-            self.get_metric(name, labels).set(0)
+        # Unregister all metrics from the registry
+        for metric in list(self.metrics.values()):
+            self.registry.unregister(metric)
+        self.metrics = {}
+        self.load_metrics()
 
     async def flush(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
