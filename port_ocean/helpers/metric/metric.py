@@ -205,6 +205,49 @@ class Metrics:
 
         self.get_metric(name, labels).set(value)
 
+    def initialize_metrics(self, kinds: list[str]) -> None:
+        for kind in kinds:
+            self.set_metric(MetricType.SUCCESS_NAME, [kind, MetricPhase.RESYNC], 0)
+            self.set_metric(MetricType.DURATION_NAME, [kind, MetricPhase.RESYNC], 0)
+
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.EXTRACT, MetricPhase.ExtractResult.EXTRACTED],
+                0,
+            )
+
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.TRANSFORM, MetricPhase.TransformResult.TRANSFORMED],
+                0,
+            )
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.TRANSFORM, MetricPhase.TransformResult.FILTERED_OUT],
+                0,
+            )
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.TRANSFORM, MetricPhase.TransformResult.FAILED],
+                0,
+            )
+
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.LOAD, MetricPhase.LoadResult.LOADED],
+                0,
+            )
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.LOAD, MetricPhase.LoadResult.FAILED],
+                0,
+            )
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.LOAD, MetricPhase.LoadResult.SKIPPED],
+                0,
+            )
+
     def create_mertic_router(self) -> APIRouter:
         if not self.enabled:
             return APIRouter()
@@ -227,15 +270,18 @@ class Metrics:
             self.registry
         ).decode()
 
-    def reset_metrics(self) -> None:
+    def reset_metrics(self, kinds: Optional[list[str]] = None) -> None:
         """Reset all metrics to zero."""
         if not self.enabled:
             return None
-        # Unregister all metrics from the registry
+
         for metric in list(self.metrics.values()):
             self.registry.unregister(metric)
         self.metrics = {}
         self.load_metrics()
+
+        if kinds:
+            self.initialize_metrics(kinds)
 
     async def flush(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None

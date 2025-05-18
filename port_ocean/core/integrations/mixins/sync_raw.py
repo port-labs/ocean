@@ -581,7 +581,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
 
 
-    @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
         self,
         _: dict[Any, Any] | None = None,
@@ -607,12 +606,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             trigger_type=trigger_type,
         ):
             ocean.metrics.event_id = event.id
+
             # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
             # rather than the old cache
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
+            ocean.metrics.initialize_metrics([f"{resource.kind}-{index}" for index, resource in enumerate(app_config.resources)])
+            await ocean.metrics.flush()
 
             # Execute resync_start hooks
             for resync_start_fn in self.event_strategy["resync_start"]:
@@ -638,10 +640,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     # create resource context per resource kind, so resync method could have access to the resource
                     # config as we might have multiple resources in the same event
                     async with resource_context(resource,index):
-                        ocean.metrics.reset_metrics()
+                        resource_kind_id = f"{resource.kind}-{index}"
+                        ocean.metrics.reset_metrics(kinds=[resource_kind_id])
                         ocean.metrics.sync_state = SyncState.SYNCING
 
-                        resource_kind_id = f"{resource.kind}-{index}"
                         task = asyncio.create_task(
                             self._register_in_batches(resource, user_agent_type)
                         )
