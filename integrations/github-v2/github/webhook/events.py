@@ -16,6 +16,8 @@ PULL_REQUEST_EVENTS = [
     "ready_for_review",
     "reopened",
     "synchronize",
+    "unassigned",
+    "review_request_removed",
     "closed",
 ]
 
