@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.16 (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+## 0.1.15 (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.1.14 (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+## 0.1.13 (2025-04-29)
+
+### Improvements
+
+- Removed Bitbucket from the gitops section of the data sources page
+
+
+## 0.1.12 (2025-04-28)
+
+### Improvements
+
+- Added title to the integration to be viewed in the data sources page
+
+
 ## 0.1.11 (2025-04-27)
 
 ### Bug Fixes

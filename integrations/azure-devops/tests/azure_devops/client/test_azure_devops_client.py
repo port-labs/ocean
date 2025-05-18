@@ -1187,3 +1187,33 @@ async def test_get_file_by_commit() -> None:
                 "path": MOCK_FILE_PATH,
             },
         )
+
+
+@pytest.mark.parametrize(
+    "base_url,subdomain,expected_output",
+    [
+        (
+            "https://dev.azure.com/myorg",
+            "vsaex",
+            "https://vsaex.dev.azure.com/myorg",
+        ),
+        (
+            "https://myorg.visualstudio.com",
+            "vsaex",
+            "https://myorg.vsaex.visualstudio.com",
+        ),
+        (
+            "https://ado.local:8080/DefaultCollection",
+            "vsaex",
+            "https://ado.local:8080/DefaultCollection",
+        ),
+    ],
+)
+def test_format_service_url(
+    base_url: str,
+    subdomain: str,
+    expected_output: str,
+) -> None:
+    client = AzureDevopsClient(base_url, MOCK_PERSONAL_ACCESS_TOKEN)
+    result = client._format_service_url(subdomain)
+    assert result == expected_output

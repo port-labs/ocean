@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.core.models import Migration
 
 
@@ -28,7 +28,7 @@ class MigrationClientMixin:
             headers=headers,
         )
 
-        handle_status_code(response, should_raise=True)
+        handle_port_status_code(response, should_raise=True)
 
         migration_status = response.json().get("migration", {}).get("status", None)
         if (

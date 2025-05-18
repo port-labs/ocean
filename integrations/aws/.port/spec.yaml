@@ -41,8 +41,8 @@ configurations:
   - name: maximumConcurrentAccounts
     type: integer
     require: false
-    description: The number of concurrent accounts to scan. By default, it is set to 50.
-    default: 50
+    description: The number of concurrent accounts to scan. By default, it is set to 50. [DEPRECATED] This configuration will be removed in a future version.
+    default: 10
 deploymentMethodRequirements:
   - type: default
     configurations: ['awsAccessKeyId', 'awsSecretAccessKey']
