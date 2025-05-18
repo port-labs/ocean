@@ -124,15 +124,6 @@ class Metrics:
         self._ocean_version: Optional[str] = None
         self.event_id = ""
         self.sync_state = SyncState.QUEUED
-        self.integration_identifier = ""
-
-    @property
-    def integration_identifier(self) -> str:
-        return self._integration_identifier
-
-    @integration_identifier.setter
-    def integration_identifier(self, value: str) -> None:
-        self._integration_identifier = value
 
     @property
     def event_id(self) -> str:
@@ -179,6 +170,8 @@ class Metrics:
             self.metrics[name] = Gauge(
                 name, description, labels, registry=self.registry
             )
+
+            self.metrics[name].set(0)
 
     def get_metric(self, name: str, labels: list[str]) -> Gauge | EmptyMetric:
         if not self.enabled:
@@ -307,7 +300,6 @@ class Metrics:
                     "kind": "-".join(kind_key.split("-")[:-1]),
                     "event_id": self.event_id,
                     "sync_state": self.sync_state,
-                    "_id": self.integration_identifier,
                     "metrics": metrics,
                 }
                 logger.info(f"Sending metrics to webhook {kind_key}: {event}")

@@ -607,8 +607,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             trigger_type=trigger_type,
         ):
             ocean.metrics.event_id = event.id
-            integration = await ocean.app.port_client.get_current_integration()
-            ocean.metrics.integration_identifier = integration["_id"]
             # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
             # rather than the old cache
             app_config = await self.port_app_config_handler.get_port_app_config(

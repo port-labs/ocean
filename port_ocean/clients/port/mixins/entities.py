@@ -83,8 +83,15 @@ class EntityClientMixin:
                 f"blueprint: {entity.blueprint}"
             )
             result = response.json()
-
-            self._inc_entity_count_metrics(failed_upsert_count=1, upserted_count=0)
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.LOAD,
+                    MetricPhase.LoadResult.FAILED,
+                ],
+                value=1,
+            )
 
             if (
                 response.status_code == status.HTTP_404_NOT_FOUND
@@ -94,7 +101,16 @@ class EntityClientMixin:
                 # Return false to differentiate from `result_entity.is_using_search_identifier`
                 return False
         else:
-            self._inc_entity_count_metrics(failed_upsert_count=0, upserted_count=1)
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.LOAD,
+                    MetricPhase.LoadResult.LOADED,
+                ],
+                value=1,
+            )
+
         handle_port_status_code(response, should_raise)
         result = response.json()
 
