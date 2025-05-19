@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Optional, List
+from typing import Any, AsyncGenerator, Optional, Callable
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
@@ -9,6 +9,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookEvent
+from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from .base_client import HTTPBaseClient, PAGE_SIZE
 from .file_processing import (
     parse_file_content,
@@ -764,7 +765,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def get_repository_folders(
         self,
         repository_id: str,
-        folder_patterns: List[str],
+        folder_patterns: list[str],
         concurrency: int = 5,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get folders matching patterns with concurrency control.
@@ -779,19 +780,66 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         semaphore = asyncio.BoundedSemaphore(concurrency)
 
-        async def get_folder_with_semaphore(
+        def build_tree_fetcher(
             pattern: str,
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            async with semaphore:
-                recursion_level = "full" if "**" in pattern else "oneLevel"
-                clean_pattern = pattern.replace("**", "").rstrip("/")
+        ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
+            recursion_level = "full" if "**" in pattern else "oneLevel"
+            clean_pattern = pattern.replace("**", "").rstrip("/")
+            return functools.partial(
+                self.get_repository_tree,
+                repository_id,
+                path=clean_pattern,
+                recursion_level=recursion_level,
+            )
 
-                async for folders in self.get_repository_tree(
-                    repository_id, path=clean_pattern, recursion_level=recursion_level
-                ):
-                    yield folders
-
-        tasks = [get_folder_with_semaphore(pattern) for pattern in folder_patterns]
+        tasks = [
+            semaphore_async_iterator(semaphore, build_tree_fetcher(pattern))
+            for pattern in folder_patterns
+        ]
 
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
+
+    async def _process_folder_patterns(
+        self,
+        folder_patterns: list[FolderPattern],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Process folder patterns and yield matching folders with optimized performance.
+
+        Args:
+            folder_patterns: List of folder patterns to process
+        """
+        # Create a mapping of repository names to their patterns
+        repo_pattern_map: dict[
+            str, list[tuple[FolderPattern, RepositoryBranchMapping]]
+        ] = {}
+        for pattern in folder_patterns:
+            for repo_mapping in pattern.repos:
+                if repo_mapping.name not in repo_pattern_map:
+                    repo_pattern_map[repo_mapping.name] = []
+                repo_pattern_map[repo_mapping.name].append((pattern, repo_mapping))
+
+        # Process repositories in batches
+        async for repositories in self.generate_repositories():
+            for repo in repositories:
+                repo_name = repo["name"]
+                if repo_name not in repo_pattern_map:
+                    continue
+
+                # Get all patterns that match this repository
+                matching_patterns = repo_pattern_map[repo_name]
+                for folder_pattern, repo_mapping in matching_patterns:
+                    async for found_folders in self.get_repository_folders(
+                        repo["id"], [folder_pattern.path]
+                    ):
+                        enriched_folders = []
+                        for folder in found_folders:
+                            folder_dict = dict(folder)
+                            folder_dict["__repository"] = repo
+                            folder_dict["__branch"] = (
+                                repo_mapping.branch
+                            )
+                            folder_dict["__pattern"] = folder_pattern.path
+                            enriched_folders.append(folder_dict)
+                        if enriched_folders:
+                            yield enriched_folders
