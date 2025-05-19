@@ -2,41 +2,22 @@ from typing import Any
 
 from port_ocean.context.ocean import ocean
 from aws.resync_factory import resync, CloudControlResyncHandler
+from aws.auth.account import SessionStrategyFactory
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
 @ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    async for session in get_sessions():
-        handler = CloudControlResyncHandler(
-            context=ctx,
-            session=session,
-            use_get_resource_api=selector.use_get_resource_api,
-        )
-        async for batch in handler.resync(kind=kind):
-            yield batch
+async def on_resync_all(kind: str) -> list[dict[Any, Any]]:
+    ctx = ResyncContext(kind=kind)
+    strategy = SessionStrategyFactory()
+    handler = CloudControlResyncHandler(
+        context=ctx,
+        credentials=AWSSessionStrategy(),
+    )
+    async for batch in handler:
+        yield batch
 
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
-
-
-# Optional
 # Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
     print("Starting aws_v2 integration")

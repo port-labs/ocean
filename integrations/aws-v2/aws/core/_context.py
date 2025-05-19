@@ -21,3 +21,10 @@ class ResyncContext:
             }
         )
         return payload
+
+    def with_region(self, region: str) -> "ResyncContext":
+        return ResyncContext(
+            kind=self.kind,
+            account_id=self.account_id,
+            region=region,
+        )

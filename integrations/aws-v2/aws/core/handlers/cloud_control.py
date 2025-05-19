@@ -16,6 +16,7 @@ from aws.helpers.utils import json_safe
 from aws.helpers.models import AWS_RAW_ITEM, MaterializedResource
 from aws.core.handlers._base_handler import BaseResyncHandler
 from aws.core._context import ResyncContext
+from aws.auth.account import AWSSessionStrategy
 
 
 class CloudControlResyncHandler(BaseResyncHandler):
@@ -25,21 +26,21 @@ class CloudControlResyncHandler(BaseResyncHandler):
         self,
         *,
         context: ResyncContext,
-        session: aioboto3.Session,
-        session_manager: SessionManagerProtocol,
+        credentials: AWSSessionStrategy,
         use_get_resource_api: bool,
         batch_size: int = 10,
     ) -> None:
         super().__init__(
             context=context,
-            session=session,
-            session_manager=session_manager,
+            credentials=credentials,
         )
         self._use_get_resource_api = use_get_resource_api
         self._batch_size = batch_size
 
-    async def _fetch_batches(self) -> AsyncIterator[Sequence[Any]]:
-        cloudcontrol_client = await self._get_client("cloudcontrol")
+    async def _fetch_batches(
+        self, session: aioboto3.Session
+    ) -> AsyncIterator[Sequence[Any]]:
+        cloudcontrol_client = await self._get_client(session, "cloudcontrol")
         paginator = AsyncPaginator(
             cloudcontrol_client,
             method_name="list_resources",
@@ -47,6 +48,17 @@ class CloudControlResyncHandler(BaseResyncHandler):
         )
         async for batch in paginator.paginate(TypeName=self._ctx.kind):
             yield batch
+
+    async def _fetch_single_resource(
+        self, session: aioboto3.Session, identifier: str
+    ) -> MaterializedResource:
+        cloudcontrol_client = await self._get_client(session, "cloudcontrol")
+        response = await cloudcontrol_client.get_resource(
+            TypeName=self._ctx.kind, Identifier=identifier
+        )
+        identifier = response["ResourceDescription"]["Identifier"]
+        props = json.loads(response["ResourceDescription"]["Properties"])
+        return await self._default_materialise(identifier=identifier, properties=props)
 
     async def _materialise_item(self, item: AWS_RAW_ITEM) -> MaterializedResource:
         # When use_get_resource_api is False, the `list_resources` response already contains the properties.

@@ -101,14 +101,14 @@ class MultiAccountStrategy(AWSSessionStrategy):
                     await self.check_permission(
                         session,
                         self.provider.config["organization_role_arn"],
-                        "organizations:ListAccounts",
-                        "arn:aws:organizations:::organization/*",
+                        "sts:AssumeRole",
+                        self.provider.config["organization_role_arn"],
                     ),
                     await self.check_permission(
                         session,
                         self.provider.config["organization_role_arn"],
-                        "sts:AssumeRole",
-                        self.provider.config["organization_role_arn"],
+                        "organizations:ListAccounts",
+                        "arn:aws:organizations:::organization/*",
                     ),
                 ]
             )
@@ -117,7 +117,7 @@ class MultiAccountStrategy(AWSSessionStrategy):
             return False
 
     async def get_org_session(self) -> AioSession:
-        if not(self.provider.config["organization_role_arn"]):
+        if not (self.provider.config["organization_role_arn"]):
             logger.warning(
                 "Did not specify organization role ARN, assuming application session has access to organization accounts."
             )
