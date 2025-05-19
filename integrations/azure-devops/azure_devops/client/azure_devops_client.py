@@ -844,16 +844,15 @@ class AzureDevopsClient(HTTPBaseClient):
                     repo_pattern_map[repo_mapping.name] = []
                 repo_pattern_map[repo_mapping.name].append((pattern, repo_mapping))
 
-        # Process repositories in batches
-        async for repositories in self.generate_repositories():
-            for repo in repositories:
-                repo_name = repo["name"]
-                if repo_name not in repo_pattern_map:
-                    continue
+        async def process_repository(repo: dict[str, Any]) -> AsyncGenerator[list[dict[str, Any]], None]:
+            repo_name = repo["name"]
+            if repo_name not in repo_pattern_map:
+                return
 
-                # Get all patterns that match this repository
-                matching_patterns = repo_pattern_map[repo_name]
-                for folder_pattern, repo_mapping in matching_patterns:
+            matching_patterns = repo_pattern_map[repo_name]
+            tasks = []
+            for folder_pattern, repo_mapping in matching_patterns:
+                async def process_pattern() -> AsyncGenerator[list[dict[str, Any]], None]:
                     async for found_folders in self.get_repository_folders(
                         repo["id"], [folder_pattern.path]
                     ):
@@ -866,3 +865,13 @@ class AzureDevopsClient(HTTPBaseClient):
                             enriched_folders.append(folder_dict)
                         if enriched_folders:
                             yield enriched_folders
+                tasks.append(process_pattern())
+
+            async for result in stream_async_iterators_tasks(*tasks):
+                yield result
+
+        # Process repositories in batches with parallel streaming
+        async for repositories in self.generate_repositories():
+            repo_tasks = [process_repository(repo) for repo in repositories]
+            async for result in stream_async_iterators_tasks(*repo_tasks):
+                yield result
