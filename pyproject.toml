@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.22.9"
+version = "0.23.0"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -56,6 +56,10 @@ pydispatcher = "^2.0.7"
 tomli = "^2.0.1"
 aiostream = ">=0.5.2,<0.7.0"
 python-dateutil = "^2.9.0.post0"
+
+# Database
+sqlalchemy = { version = "^2.0.41", extras = ["asyncio"] }
+psycopg = { version = "^3.2.9", extras = ["binary", "pool"] }
 
 # CLI
 click = { version = "^8.1.3", optional = true }

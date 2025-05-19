@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import threading
 from typing import Any, AsyncIterator, Callable, Dict, Type
 
+from port_ocean.database.managers.manager import DatabaseManager
 import port_ocean.helpers.metric.metric
 
 from fastapi import FastAPI, APIRouter
@@ -86,6 +87,11 @@ class Ocean:
         )
 
         self.app_initialized = False
+        if self.config.database.is_configured:
+            database_manager = DatabaseManager(
+                self.config.database, integration_id=self.config.integration.identifier
+            )
+            self._database_manager = database_manager
 
     def is_saas(self) -> bool:
         return self.config.runtime.is_saas_runtime
@@ -165,6 +171,10 @@ class Ocean:
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
+                if self.config.database.is_configured:
+                    logger.info("Initializing database")
+                    await self._database_manager.initialize()
+
                 await self.integration.start()
                 if self.base_url:
                     await self.webhook_manager.start_processing_event_messages()
@@ -177,6 +187,9 @@ class Ocean:
                 logger.complete()
                 sys.exit("Server stopped")
             finally:
+                if self.config.database.is_configured:
+                    logger.info("Cleaning up database")
+                    await self._database_manager.cleanup()
                 await signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
