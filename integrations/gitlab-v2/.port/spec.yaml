@@ -26,7 +26,7 @@ saas:
     requiredSecrets:
       - name: gitlabToken
         value: '.oauthData.accessToken'
-        description: 'The Gitlab token to authenticate with the Gitlab API.'
+        description: '"The Gitlab token to authenticate with the Gitlab API."'
     valuesOverride:
       integrationSpec:
         gitlabHost: '"https://gitlab.com"'
