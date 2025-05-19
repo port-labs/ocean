@@ -3,9 +3,14 @@ from typing import Any, cast
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from .client import BitbucketClient
-from .integration import BitbucketResourceConfig, ObjectKind
+from .integration import (
+    BitbucketPullRequestResourceConfig,
+    BitbucketGenericResourceConfig,
+    ObjectKind,
+)
 
 
 def initialize_client() -> BitbucketClient:
@@ -17,82 +22,47 @@ def initialize_client() -> BitbucketClient:
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
-async def on_resync_projects(kind: str) -> list[dict[Any, Any]]:
-    selector = cast(BitbucketResourceConfig, event.resource_config).selector
-    logger.info(f"Resyncing projects with filter: {selector.projects_filter}")
+async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(BitbucketGenericResourceConfig, event.resource_config).selector
+    logger.info(f"Resyncing projects with filter: {selector.projects}")
     client = initialize_client()
-    projects = await client.get_projects(projects_filter=selector.projects_filter)
-    logger.info(f"Received {len(projects)} projects")
-    return projects
+    async for project_batch in client.get_projects(projects_filter=selector.projects):
+        logger.info(f"Received {len(project_batch)} projects")
+        yield project_batch
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
-async def on_resync_repositories(kind: str) -> list[dict[Any, Any]]:
-    selector = cast(BitbucketResourceConfig, event.resource_config).selector
-    logger.info(f"Resyncing repositories for projects: {selector.projects_filter}")
+async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(BitbucketGenericResourceConfig, event.resource_config).selector
+    logger.info(f"Resyncing repositories for projects: {selector.projects}")
     client = initialize_client()
-
-    all_repositories = []
-    projects = await client.get_projects(projects_filter=selector.projects_filter)
-
-    for project in projects:
-        repositories = await client.get_repositories(project["key"])
-        for repo in repositories:
-            repo["project"] = project
-            readme = await client.get_repository_readme(project["key"], repo["slug"])
-            latest_commit = await client.get_latest_commit(project["key"], repo["slug"])
-            repo["readme"] = readme
-            repo["latest_commit"] = latest_commit
-        all_repositories.extend(repositories)
-
-    logger.info(f"Received {len(all_repositories)} repositories")
-    return all_repositories
+    async for repo_batch in client.get_repositories(projects_filter=selector.projects):
+        logger.info(f"Received {len(repo_batch)} repositories")
+        yield repo_batch
 
 
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
-async def on_resync_pull_requests(kind: str) -> list[dict[Any, Any]]:
-    selector = cast(BitbucketResourceConfig, event.resource_config).selector
-    logger.info(f"Resyncing pull requests with state: {selector.pull_request_state}")
+async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(BitbucketPullRequestResourceConfig, event.resource_config).selector
+    logger.info(f"Resyncing pull requests with state: {selector.state}")
     client = initialize_client()
-
-    all_pull_requests = []
-    projects = await client.get_projects(projects_filter=selector.projects_filter)
-
-    for project in projects:
-        repositories = await client.get_repositories(project["key"])
-        for repo in repositories:
-            pull_requests = await client.get_pull_requests(
-                project["key"],
-                repo["slug"],
-                state=selector.pull_request_state,
-            )
-            for pr in pull_requests:
-                pr["project"] = project
-                pr["repository"] = repo
-            all_pull_requests.extend(pull_requests)
-
-    logger.info(f"Received {len(all_pull_requests)} pull requests")
-    return all_pull_requests
+    async for pr_batch in client.get_pull_requests(projects_filter=selector.projects, state=selector.state):
+        logger.info(f"Received {len(pr_batch)} pull requests")
+        yield pr_batch
 
 
 @ocean.on_resync(ObjectKind.USER)
-async def on_resync_users(kind: str) -> list[dict[Any, Any]]:
+async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Resyncing users")
     client = initialize_client()
-    users = await client.get_users()
-    logger.info(f"Received {len(users)} users")
-    return users
+    async for user_batch in client.get_users():
+        logger.info(f"Received {len(user_batch)} users")
+        yield user_batch
 
 
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Bitbucket Server integration")
+    logger.info("Performing healthcheck")
     client = initialize_client()
-
-    # Test connection to Bitbucket Server
-    try:
-        await client.get_projects()
-        logger.info("Successfully connected to Bitbucket Server")
-    except Exception as e:
-        logger.error(f"Failed to connect to Bitbucket Server: {e}")
-        raise Exception("Failed to connect to Bitbucket Server")
+    await client.healthcheck()

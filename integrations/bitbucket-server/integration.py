@@ -18,28 +18,39 @@ class ObjectKind(StrEnum):
     USER = "user"
 
 
-class BitbucketSelector(Selector):
-    projects_filter: set[str] = Field(
-        alias="projectsFilter",
+class ProjectsFilterMixin:
+    projects: set[str] = Field(
         default_factory=set,
         description="List of project keys to filter. If empty, all projects will be synced",
     )
-    pull_request_state: Literal["ALL", "OPEN", "MERGED", "DECLINED"] = Field(
-        alias="pullRequestState",
+
+class BitbucketGenericSelector(Selector, ProjectsFilterMixin):
+    pass
+
+
+class BitbucketPullRequestSelector(BitbucketGenericSelector):
+    state: Literal["ALL", "OPEN", "MERGED", "DECLINED"] = Field(
         default="OPEN",
         description="State of pull requests to sync (ALL, OPEN, MERGED, DECLINED)",
     )
 
 
-class BitbucketResourceConfig(ResourceConfig):
-    selector: BitbucketSelector
-    kind: Literal["project", "repository", "pull_request", "user"]
+class BitbucketPullRequestResourceConfig(ResourceConfig):
+    selector: BitbucketPullRequestSelector
+    kind: Literal["pull_request"]
+
+
+class BitbucketGenericResourceConfig(ResourceConfig):
+    selector: BitbucketGenericSelector
+    kind: Literal["project", "repository", "user"]
 
 
 class BitbucketAppConfig(PortAppConfig):
-    resources: list[BitbucketResourceConfig | ResourceConfig] = Field(
-        default_factory=list,
-    )
+    resources: list[
+        BitbucketPullRequestResourceConfig
+        | BitbucketGenericResourceConfig
+        | ResourceConfig
+    ]
 
 
 class BitbucketIntegration(BaseIntegration):

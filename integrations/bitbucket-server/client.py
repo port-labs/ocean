@@ -1,13 +1,18 @@
+import asyncio
 from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
 from aiolimiter import AsyncLimiter
 from httpx import BasicAuth
 from loguru import logger
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
 
+# Rate limit docs: https://support.atlassian.com/bitbucket-cloud/docs/api-request-limits/
 BITBUCKET_RATE_LIMIT = 1000  # requests per hour
 BITBUCKET_RATE_LIMIT_WINDOW = 3600  # 1 hour
+
+
 WEBHOOK_EVENTS = [
     "repo:modified",
     "project:modified",
@@ -33,6 +38,7 @@ class BitbucketClient:
         username: str,
         password: str,
         base_url: str,
+        webhook_secret: str,
         app_host: str = None,
     ):
         self.username = username
@@ -43,6 +49,7 @@ class BitbucketClient:
             timeout=httpx.Timeout(60), auth=self.bitbucket_auth
         )
         self.app_host = app_host
+        self.webhook_secret = webhook_secret
         # Despite this, being the rate limits, we do not reduce to the lowest common factor because we want to allow as much
         # concurrency as possible. This is because we expect most users to have resources
         # synced under one hour.
@@ -51,9 +58,9 @@ class BitbucketClient:
         )
 
     async def send_port_request(
-        self, method: str, endpoint: str, payload: Optional[dict[str, Any]] = None
+        self, method: str, path: str, payload: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
-        url = f"{self.base_url}/{endpoint}"
+        url = f"{self.base_url}/rest/api/1.0/{path}"
         async with self.rate_limiter:
             try:
                 response = await self.client.request(method, url, json=payload)
@@ -83,7 +90,7 @@ class BitbucketClient:
             params["start"] = start
             try:
                 data = await self.send_port_request(
-                    "GET", f"rest/api/1.0/{path}", payload=params
+                    "GET", path, payload=params
                 )
                 values: list[dict[str, Any]] = data.get("values", [])
                 if not values:
@@ -141,8 +148,7 @@ class BitbucketClient:
         )
         return repository
 
-    @cache_iterator_result()
-    async def get_repositories(
+    async def get_repositories_for_project(
         self, project_key: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for repo_batch in self.get_paginated_resource(
@@ -158,7 +164,17 @@ class BitbucketClient:
             yield repositories
 
     @cache_iterator_result()
-    async def get_pull_requests(
+    async def get_repositories(self, projects_filter: set[str] | None = None) -> AsyncGenerator[list[dict[str, Any]], None]:
+        tasks = []
+        async for project_batch in self.get_projects(projects_filter):
+            for project in project_batch:
+                tasks.append(self.get_repositories_for_project(project["key"]))
+
+        async for repo_batch in stream_async_iterators_tasks(*tasks):
+            yield repo_batch
+
+
+    async def _get_pull_requests_for_repository(
         self, project_key: str, repo_slug: str, state: str = "OPEN"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {"state": state}
@@ -166,6 +182,18 @@ class BitbucketClient:
             f"projects/{project_key}/repos/{repo_slug}/pull-requests",
             params=params,
         ):
+            yield pr_batch
+
+    @cache_iterator_result()
+    async def get_pull_requests(
+        self, projects_filter: set[str] | None = None, state: str = "OPEN"
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        tasks = []
+        async for repo_batch in self.get_repositories(projects_filter):
+            for repo in repo_batch:
+                tasks.append(self._get_pull_requests_for_repository(repo["project"]["key"], repo["slug"], state))
+
+        async for pr_batch in stream_async_iterators_tasks(*tasks):
             yield pr_batch
 
     async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -197,14 +225,14 @@ class BitbucketClient:
     ) -> Dict[str, Any]:
         response = await self.send_port_request(
             "GET",
-            f"rest/api/1.0/projects/{project_key}/repos/{repo_slug}/commits",
+            f"projects/{project_key}/repos/{repo_slug}/commits",
             params={"limit": 1},
         )
         return response.get("values", [{}])[0]
 
     async def get_single_project(self, project_key: str) -> dict[str, Any]:
         project = await self.send_port_request(
-            "GET", f"rest/api/1.0/projects/{project_key}"
+            "GET", f"projects/{project_key}"
         )
         return project
 
@@ -212,7 +240,7 @@ class BitbucketClient:
         self, project_key: str, repo_slug: str
     ) -> dict[str, Any]:
         repository = await self.send_port_request(
-            "GET", f"rest/api/1.0/projects/{project_key}/repos/{repo_slug}"
+            "GET", f"projects/{project_key}/repos/{repo_slug}"
         )
         return repository
 
@@ -221,20 +249,23 @@ class BitbucketClient:
     ) -> dict[str, Any]:
         pull_request = await self.send_port_request(
             "GET",
-            f"rest/api/1.0/projects/{project_key}/repos/{repo_slug}/pull-requests/{pr_key}",
+            f"projects/{project_key}/repos/{repo_slug}/pull-requests/{pr_key}",
         )
         return pull_request
 
     async def get_single_user(self, user_key: str) -> dict[str, Any]:
-        user = await self.send_port_request("GET", f"rest/api/1.0/users/{user_key}")
+        user = await self.send_port_request("GET", f"users/{user_key}")
         return user
 
-    def _create_webhook_payload(self, project_key: str) -> dict[str, Any]:
-        name = f"Port Ocean - {project_key}"
+    def _create_webhook_payload(self, key: str) -> dict[str, Any]:
+        name = f"Port Ocean - {key}"
         return {
             "name": name,
             "url": f"{self.app_host}/webhooks",
             "events": WEBHOOK_EVENTS,
+            "active": True,
+            "sslVerificationRequired": True,
+            "secret": self.webhook_secret,
         }
 
     async def get_project_webhooks(
@@ -245,6 +276,29 @@ class BitbucketClient:
         ):
             yield webhook_batch
 
+    async def _create_project_webhook(self, project_key: str) -> dict[str, Any]:
+        webhook_payload = self._create_webhook_payload(project_key)
+        webhook = await self.send_port_request(
+            "POST",
+            f"projects/{project_key}/webhooks",
+            payload=webhook_payload,
+        )
+        return webhook
+
+    async def _create_projects_webhook(self, projects: set[str]) -> None:
+        project_tasks = []
+        for project_key in projects:
+            project_tasks.append(self._create_project_webhook(project_key))
+
+        await asyncio.gather(*project_tasks)
+
+    async def create_projects_webhook(self, projects: set[str] | None = None) -> None:
+        if projects:
+            await self._create_projects_webhook(projects)
+        else:
+            async for project_batch in self.get_projects():
+                await self._create_projects_webhook(set(project["key"] for project in project_batch))
+
     async def get_repository_webhooks(
         self, project_key: str, repo_slug: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -253,10 +307,46 @@ class BitbucketClient:
         ):
             yield webhook_batch
 
-    async def create_project_webhook(self, project_key: str) -> dict[str, Any]:
+    async def create_repository_webhook(self, project_key: str, repo_slug: str) -> dict[str, Any]:
+        webhook_payload = self._create_webhook_payload(f"{project_key}-{repo_slug}")
         webhook = await self.send_port_request(
             "POST",
-            f"rest/api/1.0/projects/{project_key}/webhooks",
-            payload={"events": WEBHOOK_EVENTS},
+            f"projects/{project_key}/repos/{repo_slug}/webhooks",
+            payload=webhook_payload,
         )
         return webhook
+
+    async def _create_repository_webhook(self, project_key: str, repo_slug: str) -> None:
+        project_tasks = []
+        repository_tasks = []
+        for project_key in projects:
+            project_tasks.append(self.create_project_webhook(project_key))
+            async for repo_batch in self.get_repositories(project_key):
+                repository_tasks.extend([self.create_repository_webhook(project_key, repo["slug"]) for repo in repo_batch])
+
+        await asyncio.gather(*project_tasks, *repository_tasks)
+
+    async def setup_webhooks(self, projects: set[str] | None = None) -> None:
+        if projects:
+            await self._setup_project_and_repository_webhooks(projects)
+        else:
+            async for project_batch in self.get_projects():
+                await self._setup_project_and_repository_webhooks(set(project["key"] for project in project_batch))
+
+    async def _get_application_properties(self) -> dict[str, Any]:
+        return await self.send_port_request(
+            method="GET",
+            path="application-properties",
+        )
+
+    @property
+    async def IS_VERSION_8_POINT_7_AND_ABOVE(self) -> bool:
+        return float(self._get_application_properties().get("version")) >= 8.7
+
+    async def healthcheck(self) -> None:
+        try:
+            await self._get_application_properties()
+            logger.info("Successfully connected to Bitbucket Server")
+        except Exception as e:
+            logger.error(f"Failed to connect to Bitbucket Server: {e}")
+            raise Exception("Failed to connect to Bitbucket Server")
