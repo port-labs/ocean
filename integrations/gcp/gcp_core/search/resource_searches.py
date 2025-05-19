@@ -34,6 +34,7 @@ from gcp_core.helpers.retry.async_retry import async_retry
 
 from asyncio import BoundedSemaphore
 from gcp_core.overrides import ProtoConfig
+from gcp_core.search.client_pool import ClientPool
 
 DEFAULT_SEMAPHORE = BoundedSemaphore(MAXIMUM_CONCURRENT_REQUESTS)
 
@@ -82,30 +83,30 @@ async def search_all_resources_in_project(
         if asset_name:
             search_all_resources_request["query"] = f"name={asset_name}"
 
-        async with AssetServiceAsyncClient() as async_assets_client:
+        async_assets_client = await ClientPool(AssetServiceAsyncClient)()
 
-            try:
-                async for assets in paginated_query(
-                    async_assets_client,
-                    "search_all_resources",
-                    search_all_resources_request,
-                    parse_asset_response,
-                    kwargs.get("rate_limiter"),
-                ):
-                    yield assets
+        try:
+            async for assets in paginated_query(
+                async_assets_client,
+                "search_all_resources",
+                search_all_resources_request,
+                parse_asset_response,
+                kwargs.get("rate_limiter"),
+            ):
+                yield assets
 
-            except PermissionDenied as e:
-                logger.error(
-                    f"Service account doesn't have permissions to search all resources within project {project_name} for kind {asset_type}. Error: {str(e.message)}"
-                )
-            except NotFound as e:
-                logger.info(
-                    f"Couldn't perform search_all_resources on project {project_name} since it's deleted. Error: {str(e)}"
-                )
-            else:
-                logger.info(
-                    f"Successfully searched all resources within project {project_name}"
-                )
+        except PermissionDenied as e:
+            logger.error(
+                f"Service account doesn't have permissions to search all resources within project {project_name} for kind {asset_type}. Error: {str(e.message)}"
+            )
+        except NotFound as e:
+            logger.info(
+                f"Couldn't perform search_all_resources on project {project_name} since it's deleted. Error: {str(e)}"
+            )
+        else:
+            logger.info(
+                f"Successfully searched all resources within project {project_name}"
+            )
 
 
 async def list_all_topics_per_project(
@@ -116,32 +117,32 @@ async def list_all_topics_per_project(
     The Topics are handled specifically due to lacks of data in the asset itselfwithin the asset inventory - e.g. some properties missing.
     The listing is being done via the PublisherAsyncClient, ignoring state in assets inventory
     """
-    async with PublisherAsyncClient() as async_publisher_client:
-        project_name = project["name"]
-        logger.info(
-            f"Searching all {AssetTypesWithSpecialHandling.TOPIC}'s in project {project_name}"
+    async_publisher_client = await ClientPool(PublisherAsyncClient)()
+    project_name = project["name"]
+    logger.info(
+        f"Searching all {AssetTypesWithSpecialHandling.TOPIC}'s in project {project_name}"
+    )
+    try:
+        async for topics in paginated_query(
+            async_publisher_client,
+            "list_topics",
+            {"project": project_name},
+            lambda response: parse_protobuf_messages(response.topics),
+            kwargs.get("rate_limiter"),
+        ):
+            for topic in topics:
+                topic[EXTRA_PROJECT_FIELD] = project
+            yield topics
+    except PermissionDenied as e:
+        logger.error(
+            f"Service account doesn't have permissions to list topics from project {project_name}. Error: {str(e.message)}"
         )
-        try:
-            async for topics in paginated_query(
-                async_publisher_client,
-                "list_topics",
-                {"project": project_name},
-                lambda response: parse_protobuf_messages(response.topics),
-                kwargs.get("rate_limiter"),
-            ):
-                for topic in topics:
-                    topic[EXTRA_PROJECT_FIELD] = project
-                yield topics
-        except PermissionDenied as e:
-            logger.error(
-                f"Service account doesn't have permissions to list topics from project {project_name}. Error: {str(e.message)}"
-            )
-        except NotFound as e:
-            logger.info(
-                f"Couldn't perform list_topics on project {project_name} since it's deleted. Error: {str(e)}"
-            )
-        else:
-            logger.info(f"Successfully listed all topics within project {project_name}")
+    except NotFound as e:
+        logger.info(
+            f"Couldn't perform list_topics on project {project_name} since it's deleted. Error: {str(e)}"
+        )
+    else:
+        logger.info(f"Successfully listed all topics within project {project_name}")
 
 
 async def list_all_subscriptions_per_project(
@@ -152,71 +153,71 @@ async def list_all_subscriptions_per_project(
     The Subscriptions are handled specifically due to lacks of data in the asset itself within the asset inventory.
     The listing is being done via the PublisherAsyncClient, ignoring state in assets inventory
     """
-    async with SubscriberAsyncClient() as async_subscriber_client:
-        project_name = project["name"]
-        logger.info(
-            f"Searching all {AssetTypesWithSpecialHandling.SUBSCRIPTION}'s in project {project_name}"
+    async_subscriber_client = await ClientPool(SubscriberAsyncClient)()
+    project_name = project["name"]
+    logger.info(
+        f"Searching all {AssetTypesWithSpecialHandling.SUBSCRIPTION}'s in project {project_name}"
+    )
+    try:
+        async for subscriptions in paginated_query(
+            async_subscriber_client,
+            "list_subscriptions",
+            {"project": project_name},
+            lambda response: parse_protobuf_messages(response.subscriptions),
+            kwargs.get("rate_limiter"),
+        ):
+            for subscription in subscriptions:
+                subscription[EXTRA_PROJECT_FIELD] = project
+            yield subscriptions
+    except PermissionDenied as e:
+        logger.error(
+            f"Service account doesn't have permissions to list subscriptions from project {project_name}. Error: {str(e.message)}"
         )
-        try:
-            async for subscriptions in paginated_query(
-                async_subscriber_client,
-                "list_subscriptions",
-                {"project": project_name},
-                lambda response: parse_protobuf_messages(response.subscriptions),
-                kwargs.get("rate_limiter"),
-            ):
-                for subscription in subscriptions:
-                    subscription[EXTRA_PROJECT_FIELD] = project
-                yield subscriptions
-        except PermissionDenied as e:
-            logger.error(
-                f"Service account doesn't have permissions to list subscriptions from project {project_name}. Error: {str(e.message)}"
-            )
-        except NotFound as e:
-            logger.info(
-                f"Couldn't perform list_subscriptions on project {project_name} since it's deleted. Error: {str(e)}"
-            )
-        else:
-            logger.info(
-                f"Successfully listed all subscriptions within project {project_name}"
-            )
+    except NotFound as e:
+        logger.info(
+            f"Couldn't perform list_subscriptions on project {project_name} since it's deleted. Error: {str(e)}"
+        )
+    else:
+        logger.info(
+            f"Successfully listed all subscriptions within project {project_name}"
+        )
 
 
 @cache_iterator_result()
 async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Searching projects")
-    async with ProjectsAsyncClient() as projects_client:
-        async for projects in paginated_query(
-            projects_client,
-            "search_projects",
-            {},
-            lambda response: parse_protobuf_messages(response.projects),
-        ):
-            yield projects
+    projects_client = await ClientPool(ProjectsAsyncClient)()
+    async for projects in paginated_query(
+        projects_client,
+        "search_projects",
+        {},
+        lambda response: parse_protobuf_messages(response.projects),
+    ):
+        yield projects
 
 
 async def search_all_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Searching folders")
-    async with FoldersAsyncClient() as folders_client:
-        async for folders in paginated_query(
-            folders_client,
-            "search_folders",
-            {},
-            lambda response: parse_protobuf_messages(response.folders),
-        ):
-            yield folders
+    folders_client = await ClientPool(FoldersAsyncClient)()
+    async for folders in paginated_query(
+        folders_client,
+        "search_folders",
+        {},
+        lambda response: parse_protobuf_messages(response.folders),
+    ):
+        yield folders
 
 
 async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Searching organizations")
-    async with OrganizationsAsyncClient() as organizations_client:
-        async for organizations in paginated_query(
-            organizations_client,
-            "search_organizations",
-            {},
-            lambda response: parse_protobuf_messages(response.organizations),
-        ):
-            yield organizations
+    organizations_client = await ClientPool(OrganizationsAsyncClient)()
+    async for organizations in paginated_query(
+        organizations_client,
+        "search_organizations",
+        {},
+        lambda response: parse_protobuf_messages(response.organizations),
+    ):
+        yield organizations
 
 
 async def get_single_project(
