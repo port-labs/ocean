@@ -5,20 +5,12 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from .client import BitbucketClient
 from .integration import (
-    BitbucketPullRequestResourceConfig,
     BitbucketGenericResourceConfig,
+    BitbucketPullRequestResourceConfig,
     ObjectKind,
 )
-
-
-def initialize_client() -> BitbucketClient:
-    return BitbucketClient(
-        username=ocean.integration_config["username"],
-        password=ocean.integration_config["password"],
-        base_url=ocean.integration_config["base_url"],
-    )
+from .utils import initialize_client
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -46,7 +38,9 @@ async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(BitbucketPullRequestResourceConfig, event.resource_config).selector
     logger.info(f"Resyncing pull requests with state: {selector.state}")
     client = initialize_client()
-    async for pr_batch in client.get_pull_requests(projects_filter=selector.projects, state=selector.state):
+    async for pr_batch in client.get_pull_requests(
+        projects_filter=selector.projects, state=selector.state
+    ):
         logger.info(f"Received {len(pr_batch)} pull requests")
         yield pr_batch
 

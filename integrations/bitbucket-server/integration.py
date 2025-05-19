@@ -24,6 +24,7 @@ class ProjectsFilterMixin:
         description="List of project keys to filter. If empty, all projects will be synced",
     )
 
+
 class BitbucketGenericSelector(Selector, ProjectsFilterMixin):
     pass
 
