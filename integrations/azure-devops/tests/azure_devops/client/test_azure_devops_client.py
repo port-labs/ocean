@@ -1278,7 +1278,9 @@ async def test_get_repository_tree() -> None:
         side_effect=mock_get_paginated_by_top_and_continuation_token,
     ):
         folders = []
-        async for folder_batch in client.get_repository_tree(MOCK_REPOSITORY_ID):
+        async for folder_batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID, recursion_level="none"
+        ):
             folders.extend(folder_batch)
 
         assert len(folders) == 2  # Only tree items
@@ -1352,7 +1354,9 @@ async def test_get_repository_tree_will_skip_404(mock_event_context: MagicMock) 
         side_effect=mock_get_paginated_by_top_and_continuation_token,
     ):
         folders = []
-        async for folder_batch in client.get_repository_tree(MOCK_REPOSITORY_ID):
+        async for folder_batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID, recursion_level="none"
+        ):
             folders.extend(folder_batch)
 
         assert len(folders) == 0

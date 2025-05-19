@@ -723,8 +723,8 @@ class AzureDevopsClient(HTTPBaseClient):
     async def get_repository_tree(
         self,
         repository_id: str,
+        recursion_level: str,  # Options: none, oneLevel, full
         path: str = "/",
-        recursion_level: str = "none",  # Options: none, oneLevel, full
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch repository folder structure with rate limit awareness.
 
