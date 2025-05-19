@@ -104,7 +104,7 @@ def _validate_path(
         ):
             raise ValueError(
                 f"Path '{path}' contains glob patterns which are not allowed. "
-                "Please provide a directory path like 'src/backend' or 'docs/api'"
+                "Please provide explicit file paths like 'src/config.yaml' or 'docs/README.md'"
             )
 
         # For glob paths, only allow * and ** patterns

@@ -825,7 +825,46 @@ class AzureDevopsClient(HTTPBaseClient):
             if matching_folders:
                 yield matching_folders
 
-    async def _process_folder_patterns(
+    async def _process_pattern(
+        self,
+        repo: dict[str, Any],
+        folder_pattern: FolderPattern,
+        repo_mapping: RepositoryBranchMapping,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for found_folders in self.get_repository_folders(
+            repo["id"], [folder_pattern.path]
+        ):
+            enriched_folders = []
+            for folder in found_folders:
+                folder_dict = dict(folder)
+                folder_dict["__repository"] = repo
+                folder_dict["__branch"] = repo_mapping.branch
+                folder_dict["__pattern"] = folder_pattern.path
+                enriched_folders.append(folder_dict)
+            if enriched_folders:
+                yield enriched_folders
+
+    async def _process_repository(
+        self,
+        repo: dict[str, Any],
+        repo_pattern_map: dict[
+            str, list[tuple[FolderPattern, RepositoryBranchMapping]]
+        ],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        repo_name = repo["name"]
+        if repo_name not in repo_pattern_map:
+            return
+
+        matching_patterns = repo_pattern_map[repo_name]
+        tasks = [
+            self._process_pattern(repo, folder_pattern, repo_mapping)
+            for folder_pattern, repo_mapping in matching_patterns
+        ]
+
+        async for result in stream_async_iterators_tasks(*tasks):
+            yield result
+
+    async def process_folder_patterns(
         self,
         folder_patterns: list[FolderPattern],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -844,34 +883,12 @@ class AzureDevopsClient(HTTPBaseClient):
                     repo_pattern_map[repo_mapping.name] = []
                 repo_pattern_map[repo_mapping.name].append((pattern, repo_mapping))
 
-        async def process_repository(repo: dict[str, Any]) -> AsyncGenerator[list[dict[str, Any]], None]:
-            repo_name = repo["name"]
-            if repo_name not in repo_pattern_map:
-                return
-
-            matching_patterns = repo_pattern_map[repo_name]
-            tasks = []
-            for folder_pattern, repo_mapping in matching_patterns:
-                async def process_pattern() -> AsyncGenerator[list[dict[str, Any]], None]:
-                    async for found_folders in self.get_repository_folders(
-                        repo["id"], [folder_pattern.path]
-                    ):
-                        enriched_folders = []
-                        for folder in found_folders:
-                            folder_dict = dict(folder)
-                            folder_dict["__repository"] = repo
-                            folder_dict["__branch"] = repo_mapping.branch
-                            folder_dict["__pattern"] = folder_pattern.path
-                            enriched_folders.append(folder_dict)
-                        if enriched_folders:
-                            yield enriched_folders
-                tasks.append(process_pattern())
-
-            async for result in stream_async_iterators_tasks(*tasks):
-                yield result
-
         # Process repositories in batches with parallel streaming
+        # We fetching all repos because NO API endpoint exist to get repos by list of names
         async for repositories in self.generate_repositories():
-            repo_tasks = [process_repository(repo) for repo in repositories]
+            repo_tasks = [
+                self._process_repository(repo, repo_pattern_map)
+                for repo in repositories
+            ]
             async for result in stream_async_iterators_tasks(*repo_tasks):
                 yield result

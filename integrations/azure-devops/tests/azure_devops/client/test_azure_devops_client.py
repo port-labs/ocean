@@ -1504,7 +1504,7 @@ async def test_process_folder_patterns(
         ),
     ):
         results: List[Dict[str, Any]] = []
-        async for folders in mock_azure_client._process_folder_patterns(
+        async for folders in mock_azure_client.process_folder_patterns(
             sample_folder_patterns
         ):
             results.extend(folders)
@@ -1541,7 +1541,7 @@ async def test_process_folder_patterns_empty_folders() -> None:
     """Test with empty folder patterns"""
     mock_client = AsyncMock(spec=AzureDevopsClient)
     results = []
-    async for folders in mock_client._process_folder_patterns([]):
+    async for folders in mock_client.process_folder_patterns([]):
         results.extend(folders)
     assert len(results) == 0
 
@@ -1566,7 +1566,7 @@ async def test_process_folder_patterns_no_matching_repos() -> None:
     mock_client.generate_repositories = mock_generate_repositories
 
     results = []
-    async for folders in mock_client._process_folder_patterns(patterns):
+    async for folders in mock_client.process_folder_patterns(patterns):
         results.extend(folders)
     assert len(results) == 0
 
@@ -1596,6 +1596,6 @@ async def test_process_folder_patterns_no_matching_folders() -> None:
     mock_client.get_repository_folders = mock_get_repository_folders
 
     results = []
-    async for folders in mock_client._process_folder_patterns(patterns):
+    async for folders in mock_client.process_folder_patterns(patterns):
         results.extend(folders)
     assert len(results) == 0
