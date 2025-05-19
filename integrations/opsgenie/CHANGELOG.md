@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Adjusts limit to 99 at offset = 19900 to safely retrieve remaining items up to offset 19999.
+- Extended MAX_OPSGENIE_OFFSET_LIMIT to apply to incidents and services in addition to alerts.
 
 
 ## 0.2.72 (2025-05-19)
