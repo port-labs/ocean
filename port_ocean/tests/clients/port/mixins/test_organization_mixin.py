@@ -16,6 +16,7 @@ async def mocked_org_mixin() -> OrganizationClientMixin:
     client.get.return_value.json.return_value = {
         "organization": {"featureFlags": ["aa", "bb"]}
     }
+    client.get.return_value.status_code = 200
     return OrganizationClientMixin(auth=auth, client=client)
 
 

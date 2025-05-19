@@ -135,7 +135,7 @@ async def test_get_stages_nested_jobs(
         else:
             return {"buildable": False}
 
-    async def mock_fetch_resources(
+    async def mock_get_paginated_resources(
         resource: str, parent_job: str | None = None
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if parent_job is None:
@@ -160,8 +160,8 @@ async def test_get_stages_nested_jobs(
             client, "get_single_resource", side_effect=mock_get_single_resource
         ) as mock_get_single_resource,
         patch.object(
-            client, "fetch_resources", side_effect=mock_fetch_resources
-        ) as mock_fetch_resources,
+            client, "_get_paginated_resources", side_effect=mock_get_paginated_resources
+        ) as mock_get_paginated_resources,
         patch.object(
             client, "_get_build_stages", new_callable=AsyncMock
         ) as mock_get_build_stages,
@@ -178,5 +178,32 @@ async def test_get_stages_nested_jobs(
         # Assertions
         assert stages == mock_stages
         mock_get_single_resource.assert_called_with(parent_job_url)
-        mock_fetch_resources.assert_called()
+        mock_get_paginated_resources.assert_called()
         mock_get_build_stages.assert_called_once_with(build_url)
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.context.ocean.PortOceanContext.integration_config",
+    new_callable=AsyncMock,
+)
+@patch("port_ocean.utils.async_http.OceanAsyncClient", new_callable=AsyncMock)
+async def test_jenkins_client_url_no_trailing_slashes(
+    mock_ocean_client: AsyncMock, mock_integration_config: AsyncMock
+) -> None:
+    mock_integration_config.return_value = {
+        "jenkins_host": "http://localhost:8080",
+        "jenkins_user": "user",
+        "jenkins_token": "token",
+    }
+
+    test_urls = [
+        "http://jenkins.example.com",
+        "http://jenkins.example.com/",
+        "http://jenkins.example.com//",
+    ]
+
+    with patch("client.http_async_client", new=mock_ocean_client):
+        for url in test_urls:
+            client = JenkinsClient(url, "user", "token")
+            assert client.jenkins_base_url == "http://jenkins.example.com"
