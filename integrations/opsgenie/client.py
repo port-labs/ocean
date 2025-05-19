@@ -9,7 +9,7 @@ from utils import ObjectKind, RESOURCE_API_VERSIONS
 
 PAGE_SIZE = 100
 CONCURRENT_REQUESTS = 5
-MAX_OPSGENIE_ALERT_OFFSET_LIMIT = 20000
+MAX_OPSGENIE_OFFSET_LIMIT = 20000
 
 
 class OpsGenieClient:
@@ -28,11 +28,8 @@ class OpsGenieClient:
         return RESOURCE_API_VERSIONS.get(resource_type, "v2")
 
     def get_resource_offset_limit(self, resource_type: ObjectKind) -> Optional[int]:
-        return (
-            MAX_OPSGENIE_ALERT_OFFSET_LIMIT
-            if resource_type == ObjectKind.ALERT
-            else None
-        )
+        resource_types_with_limit = {ObjectKind.ALERT, ObjectKind.INCIDENT, ObjectKind.SERVICE}
+        return MAX_OPSGENIE_OFFSET_LIMIT if resource_type in resource_types_with_limit else None
 
     async def _get_single_resource(
         self,
@@ -71,17 +68,12 @@ class OpsGenieClient:
             if max_offset_limit is not None:
                 offset = int(pagination_params.get("offset", 0))
                 limit = int(pagination_params.get("limit", PAGE_SIZE))
-
-                remaining = max_offset_limit - 1 - offset
-                if remaining <= 0:
+                if offset + limit > max_offset_limit:
                     logger.warning(
                         f"Stopped pagination for {resource_type.value}s at offset {offset}: "
                         f"reached OpsGenie API limit of {max_offset_limit} (offset + limit = {offset + limit})"
                     )
                     break
-
-                limit = min(limit, remaining)
-                pagination_params["limit"] = limit
 
             try:
                 response = await self._get_single_resource(
