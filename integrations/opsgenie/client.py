@@ -71,12 +71,17 @@ class OpsGenieClient:
             if max_offset_limit is not None:
                 offset = int(pagination_params.get("offset", 0))
                 limit = int(pagination_params.get("limit", PAGE_SIZE))
-                if offset + limit > max_offset_limit:
+
+                remaining = max_offset_limit - 1 - offset
+                if remaining <= 0:
                     logger.warning(
                         f"Stopped pagination for {resource_type.value}s at offset {offset}: "
                         f"reached OpsGenie API limit of {max_offset_limit} (offset + limit = {offset + limit})"
                     )
                     break
+
+                limit = min(limit, remaining)
+                pagination_params["limit"] = limit
 
             try:
                 response = await self._get_single_resource(

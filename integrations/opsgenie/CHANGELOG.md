@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.73 (2025-05-19)
+
+
+### Bug Fixes
+
+- Adjusts limit to 99 at offset = 19900 to safely retrieve remaining items up to offset 19999.
+
+
 ## 0.2.72 (2025-05-19)
 
 

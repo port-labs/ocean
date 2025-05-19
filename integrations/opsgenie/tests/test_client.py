@@ -195,3 +195,36 @@ class TestOpsGenieClient:
             # Assert
             assert results == []
             mock_get.assert_not_called()
+
+    async def test_get_paginated_alerts_stops_before_max_offset_limit(
+        self, client: OpsGenieClient
+    ) -> None:
+        """Test get_paginated_resources adjusts limit to stop before MAX_OPSGENIE_ALERT_OFFSET_LIMIT for alerts"""
+        # Arrange
+        resource_type = ObjectKind.ALERT
+        base_url = f"{client.api_url}/v2/alerts"
+        offset = MAX_OPSGENIE_ALERT_OFFSET_LIMIT - PAGE_SIZE
+        expected_limit = 99
+        mock_response = {
+            "data": [{"id": "1"}, {"id": "2"}],
+            "paging": {},
+        }
+        with patch.object(
+            client, "_get_single_resource", AsyncMock(return_value=mock_response)
+        ) as mock_get:
+            # Act
+            async with event_context("test_event"):
+                results = []
+                async for page in client.get_paginated_resources(
+                    resource_type, query_params={"offset": offset, "limit": PAGE_SIZE}
+                ):
+                    results.extend(page)
+            # Assert
+            assert results == [{"id": "1"}, {"id": "2"}]
+            mock_get.assert_called_once_with(
+                url=base_url,
+                query_params={
+                    "limit": expected_limit,
+                    "offset": offset,
+                },
+            )
