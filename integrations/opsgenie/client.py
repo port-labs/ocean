@@ -28,8 +28,16 @@ class OpsGenieClient:
         return RESOURCE_API_VERSIONS.get(resource_type, "v2")
 
     def get_resource_offset_limit(self, resource_type: ObjectKind) -> Optional[int]:
-        resource_types_with_limit = {ObjectKind.ALERT, ObjectKind.INCIDENT, ObjectKind.SERVICE}
-        return MAX_OPSGENIE_OFFSET_LIMIT if resource_type in resource_types_with_limit else None
+        resource_types_with_limit = {
+            ObjectKind.ALERT,
+            ObjectKind.INCIDENT,
+            ObjectKind.SERVICE,
+        }
+        return (
+            MAX_OPSGENIE_OFFSET_LIMIT
+            if resource_type in resource_types_with_limit
+            else None
+        )
 
     async def _get_single_resource(
         self,
