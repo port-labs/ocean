@@ -10,8 +10,8 @@ from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookEvent
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
-from .base_client import HTTPBaseClient, PAGE_SIZE
-from .file_processing import (
+from azure_devops.client.base_client import HTTPBaseClient, PAGE_SIZE
+from azure_devops.client.file_processing import (
     parse_file_content,
 )
 from port_ocean.utils.async_iterators import (
@@ -20,6 +20,7 @@ from port_ocean.utils.async_iterators import (
 )
 from port_ocean.utils.queue_utils import process_in_queue
 from urllib.parse import urlparse
+import fnmatch
 
 
 API_URL_PREFIX = "_apis"
@@ -723,7 +724,7 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         repository_id: str,
         path: str = "/",
-        recursion_level: str = "oneLevel",  # Options: none, oneLevel, full
+        recursion_level: str = "none",  # Options: none, oneLevel, full
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch repository folder structure with rate limit awareness.
 
@@ -772,7 +773,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
         Args:
             repository_id: The ID of the repository to scan
-            folder_patterns: List of folder paths to scan
+            folder_patterns: List of folder paths to scan (supports glob patterns)
             concurrency: Maximum number of concurrent requests
 
         Yields:
@@ -783,12 +784,18 @@ class AzureDevopsClient(HTTPBaseClient):
         def build_tree_fetcher(
             pattern: str,
         ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
+            # For ** patterns, we need to scan recursively
             recursion_level = "full" if "**" in pattern else "oneLevel"
-            clean_pattern = pattern.replace("**", "").rstrip("/")
+            # Remove ** from pattern as we'll handle matching
+            clean_pattern = pattern.replace("**", "*").rstrip("/")
+            # Get the base path (everything before the first wildcard)
+            base_path = "/".join(
+                p for p in clean_pattern.split("/") if not any(c in p for c in "*?[]")
+            )
             return functools.partial(
                 self.get_repository_tree,
                 repository_id,
-                path=clean_pattern,
+                path=base_path or "/",
                 recursion_level=recursion_level,
             )
 
@@ -798,7 +805,25 @@ class AzureDevopsClient(HTTPBaseClient):
         ]
 
         async for batch in stream_async_iterators_tasks(*tasks):
-            yield batch
+            matching_folders = []
+            for folder in batch:
+                # For each folder in the batch, check if it matches any of our patterns
+                for pattern in folder_patterns:
+                    is_wildcard = any(c in pattern for c in "*?[]")
+                    folder_path = folder.get("path", "").strip("/")
+                    # For non-wildcard patterns, require exact match
+                    # For wildcard patterns, ensure path depth matches unless using **
+                    if (not is_wildcard and folder_path == pattern.strip("/")) or (
+                        is_wildcard
+                        and (
+                            "**" in pattern
+                            or folder_path.count("/") == pattern.strip("/").count("/")
+                        )
+                        and fnmatch.fnmatch(folder_path, pattern.strip("/"))
+                    ):
+                        matching_folders.append(folder)
+            if matching_folders:
+                yield matching_folders
 
     async def _process_folder_patterns(
         self,

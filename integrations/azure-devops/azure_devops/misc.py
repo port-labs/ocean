@@ -77,16 +77,13 @@ def _validate_path(
 
     Args:
         v: Path or list of paths to validate
-        allow_glob: Whether to allow glob patterns like ** in paths
+        allow_glob: Whether to allow glob patterns (* and **) in paths
     """
     patterns = [v] if isinstance(v, str) else v
 
     if not patterns:
         raise ValueError("At least one path must be specified")
 
-    invalid_chars = {"*", "?", "[", "]", "{", "}"} if not allow_glob else set()
-    if not allow_glob:
-        invalid_chars.add("**")
     valid_paths = []
 
     for path in patterns:
@@ -101,23 +98,28 @@ def _validate_path(
         if ".." in cleaned_path:
             raise ValueError("Path traversal is not allowed")
 
-        # Check for invalid glob characters
-        if any(char in cleaned_path for char in invalid_chars):
-            if allow_glob:
-                raise ValueError(
-                    f"Path '{path}' contains invalid characters. "
-                    "Only '**' is allowed as a glob pattern."
-                )
-            else:
-                raise ValueError(
-                    f"Path '{path}' contains glob patterns which are not allowed. "
-                    "Please provide a directory path like 'src/backend' or 'docs/api'"
-                )
+        # For non-glob paths, validate there are no glob characters
+        if not allow_glob and any(
+            char in cleaned_path for char in {"*", "?", "[", "]", "{", "}", "**"}
+        ):
+            raise ValueError(
+                f"Path '{path}' contains glob patterns which are not allowed. "
+                "Please provide a directory path like 'src/backend' or 'docs/api'"
+            )
+
+        # For glob paths, only allow * and ** patterns
+        if allow_glob and any(
+            char in cleaned_path for char in {"?", "[", "]", "{", "}"}
+        ):
+            raise ValueError(
+                f"Path '{path}' contains unsupported glob characters. "
+                "Only '*' and '**' patterns are supported."
+            )
 
         valid_paths.append(cleaned_path)
 
     if not valid_paths:
-        raise ValueError("No valid paths provided. Please provide explicit paths.")
+        raise ValueError("No valid paths provided. Please provide valid paths.")
 
     return valid_paths if isinstance(v, list) else valid_paths[0]
 
@@ -157,7 +159,9 @@ class FileSelector(BaseModel):
     )
 
     @validator("path", allow_reuse=True)
+    @classmethod
     def validate_path_patterns(cls, v: Union[str, List[str]]) -> Union[str, List[str]]:
+        """Validate file paths - no glob patterns allowed"""
         return _validate_path(v, allow_glob=False)
 
 
@@ -215,13 +219,29 @@ class FolderPattern(BaseModel):
     path: str = Field(
         default="",
         alias="path",
-        description="Specify the repositories and folders to include under this relative path",
+        description="""Specify the repositories and folders to include under this relative path.
+        Supports glob patterns (* and **) for matching multiple folders:
+        - Use * to match any characters within a path segment
+        - Use ** to match zero or more path segments
+
+        Examples:
+        - "src/backend": Match exact folder
+        - "src/*": Match all folders under src
+        - "src/**/tests": Match all 'tests' folders under 'src' at any depth
+        - "**/docs": Match all 'docs' folders at any depth
+        """,
     )
     repos: list[RepositoryBranchMapping] = Field(
         default_factory=list,
         alias="repos",
         description="Specify the repositories and branches to include under this relative path",
     )
+
+    @validator("path")
+    @classmethod
+    def validate_folder_path(cls, v: str) -> Union[str, List[str]]:
+        """Validate folder paths - glob patterns (* and **) allowed"""
+        return _validate_path(v, allow_glob=True)
 
 
 class AzureDevopsFolderSelector(Selector):

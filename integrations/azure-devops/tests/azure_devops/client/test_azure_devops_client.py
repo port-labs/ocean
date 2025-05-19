@@ -1248,7 +1248,7 @@ async def test_get_repository_tree() -> None:
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         assert url.endswith(f"/_apis/git/repositories/{MOCK_REPOSITORY_ID}/items")
         assert additional_params is not None
-        assert additional_params["recursionLevel"] == "oneLevel"
+        assert additional_params["recursionLevel"] == "none"
 
         if additional_params.get("scopePath", "/") != "/":
             yield []
@@ -1422,12 +1422,12 @@ async def test_get_repository_tree_with_deep_path() -> None:
         assert all(folder["gitObjectType"] == "tree" for folder in folders)
 
 
+# @pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_process_folder_patterns(
     sample_folder_patterns: List[FolderPattern],
     mock_azure_client: AzureDevopsClient,
 ) -> None:
-
     async def mock_generate_repositories() -> (
         AsyncGenerator[List[Dict[str, Any]], None]
     ):
@@ -1439,22 +1439,53 @@ async def test_process_folder_patterns(
         yield repos_data
 
     async def mock_get_repository_folders(
-        repo_id: str, paths: List[str]
+        repo_id: str, paths: List[str], **kwargs: Any
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         folders_data = []
-        if repo_id == "repo1-id" and "/src/main" in paths:
+        if repo_id == "repo1-id" and "src/main" in paths:
             folders_data = [
-                {"path": "/src/main", "gitObjectType": "tree"},
-                {"path": "/src/main/code", "gitObjectType": "tree"},
+                {
+                    "path": "src/main",
+                    "gitObjectType": "tree",
+                    "__repository": {"id": "repo1-id", "name": "repo1"},
+                    "__branch": "main",
+                    "__pattern": "src/main",
+                }
             ]
         elif repo_id == "repo2-id":
-            if "/src/main" in paths:
-                folders_data = [{"path": "/src/main", "gitObjectType": "tree"}]
-            elif "/docs" in paths:
-                folders_data = [{"path": "/docs", "gitObjectType": "tree"}]
-        elif repo_id == "repo3-id" and "/docs" in paths:
-            folders_data = [{"path": "/docs", "gitObjectType": "tree"}]
-        yield folders_data
+            if "src/main" in paths:
+                folders_data = [
+                    {
+                        "path": "src/main",
+                        "gitObjectType": "tree",
+                        "__repository": {"id": "repo2-id", "name": "repo2"},
+                        "__branch": "main",
+                        "__pattern": "src/main",
+                    }
+                ]
+            elif "docs" in paths:
+                folders_data = [
+                    {
+                        "path": "docs",
+                        "gitObjectType": "tree",
+                        "__repository": {"id": "repo2-id", "name": "repo2"},
+                        "__branch": "main",
+                        "__pattern": "docs",
+                    }
+                ]
+        elif repo_id == "repo3-id" and "docs" in paths:
+            folders_data = [
+                {
+                    "path": "docs",
+                    "gitObjectType": "tree",
+                    "__repository": {"id": "repo3-id", "name": "repo3"},
+                    "__branch": "develop",
+                    "__pattern": "docs",
+                }
+            ]
+
+        if folders_data:
+            yield folders_data
 
     with (
         patch.object(
@@ -1475,12 +1506,16 @@ async def test_process_folder_patterns(
             results.extend(folders)
 
         # Assertions
-        assert len(results) > 0
+        assert (
+            len(results) == 4
+        )  # Should find 4 folders total: src/main for repo1+repo2, docs for repo2+repo3
 
+        # Check paths are correct
         paths = {folder["path"] for folder in results}
-        assert "/src/main" in paths
-        assert "/docs" in paths
+        assert "src/main" in paths
+        assert "docs" in paths
 
+        # Check repository and branch mappings
         repo_branches = {
             (folder["__repository"]["name"], folder["__branch"]) for folder in results
         }
@@ -1489,13 +1524,12 @@ async def test_process_folder_patterns(
             ("repo2", "main"),
             ("repo3", "develop"),
         }
-        assert (
-            repo_branches.intersection(expected_repo_branches) == expected_repo_branches
-        )
+        assert repo_branches == expected_repo_branches
 
+        # Check patterns
         patterns = {folder["__pattern"] for folder in results}
-        assert "/src/main" in patterns
-        assert "/docs" in patterns
+        assert "src/main" in patterns
+        assert "docs" in patterns
 
 
 @pytest.mark.asyncio
