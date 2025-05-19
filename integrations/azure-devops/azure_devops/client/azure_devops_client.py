@@ -836,9 +836,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         for folder in found_folders:
                             folder_dict = dict(folder)
                             folder_dict["__repository"] = repo
-                            folder_dict["__branch"] = (
-                                repo_mapping.branch
-                            )
+                            folder_dict["__branch"] = repo_mapping.branch
                             folder_dict["__pattern"] = folder_pattern.path
                             enriched_folders.append(folder_dict)
                         if enriched_folders:

@@ -1425,8 +1425,8 @@ async def test_get_repository_tree_with_deep_path() -> None:
 @pytest.mark.asyncio
 async def test_process_folder_patterns(
     sample_folder_patterns: List[FolderPattern],
+    mock_azure_client: AzureDevopsClient,
 ) -> None:
-    mock_client = AsyncMock(spec=AzureDevopsClient)
 
     async def mock_generate_repositories() -> (
         AsyncGenerator[List[Dict[str, Any]], None]
@@ -1444,43 +1444,58 @@ async def test_process_folder_patterns(
         folders_data = []
         if repo_id == "repo1-id" and "/src/main" in paths:
             folders_data = [
-                {"path": "/src/main", "type": "folder"},
-                {"path": "/src/main/code", "type": "folder"},
+                {"path": "/src/main", "gitObjectType": "tree"},
+                {"path": "/src/main/code", "gitObjectType": "tree"},
             ]
         elif repo_id == "repo2-id":
             if "/src/main" in paths:
-                folders_data = [{"path": "/src/main", "type": "folder"}]
+                folders_data = [{"path": "/src/main", "gitObjectType": "tree"}]
             elif "/docs" in paths:
-                folders_data = [{"path": "/docs", "type": "folder"}]
+                folders_data = [{"path": "/docs", "gitObjectType": "tree"}]
         elif repo_id == "repo3-id" and "/docs" in paths:
-            folders_data = [{"path": "/docs", "type": "folder"}]
+            folders_data = [{"path": "/docs", "gitObjectType": "tree"}]
         yield folders_data
 
-    mock_client.generate_repositories = mock_generate_repositories
-    mock_client.get_repository_folders = mock_get_repository_folders
+    with (
+        patch.object(
+            mock_azure_client,
+            "generate_repositories",
+            side_effect=mock_generate_repositories,
+        ),
+        patch.object(
+            mock_azure_client,
+            "get_repository_folders",
+            side_effect=mock_get_repository_folders,
+        ),
+    ):
+        results: List[Dict[str, Any]] = []
+        async for folders in mock_azure_client._process_folder_patterns(
+            sample_folder_patterns
+        ):
+            results.extend(folders)
 
-    results: List[Dict[str, Any]] = []
-    async for folders in mock_client._process_folder_patterns(sample_folder_patterns):
-        results.extend(folders)
+        # Assertions
+        assert len(results) > 0
 
-    assert len(results) > 0
+        paths = {folder["path"] for folder in results}
+        assert "/src/main" in paths
+        assert "/docs" in paths
 
-    paths = {folder["path"] for folder in results}
-    assert "/src/main" in paths
-    assert "/docs" in paths
-    repo_branches = {
-        (folder["__repository"]["name"], folder["__branch"]) for folder in results
-    }
-    expected_repo_branches = {
-        ("repo1", "main"),
-        ("repo2", "main"),
-        ("repo3", "develop"),
-    }
-    assert repo_branches.intersection(expected_repo_branches)
+        repo_branches = {
+            (folder["__repository"]["name"], folder["__branch"]) for folder in results
+        }
+        expected_repo_branches = {
+            ("repo1", "main"),
+            ("repo2", "main"),
+            ("repo3", "develop"),
+        }
+        assert (
+            repo_branches.intersection(expected_repo_branches) == expected_repo_branches
+        )
 
-    patterns = {folder["__pattern"] for folder in results}
-    assert "/src/main" in patterns
-    assert "/docs" in patterns
+        patterns = {folder["__pattern"] for folder in results}
+        assert "/src/main" in patterns
+        assert "/docs" in patterns
 
 
 @pytest.mark.asyncio
