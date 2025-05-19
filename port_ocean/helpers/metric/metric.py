@@ -22,6 +22,19 @@ class MetricPhase:
     RESYNC = "resync"
     DELETE = "delete"
 
+    class TransformResult:
+        TRANSFORMED = "transformed"
+        FILTERED_OUT = "filtered_out"
+        FAILED = "failed"
+
+    class LoadResult:
+        LOADED = "loaded"
+        FAILED = "failed"
+        SKIPPED = "skipped"
+
+    class ExtractResult:
+        EXTRACTED = "raw_extracted"
+
 
 class MetricType:
     # Define metric names as constants
@@ -31,6 +44,13 @@ class MetricType:
     SUCCESS_NAME = "success"
     RATE_LIMIT_WAIT_NAME = "rate_limit_wait_seconds"
     DELETION_COUNT_NAME = "deletion_count"
+
+
+class SyncState:
+    SYNCING = "syncing"
+    COMPLETED = "completed"
+    QUEUED = "queued"
+    FAILED = "failed"
 
 
 # Registry for core and custom metrics
@@ -43,7 +63,7 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
     MetricType.OBJECT_COUNT_NAME: (
         MetricType.OBJECT_COUNT_NAME,
         "object_count description",
-        ["kind", "phase"],
+        ["kind", "phase", "object_count_type"],
     ),
     MetricType.ERROR_COUNT_NAME: (
         MetricType.ERROR_COUNT_NAME,
@@ -86,6 +106,9 @@ class EmptyMetric:
     def labels(self, *args: Any) -> None:
         return None
 
+    def inc(self, *args: Any) -> None:
+        return None
+
 
 class Metrics:
     def __init__(
@@ -100,6 +123,24 @@ class Metrics:
         self.load_metrics()
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
+        self.event_id = ""
+        self.sync_state = SyncState.QUEUED
+
+    @property
+    def event_id(self) -> str:
+        return self._event_id
+
+    @event_id.setter
+    def event_id(self, value: str) -> None:
+        self._event_id = value
+
+    @property
+    def sync_state(self) -> str:
+        return self._sync_state
+
+    @sync_state.setter
+    def sync_state(self, value: str) -> None:
+        self._sync_state = value
 
     @property
     def integration_version(self) -> str:
@@ -139,6 +180,19 @@ class Metrics:
             return EmptyMetric()
         return metrics.labels(*labels)
 
+    def inc_metric(self, name: str, labels: list[str], value: float) -> None:
+        """Increment a metric value in a single method call.
+
+        Args:
+            name (str): The metric name to inc.
+            labels (list[str]): The labels to apply to the metric.
+            value (float): The value to inc.
+        """
+        if not self.enabled:
+            return None
+
+        self.get_metric(name, labels).inc(value)
+
     def set_metric(self, name: str, labels: list[str], value: float) -> None:
         """Set a metric value in a single method call.
 
@@ -151,6 +205,49 @@ class Metrics:
             return None
 
         self.get_metric(name, labels).set(value)
+
+    def initialize_metrics(self, kind_blockes: list[str]) -> None:
+        for kind in kind_blockes:
+            self.set_metric(MetricType.SUCCESS_NAME, [kind, MetricPhase.RESYNC], 0)
+            self.set_metric(MetricType.DURATION_NAME, [kind, MetricPhase.RESYNC], 0)
+
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.EXTRACT, MetricPhase.ExtractResult.EXTRACTED],
+                0,
+            )
+
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.TRANSFORM, MetricPhase.TransformResult.TRANSFORMED],
+                0,
+            )
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.TRANSFORM, MetricPhase.TransformResult.FILTERED_OUT],
+                0,
+            )
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.TRANSFORM, MetricPhase.TransformResult.FAILED],
+                0,
+            )
+
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.LOAD, MetricPhase.LoadResult.LOADED],
+                0,
+            )
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.LOAD, MetricPhase.LoadResult.FAILED],
+                0,
+            )
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.LOAD, MetricPhase.LoadResult.SKIPPED],
+                0,
+            )
 
     def create_mertic_router(self) -> APIRouter:
         if not self.enabled:
@@ -201,14 +298,21 @@ class Metrics:
                         if kind and sample.labels.get("kind") != kind:
                             continue
 
-                        # Create nested dictionary structure based on labels
-                        for key, value in sample.labels.items():
-                            if key not in current_level:
-                                current_level[key] = {}
-                            current_level = current_level[key]
-                            if value not in current_level:
-                                current_level[value] = {}
-                            current_level = current_level[value]
+                        # Get the ordered labels from the registry
+                        ordered_labels = _metrics_registry.get(
+                            sample.name, (None, None, [])
+                        )[2]
+
+                        # Create nested dictionary structure based on ordered labels
+                        for label_name in ordered_labels:
+                            if label_name in sample.labels:
+                                value = sample.labels[label_name]
+                                if label_name not in current_level:
+                                    current_level[label_name] = {}
+                                current_level = current_level[label_name]
+                                if value not in current_level:
+                                    current_level[value] = {}
+                                current_level = current_level[value]
 
                     current_level[sample.name] = sample.value
 
@@ -228,6 +332,8 @@ class Metrics:
                     "ocean_version": self.ocean_version,
                     "kind_identifier": kind_key,
                     "kind": "-".join(kind_key.split("-")[:-1]),
+                    "event_id": self.event_id,
+                    "sync_state": self.sync_state,
                     "metrics": metrics,
                 }
                 logger.info(f"Sending metrics to webhook {kind_key}: {event}")
