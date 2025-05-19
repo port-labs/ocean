@@ -119,7 +119,8 @@ class Ocean:
                 )
                 raise e
             finally:
-                await self._database_manager.resync_cleanup()
+                if self.config.database.is_configured:
+                    await self._database_manager.resync_cleanup()
 
         interval = self.config.scheduled_resync_interval
         loop = asyncio.get_event_loop()
