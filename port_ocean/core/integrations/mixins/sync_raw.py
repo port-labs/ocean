@@ -31,7 +31,7 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.helpers.metric.metric import MetricType, MetricPhase
+from port_ocean.helpers.metric.metric import SyncState, MetricType, MetricPhase
 from port_ocean.helpers.metric.utils import TimeMetric
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -238,11 +238,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 if changed_entities:
                     logger.info("Upserting changed entities", changed_entities=len(changed_entities),
                         total_entities=len(objects_diff[0].entity_selector_diff.passed))
+                    ocean.metrics.inc_metric(
+                            name=MetricType.OBJECT_COUNT_NAME,
+                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.SKIPPED],
+                            value=len(objects_diff[0].entity_selector_diff.passed) - len(changed_entities)
+                        )
                     await self.entities_state_applier.upsert(
                         changed_entities, user_agent_type
                     )
                 else:
                     logger.info("Entities in batch didn't changed since last sync, skipping", total_entities=len(objects_diff[0].entity_selector_diff.passed))
+                    ocean.metrics.inc_metric(
+                            name=MetricType.OBJECT_COUNT_NAME,
+                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.SKIPPED],
+                            value=len(objects_diff[0].entity_selector_diff.passed)
+                        )
                 modified_objects = [ocean.port_client._reduce_entity(entity) for entity in objects_diff[0].entity_selector_diff.passed]
             except Exception as e:
                 logger.warning(f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}")
@@ -335,6 +345,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     passed_entities.extend(calculation_result.entity_selector_diff.passed)
                     number_of_transformed_entities += calculation_result.number_of_transformed_entities
             except* OceanAbortException as error:
+                ocean.metrics.sync_state = SyncState.FAILED
                 errors.append(error)
 
         logger.info(
@@ -347,16 +358,28 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             value=int(not errors)
         )
 
-        ocean.metrics.set_metric(
+        ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
-            labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT],
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT , MetricPhase.ExtractResult.EXTRACTED],
             value=number_of_raw_results
         )
 
-        ocean.metrics.set_metric(
+        ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
-            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM],
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , MetricPhase.TransformResult.TRANSFORMED],
             value=number_of_transformed_entities
+        )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , MetricPhase.TransformResult.FILTERED_OUT],
+            value=number_of_raw_results -number_of_transformed_entities
+        )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , MetricPhase.TransformResult.FAILED],
+            value=len(errors)
         )
 
         return passed_entities, errors
@@ -558,7 +581,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for entity in event.entity_topological_sorter.get_entities(False):
                     await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
 
-
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
         self,
@@ -584,12 +606,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             EventType.RESYNC,
             trigger_type=trigger_type,
         ):
+            ocean.metrics.event_id = event.id
+
             # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
             # rather than the old cache
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
+            ocean.metrics.initialize_metrics([f"{resource.kind}-{index}" for index, resource in enumerate(app_config.resources)])
+            await ocean.metrics.flush()
 
             # Execute resync_start hooks
             for resync_start_fn in self.event_strategy["resync_start"]:
@@ -616,20 +642,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     # config as we might have multiple resources in the same event
                     async with resource_context(resource,index):
                         resource_kind_id = f"{resource.kind}-{index}"
+                        ocean.metrics.sync_state = SyncState.SYNCING
+                        await ocean.metrics.flush(kind=resource_kind_id)
+
                         task = asyncio.create_task(
                             self._register_in_batches(resource, user_agent_type)
                         )
 
                         event.on_abort(lambda: task.cancel())
                         kind_results: tuple[list[Entity], list[Exception]] = await task
-                        ocean.metrics.set_metric(
-                            name=MetricType.OBJECT_COUNT_NAME,
-                            labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
-                            value=len(kind_results[0])
-                        )
 
                         creation_results.append(kind_results)
-
+                        if ocean.metrics.sync_state != SyncState.FAILED:
+                            ocean.metrics.sync_state = SyncState.COMPLETED
                         await ocean.metrics.flush(kind=resource_kind_id)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)

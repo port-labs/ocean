@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.128 (2025-05-19)
+## 0.1.130 (2025-05-19)
 
 
 ### Improvements
 
 - Optimized memory usage by implementing client pooling and reuse for GCP API calls
+
+
+## 0.1.129 (2025-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.9
+
+
+## 0.1.128 (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
 
 
 ## 0.1.127 (2025-05-12)
