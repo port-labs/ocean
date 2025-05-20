@@ -6,6 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 from port_ocean.context.ocean import ocean
 import os
+from port_ocean.context.event import event
 
 
 def run_task(
@@ -28,6 +29,12 @@ def run_task(
             pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
         with open(f"{resource_dir}/status", "w") as f:
             f.write("finished")
+        with open(f"{resource_dir}/topological_entities.pkl", "wb") as f:
+            pickle.dump(
+                event.entity_topological_sorter.entities,
+                f,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
 
     asyncio.run(task())
     logger.info(f"Process finished for {resource.kind} with index {index}")

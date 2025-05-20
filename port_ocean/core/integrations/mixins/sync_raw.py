@@ -591,6 +591,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 process.start()
                 process.join()
                 if process.exitcode == 0:
+                    with open(f"/tmp/{id}/topological_entities.pkl", "rb") as f:
+                        event.entity_topological_sorter.entities.extend(pickle.load(f))
                     with open(f"/tmp/{id}/result.pkl", "rb") as f:
                         return pickle.load(f)
                 else:
@@ -616,7 +618,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             await ocean.metrics.flush(kind=resource_kind_id)
             return kind_results
-  
+
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
         self,
