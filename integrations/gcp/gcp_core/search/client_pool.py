@@ -1,57 +1,88 @@
-from typing import Type, Optional, Dict
+from typing import Type, Optional, Dict, Any
 import asyncio
 from loguru import logger
+from google.cloud.asset_v1 import AssetServiceAsyncClient
+from google.cloud.resourcemanager_v3 import (
+    FoldersAsyncClient,
+    OrganizationsAsyncClient,
+    ProjectsAsyncClient,
+)
+from google.pubsub_v1 import PublisherAsyncClient, SubscriberAsyncClient
 
 
-class ClientPool[T]:
-    _instances: Dict[Type[T], "ClientPool[T]"] = {}
+class ClientPool:
+    """Memory-efficient, thread-safe singleton for GCP async clients with lazy initialization and cleanup."""
 
-    def __new__(cls, client_class: Type[T]) -> "ClientPool[T]":
-        if client_class not in cls._instances:
-            instance = super().__new__(cls)
-            cls._instances[client_class] = instance
-            instance._initialized = False
-        return cls._instances[client_class]
+    _instance: Optional["ClientPool"] = None
+    _lock = asyncio.Lock()
 
-    def __init__(self, client_class: Type[T]) -> None:
-        if getattr(self, "_initialized", False):
-            return
-        self.client_class = client_class
-        self.client: Optional[T] = None
-        self._lock = asyncio.Lock()
-        self._initialized = True
-
-    async def __call__(self) -> T:
-        async with self._lock:
-            if self.client is None:
-                logger.debug(f"Creating new {self.client_class.__name__} client")
-                self.client = self.client_class()
-            return self.client
-
-    async def cleanup(self) -> None:
-        async with self._lock:
-            if self.client is not None:
-                close_method = getattr(self.client, "close", None)
-                if callable(close_method):
-                    try:
-                        if asyncio.iscoroutinefunction(close_method):
-                            await close_method()
-                        else:
-                            close_method()  # For sync close methods, if any
-                    except Exception as e:
-                        logger.warning(
-                            f"Error while closing {type(self.client).__name__}: {e}"
-                        )
-                self.client = None
+    def __init__(self) -> None:
+        self._clients: Dict[str, Any] = {}
+        self._client_types: Dict[str, Type[Any]] = {
+            "assets": AssetServiceAsyncClient,
+            "projects": ProjectsAsyncClient,
+            "folders": FoldersAsyncClient,
+            "orgs": OrganizationsAsyncClient,
+            "publisher": PublisherAsyncClient,
+            "subscriber": SubscriberAsyncClient,
+        }
 
     @classmethod
-    async def cleanup_all(cls) -> None:
-        await asyncio.gather(
-            *(instance.cleanup() for instance in cls._instances.values())
-        )
-        cls._instances.clear()
+    def instance(cls) -> "ClientPool":
+        """Return the singleton instance."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    async def get_client(self, name: str) -> Any:
+        """Get or lazily initialize a GCP client by name."""
+        if name not in self._client_types:
+            raise ValueError(f"Unknown client type: {name}")
+        if name not in self._clients:
+            async with self._lock:
+                if name not in self._clients:
+                    logger.debug(f"Creating {name} client")
+                    self._clients[name] = self._client_types[name]()
+        return self._clients[name]
+
+    async def get_assets_client(self) -> AssetServiceAsyncClient:
+        return await self.get_client("assets")
+
+    async def get_projects_client(self) -> ProjectsAsyncClient:
+        return await self.get_client("projects")
+
+    async def get_folders_client(self) -> FoldersAsyncClient:
+        return await self.get_client("folders")
+
+    async def get_orgs_client(self) -> OrganizationsAsyncClient:
+        return await self.get_client("orgs")
+
+    async def get_publisher_client(self) -> PublisherAsyncClient:
+        return await self.get_client("publisher")
+
+    async def get_subscriber_client(self) -> SubscriberAsyncClient:
+        return await self.get_client("subscriber")
+
+    async def cleanup(self) -> None:
+        """Clean up all clients by closing them."""
+        async with self._lock:
+            for name, client in self._clients.items():
+                try:
+                    close = getattr(client, "close", None)
+                    if callable(close):
+                        if asyncio.iscoroutinefunction(close):
+                            await close()
+                        else:
+                            close()
+                        logger.debug(f"Closed {name} client")
+                except Exception as e:
+                    logger.warning(f"Failed to close {name} client: {e}")
+            self._clients.clear()
 
 
 async def cleanup_all_client_pools() -> None:
-    """Cleanup all client pools when the application shuts down"""
-    await ClientPool.cleanup_all()
+    client_pool = ClientPool()
+    await client_pool.cleanup()
+
+
+client_pool = ClientPool()

@@ -2,9 +2,6 @@ from typing import Any
 import typing
 
 from google.api_core.exceptions import NotFound, PermissionDenied
-from google.cloud.asset_v1 import (
-    AssetServiceAsyncClient,
-)
 from google.cloud.resourcemanager_v3 import (
     FoldersAsyncClient,
     OrganizationsAsyncClient,
@@ -34,7 +31,7 @@ from gcp_core.helpers.retry.async_retry import async_retry
 
 from asyncio import BoundedSemaphore
 from gcp_core.overrides import ProtoConfig
-from gcp_core.search.client_pool import ClientPool
+from gcp_core.search.client_pool import client_pool
 
 DEFAULT_SEMAPHORE = BoundedSemaphore(MAXIMUM_CONCURRENT_REQUESTS)
 
@@ -83,7 +80,7 @@ async def search_all_resources_in_project(
         if asset_name:
             search_all_resources_request["query"] = f"name={asset_name}"
 
-        async_assets_client = await ClientPool(AssetServiceAsyncClient)()
+        async_assets_client = await client_pool.get_assets_client()
 
         try:
             async for assets in paginated_query(
@@ -117,7 +114,7 @@ async def list_all_topics_per_project(
     The Topics are handled specifically due to lacks of data in the asset itselfwithin the asset inventory - e.g. some properties missing.
     The listing is being done via the PublisherAsyncClient, ignoring state in assets inventory
     """
-    async_publisher_client = await ClientPool(PublisherAsyncClient)()
+    async_publisher_client = await client_pool.get_publisher_client()
     project_name = project["name"]
     logger.info(
         f"Searching all {AssetTypesWithSpecialHandling.TOPIC}'s in project {project_name}"
@@ -153,7 +150,7 @@ async def list_all_subscriptions_per_project(
     The Subscriptions are handled specifically due to lacks of data in the asset itself within the asset inventory.
     The listing is being done via the PublisherAsyncClient, ignoring state in assets inventory
     """
-    async_subscriber_client = await ClientPool(SubscriberAsyncClient)()
+    async_subscriber_client = await client_pool.get_subscriber_client()
     project_name = project["name"]
     logger.info(
         f"Searching all {AssetTypesWithSpecialHandling.SUBSCRIPTION}'s in project {project_name}"
@@ -186,7 +183,7 @@ async def list_all_subscriptions_per_project(
 @cache_iterator_result()
 async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Searching projects")
-    projects_client = await ClientPool(ProjectsAsyncClient)()
+    projects_client = await client_pool.get_projects_client()
     async for projects in paginated_query(
         projects_client,
         "search_projects",
@@ -198,7 +195,7 @@ async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 async def search_all_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Searching folders")
-    folders_client = await ClientPool(FoldersAsyncClient)()
+    folders_client = await client_pool.get_folders_client()
     async for folders in paginated_query(
         folders_client,
         "search_folders",
@@ -210,7 +207,7 @@ async def search_all_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Searching organizations")
-    organizations_client = await ClientPool(OrganizationsAsyncClient)()
+    organizations_client = await client_pool.get_orgs_client()
     async for organizations in paginated_query(
         organizations_client,
         "search_organizations",

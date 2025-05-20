@@ -17,7 +17,7 @@ async def iterate_per_available_project(
 
             tasks = [
                 project_dependent_callable(project, *args, **kwargs)
-                for project in projects
+                for project in projects * 100
             ]
             if not tasks:
                 logger.warning(
