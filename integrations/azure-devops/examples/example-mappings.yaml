@@ -120,9 +120,9 @@ resources:
           repos:
             - name: test_repo
               branch: main
-        - path: fulfyldwms/**
+        - path: fulfyldwms/*
           repos:
-            - name: habib_test_repo
+            - name: folder_test_repo
               branch: main
     port:
       entity:
