@@ -5,15 +5,17 @@ from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
-
+from port_ocean.context.ocean import ocean
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
 from port_ocean.clients.port.utils import (
-    handle_status_code,
+    handle_port_status_code,
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
 )
 from port_ocean.core.models import Entity, PortAPIErrorMessage
 from starlette import status
+
+from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 
 
 class EntityClientMixin:
@@ -81,6 +83,15 @@ class EntityClientMixin:
                 f"blueprint: {entity.blueprint}"
             )
             result = response.json()
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.LOAD,
+                    MetricPhase.LoadResult.FAILED,
+                ],
+                value=1,
+            )
 
             if (
                 response.status_code == status.HTTP_404_NOT_FOUND
@@ -89,7 +100,18 @@ class EntityClientMixin:
             ):
                 # Return false to differentiate from `result_entity.is_using_search_identifier`
                 return False
-        handle_status_code(response, should_raise)
+        else:
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.LOAD,
+                    MetricPhase.LoadResult.LOADED,
+                ],
+                value=1,
+            )
+
+        handle_port_status_code(response, should_raise)
         result = response.json()
 
         result_entity = (
@@ -192,7 +214,7 @@ class EntityClientMixin:
                     f"blueprint: {entity.blueprint}"
                 )
 
-            handle_status_code(response, should_raise)
+            handle_port_status_code(response, should_raise)
 
     async def batch_delete_entities(
         self,
@@ -252,7 +274,7 @@ class EntityClientMixin:
             },
             extensions={"retryable": True},
         )
-        handle_status_code(response)
+        handle_port_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
     async def search_batch_entities(
