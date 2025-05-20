@@ -11,11 +11,25 @@ class ResourceKey(StrEnum):
 
 
 class JiraServerClient:
-    def __init__(self, server_url: str, username: str, password: str) -> None:
+    def __init__(
+        self,
+        server_url: str,
+        token: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> None:
         self.server_url = server_url
         self.api_url = f"{self.server_url}/rest/api/2"
         self.client = http_async_client
-        self.client.auth = httpx.BasicAuth(username, password)
+
+        if token is not None:
+            self.client.headers.update({"Authorization": f"Bearer {token}"})
+        elif username is not None and password is not None:
+            self.client.auth = httpx.BasicAuth(username, password)
+        else:
+            raise ValueError(
+                "Either token or both username and password must be provided"
+            )
 
     async def _send_api_request(
         self,
@@ -75,7 +89,7 @@ class JiraServerClient:
     async def get_single_user(self, username: str) -> dict[str, Any]:
         """
         Get a single user from Jira Server by username.
-        Jira Server’s API requires the legacy 'username' parameter.
+        Jira Server's API requires the legacy 'username' parameter.
         """
         response = await self.client.get(
             f"{self.api_url}/user", params={"username": username}
