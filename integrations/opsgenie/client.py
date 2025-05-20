@@ -9,7 +9,7 @@ from utils import ObjectKind, RESOURCE_API_VERSIONS
 
 PAGE_SIZE = 100
 CONCURRENT_REQUESTS = 5
-MAX_OPSGENIE_ALERT_OFFSET_LIMIT = 20000
+MAX_OPSGENIE_OFFSET_LIMIT = 20000
 
 
 class OpsGenieClient:
@@ -28,9 +28,14 @@ class OpsGenieClient:
         return RESOURCE_API_VERSIONS.get(resource_type, "v2")
 
     def get_resource_offset_limit(self, resource_type: ObjectKind) -> Optional[int]:
+        resource_types_with_limit = {
+            ObjectKind.ALERT,
+            ObjectKind.INCIDENT,
+            ObjectKind.SERVICE,
+        }
         return (
-            MAX_OPSGENIE_ALERT_OFFSET_LIMIT
-            if resource_type == ObjectKind.ALERT
+            MAX_OPSGENIE_OFFSET_LIMIT
+            if resource_type in resource_types_with_limit
             else None
         )
 
