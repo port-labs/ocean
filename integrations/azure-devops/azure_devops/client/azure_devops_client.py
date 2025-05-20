@@ -763,6 +763,26 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             raise
 
+    def _build_tree_fetcher(
+        self,
+        repository_id: str,
+        pattern: str,
+    ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
+        # For ** patterns, we need to scan recursively
+        recursion_level = "full" if "**" in pattern else "oneLevel"
+        # Remove ** from pattern as we'll handle matching
+        clean_pattern = pattern.replace("**", "*").rstrip("/")
+        # Get the base path (everything before the first wildcard)
+        base_path = "/".join(
+            p for p in clean_pattern.split("/") if not any(c in p for c in "*?[]")
+        )
+        return functools.partial(
+            self.get_repository_tree,
+            repository_id,
+            path=base_path or "/",
+            recursion_level=recursion_level,
+        )
+
     async def get_repository_folders(
         self,
         repository_id: str,
@@ -781,26 +801,10 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         semaphore = asyncio.BoundedSemaphore(concurrency)
 
-        def build_tree_fetcher(
-            pattern: str,
-        ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
-            # For ** patterns, we need to scan recursively
-            recursion_level = "full" if "**" in pattern else "oneLevel"
-            # Remove ** from pattern as we'll handle matching
-            clean_pattern = pattern.replace("**", "*").rstrip("/")
-            # Get the base path (everything before the first wildcard)
-            base_path = "/".join(
-                p for p in clean_pattern.split("/") if not any(c in p for c in "*?[]")
-            )
-            return functools.partial(
-                self.get_repository_tree,
-                repository_id,
-                path=base_path or "/",
-                recursion_level=recursion_level,
-            )
-
         tasks = [
-            semaphore_async_iterator(semaphore, build_tree_fetcher(pattern))
+            semaphore_async_iterator(
+                semaphore, self._build_tree_fetcher(repository_id, pattern)
+            )
             for pattern in folder_patterns
         ]
 
