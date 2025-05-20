@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.22.10 (2025-05-20)
+
+### Improvements
+- Remove / from any app_host in the integration config to prevent wrong host parsing
+
 ## 0.22.9 (2025-05-18)
 
 ### Improvements
