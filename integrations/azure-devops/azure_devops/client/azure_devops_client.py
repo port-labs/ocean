@@ -768,14 +768,17 @@ class AzureDevopsClient(HTTPBaseClient):
         repository_id: str,
         pattern: str,
     ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
-        # For ** patterns, we need to scan recursively
-        recursion_level = "full" if "**" in pattern else "oneLevel"
-        # Remove ** from pattern as we'll handle matching
-        clean_pattern = pattern.replace("**", "*").rstrip("/")
+        # Always use oneLevel recursion
+        recursion_level = "oneLevel"
         # Get the base path (everything before the first wildcard)
-        base_path = "/".join(
-            p for p in clean_pattern.split("/") if not any(c in p for c in "*?[]")
-        )
+        parts = pattern.split("/")
+        base_parts = []
+        for part in parts:
+            if "*" not in part:
+                base_parts.append(part)
+            else:
+                break
+        base_path = "/".join(base_parts)
         return functools.partial(
             self.get_repository_tree,
             repository_id,
@@ -793,7 +796,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
         Args:
             repository_id: The ID of the repository to scan
-            folder_patterns: List of folder paths to scan (supports glob patterns)
+            folder_patterns: List of folder paths to scan (supports * wildcard only)
             concurrency: Maximum number of concurrent requests
 
         Yields:
@@ -813,17 +816,11 @@ class AzureDevopsClient(HTTPBaseClient):
             for folder in batch:
                 # For each folder in the batch, check if it matches any of our patterns
                 for pattern in folder_patterns:
-                    is_wildcard = any(c in pattern for c in "*?[]")
                     folder_path = folder.get("path", "").strip("/")
-                    # For non-wildcard patterns, require exact match
-                    # For wildcard patterns, ensure path depth matches unless using **
-                    if (not is_wildcard and folder_path == pattern.strip("/")) or (
-                        is_wildcard
-                        and (
-                            "**" in pattern
-                            or folder_path.count("/") == pattern.strip("/").count("/")
-                        )
-                        and fnmatch.fnmatch(folder_path, pattern.strip("/"))
+                    pattern = pattern.strip("/")
+                    # Check if path depth matches and pattern matches
+                    if folder_path.count("/") == pattern.count("/") and fnmatch.fnmatch(
+                        folder_path, pattern
                     ):
                         matching_folders.append(folder)
             if matching_folders:

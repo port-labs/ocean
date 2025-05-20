@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from enum import StrEnum
+import fnmatch
 from typing import Any, List, Literal, Optional, Union
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -7,7 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic import Field, BaseModel, validator
+from pydantic.v1 import Field, BaseModel, validator
 
 
 class Kind(StrEnum):
@@ -77,7 +78,7 @@ def _validate_path(
 
     Args:
         paths: Path or list of paths to validate
-        allow_glob: Whether to allow glob patterns (* and **) in paths
+        allow_glob: Whether to allow glob patterns (*) in paths
     """
     path_list = [paths] if isinstance(paths, str) else paths
 
@@ -99,21 +100,19 @@ def _validate_path(
             raise ValueError("Path traversal is not allowed")
 
         # For non-glob paths, validate there are no glob characters
-        if not allow_glob and any(
-            char in normalized_path for char in {"*", "?", "[", "]", "{", "}", "**"}
-        ):
+        if not allow_glob and "*" in normalized_path:
             raise ValueError(
                 f"Path '{path}' contains glob patterns which are not allowed. "
                 "Please provide explicit file paths like 'src/config.yaml' or 'docs/README.md'"
             )
 
-        # For glob paths, only allow * and ** patterns
+        # For glob paths, only allow * pattern
         if allow_glob and any(
-            char in normalized_path for char in {"?", "[", "]", "{", "}"}
+            char in normalized_path for char in {"?", "[", "]", "{", "}", "**"}
         ):
             raise ValueError(
                 f"Path '{path}' contains unsupported glob characters. "
-                "Only '*' and '**' patterns are supported."
+                "Only '*' pattern is supported for matching within a path segment."
             )
 
         valid_paths.append(normalized_path)
@@ -161,8 +160,38 @@ class FileSelector(BaseModel):
     @validator("path", allow_reuse=True)
     @classmethod
     def validate_path_patterns(cls, v: Union[str, List[str]]) -> Union[str, List[str]]:
-        """Validate file paths - no glob patterns allowed"""
-        return _validate_path(v, allow_glob=False)
+        patterns = [v] if isinstance(v, str) else v
+
+        if not patterns:
+            raise ValueError("At least one file path must be specified")
+
+        invalid_chars = {"*", "?", "[", "]", "{", "}", "**"}
+        valid_paths = []
+
+        for path in patterns:
+            # Skip empty paths
+            if not path or not path.strip():
+                continue
+
+            # Remove leading/trailing slashes and spaces
+            cleaned_path = path.strip().strip("/")
+
+            # Check for invalid glob characters
+            if any(char in cleaned_path for char in invalid_chars):
+                raise ValueError(
+                    f"Path '{path}' contains glob patterns which are not allowed. "
+                    "Please provide explicit file paths like 'src/config.yaml' or 'docs/README.md'"
+                )
+
+            valid_paths.append(cleaned_path)
+
+        if not valid_paths:
+            raise ValueError(
+                "No valid file paths provided. Please provide explicit file paths "
+                "like 'src/config.yaml' or 'docs/README.md'"
+            )
+
+        return valid_paths
 
 
 class AzureDevopsFileSelector(Selector):
@@ -220,15 +249,16 @@ class FolderPattern(BaseModel):
         default="",
         alias="path",
         description="""Specify the repositories and folders to include under this relative path.
-        Supports glob patterns (* and **) for matching multiple folders:
+        Supports glob pattern (*) for matching within a path segment:
         - Use * to match any characters within a path segment
-        - Use ** to match zero or more path segments
 
-        Examples:
-        - "src/backend": Match exact folder
-        - "src/*": Match all folders under src
-        - "src/**/tests": Match all 'tests' folders under 'src' at any depth
-        - "**/docs": Match all 'docs' folders at any depth
+        Examples of valid paths:
+        - "src/backend" - Match exact folder
+        - "src/*" - Match all immediate folders under src
+        - "src/test*" - Match all immediate folders under src starting with 'test'
+        - "src/*/docs" - Match docs folder under any immediate folder in src
+        - "src/api*/v2" - Match v2 folder under any folder starting with 'api' in src
+        - "packages/*/src" - Match src folder under any immediate subfolder of packages
         """,
     )
     repos: list[RepositoryBranchMapping] = Field(
@@ -239,9 +269,25 @@ class FolderPattern(BaseModel):
 
     @validator("path")
     @classmethod
-    def validate_folder_path(cls, v: str) -> Union[str, List[str]]:
-        """Validate folder paths - glob patterns (* and **) allowed"""
-        return _validate_path(v, allow_glob=True)
+    def validate_folder_path(cls, path: str) -> str:
+        """Validate folder paths - only * glob pattern allowed"""
+        if not path or not path.strip():
+            raise ValueError("Folder path must be specified")
+
+        # Remove leading/trailing slashes and spaces
+        normalized_path = path.strip().strip("/")
+
+        # Basic path validation
+        if ".." in normalized_path:
+            raise ValueError("Path traversal is not allowed")
+
+        # Check for unsupported glob patterns
+        if not fnmatch.fnmatch(normalized_path, "*"):
+            raise ValueError(
+                f"Path '{path}' contains unsupported glob patterns. "
+                "Only '*' pattern is supported for matching within a path segment."
+            )
+        return normalized_path
 
 
 class AzureDevopsFolderSelector(Selector):
