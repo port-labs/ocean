@@ -31,9 +31,11 @@ def initialize_fake_routes() -> None:
         )
         return result
 
+
 def initialize_fake_routes_standalone() -> None:
     fastapi_app = FastAPI()
     router = fastapi_app.router
+
     @router.get("/integration" + FAKE_DEPARTMENT_EMPLOYEES)
     async def get_employees_per_department(
         department_id: str,
@@ -54,6 +56,9 @@ def initialize_fake_routes_standalone() -> None:
             department_id, limit, entity_kb_size, latency
         )
         return result
+
     uvicorn.run(fastapi_app, host="0.0.0.0", port=8001)
+
+
 if __name__ == "__main__":
     initialize_fake_routes_standalone()

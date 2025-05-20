@@ -122,11 +122,11 @@ celerybeat.pid
 # Environments
 .env
 .venv
-.venv-local/
+.venv-docker/
 env/
 venv/
-venv-local/
-venv-local.bak/
+venv-docker/
+venv-docker.bak/
 ENV/
 env.bak/
 venv.bak/

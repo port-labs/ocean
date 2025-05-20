@@ -2,10 +2,8 @@ import asyncio
 import typing
 from datetime import datetime, timedelta
 from itertools import islice
-from typing import Any
 
 from loguru import logger
-from starlette.requests import Request
 
 from gitlab_integration.events.setup import event_handler, system_event_handler
 from gitlab_integration.models.webhook_groups_override_config import (
