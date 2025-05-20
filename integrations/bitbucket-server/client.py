@@ -9,6 +9,7 @@ from aiolimiter import AsyncLimiter  # type: ignore
 from fastapi import Request
 from httpx import BasicAuth
 from loguru import logger
+from port_ocean.utils import http_async_client
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
 
@@ -78,9 +79,9 @@ class BitbucketClient:
         self.password = password
         self.base_url = base_url
         self.bitbucket_auth = BasicAuth(username=username, password=password)
-        self.client = httpx.AsyncClient(
-            timeout=httpx.Timeout(60), auth=self.bitbucket_auth
-        )
+        self.client = http_async_client
+        self.client.auth = self.bitbucket_auth
+        self.client.timeout = httpx.Timeout(60)
         self.app_host = app_host
         self.webhook_secret = webhook_secret
         # Despite this, being the rate limits, we do not reduce to the lowest common factor because we want to allow as much
@@ -90,7 +91,7 @@ class BitbucketClient:
             BITBUCKET_RATE_LIMIT, BITBUCKET_RATE_LIMIT_WINDOW
         )
 
-    async def send_port_request(
+    async def _send_api_request(
         self, method: str, path: str, payload: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
         """
@@ -148,7 +149,7 @@ class BitbucketClient:
         while True:
             params["start"] = start
             try:
-                data = await self.send_port_request("GET", path, payload=params)
+                data = await self._send_api_request("GET", path, payload=params)
                 values: list[dict[str, Any]] = data.get("values", [])
                 if not values:
                     break
@@ -388,7 +389,7 @@ class BitbucketClient:
         Returns:
             Latest commit data
         """
-        response = await self.send_port_request(
+        response = await self._send_api_request(
             "GET",
             f"projects/{project_key}/repos/{repo_slug}/commits",
             payload={"limit": 1},
@@ -408,7 +409,7 @@ class BitbucketClient:
         Returns:
             Project data
         """
-        project = await self.send_port_request("GET", f"projects/{project_key}")
+        project = await self._send_api_request("GET", f"projects/{project_key}")
         return project
 
     async def get_single_repository(
@@ -424,7 +425,7 @@ class BitbucketClient:
         Returns:
             Repository data
         """
-        repository = await self.send_port_request(
+        repository = await self._send_api_request(
             "GET", f"projects/{project_key}/repos/{repo_slug}"
         )
 
@@ -444,7 +445,7 @@ class BitbucketClient:
         Returns:
             Pull request data
         """
-        pull_request = await self.send_port_request(
+        pull_request = await self._send_api_request(
             "GET",
             f"projects/{project_key}/repos/{repo_slug}/pull-requests/{pr_key}",
         )
@@ -460,7 +461,7 @@ class BitbucketClient:
         Returns:
             User data
         """
-        user = await self.send_port_request("GET", f"users/{user_key}")
+        user = await self._send_api_request("GET", f"users/{user_key}")
         return user
 
     def _get_webhook_name(self, key: str) -> str:
@@ -474,6 +475,12 @@ class BitbucketClient:
             Generated webhook name
         """
         return f"Port Ocean - {key}"
+
+    def _get_webhook_url(self) -> str:
+        """
+        Internal method to generate a webhook URL.
+        """
+        return f"{self.app_host}/integration/webhook"
 
     def _create_webhook_payload(
         self, key: str, events: list[str] | None = None
@@ -492,7 +499,7 @@ class BitbucketClient:
         name = self._get_webhook_name(key)
         payload = {
             "name": name,
-            "url": f"{self.app_host}/integration/webhook",
+            "url": self._get_webhook_url(),
             "events": events,
             "active": True,
             "sslVerificationRequired": True,
@@ -514,10 +521,17 @@ class BitbucketClient:
         Returns:
             List of webhook configurations
         """
-        webhooks = await self.send_port_request(
+        webhooks = await self._send_api_request(
             "GET", f"projects/{project_key}/webhooks"
         )
         return webhooks.get("values", [])
+
+    async def _webhook_exists_for_project(self, project_key: str) -> bool:
+        """
+        Internal method to check if a webhook exists for a project.
+        """
+        webhooks = await self.get_project_webhooks(project_key)
+        return any(webhook["url"] == self._get_webhook_url() for webhook in webhooks)
 
     async def _create_project_webhook(self, project_key: str) -> dict[str, Any]:
         """
@@ -529,16 +543,14 @@ class BitbucketClient:
         Returns:
             Created webhook configuration
         """
-        existing_webhooks = await self.get_project_webhooks(project_key)
-        existing_webhook_names = set(webhook["name"] for webhook in existing_webhooks)
-        if self._get_webhook_name(project_key) in existing_webhook_names:
+        if await self._webhook_exists_for_project(project_key):
             logger.info(
                 f"Webhook for project {project_key} already exists, skipping creation"
             )
             return
 
         webhook_payload = self._create_webhook_payload(project_key)
-        webhook = await self.send_port_request(
+        webhook = await self._send_api_request(
             "POST",
             f"projects/{project_key}/webhooks",
             payload=webhook_payload,
@@ -588,10 +600,19 @@ class BitbucketClient:
         Returns:
             List of webhook configurations
         """
-        webhooks = await self.send_port_request(
+        webhooks = await self._send_api_request(
             "GET", f"projects/{project_key}/repos/{repo_slug}/webhooks"
         )
         return webhooks.get("values", [])
+
+    async def _webhook_exists_for_repository(
+        self, project_key: str, repo_slug: str
+    ) -> bool:
+        """
+        Internal method to check if a webhook exists for a repository.
+        """
+        webhooks = await self.get_repository_webhooks(project_key, repo_slug)
+        return any(webhook["url"] == self._get_webhook_url() for webhook in webhooks)
 
     async def _create_repository_webhook(
         self, project_key: str, repo_slug: str
@@ -606,12 +627,7 @@ class BitbucketClient:
         Returns:
             Created webhook configuration
         """
-        existing_webhooks = await self.get_repository_webhooks(project_key, repo_slug)
-        existing_webhook_names = set(webhook["name"] for webhook in existing_webhooks)
-        if (
-            self._get_webhook_name(f"{project_key}-{repo_slug}")
-            in existing_webhook_names
-        ):
+        if await self._webhook_exists_for_repository(project_key, repo_slug):
             logger.info(
                 f"Webhook for repository {repo_slug} already exists, skipping creation"
             )
@@ -624,7 +640,7 @@ class BitbucketClient:
                 *REPO_WEBHOOK_EVENTS,
             ],
         )
-        webhook = await self.send_port_request(
+        webhook = await self._send_api_request(
             "POST",
             f"projects/{project_key}/repos/{repo_slug}/webhooks",
             payload=webhook_payload,
@@ -674,7 +690,7 @@ class BitbucketClient:
         Returns:
             Application properties data
         """
-        return await self.send_port_request(
+        return await self._send_api_request(
             method="GET",
             path="application-properties",
         )
