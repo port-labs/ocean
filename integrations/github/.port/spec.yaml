@@ -13,10 +13,20 @@ configurations:
     type: url
     description: For Github Enterprise users, if Github url is not passed, the default Github API "api.github.com" will be used.
   - name: githubToken
-    required: true
+    required: false
     type: string
     sensitive: true
-    description: GitHub personal access token with necessary permissions
+    description: GitHub personal access token with necessary permissions. This is only necessary if the integration is not functioning as an app.
+  - name: appId
+    type: string
+    required: false
+    sensitive: false
+    description: App id if you want the integration to interact with Github as an app. This is mandatory if githubToken is not passed in.
+  - name: appPrivateKey
+    required: false
+    type: string
+    sensitive: true
+    description: If App ID is passed, then app private key is required.
   - name: githubOrganization
     required: true
     type: string

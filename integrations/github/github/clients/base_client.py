@@ -28,9 +28,8 @@ class AbstractGithubClient(ABC):
             "X-GitHub-Api-Version": "2022-11-28",
         }
 
-    @property
-    @abstractmethod
-    def base_url(self) -> str: ...
+    def _update_token(self, new_token: str) -> None:
+        self.token = new_token
 
     async def send_api_request(
         self,

@@ -1,5 +1,5 @@
 import time
-from typing import Any, Dict
+from typing import Any, AsyncGenerator, Dict
 from unittest.mock import MagicMock
 
 import httpx
@@ -45,15 +45,10 @@ def mock_ocean_context() -> None:
 
 
 @pytest.fixture
-def rest_client(mock_ocean_context: Any) -> AbstractGithubClient:
+async def client(mock_ocean_context: Any) -> AsyncGenerator[Any, AbstractGithubClient]:
     """Provide a GitHubClient instance with mocked Ocean context."""
-    return create_github_client(GithubClientType.REST)
-
-
-@pytest.fixture
-def graphql_client(mock_ocean_context: Any) -> AbstractGithubClient:
-    """Provide a GitHubClient instance with mocked Ocean context."""
-    return create_github_client(GithubClientType.GRAPHQL)
+    resource = await create_github_client()
+    yield resource
 
 
 @pytest.fixture
