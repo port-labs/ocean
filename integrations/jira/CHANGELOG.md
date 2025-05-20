@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Added permission check for webhook creation in `JiraClient` using `has_webhook_permission` method.
+- Added permission check for webhook creation in `JiraClient`
 - Updated `create_webhooks` to skip creation and log warning if user lacks `ADMINISTER` permission to prevent 403 stopping resync.
 
 
