@@ -33,6 +33,7 @@ from gcp_core.search.resource_searches import (
     search_all_projects,
     search_all_resources,
 )
+from gcp_core.search.client_pool import cleanup_all_client_pools
 from gcp_core.utils import (
     AssetTypesWithSpecialHandling,
     get_current_resource_config,
@@ -185,6 +186,12 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         async for resources_batch in iterator_resync_method:
             yield resources_batch
+
+
+@ocean.on_resync_complete()
+async def cleanup_resources() -> None:
+    """Cleanup resources when the application shuts down"""
+    await cleanup_all_client_pools()
 
 
 async def process_realtime_event(
