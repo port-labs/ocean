@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from httpx import AsyncClient, Response
 
 from client import BitbucketClient
 
@@ -12,54 +13,138 @@ def mock_client() -> BitbucketClient:
         base_url="https://bitbucket.example.com",
         username="test-user",
         password="test-password",
+        webhook_secret="test-secret",
+        app_host="https://app.example.com",
     )
-    client = MagicMock(spec=BitbucketClient)
+    client.client = MagicMock(spec=AsyncClient)
     return client
 
 
 @pytest.mark.asyncio
-async def test_get_projects(mock_client: BitbucketClient) -> None:
-    """Test getting projects from Bitbucket Server."""
+async def test_send_port_request(mock_client: BitbucketClient) -> None:
+    """Test sending a request to the Bitbucket API."""
     # Arrange
-    expected_projects = [{"id": 1, "key": "TEST", "name": "Test Project"}]
-    mock_client.get_projects = AsyncMock(return_value=expected_projects)
+    expected_response = {"key": "TEST", "name": "Test Project"}
+    mock_response = MagicMock(spec=Response)
+    mock_response.json.return_value = expected_response
+    mock_response.raise_for_status = MagicMock()
+    mock_client.client.request.return_value = mock_response
 
     # Act
-    projects = await mock_client.get_projects()
+    response = await mock_client.send_port_request("GET", "projects/TEST")
 
     # Assert
-    assert projects == expected_projects
-    mock_client.get_projects.assert_called_once()
+    assert response == expected_response
+    mock_client.client.request.assert_called_once()
+    mock_response.raise_for_status.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_get_repositories(mock_client: BitbucketClient) -> None:
-    """Test getting repositories from Bitbucket Server."""
+async def test_get_paginated_resource(mock_client: BitbucketClient) -> None:
+    """Test getting paginated resources from the Bitbucket API."""
     # Arrange
-    project_key = "TEST"
-    expected_repos = [{"id": 1, "name": "test-repo", "slug": "test-repo"}]
-    mock_client.get_repositories = AsyncMock(return_value=expected_repos)
+    mock_responses = [
+        {
+            "values": [{"id": 1}, {"id": 2}],
+            "isLastPage": False,
+        },
+        {
+            "values": [{"id": 3}],
+            "isLastPage": True,
+        },
+    ]
+    mock_client.send_port_request = AsyncMock(side_effect=mock_responses)
 
     # Act
-    repos = await mock_client.get_repositories(project_key)
+    results = []
+    async for batch in mock_client.get_paginated_resource("projects"):
+        results.extend(batch)
 
     # Assert
-    assert repos == expected_repos
-    mock_client.get_repositories.assert_called_once_with(project_key)
+    assert len(results) == 3
+    assert [r["id"] for r in results] == [1, 2, 3]
+    assert mock_client.send_port_request.call_count == 2
 
 
 @pytest.mark.asyncio
-async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
-    """Test getting pull requests from Bitbucket Server."""
+async def test_get_latest_commit(mock_client: BitbucketClient) -> None:
+    """Test getting the latest commit for a repository."""
     # Arrange
-    project_key = "TEST"
-    repo_slug = "test-repo"
-    expected_prs = [{"id": 1, "title": "Test PR", "state": "OPEN"}]
-    mock_client.get_pull_requests = AsyncMock(return_value=expected_prs)
+    mock_commit = {"id": "abc123", "message": "Test commit"}
+    mock_client.send_port_request = AsyncMock(return_value={"values": [mock_commit]})
 
     # Act
-    prs = await mock_client.get_pull_requests(project_key, repo_slug)
+    commit = await mock_client.get_latest_commit("TEST", "test-repo")
 
     # Assert
-    assert prs == expected_prs
-    mock_client.get_pull_requests.assert_called_once_with(project_key, repo_slug)
+    assert commit == mock_commit
+    mock_client.send_port_request.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_verify_webhook_signature(mock_client: BitbucketClient) -> None:
+    """Test webhook signature verification."""
+    # Arrange
+    mock_request = MagicMock()
+    mock_request.headers = {"x-hub-signature": "sha256=test-signature"}
+    mock_request.body = AsyncMock(return_value=b"test-body")
+
+    # Act
+    result = await mock_client.verify_webhook_signature(mock_request)
+
+    # Assert
+    assert isinstance(result, bool)
+
+
+@pytest.mark.asyncio
+async def test_healthcheck(mock_client: BitbucketClient) -> None:
+    """Test health check functionality."""
+    # Arrange
+    mock_client._get_application_properties = AsyncMock(
+        return_value={"version": "8.8.0"}
+    )
+
+    # Act & Assert
+    await mock_client.healthcheck()  # Should not raise an exception
+
+
+@pytest.mark.asyncio
+async def test_healthcheck_failure(mock_client: BitbucketClient) -> None:
+    """Test health check failure."""
+    # Arrange
+    mock_client._get_application_properties = AsyncMock(
+        side_effect=Exception("Connection failed")
+    )
+
+    # Act & Assert
+    with pytest.raises(ConnectionError):
+        await mock_client.healthcheck()
+
+
+@pytest.mark.asyncio
+async def test_is_version_8_point_7_and_older(mock_client: BitbucketClient) -> None:
+    """Test version check functionality."""
+    # Arrange
+    mock_client._get_application_properties = AsyncMock(
+        return_value={"version": "8.7.0"}
+    )
+
+    # Act
+    result = await mock_client.is_version_8_point_7_and_older()
+
+    # Assert
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_setup_webhooks(mock_client: BitbucketClient) -> None:
+    """Test webhook setup functionality."""
+    # Arrange
+    mock_client.is_version_8_point_7_and_older = AsyncMock(return_value=False)
+    mock_client.create_projects_webhook = AsyncMock()
+
+    # Act
+    await mock_client.setup_webhooks({"TEST"})
+
+    # Assert
+    mock_client.create_projects_webhook.assert_called_once_with({"TEST"})
