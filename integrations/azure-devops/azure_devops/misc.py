@@ -71,36 +71,36 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
 
 
 def _validate_path(
-    v: Union[str, List[str]], allow_glob: bool = False
+    paths: Union[str, List[str]], allow_glob: bool = False
 ) -> Union[str, List[str]]:
     """Shared path validation logic.
 
     Args:
-        v: Path or list of paths to validate
+        paths: Path or list of paths to validate
         allow_glob: Whether to allow glob patterns (* and **) in paths
     """
-    patterns = [v] if isinstance(v, str) else v
+    path_list = [paths] if isinstance(paths, str) else paths
 
-    if not patterns:
+    if not path_list:
         raise ValueError("At least one path must be specified")
 
     valid_paths = []
 
-    for path in patterns:
+    for path in path_list:
         # Skip empty paths
         if not path or not path.strip():
             continue
 
         # Remove leading/trailing slashes and spaces
-        cleaned_path = path.strip().strip("/")
+        normalized_path = path.strip().strip("/")
 
         # Basic path validation
-        if ".." in cleaned_path:
+        if ".." in normalized_path:
             raise ValueError("Path traversal is not allowed")
 
         # For non-glob paths, validate there are no glob characters
         if not allow_glob and any(
-            char in cleaned_path for char in {"*", "?", "[", "]", "{", "}", "**"}
+            char in normalized_path for char in {"*", "?", "[", "]", "{", "}", "**"}
         ):
             raise ValueError(
                 f"Path '{path}' contains glob patterns which are not allowed. "
@@ -109,19 +109,19 @@ def _validate_path(
 
         # For glob paths, only allow * and ** patterns
         if allow_glob and any(
-            char in cleaned_path for char in {"?", "[", "]", "{", "}"}
+            char in normalized_path for char in {"?", "[", "]", "{", "}"}
         ):
             raise ValueError(
                 f"Path '{path}' contains unsupported glob characters. "
                 "Only '*' and '**' patterns are supported."
             )
 
-        valid_paths.append(cleaned_path)
+        valid_paths.append(normalized_path)
 
     if not valid_paths:
         raise ValueError("No valid paths provided. Please provide valid paths.")
 
-    return valid_paths if isinstance(v, list) else valid_paths[0]
+    return valid_paths if isinstance(paths, list) else valid_paths[0]
 
 
 class FileSelector(BaseModel):
