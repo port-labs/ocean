@@ -23,7 +23,7 @@ class JiraServerClient:
         self.client = http_async_client
 
         if token is not None:
-            self.client.headers = {"Authorization": f"Bearer {token}"}
+            self.client.headers.update({"Authorization": f"Bearer {token}"})
         elif username is not None and password is not None:
             self.client.auth = httpx.BasicAuth(username, password)
         else:
