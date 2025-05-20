@@ -1,0 +1,131 @@
+{
+  "expand": "operations,versionedRepresentations,editmeta,changelog,renderedFields",
+  "id": "10000",
+  "self": "http://localhost:8080/rest/api/2/issue/10000",
+  "key": "MAT-1",
+  "fields": {
+    "issuetype": {
+      "self": "http://localhost:8080/rest/api/2/issuetype/10001",
+      "id": "10001",
+      "description": "Created by Jira Software - do not edit or delete. Issue type for a user story.",
+      "iconUrl": "http://localhost:8080/images/icons/issuetypes/story.svg",
+      "name": "Story",
+      "subtask": false
+    },
+    "components": [],
+    "timespent": null,
+    "timeoriginalestimate": null,
+    "description": null,
+    "project": {
+      "self": "http://localhost:8080/rest/api/2/project/10000",
+      "id": "10000",
+      "key": "MAT",
+      "name": "matar-new-project",
+      "projectTypeKey": "software",
+      "avatarUrls": {
+        "48x48": "http://localhost:8080/secure/projectavatar?avatarId=10324",
+        "24x24": "http://localhost:8080/secure/projectavatar?size=small&avatarId=10324",
+        "16x16": "http://localhost:8080/secure/projectavatar?size=xsmall&avatarId=10324",
+        "32x32": "http://localhost:8080/secure/projectavatar?size=medium&avatarId=10324"
+      }
+    },
+    "fixVersions": [],
+    "customfield_10110": null,
+    "customfield_10111": null,
+    "aggregatetimespent": null,
+    "resolution": null,
+    "customfield_10106": null,
+    "customfield_10107": null,
+    "customfield_10108": null,
+    "aggregatetimeestimate": null,
+    "customfield_10109": null,
+    "resolutiondate": null,
+    "workratio": -1,
+    "summary": "Create a new service",
+    "lastViewed": null,
+    "watches": {
+      "self": "http://localhost:8080/rest/api/2/issue/MAT-1/watchers",
+      "watchCount": 1,
+      "isWatching": true
+    },
+    "creator": {
+      "self": "http://localhost:8080/rest/api/2/user?username=[REDACTED]",
+      "name": "[REDACTED]",
+      "key": "JIRAUSER10000",
+      "emailAddress": "matarp13@gmail.com",
+      "avatarUrls": {
+        "48x48": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=48",
+        "24x24": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=24",
+        "16x16": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=16",
+        "32x32": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=32"
+      },
+      "displayName": "Matar Peles",
+      "active": true,
+      "timeZone": "Etc/UTC"
+    },
+    "subtasks": [],
+    "created": "2025-04-10T17:14:56.000+0000",
+    "reporter": {
+      "self": "http://localhost:8080/rest/api/2/user?username=[REDACTED]",
+      "name": "[REDACTED]",
+      "key": "JIRAUSER10000",
+      "emailAddress": "matarp13@gmail.com",
+      "avatarUrls": {
+        "48x48": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=48",
+        "24x24": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=24",
+        "16x16": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=16",
+        "32x32": "https://www.gravatar.com/avatar/79d521a340ae23e1ee67bfd2cb858c71?d=mm&s=32"
+      },
+      "displayName": "Matar Peles",
+      "active": true,
+      "timeZone": "Etc/UTC"
+    },
+    "customfield_10000": "{summaryBean=com.atlassian.jira.plugin.devstatus.rest.SummaryBean@6b86cd9f[summary={pullrequest=com.atlassian.jira.plugin.devstatus.rest.SummaryItemBean@280ed744[byInstanceType={},overall=PullRequestOverallBean{stateCount=0, state='OPEN', details=PullRequestOverallDetails{openCount=0, mergedCount=0, declinedCount=0}}], build=com.atlassian.jira.plugin.devstatus.rest.SummaryItemBean@4bdd3f4a[byInstanceType={},overall=com.atlassian.jira.plugin.devstatus.summary.beans.BuildOverallBean@15b76582[failedBuildCount=0,successfulBuildCount=0,unknownBuildCount=0,count=0,lastUpdated=<null>,lastUpdatedTimestamp=<null>]], review=com.atlassian.jira.plugin.devstatus.rest.SummaryItemBean@63b306d4[byInstanceType={},overall=com.atlassian.jira.plugin.devstatus.summary.beans.ReviewsOverallBean@22896b15[dueDate=<null>,overDue=false,state=<null>,stateCount=0,count=0,lastUpdated=<null>,lastUpdatedTimestamp=<null>]], deployment-environment=com.atlassian.jira.plugin.devstatus.rest.SummaryItemBean@8c3761[byInstanceType={},overall=com.atlassian.jira.plugin.devstatus.summary.beans.DeploymentOverallBean@2eb9c987[showProjects=false,successfulCount=0,topEnvironments=[],count=0,lastUpdated=<null>,lastUpdatedTimestamp=<null>]], repository=com.atlassian.jira.plugin.devstatus.rest.SummaryItemBean@55c7ef22[byInstanceType={},overall=com.atlassian.jira.plugin.devstatus.summary.beans.CommitOverallBean@3cffe74c[count=0,lastUpdated=<null>,lastUpdatedTimestamp=<null>]], branch=com.atlassian.jira.plugin.devstatus.rest.SummaryItemBean@5d29e88d[byInstanceType={},overall=com.atlassian.jira.plugin.devstatus.summary.beans.BranchOverallBean@3d3cf75e[count=0,lastUpdated=<null>,lastUpdatedTimestamp=<null>]]},configErrors=[],errors=[]], devSummaryJson={\"cachedValue\":{\"errors\":[],\"configErrors\":[],\"summary\":{\"pullrequest\":{\"overall\":{\"count\":0,\"lastUpdated\":null,\"stateCount\":0,\"state\":\"OPEN\",\"details\":{\"openCount\":0,\"mergedCount\":0,\"declinedCount\":0,\"total\":0},\"open\":true},\"byInstanceType\":{}},\"build\":{\"overall\":{\"count\":0,\"lastUpdated\":null,\"failedBuildCount\":0,\"successfulBuildCount\":0,\"unknownBuildCount\":0},\"byInstanceType\":{}},\"review\":{\"overall\":{\"count\":0,\"lastUpdated\":null,\"stateCount\":0,\"state\":null,\"dueDate\":null,\"overDue\":false,\"completed\":false},\"byInstanceType\":{}},\"deployment-environment\":{\"overall\":{\"count\":0,\"lastUpdated\":null,\"topEnvironments\":[],\"showProjects\":false,\"successfulCount\":0},\"byInstanceType\":{}},\"repository\":{\"overall\":{\"count\":0,\"lastUpdated\":null},\"byInstanceType\":{}},\"branch\":{\"overall\":{\"count\":0,\"lastUpdated\":null},\"byInstanceType\":{}}}},\"isStale\":false}}",
+    "aggregateprogress": {
+      "progress": 0,
+      "total": 0
+    },
+    "priority": {
+      "self": "http://localhost:8080/rest/api/2/priority/3",
+      "iconUrl": "http://localhost:8080/images/icons/priorities/medium.svg",
+      "name": "Medium",
+      "id": "3"
+    },
+    "customfield_10100": "0|hzzzzz:",
+    "customfield_10101": null,
+    "customfield_10102": null,
+    "labels": [],
+    "environment": null,
+    "timeestimate": null,
+    "aggregatetimeoriginalestimate": null,
+    "versions": [],
+    "duedate": null,
+    "progress": {
+      "progress": 0,
+      "total": 0
+    },
+    "issuelinks": [],
+    "votes": {
+      "self": "http://localhost:8080/rest/api/2/issue/MAT-1/votes",
+      "votes": 0,
+      "hasVoted": false
+    },
+    "assignee": null,
+    "updated": "2025-04-10T17:14:56.000+0000",
+    "status": {
+      "self": "http://localhost:8080/rest/api/2/status/10000",
+      "description": "",
+      "iconUrl": "http://localhost:8080/",
+      "name": "To Do",
+      "id": "10000",
+      "statusCategory": {
+        "self": "http://localhost:8080/rest/api/2/statuscategory/2",
+        "id": 2,
+        "key": "new",
+        "colorName": "default",
+        "name": "To Do"
+      }
+    }
+  },
+  "renderedFields": null
+}
