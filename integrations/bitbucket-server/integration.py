@@ -14,13 +14,13 @@ from pydantic.fields import Field
 class ObjectKind(StrEnum):
     PROJECT = "project"
     REPOSITORY = "repository"
-    PULL_REQUEST = "pull_request"
+    PULL_REQUEST = "pull-request"
     USER = "user"
 
 
 class ProjectsFilterMixin:
-    projects: set[str] = Field(
-        default_factory=set,
+    projects: set[str] | None = Field(
+        default=None,
         description="List of project keys to filter. If empty, all projects will be synced",
     )
 
@@ -38,7 +38,7 @@ class BitbucketPullRequestSelector(BitbucketGenericSelector):
 
 class BitbucketPullRequestResourceConfig(ResourceConfig):
     selector: BitbucketPullRequestSelector
-    kind: Literal["pull_request"]
+    kind: Literal["pull-request"]
 
 
 class BitbucketGenericResourceConfig(ResourceConfig):
@@ -51,7 +51,9 @@ class BitbucketAppConfig(PortAppConfig):
         BitbucketPullRequestResourceConfig
         | BitbucketGenericResourceConfig
         | ResourceConfig
-    ]
+    ] = Field(
+        default_factory=list,
+    )
 
 
 class BitbucketIntegration(BaseIntegration):

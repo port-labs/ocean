@@ -412,7 +412,8 @@ class BitbucketClient:
         repository = await self.send_port_request(
             "GET", f"projects/{project_key}/repos/{repo_slug}"
         )
-        return repository
+
+        return await self._enrich_repository_with_readme_and_latest_commit(repository)
 
     async def get_single_pull_request(
         self, project_key: str, repo_slug: str, pr_key: str

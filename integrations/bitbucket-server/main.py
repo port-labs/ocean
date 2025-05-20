@@ -5,12 +5,12 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from .integration import (
+from integration import (
     BitbucketGenericResourceConfig,
     BitbucketPullRequestResourceConfig,
     ObjectKind,
 )
-from .utils import initialize_client
+from utils import initialize_client
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -60,3 +60,10 @@ async def on_start() -> None:
     logger.info("Performing healthcheck")
     client = initialize_client()
     await client.healthcheck()
+    logger.info("Healthcheck passed")
+    logger.info("Setting up webhooks")
+    if not client.app_host:
+        logger.warning("No app host provided, skipping webhook setup")
+    else:
+        await client.setup_webhooks()
+        logger.info("Webhooks set up")
