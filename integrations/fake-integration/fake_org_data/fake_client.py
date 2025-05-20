@@ -7,10 +7,11 @@ from port_ocean.context.ocean import ocean
 from .types import FakePerson
 from .static import FAKE_DEPARTMENTS
 
-
-API_URL = "http://localhost:8000/integration/department"
+API_URL = f"http://localhost:8000/integration/department"
+API_URL_DOCKER = f"http://host.docker.internal:8001/integration/department"
 USER_AGENT = "Ocean Framework Fake Integration (https://github.com/port-labs/ocean)"
 
+API_URL = API_URL_DOCKER if ocean.config.multiprocessing_enabled else API_URL
 
 class FakeIntegrationDefaults(IntEnum):
     ENTITY_AMOUNT = 20

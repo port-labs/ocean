@@ -3,7 +3,6 @@ from inspect import getmembers, isclass
 from types import ModuleType
 from typing import Type, Any, Dict
 
-from port_ocean.ocean_task import OceanTask
 from pydantic import BaseModel
 
 from port_ocean.core.integrations.base import BaseIntegration
@@ -45,22 +44,3 @@ def create_default_app(
         config_factory=config_factory,
         config_override=config_override,
     )
-
-
-def create_ocean_task(
-    path: str | None = None,
-    config_factory: Type[BaseModel] | None = None,
-    config_override: Dict[str, Any] | None = None,
-) -> OceanTask:
-    sys.path.append(".")
-    try:
-        print(f"task path: {path}")
-        integration_path = f"{path}/integration.py" if path else "integration.py"
-        module = load_module(integration_path)
-        integration_class = _get_base_integration_class_from_module(module)
-    except Exception:
-        integration_class = None
-        print("integration_class is None")
-    print(f"integration_class: {integration_class}")
-
-    return OceanTask(integration_class, config_factory, config_override)
