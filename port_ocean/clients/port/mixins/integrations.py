@@ -106,6 +106,12 @@ class IntegrationClientMixin:
             self._log_attributes = response["logAttributes"]
         return self._log_attributes
 
+    async def get_metrics_attributes(self) -> LogAttributes:
+        if self._metrics_attributes is None:
+            response = await self.get_current_integration()
+            self._metrics_attributes = response["metricsAttributes"]
+        return self._metrics_attributes
+
     async def _poll_integration_until_default_provisioning_is_complete(
         self,
     ) -> Dict[str, Any]:
@@ -196,6 +202,20 @@ class IntegrationClientMixin:
         )
         handle_port_status_code(response)
         return response.json()["integration"]
+
+    async def ingest_integration_metrics(self, metrics: list[dict[str, Any]]) -> None:
+        logger.debug("Ingesting metrics")
+        metrics_attributes = await self.get_metrics_attributes()
+        headers = await self.auth.headers()
+        response = await self.client.post(
+            metrics_attributes["ingestUrl"],
+            headers=headers,
+            json={
+                "metrics": metrics,
+            },
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Metrics successfully ingested")
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
