@@ -732,6 +732,9 @@ class BitbucketClient:
         hash_object = hmac.new(self.webhook_secret.encode(), body, hashlib.sha256)
         expected_signature = "sha256=" + hash_object.hexdigest()
 
+        if not signature.startswith("sha256="):
+            signature = "sha256=" + signature
+
         return hmac.compare_digest(signature, expected_signature)
 
     async def healthcheck(self) -> None:

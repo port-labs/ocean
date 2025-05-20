@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Coroutine
+from typing import Any
 
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -14,7 +14,7 @@ class BaseWebhookProcessorMixin(AbstractWebhookProcessor):
 
     async def authenticate(
         self, payload: dict[str, Any], headers: dict[str, str]
-    ) -> Coroutine[Any, Any, bool]:
+    ) -> bool:
         return True
 
     @abstractmethod

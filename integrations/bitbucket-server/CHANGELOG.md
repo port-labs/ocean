@@ -12,4 +12,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Implement Bitbucker Server integration with ability to sync users, projects, repositories and pull requests
+- Implement Bitbucket Server integration with ability to sync users, projects, repositories and pull requests
