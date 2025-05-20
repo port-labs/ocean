@@ -1,19 +1,21 @@
 from abc import abstractmethod
+from typing import Any, Coroutine
 
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.handlers.webhook.webhook_event import (
-    EventHeaders,
-    EventPayload,
-    WebhookEvent,
-)
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from ..utils import initialize_client
+from utils import initialize_client
 
 
 class BaseWebhookProcessorMixin(AbstractWebhookProcessor):
     _client = initialize_client()
+
+    async def authenticate(
+        self, payload: dict[str, Any], headers: dict[str, str]
+    ) -> Coroutine[Any, Any, bool]:
+        return True
 
     @abstractmethod
     async def _should_process_event(self, event: WebhookEvent) -> bool: ...
@@ -23,3 +25,6 @@ class BaseWebhookProcessorMixin(AbstractWebhookProcessor):
             return False
 
         return await self._client.verify_webhook_signature(event._original_request)
+
+    async def validate_payload(self, payload: dict[str, Any]) -> bool:
+        return True

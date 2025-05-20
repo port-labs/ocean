@@ -1,14 +1,13 @@
+from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
-    WebhookEventKind,
     WebhookEventRawResults,
 )
-from loguru import logger
 
-from ..client import PR_WEBHOOK_EVENTS
-from ..integration import ObjectKind
+from integration import ObjectKind
+
 from ._base import BaseWebhookProcessorMixin
 
 
@@ -37,9 +36,7 @@ class PullRequestWebhookProcessor(BaseWebhookProcessorMixin):
             )
 
         pull_request_details = await self._client.get_single_pull_request(
-            project_key=project_key,
-            repo_slug=repository_id,
-            pr_key=pull_request_id
+            project_key=project_key, repo_slug=repository_id, pr_key=pull_request_id
         )
 
         return WebhookEventRawResults(

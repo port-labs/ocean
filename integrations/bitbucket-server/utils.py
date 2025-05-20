@@ -1,6 +1,6 @@
 from port_ocean.context.ocean import ocean
 
-from client import BitbucketClient
+from client import BitbucketClient  # type: ignore
 
 
 def initialize_client() -> BitbucketClient:

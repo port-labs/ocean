@@ -1,10 +1,11 @@
 import asyncio
 import hashlib
 import hmac
+import re
 from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
-from aiolimiter import AsyncLimiter
+from aiolimiter import AsyncLimiter  # type: ignore
 from fastapi import Request
 from httpx import BasicAuth
 from loguru import logger
@@ -14,12 +15,16 @@ from port_ocean.utils.cache import cache_iterator_result
 # Rate limit docs: https://support.atlassian.com/bitbucket-cloud/docs/api-request-limits/
 BITBUCKET_RATE_LIMIT = 1000  # requests per hour
 BITBUCKET_RATE_LIMIT_WINDOW = 3600  # 1 hour
+README_PATTERN = re.compile(r"^readme(\.[a-z0-9]+)?$", re.IGNORECASE)
 
 PROJECT_WEBHOOK_EVENTS = [
     "project:modified",
 ]
 
-REPO_WEBHOOK_EVENTS = ["repo:modified"]
+REPO_WEBHOOK_EVENTS = [
+    "repo:modified",
+    "repo:refs_changed",
+]
 
 PR_WEBHOOK_EVENTS = [
     "pr:modified",
@@ -102,6 +107,9 @@ class BitbucketClient:
         url = f"{self.base_url}/rest/api/1.0/{path}"
         async with self.rate_limiter:
             try:
+                logger.info(
+                    f"Sending {method} request to {url} with payload: {payload}"
+                )
                 response = await self.client.request(method, url, json=payload)
                 response.raise_for_status()
                 return response.json()
@@ -182,6 +190,7 @@ class BitbucketClient:
         """
         projects = dict[str, dict[str, Any]]()
         async for project_batch in self.get_projects():
+            logger.info(f"Received project batch: {project_batch}")
             filtered_projects = filter(
                 lambda project: project["key"] in projects_filter, project_batch
             )
@@ -203,6 +212,7 @@ class BitbucketClient:
         Yields:
             Batches of project data
         """
+        logger.info(f"Getting projects with filter: {projects_filter}")
         if projects_filter:
             project_batch = await self._get_projects_with_filter(projects_filter)
             yield project_batch
@@ -334,33 +344,35 @@ class BitbucketClient:
 
     async def get_repository_readme(self, project_key: str, repo_slug: str) -> str:
         """
-        Get the README content for a specific repository.
-
-        Args:
-            project_key: Key of the project
-            repo_slug: Slug of the repository
-
-        Returns:
-            README content as string
+        Get the README content for a specific repository, regardless of casing or extension.
         """
+
+        async def find_readme_file() -> str | None:
+            file_listing_path = f"projects/{project_key}/repos/{repo_slug}/files"
+            async for batch in self.get_paginated_resource(
+                file_listing_path, page_size=500
+            ):
+                for file_path in batch:
+                    if "/" not in file_path and README_PATTERN.match(file_path):
+                        return file_path
+
+            return None
 
         def parse_repository_file_response(file_response: Dict[str, Any]) -> str:
             lines = file_response.get("lines", [])
-            logger.info(f"Received readme file with {len(lines)} entries")
-            readme_content = ""
+            return "\n".join(line.get("text", "") for line in lines)
 
-            for line in lines:
-                readme_content += line.get("text", "") + "\n"
-
-            return readme_content
-
-        file_path = f"projects/{project_key}/repos/{repo_slug}/browse/README.md"
+        readme_filename = await find_readme_file()
+        if not readme_filename:
+            return ""
+        file_path = f"projects/{project_key}/repos/{repo_slug}/browse/{readme_filename}"
         readme_content = ""
+
         async for readme_file_batch in self.get_paginated_resource(
             path=file_path, page_size=500, full_response=True
         ):
-            file_content = parse_repository_file_response(readme_file_batch)
-        readme_content += file_content
+            readme_content += parse_repository_file_response(readme_file_batch)
+
         return readme_content
 
     async def get_latest_commit(
@@ -379,9 +391,12 @@ class BitbucketClient:
         response = await self.send_port_request(
             "GET",
             f"projects/{project_key}/repos/{repo_slug}/commits",
-            params={"limit": 1},
+            payload={"limit": 1},
         )
-        return response.get("values", [{}])[0]
+        values = response.get("values")
+        if not values:
+            return {}
+        return values[0]
 
     async def get_single_project(self, project_key: str) -> dict[str, Any]:
         """
@@ -461,7 +476,7 @@ class BitbucketClient:
         return f"Port Ocean - {key}"
 
     def _create_webhook_payload(
-        self, key: str, events: list[str] = WEBHOOK_EVENTS
+        self, key: str, events: list[str] | None = None
     ) -> dict[str, Any]:
         """
         Internal method to create webhook payload.
@@ -472,10 +487,12 @@ class BitbucketClient:
         Returns:
             Webhook configuration payload
         """
+        if not events:
+            events = WEBHOOK_EVENTS
         name = self._get_webhook_name(key)
         payload = {
             "name": name,
-            "url": f"{self.app_host}/webhooks",
+            "url": f"{self.app_host}/integration/webhook",
             "events": events,
             "active": True,
             "sslVerificationRequired": True,
@@ -520,13 +537,7 @@ class BitbucketClient:
             )
             return
 
-        webhook_payload = self._create_webhook_payload(
-            project_key,
-            events=[
-                *PR_WEBHOOK_EVENTS,
-                *REPO_WEBHOOK_EVENTS,
-            ],
-        )
+        webhook_payload = self._create_webhook_payload(project_key)
         webhook = await self.send_port_request(
             "POST",
             f"projects/{project_key}/webhooks",
@@ -541,6 +552,7 @@ class BitbucketClient:
         Args:
             projects: Set of project keys
         """
+        logger.info(f"Creating webhooks for projects: {projects}")
         project_tasks = []
         for project_key in projects:
             project_tasks.append(self._create_project_webhook(project_key))
@@ -558,6 +570,7 @@ class BitbucketClient:
             await self._create_projects_webhook(projects)
         else:
             async for project_batch in self.get_projects():
+
                 await self._create_projects_webhook(
                     set(project["key"] for project in project_batch)
                 )
@@ -604,7 +617,13 @@ class BitbucketClient:
             )
             return
 
-        webhook_payload = self._create_webhook_payload(f"{project_key}-{repo_slug}")
+        webhook_payload = self._create_webhook_payload(
+            f"{project_key}-{repo_slug}",
+            events=[
+                *PR_WEBHOOK_EVENTS,
+                *REPO_WEBHOOK_EVENTS,
+            ],
+        )
         webhook = await self.send_port_request(
             "POST",
             f"projects/{project_key}/repos/{repo_slug}/webhooks",
@@ -612,21 +631,22 @@ class BitbucketClient:
         )
         return webhook
 
-    async def _create_project_repositories_webhook(self, project_key: str) -> None:
+    async def _create_project_repositories_webhook(self, projects: set[str]) -> None:
         """
         Internal method to create webhooks for all repositories in a project.
 
         Args:
-            project_key: Key of the project
+            projects: Set of project keys
         """
         tasks = []
-        async for repo_batch in self.get_repositories(project_key):
-            tasks.extend(
-                [
-                    self._create_repository_webhook(project_key, repo["slug"])
-                    for repo in repo_batch
-                ]
-            )
+        for project_key in projects:
+            async for repo_batch in self.get_repositories(project_key):
+                for repo in repo_batch:
+                    tasks.append(
+                        self._create_repository_webhook(
+                            repo["project"]["key"], repo["slug"]
+                        )
+                    )
 
         await asyncio.gather(*tasks)
 
@@ -659,15 +679,21 @@ class BitbucketClient:
             path="application-properties",
         )
 
-    @property
-    async def IS_VERSION_8_POINT_7_AND_OLDER(self) -> bool:
+    async def is_version_8_point_7_and_older(self) -> bool:
         """
         Check if the Bitbucket server version is 8.7 or older.
 
         Returns:
             True if version is 8.7 or older, False otherwise
         """
-        return float(self._get_application_properties().get("version")) <= 8.7
+        application_properties = await self._get_application_properties()
+        # we intentionally do not use get to ensure the integration
+        # fails early if there is a problem
+        version: str = application_properties["version"]
+        # keep only the first two numbers in the version leaving the rest
+        # and converting the result to a float for easy comparison
+        float_version = float(".".join(version.split(".")[:2]))
+        return float_version <= 8.7
 
     async def setup_webhooks(self, projects: set[str] | None = None) -> None:
         """
@@ -676,7 +702,7 @@ class BitbucketClient:
         Args:
             projects: Optional set of project keys to set up webhooks for
         """
-        if self.IS_VERSION_8_POINT_7_AND_OLDER:
+        if await self.is_version_8_point_7_and_older():
             await self.create_repositories_webhooks(projects)
         else:
             await self.create_projects_webhook(projects)
@@ -720,4 +746,4 @@ class BitbucketClient:
             logger.info("Successfully connected to Bitbucket Server")
         except Exception as e:
             logger.error(f"Failed to connect to Bitbucket Server: {e}")
-            raise Exception("Failed to connect to Bitbucket Server")
+            raise ConnectionError("Failed to connect to Bitbucket Server") from e

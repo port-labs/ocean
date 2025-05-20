@@ -18,15 +18,11 @@ class ObjectKind(StrEnum):
     USER = "user"
 
 
-class ProjectsFilterMixin:
+class BitbucketGenericSelector(Selector):
     projects: set[str] | None = Field(
         default=None,
         description="List of project keys to filter. If empty, all projects will be synced",
     )
-
-
-class BitbucketGenericSelector(Selector, ProjectsFilterMixin):
-    pass
 
 
 class BitbucketPullRequestSelector(BitbucketGenericSelector):

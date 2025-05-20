@@ -1,13 +1,14 @@
+from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
-from loguru import logger
 
-from ..client import PROJECT_WEBHOOK_EVENTS
-from ..integration import ObjectKind
+from client import PROJECT_WEBHOOK_EVENTS
+from integration import ObjectKind
+
 from ._base import BaseWebhookProcessorMixin
 
 

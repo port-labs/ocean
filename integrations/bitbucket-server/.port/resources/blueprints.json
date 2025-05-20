@@ -77,6 +77,12 @@
                     "format": "url",
                     "spec": "async-api",
                     "icon": "DefaultProperty"
+                },
+                "readme": {
+                    "title": "Readme",
+                    "type": "string",
+                    "format": "markdown",
+                    "icon": "DefaultProperty"
                 }
             },
             "required": []
@@ -101,7 +107,7 @@
         }
     },
     {
-        "identifier": "bitbucketPullrequest",
+        "identifier": "bitbucketPullRequest",
         "description": "A software catalog to represent Bitbucket pull requests",
         "title": "Bitbucket Pull Request",
         "icon": "BitBucket",
@@ -219,6 +225,12 @@
                     "description": "The link to the user profile",
                     "icon": "BitBucket",
                     "type": "string"
+                },
+                "portUser": {
+                    "title": "Port User",
+                    "type": "string",
+                    "icon": "DefaultProperty",
+                    "format": "user"
                 }
             },
             "required": [

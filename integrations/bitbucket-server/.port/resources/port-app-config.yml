@@ -29,10 +29,10 @@ resources:
             forkable: .forkable
             public: .public
             link: .links.self[0].href
-            documentation: .readme
+            documentation: .__readme
           relations:
             project: .project.key
-            latestCommitAuthor: .latest_commit.author.emailAddress
+            latestCommitAuthor: .__latestCommit.author.emailAddress
 
   - kind: pull-request
     selector:
@@ -52,7 +52,7 @@ resources:
             link: .links.self[0].href
             destination: .toRef.displayId
             source: .fromRef.displayId
-            mergedAt: .closedDate | (tonumber / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            mergedAt: .closedDate as $d | if $d == null then null else ($d / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ")) end
             reviewers: "[.reviewers[].user.emailAddress]"
           relations:
             repository: .toRef.repository.slug
@@ -70,3 +70,4 @@ resources:
           properties:
             username: .name
             url: .links.self[0].href
+            portUser: .emailAddress

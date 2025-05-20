@@ -1,16 +1,18 @@
-from typing import Any, cast
+from typing import cast
 
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import (
-    BitbucketGenericResourceConfig,
-    BitbucketPullRequestResourceConfig,
-    ObjectKind,
+from integration import BitbucketGenericResourceConfig  # type: ignore
+from integration import BitbucketPullRequestResourceConfig, ObjectKind
+from utils import initialize_client  # type: ignore
+from webhook_processors import (
+    ProjectWebhookProcessor,
+    PullRequestWebhookProcessor,
+    RepositoryWebhookProcessor,
 )
-from utils import initialize_client
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -61,9 +63,12 @@ async def on_start() -> None:
     client = initialize_client()
     await client.healthcheck()
     logger.info("Healthcheck passed")
-    logger.info("Setting up webhooks")
-    if not client.app_host:
-        logger.warning("No app host provided, skipping webhook setup")
-    else:
+    if client.app_host:
+        logger.info("Setting up webhooks")
         await client.setup_webhooks()
         logger.info("Webhooks set up")
+
+
+ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
+ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
