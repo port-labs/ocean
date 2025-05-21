@@ -225,9 +225,13 @@ class IntegrationClientMixin:
     async def put_integration_metrics(self, kind_metrics: dict[str, Any]) -> None:
         logger.debug("putting metrics")
         metrics_attributes = await self.get_metrics_attributes()
+        url = (
+            metrics_attributes["ingestUrl"]
+            + "/resync/{kind_metrics[eventId]}/kind/{kind_metrics[kindIdentifier]}"
+        )
         headers = await self.auth.headers()
         response = await self.client.put(
-            metrics_attributes["ingestUrl"],
+            url,
             headers=headers,
             json=kind_metrics,
         )
