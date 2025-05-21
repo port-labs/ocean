@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.6 (2025-05-20)
+
+
+### Bug Fixes
+
+- Added permission check for webhook creation in `JiraClient`
+- Updated `create_webhooks` to skip creation and log warning if user lacks `ADMINISTER` permission to prevent 403 stopping resync.
+
+
+## 0.4.5 (2025-05-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
 ## 0.4.4 (2025-05-19)
 
 
