@@ -10,6 +10,7 @@ from prometheus_client import Gauge
 import prometheus_client.openmetrics
 import prometheus_client.openmetrics.exposition
 import prometheus_client.parser
+from port_ocean.context.ocean import ocean
 
 if TYPE_CHECKING:
     from port_ocean.config.settings import MetricsSettings, IntegrationSettings
@@ -271,9 +272,133 @@ class Metrics:
             self.registry
         ).decode()
 
+    async def post_metrics(
+        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+    ) -> None:
+        if not self.enabled:
+            return None
+
+        metrics = self.generate_metrics(metric_name, kind)
+        if not metrics:
+            return None
+
+        try:
+            for metric in metrics:
+                await ocean.port_client.post_integration_metrics(metric)
+        except Exception as e:
+            logger.error(f"Error posting metrics: {e}")
+
+    async def put_metrics(
+        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+    ) -> None:
+        if not self.enabled:
+            return None
+
+        metrics = self.generate_metrics(metric_name, kind)
+        if not metrics:
+            return None
+
+        try:
+            for metric in metrics:
+                await ocean.port_client.put_integration_metrics(metric)
+        except Exception as e:
+            logger.error(f"Error putting metrics: {e}")
+
+    def generate_metrics(
+        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        if not self.enabled:
+            return []
+
+        try:
+            latest_raw = self.generate_latest()
+            metric_families = prometheus_client.parser.text_string_to_metric_families(
+                latest_raw
+            )
+            metrics_dict: dict[str, Any] = {}
+            for family in metric_families:
+                for sample in family.samples:
+                    # Skip if a specific metric name was requested and this isn't it
+                    if metric_name and sample.name != metric_name:
+                        continue
+
+                    current_level = metrics_dict
+                    if sample.labels:
+                        # Skip if a specific kind was requested and this isn't it
+                        if kind and sample.labels.get("kind") != kind:
+                            continue
+
+                        # Get the ordered labels from the registry
+                        ordered_labels = _metrics_registry.get(
+                            sample.name, (None, None, [])
+                        )[2]
+
+                        # Create nested dictionary structure based on ordered labels
+                        for label_name in ordered_labels:
+                            if label_name in sample.labels:
+                                value = sample.labels[label_name]
+                                if label_name not in current_level:
+                                    current_level[label_name] = {}
+                                current_level = current_level[label_name]
+                                if value not in current_level:
+                                    current_level[value] = {}
+                                current_level = current_level[value]
+
+                    current_level[sample.name] = sample.value
+
+            # If no metrics were filtered, exit early
+            if not metrics_dict.get("kind", {}):
+                return []
+
+            events = []
+            for kind_key, metrics in metrics_dict.get("kind", {}).items():
+                # Skip if we're filtering by kind and this isn't the requested kind
+                if kind and kind_key != kind:
+                    continue
+
+                event = {
+                    "integration_type": self.integration_configuration.type,
+                    "integration_identifier": self.integration_configuration.identifier,
+                    "integration_version": self.integration_version,
+                    "ocean_version": self.ocean_version,
+                    "kind_identifier": kind_key,
+                    "kind": "-".join(kind_key.split("-")[:-1]),
+                    "event_id": self.event_id,
+                    "sync_state": self.sync_state,
+                    "metrics": metrics,
+                }
+                events.append(event)
+            return events
+        except Exception as e:
+            logger.error(f"Error sending metrics to webhook: {e}")
+            return []
+
+    async def send_metrics_to_webhook(
+        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+    ) -> None:
+        try:
+            if not self.enabled:
+                return None
+
+            if not self.metrics_settings.webhook_url:
+                return None
+
+            metrics = self.generate_metrics(metric_name, kind)
+            if not metrics:
+                return None
+
+            for metric in metrics:
+                logger.info(f"Sending metrics to webhook {metric['kind']}: {metric}")
+                await AsyncClient().post(
+                    url=self.metrics_settings.webhook_url, json=metric
+                )
+        except Exception as e:
+            logger.error(f"Error sending metrics to webhook: {e}")
+
     async def flush(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
     ) -> None:
+
         if not self.enabled:
             return None
 
@@ -340,5 +465,7 @@ class Metrics:
                 await AsyncClient().post(
                     url=self.metrics_settings.webhook_url, json=event
                 )
+
+                ocean.port_client.ingest_integration_metrics(event)
         except Exception as e:
             logger.error(f"Error sending metrics to webhook: {e}")
