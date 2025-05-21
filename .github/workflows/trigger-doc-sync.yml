@@ -10,7 +10,7 @@ on:
 jobs:
   trigger-sync:
     concurrency:
-      group: docs-sync-${{ github.ref }}
+      group: docs-sync-${{ github.ref_name }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
@@ -48,25 +48,27 @@ jobs:
           event-type: sync-docs
           client-payload: '{"repository": "${{ github.repository }}", "commit_url": "${{ github.event.head_commit.html_url }}", "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}}'
 
+      - name: Retry dispatch on failure
+        if: steps.dispatch.conclusion == 'failure' && steps.changed-files.outputs.all_changed_files != '[]'
+        id: retry_dispatch
+        continue-on-error: true
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.PORT_DOCS_SYNC_TOKEN }}
+          repository: ${{ github.repository_owner }}/port-docs
+          event-type: sync-docs
+          client-payload: '{"repository": "${{ github.repository }}", "commit_url": "${{ github.event.head_commit.html_url }}", "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}}'
+
       - name: Verify dispatch success
         if: steps.changed-files.outputs.all_changed_files != '[]'
         run: |
-          if [ "${{ steps.dispatch.conclusion }}" != "success" ]; then
+          if [ "${{ steps.dispatch.conclusion }}" != "success" ] && [ "${{ steps.retry_dispatch.conclusion }}" != "success" ]; then
             echo "::error::Failed to dispatch documentation sync event to port-docs repository"
             echo "Please verify that PORT_DOCS_SYNC_TOKEN has the correct permissions and the target repository exists"
             exit 1
           else
             echo "Successfully dispatched documentation sync event"
           fi
-
-      - name: Retry dispatch on failure
-        if: steps.dispatch.conclusion == 'failure' && steps.changed-files.outputs.all_changed_files != '[]'
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.PORT_DOCS_SYNC_TOKEN }}
-          repository: ${{ github.repository_owner }}/port-docs
-          event-type: sync-docs
-          client-payload: '{"repository": "${{ github.repository }}", "commit_url": "${{ github.event.head_commit.url }}", "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}}'
 
       - name: Notify on repeated failure
         if: failure() && steps.changed-files.outputs.all_changed_files != '[]'
