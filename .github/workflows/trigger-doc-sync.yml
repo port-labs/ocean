@@ -9,6 +9,9 @@ on:
 
 jobs:
   trigger-sync:
+    concurrency:
+      group: docs-sync-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
