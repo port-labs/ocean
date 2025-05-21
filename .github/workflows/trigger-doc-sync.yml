@@ -46,7 +46,12 @@ jobs:
           token: ${{ secrets.PORT_DOCS_SYNC_TOKEN }}
           repository: ${{ github.repository_owner }}/port-docs
           event-type: sync-docs
-          client-payload: '{"repository": "${{ github.repository }}", "commit_url": "${{ github.event.head_commit.html_url }}", "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}}'
+          client-payload: |
+            {
+              "repository": "${{ github.repository }}",
+              "commit_url": "${{ github.event.head_commit.html_url }}",
+              "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}
+            }
 
       - name: Retry dispatch on failure
         if: steps.dispatch.conclusion == 'failure' && steps.changed-files.outputs.all_changed_files != '[]'
