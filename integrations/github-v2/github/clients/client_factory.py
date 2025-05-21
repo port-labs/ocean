@@ -1,11 +1,12 @@
 import base64
 from typing import Any
 
+from loguru import logger
+from port_ocean.context.ocean import ocean
+
 from github.clients.app_client import GithubAppRestClient
 from github.clients.rest_client import GithubRestClient
 from github.clients.base_client import AbstractGithubClient
-from port_ocean.context.ocean import ocean
-from loguru import logger
 
 
 class GithubClientFactory:
