@@ -1,6 +1,6 @@
 from loguru import logger
 from github.webhook.events import REPOSITORY_DELETE_EVENTS, REPOSITORY_UPSERT_EVENTS
-from github.utils import ObjectKind
+from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
@@ -11,7 +11,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.core.exporters.repository_exporter import RepositoryExporter
+from github.core.exporters.exporter_factory import ExporterFactory
+from github.core.options import SingleRepositoryOptions
 
 
 class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
@@ -36,8 +37,12 @@ class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[repo]
             )
-        exporter = RepositoryExporter(create_github_client())
-        data_to_upsert = await exporter.get_resource(name)
+
+        client = create_github_client()
+        exporter_factory = ExporterFactory()
+        exporter = exporter_factory.get_exporter(ObjectKind.REPOSITORY)(client)
+
+        data_to_upsert = await exporter.get_resource(SingleRepositoryOptions(name=name))
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

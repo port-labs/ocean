@@ -110,7 +110,7 @@ class TestGithubWebhookClient:
 
             # Verify the API request was made correctly
             mock_send.assert_called_once_with(
-                f"orgs/test-org/hooks/{webhook_id}",
+                f"{client.github_host}/orgs/test-org/hooks/{webhook_id}",
                 method="PATCH",
                 json_data={"config": config_data},
             )
@@ -144,7 +144,9 @@ class TestGithubWebhookClient:
             }
 
             mock_send.assert_called_once_with(
-                "orgs/test-org/hooks", method="POST", json_data=expected_data
+                f"{client.base_url}/orgs/test-org/hooks",
+                method="POST",
+                json_data=expected_data,
             )
 
     async def test_upsert_webhook_existing_needs_update(self) -> None:

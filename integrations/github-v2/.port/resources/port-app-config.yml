@@ -1,10 +1,10 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
+repositoryVisibilityFilter: 'public'
 resources:
   - kind: repository
     selector:
       query: 'true'
-      type: "all"
     port:
       entity:
         mappings:

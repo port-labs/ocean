@@ -12,12 +12,15 @@ PAGE_SIZE = 100
 class GithubRestClient(AbstractGithubClient):
     """REST API implementation of GitHub client."""
 
+    @property
+    def base_url(self) -> str:
+        return self.github_host.rstrip("/")
+
     def _get_next_link(self, link_header: str) -> Optional[str]:
         """
         Extracts the path and query from the 'next' link in a GitHub Link header,
         removing the leading slash.
         """
-
         match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
         if not match:
             return None
@@ -30,7 +33,7 @@ class GithubRestClient(AbstractGithubClient):
 
     async def send_paginated_request(
         self,
-        endpoint: str,
+        resource: str,
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -40,11 +43,11 @@ class GithubRestClient(AbstractGithubClient):
 
         params["per_page"] = PAGE_SIZE
 
-        logger.info(f"Starting pagination for {method} {endpoint}")
+        logger.info(f"Starting pagination for {method} {resource}")
 
         while True:
             response = await self.send_api_request(
-                endpoint, method=method, params=params
+                resource, method=method, params=params
             )
             items = response.json()
             if not items:
@@ -57,8 +60,8 @@ class GithubRestClient(AbstractGithubClient):
             if not link_header:
                 return
 
-            next_endpoint = self._get_next_link(link_header)
-            if not next_endpoint:
+            next_resource = self._get_next_link(link_header)
+            if not next_resource:
                 return
 
-            endpoint = next_endpoint
+            resource = next_resource
