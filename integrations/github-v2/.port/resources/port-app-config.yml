@@ -1,10 +1,11 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
+enableMergeEntity: true
 resources:
   - kind: repository
     selector:
-      query: 'true'
-      type: "all"
+      query: "true"
+      type: all
     port:
       entity:
         mappings:
@@ -13,7 +14,47 @@ resources:
           blueprint: '"githubRepository"'
           properties:
             description: .description
-            visibility: 'if .private then "private" else "public" end'
+            visibility: if .private then "private" else "public" end
             defaultBranch: .default_branch
             url: .html_url
             language: .language
+  - kind: workflow
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .repo + (.id|tostring)
+          title: .name
+          blueprint: '"githubWorkflow"'
+          properties:
+            path: .path
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            link: .html_url
+          relations:
+            repository: .repo
+  - kind: workflow-run
+    selector:
+      query: .status != "completed"
+    port:
+      entity:
+        mappings:
+          identifier: .repository.name + (.id|tostring)
+          title: .display_title
+          blueprint: '"githubWorkflowRun"'
+          properties:
+            name: .name
+            triggeringActor: .triggering_actor.login
+            status: .status
+            conclusion: .conclusion
+            createdAt: .created_at
+            runStartedAt: .run_started_at
+            updatedAt: .updated_at
+            deletedAt: .deleted_at
+            runNumber: .run_number
+            runAttempt: .run_attempt
+            link: .html_url
+          relations:
+            workflow: .repository.name + (.workflow_id|tostring)

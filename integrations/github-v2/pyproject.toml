@@ -2,7 +2,7 @@
 name = "github-v2"
 version = "0.1.0-dev"
 description = "This integration ingest data from github"
-authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>"]
+authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <melodyogonna@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"

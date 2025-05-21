@@ -3,6 +3,8 @@ from enum import StrEnum
 
 class ObjectKind(StrEnum):
     REPOSITORY = "repository"
+    WORKFLOW = "workflow"
+    WORKFLOW_RUN = "workflow-run"
 
 
 class RepositoryType(StrEnum):
