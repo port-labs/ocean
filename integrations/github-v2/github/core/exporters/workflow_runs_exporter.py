@@ -4,12 +4,12 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.base_client import AbstractGithubClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import ListWorkflowOptions, SingleWorkflowOptions
+from github.core.options import ListWorkflowRunOptions, SingleWorkflowRunOptions
 
 
 class WorkflowRunExporter(AbstractGithubExporter[AbstractGithubClient]):
     async def get_resource[
-        ExporterOptionsT: SingleWorkflowOptions
+        ExporterOptionsT: SingleWorkflowRunOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
         endpoint = f"repos/{self.client.organization}/{options['repo']}/actions/runs/{options['resource_id']}"
         response = await self.client.send_api_request(endpoint)
@@ -19,7 +19,7 @@ class WorkflowRunExporter(AbstractGithubExporter[AbstractGithubClient]):
         return response.json()
 
     async def get_paginated_resources[
-        ExporterOptionsT: ListWorkflowOptions
+        ExporterOptionsT: ListWorkflowRunOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
 
