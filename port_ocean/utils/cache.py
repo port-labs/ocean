@@ -1,5 +1,6 @@
 import functools
 import hashlib
+import base64
 from typing import Callable, AsyncIterator, Awaitable, Any
 from port_ocean.context.ocean import ocean
 
@@ -12,7 +13,9 @@ def hash_func(function_name: str, *args: Any, **kwargs: Any) -> str:
     kwargs_str = str(kwargs)
     concatenated_string = args_str + kwargs_str
     hash_object = hashlib.sha256(concatenated_string.encode())
-    return f"{function_name}_{hash_object.hexdigest()}"
+    short_hash = base64.urlsafe_b64encode(hash_object.digest()[:8]).decode("ascii")
+    short_hash = short_hash.rstrip("=").replace("-", "_").replace("+", "_")
+    return f"{function_name}_{short_hash}"
 
 
 def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCallable]:
