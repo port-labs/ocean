@@ -10,10 +10,10 @@ from prometheus_client import Gauge
 import prometheus_client.openmetrics
 import prometheus_client.openmetrics.exposition
 import prometheus_client.parser
-from port_ocean.context.ocean import ocean
 
 if TYPE_CHECKING:
     from port_ocean.config.settings import MetricsSettings, IntegrationSettings
+    from port_ocean.clients.port.client import PortClient
 
 
 class MetricPhase:
@@ -116,9 +116,11 @@ class Metrics:
         self,
         metrics_settings: "MetricsSettings",
         integration_configuration: "IntegrationSettings",
+        port_client: "PortClient",
     ) -> None:
         self.metrics_settings = metrics_settings
         self.integration_configuration = integration_configuration
+        self.port_client = port_client
         self.registry = prometheus_client.CollectorRegistry()
         self.metrics: dict[str, Gauge] = {}
         self.load_metrics()
@@ -274,7 +276,7 @@ class Metrics:
             metrics.extend(metric)
 
         try:
-            await ocean.port_client.post_integration_metrics(metrics)
+            await self.port_client.post_integration_metrics(metrics)
         except Exception as e:
             logger.error(f"Error posting metrics: {e}")
 
@@ -287,7 +289,7 @@ class Metrics:
 
         try:
             for metric in metrics:
-                await ocean.port_client.put_integration_metrics(metric)
+                await self.port_client.put_integration_metrics(metric)
         except Exception as e:
             logger.error(f"Error putting metrics: {e}")
 
