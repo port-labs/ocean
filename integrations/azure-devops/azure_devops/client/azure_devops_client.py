@@ -768,8 +768,7 @@ class AzureDevopsClient(HTTPBaseClient):
         repository_id: str,
         pattern: str,
     ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
-        # Always use oneLevel recursion
-        recursion_level = "oneLevel"
+
         # Get the base path (everything before the first wildcard)
         parts = pattern.split("/")
         base_parts = []
@@ -779,11 +778,12 @@ class AzureDevopsClient(HTTPBaseClient):
             else:
                 break
         base_path = "/".join(base_parts)
+
         return functools.partial(
             self.get_repository_tree,
             repository_id,
             path=base_path or "/",
-            recursion_level=recursion_level,
+            recursion_level="oneLevel", # Always use oneLevel recursion
         )
 
     async def get_repository_folders(
@@ -845,7 +845,7 @@ class AzureDevopsClient(HTTPBaseClient):
             if processed_folders:
                 yield processed_folders
 
-    async def _process_repository(
+    async def _process_repository_folder_patterns(
         self,
         repo: dict[str, Any],
         repo_pattern_map: dict[
@@ -908,7 +908,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 continue
 
-            tasks.append(self._process_repository(repo, dict([(repo_name, patterns)])))
+            tasks.append(self._process_repository_folder_patterns(repo, dict([(repo_name, patterns)])))
 
         async for result in stream_async_iterators_tasks(*tasks):
             yield result
