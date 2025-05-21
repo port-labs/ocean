@@ -227,13 +227,15 @@ class IntegrationClientMixin:
         metrics_attributes = await self.get_metrics_attributes()
         url = (
             metrics_attributes["ingestUrl"]
-            + "/resync/{kind_metrics[eventId]}/kind/{kind_metrics[kindIdentifier]}"
+            + f"/resync/{kind_metrics['eventId']}/kind/{kind_metrics['kindIdentifier']}"
         )
         headers = await self.auth.headers()
         response = await self.client.put(
             url,
             headers=headers,
-            json=kind_metrics,
+            json={
+                "kindMetrics": kind_metrics,
+            },
         )
         handle_port_status_code(response, should_log=False)
         logger.debug("Metrics successfully put")
