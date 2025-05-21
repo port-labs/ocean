@@ -25,7 +25,7 @@ class MetricPhase:
 
     class TransformResult:
         TRANSFORMED = "transformed"
-        FILTERED_OUT = "filtered_out"
+        FILTERED_OUT = "filteredOut"
         FAILED = "failed"
 
     class LoadResult:
@@ -34,17 +34,17 @@ class MetricPhase:
         SKIPPED = "skipped"
 
     class ExtractResult:
-        EXTRACTED = "raw_extracted"
+        EXTRACTED = "rawExtracted"
 
 
 class MetricType:
     # Define metric names as constants
-    DURATION_NAME = "duration_seconds"
-    OBJECT_COUNT_NAME = "object_count"
-    ERROR_COUNT_NAME = "error_count"
+    DURATION_NAME = "durationSeconds"
+    OBJECT_COUNT_NAME = "objectCount"
+    ERROR_COUNT_NAME = "errorCount"
     SUCCESS_NAME = "success"
-    RATE_LIMIT_WAIT_NAME = "rate_limit_wait_seconds"
-    DELETION_COUNT_NAME = "deletion_count"
+    RATE_LIMIT_WAIT_NAME = "rateLimitWaitSeconds"
+    DELETION_COUNT_NAME = "deletionCount"
 
 
 class SyncState:
