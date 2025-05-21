@@ -783,7 +783,7 @@ class AzureDevopsClient(HTTPBaseClient):
             self.get_repository_tree,
             repository_id,
             path=base_path or "/",
-            recursion_level="oneLevel", # Always use oneLevel recursion
+            recursion_level="oneLevel",  # Always use oneLevel recursion
         )
 
     async def get_repository_folders(
@@ -908,7 +908,11 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 continue
 
-            tasks.append(self._process_repository_folder_patterns(repo, dict([(repo_name, patterns)])))
+            tasks.append(
+                self._process_repository_folder_patterns(
+                    repo, dict([(repo_name, patterns)])
+                )
+            )
 
         async for result in stream_async_iterators_tasks(*tasks):
             yield result
