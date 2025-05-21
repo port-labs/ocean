@@ -62,7 +62,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for issue in batch
         ]
 
-@ocean.on_resync(ObjectKind.PULLREQUEST) #says kind PR is not supported
+@ocean.on_resync(ObjectKind.PULLREQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     pulls = await client.get_pull_requests(integration_config["github_org"], integration_config["github_repo"])
     logger.info(f"Found {len(pulls)} pull requests total")
@@ -121,12 +121,6 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             }
             for team in batch
         ]
-
-# @ocean.on_resync()
-# async def handle_unknown_kind(*args, **kwargs) -> ASYNC_GENERATOR_RESYNC_TYPE:
-#     kind = args[0] if args else 'unknown'
-#     logger.warning(f"Unsupported kind received in resync: {kind}")
-#     yield []
 
 
 @ocean.router.post("/webhook")
