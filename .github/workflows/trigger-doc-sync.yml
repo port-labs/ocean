@@ -27,6 +27,7 @@ jobs:
             integrations/**/.port/resources/port-app-config.yaml
 
       - name: Trigger docs sync
+        if: steps.changed-files.outputs.all_changed_files != '[]'
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.PORT_DOCS_SYNC_TOKEN }}
