@@ -13,8 +13,7 @@ class DiskCacheProvider(CacheProvider):
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _get_cache_path(self, key: str) -> Path:
-        safe_key = str(hash(key))
-        return self._cache_dir / f"{safe_key}.pkl"
+        return self._cache_dir / f"{key}.pkl"
 
     async def get(self, key: str) -> Optional[Any]:
         cache_path = self._get_cache_path(key)
