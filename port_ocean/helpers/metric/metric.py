@@ -164,9 +164,6 @@ class Metrics:
         return self.metrics_settings.enabled
 
     def load_metrics(self) -> None:
-        if not self.enabled:
-            return None
-
         # Load all registered metrics
         for name, (_, description, labels) in _metrics_registry.items():
             self.metrics[name] = Gauge(
@@ -174,8 +171,6 @@ class Metrics:
             )
 
     def get_metric(self, name: str, labels: list[str]) -> Gauge | EmptyMetric:
-        if not self.enabled:
-            return EmptyMetric()
         metrics = self.metrics.get(name)
         if not metrics:
             return EmptyMetric()
@@ -189,9 +184,6 @@ class Metrics:
             labels (list[str]): The labels to apply to the metric.
             value (float): The value to inc.
         """
-        if not self.enabled:
-            return None
-
         self.get_metric(name, labels).inc(value)
 
     def set_metric(self, name: str, labels: list[str], value: float) -> None:
@@ -202,9 +194,6 @@ class Metrics:
             labels (list[str]): The labels to apply to the metric.
             value (float): The value to set.
         """
-        if not self.enabled:
-            return None
-
         self.get_metric(name, labels).set(value)
 
     def initialize_metrics(self, kind_blockes: list[str]) -> None:
@@ -275,9 +264,6 @@ class Metrics:
     async def post_metrics(
         self, metric_name: Optional[str] = None, kinds: Optional[list[str]] = None
     ) -> None:
-        if not self.enabled:
-            return None
-
         if kinds is None:
             return None
 
@@ -295,9 +281,6 @@ class Metrics:
     async def put_metrics(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
     ) -> None:
-        if not self.enabled:
-            return None
-
         metrics = self.generate_metrics(metric_name, kind)
         if not metrics:
             return None
@@ -311,9 +294,6 @@ class Metrics:
     def generate_metrics(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
     ) -> list[dict[str, Any]]:
-        if not self.enabled:
-            return []
-
         try:
             latest_raw = self.generate_latest()
             metric_families = prometheus_client.parser.text_string_to_metric_families(
