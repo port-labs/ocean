@@ -114,7 +114,7 @@ class IntegrationClientMixin:
     async def get_metrics_attributes(self) -> LogAttributes:
         if self._metrics_attributes is None:
             response = await self.get_current_integration()
-            self._metrics_attributes = response["metricsAttributes"]
+            self._metrics_attributes = response["metricAttributes"]
         return self._metrics_attributes
 
     async def _poll_integration_until_default_provisioning_is_complete(
