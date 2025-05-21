@@ -1,6 +1,6 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
-repositoryVisibilityFilter: 'public'
+repositoryVisibilityFilter: 'all'
 resources:
   - kind: repository
     selector:
