@@ -835,15 +835,15 @@ class AzureDevopsClient(HTTPBaseClient):
         async for found_folders in self.get_repository_folders(
             repo["id"], [folder_pattern.path]
         ):
-            enriched_folders = []
+            processed_folders = []
             for folder in found_folders:
                 folder_dict = dict(folder)
                 folder_dict["__repository"] = repo
                 folder_dict["__branch"] = repo_mapping.branch
                 folder_dict["__pattern"] = folder_pattern.path
-                enriched_folders.append(folder_dict)
-            if enriched_folders:
-                yield enriched_folders
+                processed_folders.append(folder_dict)
+            if processed_folders:
+                yield processed_folders
 
     async def _process_repository(
         self,
