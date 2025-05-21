@@ -1,0 +1,114 @@
+
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: ".name | tostring"
+          blueprint: '"githubRepository"'
+          properties:
+            htmlUrl: ".html_url"
+            fullName: ".full_name"
+            private: ".private"
+            visibility: ".visibility"
+            defaultBranch: ".default_branch"
+            size: ".size"
+            archived: ".archived"
+            createdAt: ".created_at"
+            updatedAt: ".updated_at"
+
+  - kind: pull-request
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: ".title | tostring"
+          blueprint: '"githubPullRequest"'
+          properties:
+            url: .html_url
+            state: .state
+            author: .login
+            number: .number
+            createdAt: .created_at
+            updatedAt: .updated_at
+            base: .ref
+            head: .ref
+            merged: .merged
+            draft: .draft
+          relations:
+            repository: .name
+
+  - kind: issue
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: ".title | tostring"
+          blueprint: '"githubIssue"'
+          properties:
+            url: ".html_url // .url"
+            state: .state
+            number: .number
+            author: .login
+            labels: .labels
+            createdAt: .created_at
+            updatedAt: .updated_at
+            body: .body
+          relations:
+            repository: .name
+
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: ".name | tostring"
+          blueprint: '"githubTeam"'
+          properties:
+            url: .url
+            description: .description
+            privacy: .privacy
+            organization: .login
+            createdAt: .created_at
+            updatedAt: .updated_at
+            permission: .permission
+
+  - kind: workflow
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
+          title: ".name | tostring"
+          blueprint: '"githubWorkflow"'
+          properties:
+            url: ".workflow_url"
+            runUrl: ".url"
+            status: .status
+            conclusion: .conclusion
+            headBranch: .head_branch
+            headSha: .head_sha
+            runNumber: .run_number
+            event: .event
+            createdAt: .created_at
+            updatedAt: .updated_at
+            runStartedAt: .run_started_at
+          relations:
+            repository: .name
+
+
+
+
+
