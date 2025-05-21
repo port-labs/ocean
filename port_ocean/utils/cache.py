@@ -41,10 +41,9 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             cache_key = hash_func(func.__name__, *args, **kwargs)
-            cache_provider = ocean.app.cache_provider
 
             # Check if the result is already in the cache
-            if cache := await cache_provider.get(cache_key):
+            if cache := await ocean.app.cache_provider.get(cache_key):
                 yield cache
                 return
 
@@ -55,7 +54,7 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
                 yield result
 
             # Cache the results
-            await cache_provider.set(
+            await ocean.app.cache_provider.set(
                 cache_key,
                 cached_results,
             )
@@ -89,13 +88,12 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             cache_key = hash_func(func.__name__, *args, **kwargs)
-            cache_provider = ocean.app.cache_provider
 
-            if cache := await cache_provider.get(cache_key):
+            if cache := await ocean.app.cache_provider.get(cache_key):
                 return cache
 
             result = await func(*args, **kwargs)
-            await cache_provider.set(
+            await ocean.app.cache_provider.set(
                 cache_key,
                 result,
             )
