@@ -17,7 +17,7 @@ def TimeMetric(phase: str) -> Any:
             res = await func(*args, **kwargs)
             end = time.monotonic()
             duration = end - start
-            ocean.metrics.set_metric(
+            ocean.metrics.inc_metric(
                 name=MetricType.DURATION_NAME,
                 labels=[ocean.metrics.current_resource_kind(), phase],
                 value=duration,
