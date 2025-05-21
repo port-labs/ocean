@@ -4,6 +4,7 @@ from port_ocean.cache.base import CacheProvider
 
 class InMemoryCacheProvider(CacheProvider):
     CACHE_KEY = "cache"
+    STORAGE_TYPE = "memory"
 
     def __init__(self, caching_storage: dict[str, Any] | None = None) -> None:
         self.storage = caching_storage or {}

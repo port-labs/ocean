@@ -6,9 +6,11 @@ from port_ocean.cache.base import CacheProvider
 
 
 class DiskCacheProvider(CacheProvider):
+    STORAGE_TYPE = "disk"
+
     def __init__(self, cache_dir: str | None = None) -> None:
         if cache_dir is None:
-            cache_dir = ".cache"
+            cache_dir = ".ocean_cache"
         self._cache_dir = Path(cache_dir)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
