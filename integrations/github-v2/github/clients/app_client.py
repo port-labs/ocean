@@ -10,7 +10,12 @@ from github.clients.rest_client import GithubRestClient
 
 class GithubAppRestClient(GithubRestClient):
     def __init__(
-        self, organization: str, github_host: str, app_id: str, private_key: str | bytes
+        self,
+        *,
+        organization: str,
+        github_host: str,
+        app_id: str,
+        private_key: str | bytes,
     ) -> None:
         self.app_id = app_id
         self.private_key = private_key
