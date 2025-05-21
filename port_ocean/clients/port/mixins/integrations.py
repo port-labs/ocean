@@ -216,22 +216,20 @@ class IntegrationClientMixin:
             metrics_attributes["ingestUrl"],
             headers=headers,
             json={
-                "metrics": metrics,
+                "kindsMetrics": metrics,
             },
         )
         handle_port_status_code(response, should_log=False)
         logger.debug("Metrics successfully posted")
 
-    async def put_integration_metrics(self, metrics: list[dict[str, Any]]) -> None:
+    async def put_integration_metrics(self, kind_metrics: dict[str, Any]) -> None:
         logger.debug("putting metrics")
         metrics_attributes = await self.get_metrics_attributes()
         headers = await self.auth.headers()
         response = await self.client.put(
             metrics_attributes["ingestUrl"],
             headers=headers,
-            json={
-                "metrics": metrics,
-            },
+            json=kind_metrics,
         )
         handle_port_status_code(response, should_log=False)
         logger.debug("Metrics successfully put")

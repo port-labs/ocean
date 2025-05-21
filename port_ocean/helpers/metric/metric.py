@@ -283,8 +283,7 @@ class Metrics:
             return None
 
         try:
-            for metric in metrics:
-                await ocean.port_client.post_integration_metrics(metric)
+            await ocean.port_client.post_integration_metrics(metrics)
         except Exception as e:
             logger.error(f"Error posting metrics: {e}")
 
