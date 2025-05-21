@@ -866,10 +866,10 @@ class AzureDevopsClient(HTTPBaseClient):
             yield result
 
     async def get_repository_by_name(
-        self, project_id: str, repo_name: str
+        self, project_name: str, repo_name: str
     ) -> dict[str, Any] | None:
         """Get a single repository by name using Azure DevOps API."""
-        repo_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repo_name}"
+        repo_url = f"{self._organization_base_url}/{project_name}/{API_URL_PREFIX}/git/repositories/{repo_name}"
         response = await self.send_request(
             "GET", repo_url, params={"api-version": "7.1"}
         )
@@ -880,13 +880,13 @@ class AzureDevopsClient(HTTPBaseClient):
     async def process_folder_patterns(
         self,
         folder_patterns: list[FolderPattern],
-        project_id: str,
+        project_name: str,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Process folder patterns and yield matching folders with optimized performance.
 
         Args:
             folder_patterns: List of folder patterns to process
-            project_id: The project ID
+            project_name: The project name
         """
         # Create a mapping of repository names to their patterns
         repo_pattern_map: dict[
@@ -901,10 +901,10 @@ class AzureDevopsClient(HTTPBaseClient):
         # Process only the specified repositories
         tasks = []
         for repo_name, patterns in repo_pattern_map.items():
-            repo = await self.get_repository_by_name(project_id, repo_name)
+            repo = await self.get_repository_by_name(project_name, repo_name)
             if not repo:
                 logger.warning(
-                    f"Repository {repo_name} in project {project_id} not found, skipping"
+                    f"Repository {repo_name} in project {project_name} not found, skipping"
                 )
                 continue
 

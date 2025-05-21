@@ -293,7 +293,7 @@ class FolderPattern(BaseModel):
 class AzureDevopsFolderSelector(Selector):
     """Selector for Azure DevOps folder scanning configuration"""
 
-    project: str
+    project_name: str
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",

@@ -1435,9 +1435,21 @@ async def test_process_folder_patterns(
         AsyncGenerator[List[Dict[str, Any]], None]
     ):
         repos_data = [
-            {"name": "repo1", "id": "repo1-id", "project": {"id": "test-project"}},
-            {"name": "repo2", "id": "repo2-id", "project": {"id": "test-project"}},
-            {"name": "repo3", "id": "repo3-id", "project": {"id": "test-project"}},
+            {
+                "name": "repo1",
+                "id": "repo1-id",
+                "project": {"name": "test-project", "id": "project-123"},
+            },
+            {
+                "name": "repo2",
+                "id": "repo2-id",
+                "project": {"name": "test-project", "id": "project-123"},
+            },
+            {
+                "name": "repo3",
+                "id": "repo3-id",
+                "project": {"name": "test-project", "id": "project-123"},
+            },
         ]
         yield repos_data
 
@@ -1453,7 +1465,7 @@ async def test_process_folder_patterns(
                     "__repository": {
                         "id": "repo1-id",
                         "name": "repo1",
-                        "project": {"id": "test-project"},
+                        "project": {"name": "test-project", "id": "project-123"},
                     },
                     "__branch": "main",
                     "__pattern": "src/main",
@@ -1468,7 +1480,7 @@ async def test_process_folder_patterns(
                         "__repository": {
                             "id": "repo2-id",
                             "name": "repo2",
-                            "project": {"id": "test-project"},
+                            "project": {"name": "test-project", "id": "project-123"},
                         },
                         "__branch": "main",
                         "__pattern": "src/main",
@@ -1482,7 +1494,7 @@ async def test_process_folder_patterns(
                         "__repository": {
                             "id": "repo2-id",
                             "name": "repo2",
-                            "project": {"id": "test-project"},
+                            "project": {"name": "test-project", "id": "project-123"},
                         },
                         "__branch": "main",
                         "__pattern": "docs",
@@ -1496,7 +1508,7 @@ async def test_process_folder_patterns(
                     "__repository": {
                         "id": "repo3-id",
                         "name": "repo3",
-                        "project": {"id": "test-project"},
+                        "project": {"name": "test-project", "id": "project-123"},
                     },
                     "__branch": "develop",
                     "__pattern": "docs",
@@ -1507,12 +1519,12 @@ async def test_process_folder_patterns(
             yield folders_data
 
     async def mock_get_repository_by_name(
-        project_id: str, repo_name: str
+        project_name: str, repo_name: str
     ) -> Dict[str, Any]:
         return {
             "name": repo_name,
             "id": f"{repo_name}-id",
-            "project": {"id": project_id},
+            "project": {"name": project_name, "id": "project-123"},
         }
 
     with (
@@ -1534,7 +1546,8 @@ async def test_process_folder_patterns(
     ):
         results: List[Dict[str, Any]] = []
         async for folders in mock_azure_client.process_folder_patterns(
-            sample_folder_patterns, project_id="test-project"
+            sample_folder_patterns,
+            project_name="test-project",  # Changed to use project_name
         ):
             results.extend(folders)
 

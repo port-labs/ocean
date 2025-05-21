@@ -183,7 +183,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     selector = cast(AzureDevopsFolderResourceConfig, event.resource_config).selector
     async for matching_folders in azure_devops_client.process_folder_patterns(
-        selector.folders, selector.project
+        selector.folders, selector.project_name
     ):
         yield matching_folders
 
