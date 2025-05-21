@@ -5,6 +5,8 @@ from typing import Any, Optional
 class CacheProvider(ABC):
     """Base class for cache providers that defines the contract for all cache implementations."""
 
+    STORAGE_TYPE: str
+
     @abstractmethod
     async def get(self, key: str) -> Optional[Any]:
         """Get a value from the cache."""
