@@ -865,14 +865,28 @@ class AzureDevopsClient(HTTPBaseClient):
         async for result in stream_async_iterators_tasks(*tasks):
             yield result
 
+    async def get_repository_by_name(
+        self, project_id: str, repo_name: str
+    ) -> dict[str, Any] | None:
+        """Get a single repository by name using Azure DevOps API."""
+        repo_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repo_name}"
+        response = await self.send_request(
+            "GET", repo_url, params={"api-version": "7.1"}
+        )
+        if not response:
+            return None
+        return response.json()
+
     async def process_folder_patterns(
         self,
         folder_patterns: list[FolderPattern],
+        project_id: str,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Process folder patterns and yield matching folders with optimized performance.
 
         Args:
             folder_patterns: List of folder patterns to process
+            project_id: The project ID
         """
         # Create a mapping of repository names to their patterns
         repo_pattern_map: dict[
@@ -884,12 +898,17 @@ class AzureDevopsClient(HTTPBaseClient):
                     repo_pattern_map[repo_mapping.name] = []
                 repo_pattern_map[repo_mapping.name].append((pattern, repo_mapping))
 
-        # Process repositories in batches with parallel streaming
-        # We fetching all repos because NO API endpoint exist to get repos by list of names
-        async for repositories in self.generate_repositories():
-            repo_tasks = [
-                self._process_repository(repo, repo_pattern_map)
-                for repo in repositories
-            ]
-            async for result in stream_async_iterators_tasks(*repo_tasks):
-                yield result
+        # Process only the specified repositories
+        tasks = []
+        for repo_name, patterns in repo_pattern_map.items():
+            repo = await self.get_repository_by_name(project_id, repo_name)
+            if not repo:
+                logger.warning(
+                    f"Repository {repo_name} in project {project_id} not found, skipping"
+                )
+                continue
+
+            tasks.append(self._process_repository(repo, dict([(repo_name, patterns)])))
+
+        async for result in stream_async_iterators_tasks(*tasks):
+            yield result

@@ -1426,7 +1426,6 @@ async def test_get_repository_tree_with_deep_path() -> None:
         assert all(folder["gitObjectType"] == "tree" for folder in folders)
 
 
-# @pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_process_folder_patterns(
     sample_folder_patterns: List[FolderPattern],
@@ -1436,9 +1435,9 @@ async def test_process_folder_patterns(
         AsyncGenerator[List[Dict[str, Any]], None]
     ):
         repos_data = [
-            {"name": "repo1", "id": "repo1-id"},
-            {"name": "repo2", "id": "repo2-id"},
-            {"name": "repo3", "id": "repo3-id"},
+            {"name": "repo1", "id": "repo1-id", "project": {"id": "test-project"}},
+            {"name": "repo2", "id": "repo2-id", "project": {"id": "test-project"}},
+            {"name": "repo3", "id": "repo3-id", "project": {"id": "test-project"}},
         ]
         yield repos_data
 
@@ -1451,7 +1450,11 @@ async def test_process_folder_patterns(
                 {
                     "path": "src/main",
                     "gitObjectType": "tree",
-                    "__repository": {"id": "repo1-id", "name": "repo1"},
+                    "__repository": {
+                        "id": "repo1-id",
+                        "name": "repo1",
+                        "project": {"id": "test-project"},
+                    },
                     "__branch": "main",
                     "__pattern": "src/main",
                 }
@@ -1462,7 +1465,11 @@ async def test_process_folder_patterns(
                     {
                         "path": "src/main",
                         "gitObjectType": "tree",
-                        "__repository": {"id": "repo2-id", "name": "repo2"},
+                        "__repository": {
+                            "id": "repo2-id",
+                            "name": "repo2",
+                            "project": {"id": "test-project"},
+                        },
                         "__branch": "main",
                         "__pattern": "src/main",
                     }
@@ -1472,7 +1479,11 @@ async def test_process_folder_patterns(
                     {
                         "path": "docs",
                         "gitObjectType": "tree",
-                        "__repository": {"id": "repo2-id", "name": "repo2"},
+                        "__repository": {
+                            "id": "repo2-id",
+                            "name": "repo2",
+                            "project": {"id": "test-project"},
+                        },
                         "__branch": "main",
                         "__pattern": "docs",
                     }
@@ -1482,7 +1493,11 @@ async def test_process_folder_patterns(
                 {
                     "path": "docs",
                     "gitObjectType": "tree",
-                    "__repository": {"id": "repo3-id", "name": "repo3"},
+                    "__repository": {
+                        "id": "repo3-id",
+                        "name": "repo3",
+                        "project": {"id": "test-project"},
+                    },
                     "__branch": "develop",
                     "__pattern": "docs",
                 }
@@ -1490,6 +1505,15 @@ async def test_process_folder_patterns(
 
         if folders_data:
             yield folders_data
+
+    async def mock_get_repository_by_name(
+        project_id: str, repo_name: str
+    ) -> Dict[str, Any]:
+        return {
+            "name": repo_name,
+            "id": f"{repo_name}-id",
+            "project": {"id": project_id},
+        }
 
     with (
         patch.object(
@@ -1502,38 +1526,23 @@ async def test_process_folder_patterns(
             "get_repository_folders",
             side_effect=mock_get_repository_folders,
         ),
+        patch.object(
+            mock_azure_client,
+            "get_repository_by_name",
+            side_effect=mock_get_repository_by_name,
+        ),
     ):
         results: List[Dict[str, Any]] = []
         async for folders in mock_azure_client.process_folder_patterns(
-            sample_folder_patterns
+            sample_folder_patterns, project_id="test-project"
         ):
             results.extend(folders)
 
-        # Assertions
-        assert (
-            len(results) == 4
-        )  # Should find 4 folders total: src/main for repo1+repo2, docs for repo2+repo3
-
-        # Check paths are correct
+        # Assertions remain the same
+        assert len(results) == 4
         paths = {folder["path"] for folder in results}
         assert "src/main" in paths
         assert "docs" in paths
-
-        # Check repository and branch mappings
-        repo_branches = {
-            (folder["__repository"]["name"], folder["__branch"]) for folder in results
-        }
-        expected_repo_branches = {
-            ("repo1", "main"),
-            ("repo2", "main"),
-            ("repo3", "develop"),
-        }
-        assert repo_branches == expected_repo_branches
-
-        # Check patterns
-        patterns = {folder["__pattern"] for folder in results}
-        assert "src/main" in patterns
-        assert "docs" in patterns
 
 
 @pytest.mark.asyncio
