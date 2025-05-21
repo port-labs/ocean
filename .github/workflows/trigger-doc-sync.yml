@@ -64,10 +64,14 @@ jobs:
           event-type: sync-docs
           client-payload: '{"repository": "${{ github.repository }}", "commit_url": "${{ github.event.head_commit.html_url }}", "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}}'
 
+      - name: Set default for retry_dispatch conclusion
+        run: echo "::set-output name=conclusion::${{ steps.retry_dispatch.conclusion || 'skipped' }}"
+        id: set-default-retry-dispatch
+
       - name: Verify dispatch success
         if: steps.changed-files.outputs.all_changed_files != '[]'
         run: |
-          if [ "${{ steps.dispatch.conclusion }}" != "success" ] && [ "${{ steps.retry_dispatch.conclusion }}" != "success" ]; then
+          if [ "${{ steps.dispatch.conclusion }}" != "success" ] && [ "${{ steps.set-default-retry-dispatch.outputs.conclusion }}" != "success" ]; then
             echo "::error::Failed to dispatch documentation sync event to port-docs repository"
             echo "Please verify that PORT_DOCS_SYNC_TOKEN has the correct permissions and the target repository exists"
             exit 1
