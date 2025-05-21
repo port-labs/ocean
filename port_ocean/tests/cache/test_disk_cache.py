@@ -63,7 +63,7 @@ async def test_disk_cache_corrupted_file(
 ) -> None:
     """Test handling of corrupted cache files."""
     # Create a corrupted pickle file
-    cache_path = tmp_path / f"{hash('test_key')}.pkl"
+    cache_path = tmp_path / "test_key.pkl"
     with open(cache_path, "wb") as f:
         f.write(b"invalid pickle data")
 
