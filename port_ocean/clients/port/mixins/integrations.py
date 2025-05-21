@@ -25,6 +25,10 @@ class LogAttributes(TypedDict):
     ingestUrl: str
 
 
+class MetricsAttributes(TypedDict):
+    ingestUrl: str
+
+
 class IntegrationClientMixin:
     def __init__(
         self,
@@ -38,6 +42,7 @@ class IntegrationClientMixin:
         self.auth = auth
         self.client = client
         self._log_attributes: LogAttributes | None = None
+        self._metrics_attributes: MetricsAttributes | None = None
 
     async def is_integration_provision_enabled(
         self, integration_type: str, should_raise: bool = True, should_log: bool = True
@@ -203,8 +208,8 @@ class IntegrationClientMixin:
         handle_port_status_code(response)
         return response.json()["integration"]
 
-    async def ingest_integration_metrics(self, metrics: list[dict[str, Any]]) -> None:
-        logger.debug("Ingesting metrics")
+    async def post_integration_metrics(self, metrics: list[dict[str, Any]]) -> None:
+        logger.debug("posting metrics")
         metrics_attributes = await self.get_metrics_attributes()
         headers = await self.auth.headers()
         response = await self.client.post(
@@ -215,7 +220,21 @@ class IntegrationClientMixin:
             },
         )
         handle_port_status_code(response, should_log=False)
-        logger.debug("Metrics successfully ingested")
+        logger.debug("Metrics successfully posted")
+
+    async def put_integration_metrics(self, metrics: list[dict[str, Any]]) -> None:
+        logger.debug("putting metrics")
+        metrics_attributes = await self.get_metrics_attributes()
+        headers = await self.auth.headers()
+        response = await self.client.put(
+            metrics_attributes["ingestUrl"],
+            headers=headers,
+            json={
+                "metrics": metrics,
+            },
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Metrics successfully put")
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
