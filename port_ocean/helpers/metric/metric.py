@@ -348,7 +348,11 @@ class Metrics:
                     "integrationVersion": self.integration_version,
                     "oceanVersion": self.ocean_version,
                     "kindIdentifier": kind_key,
-                    "kind": "-".join(kind_key.split("-")[:-1]),
+                    "kind": (
+                        "-".join(kind_key.split("-")[:-1])
+                        if "-" in kind_key
+                        else kind_key
+                    ),
                     "eventId": self.event_id,
                     "syncState": self.sync_state,
                     "metrics": metrics,
