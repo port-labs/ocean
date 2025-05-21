@@ -343,14 +343,14 @@ class Metrics:
                     continue
 
                 event = {
-                    "integration_type": self.integration_configuration.type,
-                    "integration_identifier": self.integration_configuration.identifier,
-                    "integration_version": self.integration_version,
-                    "ocean_version": self.ocean_version,
-                    "kind_identifier": kind_key,
+                    "integrationType": self.integration_configuration.type,
+                    "integrationIdentifier": self.integration_configuration.identifier,
+                    "integrationVersion": self.integration_version,
+                    "oceanVersion": self.ocean_version,
+                    "kindIdentifier": kind_key,
                     "kind": "-".join(kind_key.split("-")[:-1]),
-                    "event_id": self.event_id,
-                    "sync_state": self.sync_state,
+                    "eventId": self.event_id,
+                    "syncState": self.sync_state,
                     "metrics": metrics,
                 }
                 events.append(event)
