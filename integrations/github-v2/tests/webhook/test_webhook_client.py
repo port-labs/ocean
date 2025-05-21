@@ -129,13 +129,13 @@ class TestGithubWebhookClient:
             patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
 
-            await client.upsert_webhook("https://example.com", ["push", "pull_request"])
+            await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify the webhook creation request was made correctly
             expected_data = {
                 "name": "web",
                 "active": True,
-                "events": ["push", "pull_request"],
+                "events": ["push", "repository"],
                 "config": {
                     "url": "https://example.com/integration/webhook",
                     "content_type": "json",
@@ -176,7 +176,7 @@ class TestGithubWebhookClient:
             patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
         ):
 
-            await client.upsert_webhook("https://example.com", ["push", "pull_request"])
+            await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify the patch request was made correctly
             expected_config = {
@@ -214,7 +214,7 @@ class TestGithubWebhookClient:
             patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
         ):
 
-            await client.upsert_webhook("https://example.com", ["push", "pull_request"])
+            await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify the patch request was made correctly to remove secret
             expected_config = {
@@ -253,7 +253,7 @@ class TestGithubWebhookClient:
             patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
 
-            await client.upsert_webhook("https://example.com", ["push", "pull_request"])
+            await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify no API calls were made since no changes were needed
             mock_patch.assert_not_called()
@@ -333,7 +333,7 @@ class TestGithubWebhookClient:
             patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
         ):
 
-            await client.upsert_webhook("https://example.com", ["push", "pull_request"])
+            await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify the patch webhook call
             expected_config = {
@@ -372,7 +372,7 @@ class TestGithubWebhookClient:
             patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
         ):
 
-            await client.upsert_webhook("https://example.com", ["push", "pull_request"])
+            await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify the patch webhook call
             expected_config = {
@@ -411,7 +411,7 @@ class TestGithubWebhookClient:
             patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
 
-            await client.upsert_webhook("https://example.com", ["push", "pull_request"])
+            await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify no API calls were made
             mock_patch.assert_not_called()
