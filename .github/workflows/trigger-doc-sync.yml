@@ -26,11 +26,49 @@ jobs:
           files: |
             integrations/**/.port/resources/port-app-config.yaml
 
+      - name: Log changed files
+        if: steps.changed-files.outputs.all_changed_files != '[]'
+        run: |
+          echo "Changed files detected:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}"
+
+      - name: Notify if no files changed
+        if: steps.changed-files.outputs.all_changed_files == '[]'
+        run: echo "No relevant configuration files were changed. Skipping docs sync."
+
       - name: Trigger docs sync
         if: steps.changed-files.outputs.all_changed_files != '[]'
+        id: dispatch
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          # PORT_DOCS_SYNC_TOKEN should have repo scope permissions to trigger workflows in the target repository
+          token: ${{ secrets.PORT_DOCS_SYNC_TOKEN }}
+          repository: ${{ github.repository_owner }}/port-docs
+          event-type: sync-docs
+          client-payload: '{"repository": "${{ github.repository }}", "commit_url": "${{ github.event.head_commit.url }}", "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}}'
+
+      - name: Verify dispatch success
+        if: steps.changed-files.outputs.all_changed_files != '[]'
+        run: |
+          if [ "${{ steps.dispatch.outcome }}" != "success" ]; then
+            echo "::error::Failed to dispatch documentation sync event to port-docs repository"
+            echo "Please verify that PORT_DOCS_SYNC_TOKEN has the correct permissions and the target repository exists"
+            exit 1
+          else
+            echo "Successfully dispatched documentation sync event"
+          fi
+
+      - name: Retry dispatch on failure
+        if: failure() && steps.changed-files.outputs.all_changed_files != '[]'
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.PORT_DOCS_SYNC_TOKEN }}
-          repository: ${{ github.repository_owner }}/port-docs-sync
+          repository: ${{ github.repository_owner }}/port-docs
           event-type: sync-docs
-          client-payload: '{"repository": "${{ github.repository }}", "commit_url": "${{ github.event.head_commit.url }}", "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}}' 
+          client-payload: '{"repository": "${{ github.repository }}", "commit_url": "${{ github.event.head_commit.url }}", "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}}'
+
+      - name: Notify on repeated failure
+        if: failure() && steps.changed-files.outputs.all_changed_files != '[]'
+        run: |
+          echo "::warning::Documentation sync dispatch failed after retry. Manual intervention may be required."
+          echo "Affected files: ${{ steps.changed-files.outputs.all_changed_files }}"
