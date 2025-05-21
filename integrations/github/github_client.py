@@ -14,6 +14,9 @@ class GitHubClient:
             "Accept": "application/vnd.github+json"
         }
 
+    async def close(self):
+        await self.client.aclose()
+
     async def _get_paginated(self, url: str, retries: int = 3, backoff: float = 1.0):
         results = []
         while url:

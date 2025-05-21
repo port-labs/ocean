@@ -18,8 +18,8 @@ class WebhookHandler:
                 repo = payload.get("repository", {}).get("full_name")
                 logger.info(f"Push to: {repo}")
 
-            elif event == "pull-request":
-                pr = payload.get("pull-request", {}).get("title")
+            elif event == "pull_request":
+                pr = payload.get("pull_request", {}).get("title")
                 logger.info(f"PR: {pr}")
 
             else:

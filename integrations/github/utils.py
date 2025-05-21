@@ -1,7 +1,7 @@
 class ObjectKind:
     REPOSITORY = "repositories"
     ISSUE = "issues"
-    PULL_REQUEST = "pull-requests"
+    PULLREQUEST = "pull-requests"
     WORKFLOW = "workflows"
     TEAM = "teams"
     

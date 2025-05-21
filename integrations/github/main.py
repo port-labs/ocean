@@ -5,6 +5,7 @@ from loguru import logger
 from utils import ObjectKind
 from github_client import GitHubClient
 from webhook_handler import WebhookHandler
+from fastapi import Request
 
 webhook_handler = WebhookHandler()
 
@@ -61,7 +62,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for issue in batch
         ]
 
-@ocean.on_resync(ObjectKind.PULL_REQUEST)
+@ocean.on_resync(ObjectKind.PULLREQUEST) #says kind PR is not supported
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     pulls = await client.get_pull_requests(integration_config["github_org"], integration_config["github_repo"])
     logger.info(f"Found {len(pulls)} pull requests total")
