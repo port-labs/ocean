@@ -1,5 +1,8 @@
 name: Trigger Docs Sync
 
+permissions:
+  repository_dispatch: write
+  contents: read
 on:
   push:
     branches:
