@@ -278,11 +278,14 @@ class Metrics:
         if not self.enabled:
             return None
 
+        if kinds is None:
+            return None
+
         metrics = []
 
         for kind in kinds:
             metric = self.generate_metrics(metric_name, kind)
-            metrics.append(metric)
+            metrics.extend(metric)
 
         try:
             await ocean.port_client.post_integration_metrics(metrics)
@@ -466,7 +469,5 @@ class Metrics:
                 await AsyncClient().post(
                     url=self.metrics_settings.webhook_url, json=event
                 )
-
-                ocean.port_client.ingest_integration_metrics(event)
         except Exception as e:
             logger.error(f"Error sending metrics to webhook: {e}")

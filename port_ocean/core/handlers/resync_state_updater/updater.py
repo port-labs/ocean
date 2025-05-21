@@ -94,4 +94,4 @@ class ResyncStateUpdater:
         await ocean.metrics.send_metrics_to_webhook(
             kind=ocean.metrics.current_resource_kind()
         )
-        await ocean.metrics.post_metrics(kind=ocean.metrics.current_resource_kind())
+        await ocean.metrics.post_metrics(kinds=[ocean.metrics.current_resource_kind()])
