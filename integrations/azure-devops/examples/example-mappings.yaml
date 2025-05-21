@@ -115,7 +115,7 @@ resources:
   - kind: folder
     selector:
       query: 'true'
-      project: 'project001'
+      project_name: 'project001'
       folders:
         - path: measure/
           repos:
