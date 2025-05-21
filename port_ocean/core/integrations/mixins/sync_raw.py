@@ -737,3 +737,5 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         logger.info("Finished executing resync_complete hooks")
 
                     return True
+            finally:
+                await ocean.app.cache_provider.clear()

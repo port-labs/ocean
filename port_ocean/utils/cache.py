@@ -1,7 +1,7 @@
 import functools
 import hashlib
 from typing import Callable, AsyncIterator, Awaitable, Any
-from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
 
 AsyncIteratorCallable = Callable[..., AsyncIterator[list[Any]]]
 AsyncCallable = Callable[..., Awaitable[Any]]
@@ -18,9 +18,10 @@ def hash_func(function_name: str, *args: Any, **kwargs: Any) -> str:
 def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCallable]:
     """
     This decorator caches the results of an async iterator function. It checks if the result is already in the cache
-    and if not, it fetches the all the data and caches it at ocean.attributes cache the end of the iteration.
+    and if not, it fetches the all the data and caches it at the end of the iteration.
 
     The cache will be stored in the scope of the running event and will be removed when the event is finished.
+    If a database is configured, the cache will also be stored in the database.
 
     For example, you can use this to cache data coming back from the third-party API to avoid making the same request
     multiple times for each kind.
@@ -39,11 +40,11 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
     def decorator(func: AsyncIteratorCallable) -> AsyncIteratorCallable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Create Hash key from function name, args and kwargs
             cache_key = hash_func(func.__name__, *args, **kwargs)
+            cache_provider = ocean.app.cache_provider
 
             # Check if the result is already in the cache
-            if cache := event.attributes.get(cache_key):
+            if cache := await cache_provider.get(cache_key):
                 yield cache
                 return
 
@@ -54,7 +55,10 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
                 yield result
 
             # Cache the results
-            event.attributes[cache_key] = cached_results
+            await cache_provider.set(
+                cache_key,
+                cached_results,
+            )
             return
 
         return wrapper
@@ -71,6 +75,7 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
 
     The cache is stored in the scope of the running event and is
     removed when the event is finished.
+    If a database is configured, the cache will also be stored in the database.
 
     Usage:
     ```python
@@ -84,12 +89,16 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             cache_key = hash_func(func.__name__, *args, **kwargs)
+            cache_provider = ocean.app.cache_provider
 
-            if cache := event.attributes.get(cache_key):
+            if cache := await cache_provider.get(cache_key):
                 return cache
 
             result = await func(*args, **kwargs)
-            event.attributes[cache_key] = result
+            await cache_provider.set(
+                cache_key,
+                result,
+            )
             return result
 
         return wrapper
