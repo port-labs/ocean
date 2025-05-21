@@ -1,0 +1,30 @@
+title: GitHub Integration
+description: GitHub integration for Port Ocean
+icon: GitHub
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/firehydrant
+integration:
+  identifier: "My Integration type (Gitlab, Jira, etc.)"
+  title: GitHub Integration
+  icon: GitHub
+  description: azeezgithub integration for Port Ocean
+  icon: Cookiecutter
+features:
+  - type: exporter
+    section: Github Integration
+    resources:
+      - kind: repositories
+      - kind: issues
+      - kind: pull-requests
+      - kind: workflows
+      - kind: teams
+configurations:
+  - name: githubToken
+    required: true
+    type: string
+    sensitive: true
+  - name: githubOrg
+    required: true
+    type: string
+  - name: githubRepo
+    required: true
+    type: string

@@ -1,0 +1,66 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+enableMergeEntity: true
+resources:
+  - kind: repositories
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .identifier
+          title: .title
+          blueprint: '"repositories"'
+          properties:
+            url: .url
+            description: .description
+  - kind: issues
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .identifier
+          title: .title
+          blueprint: '"issues"'
+          properties:
+            url: .url
+            state: .state
+  - kind: pull-requests
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .identifier
+          title: .title
+          blueprint: '"pull-requests"'
+          properties:
+            url: .url
+            state: .state
+            author: .author
+  - kind: workflows
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .identifier
+          title: .name
+          blueprint: '"workflows"'
+          properties:
+            state: .state
+            url: .url
+            created_at: .created_at
+  - kind: teams
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .identifier
+          title: .name
+          blueprint: '"teams"'
+          properties:
+            slug: .slug
+            description: .description

@@ -1,0 +1,133 @@
+[
+    {
+        "identifier": "repositories",
+        "title": "GitHub Repositories",
+        "icon": "Repository",
+        "schema": {
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL"
+                },
+                "visibility": {
+                    "type": "string",
+                    "title": "Visibility"
+                },
+                "default_branch": {
+                    "type": "string",
+                    "title": "Default Branch"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "issues",
+        "title": "GitHub Issues",
+        "icon": "Issue",
+        "schema": {
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "title": "Title"
+                },
+                "state": {
+                    "type": "string",
+                    "title": "State"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL"
+                },
+                "assignee": {
+                    "type": "string",
+                    "title": "Assignee"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "pull-requests",
+        "title": "GitHub Pull Requests",
+        "icon": "PullRequest",
+        "schema": {
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "title": "Title"
+                },
+                "state": {
+                    "type": "string",
+                    "title": "State"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL"
+                },
+                "author": {
+                    "type": "string",
+                    "title": "Author"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "workflows",
+        "title": "GitHub Workflows",
+        "icon": "Workflow",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "state": {
+                    "type": "string",
+                    "title": "State"
+                },
+                "created_at": {
+                    "type": "string",
+                    "title": "Created At"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "teams",
+        "title": "GitHub Teams",
+        "icon": "Team",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "slug": {
+                    "type": "string",
+                    "title": "Slug"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    }
+]
