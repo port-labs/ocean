@@ -1,0 +1,31 @@
+description: GitHub integration for Port Ocean
+icon: github
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github/
+features:
+  - type: exporter
+    section: Git
+    resources:
+      - kind: repository
+      - kind: pull-request
+      - kind: issue
+      - kind: team
+      - kind: workflow
+configurations:
+  - name: token
+    required: true
+    type: string
+    sensitive: true
+    description: GitHub personal access token with necessary permissions
+  - name: organization
+    required: true
+    type: string
+    description: GitHub organization name
+  - name: baseUrl
+    required: false
+    type: url
+    description: The Port Ocean Base Url. To be used for setting th endpoint for Webhooks created in Github
+  - name: githubApiVersion
+    required: false
+    type: string
+    default: "2022-11-28"
+    description: The GitHub API version to use when setting up a Github Client
