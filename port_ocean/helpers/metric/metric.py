@@ -273,14 +273,16 @@ class Metrics:
         ).decode()
 
     async def post_metrics(
-        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+        self, metric_name: Optional[str] = None, kinds: Optional[list[str]] = None
     ) -> None:
         if not self.enabled:
             return None
 
-        metrics = self.generate_metrics(metric_name, kind)
-        if not metrics:
-            return None
+        metrics = []
+
+        for kind in kinds:
+            metric = self.generate_metrics(metric_name, kind)
+            metrics.append(metric)
 
         try:
             await ocean.port_client.post_integration_metrics(metrics)
