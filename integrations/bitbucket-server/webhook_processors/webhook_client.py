@@ -270,9 +270,9 @@ class BitbucketServerWebhookClient(BitbucketClient):
             True if version is 8.7 or older, False otherwise
         """
         application_properties = await self._get_application_properties()
-        # we intentionally do not use get to ensure the integration
-        # fails early if there is a problem
-        version: str = application_properties["version"]
+        # if the endpoint is not available, lets select an arbitrary lower
+        # version below 8.7
+        version: str = application_properties.get("version", "0.0.0")
         # keep only the first two numbers in the version leaving the rest
         # and converting the result to a float for easy comparison
         float_version = float(".".join(version.split(".")[:2]))
