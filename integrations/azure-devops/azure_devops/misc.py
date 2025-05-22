@@ -7,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic.v1 import Field, BaseModel, validator
+from pydantic import Field, BaseModel, validator
 
 
 class Kind(StrEnum):
@@ -188,7 +188,7 @@ def extract_branch_name_from_ref(ref: str) -> str:
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(description="Repository name")
-    branch: str = Field(default="main", description="Branch to scan")
+    branch: str | None = Field(default=None, description="Branch to scan")
 
 
 class FolderPattern(BaseModel):
