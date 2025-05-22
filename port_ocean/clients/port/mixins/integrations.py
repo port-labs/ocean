@@ -209,7 +209,7 @@ class IntegrationClientMixin:
         return response.json()["integration"]
 
     async def post_integration_metrics(self, metrics: list[dict[str, Any]]) -> None:
-        logger.debug("posting metrics")
+        logger.debug("starting POST metrics request", metrics=metrics)
         metrics_attributes = await self.get_metrics_attributes()
         headers = await self.auth.headers()
         response = await self.client.post(
@@ -220,10 +220,10 @@ class IntegrationClientMixin:
             },
         )
         handle_port_status_code(response, should_log=False)
-        logger.debug("Metrics successfully posted")
+        logger.debug("Finished POST metrics request")
 
     async def put_integration_metrics(self, kind_metrics: dict[str, Any]) -> None:
-        logger.debug("putting metrics")
+        logger.debug("starting PUT metrics request", kind_metrics=kind_metrics)
         metrics_attributes = await self.get_metrics_attributes()
         url = (
             metrics_attributes["ingestUrl"]
@@ -238,7 +238,7 @@ class IntegrationClientMixin:
             },
         )
         handle_port_status_code(response, should_log=False)
-        logger.debug("Metrics successfully put")
+        logger.debug("Finished PUT metrics request")
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
