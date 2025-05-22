@@ -9,6 +9,7 @@ from pydantic.main import BaseModel
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
 from port_ocean.core.models import CreatePortResourcesOrigin, Runtime
+from port_ocean.database.manager import DatabaseSettings
 from port_ocean.utils.misc import get_integration_name, get_spec_file
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
@@ -95,6 +96,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     max_wait_seconds_before_shutdown: float = 5.0
     multiprocessing_enabled: bool = Field(default=False)
     caching_storage_type: Optional[str] = Field(default=None)
+    database: DatabaseSettings = Field(default_factory=lambda: DatabaseSettings())
 
     @validator("multiprocessing_enabled")
     def validate_multiprocessing_enabled(cls, v: bool) -> bool:
