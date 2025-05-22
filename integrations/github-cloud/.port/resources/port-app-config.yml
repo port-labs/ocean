@@ -1,0 +1,69 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: repository
+    selector:
+      query: 'true'
+      includeLanguages: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .full_name | gsub(" "; "")
+          title: .name
+          blueprint: '"githubRepository"'
+          properties:
+            url: .html_url
+            readme: file://README.md
+            language: .__languages | to_entries | max_by(.value) | .key
+  - kind: member
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .login
+          title: .name
+          blueprint: '"githubMember"'
+          properties:
+            url: .html_url
+            email: .email
+  - kind: team-with-members
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .slug
+          title: .name
+          blueprint: '"githubTeam"'
+          properties:
+            url: .html_url
+            description: .description
+          relations:
+            githubMembers: .__members | map(.login)
+  - kind: pull-request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"githubPullRequest"'
+          properties:
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            mergedAt: .merged_at
+            link: .html_url
+            leadTimeHours: >-
+              (.created_at as $createdAt | .merged_at as $mergedAt | ($createdAt
+              | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)
+              as $createdTimestamp | ($mergedAt | if . == null then null else
+              sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end)
+              as $mergedTimestamp | if $mergedTimestamp == null then null else
+              (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) /
+              100) end)
+            reviewers: .requested_reviewers | map(.login)
+          relations:
+            repository: .repository.full_name

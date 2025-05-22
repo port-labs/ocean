@@ -1,0 +1,22 @@
+description: GitHub integration for Port Ocean
+title: GitHub
+icon: GitHub
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: repository
+      - kind: pull-request
+      - kind: member
+      - kind: team-with-members
+configurations:
+  - name: githubToken
+    required: true
+    type: string
+    description: 'The GitHub token to authenticate with the GitHub API.'
+    sensitive: true
+  - name: githubHost
+    required: false
+    type: url
+    default: https://api.github.com
+    description: The host of the GitHub API. If not specified, the default will be https://api.github.com.
