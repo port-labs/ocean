@@ -3,10 +3,16 @@ from typing import Any, Optional
 
 from sqlalchemy import delete, select
 
+from port_ocean.cache.errors import FailedToReadCacheError, FailedToWriteCacheError
 from port_ocean.database.manager import DatabaseManager
 from port_ocean.database.models.cache import CacheEntry
 from port_ocean.cache.base import CacheProvider
 
+class FailedToReadDatabaseCacheError(FailedToReadCacheError):
+    pass
+
+class FailedToWriteDatabaseCacheError(FailedToWriteCacheError):
+    pass
 
 class DatabaseCacheProvider(CacheProvider):
     """Database cache provider that uses SQLAlchemy for storage."""
@@ -17,46 +23,52 @@ class DatabaseCacheProvider(CacheProvider):
         self._database_manager = database_manager
 
     async def get(self, key: str) -> Optional[Any]:
-        async with await self._database_manager.get_session() as session:
-            results = (
-                (
-                    await session.execute(
-                        select(CacheEntry)
-                        .where(CacheEntry.cache_key == key)
-                        .order_by(CacheEntry.created_at)
+        try:
+            async with await self._database_manager.get_session() as session:
+                results = (
+                    (
+                        await session.execute(
+                            select(CacheEntry)
+                            .where(CacheEntry.cache_key == key)
+                            .order_by(CacheEntry.created_at)
+                        )
                     )
+                    .scalars()
+                    .all()
                 )
-                .scalars()
-                .all()
-            )
 
-            if not results:
-                return None
+                if not results:
+                    return None
 
-            if len(results) == 1:
-                return results[0].result
+                if len(results) == 1:
+                    return results[0].result
 
-            return [result.result for result in results]
+                return [result.result for result in results]
+        except Exception as e:
+            raise FailedToReadDatabaseCacheError(f"Failed to read cache: {str(e)}")
 
     async def set(self, key: str, value: Any) -> None:
-        async with await self._database_manager.get_session() as session:
-            if isinstance(value, list):
-                for item in value:
+        try:
+            async with await self._database_manager.get_session() as session:
+                if isinstance(value, list):
+                    for item in value:
+                        cache_entry = CacheEntry(
+                            cache_key=key,
+                            result=item,
+                            created_at=datetime.now(timezone.utc),
+                        )
+                        session.add(cache_entry)
+                else:
                     cache_entry = CacheEntry(
                         cache_key=key,
-                        result=item,
+                        result=value,
                         created_at=datetime.now(timezone.utc),
                     )
                     session.add(cache_entry)
-            else:
-                cache_entry = CacheEntry(
-                    cache_key=key,
-                    result=value,
-                    created_at=datetime.now(timezone.utc),
-                )
-                session.add(cache_entry)
 
-            await session.commit()
+                await session.commit()
+        except Exception as e:
+            raise FailedToWriteDatabaseCacheError(f"Failed to write cache: {str(e)}")
 
     async def clear(self) -> None:
         """Clear all values from the database cache."""
