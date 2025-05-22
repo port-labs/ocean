@@ -10,6 +10,7 @@ from botocore.config import Config as Boto3Config
 from aws.core._context import ResyncContext
 from aws.helpers.utils import json_safe
 from aws.auth.account import AWSSessionStrategy
+from aws.auth.session_manager import SessionManager
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
@@ -20,23 +21,28 @@ class BaseResyncHandler(abc.ABC):
     records) and `_materialise_item` (convert record to dict ready for Port).
     """
 
-    __slots__ = ("_ctx", "_session", "_session_mgr", "_exit_stack", "_clients")
+    __slots__ = ("_ctx", "_session_mgr", "_exit_stack")
 
     def __init__(
         self,
         *,
-        kind: str,
+        context: ResyncContext,
         credentials: AWSSessionStrategy,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
     ) -> None:
-        self._ctx = ResyncContext(kind=kind)
-        self.credentials = credentials
+        self._ctx = context
+        self._session_mgr = SessionManager(
+            credentials=credentials,
+            max_retries=max_retries,
+            retry_delay=retry_delay,
+        )
         self._exit_stack = AsyncExitStack()
-        self._clients = {}
 
     async def __aiter__(self) -> AsyncIterator[list[dict[str, Any]]]:
         async with self._exit_stack:
             tasks = []
-            async for session in self.credentials.create_session_for_each_region():
+            async for session in self._session_mgr._credentials.create_session_for_each_region():
                 context = self._ctx.with_region(session.region_name).with_account_id(
                     session.account_id
                 )
@@ -47,7 +53,7 @@ class BaseResyncHandler(abc.ABC):
                 tasks.clear()
 
     async def __call__(self) -> AsyncIterator[MaterializedResource]:
-        session = self.credentials.provider.get_session(region=self._ctx.region)
+        session = await self._session_mgr.get_session(region=self._ctx.region)
         return await self._fetch_single_resource(session)
 
     async def _get_paginated_resources(
@@ -60,29 +66,27 @@ class BaseResyncHandler(abc.ABC):
             yield materialized
 
     async def __aenter__(self) -> "BaseResyncHandler":
-        # Nothing to do yet –  clients are lazily created – but returning
-        # self lets users write:     async with handler as h:
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:  # noqa: D401
+    async def __aexit__(self, exc_type, exc, tb) -> None:
         """Close every AWS client even if the iterator was never consumed."""
+        await self._session_mgr.close()
         await self._exit_stack.aclose()
-        self._clients.clear()
 
     async def close(self) -> None:
         """Explicitly close open clients (syntactic sugar for reuse)."""
+        await self._session_mgr.close()
         await self._exit_stack.aclose()
-        self._clients.clear()
 
     async def _get_client(
         self, session: aioboto3.Session, service_name: str, config: Boto3Config = None
     ) -> Any:
         """Get or create a client for the specified service."""
-        if service_name not in self._clients:
-            client_ctx = session.client(service_name, config=config)
-            client = await self._exit_stack.enter_async_context(client_ctx)
-            self._clients[service_name] = client
-        return self._clients[service_name]
+        return await self._session_mgr.get_client(
+            service_name=service_name,
+            region=session.region_name,
+            config=config,
+        )
 
     @abc.abstractmethod
     async def _fetch_batches(

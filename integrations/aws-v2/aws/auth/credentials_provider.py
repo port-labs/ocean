@@ -50,11 +50,10 @@ class StaticCredentialProvider(CredentialProvider):
         )
 
     async def get_session(self, region: Optional[str], **kwargs: Any) -> AioSession:
-        return AioSession(
-            aws_access_key_id=self.config.get("aws_access_key_id"),
-            aws_secret_access_key=self.config.get("aws_secret_access_key"),
-            region_name=region,
-        )
+        creds = self.get_credentials(region, **kwargs)
+        session = AioSession()
+        session._credentials = creds
+        return session
 
 
 class AssumeRoleProvider(CredentialProvider):
