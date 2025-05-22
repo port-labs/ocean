@@ -200,9 +200,9 @@ class FolderPattern(BaseModel):
         - Use * to match any characters within a path segment
 
         Examples of valid paths:
-        - "src/backend" - Match exact folder
-        - "src/*" - Match all immediate folders under src
-        - "src/*/docs" - Match docs folder under any immediate folder in src
+        - "src/backend" - Matches the exact backend folder inside src
+        - "src/*" - Matches all immediate subfolders inside src (e.g., src/api, src/utils)
+        - "src/*/docs" - Matches the docs folder inside any immediate subfolder of src (e.g., src/api/docs, src/utils/docs)
         """,
     )
     repos: list[RepositoryBranchMapping] = Field(
