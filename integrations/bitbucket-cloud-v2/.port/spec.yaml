@@ -1,0 +1,35 @@
+description: bitbucket-cloud-v2 integration for Port Ocean
+icon: BitBucket
+title: Bitbucket Cloud v2
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: project
+      - kind: repository
+      - kind: pull-request
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
+configurations:
+  - name: bitbucketWorkspace
+    description: Unique identifier (slug) for your Bitbucket workspace. It links the integration to your specific workspace. Learn more in the <a href="https://support.atlassian.com/bitbucket-cloud/docs/what-is-a-workspace/" target="_blank">Bitbucket documentation</a>.
+    type: string
+    required: true
+  - name: bitbucketUsername
+    type: string
+    description: Your Bitbucket account username. Required only if you use username and app password for authentication, which is common for non-premium users. You can find your username on your <a href="https://bitbucket.org/account/settings/" target="_blank">account settings</a> page.
+  - name: bitbucketAppPassword
+    type: string
+    sensitive: true
+    description: Bitbucket app password. Required if using username/app password authentication instead of workspace token. Can be created in the <a href="https://bitbucket.org/account/settings/app-passwords/" target="_blank">Bitbucket personal account settings</a>
+  - name: bitbucketHostUrl
+    type: string
+    description: The root URL for Bitbucket’s REST API. Must include protocol and version (e.g. <a href="https://api.bitbucket.org/2.0" target="_blank">https://api.bitbucket.org/2.0</a>).
+    default: https://api.bitbucket.org/2.0
+  - name: webhookSecret
+    type: string
+    description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Bitbucket are accepted.
+    sensitive: true
+    required: false

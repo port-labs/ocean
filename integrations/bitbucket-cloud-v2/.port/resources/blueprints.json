@@ -1,0 +1,78 @@
+[
+  {
+    "identifier": "bitbucketProject",
+    "title": "Project",
+    "icon": "Project",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "identifier": "bitbucketRepository",
+    "title": "Repository",
+    "icon": "Repository",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "scm": {
+          "title": "SCM Type",
+          "type": "string"
+        },
+        "language": {
+          "title": "Language",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "bitbucketProject",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "bitbucketPullRequest",
+    "title": "Pull Request",
+    "icon": "GitPullRequest",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "author": {
+          "title": "Author",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "bitbucketRepository",
+        "required": true,
+        "many": false
+      }
+    }
+  }
+]

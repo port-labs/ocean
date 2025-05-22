@@ -1,0 +1,45 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.uuid | gsub("[{-}]"; "")'
+          title: ".url"
+          blueprint: '"bitbucketProject"'
+          properties:
+            url: .url
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.uuid | gsub("[{-}]"; "")'
+          title: ".url"
+          blueprint: '"bitbucketRepository"'
+          properties:
+            url: .url
+            scm: .scm
+            language: .language
+            description: .description
+          relations:
+            project: '(.url | split("/") | .[-2] | .)'
+
+  - kind: pull-request
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.uuid | gsub("[{-}]"; "")'
+          title: '.uuid | gsub("[{-}]"; "")'
+          blueprint: '"bitbucketPullRequest"'
+          properties:
+            state: .state
+            author: .author
+          relations:
+            repository: '(.url | split("/") | .[-3] | .)'
