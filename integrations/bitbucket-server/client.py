@@ -701,10 +701,13 @@ class BitbucketClient:
         Returns:
             Application properties data or empty dict if not found
         """
-        return await self._send_api_request(
-            method="GET",
-            path="application-properties",
-        ) or {}
+        return (
+            await self._send_api_request(
+                method="GET",
+                path="application-properties",
+            )
+            or {}
+        )
 
     async def is_version_8_point_7_and_older(self) -> bool:
         """

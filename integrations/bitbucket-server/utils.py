@@ -10,5 +10,7 @@ def initialize_client() -> BitbucketClient:
         base_url=ocean.integration_config["bitbucket_base_url"],
         webhook_secret=ocean.integration_config["bitbucket_webhook_secret"],
         app_host=ocean.app.base_url,
-        is_version_8_7_or_older=ocean.integration_config["bitbucket_is_version_8_point_7_or_older"],
+        is_version_8_7_or_older=ocean.integration_config.get(
+            "bitbucket_is_version_8_point_7_or_older"
+        ),
     )
