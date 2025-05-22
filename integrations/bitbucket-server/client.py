@@ -93,7 +93,7 @@ class BitbucketClient:
 
     async def _send_api_request(
         self, method: str, path: str, payload: Optional[dict[str, Any]] = None
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         """
         Send an HTTP request to the Bitbucket API with rate limiting.
 
@@ -103,7 +103,7 @@ class BitbucketClient:
             payload: Optional request payload
 
         Returns:
-            JSON response from the API
+            JSON response from the API or None if the resource is not found (404)
         """
         url = f"{self.base_url}/rest/api/1.0/{path}"
         async with self.rate_limiter:
@@ -118,6 +118,8 @@ class BitbucketClient:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
+                if e.response.status_code == 404:
+                    return None
                 raise
             except httpx.HTTPError as e:
                 logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
@@ -150,6 +152,8 @@ class BitbucketClient:
             params["start"] = start
             try:
                 data = await self._send_api_request("GET", path, payload=params)
+                if not data:
+                    break
                 values: list[dict[str, Any]] = data.get("values", [])
                 if not values:
                     break
@@ -387,13 +391,15 @@ class BitbucketClient:
             repo_slug: Slug of the repository
 
         Returns:
-            Latest commit data
+            Latest commit data or empty dict if not found
         """
         response = await self._send_api_request(
             "GET",
             f"projects/{project_key}/repos/{repo_slug}/commits",
             payload={"limit": 1},
         )
+        if not response:
+            return {}
         values = response.get("values")
         if not values:
             return {}
@@ -407,10 +413,10 @@ class BitbucketClient:
             project_key: Key of the project
 
         Returns:
-            Project data
+            Project data or empty dict if not found
         """
         project = await self._send_api_request("GET", f"projects/{project_key}")
-        return project
+        return project or {}
 
     async def get_single_repository(
         self, project_key: str, repo_slug: str
@@ -423,11 +429,13 @@ class BitbucketClient:
             repo_slug: Slug of the repository
 
         Returns:
-            Repository data
+            Repository data or empty dict if not found
         """
         repository = await self._send_api_request(
             "GET", f"projects/{project_key}/repos/{repo_slug}"
         )
+        if not repository:
+            return {}
 
         return await self._enrich_repository_with_readme_and_latest_commit(repository)
 
@@ -443,13 +451,13 @@ class BitbucketClient:
             pr_key: Key of the pull request
 
         Returns:
-            Pull request data
+            Pull request data or empty dict if not found
         """
         pull_request = await self._send_api_request(
             "GET",
             f"projects/{project_key}/repos/{repo_slug}/pull-requests/{pr_key}",
         )
-        return pull_request
+        return pull_request or {}
 
     async def get_single_user(self, user_key: str) -> dict[str, Any]:
         """
@@ -459,10 +467,10 @@ class BitbucketClient:
             user_key: Key of the user
 
         Returns:
-            User data
+            User data or empty dict if not found
         """
         user = await self._send_api_request("GET", f"users/{user_key}")
-        return user
+        return user or {}
 
     def _get_webhook_name(self, key: str) -> str:
         """
@@ -519,12 +527,12 @@ class BitbucketClient:
             project_key: Key of the project
 
         Returns:
-            List of webhook configurations
+            List of webhook configurations or empty list if not found
         """
         webhooks = await self._send_api_request(
             "GET", f"projects/{project_key}/webhooks"
         )
-        return webhooks.get("values", [])
+        return webhooks.get("values", []) if webhooks else []
 
     async def _webhook_exists_for_project(self, project_key: str) -> bool:
         """
@@ -598,12 +606,12 @@ class BitbucketClient:
             repo_slug: Slug of the repository
 
         Returns:
-            List of webhook configurations
+            List of webhook configurations or empty list if not found
         """
         webhooks = await self._send_api_request(
             "GET", f"projects/{project_key}/repos/{repo_slug}/webhooks"
         )
-        return webhooks.get("values", [])
+        return webhooks.get("values", []) if webhooks else []
 
     async def _webhook_exists_for_repository(
         self, project_key: str, repo_slug: str
@@ -688,12 +696,12 @@ class BitbucketClient:
         Internal method to get Bitbucket application properties.
 
         Returns:
-            Application properties data
+            Application properties data or empty dict if not found
         """
         return await self._send_api_request(
             method="GET",
             path="application-properties",
-        )
+        ) or {}
 
     async def is_version_8_point_7_and_older(self) -> bool:
         """
