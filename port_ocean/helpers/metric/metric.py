@@ -36,6 +36,9 @@ class MetricPhase:
     class ExtractResult:
         EXTRACTED = "rawExtracted"
 
+    class DeletionResult:
+        DELETED = "deleted"
+
 
 class MetricType:
     # Define metric names as constants
@@ -44,7 +47,6 @@ class MetricType:
     ERROR_COUNT_NAME = "errorCount"
     SUCCESS_NAME = "success"
     RATE_LIMIT_WAIT_NAME = "rateLimitWaitSeconds"
-    DELETION_COUNT_NAME = "deletionCount"
 
 
 class SyncState:
@@ -80,11 +82,6 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
         MetricType.RATE_LIMIT_WAIT_NAME,
         "rate_limit_wait description",
         ["kind", "phase", "endpoint"],
-    ),
-    MetricType.DELETION_COUNT_NAME: (
-        MetricType.DELETION_COUNT_NAME,
-        "deletion_count description",
-        ["kind", "phase"],
     ),
 }
 

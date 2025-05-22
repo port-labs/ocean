@@ -104,8 +104,12 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         ):
             await self._safe_delete(diff.deleted, kept_entities, user_agent_type)
             ocean.metrics.inc_metric(
-                name=MetricType.DELETION_COUNT_NAME,
-                labels=[ocean.metrics.current_resource_kind(), MetricPhase.DELETE],
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.DELETE,
+                    MetricPhase.DeletionResult.DELETED,
+                ],
                 value=len(diff.deleted),
             )
         else:
