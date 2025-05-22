@@ -658,6 +658,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ocean.metrics.initialize_metrics([f"{resource.kind}-{index}" for index, resource in enumerate(app_config.resources)])
             await ocean.metrics.flush()
 
+            # Clear cache
+            await ocean.app.cache_provider.clear()
+
             # Execute resync_start hooks
             for resync_start_fn in self.event_strategy["resync_start"]:
                 await resync_start_fn()
@@ -738,3 +741,5 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         logger.info("Finished executing resync_complete hooks")
 
                     return True
+            finally:
+                await ocean.app.cache_provider.clear()
