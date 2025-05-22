@@ -30,7 +30,7 @@ async def on_start() -> None:
 
     client: GithubWebhookClient = cast(
         GithubWebhookClient,
-        create_github_client(
+        await create_github_client(
             GithubClientType.WEBHOOK,
             webhook_secret=ocean.integration_config["webhook_secret"],
         ),
@@ -45,7 +45,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the organization."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    client = create_github_client()
+    client = await create_github_client()
     exporter_factory = ExporterFactory()
     exporter = exporter_factory.get_exporter(ObjectKind(kind))(client)
 

@@ -1,18 +1,15 @@
-from typing import Any, Dict, Optional, override
-import httpx
+from typing import Dict, Optional
 import jwt
 import time
 
 from port_ocean.utils import http_async_client
-
-from github.clients.rest_client import GithubRestClient
 
 
 # Constant for JWT expiration time delta in seconds. This is 10 minutes
 JWT_EXP_DELTA_SECONDS = 10 * 60
 
 
-class GithubAppRestClient(GithubRestClient):
+class GithubApp:
     def __init__(
         self,
         *,
@@ -27,14 +24,14 @@ class GithubAppRestClient(GithubRestClient):
         self.organization = organization
         self._installation_id: Optional[int] = None
 
-    async def set_up(self) -> "GithubAppRestClient":
+    async def get_token(self) -> str:
         """
         Initializes the client by fetching the installation ID and token.
         """
-        self._installation_id = await self._get_installation_id()
+        if self._installation_id is None:
+            self._installation_id = await self._get_installation_id()
         token = await self._get_installation_token(self._installation_id)
-        super().__init__(token, self.organization, self.github_host)
-        return self
+        return token
 
     def _generate_auth_headers(self, jwt_token: str) -> Dict[str, str]:
         """
@@ -86,27 +83,3 @@ class GithubAppRestClient(GithubRestClient):
 
         token = jwt.encode(payload, self.private_key, algorithm="RS256")
         return token
-
-    @override
-    async def send_api_request(
-        self,
-        endpoint: str,
-        method: str = "GET",
-        params: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-    ) -> httpx.Response:
-        """
-        Sends an API request, handling 401 Unauthorized errors by refreshing the installation token.
-        """
-        try:
-            return await super().send_api_request(endpoint, method, params, json_data)
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 401:
-                if self._installation_id is None:
-                    self._installation_id = await self._get_installation_id()
-
-                new_token = await self._get_installation_token(self._installation_id)
-                self._update_token(new_token)
-                return await self.send_api_request(endpoint, method, params, json_data)
-            else:
-                raise
