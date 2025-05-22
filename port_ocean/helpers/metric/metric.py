@@ -278,7 +278,7 @@ class Metrics:
         try:
             await self.port_client.post_integration_metrics(metrics)
         except Exception as e:
-            logger.error(f"Error posting metrics: {e}")
+            logger.error(f"Error posting metrics: {e}", metrics=metrics)
 
     async def put_metrics(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
@@ -291,7 +291,7 @@ class Metrics:
             for metric in metrics:
                 await self.port_client.put_integration_metrics(metric)
         except Exception as e:
-            logger.error(f"Error putting metrics: {e}")
+            logger.error(f"Error putting metrics: {e}", metrics=metrics)
 
     def generate_metrics(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
