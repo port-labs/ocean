@@ -96,12 +96,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     multiprocessing_enabled: bool = Field(default=False)
     caching_storage_type: Optional[str] = Field(default=None)
 
-    @validator("multiprocessing_enabled")
-    def validate_multiprocessing_enabled(cls, v: bool) -> bool:
-        if v:
-            return True
-        return False
-
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:
         if v is None:

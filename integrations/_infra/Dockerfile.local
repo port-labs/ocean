@@ -24,19 +24,19 @@ RUN apt-get update \
         python3-venv \
     && apt-get clean
 
+ARG BUILD_CONTEXT
 
 WORKDIR /app
 
 COPY . .
-# RUN make clean
-RUN python3 -m venv .venv
-RUN python3 -m venv integrations/fake-integration/.venv
 
-#RUN . .venv/bin/activate && python3 -m pip install poetry
-RUN . .venv/bin/activate && make install
-WORKDIR /app/integrations/fake-integration
-RUN . .venv/bin/activate && make install && make install/local-core && python3 -m pip install debugpy
-# Make sure debugpy is installed in the environment
+RUN python3 -m venv .venv-docker
+RUN python3 -m venv ${BUILD_CONTEXT}/.venv-docker
+
+RUN . .venv-docker/bin/activate && make install
+WORKDIR /app/${BUILD_CONTEXT}
+RUN . .venv-docker/bin/activate && make install && make install/local-core && python3 -m pip install debugpy
+
 WORKDIR /app
 
-ENTRYPOINT ["./integrations/_infra/entry.sh"]
+ENTRYPOINT ["./integrations/_infra/entry_local.sh"]

@@ -582,11 +582,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             if isinstance(ocean_abort.__cause__,CycleError):
                 for entity in event.entity_topological_sorter.get_entities(False):
                     await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
+
     async def process_resource(self,resource,index,user_agent_type):
             if ocean.config.multiprocessing_enabled:
                 from port_ocean.run_task import run_task
                 id = uuid.uuid4()
-                logger.info(f"Starting subprocess task for {resource.kind} with index {index}")
+                logger.info(f"Starting subprocess with id {id}")
                 process = multiprocessing.Process(target=run_task, args=(id,resource,index,user_agent_type),name=f"{resource.kind}-{index}")
                 process.start()
                 process.join()
@@ -602,6 +603,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 return await self._process_resource(resource,index,user_agent_type)
 
     async def _process_resource(self,resource,index,user_agent_type):
+        # create resource context per resource kind, so resync method could have access to the resource
+        # config as we might have multiple resources in the same event
         async with resource_context(resource,index):
             resource_kind_id = f"{resource.kind}-{index}"
             task = asyncio.create_task(
@@ -675,14 +678,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 did_fetched_current_state = False
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
-            logger.info(f"Starting multiprocessing manager")
 
             multiprocessing.set_start_method('fork', True)
             try:
                 for index,resource in enumerate(app_config.resources):
-                    # create resource context per resource kind, so resync method could have access to the resource
-                    # config as we might have multiple resources in the same event
-                    logger.info(f"Starting resource {resource.kind} with index {index}")
+
+                    logger.info(f"Starting processing resource {resource.kind} with index {index}")
 
                     creation_results.append(await self.process_resource(resource,index,user_agent_type))
 

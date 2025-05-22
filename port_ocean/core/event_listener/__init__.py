@@ -21,10 +21,6 @@ from port_ocean.core.event_listener.webhooks_only import (
     WebhooksOnlyEventListenerSettings,
 )
 
-from port_ocean.core.event_listener.task import (
-    TaskEventListener,
-    TaskEventListenerSettings,
-)
 
 EventListenerSettingsType = (
     HttpEventListenerSettings
@@ -32,7 +28,6 @@ EventListenerSettingsType = (
     | PollingEventListenerSettings
     | OnceEventListenerSettings
     | WebhooksOnlyEventListenerSettings
-    | TaskEventListenerSettings
 )
 
 __all__ = [
@@ -47,6 +42,4 @@ __all__ = [
     "OnceEventListenerSettings",
     "WebhooksOnlyEventListener",
     "WebhooksOnlyEventListenerSettings",
-    "TaskEventListener",
-    "TaskEventListenerSettings",
 ]
