@@ -35,7 +35,7 @@
       "type": "debugpy"
     },
     {
-      "name": "Run docker fake-integration integration",
+      "name": "Attach to docker fake-integration integration",
       "type": "debugpy",
       "request": "attach",
       "connect": {

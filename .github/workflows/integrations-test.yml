@@ -41,6 +41,14 @@ jobs:
         run: |
           make test
 
+      - name: Test Multiprocessing
+        working-directory: ${{ format('integrations/{0}', matrix.folder) }}
+        env:
+          PYTEST_ADDOPTS: --junitxml=junit/test-results-${{ format('integrations/{0}', matrix.folder) }}.xml
+          OCEAN__PORT_MULTIPROCESSING_ENABLED: True
+        run: |
+          make test
+
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5
         if: ${{ always() }}

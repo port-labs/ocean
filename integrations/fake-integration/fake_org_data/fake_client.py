@@ -13,9 +13,9 @@ USER_AGENT = "Ocean Framework Fake Integration (https://github.com/port-labs/oce
 
 
 class FakeIntegrationDefaults(IntEnum):
-    ENTITY_AMOUNT = 20
-    ENTITY_KB_SIZE = 1
-    THIRD_PARTY_BATCH_SIZE = 1000
+    ENTITY_AMOUNT = 1
+    ENTITY_KB_SIZE = 350
+    THIRD_PARTY_BATCH_SIZE = 1
     THIRD_PARTY_LATENCY_MS = 0
 
 

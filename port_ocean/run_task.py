@@ -1,3 +1,4 @@
+import os
 import asyncio
 import pickle
 from loguru import logger
@@ -5,7 +6,6 @@ from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 from port_ocean.context.ocean import ocean
-import os
 from port_ocean.context.event import event
 
 

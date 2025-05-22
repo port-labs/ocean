@@ -95,12 +95,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     max_wait_seconds_before_shutdown: float = 5.0
     multiprocessing_enabled: bool = Field(default=False)
 
-    @validator("multiprocessing_enabled")
-    def validate_multiprocessing_enabled(cls, v: bool) -> bool:
-        if v:
-            return True
-        return False
-
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:
         if v is None:
