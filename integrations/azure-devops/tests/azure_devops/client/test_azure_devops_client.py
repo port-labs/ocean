@@ -1457,7 +1457,7 @@ async def test_process_folder_patterns(
         repo_id: str, paths: List[str], **kwargs: Any
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         folders_data = []
-        if repo_id == "repo1-id" and "src/main" in paths:
+        if repo_id == "repo1-id" and any(p.strip("/") == "src/main" for p in paths):
             folders_data = [
                 {
                     "path": "src/main",
@@ -1472,7 +1472,7 @@ async def test_process_folder_patterns(
                 }
             ]
         elif repo_id == "repo2-id":
-            if "src/main" in paths:
+            if any(p.strip("/") == "src/main" for p in paths):
                 folders_data = [
                     {
                         "path": "src/main",
@@ -1486,7 +1486,7 @@ async def test_process_folder_patterns(
                         "__pattern": "src/main",
                     }
                 ]
-            elif "docs" in paths:
+            elif any(p.strip("/") == "docs" for p in paths):
                 folders_data = [
                     {
                         "path": "docs",
@@ -1500,7 +1500,7 @@ async def test_process_folder_patterns(
                         "__pattern": "docs",
                     }
                 ]
-        elif repo_id == "repo3-id" and "docs" in paths:
+        elif repo_id == "repo3-id" and any(p.strip("/") == "docs" for p in paths):
             folders_data = [
                 {
                     "path": "docs",
@@ -1547,15 +1547,16 @@ async def test_process_folder_patterns(
         results: List[Dict[str, Any]] = []
         async for folders in mock_azure_client.process_folder_patterns(
             sample_folder_patterns,
-            project_name="test-project",  # Changed to use project_name
+            project_name="test-project",
         ):
             results.extend(folders)
 
-        # Assertions remain the same
+        # Verify we got all expected folders
         assert len(results) == 4
-        paths = {folder["path"] for folder in results}
-        assert "src/main" in paths
-        assert "docs" in paths
+        paths = {r["path"] for r in results}
+        assert paths == {"src/main", "docs"}
+        repos = {r["__repository"]["name"] for r in results}
+        assert repos == {"repo1", "repo2", "repo3"}
 
 
 @pytest.mark.asyncio

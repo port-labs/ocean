@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from enum import StrEnum
-import fnmatch
 from typing import Any, List, Literal, Optional, Union
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -69,58 +68,6 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
 
     kind: Literal["work-item"]
     selector: AzureDevopsSelector
-
-
-def _validate_path(
-    paths: Union[str, List[str]], allow_glob: bool = False
-) -> Union[str, List[str]]:
-    """Shared path validation logic.
-
-    Args:
-        paths: Path or list of paths to validate
-        allow_glob: Whether to allow glob patterns (*) in paths
-    """
-    path_list = [paths] if isinstance(paths, str) else paths
-
-    if not path_list:
-        raise ValueError("At least one path must be specified")
-
-    valid_paths = []
-
-    for path in path_list:
-        # Skip empty paths
-        if not path or not path.strip():
-            continue
-
-        # Remove leading/trailing slashes and spaces
-        normalized_path = path.strip().strip("/")
-
-        # Basic path validation
-        if ".." in normalized_path:
-            raise ValueError("Path traversal is not allowed")
-
-        # For non-glob paths, validate there are no glob characters
-        if not allow_glob and "*" in normalized_path:
-            raise ValueError(
-                f"Path '{path}' contains glob patterns which are not allowed. "
-                "Please provide explicit file paths like 'src/config.yaml' or 'docs/README.md'"
-            )
-
-        # For glob paths, only allow * pattern
-        if allow_glob and any(
-            char in normalized_path for char in {"?", "[", "]", "{", "}", "**"}
-        ):
-            raise ValueError(
-                f"Path '{path}' contains unsupported glob characters. "
-                "Only '*' pattern is supported for matching within a path segment."
-            )
-
-        valid_paths.append(normalized_path)
-
-    if not valid_paths:
-        raise ValueError("No valid paths provided. Please provide valid paths.")
-
-    return valid_paths if isinstance(paths, list) else valid_paths[0]
 
 
 class FileSelector(BaseModel):
@@ -255,10 +202,7 @@ class FolderPattern(BaseModel):
         Examples of valid paths:
         - "src/backend" - Match exact folder
         - "src/*" - Match all immediate folders under src
-        - "src/test*" - Match all immediate folders under src starting with 'test'
         - "src/*/docs" - Match docs folder under any immediate folder in src
-        - "src/api*/v2" - Match v2 folder under any folder starting with 'api' in src
-        - "packages/*/src" - Match src folder under any immediate subfolder of packages
         """,
     )
     repos: list[RepositoryBranchMapping] = Field(
@@ -267,33 +211,14 @@ class FolderPattern(BaseModel):
         description="Specify the repositories and branches to include under this relative path",
     )
 
-    @validator("path")
-    @classmethod
-    def validate_folder_path(cls, path: str) -> str:
-        """Validate folder paths - only * glob pattern allowed"""
-        if not path or not path.strip():
-            raise ValueError("Folder path must be specified")
-
-        # Remove leading/trailing slashes and spaces
-        normalized_path = path.strip().strip("/")
-
-        # Basic path validation
-        if ".." in normalized_path:
-            raise ValueError("Path traversal is not allowed")
-
-        # Check for unsupported glob patterns
-        if not fnmatch.fnmatch(normalized_path, "*"):
-            raise ValueError(
-                f"Path '{path}' contains unsupported glob patterns. "
-                "Only '*' pattern is supported for matching within a path segment."
-            )
-        return normalized_path
-
 
 class AzureDevopsFolderSelector(Selector):
     """Selector for Azure DevOps folder scanning configuration"""
 
-    project_name: str
+    project_name: str = Field(
+        ...,
+        description="Name of the Azure DevOps project that contains the repositories to be scanned",
+    )
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
