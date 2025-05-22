@@ -679,6 +679,7 @@ async def test_on_resync_start_hooks_are_called(
         resync_start_called = True
 
     mock_sync_raw_mixin.on_resync_start(on_resync_start)
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
 
     # Execute
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
@@ -707,6 +708,7 @@ async def test_on_resync_complete_hooks_are_called_on_success(
 
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete)
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
 
     # Execute
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
@@ -776,6 +778,7 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete1)
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete2)
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
 
     # Execute
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
