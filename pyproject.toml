@@ -69,10 +69,6 @@ pytest-cov = "^6.0.0"
 sqlalchemy = { version = "^2.0.41", extras = ["asyncio"] }
 psycopg = { version = "^3.2.9", extras = ["binary", "pool"] }
 
-# Database
-sqlalchemy = { version = "^2.0.41", extras = ["asyncio"] }
-psycopg = { version = "^3.2.9", extras = ["binary", "pool"] }
-
 [tool.poetry.extras]
 cli = ["click", "rich", "cookiecutter", "jinja2-time"]
 
