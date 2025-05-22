@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, AsyncMock
 import pytest
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
     HttpEntitiesStateApplier,
@@ -133,25 +133,29 @@ async def test_applier_with_mock_context(
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
+        event.entity_topological_sorter = Mock()
 
-        # Test the upsert method with mocked client
-        with patch.object(mock_ocean.port_client.client, "post") as mock_post:
-            mock_post.return_value = Mock(
-                status_code=200,
-                json=lambda: {
-                    "entity": {
-                        "identifier": "test_entity",
-                        "blueprint": "test_blueprint",
-                    }
-                },
-            )
+        # Mock the get_blueprint method
+        mock_blueprint = Mock()
+        mock_blueprint.identifier = "test_blueprint"
+        mock_blueprint.relations = {}
+        mock_get_blueprint = AsyncMock(return_value=mock_blueprint)
+        setattr(mock_ocean.port_client, "get_blueprint", mock_get_blueprint)
 
-            result = await applier.upsert([entity], UserAgentType.exporter)
+        # Mock the config values to be actual integers instead of MagicMock objects
+        mock_ocean.config.upsert_entities_batch_max_length = 100
+        mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
-            # Assert that the post method was called
-            mock_post.assert_called_once()
-            assert len(result) == 1
-            assert result[0].identifier == "test_entity"
+        # Mock the upsert_entities_batch method
+        mock_upsert = AsyncMock(return_value=[(True, entity)])
+        setattr(mock_ocean.port_client, "upsert_entities_batch", mock_upsert)
+
+        result = await applier.upsert([entity], UserAgentType.exporter)
+
+        # Assert that upsert_entities_batch was called
+        mock_upsert.assert_called_once()
+        assert len(result) == 1
+        assert result[0].identifier == "test_entity"
 
 
 @pytest.mark.asyncio
@@ -171,21 +175,20 @@ async def test_applier_one_not_upserted(
         event.entity_topological_sorter.register_entity = Mock()  # type: ignore
         event.port_app_config = mock_port_app_config
 
-        # Test the upsert method with mocked client
-        with patch.object(mock_ocean.port_client.client, "post") as mock_post:
-            mock_post.return_value = Mock(
-                status_code=404,
-                json=lambda: {"ok": False, "error": "not_found"},
-            )
+        # Mock the config values to be actual integers instead of MagicMock objects
+        mock_ocean.config.upsert_entities_batch_max_length = 100
+        mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
-            result = await applier.upsert([entity], UserAgentType.exporter)
+        # Mock the upsert_entities_batch method to return a failed result
+        mock_upsert = AsyncMock(return_value=[(False, entity)])
+        setattr(mock_ocean.port_client, "upsert_entities_batch", mock_upsert)
 
-            # Assert that the post method was called
-            mock_post.assert_called_once()
-            assert len(result) == 0
-            event.entity_topological_sorter.register_entity.assert_called_once_with(
-                entity
-            )
+        result = await applier.upsert([entity], UserAgentType.exporter)
+
+        # Assert that upsert_entities_batch was called
+        mock_upsert.assert_called_once()
+        assert len(result) == 0
+        event.entity_topological_sorter.register_entity.assert_called_once_with(entity)
 
 
 @pytest.mark.asyncio
@@ -205,21 +208,20 @@ async def test_applier_error_upserting(
         event.entity_topological_sorter.register_entity = Mock()  # type: ignore
         event.port_app_config = mock_port_app_config
 
-        # Test the upsert method with mocked client
-        with patch.object(mock_ocean.port_client.client, "post") as mock_post:
-            mock_post.return_value = Mock(
-                status_code=404,
-                json=lambda: {"ok": False, "error": "not_found"},
-            )
+        # Mock the config values to be actual integers instead of MagicMock objects
+        mock_ocean.config.upsert_entities_batch_max_length = 100
+        mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
-            result = await applier.upsert([entity], UserAgentType.exporter)
+        # Mock the upsert_entities_batch method to return a failed result
+        mock_upsert = AsyncMock(return_value=[(False, entity)])
+        setattr(mock_ocean.port_client, "upsert_entities_batch", mock_upsert)
 
-            # Assert that the post method was called
-            mock_post.assert_called_once()
-            assert len(result) == 0
-            event.entity_topological_sorter.register_entity.assert_called_once_with(
-                entity
-            )
+        result = await applier.upsert([entity], UserAgentType.exporter)
+
+        # Assert that upsert_entities_batch was called
+        mock_upsert.assert_called_once()
+        assert len(result) == 0
+        event.entity_topological_sorter.register_entity.assert_called_once_with(entity)
 
 
 @pytest.mark.asyncio
@@ -244,15 +246,16 @@ async def test_using_create_entity_helper(
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
 
-        with patch.object(mock_ocean.port_client.client, "post") as mock_post:
-            mock_post.return_value = Mock(
-                status_code=200,
-                json=lambda: {
-                    "entity": {"identifier": "entity1", "blueprint": "service"}
-                },
-            )
+        # Mock the config values to be actual integers instead of MagicMock objects
+        mock_ocean.config.upsert_entities_batch_max_length = 100
+        mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
-            result = await applier.upsert([entity1], UserAgentType.exporter)
+        # Mock the upsert_entities_batch method to return a successful result
+        mock_upsert = AsyncMock(return_value=[(True, entity1)])
+        setattr(mock_ocean.port_client, "upsert_entities_batch", mock_upsert)
 
-            mock_post.assert_called_once()
-            assert len(result) == 1
+        result = await applier.upsert([entity1], UserAgentType.exporter)
+
+        # Assert that upsert_entities_batch was called
+        mock_upsert.assert_called_once()
+        assert len(result) == 1

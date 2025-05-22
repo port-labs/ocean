@@ -14,7 +14,6 @@ from port_ocean.clients.port.utils import (
 )
 from port_ocean.core.models import Entity, PortAPIErrorMessage
 from starlette import status
-from port_ocean.context.ocean import ocean
 
 from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 
@@ -234,12 +233,30 @@ class EntityClientMixin:
         for i, original_entity in index_to_entity.items():
             reduced_entity = self._reduce_entity(original_entity)
             if i in successful_entities:
+                ocean.metrics.inc_metric(
+                    name=MetricType.OBJECT_COUNT_NAME,
+                    labels=[
+                        ocean.metrics.current_resource_kind(),
+                        MetricPhase.LOAD,
+                        MetricPhase.LoadResult.LOADED,
+                    ],
+                    value=1,
+                )
                 success_entity = successful_entities[i]
                 # Create a copy of the original entity with the new identifier
                 updated_entity = reduced_entity.copy()
                 updated_entity.identifier = success_entity["identifier"]
                 result_tuples.append((True, updated_entity))
             elif i in error_entities:
+                ocean.metrics.inc_metric(
+                    name=MetricType.OBJECT_COUNT_NAME,
+                    labels=[
+                        ocean.metrics.current_resource_kind(),
+                        MetricPhase.LOAD,
+                        MetricPhase.LoadResult.FAILED,
+                    ],
+                    value=1,
+                )
                 error = error_entities[i]
                 if error.get("identifier") == "unknown":
                     result_tuples.append((None, reduced_entity))
