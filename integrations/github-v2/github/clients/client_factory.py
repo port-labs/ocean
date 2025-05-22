@@ -1,17 +1,25 @@
 import base64
-from typing import Any
-
-from loguru import logger
-from port_ocean.context.ocean import ocean
-
-from github.clients.app_client import GithubAppRestClient
+from typing import Any, Dict, Type
 from github.clients.rest_client import GithubRestClient
+from github.clients.graphql_client import GithubGraphQLClient
 from github.clients.base_client import AbstractGithubClient
+from port_ocean.context.ocean import ocean
+from loguru import logger
+from github.helpers.app import GithubApp
+from github.helpers.utils import GithubClientType
+from github.webhook.webhook_client import GithubWebhookClient
 
 
 class GithubClientFactory:
     _instance = None
-    _clients: dict[str, AbstractGithubClient] = {}
+    _clients: Dict[GithubClientType, Type[AbstractGithubClient]] = {
+        GithubClientType.REST: GithubRestClient,
+        GithubClientType.GRAPHQL: GithubGraphQLClient,
+        GithubClientType.WEBHOOK: GithubWebhookClient,
+    }
+    _instances: Dict[GithubClientType, AbstractGithubClient] = {}
+    _gh_app: GithubApp | None = None
+    _gh_app_token: str | None = None
 
     def __new__(cls) -> "GithubClientFactory":
         if cls._instance is None:
@@ -36,10 +44,23 @@ class GithubClientFactory:
 
         return config
 
-    def app_configured(self) -> bool:
+    def gh_app_configured(self) -> bool:
         return "app_id" in self.ocean_config and "app_private_key" in self.ocean_config
 
-    async def get_client(self, client_type: str) -> AbstractGithubClient:
+    async def setup_gh_app(self) -> None:
+        if self._gh_app is None:
+            decoded_private_key = base64.b64decode(self.ocean_config["app_private_key"])
+            self._gh_app = GithubApp(
+                organization=self.ocean_config["organization"],
+                github_host=self.ocean_config["github_host"],
+                app_id=self.ocean_config["app_id"],
+                private_key=decoded_private_key,
+            )
+        self._gh_app_token = await self._gh_app.get_token()
+
+    async def get_client(
+        self, client_type: GithubClientType, **kwargs: Any
+    ) -> AbstractGithubClient:
         """Get or create a client instance from Ocean configuration.
 
         Args:
@@ -52,29 +73,21 @@ class GithubClientFactory:
             ValueError: If client_type is invalid
         """
 
-        match client_type:
-            case "rest":
-                if self.app_configured():
-                    logger.info("app_id and private_key detected, using Github App")
-                    return await self._get_app_client()
-                elif "token" in self.ocean_config:
-                    logger.info(
-                        "Github token found, using Rest Client with Token authentication"
-                    )
-                    return self._get_rest_client()
+        if client_type not in self._clients:
+            logger.error(f"Invalid client type: {client_type}")
+            raise ValueError(f"Invalid client type: {client_type}")
 
-                raise ValueError(
-                    "app_id and app_private_key must be passed if github_token is not being used."
-                )
-            case _:
-                raise ValueError("Unknown client type")
+        if client_type not in self._instances:
+            if self.gh_app_configured():
+                logger.info("Github app details found, setting up ...")
+                await self.setup_gh_app()
 
-    def _get_rest_client(self) -> AbstractGithubClient:
-        if "rest_token" not in self._clients:
-            token_app = self._clients["rest_token"] = GithubRestClient(
-                self.ocean_config["token"],
+            self._instances[client_type] = self._clients[client_type](
+                token=self._gh_app_token or self.ocean_config["token"],
                 organization=self.ocean_config["organization"],
                 github_host=self.ocean_config["github_host"],
+                gh_app=self._gh_app,
+                **kwargs,
             )
 
             return token_app
@@ -97,6 +110,8 @@ class GithubClientFactory:
             return self._clients["rest_app"]
 
 
-async def create_github_client(client_type: str = "rest") -> AbstractGithubClient:
+async def create_github_client(
+    client_type: GithubClientType | None = GithubClientType.REST, **kwargs: Any
+) -> AbstractGithubClient:
     factory = GithubClientFactory()
-    return await factory.get_client(client_type)
+    return await factory.get_client(client_type or GithubClientType.REST, **kwargs)

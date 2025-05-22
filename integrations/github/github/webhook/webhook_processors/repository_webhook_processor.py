@@ -37,8 +37,12 @@ class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[repo]
             )
-        exporter = RepositoryExporter(await create_github_client())
-        data_to_upsert = await exporter.get_resource(name)
+
+        client = await create_github_client()
+        exporter_factory = ExporterFactory()
+        exporter = exporter_factory.get_exporter(ObjectKind.REPOSITORY)(client)
+
+        data_to_upsert = await exporter.get_resource(SingleRepositoryOptions(name=name))
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

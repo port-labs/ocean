@@ -6,6 +6,8 @@ from loguru import logger
 import httpx
 from httpx import Response
 
+from github.helpers.app import GithubApp
+
 
 class AbstractGithubClient(ABC):
     def __init__(
@@ -13,11 +15,13 @@ class AbstractGithubClient(ABC):
         token: str,
         organization: str,
         github_host: str,
+        gh_app: GithubApp | None = None,
     ) -> None:
         self.token = token
         self.organization = organization
         self.github_host = github_host
         self.client = http_async_client
+        self._gh_app = gh_app
 
     @property
     def headers(self) -> Dict[str, str]:
@@ -57,6 +61,12 @@ class AbstractGithubClient(ABC):
             if e.response.status_code == 404:
                 logger.debug(f"Resource not found at endpoint '{resource}'")
                 return e.response
+
+            if e.response.status_code == 401 and self._gh_app is not None:
+                new_token = await self._gh_app.get_token()
+                self._update_token(new_token)
+                return await self.send_api_request(resource, params, method, json_data)
+
             logger.error(
                 f"GitHub API error for endpoint '{resource}': Status {e.response.status_code}, "
                 f"Method: {method}, Response: {e.response.text}"
