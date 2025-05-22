@@ -289,7 +289,7 @@ class EntityClientMixin:
         """
         entities_results: list[tuple[bool, Entity]] = []
 
-        if ocean.app.is_saas():
+        if ocean.app.is_saas() and ocean.config.bulk_upserts_enabled:
             batch_size = self.calculate_entities_batch_size(entities)
             batches = [
                 entities[i : i + batch_size]
