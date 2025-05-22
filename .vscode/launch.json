@@ -35,6 +35,22 @@
       "type": "debugpy"
     },
     {
+      "name": "Attach to docker fake-integration integration",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/app"
+        }
+      ],
+      "justMyCode": false
+    },
+    {
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/pagerduty",
       "envFile": "${workspaceFolder}/integrations/pagerduty/.env",

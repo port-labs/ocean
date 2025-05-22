@@ -21,7 +21,6 @@ def _get_default_config_factory() -> None | Type[BaseModel]:
     config_factory = None
     if spec is not None:
         config_factory = default_config_factory(spec.get("configurations", []))
-
     return config_factory
 
 

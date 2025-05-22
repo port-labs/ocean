@@ -1,12 +1,14 @@
 import asyncio
+import pickle
+import uuid
+import os
 from graphlib import CycleError
 import inspect
 import typing
 from typing import Callable, Awaitable, Any
-
+import multiprocessing
 import httpx
 from loguru import logger
-
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.ocean import ocean
@@ -264,7 +266,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     objects_diff[0].entity_selector_diff.passed, user_agent_type
                     )
 
-
         return CalculationResult(
             number_of_transformed_entities=len(objects_diff[0].entity_selector_diff.passed),
             entity_selector_diff=objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
@@ -341,8 +342,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         user_agent_type,
                         send_raw_data_examples_amount=send_raw_data_examples_amount
                     )
-                    errors.extend(calculation_result.errors)
                     passed_entities.extend(calculation_result.entity_selector_diff.passed)
+                    errors.extend(calculation_result.errors)
                     number_of_transformed_entities += calculation_result.number_of_transformed_entities
             except* OceanAbortException as error:
                 ocean.metrics.sync_state = SyncState.FAILED
@@ -351,6 +352,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(
             f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
         )
+
 
         ocean.metrics.set_metric(
             name=MetricType.SUCCESS_NAME,
@@ -581,6 +583,45 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for entity in event.entity_topological_sorter.get_entities(False):
                     await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
 
+    async def process_resource(self,resource,index,user_agent_type):
+            if ocean.config.multiprocessing_enabled:
+                from port_ocean.run_task import run_task
+                id = uuid.uuid4()
+                logger.info(f"Starting subprocess with id {id}")
+                process = multiprocessing.Process(target=run_task, args=(id,resource,index,user_agent_type),name=f"{resource.kind}-{index}")
+                process.start()
+                process.join()
+                if process.exitcode == 0:
+                    with open(f"/tmp/{id}/topological_entities.pkl", "rb") as f:
+                        event.entity_topological_sorter.entities.extend(pickle.load(f))
+                    with open(f"/tmp/{id}/result.pkl", "rb") as f:
+                        return pickle.load(f)
+                else:
+                    logger.info(f"Process {id} failed with exit code {process.exitcode}")
+                    return [],[]
+            else:
+                return await self._process_resource(resource,index,user_agent_type)
+
+    async def _process_resource(self,resource,index,user_agent_type):
+        # create resource context per resource kind, so resync method could have access to the resource
+        # config as we might have multiple resources in the same event
+        async with resource_context(resource,index):
+            resource_kind_id = f"{resource.kind}-{index}"
+            task = asyncio.create_task(
+                self._register_in_batches(resource, user_agent_type)
+            )
+            event.on_abort(lambda: task.cancel())
+            kind_results: tuple[list[Entity], list[Exception]] = await task
+            ocean.metrics.set_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
+                value=len(kind_results[0])
+            )
+
+
+            await ocean.metrics.flush(kind=resource_kind_id)
+            return kind_results
+
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
         self,
@@ -635,27 +676,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
-
+            multiprocessing.set_start_method('fork', True)
             try:
                 for index,resource in enumerate(app_config.resources):
-                    # create resource context per resource kind, so resync method could have access to the resource
-                    # config as we might have multiple resources in the same event
-                    async with resource_context(resource,index):
-                        resource_kind_id = f"{resource.kind}-{index}"
-                        ocean.metrics.sync_state = SyncState.SYNCING
-                        await ocean.metrics.flush(kind=resource_kind_id)
 
-                        task = asyncio.create_task(
-                            self._register_in_batches(resource, user_agent_type)
-                        )
+                    logger.info(f"Starting processing resource {resource.kind} with index {index}")
 
-                        event.on_abort(lambda: task.cancel())
-                        kind_results: tuple[list[Entity], list[Exception]] = await task
-
-                        creation_results.append(kind_results)
-                        if ocean.metrics.sync_state != SyncState.FAILED:
-                            ocean.metrics.sync_state = SyncState.COMPLETED
-                        await ocean.metrics.flush(kind=resource_kind_id)
+                    creation_results.append(await self.process_resource(resource,index,user_agent_type))
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
 
