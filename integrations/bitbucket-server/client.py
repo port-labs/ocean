@@ -64,6 +64,7 @@ class BitbucketClient:
         base_url: str,
         webhook_secret: str | None = None,
         app_host: str | None = None,
+        is_version_8_7_or_older: bool = False,
     ):
         """
         Initialize the Bitbucket client with authentication and configuration.
@@ -74,6 +75,7 @@ class BitbucketClient:
             base_url: Base URL of the Bitbucket server
             webhook_secret: Optional secret for webhook signature verification
             app_host: Optional host URL for webhook callbacks
+            is_version_8_7_or_older: Whether the Bitbucket Server version is 8.7 or older
         """
         self.username = username
         self.password = password
@@ -84,6 +86,7 @@ class BitbucketClient:
         self.client.timeout = httpx.Timeout(60)
         self.app_host = app_host
         self.webhook_secret = webhook_secret
+        self.is_version_8_7_or_older = is_version_8_7_or_older
         # Despite this, being the rate limits, we do not reduce to the lowest common factor because we want to allow as much
         # concurrency as possible. This is because we expect most users to have resources
         # synced under one hour.
@@ -726,7 +729,11 @@ class BitbucketClient:
         Args:
             projects: Optional set of project keys to set up webhooks for
         """
-        if await self.is_version_8_point_7_and_older():
+        if self.is_version_8_7_or_older is not None:
+            version_check = self.is_version_8_7_or_older
+        else:
+            version_check = await self.is_version_8_point_7_and_older()
+        if version_check:
             await self.create_repositories_webhooks(projects)
         else:
             await self.create_projects_webhook(projects)
