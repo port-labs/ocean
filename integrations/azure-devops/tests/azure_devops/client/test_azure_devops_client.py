@@ -1281,6 +1281,6 @@ def test_format_service_url(
     subdomain: str,
     expected_output: str,
 ) -> None:
-    client = AzureDevopsClient(base_url, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(base_url, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME)
     result = client._format_service_url(subdomain)
     assert result == expected_output
