@@ -261,9 +261,15 @@ async def test_create_events_webhook(mock_jira_client: JiraClient) -> None:
     webhook_url = f"{app_host}/integration/webhook"
 
     # Test when webhook doesn't exist
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
+    with (
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+        patch.object(
+            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
+        ) as mock_permission,
+    ):
+        mock_permission.return_value = True
         mock_request.side_effect = [
             [],  # No existing webhooks
             {"id": "new_webhook"},  # Creation response
@@ -279,10 +285,36 @@ async def test_create_events_webhook(mock_jira_client: JiraClient) -> None:
         assert create_call[1]["json"]["events"] == WEBHOOK_EVENTS
 
     # Test when webhook already exists
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
+    with (
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+        patch.object(
+            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
+        ) as mock_permission,
+    ):
+        mock_permission.return_value = True
         mock_request.return_value = [{"url": webhook_url}]
 
         await mock_jira_client.create_webhooks(app_host)
         mock_request.assert_called_once()  # Only checks for existence
+
+
+@pytest.mark.asyncio
+async def test_create_webhooks_no_permission(mock_jira_client: JiraClient) -> None:
+    """Test create_webhooks when user lacks ADMINISTER permission."""
+    app_host = "https://example.com"
+
+    with (
+        patch.object(
+            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
+        ) as mock_permission,
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+    ):
+        mock_permission.return_value = False
+
+        await mock_jira_client.create_webhooks(app_host)
+
+        mock_request.assert_not_called()

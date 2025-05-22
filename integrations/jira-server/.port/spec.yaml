@@ -14,12 +14,17 @@ configurations:
     required: true
     type: string
     description: "The URL of your Jira, for example: https://example.atlassian.net"
-  - name: username
-    required: true
+  - name: token
+    required: false
     type: string
-    description: "The username of the user used to query Jira Server"
+    description: "The Personal Access token used to query Jira Server. Either token or username/password must be provided."
     sensitive: true
-  - name: password
-    required: true
+  - name: username
+    required: false
     type: string
+    description: "The username for Jira Server authentication. Required if token is not provided."
+  - name: password
+    required: false
+    type: string
+    description: "The password for Jira Server authentication. Required if token is not provided."
     sensitive: true

@@ -1,5 +1,5 @@
 import time
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, Dict
 from unittest.mock import MagicMock
 
 import httpx
@@ -7,8 +7,7 @@ import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context, ocean
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from github.clients.client_factory import create_github_client
-
-
+from github.helpers.utils import GithubClientType
 from github.clients.base_client import AbstractGithubClient
 
 TEST_INTEGRATION_CONFIG: Dict[str, str] = {
@@ -46,10 +45,15 @@ def mock_ocean_context() -> None:
 
 
 @pytest.fixture
-async def client(mock_ocean_context: Any) -> AsyncGenerator[Any, AbstractGithubClient]:
+def rest_client(mock_ocean_context: Any) -> AbstractGithubClient:
     """Provide a GitHubClient instance with mocked Ocean context."""
-    resource = await create_github_client()
-    yield resource
+    return create_github_client(GithubClientType.REST)
+
+
+@pytest.fixture
+def graphql_client(mock_ocean_context: Any) -> AbstractGithubClient:
+    """Provide a GitHubClient instance with mocked Ocean context."""
+    return create_github_client(GithubClientType.GRAPHQL)
 
 
 @pytest.fixture

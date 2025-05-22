@@ -9,7 +9,7 @@ from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
 from github.webhook.events import REPOSITORY_UPSERT_EVENTS, REPOSITORY_DELETE_EVENTS
-
+from github.core.options import SingleRepositoryOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
@@ -18,7 +18,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
-from github.utils import ObjectKind
+from github.helpers.utils import ObjectKind
 
 
 @pytest.fixture
@@ -111,15 +111,17 @@ class TestRepositoryWebhookProcessor:
             mock_exporter.get_resource.return_value = repo_data
 
             with patch(
-                "github.webhook.webhook_processors.repository_webhook_processor.RepositoryExporter",
-                return_value=mock_exporter,
+                "github.webhook.webhook_processors.repository_webhook_processor.ExporterFactory.get_exporter",
+                return_value=lambda _: mock_exporter,
             ):
                 result = await repository_webhook_processor.handle_event(
                     payload, resource_config
                 )
 
             # Verify exporter was called with correct repo name
-            mock_exporter.get_resource.assert_called_once_with("test-repo")
+            mock_exporter.get_resource.assert_called_once_with(
+                SingleRepositoryOptions(name="test-repo")
+            )
 
         assert isinstance(result, WebhookEventRawResults)
         assert bool(result.updated_raw_results) is expected_updated

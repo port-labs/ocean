@@ -41,7 +41,7 @@ class GithubWebhookClient(GithubRestClient):
     async def _get_existing_webhook(self, webhook_url: str) -> Dict[str, Any] | None:
         """Return the existing webhook matching the given URL, or None if not found."""
         async for hooks in self.send_paginated_request(
-            f"orgs/{self.organization}/hooks"
+            f"{self.base_url}/orgs/{self.organization}/hooks"
         ):
             existing_webhook = next(
                 (hook for hook in hooks if hook["config"]["url"] == webhook_url),
@@ -59,7 +59,7 @@ class GithubWebhookClient(GithubRestClient):
 
         logger.info(f"Patching webhook {webhook_id} to modify config data")
         await self.send_api_request(
-            f"orgs/{self.organization}/hooks/{webhook_id}",
+            f"{self.base_url}/orgs/{self.organization}/hooks/{webhook_id}",
             method="PATCH",
             json_data=webhook_data,
         )
@@ -92,7 +92,9 @@ class GithubWebhookClient(GithubRestClient):
             }
 
             await self.send_api_request(
-                f"orgs/{self.organization}/hooks", method="POST", json_data=webhook_data
+                f"{self.base_url}/orgs/{self.organization}/hooks",
+                method="POST",
+                json_data=webhook_data,
             )
             logger.info("Successfully created webhook")
             return

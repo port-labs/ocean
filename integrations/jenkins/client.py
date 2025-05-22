@@ -23,7 +23,7 @@ class JenkinsClient:
     def __init__(
         self, jenkins_base_url: str, jenkins_user: str, jenkins_token: str
     ) -> None:
-        self.jenkins_base_url = jenkins_base_url
+        self.jenkins_base_url = jenkins_base_url.rstrip("/")
         self.client = http_async_client
         self.client.auth = httpx.BasicAuth(jenkins_user, jenkins_token)
 

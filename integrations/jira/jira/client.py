@@ -179,6 +179,17 @@ class JiraClient(OAuthClient):
             "startAt": startAt,
         }
 
+    async def has_webhook_permission(self) -> bool:
+        logger.info(f"Checking webhook permissions for Jira instance: {self.jira_url}")
+        response = await self._send_api_request(
+            method="GET",
+            url=f"{self.api_url}/mypermissions",
+            params={"permissions": "ADMINISTER"},
+        )
+        has_permission = response["permissions"]["ADMINISTER"]["havePermission"]
+
+        return has_permission
+
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
@@ -206,6 +217,13 @@ class JiraClient(OAuthClient):
         logger.info("Ocean real time reporting webhook created")
 
     async def create_webhooks(self, app_host: str) -> None:
+        """Create webhooks if the user has permission."""
+        if not await self.has_webhook_permission():
+            logger.warning(
+                f"Cannot create webhooks for {self.jira_url}: Ensure the token has Jira Administrator rights."
+            )
+            return
+
         if self.is_oauth_host():
             await self._create_events_webhook_oauth(app_host)
         else:

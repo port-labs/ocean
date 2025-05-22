@@ -7,6 +7,11 @@ from github.clients.base_client import AbstractGithubClient
 
 # Create a concrete implementation of the abstract class for testing
 class ConcreteGithubClient(AbstractGithubClient):
+
+    @property
+    def base_url(self) -> str:
+        return "https://api.github.com"
+
     async def send_paginated_request(
         self,
         endpoint: str,
@@ -56,19 +61,20 @@ class TestAbstractGithubClient:
 
         params = {"type": "public"}
         json_data = {"name": "new-repo", "private": False}
+        url = "https://api.github.com/orgs/test-org/repos"
 
         with patch(
             "port_ocean.utils.http_async_client.request",
             AsyncMock(return_value=mock_response),
         ) as mock_request:
             await client.send_api_request(
-                "orgs/test-org/repos", method="POST", params=params, json_data=json_data
+                url, method="POST", params=params, json_data=json_data
             )
 
             # Verify the request was made with the correct arguments
             mock_request.assert_called_once_with(
                 method="POST",
-                url="https://api.github.com/orgs/test-org/repos",
+                url=url,
                 params=params,
                 json=json_data,
                 headers=client.headers,
@@ -150,16 +156,17 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
+        url = "https://api.github.com/repos/test-org/test-repo"
 
         with patch(
             "port_ocean.utils.http_async_client.request",
             AsyncMock(return_value=mock_response),
         ) as mock_request:
             # Test GET (default)
-            await client.send_api_request("repos/test-org/test-repo")
+            await client.send_api_request(url)
             mock_request.assert_called_with(
                 method="GET",
-                url="https://api.github.com/repos/test-org/test-repo",
+                url=url,
                 params=None,
                 json=None,
                 headers=client.headers,
@@ -167,10 +174,10 @@ class TestAbstractGithubClient:
 
             # Test POST
             mock_request.reset_mock()
-            await client.send_api_request("repos/test-org/test-repo", method="POST")
+            await client.send_api_request(url, method="POST")
             mock_request.assert_called_with(
                 method="POST",
-                url="https://api.github.com/repos/test-org/test-repo",
+                url=url,
                 params=None,
                 json=None,
                 headers=client.headers,
@@ -178,10 +185,10 @@ class TestAbstractGithubClient:
 
             # Test PUT
             mock_request.reset_mock()
-            await client.send_api_request("repos/test-org/test-repo", method="PUT")
+            await client.send_api_request(url, method="PUT")
             mock_request.assert_called_with(
                 method="PUT",
-                url="https://api.github.com/repos/test-org/test-repo",
+                url=url,
                 params=None,
                 json=None,
                 headers=client.headers,
@@ -189,10 +196,10 @@ class TestAbstractGithubClient:
 
             # Test PATCH
             mock_request.reset_mock()
-            await client.send_api_request("repos/test-org/test-repo", method="PATCH")
+            await client.send_api_request(url, method="PATCH")
             mock_request.assert_called_with(
                 method="PATCH",
-                url="https://api.github.com/repos/test-org/test-repo",
+                url=url,
                 params=None,
                 json=None,
                 headers=client.headers,
@@ -200,10 +207,10 @@ class TestAbstractGithubClient:
 
             # Test DELETE
             mock_request.reset_mock()
-            await client.send_api_request("repos/test-org/test-repo", method="DELETE")
+            await client.send_api_request(url, method="DELETE")
             mock_request.assert_called_with(
                 method="DELETE",
-                url="https://api.github.com/repos/test-org/test-repo",
+                url=url,
                 params=None,
                 json=None,
                 headers=client.headers,
