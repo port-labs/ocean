@@ -1,0 +1,13 @@
+port:
+  clientId: "{{ from env OCEAN__PORT__CLIENT_ID }}" # Can be loaded using environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
+  clientSecret: "{{ from env OCEAN__PORT__CLIENT_SECRET }}" # Can be loaded using environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
+# The event listener to use for the integration service.
+eventListener:
+  type: POLLING
+integration:
+  # The identifier of this integration instance.
+  identifier: "{{ from env OCEAN__INTEGRATION__IDENTIFIER }}"
+  # These two should match the values in the .port/spec.yaml file
+  type: "{{ from env OCEAN__INTEGRATION__IDENTIFIER }}"
+  config:
+    githubToken: "{{ from env GITHUB_TOKEN }}"

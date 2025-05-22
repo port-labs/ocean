@@ -1,0 +1,13 @@
+description: ghoceanport integration for Port Ocean
+icon: Cookiecutter
+features:
+  - type: exporter
+    section: Under Development  # Should be one of the available sections in Port
+    resources:
+      # - kind: ghoceanport-example-kind
+      - kind: Repository
+configurations:
+  - name: githubToken
+    # required: true
+    type: string
+    sensitive: true

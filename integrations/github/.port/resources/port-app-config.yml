@@ -1,0 +1,118 @@
+resources:
+  # - kind: ghoceanport-example-kind
+  #   selector:
+  #     query: "true"
+  #   port:
+  #     entity:
+  #       mappings:
+  #         identifier: .my_custom_id
+  #         title: '(.my_component + " @ " + .my_service)'
+  #         blueprint: '"ghoceanportExampleBlueprint"'
+  #         properties:
+  #           status: .my_enum
+  #           text: .my_custom_text
+  #           component: .my_component
+  #           service: .my_service
+  #           score: .my_special_score
+  - kind: Repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .full_name
+          blueprint: '"RepositoryBlueprint"' # The inner quotes is weirdly required
+          properties:
+            id: .id
+            name: .name
+            full_name: .full_name
+            private: .private
+            url: .url
+            fork: .fork
+            created_at: .created_at
+            updated_at: .updated_at
+            pushed_at: .pushed_at
+            size: .size
+            stargazers_count: .stargazers_count
+
+  - kind: PullRequest
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"PullRequestBlueprint"'
+          properties:
+            id: .id
+            number: .number
+            title: .title
+            state: .state
+            url: .url
+            created_at: .created_at
+            updated_at: .updated_at
+            repository: .repository
+            author: .author
+            draft: .draft
+            mergeable: .mergeable
+            mergeable_state: .mergeable_state
+
+  - kind: Issue
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"IssueBlueprint"'
+          properties:
+            id: .id
+            number: .number
+            title: .title
+            state: .state
+            url: .url
+            created_at: .created_at
+            updated_at: .updated_at
+            repository: .repository
+            author: .author
+            labels: .labels
+            assignees: .assignees
+
+  - kind: Team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"TeamBlueprint"'
+          properties:
+            id: .id
+            name: .name
+            slug: .slug
+            description: .description
+            privacy: .privacy
+            url: .url
+
+  - kind: Workflow
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"WorkflowBlueprint"'
+          properties:
+            id: .id
+            name: .name
+            path: .path
+            state: .state
+            url: .url
+            created_at: .created_at
+            updated_at: .updated_at
+            repository: .repository
