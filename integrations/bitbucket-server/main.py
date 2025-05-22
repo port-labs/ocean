@@ -8,11 +8,14 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from integration import BitbucketGenericResourceConfig  # type: ignore
 from integration import BitbucketPullRequestResourceConfig, ObjectKind
 from utils import initialize_client  # type: ignore
-from webhook_processors import (
+from webhook_processors.processors import (  # type: ignore
     ProjectWebhookProcessor,
     PullRequestWebhookProcessor,
     RepositoryWebhookProcessor,
 )
+from webhook_processors.webhook_client import (
+    initialize_client as initialize_webhook_client,
+)  # type: ignore
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -65,7 +68,8 @@ async def on_start() -> None:
     logger.info("Healthcheck passed")
     if client.app_host:
         logger.info("Setting up webhooks")
-        await client.setup_webhooks()
+        webhook_client = initialize_webhook_client()
+        await webhook_client.setup_webhooks()
         logger.info("Webhooks set up")
 
 

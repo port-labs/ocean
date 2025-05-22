@@ -6,7 +6,7 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from utils import initialize_client
+from webhook_processors.webhook_client import initialize_client  # type: ignore
 
 
 class BaseWebhookProcessorMixin(AbstractWebhookProcessor):

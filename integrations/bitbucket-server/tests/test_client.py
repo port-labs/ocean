@@ -31,7 +31,7 @@ async def test_send_port_request(mock_client: BitbucketClient) -> None:
     mock_client.client.request.return_value = mock_response
 
     # Act
-    response = await mock_client.send_port_request("GET", "projects/TEST")
+    response = await mock_client._send_api_request("GET", "projects/TEST")
 
     # Assert
     assert response == expected_response
@@ -53,7 +53,7 @@ async def test_get_paginated_resource(mock_client: BitbucketClient) -> None:
             "isLastPage": True,
         },
     ]
-    mock_client.send_port_request = AsyncMock(side_effect=mock_responses)
+    mock_client._send_api_request = AsyncMock(side_effect=mock_responses)
 
     # Act
     results = []
@@ -63,7 +63,7 @@ async def test_get_paginated_resource(mock_client: BitbucketClient) -> None:
     # Assert
     assert len(results) == 3
     assert [r["id"] for r in results] == [1, 2, 3]
-    assert mock_client.send_port_request.call_count == 2
+    assert mock_client._send_api_request.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -71,29 +71,14 @@ async def test_get_latest_commit(mock_client: BitbucketClient) -> None:
     """Test getting the latest commit for a repository."""
     # Arrange
     mock_commit = {"id": "abc123", "message": "Test commit"}
-    mock_client.send_port_request = AsyncMock(return_value={"values": [mock_commit]})
+    mock_client._send_api_request = AsyncMock(return_value={"values": [mock_commit]})
 
     # Act
     commit = await mock_client.get_latest_commit("TEST", "test-repo")
 
     # Assert
     assert commit == mock_commit
-    mock_client.send_port_request.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_verify_webhook_signature(mock_client: BitbucketClient) -> None:
-    """Test webhook signature verification."""
-    # Arrange
-    mock_request = MagicMock()
-    mock_request.headers = {"x-hub-signature": "sha256=test-signature"}
-    mock_request.body = AsyncMock(return_value=b"test-body")
-
-    # Act
-    result = await mock_client.verify_webhook_signature(mock_request)
-
-    # Assert
-    assert isinstance(result, bool)
+    mock_client._send_api_request.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -119,32 +104,3 @@ async def test_healthcheck_failure(mock_client: BitbucketClient) -> None:
     # Act & Assert
     with pytest.raises(ConnectionError):
         await mock_client.healthcheck()
-
-
-@pytest.mark.asyncio
-async def test_is_version_8_point_7_and_older(mock_client: BitbucketClient) -> None:
-    """Test version check functionality."""
-    # Arrange
-    mock_client._get_application_properties = AsyncMock(
-        return_value={"version": "8.7.0"}
-    )
-
-    # Act
-    result = await mock_client.is_version_8_point_7_and_older()
-
-    # Assert
-    assert result is True
-
-
-@pytest.mark.asyncio
-async def test_setup_webhooks(mock_client: BitbucketClient) -> None:
-    """Test webhook setup functionality."""
-    # Arrange
-    mock_client.is_version_8_point_7_and_older = AsyncMock(return_value=False)
-    mock_client.create_projects_webhook = AsyncMock()
-
-    # Act
-    await mock_client.setup_webhooks({"TEST"})
-
-    # Assert
-    mock_client.create_projects_webhook.assert_called_once_with({"TEST"})
