@@ -20,6 +20,7 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
 )
 from port_ocean.utils.queue_utils import process_in_queue
+from urllib.parse import urlparse
 
 
 API_URL_PREFIX = "_apis"
@@ -148,18 +149,25 @@ class AzureDevopsClient(HTTPBaseClient):
                     member["__teamId"] = team["id"]
                 yield members
 
-    def _format_organization_url_with_subdomain(self, subdomain: str) -> str:
+    def _is_azure_devops_services(self) -> bool:
+        """Check if the base URL is Azure DevOps Services."""
+        hostname = urlparse(self._organization_base_url).hostname or ""
+        return hostname.lower().endswith((".visualstudio.com", "dev.azure.com"))
+
+    def _format_service_url(self, subdomain: str) -> str:
         base_url = self._organization_base_url
-        if ".visualstudio.com" in base_url:
-            return base_url.replace(
-                ".visualstudio.com", f".{subdomain}.visualstudio.com"
-            )
-        return base_url.replace("dev.azure.com", f"{subdomain}.dev.azure.com")
+        if self._is_azure_devops_services():
+            if ".visualstudio.com" in base_url:
+                return base_url.replace(
+                    ".visualstudio.com", f".{subdomain}.visualstudio.com"
+                )
+            return base_url.replace("dev.azure.com", f"{subdomain}.dev.azure.com")
+
+        return base_url
 
     async def generate_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         users_url = (
-            self._format_organization_url_with_subdomain("vsaex")
-            + f"/{API_URL_PREFIX}/userentitlements"
+            self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
         )
         async for users in self._get_paginated_by_top_and_continuation_token(
             users_url, data_key="items"
@@ -222,7 +230,7 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 releases_url = (
-                    self._format_organization_url_with_subdomain("vsrm")
+                    self._format_service_url("vsrm")
                     + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
                 )
                 async for releases in self._get_paginated_by_top_and_continuation_token(

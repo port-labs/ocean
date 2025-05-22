@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.22.10 (2025-05-20)
+
+### Improvements
+- Fix Dependabot vulnerabilities
+
+## 0.22.9 (2025-05-18)
+
+### Improvements
+- Enhanced Ocean metrics event structure for better data organization and analysis
+- Expanded metrics collection points to provide more comprehensive monitoring capabilities
+
+## 0.22.8 (2025-05-15)
+
+### Improvements
+- Enhanced error logging by including trace IDs for server errors
+
+## 0.22.7 (2025-05-12)
+
+### Bug Fixes
+- Fixed case where new installation of an integration resulted with errors on installing a package
+
 ## 0.22.6 (2025-05-06)
 
 ### Improvements

@@ -6,13 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.1.154 (2025-05-22)
 
-## 0.1.149 (2025-05-06)
+### Improvements
+
+ Transitioned live events management to ocean’s `LiveEventProcessorManager` to streamline processing
+
+## 0.1.153 (2025-05-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
+## 0.1.152 (2025-05-19)
 
 
 ### Improvements
 
-- Transitioned live events management to ocean’s `LiveEventProcessorManager` to streamline processing
+- Bumped ocean version to ^0.22.9
+
+
+## 0.1.151 (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+## 0.1.150 (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.1.149 (2025-05-07)
+
+
+### Bug Fixes
+
+- Fixed `AzureDevopsClient` to support self-hosted Azure DevOps instances to preserve base URLs for self-hosted cases.
 
 
 ## 0.1.148 (2025-05-06)

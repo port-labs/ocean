@@ -2,7 +2,7 @@ from typing import List
 import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.clients.port.utils import handle_port_status_code
 
 
 class OrganizationClientMixin:
@@ -27,5 +27,5 @@ class OrganizationClientMixin:
         self, should_raise: bool = True, should_log: bool = True
     ) -> List[str]:
         response = await self._get_organization_feature_flags()
-        handle_status_code(response, should_raise, should_log)
+        handle_port_status_code(response, should_raise, should_log)
         return response.json().get("organization", {}).get("featureFlags", [])

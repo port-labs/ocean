@@ -980,13 +980,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.22.6"
+version = "0.22.10"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.22.6-py3-none-any.whl", hash = "sha256:8e7cf8dcf35fb04b156b3543d59bf29f5f097438cd259a24cc0bf8448c6d715a"},
-    {file = "port_ocean-0.22.6.tar.gz", hash = "sha256:2cbb06f0d5f6cf89e749f35805001beaf6be3820ca520b920d13a7d581a3afc4"},
+    {file = "port_ocean-0.22.10-py3-none-any.whl", hash = "sha256:91b01fd9f46839d43baadafe2257feeac55e98c1343b0c7f75a9b0f47a51afda"},
+    {file = "port_ocean-0.22.10.tar.gz", hash = "sha256:8dcfdfdfbfe8f6475cb8c83aca6e1ef4a8f9d5b2f7cdf5b1ba7a829245218429"},
 ]
 
 [package.dependencies]
@@ -1429,13 +1429,13 @@ files = [
 
 [[package]]
 name = "setuptools"
-version = "78.1.0"
+version = "78.1.1"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "setuptools-78.1.0-py3-none-any.whl", hash = "sha256:3e386e96793c8702ae83d17b853fb93d3e09ef82ec62722e61da5cd22376dcd8"},
-    {file = "setuptools-78.1.0.tar.gz", hash = "sha256:18fd474d4a82a5f83dac888df697af65afa82dec7323d09c3e37d1f14288da54"},
+    {file = "setuptools-78.1.1-py3-none-any.whl", hash = "sha256:c3a9c4211ff4c309edb8b8c4f1cbfa7ae324c4ba9f91ff254e3d305b9fd54561"},
+    {file = "setuptools-78.1.1.tar.gz", hash = "sha256:fcc17fd9cd898242f6b4adfaca46137a9edef687f43e6f78469692a5e70d851d"},
 ]
 
 [package.extras]
@@ -1659,4 +1659,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "69d8c00ab1daa1c1e89d88e06eb90154425f135d2a475e5f76e756622cdbffee"
+content-hash = "3068627817376e5503d8acdee9a1eefa05ef2e0cb865904bf468b28a5322ccdf"
