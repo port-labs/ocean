@@ -216,7 +216,7 @@ class IntegrationClientMixin:
             metrics_attributes["ingestUrl"],
             headers=headers,
             json={
-                "kindsMetrics": metrics,
+                "syncKindsMetrics": metrics,
             },
         )
         handle_port_status_code(response, should_log=False)
@@ -234,7 +234,7 @@ class IntegrationClientMixin:
             url,
             headers=headers,
             json={
-                "kindMetrics": kind_metrics,
+                "syncKindMetrics": kind_metrics,
             },
         )
         handle_port_status_code(response, should_log=False)
