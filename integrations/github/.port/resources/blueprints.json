@@ -1,0 +1,157 @@
+[
+  {
+    "identifier": "githubRepository",
+    "title": "GitHub Repository",
+    "icon": "GitHub",
+    "schema": {
+      "properties": {
+        "readme": {
+          "title": "README",
+          "type": "string",
+          "format": "markdown",
+          "icon": "Book"
+        },
+        "url": {
+          "title": "URL",
+          "format": "url",
+          "type": "string",
+          "icon": "Link"
+        },
+        "language": {
+          "type": "string",
+          "title": "Language",
+          "icon": "Git"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "githubMember",
+    "title": "GitHub Member",
+    "icon": "GitHub",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "format": "email",
+          "description": "The member's email address"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url",
+          "description": "Link to the member's GitHub profile"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "githubTeam",
+    "title": "Team",
+    "icon": "GitHub",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "format": "url",
+          "type": "string",
+          "icon": "Link"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "icon": "BlankPage"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "githubMembers": {
+        "title": "Members",
+        "target": "githubMember",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "githubPullRequest",
+    "title": "Pull Request",
+    "icon": "GitVersion",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "open",
+            "closed",
+            "merged"
+          ],
+          "enumColors": {
+            "open": "yellow",
+            "closed": "red",
+            "merged": "green"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "mergedAt": {
+          "title": "Merged At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "title": "Link",
+          "format": "url",
+          "type": "string"
+        },
+        "leadTimeHours": {
+          "title": "Lead Time in hours",
+          "type": "number"
+        },
+        "reviewers": {
+          "title": "Reviewers",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Service",
+        "target": "service",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
