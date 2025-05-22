@@ -503,7 +503,7 @@ class GitHubClient:
                 yield processed_batch
 
     async def get_team_members(
-        self, org_name: str, team_slug: str, include_bot_members: bool = False
+        self, org_name: str, team_slug: str
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """
         Get members of a team in an organization.
@@ -520,23 +520,11 @@ class GitHubClient:
             f"orgs/{org_name}/teams/{team_slug}/members"
         ):
             if batch:
-                if not include_bot_members:
-                    # Filter out users with 'bot' in their username
-                    filtered_batch = [
-                        member for member in batch
-                        if "bot" not in member["login"].lower()
-                    ]
 
-                    if filtered_batch:
-                        logger.info(
-                            f"Received batch of {len(filtered_batch)} members for team {team_slug}"
-                        )
-                        yield filtered_batch
-                else:
-                    logger.info(
-                        f"Received batch of {len(batch)} members for team {team_slug}"
-                    )
-                    yield batch
+                logger.info(
+                    f"Received batch of {len(batch)} members for team {team_slug}"
+                )
+                yield batch
 
     async def _enrich_repo_with_languages(self, repo: dict[str, Any]) -> dict[str, Any]:
         """
@@ -597,7 +585,7 @@ class GitHubClient:
             return await enrich_func(item)
 
     async def enrich_organization_with_members(
-        self, org: dict[str, Any], team_slug: str, include_bot_members: bool
+        self, org: dict[str, Any], team_slug: str
     ) -> dict[str, Any]:
         """
         Enrich an organization with team members.
@@ -614,7 +602,7 @@ class GitHubClient:
         members = []
 
         async for members_batch in self.get_team_members(
-            org['login'], team_slug, include_bot_members
+            org['login'], team_slug
         ):
             for member in members_batch:
                 members.append({

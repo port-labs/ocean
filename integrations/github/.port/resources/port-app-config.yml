@@ -15,7 +15,7 @@ resources:
             url: .html_url
             readme: file://README.md
             language: .__languages | to_entries | max_by(.value) | .key
-  - kind: member
+  - kind: user
     selector:
       query: 'true'
     port:
@@ -27,7 +27,7 @@ resources:
           properties:
             url: .html_url
             email: .email
-  - kind: team-with-members
+  - kind: team
     selector:
       query: 'true'
     port:

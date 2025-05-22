@@ -10,8 +10,8 @@ class ObjectKind(StrEnum):
     REPOSITORY = "repository"
     PULL_REQUEST = "pull-request"
     ISSUE = "issue"
-    TEAM_WITH_MEMBERS = "team-with-members"
-    MEMBER = "member"
+    TEAM = "team"
+    USER = "user"
     WORKFLOW_RUN = "workflow-run"
     WORKFLOW_JOB = "workflow-job"
 

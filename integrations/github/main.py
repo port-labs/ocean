@@ -126,7 +126,7 @@ async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield prs_batch
 
 
-@ocean.on_resync(ObjectKind.TEAM_WITH_MEMBERS)
+@ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_teams_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Resync GitHub teams with members.
@@ -141,7 +141,6 @@ async def on_resync_teams_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
     selector = cast(
         GitHubTeamWithMembersResourceConfig, event.resource_config
     ).selector
-    include_bot_members = bool(selector.include_bot_members)
 
     # Get organizations
     orgs = []
@@ -157,32 +156,10 @@ async def on_resync_teams_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
         async for teams_batch in client.rest.get_paginated_org_resource(
             org_login, "teams"
         ):
-            teams.extend(teams_batch)
-
-        # Process teams in batches
-        for i in range(0, len(teams), RESYNC_TEAM_MEMBERS_BATCH_SIZE):
-            current_batch = teams[i:i + RESYNC_TEAM_MEMBERS_BATCH_SIZE]
-            logger.info(
-                f"Processing members for {i + len(current_batch)}/{len(teams)} teams in {org_login}"
-            )
-
-            # For each team, enrich with members
-            enriched_teams = []
-            for team in current_batch:
-                # Create a team with organization context
-                team_with_org = {**team, "organization": org}
-
-                # Enrich with members
-                enriched_team = await client.enrich_organization_with_members(
-                    team_with_org, team["slug"], include_bot_members
-                )
-
-                enriched_teams.append(enriched_team)
-
-            yield enriched_teams
+            yield teams_batch
 
 
-@ocean.on_resync(ObjectKind.MEMBER)
+@ocean.on_resync(ObjectKind.USER)
 async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Resync GitHub members.
@@ -195,7 +172,6 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     client = create_github_client()
     selector = cast(GitHubMemberResourceConfig, event.resource_config).selector
-    include_bot_members = bool(selector.include_bot_members)
 
     # Get organizations
     orgs = []
@@ -220,12 +196,11 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             # For each team, get members
             for team in current_batch:
                 async for members_batch in client.get_team_members(
-                    org_login, team["slug"], include_bot_members
+                    org_login, team["slug"]
                 ):
                     # Add team and organization context to each member
                     for member in members_batch:
                         member["team"] = team
-                        member["organization"] = org
 
                     yield members_batch
 

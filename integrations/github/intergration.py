@@ -38,25 +38,16 @@ class RepositoryResourceConfig(ResourceConfig):
     selector: RepositorySelector
 
 
-class GitHubMemberSelector(Selector):
-    """Selector for GitHub members."""
-    include_bot_members: bool = Field(
-        alias="includeBotMembers",
-        default=False,
-        description="If set to false, bots will be filtered out from the members list. Default value is false",
-    )
-
-
 class GitHubTeamWithMembersResourceConfig(ResourceConfig):
     """Resource configuration for GitHub teams with members."""
-    kind: Literal["team-with-members"] # type: ignore
-    selector: GitHubMemberSelector # type: ignore
+    kind: Literal["team"] # type: ignore
+    selector: Selector
 
 
 class GitHubMemberResourceConfig(ResourceConfig):
     """Resource configuration for GitHub members."""
     kind: Literal["member"]
-    selector: GitHubMemberSelector
+    selector: Selector
 
 
 class GitHubPullRequestResourceConfig(ResourceConfig):
