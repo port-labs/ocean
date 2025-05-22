@@ -26,7 +26,7 @@ resources:
           properties:
             url: .url
             state: .state
-  - kind: pull-requests
+  - kind: pull_requests
     selector:
       query: 'true'
     port:
@@ -34,7 +34,7 @@ resources:
         mappings:
           identifier: .identifier
           title: .title
-          blueprint: '"pull-requests"'
+          blueprint: '"pull_requests"'
           properties:
             url: .url
             state: .state

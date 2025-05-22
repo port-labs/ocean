@@ -14,7 +14,7 @@ features:
     resources:
       - kind: repositories
       - kind: issues
-      - kind: pull-requests
+      - kind: pull_requests
       - kind: workflows
       - kind: teams
 configurations:

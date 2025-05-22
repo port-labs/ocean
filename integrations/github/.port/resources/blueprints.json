@@ -54,7 +54,7 @@
         "relations": {}
     },
     {
-        "identifier": "pull-requests",
+        "identifier": "pull_requests",
         "title": "GitHub Pull Requests",
         "icon": "PullRequest",
         "schema": {

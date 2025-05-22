@@ -76,7 +76,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "identifier": str(pr["id"]),
                 "title": pr["title"],
                 "state": pr["state"],
-                "url": pr["html_url"],
+                "url": pr["url"],
                 "author": pr["user"]["login"]
             }
             for pr in batch
