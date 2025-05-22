@@ -263,7 +263,7 @@ class Metrics:
             self.registry
         ).decode()
 
-    async def post_metrics(
+    async def report_sync_metrics(
         self, metric_name: Optional[str] = None, kinds: Optional[list[str]] = None
     ) -> None:
         if kinds is None:
@@ -280,7 +280,7 @@ class Metrics:
         except Exception as e:
             logger.error(f"Error posting metrics: {e}", metrics=metrics)
 
-    async def put_metrics(
+    async def report_kind_sync_metrics(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
     ) -> None:
         metrics = self.generate_metrics(metric_name, kind)

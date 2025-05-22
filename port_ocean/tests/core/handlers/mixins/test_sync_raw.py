@@ -85,8 +85,8 @@ async def test_sync_raw_mixin_self_dependency(
     calc_result_mock.errors = []
 
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
-    mock_ocean.metrics.post_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.put_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -142,8 +142,8 @@ async def test_sync_raw_mixin_circular_dependency(
     calc_result_mock.errors = []
 
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
-    mock_ocean.metrics.post_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.put_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -219,8 +219,8 @@ async def test_sync_raw_mixin_dependency(
         ("entity_5", "service", {"service": "entity_1"}, True),
     ]
     entities = [create_entity(*entity_param) for entity_param in entities_params]
-    mock_ocean.metrics.post_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.put_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
     calc_result_mock = MagicMock()
     calc_result_mock.entity_selector_diff.passed = entities
@@ -705,8 +705,8 @@ async def test_on_resync_start_hooks_are_called(
         resync_start_called = True
 
     mock_sync_raw_mixin.on_resync_start(on_resync_start)
-    mock_ocean.metrics.post_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.put_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
     # Execute
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
@@ -735,8 +735,8 @@ async def test_on_resync_complete_hooks_are_called_on_success(
 
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete)
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
-    mock_ocean.metrics.post_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.put_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
 
     # Execute
@@ -808,8 +808,8 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete2)
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
 
-    mock_ocean.metrics.post_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.put_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
     # Execute
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
@@ -847,8 +847,8 @@ async def test_on_resync_start_hook_error_prevents_resync(
 
     mock_sync_raw_mixin.on_resync_start(on_resync_start)
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete)
-    mock_ocean.metrics.post_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.put_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
     original_get_resource_raw_results = mock_sync_raw_mixin._get_resource_raw_results
 
