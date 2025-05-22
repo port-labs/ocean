@@ -48,35 +48,40 @@ class HTTPBaseClient:
         url = f"{self.base_url}/{path.lstrip('/')}"
         logger.debug(f"Sending {method} request to {url}")
 
-        try:
-            response = await self._client.request(
-                method=method,
-                url=url,
-                headers=self._headers,
-                params=params,
-                json=data,
-            )
-            response.raise_for_status()
-            return response.json() if response.content else {}
-
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning(
-                    f"Resource not found at {url} for the following params {params}"
+        for attempt in range(3):
+            try:
+                response = await self._client.request(
+                    method=method,
+                    url=url,
+                    headers=self._headers,
+                    params=params,
+                    json=data,
                 )
-                return {}
-            # Check for rate limiting
-            if e.response.status_code == 403 and "X-RateLimit-Remaining" in e.response.headers:
-                remain = e.response.headers.get("X-RateLimit-Remaining", "0")
-                reset = e.response.headers.get("X-RateLimit-Reset", "unknown")
-                logger.error(f"Rate limit exceeded. Remaining: {remain}, Reset at: {reset}")
 
-            logger.error(f"HTTP status error for {method} request to {path}: {e}")
-            raise
+                 # Handle rate limiting
+                if response.status_code == 403 and response.headers.get("X-RateLimit-Remaining") == "0":
+                    reset_time = int(response.headers.get("X-RateLimit-Reset", time.time() + 60))
+                    wait_time = reset_time - int(time.time()) + 1
+                    logger.warning(f"Rate limited. Waiting {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                    continue
 
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error for {method} request to {path}: {e}")
-            raise
+                response.raise_for_status()
+                return response.json() if response.content else {}
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    return {}
+                if e.response.status_code == 403 and e.response.headers.get("X-RateLimit-Remaining") == "0":
+                    reset_time = int(e.response.headers.get("X-RateLimit-Reset", time.time() + 60))
+                    wait_time = reset_time - int(time.time()) + 1
+                    logger.warning(f"Rate limited. Waiting {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                raise
+
+            except httpx.HTTPError:
+                raise
 
     async def get_page_links(self, response: httpx.Response) -> Dict[str, str]:
         """

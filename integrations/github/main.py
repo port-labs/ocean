@@ -236,5 +236,6 @@ async def debug_handler(kind: str):
 
 
 # Register webhook processors
+ocean.add_webhook_processor("/hook/org/{org_name}", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", PullRequestWebhookProcessor)
