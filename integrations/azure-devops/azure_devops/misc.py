@@ -24,6 +24,7 @@ class Kind(StrEnum):
     RELEASE = "release"
     FILE = "file"
     USER = "user"
+    FOLDER = "folder"
 
 
 PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
@@ -76,7 +77,7 @@ class FileSelector(BaseModel):
         ...,  # Make path required
         description="""
         Explicit file path(s) to fetch. Can be a single path or list of paths.
-        
+
         Examples of valid paths:
         - "src/config.yaml"
         - "deployment/helm/values.yaml"
@@ -85,7 +86,7 @@ class FileSelector(BaseModel):
         - "docs/README.md"
         - "src/main.py"
         - "images/logo.png"
-        
+
         Invalid paths:
         - "*" : glob patterns not allowed
         - "*.yaml" : glob patterns not allowed
@@ -93,7 +94,7 @@ class FileSelector(BaseModel):
         - "config/**/*.yaml" : glob patterns not allowed
         - "**/*" : glob patterns not allowed
         - "**" : glob patterns not allowed
-        
+
         Each path must be an explicit file path relative to the repository root.
         Glob patterns are not supported to prevent overly broad file fetching.
         """,
@@ -104,6 +105,7 @@ class FileSelector(BaseModel):
     )
 
     @validator("path", allow_reuse=True)
+    @classmethod
     def validate_path_patterns(cls, v: Union[str, List[str]]) -> Union[str, List[str]]:
         patterns = [v] if isinstance(v, str) else v
 
@@ -144,13 +146,13 @@ class AzureDevopsFileSelector(Selector):
 
     files: FileSelector = Field(
         description="""Configuration for file selection and scanning.
-        
+
         Specify explicit file paths to fetch from repositories.
         Example:
         ```yaml
         selector:
           files:
-            path: 
+            path:
               - "port.yml"
               - "config/settings.json"
               - ".github/workflows/ci.yml"
@@ -180,6 +182,57 @@ class AzureDevopsTeamResourceConfig(ResourceConfig):
     selector: TeamSelector
 
 
+def extract_branch_name_from_ref(ref: str) -> str:
+    return "/".join(ref.split("/")[2:])
+
+
+class RepositoryBranchMapping(BaseModel):
+    name: str = Field(description="Repository name")
+    branch: str | None = Field(default=None, description="Branch to scan")
+
+
+class FolderPattern(BaseModel):
+    path: str = Field(
+        default="",
+        alias="path",
+        description="""Specify the repositories and folders to include under this relative path.
+        Supports glob pattern (*) for matching within a path segment:
+        - Use * to match any characters within a path segment
+
+        Examples of valid paths:
+        - "src/backend" - Matches the exact backend folder inside src
+        - "src/*" - Matches all immediate subfolders inside src (e.g., src/api, src/utils)
+        - "src/*/docs" - Matches the docs folder inside any immediate subfolder of src (e.g., src/api/docs, src/utils/docs)
+        """,
+    )
+    repos: list[RepositoryBranchMapping] = Field(
+        default_factory=list,
+        alias="repos",
+        description="Specify the repositories and branches to include under this relative path",
+    )
+
+
+class AzureDevopsFolderSelector(Selector):
+    """Selector for Azure DevOps folder scanning configuration"""
+
+    project_name: str = Field(
+        ...,
+        description="Name of the Azure DevOps project that contains the repositories to be scanned",
+    )
+    folders: list[FolderPattern] = Field(
+        default_factory=list,
+        alias="folders",
+        description="Specify the repositories, branches and folders to include under this relative path",
+    )
+
+
+class AzureDevopsFolderResourceConfig(ResourceConfig):
+    """Resource configuration for folder scanning"""
+
+    kind: Literal["folder"]
+    selector: AzureDevopsFolderSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -195,12 +248,9 @@ class GitPortAppConfig(PortAppConfig):
     branch: str = "main"
     resources: list[
         AzureDevopsProjectResourceConfig
+        | AzureDevopsFolderResourceConfig
         | AzureDevopsWorkItemResourceConfig
         | AzureDevopsTeamResourceConfig
         | AzureDevopsFileResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
-
-
-def extract_branch_name_from_ref(ref: str) -> str:
-    return "/".join(ref.split("/")[2:])
