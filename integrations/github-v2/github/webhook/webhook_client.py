@@ -1,7 +1,5 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from loguru import logger
-import re
-from urllib.parse import urlparse, urlunparse
 from github.clients.rest_client import GithubRestClient
 
 PAGE_SIZE = 100
@@ -21,22 +19,6 @@ class GithubWebhookClient(GithubRestClient):
             logger.info(
                 "Received secret for authenticating incoming webhooks. Only authenticated webhooks will be synced."
             )
-
-    def _get_next_link(self, link_header: str) -> Optional[str]:
-        """
-        Extracts the path and query from the 'next' link in a GitHub Link header,
-        removing the leading slash.
-        """
-
-        match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
-        if not match:
-            return None
-
-        parsed_url = urlparse(match.group(1))
-        path_and_query = urlunparse(
-            ("", "", parsed_url.path, parsed_url.params, parsed_url.query, "")
-        )
-        return path_and_query.lstrip("/")
 
     async def _get_existing_webhook(self, webhook_url: str) -> Dict[str, Any] | None:
         """Return the existing webhook matching the given URL, or None if not found."""

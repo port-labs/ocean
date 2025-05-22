@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Awaitable, Callable, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 from urllib.parse import urljoin
 
 from github.clients.base_client import AbstractGithubClient
@@ -9,6 +9,14 @@ from httpx import Response
 PAGE_SIZE = 25
 
 
+class GraphQLClientError(Exception):
+    """Exception raised for GraphQL API errors."""
+
+    def __init__(self, errors: List[Dict[str, Any]]) -> None:
+        self.errors = errors
+        super().__init__(f"GraphQL query failed: {errors}")
+
+
 class GithubGraphQLClient(AbstractGithubClient):
     """GraphQL API implementation of GitHub client."""
 
@@ -16,11 +24,11 @@ class GithubGraphQLClient(AbstractGithubClient):
     def base_url(self) -> str:
         return urljoin(self.github_host, "/graphql")
 
-    async def _handle_graphql_errors(self, response: Response) -> None:
+    def _handle_graphql_errors(self, response: Response) -> None:
         result = response.json()
         if "errors" in result:
             logger.error(f"GraphQL query errors: {result['errors']}")
-            raise Exception(f"GraphQL query failed: {result['errors']}")
+            raise GraphQLClientError(result["errors"])
 
     async def send_api_request(
         self,
@@ -28,15 +36,15 @@ class GithubGraphQLClient(AbstractGithubClient):
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
-        error_handler: Optional[Callable[[Response], Awaitable[None]]] = None,
     ) -> Response:
-        return await super().send_api_request(
+        response = await super().send_api_request(
             resource=resource,
             params=params,
             method=method,
             json_data=json_data,
-            error_handler=self._handle_graphql_errors,
         )
+        self._handle_graphql_errors(response)
+        return response
 
     def build_graphql_payload(
         self,
@@ -46,11 +54,11 @@ class GithubGraphQLClient(AbstractGithubClient):
         cursor: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Build a GraphQL payload with query and variables."""
-        vars = variables.copy()
-        vars["first"] = page_size
+
+        variables["first"] = page_size
         if cursor:
-            vars["after"] = cursor
-        return {"query": query, "variables": vars}
+            variables["after"] = cursor
+        return {"query": query, "variables": variables}
 
     async def send_paginated_request(
         self,
@@ -77,10 +85,12 @@ class GithubGraphQLClient(AbstractGithubClient):
             nodes = self._extract_nodes(data, path)
             if not nodes:
                 return
+
             yield nodes
             page_info = self._extract_page_info(data, path)
             if not page_info or not page_info.get("hasNextPage"):
-                return
+                break
+
             cursor = page_info.get("endCursor")
             logger.debug(f"Next page cursor: {cursor}")
 
@@ -88,22 +98,12 @@ class GithubGraphQLClient(AbstractGithubClient):
         keys = path.split(".")
         current = data
         for key in keys:
-            current = current.get(key, {})
-            if not isinstance(current, dict):
-                logger.error(f"Invalid path '{path}' at key '{key}': {current}")
-                return []
-        return current.get("nodes", []) if isinstance(current, dict) else []
+            current = current[key]
+        return current["nodes"]
 
-    def _extract_page_info(
-        self, data: Dict[str, Any], path: str
-    ) -> Optional[Dict[str, Any]]:
+    def _extract_page_info(self, data: Dict[str, Any], path: str) -> Dict[str, Any]:
         keys = path.split(".")
         current = data
         for key in keys:
-            current = current.get(key, {})
-            if not isinstance(current, dict):
-                logger.error(
-                    f"Invalid pageInfo path '{path}' at key '{key}': {current}"
-                )
-                return None
-        return current.get("pageInfo") if isinstance(current, dict) else None
+            current = current[key]
+        return current["pageInfo"]
