@@ -84,7 +84,7 @@ class GithubClientFactory:
                 github_host=ocean.integration_config["github_host"],
                 token=ocean.integration_config["github_token"],
                 app_id=ocean.integration_config["github_app_id"],
-                private_key=ocean.integration_config["github_private_key"],
+                private_key=ocean.integration_config["github_app_private_key"],
             )
 
             self._instances[client_type] = self._clients[client_type](

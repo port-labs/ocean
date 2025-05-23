@@ -1,7 +1,4 @@
 from abc import ABC, abstractmethod
-<<<<<<<< HEAD:integrations/github/github/clients/base_client.py
-from typing import Any, AsyncGenerator, Dict, List, Optional
-========
 from typing import (
     Any,
     AsyncGenerator,
@@ -12,7 +9,6 @@ from typing import (
     Awaitable,
     TYPE_CHECKING,
 )
->>>>>>>> 0bd2d036 (remodel authentication strategy):integrations/github-v2/github/clients/http/base_client.py
 
 from loguru import logger
 import httpx
@@ -29,7 +25,7 @@ class AbstractGithubClient(ABC):
         self,
         organization: str,
         github_host: str,
-        authenticator: AbstractGitHubAuthenticator,
+        authenticator: "AbstractGitHubAuthenticator",
         **kwargs: Any,
     ) -> None:
         self.organization = organization
@@ -40,7 +36,12 @@ class AbstractGithubClient(ABC):
     @property
     async def headers(self) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
-        return (await self.authenticator.get_headers()).as_dict()
+        header = self.authenticator.get_headers().as_dict()
+        return header
+
+    @property
+    @abstractmethod
+    def base_url(self) -> str: ...
 
     async def send_api_request(
         self,
