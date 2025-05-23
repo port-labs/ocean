@@ -2,6 +2,7 @@ from typing import Any
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.rest_client import GithubRestClient
 
 TEST_DATA: dict[str, list[dict[str, Any]]] = {
@@ -14,12 +15,12 @@ TEST_DATA: dict[str, list[dict[str, Any]]] = {
 
 @pytest.mark.asyncio
 class TestGithubRestClient:
-
     async def test_send_paginated_request_single_page(self) -> None:
         client = GithubRestClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=MagicMock(spec=AbstractGitHubAuthenticator),
         )
 
         # Mock response with no next link
@@ -44,6 +45,7 @@ class TestGithubRestClient:
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=MagicMock(spec=AbstractGitHubAuthenticator),
         )
 
         # First response with next link
@@ -79,6 +81,7 @@ class TestGithubRestClient:
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=MagicMock(spec=AbstractGitHubAuthenticator),
         )
 
         # Mock response with empty results
@@ -102,6 +105,7 @@ class TestGithubRestClient:
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=MagicMock(spec=AbstractGitHubAuthenticator),
         )
 
         custom_params = {"type": "public"}

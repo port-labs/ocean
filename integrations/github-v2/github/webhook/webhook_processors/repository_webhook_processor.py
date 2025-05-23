@@ -38,7 +38,7 @@ class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[repo]
             )
 
-        client = await create_github_client()
+        client = create_github_client()
         exporter_factory = ExporterFactory()
         exporter = exporter_factory.get_exporter(ObjectKind.REPOSITORY)(client)
 

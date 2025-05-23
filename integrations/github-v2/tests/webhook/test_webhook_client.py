@@ -2,17 +2,20 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 from typing import Any, Dict, List, AsyncGenerator
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.webhook.webhook_client import GithubWebhookClient
 
 
 @pytest.mark.asyncio
 class TestGithubWebhookClient:
-
-    async def test_get_existing_webhook_found(self) -> None:
+    async def test_get_existing_webhook_found(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         # Mock webhook data
@@ -50,11 +53,14 @@ class TestGithubWebhookClient:
             assert result["id"] == "hook1"
             assert result["config"]["url"] == "https://example.com/integration/webhook"
 
-    async def test_get_existing_webhook_not_found(self) -> None:
+    async def test_get_existing_webhook_not_found(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         # Mock webhook data with no matching URL
@@ -90,11 +96,14 @@ class TestGithubWebhookClient:
 
             assert result is None
 
-    async def test_patch_webhook(self) -> None:
+    async def test_patch_webhook(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         # Test data
@@ -115,11 +124,14 @@ class TestGithubWebhookClient:
                 json_data={"config": config_data},
             )
 
-    async def test_upsert_webhook_create_new(self) -> None:
+    async def test_upsert_webhook_create_new(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
             webhook_secret="test-secret",
         )
 
@@ -128,7 +140,6 @@ class TestGithubWebhookClient:
             patch.object(client, "_get_existing_webhook", AsyncMock(return_value=None)),
             patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
-
             await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify the webhook creation request was made correctly
@@ -149,11 +160,14 @@ class TestGithubWebhookClient:
                 json_data=expected_data,
             )
 
-    async def test_upsert_webhook_existing_needs_update(self) -> None:
+    async def test_upsert_webhook_existing_needs_update(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
             webhook_secret="test-secret",
         )
 
@@ -175,7 +189,6 @@ class TestGithubWebhookClient:
             ),
             patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
         ):
-
             await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify the patch request was made correctly
@@ -187,11 +200,14 @@ class TestGithubWebhookClient:
 
             mock_patch.assert_called_once_with("hook1", expected_config)
 
-    async def test_upsert_webhook_existing_remove_secret(self) -> None:
+    async def test_upsert_webhook_existing_remove_secret(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
             webhook_secret=None,  # No webhook secret in the client
         )
 
@@ -213,7 +229,6 @@ class TestGithubWebhookClient:
             ),
             patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
         ):
-
             await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify the patch request was made correctly to remove secret
@@ -225,11 +240,14 @@ class TestGithubWebhookClient:
 
             mock_patch.assert_called_once_with("hook1", expected_config)
 
-    async def test_upsert_webhook_no_changes_needed(self) -> None:
+    async def test_upsert_webhook_no_changes_needed(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
             webhook_secret="test-secret",
         )
 
@@ -252,19 +270,21 @@ class TestGithubWebhookClient:
             patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
             patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
-
             await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify no API calls were made since no changes were needed
             mock_patch.assert_not_called()
             mock_send.assert_not_called()
 
-    async def test_get_existing_webhook(self) -> None:
+    async def test_get_existing_webhook(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         """Test finding an existing webhook."""
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         # Mock webhooks data
@@ -306,12 +326,15 @@ class TestGithubWebhookClient:
             )
             assert webhook is None
 
-    async def test_upsert_webhook_add_secret(self) -> None:
+    async def test_upsert_webhook_add_secret(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         """Test updating an existing webhook to add a secret."""
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
             webhook_secret="test-secret",
         )
 
@@ -332,7 +355,6 @@ class TestGithubWebhookClient:
             ),
             patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
         ):
-
             await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify the patch webhook call
@@ -344,12 +366,15 @@ class TestGithubWebhookClient:
 
             mock_patch.assert_called_once_with("hook1", expected_config)
 
-    async def test_upsert_webhook_remove_secret(self) -> None:
+    async def test_upsert_webhook_remove_secret(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         """Test updating an existing webhook to remove a secret."""
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
             webhook_secret=None,  # No secret in client
         )
 
@@ -371,7 +396,6 @@ class TestGithubWebhookClient:
             ),
             patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
         ):
-
             await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify the patch webhook call
@@ -382,12 +406,15 @@ class TestGithubWebhookClient:
 
             mock_patch.assert_called_once_with("hook1", expected_config)
 
-    async def test_upsert_webhook_no_changes(self) -> None:
+    async def test_upsert_webhook_no_changes(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         """Test case where existing webhook doesn't need changes."""
         client = GithubWebhookClient(
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
             webhook_secret="test-secret",
         )
 
@@ -410,7 +437,6 @@ class TestGithubWebhookClient:
             patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
             patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
-
             await client.upsert_webhook("https://example.com", ["push", "repository"])
 
             # Verify no API calls were made
