@@ -1,6 +1,7 @@
 import base64
 from typing import Any, AsyncIterator, Optional, Dict
 from urllib.parse import quote
+from http import HTTPStatus
 
 from loguru import logger
 
@@ -24,59 +25,50 @@ class RestClient(HTTPBaseClient):
 
         Yields:
             Batches of resources
+
+        Raises:
+            Exception: If the API request fails
         """
         params_dict = params or {}
         # GitHub Cloud recommends using per_page parameter
-        if "per_page" not in params_dict:
-            params_dict["per_page"] = self.DEFAULT_PAGE_SIZE
+        params_dict["per_page"] = params_dict.get("per_page", self.DEFAULT_PAGE_SIZE)
 
         url = resource_type
 
         while url:
             logger.debug(f"Fetching from {url}")
-            response = await self._client.request(
-                method="GET",
-                url=url if url.startswith("http") else f"{self.base_url}/{url}",
-                headers=self._headers,
-                params=params_dict if not url.startswith("http") else None,
-            )
-            if not response.is_success:
-                try:
-                    response.raise_for_status()
-                except Exception as e:
-                    logger.info(f'{response.status_code} {str(response.content)} {e}')
+            try:
+                response = await self._client.request(
+                    method="GET",
+                    url=url if url.startswith("http") else f"{self.base_url}/{url}",
+                    headers=self._headers,
+                    params=params_dict if not url.startswith("http") else None,
+                )
+                response.raise_for_status()
+            except Exception as e:
+                logger.error(f"Failed to fetch {url}: {str(e)}")
+                raise
 
             batch = response.json()
 
-            # GitHub Cloud returns lists directly for collection endpoints
-            if isinstance(batch, list):
-                if not batch:
-                    break
-                yield batch
-
-                # Get next page URL from Link header
-                links = await self.get_page_links(response)
-                url = links.get("next", "")
-                # Clear params since they're included in the next URL
-                params_dict = None
-            else:
-                # Some endpoints return an object with items
-                items = batch.get("items", [])
-                if not items:
-                    break
-                yield items
-
-                # Handle GitHub Cloud search API pagination which may use different format
-                if "next_page" in batch:
-                    if params_dict is None:
-                        params_dict = {}
-                    params_dict["page"] = batch["next_page"]
-                else:
+            # Handle different response types using match-case
+            match batch:
+                case list() if batch:
+                    yield batch
                     links = await self.get_page_links(response)
                     url = links.get("next", "")
                     params_dict = None
-
-                if not url and not ("next_page" in batch):
+                case dict() if "items" in batch and batch["items"]:
+                    yield batch["items"]
+                    # Handle GitHub Cloud search API pagination
+                    if "next_page" in batch:
+                        params_dict = params_dict or {}
+                        params_dict["page"] = batch["next_page"]
+                    else:
+                        links = await self.get_page_links(response)
+                        url = links.get("next", "")
+                        params_dict = None
+                case _:
                     break
 
     async def get_paginated_org_resource(
@@ -95,6 +87,9 @@ class RestClient(HTTPBaseClient):
 
         Yields:
             Batches of resources
+
+        Raises:
+            Exception: If the API request fails
         """
         path = f"orgs/{org_name}/{resource_type}"
         async for batch in self.get_paginated_resource(path, params=params):
@@ -120,8 +115,16 @@ class RestClient(HTTPBaseClient):
 
         Yields:
             Batches of resources
+
+        Raises:
+            ValueError: If repo_path is not in the correct format
+            Exception: If the API request fails
         """
-        owner, repo = repo_path.split('/', 1)
+        try:
+            owner, repo = repo_path.split('/', 1)
+        except ValueError:
+            raise ValueError(f"Invalid repo_path format: {repo_path}. Expected 'owner/repo'")
+
         encoded_owner = quote(owner, safe="")
         encoded_repo = quote(repo, safe="")
         path = f"repos/{encoded_owner}/{encoded_repo}/{resource_type}"
@@ -145,6 +148,9 @@ class RestClient(HTTPBaseClient):
 
         Returns:
             Dictionary of languages and byte counts
+
+        Raises:
+            Exception: If the API request fails
         """
         encoded_repo_path = quote(repo_path, safe="")
         path = f"repos/{encoded_repo_path}/languages"
@@ -163,6 +169,9 @@ class RestClient(HTTPBaseClient):
 
         Returns:
             File content as string or None if not found
+
+        Raises:
+            Exception: If the API request fails
         """
         encoded_repo_path = quote(repo_path, safe="")
         encoded_file_path = quote(file_path, safe="")
@@ -173,13 +182,12 @@ class RestClient(HTTPBaseClient):
         if not response:
             return None
 
-        # GitHub Cloud returns base64 encoded content
-        if "content" in response and response.get("encoding") == "base64":
-            # GitHub Cloud content might include newlines which need to be removed
-            content = response["content"].replace("\n", "")
-            return base64.b64decode(content).decode("utf-8")
-
-        return None
+        # Use ternary operator for cleaner content decoding
+        return (
+            base64.b64decode(response["content"].replace("\n", "")).decode("utf-8")
+            if "content" in response and response.get("encoding") == "base64"
+            else None
+        )
 
     async def get_file_data(
         self, repo_path: str, file_path: str, ref: str = "main"
@@ -194,6 +202,9 @@ class RestClient(HTTPBaseClient):
 
         Returns:
             Dictionary with file data
+
+        Raises:
+            Exception: If the API request fails
         """
         encoded_repo_path = quote(repo_path, safe="")
         encoded_file_path = quote(file_path, safe="")
@@ -204,10 +215,11 @@ class RestClient(HTTPBaseClient):
         if not response:
             return {}
 
-        # Convert base64 content if it exists
+        # Use ternary operator for content decoding
         if "content" in response and response.get("encoding") == "base64":
-            content = response["content"].replace("\n", "")
-            response["content"] = base64.b64decode(content).decode("utf-8")
+            response["content"] = base64.b64decode(
+                response["content"].replace("\n", "")
+            ).decode("utf-8")
 
         return response
 
@@ -221,21 +233,12 @@ class RestClient(HTTPBaseClient):
         Returns:
             Dictionary of link relations to URLs
         """
-        links = {}
-
         if "Link" not in response.headers:
-            return links
+            return {}
 
-        for link in response.headers["Link"].split(","):
-            parts = link.strip().split(";")
-            if len(parts) < 2:
-                continue
-
-            url = parts[0].strip("<>")
-            rel = parts[1].strip()
-
-            if 'rel="' in rel:
-                rel_type = rel.split('rel="')[1].rstrip('"')
-                links[rel_type] = url
-
-        return links
+        return {
+            rel.split('rel="')[1].rstrip('"'): parts[0].strip("<>")
+            for link in response.headers["Link"].split(",")
+            if len(parts := link.strip().split(";")) >= 2
+            and 'rel="' in (rel := parts[1].strip())
+        }

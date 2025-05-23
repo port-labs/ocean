@@ -1,4 +1,4 @@
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, Tuple
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 from github_cloud.clients.client_factory import create_github_client
@@ -14,7 +14,28 @@ class FileEntityProcessor(JQEntityProcessor):
     Fetches file content from GitHub Cloud repositories.
     """
 
-    async def _search(self, data: dict[str, Any], pattern: str) -> Optional[str]:
+    def _extract_repo_info(self, data: Dict[str, Any]) -> Tuple[str, str]:
+        """
+        Extract repository path and default branch from data.
+
+        Args:
+            data: Entity data
+
+        Returns:
+            Tuple of (repo_path, default_branch)
+
+        Raises:
+            ValueError: If repository path is missing
+        """
+        repo_path = data.get("full_name") or data.get("repository", {}).get("full_name")
+        if not repo_path:
+            logger.error("No repository path found in data")
+            raise ValueError("No repository path found in data")
+
+        ref = data.get("default_branch") or data.get("repository", {}).get("default_branch", "main")
+        return repo_path, ref
+
+    async def _search(self, data: Dict[str, Any], pattern: str) -> Optional[str]:
         """
         Process a file:// reference.
 
@@ -24,21 +45,32 @@ class FileEntityProcessor(JQEntityProcessor):
 
         Returns:
             File content
+
+        Raises:
+            ValueError: If repository path is missing or pattern is invalid
         """
-        repo_path = data.get("full_name") or data.get("repository", {}).get("full_name")
-        if not repo_path:
-            logger.error("No repository path found in data")
-            raise ValueError("No repository path found in data")
+        try:
+            repo_path, ref = self._extract_repo_info(data)
+            client = create_github_client()
 
-        ref = data.get("default_branch") or data.get("repository", {}).get("default_branch", "main")
+            if not pattern.startswith(FILE_PROPERTY_PREFIX):
+                raise ValueError(f"Invalid file pattern format: {pattern}")
 
-        client = create_github_client()
-        file_path = pattern[len(FILE_PROPERTY_PREFIX):]
+            file_path = pattern[len(FILE_PROPERTY_PREFIX):]
+            if not file_path:
+                raise ValueError("Empty file path in pattern")
 
-        logger.info(
-            f"Fetching content for file: '{file_path}' in repository: '{repo_path}' (branch: '{ref}')"
-        )
-        return await client.get_file_content(repo_path, file_path, ref)
+            logger.info(
+                f"Fetching content for file: '{file_path}' in repository: '{repo_path}' (branch: '{ref}')"
+            )
+            return await client.get_file_content(repo_path, file_path, ref)
+
+        except ValueError as e:
+            logger.error(f"Invalid file reference: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to fetch file content: {str(e)}")
+            raise ValueError(f"Failed to fetch file content: {str(e)}")
 
 
 class SearchEntityProcessor(JQEntityProcessor):
@@ -48,29 +80,46 @@ class SearchEntityProcessor(JQEntityProcessor):
     Checks if files matching a search query exist in GitHub Cloud repositories.
     """
 
-    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    def _extract_repo_info(self, data: Dict[str, Any]) -> str:
         """
-        Process a search:// reference.
+        Extract repository path from data.
 
         Args:
             data: Entity data
-            pattern: Search reference pattern
 
         Returns:
-            Boolean indicating if matching files exist
-        """
-        client = create_github_client()
-        repo_path = data.get("full_name") or data.get("repository", {}).get("full_name")
+            Repository path
 
+        Raises:
+            ValueError: If repository path is missing
+        """
+        repo_path = data.get("full_name") or data.get("repository", {}).get("full_name")
         if not repo_path:
             logger.error("No repository path found in data")
             raise ValueError("No repository path found in data")
+        return repo_path
+
+    def _parse_search_pattern(self, pattern: str) -> Tuple[str, Optional[str]]:
+        """
+        Parse search pattern into path and query components.
+
+        Args:
+            pattern: Search reference pattern
+
+        Returns:
+            Tuple of (path, query)
+
+        Raises:
+            ValueError: If pattern is invalid
+        """
+        if not pattern.startswith(SEARCH_PROPERTY_PREFIX):
+            raise ValueError(f"Invalid search pattern format: {pattern}")
 
         search_str = pattern[len(SEARCH_PROPERTY_PREFIX):].strip()
         search_parts = search_str.split("&&")
 
         path = None
-        query = ""
+        query = None
 
         for part in search_parts:
             part = part.strip()
@@ -80,10 +129,37 @@ class SearchEntityProcessor(JQEntityProcessor):
                 query = part[len("query="):].strip()
 
         if not path:
-            logger.error(f"Invalid search string format (missing path): {search_str}")
             raise ValueError("Search string must include a 'path=' component")
 
-        logger.info(
-            f"Checking for file existence in: '{repo_path}', path: '{path}', query: '{query}'"
-        )
-        return await client.file_exists(repo_path, path)
+        return path, query
+
+    async def _search(self, data: Dict[str, Any], pattern: str) -> bool:
+        """
+        Process a search:// reference.
+
+        Args:
+            data: Entity data
+            pattern: Search reference pattern
+
+        Returns:
+            Boolean indicating if matching files exist
+
+        Raises:
+            ValueError: If repository path is missing or pattern is invalid
+        """
+        try:
+            repo_path = self._extract_repo_info(data)
+            path, query = self._parse_search_pattern(pattern)
+            client = create_github_client()
+
+            logger.info(
+                f"Checking for file existence in: '{repo_path}', path: '{path}', query: '{query}'"
+            )
+            return await client.file_exists(repo_path, path)
+
+        except ValueError as e:
+            logger.error(f"Invalid search reference: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to check file existence: {str(e)}")
+            raise ValueError(f"Failed to check file existence: {str(e)}")

@@ -1,6 +1,7 @@
 from typing import Any, Optional, Dict
 import asyncio
 import time
+from http import HTTPStatus
 
 import httpx
 from loguru import logger
@@ -47,6 +48,7 @@ class HTTPBaseClient:
 
         Raises:
             httpx.HTTPError: If the request fails (except 404)
+            httpx.HTTPStatusError: If the request fails with a non-404 status code
         """
         url = f"{self.base_url}/{path.lstrip('/')}"
         logger.debug(f"Sending {method} request to {url}")
@@ -61,21 +63,23 @@ class HTTPBaseClient:
                     json=data,
                 )
 
-                 # Handle rate limiting
-                if response.status_code == 403 and response.headers.get("X-RateLimit-Remaining") == "0":
-                    reset_time = int(response.headers.get("X-RateLimit-Reset", time.time() + 60))
-                    wait_time = reset_time - int(time.time()) + 1
-                    logger.warning(f"Rate limited. Waiting {wait_time}s...")
-                    await asyncio.sleep(wait_time)
-                    continue
-
-                response.raise_for_status()
-                return response.json() if response.content else {}
+                # Handle rate limiting using match-case
+                match response.status_code:
+                    case HTTPStatus.FORBIDDEN if response.headers.get("X-RateLimit-Remaining") == "0":
+                        reset_time = int(response.headers.get("X-RateLimit-Reset", time.time() + 60))
+                        wait_time = reset_time - int(time.time()) + 1
+                        logger.warning(f"Rate limited. Waiting {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    case HTTPStatus.NOT_FOUND:
+                        return {}
+                    case _:
+                        response.raise_for_status()
+                        return response.json() if response.content else {}
 
             except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    return {}
-                if e.response.status_code == 403 and e.response.headers.get("X-RateLimit-Remaining") == "0":
+                # Handle rate limiting in exception case
+                if e.response.status_code == HTTPStatus.FORBIDDEN and e.response.headers.get("X-RateLimit-Remaining") == "0":
                     reset_time = int(e.response.headers.get("X-RateLimit-Reset", time.time() + 60))
                     wait_time = reset_time - int(time.time()) + 1
                     logger.warning(f"Rate limited. Waiting {wait_time}s...")
@@ -83,7 +87,8 @@ class HTTPBaseClient:
                     continue
                 raise
 
-            except httpx.HTTPError:
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error occurred: {str(e)}")
                 raise
 
     async def get_page_links(self, response: httpx.Response) -> Dict[str, str]:
@@ -96,21 +101,12 @@ class HTTPBaseClient:
         Returns:
             Dictionary of link relations to URLs
         """
-        links = {}
-
         if "Link" not in response.headers:
-            return links
+            return {}
 
-        for link in response.headers["Link"].split(","):
-            parts = link.strip().split(";")
-            if len(parts) < 2:
-                continue
-
-            url = parts[0].strip("<>")
-            rel = parts[1].strip()
-
-            if 'rel="' in rel:
-                rel_type = rel.split('rel="')[1].rstrip('"')
-                links[rel_type] = url
-
-        return links
+        return {
+            rel.split('rel="')[1].rstrip('"'): parts[0].strip("<>")
+            for link in response.headers["Link"].split(",")
+            if len(parts := link.strip().split(";")) >= 2
+            and 'rel="' in (rel := parts[1].strip())
+        }

@@ -1,3 +1,5 @@
+from typing import ClassVar, Optional
+from loguru import logger
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -16,9 +18,32 @@ class GitHubCloudAbstractWebhookProcessor(AbstractWebhookProcessor):
     Provides common functionality for processing GitHub Cloud webhook events.
     """
 
-    events: list[str]
-
+    events: ClassVar[list[str]]
     _github_cloud_webhook_client = create_github_client()
+
+    def _get_event_type(self, headers: EventHeaders) -> Optional[str]:
+        """
+        Extract event type from headers.
+
+        Args:
+            headers: Event headers
+
+        Returns:
+            Event type or None if not found
+        """
+        return headers.get("x-github-event", "").lower()
+
+    def _get_signature(self, headers: EventHeaders) -> Optional[str]:
+        """
+        Extract signature from headers.
+
+        Args:
+            headers: Event headers
+
+        Returns:
+            Signature or None if not found
+        """
+        return headers.get("x-hub-signature-256")
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         """
@@ -30,10 +55,17 @@ class GitHubCloudAbstractWebhookProcessor(AbstractWebhookProcessor):
 
         Returns:
             True if authenticated, False otherwise
+
+        Note:
+            In production, implement proper signature verification using X-Hub-Signature-256
         """
-        # GitHub Cloud sends a X-GitHub-Event header with the event name
-        # For simplicity, we'll consider all events authenticated
-        # In production, you'd verify the signature in X-Hub-Signature-256
+        signature = self._get_signature(headers)
+        if not signature:
+            logger.warning("No signature found in webhook headers")
+            return False
+
+        # TODO: Implement proper signature verification
+        # For now, we'll consider all events authenticated
         return True
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
@@ -46,9 +78,18 @@ class GitHubCloudAbstractWebhookProcessor(AbstractWebhookProcessor):
         Returns:
             True if this processor should handle the event, False otherwise
         """
-        # GitHub Cloud sends the event type in X-GitHub-Event header
-        event_type = event.headers.get("x-github-event", "")
-        return event_type in self.events
+        event_type = self._get_event_type(event.headers)
+        if not event_type:
+            logger.warning("No event type found in webhook headers")
+            return False
+
+        should_process = event_type in self.events
+        if should_process:
+            logger.debug(f"Processing {event_type} event with {self.__class__.__name__}")
+        else:
+            logger.debug(f"Skipping {event_type} event - not handled by {self.__class__.__name__}")
+
+        return should_process
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         """
@@ -59,7 +100,16 @@ class GitHubCloudAbstractWebhookProcessor(AbstractWebhookProcessor):
 
         Returns:
             True if valid, False otherwise
+
+        Note:
+            Override in subclasses to implement specific validation logic
         """
-        # Basic validation checking for common fields
-        # Override in subclasses as needed
-        return "repository" in payload
+        if not isinstance(payload, dict):
+            logger.warning("Invalid payload type - expected dict")
+            return False
+
+        if "repository" not in payload:
+            logger.warning("Missing repository in payload")
+            return False
+
+        return True
