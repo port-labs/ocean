@@ -1,5 +1,4 @@
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -24,9 +23,6 @@ from github_cloud.resync_data import (
     resync_teams_with_members,
     resync_members,
 )
-
-
-RESYNC_TEAM_MEMBERS_BATCH_SIZE = 10
 
 
 @ocean.on_start()

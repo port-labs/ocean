@@ -102,4 +102,4 @@ def test_parse_file_content_json_with_comments():
     }
     """
     result = parse_file_content(content, "test.json", "test-context")
-    assert result == content  # Should return raw content as JSON doesn't support comments
+    assert result == content

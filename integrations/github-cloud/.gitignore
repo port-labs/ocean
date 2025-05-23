@@ -68,3 +68,5 @@ log/
 # Poetry
 poetry.lock
 .poetry-cache/
+
+.vscode/
