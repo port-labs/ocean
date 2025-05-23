@@ -10,7 +10,7 @@ from github_cloud.clients.auth_client import AuthClient
 
 
 class HTTPBaseClient:
-    def __init__(self, base_url: str, token: str, endpoint: str = ""):
+    def __init__(self, base_url: str, token: str, endpoint: str = "", client: Optional[httpx.AsyncClient] = None):
         """
         Initialize the base HTTP client for GitHub Cloud API.
 
@@ -18,9 +18,10 @@ class HTTPBaseClient:
             base_url: Base URL for GitHub Cloud API
             token: GitHub Cloud access token
             endpoint: API endpoint to append to base URL
+            client: Optional HTTP client to use (for testing)
         """
         self.token = token
-        self._client = http_async_client
+        self._client = client or http_async_client
         auth_client = AuthClient(token)
         self._headers = auth_client.get_headers()
         self.base_url = f"{base_url.rstrip('/')}/{endpoint.strip('/')}" if endpoint else base_url.rstrip('/')
