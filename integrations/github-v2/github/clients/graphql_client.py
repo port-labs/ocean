@@ -9,17 +9,11 @@ from httpx import Response
 PAGE_SIZE = 25
 
 
-class GraphQLClientError(ExceptionGroup):
-    """Exception raised for GraphQL API errors."""
-
-    def __init__(self, errors: List[Dict[str, Any]]) -> None:
-        self.errors = errors
-        exceptions = [Exception(error.get("message", str(error))) for error in errors]
-        super().__init__("GraphQL query failed", exceptions)
-
-
 class GithubGraphQLClient(AbstractGithubClient):
     """GraphQL API implementation of GitHub client."""
+
+    class GraphQLClientError(Exception):
+        """Exception raised for GraphQL API errors."""
 
     @property
     def base_url(self) -> str:
@@ -28,8 +22,9 @@ class GithubGraphQLClient(AbstractGithubClient):
     def _handle_graphql_errors(self, response: Response) -> None:
         result = response.json()
         if "errors" in result:
-            logger.error(f"GraphQL query errors: {result['errors']}")
-            raise GraphQLClientError(result["errors"])
+            errors = result["errors"]
+            exceptions = [self.GraphQLClientError(error) for error in errors]
+            raise ExceptionGroup("GraphQL errors occurred.", exceptions)
 
     async def send_api_request(
         self,
