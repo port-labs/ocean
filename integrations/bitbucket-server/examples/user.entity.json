@@ -1,0 +1,16 @@
+{
+  "name": "[REDACTED]",
+  "emailAddress": "admin@mail.com",
+  "active": true,
+  "displayName": "Admin",
+  "id": 3,
+  "slug": "[REDACTED]",
+  "type": "NORMAL",
+  "links": {
+    "self": [
+      {
+        "href": "http://localhost:7990/users/[REDACTED]"
+      }
+    ]
+  }
+}

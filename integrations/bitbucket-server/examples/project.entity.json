@@ -1,0 +1,14 @@
+{
+  "key": "PROJ",
+  "id": 1,
+  "name": "Project - Blank",
+  "public": false,
+  "type": "NORMAL",
+  "links": {
+    "self": [
+      {
+        "href": "http://localhost:7990/projects/PROJ"
+      }
+    ]
+  }
+}

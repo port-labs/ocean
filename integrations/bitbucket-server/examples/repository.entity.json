@@ -1,0 +1,89 @@
+{
+  "slug": "repostiroy-3",
+  "id": 3,
+  "name": "Repostiroy 3",
+  "hierarchyId": "0a8dadb07bb606236d8c",
+  "scmId": "git",
+  "state": "AVAILABLE",
+  "statusMessage": "Available",
+  "forkable": true,
+  "project": {
+    "key": "PRO3",
+    "id": 3,
+    "name": "Project Three",
+    "public": false,
+    "type": "NORMAL",
+    "links": {
+      "self": [
+        {
+          "href": "http://localhost:7990/projects/PRO3"
+        }
+      ]
+    }
+  },
+  "public": false,
+  "archived": false,
+  "links": {
+    "clone": [
+      {
+        "href": "ssh://git@localhost:7999/pro3/repostiroy-3.git",
+        "name": "ssh"
+      },
+      {
+        "href": "http://localhost:7990/scm/pro3/repostiroy-3.git",
+        "name": "http"
+      }
+    ],
+    "self": [
+      {
+        "href": "http://localhost:7990/projects/PRO3/repos/repostiroy-3/browse"
+      }
+    ]
+  },
+  "__readme": "",
+  "__latestCommit": {
+    "id": "9534663d88977c0aa5c25249986eae851fd83a8d",
+    "displayId": "9534663d889",
+    "author": {
+      "name": "[REDACTED]",
+      "emailAddress": "admin@mail.com",
+      "active": true,
+      "displayName": "Admin",
+      "id": 3,
+      "slug": "[REDACTED]",
+      "type": "NORMAL",
+      "links": {
+        "self": [
+          {
+            "href": "http://localhost:7990/users/[REDACTED]"
+          }
+        ]
+      }
+    },
+    "authorTimestamp": 1747737706000,
+    "committer": {
+      "name": "[REDACTED]",
+      "emailAddress": "admin@mail.com",
+      "active": true,
+      "displayName": "Admin",
+      "id": 3,
+      "slug": "[REDACTED]",
+      "type": "NORMAL",
+      "links": {
+        "self": [
+          {
+            "href": "http://localhost:7990/users/[REDACTED]"
+          }
+        ]
+      }
+    },
+    "committerTimestamp": 1747737706000,
+    "message": "Chore",
+    "parents": [
+      {
+        "id": "b2c6b12ab6900828c9f352240e676d3e60f77fc1",
+        "displayId": "b2c6b12ab69"
+      }
+    ]
+  }
+}

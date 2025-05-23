@@ -1,0 +1,73 @@
+resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"bitbucketProject"'
+          properties:
+            public: .public
+            type: .type
+            description: .description
+            link: .links.self[0].href
+
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .slug
+          title: .name
+          blueprint: '"bitbucketRepository"'
+          properties:
+            description: .description
+            state: .state
+            forkable: .forkable
+            public: .public
+            link: .links.self[0].href
+            documentation: .__readme
+          relations:
+            project: .project.key
+            latestCommitAuthor: .__latestCommit.author.emailAddress
+
+  - kind: pull-request
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"bitbucketPullRequest"'
+          properties:
+            created_on: .createdDate | (tonumber / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            updated_on: .updatedDate | (tonumber / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            merge_commit: .fromRef.latestCommit
+            state: .state
+            owner: .author.user.emailAddress
+            link: .links.self[0].href
+            destination: .toRef.displayId
+            source: .fromRef.displayId
+            mergedAt: .closedDate as $d | if $d == null then null else ($d / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ")) end
+            reviewers: "[.reviewers[].user.emailAddress]"
+          relations:
+            repository: .toRef.repository.slug
+            participants: "[.participants[].user.emailAddress]"
+
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .emailAddress
+          title: .displayName
+          blueprint: '"bitbucketUser"'
+          properties:
+            username: .name
+            url: .links.self[0].href
+            portUser: .emailAddress

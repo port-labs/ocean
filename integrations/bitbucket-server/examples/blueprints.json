@@ -1,0 +1,245 @@
+[
+    {
+        "identifier": "bitbucketProject",
+        "description": "A software catalog to represent Bitbucket project",
+        "title": "Bitbucket Project",
+        "icon": "BitBucket",
+        "schema": {
+            "properties": {
+                "public": {
+                    "icon": "DefaultProperty",
+                    "title": "Public",
+                    "type": "boolean"
+                },
+                "description": {
+                    "title": "Description",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "type": {
+                    "icon": "DefaultProperty",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "link": {
+                    "title": "Link",
+                    "icon": "DefaultProperty",
+                    "type": "string"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "bitbucketRepository",
+        "description": "A software catalog to represent Bitbucket repositories",
+        "title": "Bitbucket Repository",
+        "icon": "BitBucket",
+        "schema": {
+            "properties": {
+                "forkable": {
+                    "icon": "DefaultProperty",
+                    "title": "Is Forkable",
+                    "type": "boolean"
+                },
+                "description": {
+                    "title": "Description",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "public": {
+                    "icon": "DefaultProperty",
+                    "title": "Is Public",
+                    "type": "boolean"
+                },
+                "state": {
+                    "icon": "DefaultProperty",
+                    "title": "State",
+                    "type": "string"
+                },
+                "link": {
+                    "title": "Link",
+                    "icon": "DefaultProperty",
+                    "type": "string"
+                },
+                "documentation": {
+                    "icon": "DefaultProperty",
+                    "title": "Documentation",
+                    "type": "string",
+                    "format": "markdown"
+                },
+                "swagger_url": {
+                    "title": "Swagger URL",
+                    "type": "string",
+                    "format": "url",
+                    "spec": "async-api",
+                    "icon": "DefaultProperty"
+                },
+                "readme": {
+                    "title": "Readme",
+                    "type": "string",
+                    "format": "markdown",
+                    "icon": "DefaultProperty"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+            "latestCommitAuthor": {
+                "title": "Latest Commit By",
+                "description": "The user that made the most recent commit to the base branch",
+                "target": "bitbucketUser",
+                "required": false,
+                "many": false
+            },
+            "project": {
+                "title": "Project",
+                "target": "bitbucketProject",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "bitbucketPullRequest",
+        "description": "A software catalog to represent Bitbucket pull requests",
+        "title": "Bitbucket Pull Request",
+        "icon": "BitBucket",
+        "schema": {
+            "properties": {
+                "created_on": {
+                    "title": "Created On",
+                    "type": "string",
+                    "format": "date-time",
+                    "icon": "DefaultProperty"
+                },
+                "updated_on": {
+                    "title": "Updated On",
+                    "type": "string",
+                    "format": "date-time",
+                    "icon": "DefaultProperty"
+                },
+                "description": {
+                    "title": "Description",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "state": {
+                    "icon": "DefaultProperty",
+                    "title": "State",
+                    "type": "string",
+                    "enum": [
+                        "OPEN",
+                        "MERGED",
+                        "DECLINED",
+                        "SUPERSEDED"
+                    ],
+                    "enumColors": {
+                        "OPEN": "yellow",
+                        "MERGED": "green",
+                        "DECLINED": "red",
+                        "SUPERSEDED": "purple"
+                    }
+                },
+                "owner": {
+                    "title": "Owner",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "link": {
+                    "title": "Link",
+                    "icon": "DefaultProperty",
+                    "type": "string"
+                },
+                "destination": {
+                    "title": "Destination Branch",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "source": {
+                    "title": "Source Branch",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "reviewers": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Reviewers",
+                    "type": "array",
+                    "icon": "DefaultProperty"
+                },
+                "merge_commit": {
+                    "title": "Merge Commit",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "mergedAt": {
+                    "title": "Merged At",
+                    "type": "string",
+                    "format": "date-time",
+                    "icon": "DefaultProperty"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+            "participants": {
+                "title": "Participants",
+                "description": "Users that contributed to the PR",
+                "target": "bitbucketUser",
+                "required": false,
+                "many": true
+            },
+            "repository": {
+                "title": "Repository",
+                "target": "bitbucketRepository",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "bitbucketUser",
+        "description": "A software catalog to represent Bitbucket users",
+        "title": "Bitbucket User",
+        "icon": "BitBucket",
+        "schema": {
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "title": "Username",
+                    "description": "The username of the user"
+                },
+                "url": {
+                    "title": "URL",
+                    "description": "The link to the user profile",
+                    "icon": "BitBucket",
+                    "type": "string"
+                },
+                "portUser": {
+                    "title": "Port User",
+                    "type": "string",
+                    "icon": "DefaultProperty",
+                    "format": "user"
+                }
+            },
+            "required": [
+                "username"
+            ]
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {}
+    }
+]
