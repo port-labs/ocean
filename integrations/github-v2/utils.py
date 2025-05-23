@@ -1,5 +1,7 @@
 from port_ocean.context.ocean import ocean
 
+from github.helpers.exceptions import MissingCredentials
+
 
 def app_configured() -> bool:
     app_id = ocean.integration_config.get("github_app_id")
@@ -12,6 +14,6 @@ def validate_passed_config() -> None:
     github_token = ocean.integration_config.get("github_token")
 
     if not app_configured() and not github_token:
-        raise ValueError(
+        raise MissingCredentials(
             "When Github app details are not passed, Github Personal Access Token must be passed."
         )
