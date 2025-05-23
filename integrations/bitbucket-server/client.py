@@ -1,8 +1,8 @@
 import re
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional, cast
 
 import httpx
-from aiolimiter import AsyncLimiter  # type: ignore
+from aiolimiter import AsyncLimiter
 from httpx import BasicAuth
 from loguru import logger
 from port_ocean.utils import http_async_client
@@ -98,7 +98,7 @@ class BitbucketClient:
         params: Optional[Dict[str, Any]] = None,
         page_size: int = 25,
         full_response: bool = False,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    ) -> AsyncGenerator[list[Any], None]:
         """
         Fetch paginated resources from the Bitbucket API.
 
@@ -146,7 +146,7 @@ class BitbucketClient:
             Batches of project data
         """
         async for project_batch in self.get_paginated_resource("projects"):
-            yield project_batch
+            yield cast(list[dict[str, Any]], project_batch)
 
     async def _get_projects_with_filter(
         self, projects_filter: set[str]
@@ -227,11 +227,11 @@ class BitbucketClient:
         async for repo_batch in self.get_paginated_resource(
             f"projects/{project_key}/repos"
         ):
-            repositories = []
+            repositories: list[dict[str, Any]] = []
             for repository in repo_batch:
                 repositories.append(
                     await self._enrich_repository_with_readme_and_latest_commit(
-                        repository
+                        cast(dict[str, Any], repository)
                     )
                 )
             yield repositories
@@ -276,7 +276,7 @@ class BitbucketClient:
             f"projects/{project_key}/repos/{repo_slug}/pull-requests",
             params=params,
         ):
-            yield pr_batch
+            yield cast(list[dict[str, Any]], pr_batch)
 
     @cache_iterator_result()
     async def get_pull_requests(
@@ -312,7 +312,7 @@ class BitbucketClient:
             Batches of user data
         """
         async for user_batch in self.get_paginated_resource("users"):
-            yield user_batch
+            yield cast(list[dict[str, Any]], user_batch)
 
     async def get_repository_readme(self, project_key: str, repo_slug: str) -> str:
         """
@@ -325,6 +325,7 @@ class BitbucketClient:
                 file_listing_path, page_size=500
             ):
                 for file_path in batch:
+                    file_path = cast(str, file_path)
                     if "/" not in file_path and README_PATTERN.match(file_path):
                         return file_path
 
@@ -343,7 +344,9 @@ class BitbucketClient:
         async for readme_file_batch in self.get_paginated_resource(
             path=file_path, page_size=500, full_response=True
         ):
-            readme_content += parse_repository_file_response(readme_file_batch)
+            readme_content += parse_repository_file_response(
+                cast(dict[str, Any], readme_file_batch)
+            )
 
         return readme_content
 

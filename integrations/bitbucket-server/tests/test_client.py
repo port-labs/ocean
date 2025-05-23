@@ -26,16 +26,16 @@ async def test_send_port_request(mock_client: BitbucketClient) -> None:
     # Arrange
     expected_response = {"key": "TEST", "name": "Test Project"}
     mock_response = MagicMock(spec=Response)
-    mock_response.json.return_value = expected_response
+    mock_response.json = MagicMock(return_value=expected_response)
     mock_response.raise_for_status = MagicMock()
-    mock_client.client.request.return_value = mock_response
+    mock_client.client.request.return_value = mock_response  # type: ignore[attr-defined]
 
     # Act
     response = await mock_client._send_api_request("GET", "projects/TEST")
 
     # Assert
     assert response == expected_response
-    mock_client.client.request.assert_called_once()
+    mock_client.client.request.assert_called_once()  # type: ignore[attr-defined]
     mock_response.raise_for_status.assert_called_once()
 
 
@@ -53,7 +53,7 @@ async def test_get_paginated_resource(mock_client: BitbucketClient) -> None:
             "isLastPage": True,
         },
     ]
-    mock_client._send_api_request = AsyncMock(side_effect=mock_responses)
+    mock_client._send_api_request = AsyncMock(side_effect=mock_responses)  # type: ignore[method-assign]
 
     # Act
     results = []
@@ -71,7 +71,7 @@ async def test_get_latest_commit(mock_client: BitbucketClient) -> None:
     """Test getting the latest commit for a repository."""
     # Arrange
     mock_commit = {"id": "abc123", "message": "Test commit"}
-    mock_client._send_api_request = AsyncMock(return_value={"values": [mock_commit]})
+    mock_client._send_api_request = AsyncMock(return_value={"values": [mock_commit]})  # type: ignore[method-assign]
 
     # Act
     commit = await mock_client.get_latest_commit("TEST", "test-repo")
@@ -85,7 +85,7 @@ async def test_get_latest_commit(mock_client: BitbucketClient) -> None:
 async def test_healthcheck(mock_client: BitbucketClient) -> None:
     """Test health check functionality."""
     # Arrange
-    mock_client._get_application_properties = AsyncMock(
+    mock_client._get_application_properties = AsyncMock(  # type: ignore[method-assign]
         return_value={"version": "8.8.0"}
     )
 
@@ -97,10 +97,9 @@ async def test_healthcheck(mock_client: BitbucketClient) -> None:
 async def test_healthcheck_failure(mock_client: BitbucketClient) -> None:
     """Test health check failure."""
     # Arrange
-    mock_client._get_application_properties = AsyncMock(
+    mock_client._get_application_properties = AsyncMock(  # type: ignore[method-assign]
         side_effect=Exception("Connection failed")
     )
-
     # Act & Assert
     with pytest.raises(ConnectionError):
         await mock_client.healthcheck()

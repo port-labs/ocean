@@ -26,7 +26,7 @@ async def test_is_version_8_point_7_and_older(
 ) -> None:
     """Test version check functionality."""
     # Arrange
-    mock_client._get_application_properties = AsyncMock(
+    mock_client._get_application_properties = AsyncMock(  # type: ignore[method-assign]
         return_value={"version": "8.7.0"}
     )
 
@@ -41,8 +41,8 @@ async def test_is_version_8_point_7_and_older(
 async def test_setup_webhooks(mock_client: BitbucketServerWebhookClient) -> None:
     """Test webhook setup functionality."""
     # Arrange
-    mock_client.is_version_8_point_7_and_older = AsyncMock(return_value=False)
-    mock_client.create_projects_webhook = AsyncMock()
+    mock_client.is_version_8_point_7_and_older = AsyncMock(return_value=False)  # type: ignore[method-assign]
+    mock_client.create_projects_webhook = AsyncMock()  # type: ignore[method-assign]
 
     # Act
     await mock_client.setup_webhooks({"TEST"})

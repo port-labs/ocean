@@ -6,10 +6,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from integration import ObjectKind  # type: ignore
+from integration import ObjectKind
 from webhook_processors.processors._bitbucket_abstract_webhook_processor import (
     BaseWebhookProcessorMixin,
-)  # type: ignore
+)
 
 
 class PullRequestWebhookProcessor(BaseWebhookProcessorMixin):

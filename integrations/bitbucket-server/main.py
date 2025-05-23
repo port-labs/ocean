@@ -5,17 +5,20 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import BitbucketGenericResourceConfig  # type: ignore
-from integration import BitbucketPullRequestResourceConfig, ObjectKind
-from utils import initialize_client  # type: ignore
-from webhook_processors.processors import (  # type: ignore
+from integration import (
+    BitbucketGenericResourceConfig,
+    BitbucketPullRequestResourceConfig,
+    ObjectKind,
+)
+from utils import initialize_client
+from webhook_processors.processors import (
     ProjectWebhookProcessor,
     PullRequestWebhookProcessor,
     RepositoryWebhookProcessor,
 )
 from webhook_processors.webhook_client import (
     initialize_client as initialize_webhook_client,
-)  # type: ignore
+)
 
 
 @ocean.on_resync(ObjectKind.PROJECT)

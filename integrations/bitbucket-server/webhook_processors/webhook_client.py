@@ -1,13 +1,13 @@
 import asyncio
 import hashlib
 import hmac
-from typing import Any
+from typing import Any, cast
 
 from fastapi import Request
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
-from client import BitbucketClient  # type: ignore
+from client import BitbucketClient
 
 PROJECT_WEBHOOK_EVENTS = [
     "project:modified",
@@ -112,7 +112,7 @@ class BitbucketServerWebhookClient(BitbucketClient):
         webhooks = await self.get_project_webhooks(project_key)
         return any(webhook["url"] == self._get_webhook_url() for webhook in webhooks)
 
-    async def _create_project_webhook(self, project_key: str) -> dict[str, Any]:
+    async def _create_project_webhook(self, project_key: str) -> dict[str, Any] | None:
         """
         Internal method to create a webhook for a project.
 
@@ -126,7 +126,7 @@ class BitbucketServerWebhookClient(BitbucketClient):
             logger.info(
                 f"Webhook for project {project_key} already exists, skipping creation"
             )
-            return
+            return None
 
         webhook_payload = self._create_webhook_payload(project_key)
         webhook = await self._send_api_request(
@@ -195,7 +195,7 @@ class BitbucketServerWebhookClient(BitbucketClient):
 
     async def _create_repository_webhook(
         self, project_key: str, repo_slug: str
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         """
         Internal method to create a webhook for a repository.
 
@@ -210,7 +210,7 @@ class BitbucketServerWebhookClient(BitbucketClient):
             logger.info(
                 f"Webhook for repository {repo_slug} already exists, skipping creation"
             )
-            return
+            return None
 
         webhook_payload = self._create_webhook_payload(
             f"{project_key}-{repo_slug}",
@@ -332,7 +332,8 @@ def initialize_client() -> BitbucketServerWebhookClient:
         base_url=ocean.integration_config["bitbucket_base_url"],
         webhook_secret=ocean.integration_config["bitbucket_webhook_secret"],
         app_host=ocean.app.base_url,
-        is_version_8_7_or_older=ocean.integration_config.get(
-            "bitbucket_is_version_8_point_7_or_older"
+        is_version_8_7_or_older=cast(
+            bool,
+            ocean.integration_config.get("bitbucket_is_version_8_point_7_or_older"),
         ),
     )
