@@ -82,9 +82,6 @@ query RepositoryQuery(
 class GraphQLRepositoryExporter(AbstractGithubExporter[GithubGraphQLClient]):
     """GraphQL exporter for repositories."""
 
-    def get_required_client(self) -> Type[AbstractGithubClient]:
-        return GithubGraphQLClient
-
     async def get_resource[
         ExporterOptionsT: SingleRepositoryOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:

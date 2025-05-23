@@ -111,8 +111,8 @@ class TestRepositoryWebhookProcessor:
             mock_exporter.get_resource.return_value = repo_data
 
             with patch(
-                "github.webhook.webhook_processors.repository_webhook_processor.ExporterFactory.get_exporter",
-                return_value=lambda _: mock_exporter,
+                "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+                return_value=mock_exporter,
             ):
                 result = await repository_webhook_processor.handle_event(
                     payload, resource_config

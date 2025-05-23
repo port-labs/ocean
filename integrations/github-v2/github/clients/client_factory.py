@@ -1,11 +1,18 @@
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, overload, Literal
 from github.clients.rest_client import GithubRestClient
 from github.clients.graphql_client import GithubGraphQLClient
 from github.clients.base_client import AbstractGithubClient
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from github.helpers.utils import GithubClientType
-from github.webhook.webhook_client import GithubWebhookClient
+
+
+def integration_config() -> Dict[str, Any]:
+    return {
+        "token": ocean.integration_config["github_token"],
+        "organization": ocean.integration_config["github_organization"],
+        "github_host": ocean.integration_config["github_host"],
+    }
 
 
 class GithubClientFactory:
@@ -13,7 +20,6 @@ class GithubClientFactory:
     _clients: Dict[GithubClientType, Type[AbstractGithubClient]] = {
         GithubClientType.REST: GithubRestClient,
         GithubClientType.GRAPHQL: GithubGraphQLClient,
-        GithubClientType.WEBHOOK: GithubWebhookClient,
     }
     _instances: Dict[GithubClientType, AbstractGithubClient] = {}
 
@@ -43,13 +49,26 @@ class GithubClientFactory:
                 raise ValueError(f"Invalid client type: {client_type}")
 
             self._instances[client_type] = self._clients[client_type](
-                token=ocean.integration_config["github_token"],
-                organization=ocean.integration_config["github_organization"],
-                github_host=ocean.integration_config["github_host"],
-                **kwargs,
+                **integration_config(),
             )
 
         return self._instances[client_type]
+
+
+@overload
+def create_github_client(
+    client_type: Literal[GithubClientType.REST],
+) -> GithubRestClient: ...
+
+
+@overload
+def create_github_client(client_type: None = None) -> GithubRestClient: ...
+
+
+@overload
+def create_github_client(
+    client_type: Literal[GithubClientType.GRAPHQL],
+) -> GithubGraphQLClient: ...
 
 
 def create_github_client(
