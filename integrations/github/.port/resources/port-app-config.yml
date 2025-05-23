@@ -1,4 +1,3 @@
-deleteDependentEntities: true
 resources:
   - kind: repository
     selector:

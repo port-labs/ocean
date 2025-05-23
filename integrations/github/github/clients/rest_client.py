@@ -41,7 +41,6 @@ class RestClient(HTTPBaseClient):
                 params=params_dict if not url.startswith("http") else None,
             )
 
-            response.raise_for_status()
             batch = response.json()
 
             # GitHub returns lists directly for collection endpoints

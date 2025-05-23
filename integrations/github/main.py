@@ -13,6 +13,8 @@ from intergration import (
     GitHubTeamWithMembersResourceConfig,
     GitHubMemberResourceConfig,
     GitHubPullRequestResourceConfig,
+    GitHubWorkflowResourceConfig,
+    GitHubIssueResourceConfig,
 )
 
 from github.webhook.webhook_processors.repository_webhook_processor import (
