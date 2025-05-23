@@ -1,13 +1,48 @@
-import base64
 from typing import Any, Dict, Type
-from github.clients.rest_client import GithubRestClient
-from github.clients.graphql_client import GithubGraphQLClient
-from github.clients.base_client import AbstractGithubClient
+from github.clients.http.rest_client import GithubRestClient
+from github.clients.http.graphql_client import GithubGraphQLClient
+from github.clients.http.base_client import AbstractGithubClient
 from port_ocean.context.ocean import ocean
 from loguru import logger
-from github.helpers.app import GithubApp
 from github.helpers.utils import GithubClientType
 from github.webhook.webhook_client import GithubWebhookClient
+
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.auth.personal_access_token_authenticator import (
+    PersonalTokenAuthenticator,
+)
+from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
+from github.helpers.exceptions import MissingCredentials
+from typing import Optional
+
+
+class GitHubAuthenticatorFactory:
+    @staticmethod
+    def create(
+        organization: str,
+        github_host: str,
+        token: Optional[str] = None,
+        app_id: Optional[str] = None,
+        private_key: Optional[str] = None,
+    ) -> AbstractGitHubAuthenticator:
+        if token:
+            logger.debug(
+                f"Creating Personal Token Authenticator for {organization} on {github_host}"
+            )
+            return PersonalTokenAuthenticator(token)
+
+        if app_id and private_key:
+            logger.debug(
+                f"Creating GitHub App Authenticator for {organization} on {github_host}"
+            )
+            return GitHubAppAuthenticator(
+                app_id=app_id,
+                private_key=private_key,
+                organization=organization,
+                github_host=github_host,
+            )
+
+        raise MissingCredentials("No valid GitHub credentials provided.")
 
 
 class GithubClientFactory:
@@ -18,47 +53,13 @@ class GithubClientFactory:
         GithubClientType.WEBHOOK: GithubWebhookClient,
     }
     _instances: Dict[GithubClientType, AbstractGithubClient] = {}
-    _gh_app: GithubApp | None = None
-    _gh_app_token: str | None = None
 
     def __new__(cls) -> "GithubClientFactory":
         if cls._instance is None:
             cls._instance = super(GithubClientFactory, cls).__new__(cls)
         return cls._instance
 
-    @property
-    def ocean_config(self) -> dict[str, Any]:
-        app_id = ocean.integration_config.get("app_id")
-        app_private_key = ocean.integration_config.get("app_private_key")
-        token = ocean.integration_config.get("github_token")
-        config = {
-            "organization": ocean.integration_config["github_organization"],
-            "github_host": ocean.integration_config["github_host"],
-        }
-        if app_id:
-            config["app_id"] = app_id
-        if app_private_key:
-            config["app_private_key"] = app_private_key
-        if token:
-            config["token"] = token
-
-        return config
-
-    def gh_app_configured(self) -> bool:
-        return "app_id" in self.ocean_config and "app_private_key" in self.ocean_config
-
-    async def setup_gh_app(self) -> None:
-        if self._gh_app is None:
-            decoded_private_key = base64.b64decode(self.ocean_config["app_private_key"])
-            self._gh_app = GithubApp(
-                organization=self.ocean_config["organization"],
-                github_host=self.ocean_config["github_host"],
-                app_id=self.ocean_config["app_id"],
-                private_key=decoded_private_key,
-            )
-        self._gh_app_token = await self._gh_app.get_token()
-
-    async def get_client(
+    def get_client(
         self, client_type: GithubClientType, **kwargs: Any
     ) -> AbstractGithubClient:
         """Get or create a client instance from Ocean configuration.
@@ -73,20 +74,23 @@ class GithubClientFactory:
             ValueError: If client_type is invalid
         """
 
-        if client_type not in self._clients:
-            logger.error(f"Invalid client type: {client_type}")
-            raise ValueError(f"Invalid client type: {client_type}")
-
         if client_type not in self._instances:
-            if self.gh_app_configured():
-                logger.info("Github app details found, setting up ...")
-                await self.setup_gh_app()
+            if client_type not in self._clients:
+                logger.error(f"Invalid client type: {client_type}")
+                raise ValueError(f"Invalid client type: {client_type}")
+
+            authenticator = GitHubAuthenticatorFactory.create(
+                organization=ocean.integration_config["github_organization"],
+                github_host=ocean.integration_config["github_host"],
+                token=ocean.integration_config["github_token"],
+                app_id=ocean.integration_config["github_app_id"],
+                private_key=ocean.integration_config["github_private_key"],
+            )
 
             self._instances[client_type] = self._clients[client_type](
-                token=self._gh_app_token or self.ocean_config["token"],
-                organization=self.ocean_config["organization"],
-                github_host=self.ocean_config["github_host"],
-                gh_app=self._gh_app,
+                authenticator=authenticator,
+                organization=ocean.integration_config["github_organization"],
+                github_host=ocean.integration_config["github_host"],
                 **kwargs,
             )
 
@@ -110,8 +114,8 @@ class GithubClientFactory:
             return self._clients["rest_app"]
 
 
-async def create_github_client(
+def create_github_client(
     client_type: GithubClientType | None = GithubClientType.REST, **kwargs: Any
 ) -> AbstractGithubClient:
     factory = GithubClientFactory()
-    return await factory.get_client(client_type or GithubClientType.REST, **kwargs)
+    return factory.get_client(client_type or GithubClientType.REST, **kwargs)

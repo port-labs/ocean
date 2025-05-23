@@ -1,6 +1,8 @@
 from typing import Any, Dict, List
 from loguru import logger
-from github.clients.rest_client import GithubRestClient
+import re
+from urllib.parse import urlparse, urlunparse
+from github.clients.http.rest_client import GithubRestClient
 
 PAGE_SIZE = 100
 
@@ -36,7 +38,6 @@ class GithubWebhookClient(GithubRestClient):
     async def _patch_webhook(
         self, webhook_id: str, config_data: dict[str, str]
     ) -> None:
-
         webhook_data = {"config": config_data}
 
         logger.info(f"Patching webhook {webhook_id} to modify config data")

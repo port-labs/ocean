@@ -2,7 +2,7 @@ from typing import Any
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
-from github.clients.rest_client import GithubRestClient
+from github.clients.http.rest_client import GithubRestClient
 
 TEST_DATA: dict[str, list[dict[str, Any]]] = {
     "repositories": [

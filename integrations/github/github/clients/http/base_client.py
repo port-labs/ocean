@@ -1,39 +1,46 @@
 from abc import ABC, abstractmethod
+<<<<<<<< HEAD:integrations/github/github/clients/base_client.py
 from typing import Any, AsyncGenerator, Dict, List, Optional
+========
+from typing import (
+    Any,
+    AsyncGenerator,
+    Dict,
+    List,
+    Optional,
+    Callable,
+    Awaitable,
+    TYPE_CHECKING,
+)
+>>>>>>>> 0bd2d036 (remodel authentication strategy):integrations/github-v2/github/clients/http/base_client.py
 
-from port_ocean.utils import http_async_client
 from loguru import logger
 import httpx
 from httpx import Response
 
-from github.helpers.app import GithubApp
+if TYPE_CHECKING:
+    from github.clients.auth.abstract_authenticator import (
+        AbstractGitHubAuthenticator,
+    )
 
 
 class AbstractGithubClient(ABC):
     def __init__(
         self,
-        token: str,
         organization: str,
         github_host: str,
-        gh_app: GithubApp | None = None,
+        authenticator: AbstractGitHubAuthenticator,
+        **kwargs: Any,
     ) -> None:
-        self.token = token
         self.organization = organization
         self.github_host = github_host
-        self.client = http_async_client
-        self._gh_app = gh_app
+        self.authenticator = authenticator
+        self.kwargs = kwargs
 
     @property
     def headers(self) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
-        return {
-            "Authorization": f"Bearer {self.token}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-
-    def _update_token(self, new_token: str) -> None:
-        self.token = new_token
+        return self.authenticator.get_headers().as_dict()
 
     async def send_api_request(
         self,
@@ -45,7 +52,7 @@ class AbstractGithubClient(ABC):
         """Send request to GitHub API with error handling and rate limiting."""
 
         try:
-            response = await self.client.request(
+            response = await self.authenticator.client.request(
                 method=method,
                 url=resource,
                 params=params,
@@ -61,12 +68,6 @@ class AbstractGithubClient(ABC):
             if e.response.status_code == 404:
                 logger.debug(f"Resource not found at endpoint '{resource}'")
                 return e.response
-
-            if e.response.status_code == 401 and self._gh_app is not None:
-                new_token = await self._gh_app.get_token()
-                self._update_token(new_token)
-                return await self.send_api_request(resource, params, method, json_data)
-
             logger.error(
                 f"GitHub API error for endpoint '{resource}': Status {e.response.status_code}, "
                 f"Method: {method}, Response: {e.response.text}"
