@@ -5,7 +5,6 @@ from github.clients.http.base_client import AbstractGithubClient
 from loguru import logger
 from httpx import Response
 
-
 PAGE_SIZE = 25
 
 
