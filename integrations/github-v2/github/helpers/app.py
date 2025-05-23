@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 import jwt
 import time
 
@@ -24,7 +24,7 @@ class GithubApp:
         self.organization = organization
         self._installation_id: Optional[int] = None
 
-    async def get_token(self) -> str:
+    async def get_token_object(self) -> Dict[str, Any]:
         """
         Initializes the client by fetching the installation ID and token.
         """
@@ -42,7 +42,7 @@ class GithubApp:
             "Authorization": f"Bearer {jwt_token}",
         }
 
-    async def _get_installation_token(self, install_id: int) -> str:
+    async def _get_installation_token(self, install_id: int) -> Dict[str, Any]:
         """
         Fetches an installation access token using a JWT.
         """
@@ -53,8 +53,7 @@ class GithubApp:
 
         r = await http_async_client.post(url, headers=headers)
         r.raise_for_status()
-        data = r.json()
-        return data["token"]
+        return r.json()
 
     async def _get_installation_id(self) -> int:
         """
@@ -78,7 +77,7 @@ class GithubApp:
         payload = {
             "iss": self.app_id,
             "iat": int(time.monotonic()),
-            "exp": int(time.time() + JWT_EXP_DELTA_SECONDS),
+            "exp": int(time.monotonic() + JWT_EXP_DELTA_SECONDS),
         }
 
         token = jwt.encode(payload, self.private_key, algorithm="RS256")

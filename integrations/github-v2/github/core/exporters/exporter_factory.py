@@ -4,7 +4,7 @@ from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
 from github.helpers.utils import ObjectKind
-from github.clients.base_client import AbstractGithubClient
+from github.clients.http.base_client import AbstractGithubClient
 
 
 class ExporterFactory:

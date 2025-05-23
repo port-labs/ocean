@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 import re
 from urllib.parse import urlparse, urlunparse
-from github.clients.rest_client import GithubRestClient
+from github.clients.http.rest_client import GithubRestClient
 
 PAGE_SIZE = 100
 

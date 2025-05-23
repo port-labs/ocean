@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Type
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
-from github.clients.base_client import AbstractGithubClient
+from github.clients.http.base_client import AbstractGithubClient
 from github.core.options import SingleRepositoryOptions
-from github.clients.graphql_client import GithubGraphQLClient
-from github.clients.rest_client import GithubRestClient
+from github.clients.http.graphql_client import GithubGraphQLClient
+from github.clients.http.rest_client import GithubRestClient
 from github.helpers.constants import LIST_REPOSITORY_GQL, SINGLE_REPOSITORY_GQL
 from port_ocean.context.event import event
 

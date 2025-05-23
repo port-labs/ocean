@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Type
-from github.clients.base_client import AbstractGithubClient
+from github.clients.http.base_client import AbstractGithubClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 
