@@ -1,10 +1,48 @@
-from typing import Dict, Type, overload, Literal
-from github.clients.rest_client import GithubRestClient
-from github.clients.graphql_client import GithubGraphQLClient
-from github.clients.base_client import AbstractGithubClient
+from typing import Any, Dict, Type
+from github.clients.http.rest_client import GithubRestClient
+from github.clients.http.graphql_client import GithubGraphQLClient
+from github.clients.http.base_client import AbstractGithubClient
+from port_ocean.context.ocean import ocean
 from loguru import logger
 from github.helpers.utils import GithubClientType
-from github.clients.utils import integration_config
+from github.webhook.webhook_client import GithubWebhookClient
+
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.auth.personal_access_token_authenticator import (
+    PersonalTokenAuthenticator,
+)
+from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
+from github.helpers.exceptions import MissingCredentials
+from typing import Optional
+
+
+class GitHubAuthenticatorFactory:
+    @staticmethod
+    def create(
+        organization: str,
+        github_host: str,
+        token: Optional[str] = None,
+        app_id: Optional[str] = None,
+        private_key: Optional[str] = None,
+    ) -> AbstractGitHubAuthenticator:
+        if token:
+            logger.debug(
+                f"Creating Personal Token Authenticator for {organization} on {github_host}"
+            )
+            return PersonalTokenAuthenticator(token)
+
+        if app_id and private_key:
+            logger.debug(
+                f"Creating GitHub App Authenticator for {organization} on {github_host}"
+            )
+            return GitHubAppAuthenticator(
+                app_id=app_id,
+                private_key=private_key,
+                organization=organization,
+                github_host=github_host,
+            )
+
+        raise MissingCredentials("No valid GitHub credentials provided.")
 
 
 class GithubClientFactory:
@@ -12,6 +50,7 @@ class GithubClientFactory:
     _clients: Dict[GithubClientType, Type[AbstractGithubClient]] = {
         GithubClientType.REST: GithubRestClient,
         GithubClientType.GRAPHQL: GithubGraphQLClient,
+        GithubClientType.WEBHOOK: GithubWebhookClient,
     }
     _instances: Dict[GithubClientType, AbstractGithubClient] = {}
 
@@ -20,7 +59,9 @@ class GithubClientFactory:
             cls._instance = super(GithubClientFactory, cls).__new__(cls)
         return cls._instance
 
-    def get_client(self, client_type: GithubClientType) -> AbstractGithubClient:
+    def get_client(
+        self, client_type: GithubClientType, **kwargs: Any
+    ) -> AbstractGithubClient:
         """Get or create a client instance from Ocean configuration.
 
         Args:
@@ -38,31 +79,40 @@ class GithubClientFactory:
                 logger.error(f"Invalid client type: {client_type}")
                 raise ValueError(f"Invalid client type: {client_type}")
 
-            self._instances[client_type] = self._clients[client_type](
-                **integration_config(),
+            authenticator = GitHubAuthenticatorFactory.create(
+                organization=ocean.integration_config["github_organization"],
+                github_host=ocean.integration_config["github_host"],
+                token=ocean.integration_config.get("github_token"),
+                app_id=ocean.integration_config.get("github_app_id"),
+                private_key=ocean.integration_config.get("github_app_private_key"),
             )
 
-        return self._instances[client_type]
+            self._instances[client_type] = self._clients[client_type](
+                **integration_config(authenticator),
+            )
+
+            return token_app
+        else:
+            return self._clients["rest_token"]
+
+    async def _get_app_client(self) -> AbstractGithubClient:
+        if "rest_app" not in self._clients:
+            decoded_private_key = base64.b64decode(self.ocean_config["app_private_key"])
+
+            rest_app = self._clients["rest_app"] = await GithubAppRestClient(
+                organization=self.ocean_config["organization"],
+                github_host=self.ocean_config["github_host"],
+                app_id=self.ocean_config["app_id"],
+                private_key=decoded_private_key,
+            ).set_up()
+
+            return rest_app
+        else:
+            return self._clients["rest_app"]
 
 
-@overload
 def create_github_client(
-    client_type: Literal[GithubClientType.REST],
-) -> GithubRestClient: ...
-
-
-@overload
-def create_github_client(client_type: None = None) -> GithubRestClient: ...
-
-
-@overload
-def create_github_client(
-    client_type: Literal[GithubClientType.GRAPHQL],
-) -> GithubGraphQLClient: ...
-
-
-def create_github_client(
-    client_type: GithubClientType | None = GithubClientType.REST,
+    client_type: GithubClientType | None = GithubClientType.REST, **kwargs: Any
 ) -> AbstractGithubClient:
     factory = GithubClientFactory()
-    return factory.get_client(client_type or GithubClientType.REST)
+    return factory.get_client(client_type or GithubClientType.REST, **kwargs)

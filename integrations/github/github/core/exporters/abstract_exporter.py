@@ -12,6 +12,6 @@ class AbstractGithubExporter[T: AbstractGithubClient](ABC):
     async def get_resource[AnyOption: Any](self, options: AnyOption) -> RAW_ITEM: ...
 
     @abstractmethod
-    def get_paginated_resources[AnyOption: Any](
-        self, options: Optional[AnyOption] = None
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
+    def get_paginated_resources[
+        AnyOption: Any
+    ](self, options: Optional[AnyOption] = None) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
