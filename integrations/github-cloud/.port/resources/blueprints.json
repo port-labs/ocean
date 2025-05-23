@@ -153,5 +153,217 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "githubWorkflowRun",
+    "title": "GitHub Workflow Run",
+    "icon": "GitHub",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "completed",
+            "in_progress",
+            "queued",
+            "waiting",
+            "pending"
+          ],
+          "enumColors": {
+            "completed": "green",
+            "in_progress": "blue",
+            "queued": "yellow",
+            "waiting": "orange",
+            "pending": "gray"
+          }
+        },
+        "conclusion": {
+          "title": "Conclusion",
+          "type": "string",
+          "enum": [
+            "success",
+            "failure",
+            "cancelled",
+            "skipped",
+            "neutral",
+            "timed_out"
+          ],
+          "enumColors": {
+            "success": "green",
+            "failure": "red",
+            "cancelled": "gray",
+            "skipped": "yellow",
+            "neutral": "blue",
+            "timed_out": "orange"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "duration": {
+          "title": "Duration (seconds)",
+          "type": "number"
+        },
+        "url": {
+          "title": "URL",
+          "format": "url",
+          "type": "string"
+        },
+        "headBranch": {
+          "title": "Head Branch",
+          "type": "string"
+        },
+        "headSha": {
+          "title": "Head SHA",
+          "type": "string"
+        },
+        "triggeredBy": {
+          "title": "Triggered By",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "githubRepository",
+        "required": true,
+        "many": false
+      },
+      "workflowJobs": {
+        "title": "Workflow Jobs",
+        "target": "githubWorkflowJob",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "githubWorkflowJob",
+    "title": "GitHub Workflow Job",
+    "icon": "GitHub",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "completed",
+            "in_progress",
+            "queued",
+            "waiting",
+            "pending"
+          ],
+          "enumColors": {
+            "completed": "green",
+            "in_progress": "blue",
+            "queued": "yellow",
+            "waiting": "orange",
+            "pending": "gray"
+          }
+        },
+        "conclusion": {
+          "title": "Conclusion",
+          "type": "string",
+          "enum": [
+            "success",
+            "failure",
+            "cancelled",
+            "skipped",
+            "neutral",
+            "timed_out"
+          ],
+          "enumColors": {
+            "success": "green",
+            "failure": "red",
+            "cancelled": "gray",
+            "skipped": "yellow",
+            "neutral": "blue",
+            "timed_out": "orange"
+          }
+        },
+        "startedAt": {
+          "title": "Started At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "title": "Completed At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "duration": {
+          "title": "Duration (seconds)",
+          "type": "number"
+        },
+        "runnerName": {
+          "title": "Runner Name",
+          "type": "string"
+        },
+        "runnerGroup": {
+          "title": "Runner Group",
+          "type": "string"
+        },
+        "steps": {
+          "title": "Steps",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "conclusion": {
+                "type": "string"
+              },
+              "number": {
+                "type": "number"
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "completedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "githubRepository",
+        "required": true,
+        "many": false
+      },
+      "workflowRun": {
+        "title": "Workflow Run",
+        "target": "githubWorkflowRun",
+        "required": true,
+        "many": false
+      }
+    }
   }
 ]

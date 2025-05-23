@@ -11,6 +11,9 @@ from github_cloud.webhook.webhook_processors.repository_webhook_processor import
 from github_cloud.webhook.webhook_processors.pull_request_webhook_processor import (
     PullRequestWebhookProcessor,
 )
+from github_cloud.webhook.webhook_processors.workflow_webhook_processor import (
+    WorkflowWebhookProcessor,
+)
 from github_cloud.webhook.webhook_factory.repository_webhook_factory import (
     RepositoryWebhookFactory,
 )
@@ -22,6 +25,8 @@ from github_cloud.resync_data import (
     resync_pull_requests,
     resync_teams_with_members,
     resync_members,
+    resync_workflow_runs,
+    resync_workflow_jobs,
 )
 
 
@@ -171,6 +176,52 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise
 
 
+@ocean.on_resync(ObjectKind.WORKFLOW_RUN)
+async def on_resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Resync GitHub workflow runs.
+
+    Args:
+        kind: Entity kind
+
+    Yields:
+        Batches of workflow runs
+
+    Raises:
+        Exception: If workflow run sync fails
+    """
+    try:
+        client = create_github_client()
+        async for runs_batch in resync_workflow_runs(client):
+            yield runs_batch
+    except Exception as e:
+        logger.error(f"Failed to sync workflow runs: {str(e)}")
+        raise
+
+
+@ocean.on_resync(ObjectKind.WORKFLOW_JOB)
+async def on_resync_workflow_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Resync GitHub workflow jobs.
+
+    Args:
+        kind: Entity kind
+
+    Yields:
+        Batches of workflow jobs
+
+    Raises:
+        Exception: If workflow job sync fails
+    """
+    try:
+        client = create_github_client()
+        async for jobs_batch in resync_workflow_jobs(client):
+            yield jobs_batch
+    except Exception as e:
+        logger.error(f"Failed to sync workflow jobs: {str(e)}")
+        raise
+
+
 @ocean.on_resync()
 async def debug_handler(kind: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """
@@ -185,7 +236,7 @@ async def debug_handler(kind: str) -> AsyncGenerator[List[Dict[str, Any]], None]
     logger.info(f"Port requested sync for unknown kind: {kind}")
     yield []
 
-
+ocean.add_webhook_processor("/hook/{owner}/{repo}", WorkflowWebhookProcessor)
 ocean.add_webhook_processor("/hook/org/{org_name}", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", PullRequestWebhookProcessor)

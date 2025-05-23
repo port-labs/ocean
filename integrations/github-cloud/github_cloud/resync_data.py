@@ -213,3 +213,75 @@ async def resync_members(
     except Exception as e:
         logger.error(f"Failed to sync members: {str(e)}")
         raise
+
+
+async def resync_workflow_runs(
+    client: GitHubCloudClient,
+) -> AsyncIterator[List[Dict[str, Any]]]:
+    """
+    Resync workflow runs from GitHub Cloud.
+
+    Args:
+        client: GitHub Cloud client instance
+
+    Yields:
+        Batches of workflow run data
+
+    Note:
+        The function fetches workflow runs for each repository and enriches
+        them with repository information.
+    """
+    try:
+        async for repos_batch in client.get_repositories():
+            logger.info(f"Processing batch of {len(repos_batch)} repositories for workflow runs")
+
+            for repo in repos_batch:
+                async for runs_batch in client.get_repository_resource(
+                    [repo], "actions/runs"
+                ):
+                    enriched_runs = [
+                        {**run, "repository": repo}
+                        for run in runs_batch
+                    ]
+                    yield enriched_runs
+    except Exception as e:
+        logger.error(f"Failed to sync workflow runs: {str(e)}")
+        raise
+
+
+async def resync_workflow_jobs(
+    client: GitHubCloudClient,
+) -> AsyncIterator[List[Dict[str, Any]]]:
+    """
+    Resync workflow jobs from GitHub Cloud.
+
+    Args:
+        client: GitHub Cloud client instance
+
+    Yields:
+        Batches of workflow job data
+
+    Note:
+        The function fetches jobs for each workflow run and enriches
+        them with repository and run information.
+    """
+    try:
+        async for repos_batch in client.get_repositories():
+            logger.info(f"Processing batch of {len(repos_batch)} repositories for workflow jobs")
+
+            for repo in repos_batch:
+                async for runs_batch in client.get_repository_resource(
+                    [repo], "actions/runs"
+                ):
+                    for run in runs_batch:
+                        async for jobs_batch in client.get_repository_resource(
+                            [repo], f"actions/runs/{run['id']}/jobs"
+                        ):
+                            enriched_jobs = [
+                                {**job, "repository": repo, "workflow_run": run}
+                                for job in jobs_batch
+                            ]
+                            yield enriched_jobs
+    except Exception as e:
+        logger.error(f"Failed to sync workflow jobs: {str(e)}")
+        raise

@@ -63,7 +63,6 @@ class HTTPBaseClient:
                     json=data,
                 )
 
-                # Handle rate limiting using match-case
                 match response.status_code:
                     case HTTPStatus.FORBIDDEN if response.headers.get("X-RateLimit-Remaining") == "0":
                         reset_time = int(response.headers.get("X-RateLimit-Reset", time.time() + 60))
@@ -74,22 +73,20 @@ class HTTPBaseClient:
                     case HTTPStatus.NOT_FOUND:
                         return {}
                     case _:
-                        response.raise_for_status()
+                        if response.status_code >= 400:
+                            logger.error(f"HTTP error occurred: {response.status_code} - {response.text}")
                         return response.json() if response.content else {}
 
             except httpx.HTTPStatusError as e:
-                # Handle rate limiting in exception case
                 if e.response.status_code == HTTPStatus.FORBIDDEN and e.response.headers.get("X-RateLimit-Remaining") == "0":
                     reset_time = int(e.response.headers.get("X-RateLimit-Reset", time.time() + 60))
                     wait_time = reset_time - int(time.time()) + 1
                     logger.warning(f"Rate limited. Waiting {wait_time}s...")
                     await asyncio.sleep(wait_time)
                     continue
-                raise
 
             except httpx.HTTPError as e:
                 logger.error(f"HTTP error occurred: {str(e)}")
-                raise
 
     async def get_page_links(self, response: httpx.Response) -> Dict[str, str]:
         """

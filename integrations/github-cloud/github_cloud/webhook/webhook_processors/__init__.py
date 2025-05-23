@@ -1,9 +1,9 @@
-from github_cloud.webhook.webhook_processors._github_abstract_webhook_processor import GitHubCloudAbstractWebhookProcessor
-from github_cloud.webhook.webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
-from github_cloud.webhook.webhook_processors.pull_request_webhook_processor import PullRequestWebhookProcessor
+from .repository_webhook_processor import RepositoryWebhookProcessor
+from .pull_request_webhook_processor import PullRequestWebhookProcessor
+from .workflow_webhook_processor import WorkflowWebhookProcessor
 
 __all__ = [
-    "GitHubCloudAbstractWebhookProcessor",
     "RepositoryWebhookProcessor",
     "PullRequestWebhookProcessor",
+    "WorkflowWebhookProcessor",
 ]

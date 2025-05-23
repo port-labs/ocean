@@ -1,7 +1,7 @@
 import asyncio
 from functools import partial
 
-from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
+from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union, Dict, List
 from urllib.parse import quote
 
 from loguru import logger
@@ -103,39 +103,82 @@ class GitHubCloudClient:
         ):
             yield orgs_batch
 
-    async def get_workflow_run(
-        self, repo_path: str, run_id: int
-    ) -> dict[str, Any]:
+    async def get_workflow_run(self, repo_full_name: str, run_id: int) -> Optional[Dict[str, Any]]:
         """
         Get a workflow run by ID.
 
         Args:
-            repo_path: Repository full name (owner/repo)
+            repo_full_name: Repository full name (owner/repo)
             run_id: Workflow run ID
 
         Returns:
-            Workflow run data
+            Workflow run data or None if not found
         """
-        return await self.rest.send_api_request(
-            "GET", f"repos/{repo_path}/actions/runs/{run_id}"
-        )
+        try:
+            return await self.rest.send_api_request(
+                "GET", f"repos/{repo_full_name}/actions/runs/{run_id}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to get workflow run {run_id} for {repo_full_name}: {str(e)}")
+            return None
 
-    async def get_workflow_job(
-        self, repo_path: str, job_id: int
-    ) -> dict[str, Any]:
+    async def get_workflow_job(self, repo_full_name: str, job_id: int) -> Optional[Dict[str, Any]]:
         """
         Get a workflow job by ID.
 
         Args:
-            repo_path: Repository full name (owner/repo)
-            job_id: Job ID
+            repo_full_name: Repository full name (owner/repo)
+            job_id: Workflow job ID
 
         Returns:
-            Workflow job data
+            Workflow job data or None if not found
         """
-        return await self.rest.send_api_request(
-            "GET", f"repos/{repo_path}/actions/jobs/{job_id}"
-        )
+        try:
+            return await self.rest.send_api_request(
+                "GET", f"repos/{repo_full_name}/actions/jobs/{job_id}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to get workflow job {job_id} for {repo_full_name}: {str(e)}")
+            return None
+
+    async def get_workflow_runs(self, repo_full_name: str) -> AsyncIterator[List[Dict[str, Any]]]:
+        """
+        Get workflow runs for a repository.
+
+        Args:
+            repo_full_name: Repository full name (owner/repo)
+
+        Yields:
+            Batches of workflow runs
+        """
+        try:
+            async for runs_batch in self.rest.get_paginated_repository_resource(
+                repo_full_name, "actions/runs"
+            ):
+                yield runs_batch
+        except Exception as e:
+            logger.error(f"Failed to get workflow runs for {repo_full_name}: {str(e)}")
+            yield []
+
+    async def get_workflow_jobs(self, repo_full_name: str, run_id: int) -> AsyncIterator[List[Dict[str, Any]]]:
+        """
+        Get workflow jobs for a run.
+
+        Args:
+            repo_full_name: Repository full name (owner/repo)
+            run_id: Workflow run ID
+
+        Yields:
+            Batches of workflow jobs
+        """
+        try:
+            async for jobs_batch in self.rest.get_paginated_repository_resource(
+                repo_full_name, f"actions/runs/{run_id}/jobs"
+            ):
+                yield jobs_batch
+        except Exception as e:
+            logger.error(f"Failed to get workflow jobs for run {run_id} in {repo_full_name}: {str(e)}")
+            yield []
 
     async def get_team_member(
         self, org_name: str, team_slug: str, username: str
@@ -572,3 +615,41 @@ class GitHubCloudClient:
             members.extend(members_batch)
         org["team_members"] = members
         return org
+
+    async def get_single_workflow_run(self, repo_full_name: str, run_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a single workflow run by ID.
+
+        Args:
+            repo_full_name: Repository full name (owner/repo)
+            run_id: Workflow run ID
+
+        Returns:
+            Workflow run data or None if not found
+        """
+        try:
+            return await self.rest.send_api_request(
+                "GET", f"repos/{repo_full_name}/actions/runs/{run_id}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to get workflow run {run_id} for {repo_full_name}: {str(e)}")
+            return None
+
+    async def get_single_workflow_job(self, repo_full_name: str, job_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a single workflow job by ID.
+
+        Args:
+            repo_full_name: Repository full name (owner/repo)
+            job_id: Workflow job ID
+
+        Returns:
+            Workflow job data or None if not found
+        """
+        try:
+            return await self.rest.send_api_request(
+                "GET", f"repos/{repo_full_name}/actions/jobs/{job_id}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to get workflow job {job_id} for {repo_full_name}: {str(e)}")
+            return None

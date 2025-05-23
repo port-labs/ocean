@@ -67,3 +67,66 @@ resources:
             reviewers: .requested_reviewers | map(.login)
           relations:
             repository: .repository.full_name
+  - kind: workflow-run
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"githubWorkflowRun"'
+          properties:
+            status: .status
+            conclusion: .conclusion
+            createdAt: .created_at
+            updatedAt: .updated_at
+            duration: >-
+              (.created_at as $createdAt | .updated_at as $updatedAt | ($createdAt
+              | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)
+              as $createdTimestamp | ($updatedAt | sub("\\..*Z$"; "Z") |
+              strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $updatedTimestamp |
+              if $updatedTimestamp == null then null else
+              ($updatedTimestamp - $createdTimestamp) end)
+            url: .html_url
+            headBranch: .head_branch
+            headSha: .head_sha
+            triggeredBy: .triggering_actor.login
+          relations:
+            repository: .repository.full_name
+            workflowJobs: .jobs | map(.id | tostring)
+  - kind: workflow-job
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"githubWorkflowJob"'
+          properties:
+            status: .status
+            conclusion: .conclusion
+            startedAt: .started_at
+            completedAt: .completed_at
+            duration: >-
+              (.started_at as $startedAt | .completed_at as $completedAt | ($startedAt
+              | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)
+              as $startedTimestamp | ($completedAt | sub("\\..*Z$"; "Z") |
+              strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $completedTimestamp |
+              if $completedTimestamp == null then null else
+              ($completedTimestamp - $startedTimestamp) end)
+            runnerName: .runner_name
+            runnerGroup: .runner_group_name
+            steps: >-
+              .steps | map({
+                "name": .name,
+                "status": .status,
+                "conclusion": .conclusion,
+                "number": .number,
+                "startedAt": .started_at,
+                "completedAt": .completed_at
+              })
+          relations:
+            repository: .repository.full_name
+            workflowRun: .run_id | tostring
