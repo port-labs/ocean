@@ -9,7 +9,13 @@ from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
+from github.webhook.webhook_processors.deployment_webhook_processor import (
+    DeploymentWebhookProcessor,
+)
 from github.webhook.webhook_client import GithubWebhookClient
+from github.core.options import ListDeploymentsOptions, ListEnvironmentsOptions
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+
 
 
 @ocean.on_start()
@@ -50,4 +56,56 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield repositories
 
 
+@ocean.on_resync(ObjectKind.DEPLOYMENT)
+async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all deployments in the organization."""
+    logger.info(f"Starting resync for kind: {kind}")
+    
+    rest_client = create_github_client()
+    exporter_factory = ExporterFactory()
+
+    repository_exporter = exporter_factory.get_exporter(ObjectKind.REPOSITORY)(rest_client)
+    deployment_exporter = exporter_factory.get_exporter(ObjectKind.DEPLOYMENT)(rest_client)
+
+
+    async for repositories in repository_exporter.get_paginated_resources():
+        tasks = [
+            deployment_exporter.get_paginated_resources(
+                ListDeploymentsOptions(
+                    repo_name=repo["name"],
+                )
+            )
+            for repo in repositories
+        ]
+        async for deployments in stream_async_iterators_tasks(*tasks):
+            yield deployments
+
+ 
+
+@ocean.on_resync(ObjectKind.ENVIRONMENT)
+async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all environments in the organization."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    exporter_factory = ExporterFactory()
+    repository_exporter = exporter_factory.get_exporter(ObjectKind.REPOSITORY)(rest_client)
+    environment_exporter = exporter_factory.get_exporter(ObjectKind.ENVIRONMENT)(rest_client)
+
+    async for repositories in repository_exporter.get_paginated_resources():
+        tasks = [
+            environment_exporter.get_paginated_resources(
+                ListEnvironmentsOptions(
+                    repo_name=repo["name"],
+                )
+            )
+            for repo in repositories
+        ]
+        async for environments in stream_async_iterators_tasks(*tasks):
+            print("environments", environments)
+            yield environments
+
+
+
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", DeploymentWebhookProcessor)

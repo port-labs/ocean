@@ -1,6 +1,10 @@
 from typing import Dict, Type
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.exporters.repository_exporter import RestRepositoryExporter
+from github.core.exporters.repository_exporter import (
+    RestRepositoryExporter,
+)
+from github.core.exporters.environment_exporter import RestEnvironmentExporter
+from github.core.exporters.deployment_exporter import RestDeploymentExporter
 from github.helpers.utils import ObjectKind
 from github.clients.base_client import AbstractGithubClient
 
@@ -13,6 +17,8 @@ class ExporterFactory:
             ObjectKind, Type[AbstractGithubExporter[AbstractGithubClient]]
         ] = {
             ObjectKind.REPOSITORY: RestRepositoryExporter,
+            ObjectKind.ENVIRONMENT: RestEnvironmentExporter,
+            ObjectKind.DEPLOYMENT: RestDeploymentExporter,
             # Add more mappings as needed
         }
 

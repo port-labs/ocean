@@ -6,7 +6,7 @@ import re
 from urllib.parse import urlparse, urlunparse
 
 
-PAGE_SIZE = 100
+PAGE_SIZE = 1
 
 
 class GithubRestClient(AbstractGithubClient):
@@ -54,6 +54,7 @@ class GithubRestClient(AbstractGithubClient):
         logger.info(f"Starting pagination for {method} {resource}")
 
         while True:
+            print("params",resource, params)
             response = await self.send_api_request(
                 resource, method=method, params=params
             )

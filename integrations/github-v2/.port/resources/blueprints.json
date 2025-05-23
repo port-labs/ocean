@@ -35,5 +35,100 @@
             },
             "required": []
         }
+    },
+    {
+        "identifier": "deployment",
+        "title": "Deployment",
+        "icon": "Deployment",
+        "schema": {
+            "properties": {
+                "description": {
+                    "title": "Description",
+                    "type": "string"
+                },
+                "ref": {
+                    "title": "Ref",
+                    "type": "string"
+                },
+                "sha": {
+                    "title": "Sha",
+                    "type": "string"
+                },
+                "transientEnvironment": {
+                    "title": "Transient Running Service",
+                    "type": "boolean"
+                },
+                "productionEnvironment": {
+                    "title": "Production Running Service",
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "title": "Created At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "url": {
+                    "title": "URL",
+                    "type": "string",
+                    "icon": "Link",
+                    "format": "url"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+            "runningService": {
+                "title": "Running Service",
+                "target": "githubRepoEnvironment",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "githubRepoEnvironment",
+        "title": "Running Service",
+        "icon": "Environment",
+        "schema": {
+            "properties": {
+                "url": {
+                    "icon": "DefaultProperty",
+                    "title": "URL",
+                    "type": "string",
+                    "format": "url"
+                },
+                "createdAt": {
+                    "title": "Created At",
+                    "type": "string",
+                    "format": "date-time",
+                    "icon": "DefaultProperty"
+                },
+                "updatedAt": {
+                    "title": "Updated At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "protectedBranches": {
+                    "title": "Protected Branches",
+                    "type": "boolean"
+                },
+                "customBranchPolicies": {
+                    "title": "Custom Branch Policies",
+                    "type": "boolean"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+            "repository": {
+                "target": "githubRepository",
+                "required": true,
+                "many": false
+            }
+        }
     }
 ]
