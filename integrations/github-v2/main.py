@@ -8,7 +8,7 @@ import asyncio
 
 from github.clients.client_factory import create_github_client
 from github.helpers.utils import ObjectKind
-from intergration import (
+from integration import (
     RepositoryResourceConfig,
     GitHubTeamWithMembersResourceConfig,
     GitHubMemberResourceConfig,

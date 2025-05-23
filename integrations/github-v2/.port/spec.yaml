@@ -1,5 +1,5 @@
-description: GitHub integration for Port Ocean
-title: GitHub
+description: A GitHub integration for Port Ocean
+title: JGitHub
 icon: GitHub
 features:
   - type: exporter
@@ -18,7 +18,7 @@ configurations:
     description: 'The GitHub token to authenticate with the GitHub API.'
     sensitive: true
   - name: githubHost
-    required: true
+    required: false
     type: url
     default: https://api.github.com
     description: The host of the GitHub API. If not specified, the default will be https://api.github.com.

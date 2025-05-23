@@ -1,4 +1,4 @@
-# Changelog - Ocean - github
+# Changelog - Ocean - github-v2
 
 All notable changes to this project will be documented in this file.
 

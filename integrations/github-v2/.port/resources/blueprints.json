@@ -33,14 +33,13 @@
   {
     "identifier": "githubMember",
     "title": "GitHub Member",
-    "icon": "GitHub",
+    "icon": "User",
     "schema": {
       "properties": {
-        "email": {
+        "name": {
           "type": "string",
-          "title": "Email",
-          "format": "email",
-          "description": "The member's email address"
+          "title": "Username",
+          "description": "The member's GitHub username"
         },
         "url": {
           "type": "string",
@@ -142,32 +141,29 @@
     "icon": "GitVersion",
     "schema": {
       "properties": {
+        "title": {
+        "title": "Title",
+        "type": "string",
+        "description": "The title of the issue"
+        },
+        "state": {
+        "title": "State",
+        "type": "string",
+        "enum": ["open", "closed"],
+        "enumColors": {
+          "open": "green",
+          "closed": "red"
+          },
+        "description": "Current state of the issue"
+        },
         "createdAt": {
           "title": "Created At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "title": "Updated At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "closedAt": {
-          "title": "Closed At",
           "type": "string",
           "format": "date-time"
         },
         "link": {
           "title": "Link",
           "format": "url",
-          "type": "string"
-        },
-        "author": {
-          "title": "Author",
-          "type": "string"
-        },
-        "milestone": {
-          "title": "Milestone",
           "type": "string"
         }
       },
@@ -213,16 +209,6 @@
         },
         "createdAt": {
           "title": "Created At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "title": "Updated At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "runStartedAt": {
-          "title": "Run Started At",
           "type": "string",
           "format": "date-time"
         },
