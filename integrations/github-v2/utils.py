@@ -2,8 +2,8 @@ from port_ocean.context.ocean import ocean
 
 
 def app_configured() -> bool:
-    app_id = ocean.integration_config.get("app_id")
-    app_private_key = ocean.integration_config.get("app_private_key")
+    app_id = ocean.integration_config.get("github_app_id")
+    app_private_key = ocean.integration_config.get("github_app_private_key")
 
     return app_id is not None and app_private_key is not None
 

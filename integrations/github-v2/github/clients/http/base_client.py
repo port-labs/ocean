@@ -25,7 +25,7 @@ class AbstractGithubClient(ABC):
         self,
         organization: str,
         github_host: str,
-        authenticator: AbstractGitHubAuthenticator,
+        authenticator: "AbstractGitHubAuthenticator",
         **kwargs: Any,
     ) -> None:
         self.organization = organization
