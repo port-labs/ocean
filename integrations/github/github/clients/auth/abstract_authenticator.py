@@ -37,7 +37,7 @@ class AbstractGitHubAuthenticator(ABC):
         pass
 
     @abstractmethod
-    def get_headers(self) -> GitHubHeaders:
+    async def get_headers(self) -> GitHubHeaders:
         pass
 
     @property
