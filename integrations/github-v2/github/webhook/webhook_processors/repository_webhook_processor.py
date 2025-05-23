@@ -11,13 +11,13 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.core.exporters.exporter_factory import ExporterFactory
 from github.core.options import SingleRepositoryOptions
+from github.core.exporters.repository_exporter import RestRepositoryExporter
 
 
 class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return event.headers.get("x-github-event") == ObjectKind.REPOSITORY
+        return event.headers.get("x-github-event") == "repository"
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.REPOSITORY]
@@ -38,9 +38,8 @@ class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[repo]
             )
 
-        client = create_github_client()
-        exporter_factory = ExporterFactory()
-        exporter = exporter_factory.get_exporter(ObjectKind.REPOSITORY)(client)
+        rest_client = create_github_client()
+        exporter = RestRepositoryExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(SingleRepositoryOptions(name=name))
 

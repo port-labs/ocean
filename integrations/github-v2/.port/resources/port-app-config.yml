@@ -12,8 +12,8 @@ resources:
           title: .name
           blueprint: '"githubRepository"'
           properties:
-            description: .description
-            visibility: 'if .private then "private" else "public" end'
+            description: if .description then .description else "" end
+            visibility: if .private then "private" else "public" end
             defaultBranch: .default_branch
             url: .html_url
-            language: .language
+            language: if .language then .language else "" end

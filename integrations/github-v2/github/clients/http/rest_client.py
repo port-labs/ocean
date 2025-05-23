@@ -21,15 +21,23 @@ class GithubRestClient(AbstractGithubClient):
         Extracts the path and query from the 'next' link in a GitHub Link header,
         removing the leading slash.
         """
+
         match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
         if not match:
             return None
 
         parsed_url = urlparse(match.group(1))
         path_and_query = urlunparse(
-            ("", "", parsed_url.path, parsed_url.params, parsed_url.query, "")
+            (
+                parsed_url.scheme,
+                parsed_url.netloc,
+                parsed_url.path,
+                parsed_url.params,
+                parsed_url.query,
+                "",
+            )
         )
-        return path_and_query.lstrip("/")
+        return path_and_query
 
     async def send_paginated_request(
         self,
@@ -58,10 +66,10 @@ class GithubRestClient(AbstractGithubClient):
             # Get the Link header from the response object
             link_header = response.headers.get("Link")
             if not link_header:
-                return
+                break
 
             next_resource = self._get_next_link(link_header)
             if not next_resource:
-                return
+                break
 
             resource = next_resource

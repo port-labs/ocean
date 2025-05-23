@@ -1,14 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import (
-    Any,
-    AsyncGenerator,
-    Dict,
-    List,
-    Optional,
-    Callable,
-    Awaitable,
-    TYPE_CHECKING,
-)
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
 from loguru import logger
 import httpx
@@ -48,7 +39,6 @@ class AbstractGithubClient(ABC):
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
-        error_handler: Optional[Callable[[Response], Awaitable[None]]] = None,
     ) -> Response:
         """Send request to GitHub API with error handling and rate limiting."""
 
@@ -61,9 +51,6 @@ class AbstractGithubClient(ABC):
                 headers=await self.headers,
             )
             response.raise_for_status()
-
-            if error_handler:
-                await error_handler(response)
 
             logger.debug(f"Successfully fetched {method} {resource}")
             return response

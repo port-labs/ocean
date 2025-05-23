@@ -14,7 +14,7 @@ from github.core.exporters.repository_exporter import (
 )
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
-from github.core.options import SingleRepositoryOptions
+from github.core.options import SingleRepositoryOptions, ListRepositoryOptions
 from github.clients.http.rest_client import GithubRestClient
 
 
@@ -61,7 +61,6 @@ def mock_port_app_config() -> GithubPortAppConfig:
 
 @pytest.mark.asyncio
 class TestRestRepositoryExporter:
-
     async def test_get_resource(self, rest_client: GithubRestClient) -> None:
         # Create a mock response
         mock_response = MagicMock(spec=httpx.Response)
@@ -84,8 +83,6 @@ class TestRestRepositoryExporter:
     async def test_get_paginated_resources(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
-        exporter = RestRepositoryExporter(rest_client)
-
         # Create an async mock to return the test repos
         async def mock_paginated_request(
             *args: Any, **kwargs: Any
@@ -95,11 +92,14 @@ class TestRestRepositoryExporter:
         with patch.object(
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    type=mock_port_app_config.repository_visibility_filter
+                )
+                exporter = RestRepositoryExporter(rest_client)
 
-            async with event_context("test_event") as event:
-                event.port_app_config = mock_port_app_config
                 repos: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources()
+                    batch async for batch in exporter.get_paginated_resources(options)
                 ]
 
                 assert len(repos) == 1
