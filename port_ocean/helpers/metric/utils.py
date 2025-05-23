@@ -11,8 +11,6 @@ def TimeMetric(phase: str) -> Any:
 
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: dict[Any, Any]) -> Any:
-            if not ocean.metrics.enabled:
-                return await func(*args, **kwargs)
             start = time.monotonic()
             res = await func(*args, **kwargs)
             end = time.monotonic()
