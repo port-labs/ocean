@@ -92,10 +92,14 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         old_commit = update["oldObjectId"]
         new_commit = update["newObjectId"]
 
-        # Check if GitOps is being used (spec_path is configured)
-        if hasattr(config, "spec_path") and config.spec_path:
+        # Check if GitOps is being used (spec_path is configured to port.yaml)
+        if (
+            hasattr(config, "spec_path")
+            and config.spec_path
+            and config.spec_path.endswith("port.yaml")
+        ):
             logger.warning(
-                "GitOps usage detected via spec_path configuration. "
+                "GitOps usage detected via spec_path configuration ending with 'port.yaml'. "
                 "This is deprecated in favor of file-based processing."
             )
 
