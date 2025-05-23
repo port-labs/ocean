@@ -1,18 +1,10 @@
-from typing import Any, Dict, Type, overload, Literal
+from typing import Dict, Type, overload, Literal
 from github.clients.rest_client import GithubRestClient
 from github.clients.graphql_client import GithubGraphQLClient
 from github.clients.base_client import AbstractGithubClient
-from port_ocean.context.ocean import ocean
 from loguru import logger
 from github.helpers.utils import GithubClientType
-
-
-def integration_config() -> Dict[str, Any]:
-    return {
-        "token": ocean.integration_config["github_token"],
-        "organization": ocean.integration_config["github_organization"],
-        "github_host": ocean.integration_config["github_host"],
-    }
+from github.clients.utils import integration_config
 
 
 class GithubClientFactory:
@@ -28,9 +20,7 @@ class GithubClientFactory:
             cls._instance = super(GithubClientFactory, cls).__new__(cls)
         return cls._instance
 
-    def get_client(
-        self, client_type: GithubClientType, **kwargs: Any
-    ) -> AbstractGithubClient:
+    def get_client(self, client_type: GithubClientType) -> AbstractGithubClient:
         """Get or create a client instance from Ocean configuration.
 
         Args:
@@ -72,7 +62,7 @@ def create_github_client(
 
 
 def create_github_client(
-    client_type: GithubClientType | None = GithubClientType.REST, **kwargs: Any
+    client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
     factory = GithubClientFactory()
-    return factory.get_client(client_type or GithubClientType.REST, **kwargs)
+    return factory.get_client(client_type or GithubClientType.REST)

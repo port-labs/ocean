@@ -9,12 +9,13 @@ from httpx import Response
 PAGE_SIZE = 25
 
 
-class GraphQLClientError(Exception):
+class GraphQLClientError(ExceptionGroup):
     """Exception raised for GraphQL API errors."""
 
     def __init__(self, errors: List[Dict[str, Any]]) -> None:
         self.errors = errors
-        super().__init__(f"GraphQL query failed: {errors}")
+        exceptions = [Exception(error.get("message", str(error))) for error in errors]
+        super().__init__("GraphQL query failed", exceptions)
 
 
 class GithubGraphQLClient(AbstractGithubClient):

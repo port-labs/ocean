@@ -2,7 +2,8 @@ from typing import cast
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from github.clients.client_factory import create_github_client, integration_config
+from github.clients.client_factory import create_github_client
+from github.clients.utils import integration_config
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_processors.repository_webhook_processor import (
