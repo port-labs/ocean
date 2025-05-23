@@ -25,7 +25,7 @@ class AbstractGithubClient(ABC):
         self,
         organization: str,
         github_host: str,
-        authenticator: AbstractGitHubAuthenticator,
+        authenticator: "AbstractGitHubAuthenticator",
         **kwargs: Any,
     ) -> None:
         self.organization = organization
@@ -36,7 +36,8 @@ class AbstractGithubClient(ABC):
     @property
     def headers(self) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
-        return self.authenticator.get_headers().as_dict()
+        header = self.authenticator.get_headers().as_dict()
+        return header
 
     @property
     @abstractmethod
