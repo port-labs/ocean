@@ -1,4 +1,3 @@
-import re
 from typing import Any, AsyncGenerator, Dict, Optional, cast
 
 import httpx
@@ -12,7 +11,6 @@ from port_ocean.utils.cache import cache_iterator_result
 # Rate limit docs: https://support.atlassian.com/bitbucket-cloud/docs/api-request-limits/
 BITBUCKET_RATE_LIMIT = 1000  # requests per hour
 BITBUCKET_RATE_LIMIT_WINDOW = 3600  # 1 hour
-README_PATTERN = re.compile(r"^readme(\.[a-z0-9]+)?$", re.IGNORECASE)
 
 
 class BitbucketClient:
@@ -204,9 +202,8 @@ class BitbucketClient:
         Returns:
             Enriched repository data
         """
-        repository["__readme"] = await self.get_repository_readme(
-            repository["project"]["key"], repository["slug"]
-        )
+        # README fetching will be supported in future versions.
+        repository["__readme"] = ""
         repository["__latestCommit"] = await self.get_latest_commit(
             repository["project"]["key"], repository["slug"]
         )
@@ -316,39 +313,14 @@ class BitbucketClient:
 
     async def get_repository_readme(self, project_key: str, repo_slug: str) -> str:
         """
-        Get the README content for a specific repository, regardless of casing or extension.
+        Get the README content for a specific repository.
+        NOTE: README fetching is currently disabled and will be supported in future versions.
         """
-
-        async def find_readme_file() -> str | None:
-            file_listing_path = f"projects/{project_key}/repos/{repo_slug}/files"
-            async for batch in self.get_paginated_resource(
-                file_listing_path, page_size=500
-            ):
-                for file_path in batch:
-                    file_path = cast(str, file_path)
-                    if "/" not in file_path and README_PATTERN.match(file_path):
-                        return file_path
-
-            return None
-
-        def parse_repository_file_response(file_response: Dict[str, Any]) -> str:
-            lines = file_response.get("lines", [])
-            return "\n".join(line.get("text", "") for line in lines)
-
-        readme_filename = await find_readme_file()
-        if not readme_filename:
-            return ""
-        file_path = f"projects/{project_key}/repos/{repo_slug}/browse/{readme_filename}"
-        readme_content = ""
-
-        async for readme_file_batch in self.get_paginated_resource(
-            path=file_path, page_size=500, full_response=True
-        ):
-            readme_content += parse_repository_file_response(
-                cast(dict[str, Any], readme_file_batch)
-            )
-
-        return readme_content
+        # Args project_key and repo_slug are kept for future compatibility but are not used currently.
+        logger.info(
+            f"README fetching for {project_key}/{repo_slug} is currently disabled. Returning empty string."
+        )
+        return ""
 
     async def get_latest_commit(
         self, project_key: str, repo_slug: str
