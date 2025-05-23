@@ -65,7 +65,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         params = params or {}
         path = params.pop("__path", None)
         if not path:
-            raise ValueError(
+            raise self.GraphQLClientError(
                 "GraphQL pagination requires a '__path' in params (e.g., 'organization.repositories')"
             )
 
