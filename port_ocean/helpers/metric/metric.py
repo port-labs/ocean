@@ -350,7 +350,7 @@ class Metrics:
                         if "-" in kind_key
                         else kind_key
                     ),
-                    "kindIndex": int(kind_key[-1]),
+                    "kindIndex": 0 if kind_key == "__runtime__" else int(kind_key[-1]),
                     "eventId": self.event_id,
                     "syncState": self.sync_state,
                     "metrics": metrics,
