@@ -3,7 +3,6 @@ from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 from github_cloud.clients.client_factory import create_github_client
 
-# Property prefixes
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
 
@@ -70,7 +69,6 @@ class SearchEntityProcessor(JQEntityProcessor):
         search_str = pattern[len(SEARCH_PROPERTY_PREFIX):].strip()
         search_parts = search_str.split("&&")
 
-        # Extract path from search string
         path = None
         query = ""
 
