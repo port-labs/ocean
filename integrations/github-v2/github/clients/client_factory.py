@@ -80,13 +80,13 @@ class GithubClientFactory:
             authenticator = GitHubAuthenticatorFactory.create(
                 organization=ocean.integration_config["github_organization"],
                 github_host=ocean.integration_config["github_host"],
-                token=ocean.integration_config["github_token"],
-                app_id=ocean.integration_config["github_app_id"],
-                private_key=ocean.integration_config["github_app_private_key"],
+                token=ocean.integration_config.get("github_token"),
+                app_id=ocean.integration_config.get("github_app_id"),
+                private_key=ocean.integration_config.get("github_app_private_key"),
             )
 
             self._instances[client_type] = self._clients[client_type](
-                **integration_config(),
+                **integration_config(authenticator),
             )
 
         return self._instances[client_type]
