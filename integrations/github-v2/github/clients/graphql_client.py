@@ -9,11 +9,12 @@ from httpx import Response
 PAGE_SIZE = 25
 
 
+class GraphQLClientError(Exception):
+    """Exception raised for GraphQL API errors."""
+
+
 class GithubGraphQLClient(AbstractGithubClient):
     """GraphQL API implementation of GitHub client."""
-
-    class GraphQLClientError(Exception):
-        """Exception raised for GraphQL API errors."""
 
     @property
     def base_url(self) -> str:
@@ -23,7 +24,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         result = response.json()
         if "errors" in result:
             errors = result["errors"]
-            exceptions = [self.GraphQLClientError(error) for error in errors]
+            exceptions = [GraphQLClientError(error) for error in errors]
             raise ExceptionGroup("GraphQL errors occurred.", exceptions)
 
     async def send_api_request(
@@ -65,7 +66,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         params = params or {}
         path = params.pop("__path", None)
         if not path:
-            raise self.GraphQLClientError(
+            raise GraphQLClientError(
                 "GraphQL pagination requires a '__path' in params (e.g., 'organization.repositories')"
             )
 

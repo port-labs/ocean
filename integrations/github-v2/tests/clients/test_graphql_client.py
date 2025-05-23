@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
-from github.clients.graphql_client import GithubGraphQLClient
+from github.clients.graphql_client import GithubGraphQLClient, GraphQLClientError
 
 
 @pytest.mark.asyncio
@@ -27,19 +27,28 @@ class TestGithubGraphQLClient:
         mock_config = MagicMock()
         mock_config.client_timeout = 30.0  # Set a proper float value for timeout
 
-        with patch.object(
-            client, "client", new_callable=MagicMock, config=mock_config
-        ), patch.object(
-            client.client, "request", AsyncMock(return_value=mock_response)
+        with (
+            patch.object(client, "client", new_callable=MagicMock, config=mock_config),
+            patch.object(
+                client.client, "request", AsyncMock(return_value=mock_response)
+            ),
         ):
             with pytest.raises(ExceptionGroup) as exc_info:
-                await client.send_api_request(client.base_url, method="POST", json_data={})
+                await client.send_api_request(
+                    client.base_url, method="POST", json_data={}
+                )
 
             # Verify the exception group
             assert str(exc_info.value) == "GraphQL errors occurred. (2 sub-exceptions)"
             assert len(exc_info.value.exceptions) == 2
-            assert str(exc_info.value.exceptions[0]) == "{'message': 'Error 1', 'path': ['field1']}"
-            assert str(exc_info.value.exceptions[1]) == "{'message': 'Error 2', 'path': ['field2']}"
+            assert (
+                str(exc_info.value.exceptions[0])
+                == "{'message': 'Error 1', 'path': ['field1']}"
+            )
+            assert (
+                str(exc_info.value.exceptions[1])
+                == "{'message': 'Error 2', 'path': ['field2']}"
+            )
 
     async def test_handle_graphql_success(self) -> None:
         client = GithubGraphQLClient(
@@ -56,7 +65,7 @@ class TestGithubGraphQLClient:
                 "organization": {
                     "repositories": {
                         "nodes": [{"id": 1, "name": "repo1"}],
-                        "pageInfo": {"hasNextPage": False, "endCursor": None}
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
                     }
                 }
             }
@@ -65,8 +74,12 @@ class TestGithubGraphQLClient:
         with patch.object(
             client, "send_api_request", AsyncMock(return_value=mock_response)
         ):
-            response = await client.send_api_request(client.base_url, method="POST", json_data={})
-            assert response.json()["data"]["organization"]["repositories"]["nodes"] == [{"id": 1, "name": "repo1"}]
+            response = await client.send_api_request(
+                client.base_url, method="POST", json_data={}
+            )
+            assert response.json()["data"]["organization"]["repositories"]["nodes"] == [
+                {"id": 1, "name": "repo1"}
+            ]
 
     async def test_send_paginated_request_single_page(self) -> None:
         client = GithubGraphQLClient(
@@ -83,7 +96,7 @@ class TestGithubGraphQLClient:
                 "organization": {
                     "repositories": {
                         "nodes": [{"id": 1, "name": "repo1"}],
-                        "pageInfo": {"hasNextPage": False, "endCursor": None}
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
                     }
                 }
             }
@@ -116,7 +129,7 @@ class TestGithubGraphQLClient:
                 "organization": {
                     "repositories": {
                         "nodes": [{"id": 1, "name": "repo1"}],
-                        "pageInfo": {"hasNextPage": True, "endCursor": "cursor1"}
+                        "pageInfo": {"hasNextPage": True, "endCursor": "cursor1"},
                     }
                 }
             }
@@ -130,7 +143,7 @@ class TestGithubGraphQLClient:
                 "organization": {
                     "repositories": {
                         "nodes": [{"id": 2, "name": "repo2"}],
-                        "pageInfo": {"hasNextPage": False, "endCursor": None}
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
                     }
                 }
             }
@@ -166,7 +179,7 @@ class TestGithubGraphQLClient:
                 "organization": {
                     "repositories": {
                         "nodes": [],
-                        "pageInfo": {"hasNextPage": False, "endCursor": None}
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
                     }
                 }
             }
@@ -190,6 +203,8 @@ class TestGithubGraphQLClient:
             github_host="https://api.github.com",
         )
 
-        with pytest.raises(client.GraphQLClientError, match="GraphQL pagination requires a '__path'"):
+        with pytest.raises(
+            GraphQLClientError, match="GraphQL pagination requires a '__path'"
+        ):
             async for _ in client.send_paginated_request("query"):
-                pass 
+                pass
