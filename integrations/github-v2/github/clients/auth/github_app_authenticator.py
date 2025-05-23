@@ -38,8 +38,8 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         logger.info("New GitHub App token acquired.")
         return self.cached_token
 
-    def get_headers(self) -> GitHubHeaders:
-        token = self.cached_token.token if self.cached_token else ""
+    async def get_headers(self) -> GitHubHeaders:
+        token = await self.get_token()
         return GitHubHeaders(
             Authorization=f"Bearer {token}",
             Accept="application/vnd.github+json",

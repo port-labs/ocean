@@ -14,9 +14,10 @@ class PersonalTokenAuthenticator(AbstractGitHubAuthenticator):
         logger.info("Using personal access token.")
         return self._token
 
-    def get_headers(self) -> GitHubHeaders:
+    async def get_headers(self) -> GitHubHeaders:
+        token = await self.get_token()
         return GitHubHeaders(
-            Authorization=f"Bearer {self._token.token}",
+            Authorization=f"Bearer {token.token}",
             Accept="application/vnd.github+json",
             X_GitHub_Api_Version="2022-11-28",
         )

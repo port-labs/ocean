@@ -34,9 +34,9 @@ class AbstractGithubClient(ABC):
         self.kwargs = kwargs
 
     @property
-    def headers(self) -> Dict[str, str]:
+    async def headers(self) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
-        return self.authenticator.get_headers().as_dict()
+        return (await self.authenticator.get_headers()).as_dict()
 
     @property
     @abstractmethod
@@ -58,7 +58,7 @@ class AbstractGithubClient(ABC):
                 url=resource,
                 params=params,
                 json=json_data,
-                headers=self.headers,
+                headers=await self.headers,
             )
             response.raise_for_status()
 
