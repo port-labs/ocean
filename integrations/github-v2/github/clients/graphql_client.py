@@ -76,7 +76,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         while True:
             payload = self.build_graphql_payload(resource, params, cursor=cursor)
             response = await self.send_api_request(
-                self.base_url, method="POST", json_data=payload
+                self.base_url, method=method, json_data=payload
             )
             data = response.json()["data"]
             nodes = self._extract_nodes(data, path)
