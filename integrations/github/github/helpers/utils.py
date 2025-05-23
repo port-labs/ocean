@@ -9,11 +9,10 @@ class ObjectKind(StrEnum):
     """Kinds of GitHub objects supported by the integration."""
     REPOSITORY = "repository"
     PULL_REQUEST = "pull-request"
-    ISSUE = "issue"
     TEAM = "team"
     USER = "user"
-    WORKFLOW_RUN = "workflow-run"
-    WORKFLOW_JOB = "workflow-job"
+    ISSUE = "issue"
+    WORKFLOW = "workflow"
 
 
 def parse_file_content(

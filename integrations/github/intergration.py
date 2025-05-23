@@ -55,6 +55,16 @@ class GitHubPullRequestResourceConfig(ResourceConfig):
     kind: Literal["pull-request"]
     selector: Selector
 
+class GitHubWorkflowResourceConfig(ResourceConfig):
+    """Resource configuration for GitHub workflows."""
+    kind: Literal["workflow"]
+    selector: Selector
+
+class GitHubIssueResourceConfig(ResourceConfig):
+    """Resource configuration for GitHub issues."""
+    kind: Literal["issue"]
+    selector: Selector
+
 
 class GitHubPortAppConfig(PortAppConfig):
     """Port app configuration for GitHub integration."""
@@ -63,6 +73,8 @@ class GitHubPortAppConfig(PortAppConfig):
         | GitHubTeamWithMembersResourceConfig
         | GitHubMemberResourceConfig
         | GitHubPullRequestResourceConfig
+        | GitHubIssueResourceConfig
+        | GitHubWorkflowResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

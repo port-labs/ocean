@@ -94,20 +94,6 @@
     "icon": "GitVersion",
     "schema": {
       "properties": {
-        "status": {
-          "title": "Status",
-          "type": "string",
-          "enum": [
-            "open",
-            "closed",
-            "merged"
-          ],
-          "enumColors": {
-            "open": "yellow",
-            "closed": "red",
-            "merged": "green"
-          }
-        },
         "createdAt": {
           "title": "Created At",
           "type": "string",
@@ -128,10 +114,6 @@
           "format": "url",
           "type": "string"
         },
-        "leadTimeHours": {
-          "title": "Lead Time in hours",
-          "type": "number"
-        },
         "reviewers": {
           "title": "Reviewers",
           "type": "array",
@@ -147,8 +129,118 @@
     "aggregationProperties": {},
     "relations": {
       "repository": {
-        "title": "Service",
-        "target": "service",
+        "title": "Repository",
+        "target": "githubRepository",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "githubIssue",
+    "title": "GitHub Issue",
+    "icon": "GitVersion",
+    "schema": {
+      "properties": {
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "title": "Closed At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "title": "Link",
+          "format": "url",
+          "type": "string"
+        },
+        "author": {
+          "title": "Author",
+          "type": "string"
+        },
+        "milestone": {
+          "title": "Milestone",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "githubRepository",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "githubWorkflow",
+    "title": "GitHub Workflow",
+    "icon": "GitVersion",
+    "schema": {
+      "properties": {
+        "workflowName": {
+          "title": "Workflow Name",
+          "type": "string"
+        },
+        "runNumber": {
+          "title": "Run Number",
+          "type": "number"
+        },
+        "event": {
+          "title": "Triggering Event",
+          "type": "string"
+        },
+        "branch": {
+          "title": "Branch",
+          "type": "string"
+        },
+        "actor": {
+          "title": "Actor",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "runStartedAt": {
+          "title": "Run Started At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "title": "Link",
+          "format": "url",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "githubRepository",
         "required": false,
         "many": false
       }

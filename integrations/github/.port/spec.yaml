@@ -7,8 +7,10 @@ features:
     resources:
       - kind: repository
       - kind: pull-request
-      - kind: member
-      - kind: team-with-members
+      - kind: user
+      - kind: team
+      - kind: workflow
+      - kind: issue
 configurations:
   - name: githubToken
     required: true

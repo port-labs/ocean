@@ -1,5 +1,4 @@
 deleteDependentEntities: true
-createMissingRelatedEntities: true
 resources:
   - kind: repository
     selector:
@@ -56,14 +55,45 @@ resources:
             updatedAt: .updated_at
             mergedAt: .merged_at
             link: .html_url
-            leadTimeHours: >-
-              (.created_at as $createdAt | .merged_at as $mergedAt | ($createdAt
-              | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)
-              as $createdTimestamp | ($mergedAt | if . == null then null else
-              sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end)
-              as $mergedTimestamp | if $mergedTimestamp == null then null else
-              (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) /
-              100) end)
             reviewers: .requested_reviewers | map(.login)
+          relations:
+            repository: .repository.full_name
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"githubIssue"'
+          properties:
+            createdAt: .created_at
+            updatedAt: .updated_at
+            closedAt: .closed_at
+            link: .html_url
+            author: .user.login
+            milestone: .milestone.titles
+          relations:
+            repository: .repository.full_name
+  - kind: workflow
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name // .workflow_name // "Workflow Run"
+          blueprint: '"githubWorkflow"'
+          properties:
+            workflowName: .workflow.name // .workflow_name
+            runNumber: .run_number
+            event: .event
+            branch: .head_branch
+            actor: .actor.login
+            createdAt: .created_at
+            updatedAt: .updated_at
+            runStartedAt: .run_started_at
+            link: .html_url
           relations:
             repository: .repository.full_name
