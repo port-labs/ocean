@@ -18,8 +18,6 @@ from github.core.options import ListRepositoryOptions
 from typing import TYPE_CHECKING
 from port_ocean.context.event import event
 
-from utils import validate_passed_config
-
 if TYPE_CHECKING:
     from integration import GithubPortAppConfig
 
@@ -28,8 +26,6 @@ if TYPE_CHECKING:
 async def on_start() -> None:
     """Initialize the integration and set up webhooks."""
     logger.info("Starting Port Ocean GitHub integration")
-
-    validate_passed_config()
 
     if ocean.event_listener_type == "ONCE":
         logger.info("Skipping webhook creation because the event listener is ONCE")

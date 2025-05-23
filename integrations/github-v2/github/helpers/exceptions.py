@@ -9,5 +9,5 @@ class MissingCredentials(AuthenticationException):
     """Raised when credentials are missing."""
 
 
-class InvalidToken(AuthenticationException):
+class InvalidTokenException(AuthenticationException):
     """Raised when a token is invalid or expired."""
