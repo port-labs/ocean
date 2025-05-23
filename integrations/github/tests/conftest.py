@@ -6,13 +6,19 @@ import httpx
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context, ocean
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.auth.personal_access_token_authenticator import (
+    PersonalTokenAuthenticator,
+)
 from github.clients.client_factory import create_github_client
 from github.helpers.utils import GithubClientType
-from github.clients.base_client import AbstractGithubClient
+from github.clients.http.base_client import AbstractGithubClient
 
 TEST_INTEGRATION_CONFIG: Dict[str, str] = {
     "github_token": "mock-github-token",
     "github_organization": "test-org",
+    "github_app_id": "appid",
+    "github_app_private_key": "private key",
     "github_host": "https://api.github.com",
     "webhook_secret": "test-secret",
 }
@@ -27,6 +33,8 @@ def mock_ocean_context() -> None:
         mock_ocean_app.config.integration.config = {
             "github_token": TEST_INTEGRATION_CONFIG["github_token"],
             "github_organization": TEST_INTEGRATION_CONFIG["github_organization"],
+            "github_app_id": TEST_INTEGRATION_CONFIG["github_app_id"],
+            "github_app_private_key": TEST_INTEGRATION_CONFIG["github_app_private_key"],
             "github_host": TEST_INTEGRATION_CONFIG["github_host"],
             "webhook_secret": TEST_INTEGRATION_CONFIG["webhook_secret"],
         }
@@ -45,15 +53,21 @@ def mock_ocean_context() -> None:
 
 
 @pytest.fixture
-async def rest_client(mock_ocean_context: Any) -> AbstractGithubClient:
+def rest_client(mock_ocean_context: Any) -> AbstractGithubClient:
     """Provide a GitHubClient instance with mocked Ocean context."""
-    return await create_github_client(GithubClientType.REST)
+    return create_github_client(GithubClientType.REST)
 
 
 @pytest.fixture
-async def graphql_client(mock_ocean_context: Any) -> AbstractGithubClient:
+def graphql_client(mock_ocean_context: Any) -> AbstractGithubClient:
     """Provide a GitHubClient instance with mocked Ocean context."""
-    return await create_github_client(GithubClientType.GRAPHQL)
+    return create_github_client(GithubClientType.GRAPHQL)
+
+
+@pytest.fixture
+def authenticator() -> AbstractGitHubAuthenticator:
+    auth = PersonalTokenAuthenticator("test-token")
+    return auth
 
 
 @pytest.fixture

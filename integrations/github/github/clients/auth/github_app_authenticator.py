@@ -1,3 +1,4 @@
+import base64
 from typing import Optional
 from loguru import logger
 from datetime import datetime, timedelta, timezone
@@ -81,4 +82,5 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             "iat": now,
             "exp": now + timedelta(minutes=self.JWT_EXPIRY_MINUTES),
         }
-        return jwt.encode(payload, self.private_key, algorithm="RS256")
+        decoded_private_key = base64.b64decode(self.private_key)
+        return jwt.encode(payload, decoded_private_key, algorithm="RS256")
