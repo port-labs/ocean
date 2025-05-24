@@ -3,7 +3,7 @@ description: GitHub integration for Port Ocean
 icon: GitHub
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/firehydrant
 integration:
-  identifier: "My Integration type (Gitlab, Jira, etc.)"
+  identifier: "github"
   title: GitHub Integration
   icon: GitHub
   description: azeezgithub integration for Port Ocean
@@ -22,9 +22,18 @@ configurations:
     required: true
     type: string
     sensitive: true
+    description: GitHub token
   - name: githubOrg
     required: true
     type: string
+    description: GitHub organization
   - name: githubRepo
     required: true
     type: string
+    description: GitHub repository
+  - name: githubBaseURL
+    required: true
+    type: string
+    default: https://api.github.com
+    description: GitHub API base URL
+    

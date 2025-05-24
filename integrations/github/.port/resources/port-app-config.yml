@@ -2,65 +2,103 @@ deleteDependentEntities: true
 createMissingRelatedEntities: true
 enableMergeEntity: true
 resources:
-  - kind: repositories
+  - kind: repository
     selector:
-      query: 'true'
+      query: "true"
+      teams: "true"
     port:
       entity:
         mappings:
-          identifier: .identifier
-          title: .title
-          blueprint: '"repositories"'
+          identifier: ".name"
+          title: ".name"
+          blueprint: '"githubRepository"'
           properties:
-            url: .url
-            description: .description
-  - kind: issues
+            readme: "file://README.md"
+            url: ".html_url"
+            defaultBranch: ".default_branch"
+          relations:
+            githubTeams: "[(.teams // [])[].id | tostring]"
+  - kind: issue
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: .identifier
-          title: .title
-          blueprint: '"issues"'
+          identifier: ".repo + (.id|tostring)"
+          title: ".title"
+          blueprint: '"githubIssue"'
           properties:
-            url: .url
-            state: .state
-  - kind: pull_requests
+            creator: ".user.login"
+            assignees: "[.assignees[].login]"
+            labels: "[.labels[].name]"
+            status: ".state"
+            createdAt: ".created_at"
+            closedAt: ".closed_at"
+            updatedAt: ".updated_at"
+            description: ".body"
+            issueNumber: ".number"
+            link: ".html_url"
+          relations:
+            repository: ".repo"
+  - kind: pull-request
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: .identifier
-          title: .title
-          blueprint: '"pull_requests"'
+          identifier: ".head.repo.name + (.id|tostring)"
+          title: ".title"
+          blueprint: '"githubPullRequest"'
           properties:
-            url: .url
-            state: .state
-            author: .author
-  - kind: workflows
+            creator: ".user.login"
+            assignees: "[.assignees[].login]"
+            reviewers: "[.requested_reviewers[].login]"
+            status: ".status" # merged, closed, opened
+            closedAt: ".closed_at"
+            updatedAt: ".updated_at"
+            mergedAt: ".merged_at"
+            createdAt: ".created_at"
+            prNumber: ".id"
+            link: ".html_url"
+            leadTimeHours: >-
+                (.created_at as $createdAt | .merged_at as $mergedAt |
+                ($createdAt | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
+                ($mergedAt | if . == null then null else sub("\\..*Z$"; "Z") |
+                strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end) as $mergedTimestamp |
+                if $mergedTimestamp == null then null else
+                (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
+          relations:
+            repository: .head.repo.name
+  - kind: workflow
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: .identifier
+          identifier: ".repo + (.id|tostring)"
+          title: ".name"
+          blueprint: '"githubWorkflow"'
+          properties:
+            path: ".path"
+            status: ".state"
+            createdAt: ".created_at"
+            updatedAt: ".updated_at"
+            link: ".html_url"
+          relations:
+            repository: ".repo"
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".id | tostring"
           title: .name
-          blueprint: '"workflows"'
+          blueprint: '"githubTeam"'
           properties:
-            state: .state
-            url: .url
-            created_at: .created_at
-  - kind: teams
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .identifier
-          title: .name
-          blueprint: '"teams"'
-          properties:
+            name: .name
             slug: .slug
             description: .description
+            link: .html_url
+            permission: .permission
+            notification_setting: .notification_setting

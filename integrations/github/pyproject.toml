@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "azeez_github"
+name = "github"
 version = "0.1.0-beta"
 description = "Azeez's custom integration for github"
 authors = ["Azeez Ibrahim A. <iazeez246@stu.ui.edu.ng>"]

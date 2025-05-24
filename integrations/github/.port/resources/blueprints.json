@@ -1,133 +1,280 @@
 [
     {
-        "identifier": "repositories",
-        "title": "GitHub Repositories",
-        "icon": "Repository",
+        "identifier": "githubRepository",
+        "title": "Repository",
+        "icon": "Microservice",
         "schema": {
             "properties": {
-                "description": {
+                "readme": {
+                    "title": "README",
                     "type": "string",
-                    "title": "Description"
+                    "format": "markdown"
                 },
                 "url": {
+                    "title": "Repository URL",
                     "type": "string",
-                    "title": "URL"
+                    "format": "url"
                 },
-                "visibility": {
-                    "type": "string",
-                    "title": "Visibility"
-                },
-                "default_branch": {
-                    "type": "string",
-                    "title": "Default Branch"
+                "defaultBranch": {
+                    "title": "Default branch",
+                    "type": "string"
                 }
             },
             "required": []
         },
-        "relations": {}
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+            "githubTeams": {
+                "title": "GitHub Teams",
+                "target": "githubTeam",
+                "required": false,
+                "many": true
+            }
+        }
     },
     {
-        "identifier": "issues",
-        "title": "GitHub Issues",
-        "icon": "Issue",
+        "identifier": "githubIssue",
+        "title": "Issue",
+        "icon": "Github",
+        "schema": {
+          "properties": {
+            "creator": {
+              "title": "Creator",
+              "type": "string"
+            },
+            "assignees": {
+              "title": "Assignees",
+              "type": "array"
+            },
+            "labels": {
+              "title": "Labels",
+              "type": "array"
+            },
+            "status": {
+              "title": "Status",
+              "type": "string",
+              "enum": ["open", "closed"],
+              "enumColors": {
+                "open": "green",
+                "closed": "purple"
+              }
+            },
+            "createdAt": {
+              "title": "Created At",
+              "type": "string",
+              "format": "date-time"
+            },
+            "closedAt": {
+              "title": "Closed At",
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "title": "Updated At",
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": {
+              "title": "Description",
+              "type": "string",
+              "format": "markdown"
+            },
+            "issueNumber": {
+              "title": "Issue Number",
+              "type": "number"
+            },
+            "link": {
+              "title": "Link",
+              "type": "string",
+              "format": "url"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+          "repository": {
+            "target": "githubRepository",
+            "required": false,
+            "many": false
+          }
+        }
+      },
+    {
+        "identifier": "githubPullRequest",
+        "title": "Pull Request",
+        "icon": "Github",
         "schema": {
             "properties": {
-                "title": {
-                    "type": "string",
-                    "title": "Title"
+                "creator": {
+                    "title": "Creator",
+                    "type": "string"
                 },
-                "state": {
-                    "type": "string",
-                    "title": "State"
+                "assignees": {
+                    "title": "Assignees",
+                    "type": "array"
                 },
-                "url": {
-                    "type": "string",
-                    "title": "URL"
+                "reviewers": {
+                    "title": "Reviewers",
+                    "type": "array"
                 },
-                "assignee": {
+                "status": {
+                    "title": "Status",
                     "type": "string",
-                    "title": "Assignee"
+                    "enum": [
+                        "merged",
+                        "open",
+                        "closed"
+                    ],
+                    "enumColors": {
+                        "merged": "purple",
+                        "open": "green",
+                        "closed": "red"
+                    }
+                },
+                "closedAt": {
+                    "title": "Closed At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "updatedAt": {
+                    "title": "Updated At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "mergedAt": {
+                    "title": "Merged At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "createdAt": {
+                    "title": "Created At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "link": {
+                    "format": "url",
+                    "type": "string"
+                },
+                "leadTimeHours": {
+                    "title": "Lead Time in hours",
+                    "type": "number"
                 }
             },
             "required": []
         },
-        "relations": {}
+        "mirrorProperties": {},
+        "calculationProperties": {
+            "days_old": {
+                "title": "Days Old",
+                "icon": "DefaultProperty",
+                "calculation": "(now / 86400) - (.properties.createdAt | capture(\"(?<date>\\\\d{4}-\\\\d{2}-\\\\d{2})\") | .date | strptime(\"%Y-%m-%d\") | mktime / 86400) | floor",
+                "type": "number"
+            }
+        },
+        "relations": {
+            "repository": {
+                "title": "Repository",
+                "target": "githubRepository",
+                "required": false,
+                "many": false
+            }
+        }
     },
     {
-        "identifier": "pull_requests",
-        "title": "GitHub Pull Requests",
-        "icon": "PullRequest",
+        "identifier": "githubWorkflow",
+        "title": "Workflow",
+        "icon": "Github",
         "schema": {
             "properties": {
-                "title": {
-                    "type": "string",
-                    "title": "Title"
+                "path": {
+                    "title": "Path",
+                    "type": "string"
                 },
-                "state": {
+                "status": {
+                    "title": "Status",
                     "type": "string",
-                    "title": "State"
+                    "enum": [
+                        "active",
+                        "deleted",
+                        "disabled_fork",
+                        "disabled_inactivity",
+                        "disabled_manually"
+                    ],
+                    "enumColors": {
+                        "active": "green",
+                        "deleted": "red"
+                    }
                 },
-                "url": {
+                "createdAt": {
+                    "title": "Created At",
                     "type": "string",
-                    "title": "URL"
+                    "format": "date-time"
                 },
-                "author": {
+                "updatedAt": {
+                    "title": "Updated At",
                     "type": "string",
-                    "title": "Author"
+                    "format": "date-time"
+                },
+                "deletedAt": {
+                    "title": "Deleted At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "link": {
+                    "title": "Link",
+                    "type": "string",
+                    "format": "url"
                 }
             },
             "required": []
         },
-        "relations": {}
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+            "repository": {
+                "title": "Repository",
+                "target": "githubRepository",
+                "required": false,
+                "many": false
+            }
+        }
     },
     {
-        "identifier": "workflows",
-        "title": "GitHub Workflows",
-        "icon": "Workflow",
+        "identifier": "githubTeam",
+        "title": "GitHub Team",
+        "icon": "Github",
         "schema": {
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "title": "Name"
-                },
-                "state": {
-                    "type": "string",
-                    "title": "State"
-                },
-                "created_at": {
-                    "type": "string",
-                    "title": "Created At"
-                },
-                "url": {
-                    "type": "string",
-                    "title": "URL"
-                }
+          "properties": {
+            "slug": {
+              "title": "Slug",
+              "type": "string"
             },
-            "required": []
-        },
-        "relations": {}
-    },
-    {
-        "identifier": "teams",
-        "title": "GitHub Teams",
-        "icon": "Team",
-        "schema": {
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "title": "Name"
-                },
-                "description": {
-                    "type": "string",
-                    "title": "Description"
-                },
-                "slug": {
-                    "type": "string",
-                    "title": "Slug"
-                }
+            "description": {
+              "title": "Description",
+              "type": "string"
             },
-            "required": []
+            "link": {
+              "title": "Link",
+              "icon": "Link",
+              "type": "string",
+              "format": "url"
+            },
+            "permission": {
+              "title": "Permission",
+              "type": "string"
+            },
+            "notification_setting": {
+              "title": "Notification Setting",
+              "type": "string"
+            }
+          },
+          "required": []
         },
+        "mirrorProperties": {},
+        "calculationProperties": {},
         "relations": {}
-    }
+      }
 ]

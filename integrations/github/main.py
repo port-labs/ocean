@@ -1,126 +1,70 @@
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-import os
 from loguru import logger
-from utils import ObjectKind
-from github_client import GitHubClient
-from webhook_handler import WebhookHandler
 from fastapi import Request
+
+from constants import ObjectKind
+from client.github import GitHubClient
+from webhook_handler import WebhookHandler
 
 webhook_handler = WebhookHandler()
 
-client = None
-integration_config = None
-RESYNC_BATCH_SIZE = 10
+def get_client() -> GitHubClient:
+    """Get a configured GitHub client instance."""
+    return GitHubClient.from_ocean_configuration()
 
 @ocean.on_start()
-async def on_start():
-    global client
-    global integration_config
-    token = os.getenv("OCEAN__GITHUB_TOKEN")
-    client = GitHubClient(token)
-    integration_config = ocean.integration_config
-    logger.info("GitHub client initialized using Ocean's async HTTP client.")
+async def on_start() -> None:
+    # Initialize a client to verify credentials
+    client = get_client()
+    logger.info("GitHub client configuration verified successfully.")
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"[repositories] kind: {kind}")
+    logger.info(f"Listing GitHub resource: {kind}")
+    client = get_client()
     
-    repos = await client.get_repositories(integration_config["github_org"])
-    # Process repositories in batches
-    for i in range(0, len(repos), RESYNC_BATCH_SIZE):
-        batch = repos[i:i + RESYNC_BATCH_SIZE]
-        logger.info(f"Processing repositories batch {i//RESYNC_BATCH_SIZE + 1}, size: {len(batch)}")
-        yield [
-            {
-                "identifier": str(repo["id"]),
-                "title": repo["name"],
-                "description": repo.get("description"),
-                "url": repo.get("html_url")
-            }
-            for repo in batch
-        ]
+    async for repos in client.get_repositories(ocean.integration_config["github_org"]):
+        logger.info(f"Received batch with {len(repos)} repositories")
+        yield repos
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    issues = await client.get_issues(integration_config["github_org"], integration_config["github_repo"])
-    logger.info(f"Found {len(issues)} issues total")
+    logger.info(f"Listing GitHub resource: {kind}")
+    client = get_client()
     
-    # Process issues in batches
-    for i in range(0, len(issues), RESYNC_BATCH_SIZE):
-        batch = issues[i:i + RESYNC_BATCH_SIZE]
-        logger.info(f"Processing issues batch {i//RESYNC_BATCH_SIZE + 1}, size: {len(batch)}")
-        yield [
-            {
-                "identifier": str(issue["id"]),
-                "title": issue["title"],
-                "state": issue["state"],
-                "url": issue["html_url"]
-            }
-            for issue in batch
-        ]
+    async for issues in client.get_issues(ocean.integration_config["github_org"], ocean.integration_config["github_repo"]):
+        logger.info(f"Received batch with {len(issues)} issues")
+        yield issues
 
 @ocean.on_resync(ObjectKind.PULLREQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    pulls = await client.get_pull_requests(integration_config["github_org"], integration_config["github_repo"])
-    logger.info(f"Found {len(pulls)} pull requests total")
+    logger.info(f"Listing GitHub resource: {kind}")
+    client = get_client()
     
-    # Process pull requests in batches
-    for i in range(0, len(pulls), RESYNC_BATCH_SIZE):
-        batch = pulls[i:i + RESYNC_BATCH_SIZE]
-        logger.info(f"Processing pull requests batch {i//RESYNC_BATCH_SIZE + 1}, size: {len(batch)}")
-        yield [
-            {
-                "identifier": str(pr["id"]),
-                "title": pr["title"],
-                "state": pr["state"],
-                "url": pr["url"],
-                "author": pr["user"]["login"]
-            }
-            for pr in batch
-        ]
+    async for pulls in client.get_pull_requests(ocean.integration_config["github_org"], ocean.integration_config["github_repo"]):
+        logger.info(f"Received batch with {len(pulls)} pull requests")
+        yield pulls
 
 @ocean.on_resync(ObjectKind.WORKFLOW)
 async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    workflows = await client.get_workflows(integration_config["github_org"], integration_config["github_repo"])
-    logger.info(f"Found {len(workflows)} workflows total")
+    logger.info(f"Listing GitHub resource: {kind}")
+    client = get_client()
     
-    # Process workflows in batches
-    for i in range(0, len(workflows), RESYNC_BATCH_SIZE):
-        batch = workflows[i:i + RESYNC_BATCH_SIZE]
-        logger.info(f"Processing workflows batch {i//RESYNC_BATCH_SIZE + 1}, size: {len(batch)}")
-        yield [
-            {
-                "identifier": str(wf["id"]),
-                "name": wf["name"],
-                "state": wf["state"],
-                "created_at": wf["created_at"],
-                "url": wf["html_url"]
-            }
-            for wf in batch
-        ]
-
+    async for workflows in client.get_workflows(ocean.integration_config["github_org"], ocean.integration_config["github_repo"]):
+        logger.info(f"Received batch with {len(workflows)} workflows")
+        yield workflows
 
 @ocean.on_resync(ObjectKind.TEAM)
 async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    teams = await client.get_teams(integration_config["github_org"])
-    logger.info(f"Found {len(teams)} teams total")
+    logger.info(f"Listing GitHub resource: {kind}")
+    client = get_client()
     
-    # Process teams in batches
-    for i in range(0, len(teams), RESYNC_BATCH_SIZE):
-        batch = teams[i:i + RESYNC_BATCH_SIZE]
-        logger.info(f"Processing teams batch {i//RESYNC_BATCH_SIZE + 1}, size: {len(batch)}")
-        yield [
-            {
-                "identifier": str(team["id"]),
-                "name": team["name"],
-                "description": team.get("description", ""),
-                "slug": team["slug"]
-            }
-            for team in batch
-        ]
+    async for teams in client.get_teams(ocean.integration_config["github_org"]):
+        logger.info(f"Received batch with {len(teams)} teams")
+        yield teams
 
 
 @ocean.router.post("/webhook")
