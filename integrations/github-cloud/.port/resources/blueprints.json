@@ -2,7 +2,7 @@
   {
     "identifier": "githubRepository",
     "title": "GitHub Repository",
-    "icon": "GitHub",
+    "icon": "Microservice",
     "schema": {
       "properties": {
         "readme": {
@@ -10,6 +10,10 @@
           "type": "string",
           "format": "markdown",
           "icon": "Book"
+        },
+        "defaultBranch": {
+          "title": "Default branch",
+          "type": "string"
         },
         "url": {
           "title": "URL",
@@ -29,6 +33,76 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "githubIssue",
+    "title": "Issue",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "creator": {
+          "title": "Creator",
+          "type": "string"
+        },
+        "assignees": {
+          "title": "Assignees",
+          "type": "array"
+        },
+        "labels": {
+          "title": "Labels",
+          "type": "array"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": ["open", "closed"],
+          "enumColors": {
+            "open": "green",
+            "closed": "purple"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "title": "Closed At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "format": "markdown"
+        },
+        "issueNumber": {
+          "title": "Issue Number",
+          "type": "number"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "repository": {
+        "target": "githubRepository",
+        "required": true,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "githubMember",

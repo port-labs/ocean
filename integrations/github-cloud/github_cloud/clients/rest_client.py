@@ -44,7 +44,7 @@ class RestClient(HTTPBaseClient):
                     headers=self._headers,
                     params=params_dict if not url.startswith("http") else None,
                 )
-                response.raise_for_status()
+                logger.error(f"Failed to fetch {url} - Status: {response.status_code}, Content: {response.text}")
             except Exception as e:
                 logger.error(f"Failed to fetch {url}: {str(e)}")
                 raise

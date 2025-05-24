@@ -155,3 +155,58 @@ async def test_get_team_member(github_client):
         response = await github_client.get_team_member("test-org", "test-team", "test-user")
         assert response == mock_response
         mock_request.assert_called_once_with("GET", "orgs/test-org/teams/test-team/members/test-user")
+
+@pytest.mark.asyncio
+async def test_get_issues(github_client):
+    mock_issues = [
+        {"number": 1, "title": "Issue 1"},
+        {"number": 2, "title": "Issue 2"}
+    ]
+
+    async def mock_paginated(*args, **kwargs):
+        yield mock_issues
+
+    with patch.object(github_client.rest, "get_paginated_repo_resource", mock_paginated):
+        async for batch in github_client.get_issues("owner/repo"):
+            assert len(batch) == 2
+            assert batch[0]["number"] == 1
+            assert batch[1]["number"] == 2
+
+@pytest.mark.asyncio
+async def test_get_issues_with_null_closed_at(github_client):
+    """Test that get_issues correctly handles issues with null closed_at values."""
+    mock_issues = [
+        {
+            "number": 1,
+            "title": "Open Issue",
+            "state": "open",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "closed_at": None
+        },
+        {
+            "number": 2,
+            "title": "Closed Issue",
+            "state": "closed",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-02T00:00:00Z",
+            "closed_at": "2024-01-02T00:00:00Z"
+        }
+    ]
+
+    async def mock_paginated(*args, **kwargs):
+        yield mock_issues
+
+    with patch.object(github_client.rest, "get_paginated_repo_resource", mock_paginated):
+        async for batch in github_client.get_issues("owner/repo", state="all"):
+            assert len(batch) == 2
+
+            # Verify open issue has null closed_at
+            open_issue = batch[0]
+            assert open_issue["state"] == "open"
+            assert open_issue["closed_at"] is None
+
+            # Verify closed issue has closed_at timestamp
+            closed_issue = batch[1]
+            assert closed_issue["state"] == "closed"
+            assert closed_issue["closed_at"] == "2024-01-02T00:00:00Z"

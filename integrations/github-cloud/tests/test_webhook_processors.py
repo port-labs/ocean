@@ -8,7 +8,8 @@ patcher.start()
 from github_cloud.webhook.webhook_processors import (
     RepositoryWebhookProcessor,
     PullRequestWebhookProcessor,
-    WorkflowWebhookProcessor
+    WorkflowWebhookProcessor,
+    IssueWebhookProcessor
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
@@ -154,6 +155,49 @@ def mock_workflow_job_event():
         },
         trace_id="test-trace-id"
     )
+
+@pytest.fixture
+def mock_issue_event():
+    """Fixture for a mock issue event."""
+    return {
+        "action": "opened",
+        "issue": {
+            "id": 123,
+            "number": 1,
+            "title": "Test Issue",
+            "state": "open",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "closed_at": None,
+            "body": "Test issue body",
+            "html_url": "https://github.com/owner/repo/issues/1",
+            "assignees": [{"login": "user1"}],
+            "labels": [{"name": "bug"}],
+            "user": {"login": "author1"}
+        },
+        "repository": {
+            "id": 456,
+            "full_name": "owner/repo",
+            "name": "repo",
+            "html_url": "https://github.com/owner/repo",
+            "description": "Test repository",
+            "default_branch": "main",
+            "visibility": "public",
+            "archived": False,
+            "disabled": False,
+            "fork": False,
+            "forks_count": 0,
+            "stargazers_count": 0,
+            "watchers_count": 0,
+            "open_issues_count": 1,
+            "language": "Python",
+            "topics": ["test"],
+            "license": {"name": "MIT"},
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "pushed_at": "2024-01-01T00:00:00Z"
+        }
+    }
 
 @pytest.mark.asyncio
 async def test_repository_webhook_processor_authenticate(mock_webhook_event):
@@ -566,3 +610,104 @@ async def test_workflow_webhook_processor_validate_payload_missing_workflow_job(
     )
     processor = WorkflowWebhookProcessor(event)
     assert await processor.validate_payload(event.payload) is False
+
+@pytest.mark.asyncio
+async def test_issue_webhook_processor_handle_issue_event(mock_issue_event):
+    """Test handling of issue events."""
+    # Create mock GitHub client
+    mock_github_client = AsyncMock()
+
+    # Mock the issue data to be returned
+    mock_issue = {
+        "id": 123,
+        "number": 1,
+        "title": "Test Issue",
+        "state": "open",
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-01T00:00:00Z",
+        "closed_at": None,
+        "body": "Test issue body",
+        "html_url": "https://github.com/owner/repo/issues/1",
+        "assignees": [{"login": "user1"}],
+        "labels": [{"name": "bug"}],
+        "user": {"login": "author1"}
+    }
+
+    # Set up the mock to return our mock issue
+    mock_github_client.get_issue.return_value = mock_issue
+
+    # Create the processor with our mock client
+    processor = IssueWebhookProcessor(WebhookEvent(
+        payload=mock_issue_event,
+        trace_id="test-trace",
+        headers={"x-github-event": "issues"}
+    ))
+    processor._github_cloud_webhook_client = mock_github_client
+
+    # Process the event
+    results = await processor.handle_event()
+
+    # Verify the results
+    assert len(results.updated_raw_results) == 1
+    updated_issue = results.updated_raw_results[0]
+    assert updated_issue["id"] == mock_issue["id"]
+    assert updated_issue["number"] == mock_issue["number"]
+    assert updated_issue["title"] == mock_issue["title"]
+    assert updated_issue["repository"] == mock_issue_event["repository"]
+
+    # Verify the mock was called correctly
+    mock_github_client.get_issue.assert_called_once_with(
+        mock_issue_event["repository"]["full_name"],
+        mock_issue_event["issue"]["number"]
+    )
+
+@pytest.mark.asyncio
+async def test_issue_webhook_processor_handle_issue_event_fetch_failure(mock_issue_event):
+    """Test handling of issue events when GitHub API fetch fails."""
+    # Create mock GitHub client
+    mock_github_client = AsyncMock()
+
+    # Set up the mock to return None (simulating API failure)
+    mock_github_client.get_issue.return_value = None
+
+    # Create the processor with our mock client
+    processor = IssueWebhookProcessor(WebhookEvent(
+        payload=mock_issue_event,
+        trace_id="test-trace",
+        headers={"x-github-event": "issues"}
+    ))
+    processor._github_cloud_webhook_client = mock_github_client
+
+    # Process the event
+    results = await processor.handle_event()
+
+    # Verify the results fall back to payload data
+    assert len(results.updated_raw_results) == 1
+    updated_issue = results.updated_raw_results[0]
+    assert updated_issue["id"] == mock_issue_event["issue"]["id"]
+    assert updated_issue["number"] == mock_issue_event["issue"]["number"]
+    assert updated_issue["title"] == mock_issue_event["issue"]["title"]
+    assert updated_issue["repository"] == mock_issue_event["repository"]
+
+    # Verify the mock was called
+    mock_github_client.get_issue.assert_called_once_with(
+        mock_issue_event["repository"]["full_name"],
+        mock_issue_event["issue"]["number"]
+    )
+
+@pytest.mark.asyncio
+async def test_issue_webhook_processor_validate_payload():
+    """Test payload validation."""
+    processor = IssueWebhookProcessor(WebhookEvent(payload={}, trace_id="test-trace", headers={}))
+
+    # Test invalid payload
+    assert not await processor.validate_payload({})
+    assert not await processor.validate_payload({"issue": {}})
+    assert not await processor.validate_payload({"repository": {}})
+
+    # Test valid payload
+    valid_payload = {
+        "issue": {"number": 1},
+        "repository": {"full_name": "owner/repo"}
+    }
+    assert await processor.validate_payload(valid_payload)

@@ -8,12 +8,13 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .full_name | gsub(" "; "")
+          identifier: .full_name | .name | gsub(" "; "")
           title: .name
           blueprint: '"githubRepository"'
           properties:
-            url: .html_url
             readme: file://README.md
+            url: .html_url
+            defaultBranch: .default_branch
             language: .__languages | to_entries | max_by(.value) | .key
   - kind: member
     selector:
@@ -40,7 +41,7 @@ resources:
             url: .html_url
             description: .description
           relations:
-            githubMembers: .__members | map(.login)
+            githubMembers: .__members | select(. != null) | map(.login)
   - kind: pull-request
     selector:
       query: 'true'
@@ -57,16 +58,39 @@ resources:
             mergedAt: .merged_at
             link: .html_url
             leadTimeHours: >-
-              (.created_at as $createdAt | .merged_at as $mergedAt | ($createdAt
-              | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)
-              as $createdTimestamp | ($mergedAt | if . == null then null else
-              sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end)
-              as $mergedTimestamp | if $mergedTimestamp == null then null else
-              (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) /
-              100) end)
+              (.created_at as $createdAt |
+              if .merged_at == null then null else
+                .merged_at as $mergedAt |
+                ($createdAt | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
+                ($mergedAt | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $mergedTimestamp |
+                (($mergedTimestamp - $createdTimestamp) / 3600) end)
             reviewers: .requested_reviewers | map(.login)
           relations:
             repository: .repository.full_name
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"githubIssue"'
+          properties:
+            creator: .user.login
+            assignees: "[.assignees[].login]" # Will return an empty array if no assignees
+            labels: "[.labels[].name]"
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            closedAt: .closed_at
+            comments: .comments
+            description: .body
+            issueNumber: .number
+            link: .html_url
+          relations:
+            repository: .repository.full_name
+            pullRequest: .pull_request.html_url
   - kind: workflow-run
     selector:
       query: 'true'
@@ -82,12 +106,13 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
             duration: >-
-              (.created_at as $createdAt | .updated_at as $updatedAt | ($createdAt
-              | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)
-              as $createdTimestamp | ($updatedAt | sub("\\..*Z$"; "Z") |
-              strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $updatedTimestamp |
-              if $updatedTimestamp == null then null else
-              ($updatedTimestamp - $createdTimestamp) end)
+              (.created_at as $createdAt |
+               .updated_at as $updatedAt |
+               if $createdAt != null and $updatedAt != null then
+                 ($createdAt | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
+                 ($updatedAt | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $updatedTimestamp |
+                 ($updatedTimestamp - $createdTimestamp)
+               else null end)
             url: .html_url
             headBranch: .head_branch
             headSha: .head_sha
@@ -110,12 +135,15 @@ resources:
             startedAt: .started_at
             completedAt: .completed_at
             duration: >-
-              (.started_at as $startedAt | .completed_at as $completedAt | ($startedAt
-              | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)
-              as $startedTimestamp | ($completedAt | sub("\\..*Z$"; "Z") |
-              strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $completedTimestamp |
-              if $completedTimestamp == null then null else
-              ($completedTimestamp - $startedTimestamp) end)
+              (.started_at as $startedAt |
+               .completed_at as $completedAt |
+               if $startedAt != null and $completedAt != null then
+                 ($startedAt | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $startedTimestamp |
+                 ($completedAt | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $completedTimestamp |
+                 ($completedTimestamp - $startedTimestamp)
+               else
+                 null
+               end)
             runnerName: .runner_name
             runnerGroup: .runner_group_name
             steps: >-

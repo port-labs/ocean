@@ -1,30 +1,21 @@
-from enum import StrEnum
+from enum import Enum
 from loguru import logger
 from typing import Any, Union, List, Dict, Optional
 import json
 import yaml
 
 
-class ObjectKind(StrEnum):
+class ObjectKind(str, Enum):
     """
-    Kinds of GitHub Cloud objects supported by the integration.
-
-    Attributes:
-        REPOSITORY: Repository object
-        PULL_REQUEST: Pull request object
-        ISSUE: Issue object
-        TEAM_WITH_MEMBERS: Team with its members
-        MEMBER: Team member
-        WORKFLOW_RUN: Workflow run
-        WORKFLOW_JOB: Workflow job
+    Enum for different types of GitHub objects.
     """
     REPOSITORY = "repository"
-    PULL_REQUEST = "pull-request"
-    ISSUE = "issue"
-    TEAM_WITH_MEMBERS = "team-with-members"
     MEMBER = "member"
+    TEAM_WITH_MEMBERS = "team-with-members"
+    PULL_REQUEST = "pull-request"
     WORKFLOW_RUN = "workflow-run"
     WORKFLOW_JOB = "workflow-job"
+    ISSUE = "issue"
 
 
 def _try_parse_json(content: str, file_path: str, context: str) -> Optional[Union[Dict[str, Any], List[Any]]]:

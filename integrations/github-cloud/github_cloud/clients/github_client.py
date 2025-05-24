@@ -653,3 +653,18 @@ class GitHubCloudClient:
         except Exception as e:
             logger.error(f"Failed to get workflow job {job_id} for {repo_full_name}: {str(e)}")
             return None
+
+    async def get_issues(self, repo_name: str, state: str = "open") -> AsyncIterator[List[Dict[str, Any]]]:
+        """
+        Get all issues from a repository.
+
+        Args:
+            repo_name: Repository name in format 'owner/repo'
+            state: Issue state (open, closed, or all)
+
+        Returns:
+            Async iterator yielding batches of issues
+        """
+        params = {"state": state}
+        async for batch in self.rest.get_paginated_repo_resource(repo_name, "issues", params=params):
+            yield batch

@@ -1,6 +1,7 @@
 from typing import AsyncIterator, List, Dict, Any
 from loguru import logger
 from port_ocean.context.event import event
+import json
 
 from github_cloud.clients.github_client import GitHubCloudClient
 
@@ -45,6 +46,22 @@ def _enrich_pull_request(pr: Dict[str, Any], repo: Dict[str, Any]) -> Dict[str, 
     if pr.get("url", "").startswith(repo.get("url", "") + "/"):
         return {**pr, "repository": repo}
     return pr
+
+
+def _enrich_issue(issue: Dict[str, Any], repo: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Enrich issue with repository information.
+
+    Args:
+        issue: Issue data
+        repo: Repository data
+
+    Returns:
+        Enriched issue data
+    """
+    if issue.get("url", "").startswith(repo.get("url", "") + "/"):
+        return {**issue, "repository": repo}
+    return issue
 
 
 async def resync_repositories(
@@ -109,6 +126,42 @@ async def resync_pull_requests(
                 yield enriched_prs
     except Exception as e:
         logger.error(f"Failed to sync pull requests: {str(e)}")
+        raise
+
+
+async def resync_issues(
+    client: GitHubCloudClient,
+) -> AsyncIterator[List[Dict[str, Any]]]:
+    """
+    Resync issues from GitHub Cloud.
+
+    Args:
+        client: GitHub Cloud client instance
+
+    Yields:
+        Batches of issue data
+
+    Note:
+        The function fetches both open and closed issues and enriches
+        them with repository information.
+    """
+    try:
+        async for repos_batch in client.get_repositories():
+            logger.info(f"Processing batch of {len(repos_batch)} repositories for issues")
+
+            for repo in repos_batch:
+                repo_full_name = repo["full_name"]
+                async for issues_batch in client.get_issues(repo_full_name, state="all"):
+                    for issue in issues_batch:
+                        logger.debug(f"Raw issue data: {json.dumps(issue, indent=2)}")
+
+                    enriched_issues = [
+                        _enrich_issue(issue, repo)
+                        for issue in issues_batch
+                    ]
+                    yield enriched_issues
+    except Exception as e:
+        logger.error(f"Failed to sync issues: {str(e)}")
         raise
 
 
@@ -236,9 +289,8 @@ async def resync_workflow_runs(
             logger.info(f"Processing batch of {len(repos_batch)} repositories for workflow runs")
 
             for repo in repos_batch:
-                async for runs_batch in client.get_repository_resource(
-                    [repo], "actions/runs"
-                ):
+                repo_full_name = repo["full_name"]
+                async for runs_batch in client.get_workflow_runs(repo_full_name):
                     enriched_runs = [
                         {**run, "repository": repo}
                         for run in runs_batch
@@ -270,13 +322,11 @@ async def resync_workflow_jobs(
             logger.info(f"Processing batch of {len(repos_batch)} repositories for workflow jobs")
 
             for repo in repos_batch:
-                async for runs_batch in client.get_repository_resource(
-                    [repo], "actions/runs"
-                ):
+                repo_full_name = repo["full_name"]
+                async for runs_batch in client.get_workflow_runs(repo_full_name):
                     for run in runs_batch:
-                        async for jobs_batch in client.get_repository_resource(
-                            [repo], f"actions/runs/{run['id']}/jobs"
-                        ):
+                        run_id = run["id"]
+                        async for jobs_batch in client.get_workflow_jobs(repo_full_name, run_id):
                             enriched_jobs = [
                                 {**job, "repository": repo, "workflow_run": run}
                                 for job in jobs_batch
