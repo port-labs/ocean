@@ -42,6 +42,7 @@ class RepositoryEvents(EventConfig):
         issues: Enable issue events
         release: Enable release events
         workflow_run: Enable workflow run events
+        workflow: Enable workflow events
         workflow_job: Enable workflow job events
         member: Enable member events
     """
@@ -51,6 +52,7 @@ class RepositoryEvents(EventConfig):
     release: bool = True
     workflow_run: bool = True
     workflow_job: bool = True
+    workflow: bool = True
     member: bool = True
 
     # List of all available events for validation
@@ -60,6 +62,7 @@ class RepositoryEvents(EventConfig):
         "issues",
         "release",
         "workflow_run",
+        "workflow"
         "workflow_job",
         "member"
     ]

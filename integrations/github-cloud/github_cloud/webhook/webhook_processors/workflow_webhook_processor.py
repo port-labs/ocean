@@ -1,41 +1,30 @@
 from typing import Dict, Any, List, Set
 from loguru import logger
 from port_ocean.core.ocean_types import RawEntityDiff
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent, WebhookEventRawResults
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent, WebhookEventRawResults, EventPayload
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 from github_cloud.helpers.utils import ObjectKind
 from github_cloud.webhook.webhook_processors._github_abstract_webhook_processor import GitHubCloudAbstractWebhookProcessor
+from github_cloud.clients.github_client import GitHubCloudClient
 
 
 class WorkflowWebhookProcessor(GitHubCloudAbstractWebhookProcessor):
     """
-    Processor for GitHub workflow webhook events.
-    Handles workflow_run and workflow_job events.
+    Process workflow-related webhook events from GitHub Cloud.
+    Handles workflow created/updated/deleted events.
     """
 
-    def __init__(self, event: WebhookEvent) -> None:
-        """
-        Initialize the workflow webhook processor.
+    events = ["workflow"]
 
-        Args:
-            event: Webhook event
-        """
-        super().__init__(event)
-        self.events = ["workflow_run", "workflow_job"]
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        return [ObjectKind.WORKFLOW]
 
-    def get_matching_kinds(self) -> Set[str]:
+    async def handle_event(
+        self, payload: EventPayload, resource_config: ResourceConfig
+    ) -> WebhookEventRawResults:
         """
-        Get the kinds of entities this processor can handle.
-
-        Returns:
-            Set of entity kinds
-        """
-        return {ObjectKind.WORKFLOW_RUN, ObjectKind.WORKFLOW_JOB}
-
-    async def handle_event(self, payload=None, resource_config: ResourceConfig = None) -> WebhookEventRawResults:
-        """
-        Handle the webhook event.
+        Handle the workflow webhook event.
 
         Args:
             payload: Event payload
@@ -44,66 +33,65 @@ class WorkflowWebhookProcessor(GitHubCloudAbstractWebhookProcessor):
         Returns:
             WebhookEventRawResults containing the processed results
         """
-        if payload is None:
-            payload = self.event.payload
-        if not await self.should_process_event(self.event):
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
-        if not await self.validate_payload(payload):
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+        workflow = payload["workflow"]
+        action = payload["action"]
+        repo = payload["repository"]
 
-        event_type = self._get_event_type(self.event.headers)
-        if event_type == "workflow_run":
-            workflow_run = payload["workflow_run"]
-            repo_name = payload["repository"]["full_name"]
-            run_id = workflow_run["id"]
+        logger.info(
+            f"Processing workflow webhook event for workflow {workflow['name']} in repo {repo['full_name']}"
+        )
 
-            # Try to fetch fresh data from GitHub
-            updated_run = await self._github_cloud_webhook_client.get_single_workflow_run(repo_name, run_id)
-            if updated_run:
-                # Enrich with repository data
-                updated_run["repository"] = payload["repository"]
-                # Fetch and add jobs
-                jobs = []
-                async for jobs_batch in self._github_cloud_webhook_client.get_workflow_jobs(repo_name, run_id):
-                    jobs.extend(jobs_batch)
-                updated_run["jobs"] = jobs
-                return WebhookEventRawResults(updated_raw_results=[updated_run], deleted_raw_results=[])
+        # For workflow deletion, return the workflow as deleted
+        if action == "deleted":
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[workflow],
+            )
 
+        # For workflow creation or update, fetch fresh data
+        client = GitHubCloudClient.create_from_ocean_configuration()
+        try:
+            # Get the workflow file content to ensure we have the latest data
+            workflow_file = await client.rest.get_file_content(
+                repo["full_name"],
+                workflow["path"],
+                repo["default_branch"]
+            )
+
+            # Enrich workflow data with repository info and file content
+            enriched_workflow = {
+                **workflow,
+                "repo": repo["full_name"],
+                "content": workflow_file if workflow_file else "",
+                "repository": repo
+            }
+
+            return WebhookEventRawResults(
+                updated_raw_results=[enriched_workflow],
+                deleted_raw_results=[],
+            )
+        except Exception as e:
+            logger.error(f"Failed to fetch workflow file content: {str(e)}")
             # Fallback to payload data if fetch fails
-            workflow_run["repository"] = payload["repository"]
-            return WebhookEventRawResults(updated_raw_results=[workflow_run], deleted_raw_results=[])
+            workflow["repo"] = repo["full_name"]
+            workflow["repository"] = repo
+            return WebhookEventRawResults(
+                updated_raw_results=[workflow],
+                deleted_raw_results=[],
+            )
 
-        elif event_type == "workflow_job":
-            workflow_job = payload["workflow_job"]
-            repo_name = payload["repository"]["full_name"]
-            job_id = workflow_job["id"]
-            run_id = workflow_job["run_id"]
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        """
+        Validate the webhook payload.
 
-            # Try to fetch fresh data from GitHub
-            updated_job = await self._github_cloud_webhook_client.get_single_workflow_job(repo_name, job_id)
-            if updated_job:
-                # Enrich with repository and run data
-                updated_job["repository"] = payload["repository"]
-                # Fetch run data
-                run = await self._github_cloud_webhook_client.get_single_workflow_run(repo_name, run_id)
-                if run:
-                    updated_job["workflow_run"] = run
-                return WebhookEventRawResults(updated_raw_results=[updated_job], deleted_raw_results=[])
+        Args:
+            payload: Event payload
 
-            # Fallback to payload data if fetch fails
-            workflow_job["repository"] = payload["repository"]
-            workflow_job["workflow_run"] = payload.get("workflow_run", {})
-            return WebhookEventRawResults(updated_raw_results=[workflow_job], deleted_raw_results=[])
-
-        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
-
-    async def validate_payload(self, payload: Dict[str, Any]) -> bool:
-        event_type = self._get_event_type(self.event.headers)
-        if event_type == "workflow_run":
-            return "workflow_run" in payload and "repository" in payload
-        elif event_type == "workflow_job":
-            return "workflow_job" in payload and "repository" in payload
-        return False
+        Returns:
+            True if valid, False otherwise
+        """
+        required_fields = ["workflow", "action", "repository"]
+        return all(field in payload for field in required_fields)
 
     async def process(self, payload: Dict[str, Any]) -> List[RawEntityDiff]:
         """

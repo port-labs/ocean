@@ -17,6 +17,7 @@ from github_cloud.webhook.webhook_processors.workflow_webhook_processor import (
 from github_cloud.webhook.webhook_processors.issue_webhook_processor import (
     IssueWebhookProcessor,
 )
+from github_cloud.webhook.webhook_processors.workflow_run_webhook_processor import WorkflowRunWebhookProcessor
 from github_cloud.webhook.webhook_factory.repository_webhook_factory import (
     RepositoryWebhookFactory,
 )
@@ -31,6 +32,7 @@ from github_cloud.resync_data import (
     resync_workflow_runs,
     resync_workflow_jobs,
     resync_issues,
+    resync_workflows,
 )
 
 
@@ -249,6 +251,29 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise
 
 
+@ocean.on_resync(ObjectKind.WORKFLOW)
+async def on_resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Resync GitHub workflows.
+
+    Args:
+        kind: Entity kind
+
+    Yields:
+        Batches of workflows
+
+    Raises:
+        Exception: If workflow sync fails
+    """
+    try:
+        client = create_github_client()
+        async for workflows_batch in resync_workflows(client):
+            yield workflows_batch
+    except Exception as e:
+        logger.error(f"Failed to sync workflows: {str(e)}")
+        raise
+
+
 @ocean.on_resync()
 async def debug_handler(kind: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """
@@ -267,4 +292,5 @@ ocean.add_webhook_processor("/hook/org/{org_name}", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", WorkflowWebhookProcessor)
+ocean.add_webhook_processor("/hook/{owner}/{repo}", WorkflowRunWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", IssueWebhookProcessor)

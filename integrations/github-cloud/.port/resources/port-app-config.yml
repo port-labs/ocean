@@ -92,33 +92,27 @@ resources:
             repository: .repository.full_name
   - kind: workflow-run
     selector:
-      query: 'true'
+      query: ".status != 'completed'" # JQ boolean query. If evaluated to false - skip syncing the object.
     port:
       entity:
         mappings:
-          identifier: .id | tostring
-          title: .name
+          identifier: ".repository.name + (.id|tostring)"
+          title: ".display_title"
           blueprint: '"githubWorkflowRun"'
           properties:
-            status: .status
-            conclusion: .conclusion
-            createdAt: .created_at
-            updatedAt: .updated_at
-            duration: >-
-              (.created_at as $createdAt |
-               .updated_at as $updatedAt |
-               if $createdAt != null and $updatedAt != null then
-                 ($createdAt | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
-                 ($updatedAt | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $updatedTimestamp |
-                 ($updatedTimestamp - $createdTimestamp)
-               else null end)
-            url: .html_url
-            headBranch: .head_branch
-            headSha: .head_sha
-            triggeredBy: .triggering_actor.login
+            name: ".name"
+            triggeringActor: ".triggering_actor.login"
+            status: ".status"
+            conclusion: ".conclusion"
+            createdAt: ".created_at"
+            runStartedAt: ".run_started_at"
+            updatedAt: ".updated_at"
+            deletedAt: ".deleted_at"
+            runNumber: ".run_number"
+            runAttempt: ".run_attempt"
+            link: ".html_url"
           relations:
-            repository: .repository.full_name
-            workflowJobs: .jobs | map(.id | tostring)
+            workflow: ".repository.name + (.workflow_id|tostring)"
   - kind: workflow-job
     selector:
       query: 'true'
@@ -157,3 +151,20 @@ resources:
           relations:
             repository: .repository.full_name
             workflowRun: .run_id | tostring
+  - kind: workflow
+    selector:
+      query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
+    port:
+      entity:
+        mappings:
+          identifier: ".repo + (.id|tostring)"
+          title: ".name"
+          blueprint: '"githubWorkflow"'
+          properties:
+            path: ".path"
+            status: ".state"
+            createdAt: ".created_at"
+            updatedAt: ".updated_at"
+            link: ".html_url"
+          relations:
+            repository: ".repo"

@@ -335,3 +335,59 @@ async def resync_workflow_jobs(
     except Exception as e:
         logger.error(f"Failed to sync workflow jobs: {str(e)}")
         raise
+
+
+async def resync_workflows(
+    client: GitHubCloudClient,
+) -> AsyncIterator[List[Dict[str, Any]]]:
+    """
+    Resync workflows from GitHub Cloud.
+
+    Args:
+        client: GitHub Cloud client instance
+
+    Yields:
+        Batches of workflow data with their content
+
+    Note:
+        The function fetches all workflows for each repository and includes
+        their file content. If file content fetch fails, the workflow is still
+        included but without content.
+    """
+    try:
+        async for repos_batch in client.get_repositories():
+            logger.info(f"Processing batch of {len(repos_batch)} repositories for workflows")
+
+            for repo in repos_batch:
+                repo_full_name = repo["full_name"]
+                workflows = []
+
+                async for workflows_batch in client.rest.get_paginated_repository_resource(
+                    repo_full_name,
+                    "actions/workflows"
+                ):
+                    for workflow in workflows_batch:
+                        try:
+                            # Get workflow file content
+                            workflow_file = await client.rest.get_file_content(
+                                repo_full_name,
+                                workflow["path"],
+                                repo.get("default_branch", "main")
+                            )
+                            if workflow_file:
+                                workflow["content"] = workflow_file
+
+                            # Add repository info
+                            workflow["repository"] = repo
+                            workflows.append(workflow)
+                        except Exception as e:
+                            logger.error(f"Failed to get workflow file for {workflow['path']}: {str(e)}")
+                            # Add workflow without content if file fetch fails
+                            workflow["repository"] = repo
+                            workflows.append(workflow)
+
+                if workflows:
+                    yield workflows
+    except Exception as e:
+        logger.error(f"Failed to sync workflows: {str(e)}")
+        raise

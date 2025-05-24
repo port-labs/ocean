@@ -230,50 +230,77 @@
   },
   {
     "identifier": "githubWorkflowRun",
-    "title": "GitHub Workflow Run",
-    "icon": "GitHub",
+    "title": "Workflow Run",
+    "icon": "Github",
     "schema": {
       "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "triggeringActor": {
+          "title": "Triggering Actor",
+          "type": "string"
+        },
         "status": {
           "title": "Status",
           "type": "string",
           "enum": [
             "completed",
+            "action_required",
+            "cancelled",
+            "startup_failure",
+            "failure",
+            "neutral",
+            "skipped",
+            "stale",
+            "success",
+            "timed_out",
             "in_progress",
             "queued",
-            "waiting",
-            "pending"
+            "requested",
+            "waiting"
           ],
           "enumColors": {
-            "completed": "green",
-            "in_progress": "blue",
             "queued": "yellow",
-            "waiting": "orange",
-            "pending": "gray"
+            "in_progress": "yellow",
+            "success": "green",
+            "failure": "red"
           }
         },
         "conclusion": {
           "title": "Conclusion",
           "type": "string",
           "enum": [
-            "success",
-            "failure",
+            "completed",
+            "action_required",
             "cancelled",
-            "skipped",
+            "startup_failure",
+            "failure",
             "neutral",
-            "timed_out"
+            "skipped",
+            "stale",
+            "success",
+            "timed_out",
+            "in_progress",
+            "queued",
+            "requested",
+            "waiting"
           ],
           "enumColors": {
+            "queued": "yellow",
+            "in_progress": "yellow",
             "success": "green",
-            "failure": "red",
-            "cancelled": "gray",
-            "skipped": "yellow",
-            "neutral": "blue",
-            "timed_out": "orange"
+            "failure": "red"
           }
         },
         "createdAt": {
           "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "runStartedAt": {
+          "title": "Run Started At",
           "type": "string",
           "format": "date-time"
         },
@@ -282,45 +309,29 @@
           "type": "string",
           "format": "date-time"
         },
-        "duration": {
-          "title": "Duration (seconds)",
+        "runNumber": {
+          "title": "Run Number",
           "type": "number"
         },
-        "url": {
-          "title": "URL",
-          "format": "url",
-          "type": "string"
+        "runAttempt": {
+          "title": "Run Attempts",
+          "type": "number"
         },
-        "headBranch": {
-          "title": "Head Branch",
-          "type": "string"
-        },
-        "headSha": {
-          "title": "Head SHA",
-          "type": "string"
-        },
-        "triggeredBy": {
-          "title": "Triggered By",
-          "type": "string"
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
         }
       },
       "required": []
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "aggregationProperties": {},
     "relations": {
-      "repository": {
-        "title": "Repository",
-        "target": "githubRepository",
+      "workflow": {
+        "target": "githubWorkflow",
         "required": true,
         "many": false
-      },
-      "workflowJobs": {
-        "title": "Workflow Jobs",
-        "target": "githubWorkflowJob",
-        "required": false,
-        "many": true
       }
     }
   },
@@ -436,6 +447,65 @@
         "title": "Workflow Run",
         "target": "githubWorkflowRun",
         "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "githubWorkflow",
+    "title": "Workflow",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "active",
+            "deleted",
+            "disabled_fork",
+            "disabled_inactivity",
+            "disabled_manually"
+          ],
+          "enumColors": {
+            "active": "green",
+            "deleted": "red"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "deletedAt": {
+          "title": "Deleted At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "githubRepository",
+        "required": false,
         "many": false
       }
     }
