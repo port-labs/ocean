@@ -13,7 +13,6 @@ resources:
           title: ".name"
           blueprint: '"githubRepository"'
           properties:
-            readme: "file://README.md"
             url: ".html_url"
             defaultBranch: ".default_branch"
           relations:
