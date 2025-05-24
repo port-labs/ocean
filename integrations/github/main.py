@@ -7,16 +7,15 @@ from constants import ObjectKind
 from client.github import GitHubClient
 from webhook_handler import WebhookHandler
 
-webhook_handler = WebhookHandler()
-
 def get_client() -> GitHubClient:
     """Get a configured GitHub client instance."""
     return GitHubClient.from_ocean_configuration()
 
+webhook_handler = WebhookHandler()
+webhook_handler.configure_client(get_client())
+
 @ocean.on_start()
 async def on_start() -> None:
-    # Initialize a client to verify credentials
-    client = get_client()
     logger.info("GitHub client configuration verified successfully.")
 
 
@@ -68,6 +67,6 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.router.post("/webhook")
-async def github_webhook(request: Request):
+async def handle_webhook_request(request: Request):
     return await webhook_handler.handle(request)
 

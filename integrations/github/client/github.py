@@ -131,3 +131,60 @@ class GitHubClient:
     async def get_teams(self, org: str) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for teams in self._get_paginated(f"orgs/{org}/teams"):
             yield teams
+            
+    async def get_repository_details(self, repo_name: str) -> dict[str, Any]:
+        """Get detailed information about a repository.
+        
+        Args:
+            repo_name: Full repository name (org/repo)
+            
+        Returns:
+            Repository details
+        """
+        response = await self.send_request("GET", f"{self._base_url}/repos/{repo_name}")
+        if response:
+            return response.json()
+        return {}
+        
+    async def get_issue_details(self, repo_name: str, issue_number: int) -> dict[str, Any]:
+        """Get detailed information about an issue.
+        
+        Args:
+            repo_name: Full repository name (org/repo)
+            issue_number: Issue number
+            
+        Returns:
+            Issue details
+        """
+        response = await self.send_request("GET", f"{self._base_url}/repos/{repo_name}/issues/{issue_number}")
+        if response:
+            return response.json()
+        return {}
+        
+    async def get_pull_request_details(self, repo_name: str, pr_number: int) -> dict[str, Any]:
+        """Get detailed information about a pull request.
+        
+        Args:
+            repo_name: Full repository name (org/repo)
+            pr_number: Pull request number
+            
+        Returns:
+            Pull request details including reviews and CI status
+        """
+        response = await self.send_request("GET", f"{self._base_url}/repos/{repo_name}/pulls/{pr_number}")
+        if not response:
+            return {}
+            
+        pr_data = response.json()
+        
+        # Get review status
+        reviews_response = await self.send_request("GET", f"{self._base_url}/repos/{repo_name}/pulls/{pr_number}/reviews")
+        if reviews_response:
+            pr_data["reviews"] = reviews_response.json()
+            
+        # Get CI status
+        status_response = await self.send_request("GET", f"{self._base_url}/repos/{repo_name}/commits/{pr_data['head']['sha']}/status")
+        if status_response:
+            pr_data["ci_status"] = status_response.json()
+            
+        return pr_data
