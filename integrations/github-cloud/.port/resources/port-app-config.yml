@@ -8,7 +8,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .full_name | .name | gsub(" "; "")
+          identifier: .full_name | gsub(" "; "")
           title: .name
           blueprint: '"githubRepository"'
           properties:
@@ -90,7 +90,6 @@ resources:
             link: .html_url
           relations:
             repository: .repository.full_name
-            pullRequest: .pull_request.html_url
   - kind: workflow-run
     selector:
       query: 'true'

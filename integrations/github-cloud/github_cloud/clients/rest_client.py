@@ -137,6 +137,43 @@ class RestClient(HTTPBaseClient):
                 )
                 yield batch
 
+    async def get_paginated_repository_resource(
+        self,
+        repo_path: str,
+        resource_path: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """
+        Fetch a paginated resource for a specific repository with a full resource path.
+
+        Args:
+            repo_path: Repository full name (owner/repo)
+            resource_path: Full resource path after the repository (e.g., 'actions/runs/123/jobs')
+            params: Query parameters
+
+        Yields:
+            Batches of resources
+
+        Raises:
+            ValueError: If repo_path is not in the correct format
+            Exception: If the API request fails
+        """
+        try:
+            owner, repo = repo_path.split('/', 1)
+        except ValueError:
+            raise ValueError(f"Invalid repo_path format: {repo_path}. Expected 'owner/repo'")
+
+        encoded_owner = quote(owner, safe="")
+        encoded_repo = quote(repo, safe="")
+        path = f"repos/{encoded_owner}/{encoded_repo}/{resource_path}"
+
+        async for batch in self.get_paginated_resource(path, params=params):
+            if batch:
+                logger.info(
+                    f"Received batch of {len(batch)} resources for {resource_path} in repo {repo_path}"
+                )
+                yield batch
+
     async def get_repo_languages(
         self, repo_path: str, params: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
