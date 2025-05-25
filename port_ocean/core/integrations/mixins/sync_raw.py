@@ -1,7 +1,5 @@
 import asyncio
-import pickle
 import uuid
-import os
 from graphlib import CycleError
 import inspect
 import typing
@@ -35,7 +33,6 @@ from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gath
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.helpers.metric.metric import SyncState, MetricType, MetricPhase
 from port_ocean.helpers.metric.utils import TimeMetric
-# from port_ocean.run_task import process_resource_in_subprocess
 from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -593,7 +590,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> None:
         logger.info(f"process started successfully for {resource.kind} with index {index}")
 
-        async def task():
+        async def process_resource_task():
             result = await self._process_resource(
                 resource, index, user_agent_type
             )
@@ -602,7 +599,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 event.entity_topological_sorter.entities
             )
 
-        asyncio.run(task())
+        asyncio.run(process_resource_task())
         logger.info(f"Process finished for {resource.kind} with index {index}")
 
     async def process_resource(self,resource,index,user_agent_type):
@@ -618,7 +615,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 process.join()
                 if process.exitcode != 0:
                     logger.error(f"Process {id} failed with exit code {process.exitcode}")
-                    return [],[]
                 event.entity_topological_sorter.entities.extend(file_ipc_map["topological_entities"].load())
                 return file_ipc_map["process_resource"].load()
 
