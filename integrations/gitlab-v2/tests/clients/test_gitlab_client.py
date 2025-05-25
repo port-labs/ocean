@@ -684,23 +684,22 @@ class TestGitLabClient:
             "get_paginated_project_resource",
             return_value=async_mock_generator([mock_dependencies]),
         ) as mock_get_resource:
-            with patch("gitlab.clients.gitlab_client.logger") as mock_logger:
-                # Act
-                results = []
-                async for dependencies_batch in client._get_dependencies_with_project(
-                    project=mock_project
-                ):
-                    results.extend(dependencies_batch)
+            # Act
+            results = []
+            async for dependencies_batch in client._get_dependencies_with_project(
+                project=mock_project
+            ):
+                results.extend(dependencies_batch)
 
-                # Assert
-                assert len(results) == 2
-                assert results[0]["project"] == {
-                    "id": "1",
-                    "path_with_namespace": "group/project1",
-                }
-                assert results[0]["name"] == "numpy"
-                assert results[1]["name"] == "pandas"
-                mock_get_resource.assert_called_once_with("1", "dependencies", None)
+            # Assert
+            assert len(results) == 2
+            assert results[0]["project"] == {
+                "id": "1",
+                "path_with_namespace": "group/project1",
+            }
+            assert results[0]["name"] == "numpy"
+            assert results[1]["name"] == "pandas"
+            mock_get_resource.assert_called_once_with("1", "dependencies", None)
 
     async def test_get_project_dependencies(self, client: GitLabClient) -> None:
         """Test fetching dependencies for multiple projects"""
