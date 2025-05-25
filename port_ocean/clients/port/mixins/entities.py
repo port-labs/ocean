@@ -240,9 +240,9 @@ class EntityClientMixin:
     def parse_upsert_entities_batch_response(
         self,
         index_to_entity: dict[int, Entity],
-        successful_entities: dict[int, Entity],
-        error_entities: dict[int, Entity],
-    ) -> list[tuple[bool, Entity]]:
+        successful_entities: dict[int, Any],
+        error_entities: dict[int, Any],
+    ) -> list[tuple[bool | None, Entity]]:
         result_tuples: list[tuple[bool | None, Entity]] = []
         for entity_index, original_entity in index_to_entity.items():
             reduced_entity = self._reduce_entity(original_entity)
