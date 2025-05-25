@@ -2,7 +2,11 @@ import os
 import pytest
 from pathlib import Path
 
-from port_ocean.cache.disk import DiskCacheProvider
+from port_ocean.cache.disk import (
+    DiskCacheProvider,
+    FailedToReadCacheFileError,
+    FailedToWriteCacheFileError,
+)
 
 
 @pytest.fixture
@@ -67,8 +71,8 @@ async def test_disk_cache_corrupted_file(
     with open(cache_path, "wb") as f:
         f.write(b"invalid pickle data")
 
-    # Attempting to read should raise RuntimeError
-    with pytest.raises(RuntimeError):
+    # Attempting to read should raise FailedToReadCacheFileError
+    with pytest.raises(FailedToReadCacheFileError):
         await disk_cache.get("test_key")
 
 
@@ -80,8 +84,8 @@ async def test_disk_cache_write_error(
     # Make the cache directory read-only
     os.chmod(tmp_path, 0o444)
 
-    # Attempting to write should raise RuntimeError
-    with pytest.raises(RuntimeError):
+    # Attempting to write should raise FailedToWriteCacheFileError
+    with pytest.raises(FailedToWriteCacheFileError):
         await disk_cache.set("test_key", "test_value")
 
     # Restore permissions

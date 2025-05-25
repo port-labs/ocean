@@ -1,6 +1,8 @@
 import pytest
 
-from port_ocean.cache.memory import InMemoryCacheProvider
+from port_ocean.cache.memory import (
+    InMemoryCacheProvider,
+)
 
 
 @pytest.fixture
