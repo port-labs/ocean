@@ -9,7 +9,7 @@ from .types import FakePerson, FakePersonStatus
 
 fake = Faker()
 
-DEFAULT_ENTITIES_AMOUNT = 100
+DEFAULT_ENTITIES_AMOUNT = 400
 DEFAULT_ENTITY_KB_SIZE = 1
 DEFAULT_LATENCY_MS = 0
 
