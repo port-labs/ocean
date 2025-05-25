@@ -34,14 +34,16 @@ class RestClient(HTTPBaseClient):
 
         while url:
             logger.debug(f"Fetching from {url}")
-            response = await self._client.request(
+            response = await self.send_api_request(
                 method="GET",
-                url=url if url.startswith("http") else f"{self.base_url}/{url}",
-                headers=self._headers,
+                path=url,
                 params=params_dict if not url.startswith("http") else None,
             )
 
-            batch = response.json()
+            if response:
+                batch = response.json()
+            else:
+                break
 
             # GitHub returns lists directly for collection endpoints
             if isinstance(batch, list):
@@ -56,12 +58,11 @@ class RestClient(HTTPBaseClient):
                 params_dict = None
             else:
                 # Some endpoints return an object with items
-                items = batch.get("items", [])
+                items = batch.get("items", []) or batch.get("workflows", [])
                 if not items:
                     break
                 yield items
 
-                # Handle GitHub search API pagination which may use different format
                 if "next_page" in batch:
                     if params_dict is None:
                         params_dict = {}
@@ -128,23 +129,6 @@ class RestClient(HTTPBaseClient):
                 )
                 yield batch
 
-    async def get_repo_languages(
-        self, repo_path: str, params: Optional[dict[str, Any]] = None
-    ) -> dict[str, Any]:
-        """
-        Get programming languages used in a repository.
-
-        Args:
-            repo_path: Repository full name (owner/repo)
-            params: Query parameters
-
-        Returns:
-            Dictionary of languages and byte counts
-        """
-        encoded_repo_path = quote(repo_path, safe="")
-        path = f"repos/{encoded_repo_path}/languages"
-        return await self.send_api_request("GET", path, params=params or {})
-
     async def get_file_content(
         self, repo_path: str, file_path: str, ref: str = "main"
     ) -> Optional[str]:
@@ -159,52 +143,72 @@ class RestClient(HTTPBaseClient):
         Returns:
             File content as string or None if not found
         """
-        encoded_repo_path = quote(repo_path, safe="")
-        encoded_file_path = quote(file_path, safe="")
-        path = f"repos/{encoded_repo_path}/contents/{encoded_file_path}"
-        params = {"ref": ref}
+        try:
+            owner, repo_name = repo_path.split('/', 1)
+            # Encode owner and repo name separately
+            owner, repo_name = quote(owner, safe=""), quote(repo_name, safe="")
+            # Also encode the file path to handle special characters
+            encoded_file_path = quote(file_path, safe="/")
 
-        response = await self.send_api_request("GET", path, params=params)
-        if not response:
+            path = f"repos/{owner}/{repo_name}/contents/{encoded_file_path}"
+            params = {"ref": ref}
+
+            response = await self.send_api_request("GET", path, params=params)
+            if not response:
+                return None
+            response = response.json()
+            # Handle different content encodings
+            if "content" in response:
+                encoding = response.get("encoding", "")
+                raw_content = response["content"]
+
+                if encoding == "base64":
+                    # GitHub content might include newlines which need to be removed
+                    clean_content = raw_content.replace("\n", "").replace("\r", "")
+
+                    try:
+                        # Decode base64 content
+                        decoded_bytes = base64.b64decode(clean_content)
+
+                        # Try UTF-8 first, fall back to other encodings if needed
+                        try:
+                            return decoded_bytes.decode("utf-8")
+                        except UnicodeDecodeError:
+                            # Try other common encodings
+                            for encoding_attempt in ["latin-1", "cp1252", "iso-8859-1"]:
+                                try:
+                                    return decoded_bytes.decode(encoding_attempt)
+                                except UnicodeDecodeError:
+                                    continue
+
+                            # If all encodings fail, decode with error handling
+                            return decoded_bytes.decode("utf-8", errors="replace")
+
+                    except Exception as e:
+                        logger.error(f"Failed to decode base64 content for {repo_path}/{file_path}: {e}")
+                        return None
+
+                elif encoding == "utf-8" or not encoding:
+                    # Content is already in text format
+                    return raw_content
+                else:
+                    logger.warning(f"Unknown encoding '{encoding}' for {repo_path}/{file_path}")
+                    return raw_content
+
+            # Check if this is a large file (GitHub returns download_url for large files)
+            if "download_url" in response and response["download_url"]:
+                logger.info(f"File {repo_path}/{file_path} is large, download_url provided")
+                # You could optionally fetch from download_url here
+                return None
+
             return None
 
-        # GitHub returns base64 encoded content
-        if "content" in response and response.get("encoding") == "base64":
-            # GitHub content might include newlines which need to be removed
-            content = response["content"].replace("\n", "")
-            return base64.b64decode(content).decode("utf-8")
-
-        return None
-
-    async def get_file_data(
-        self, repo_path: str, file_path: str, ref: str = "main"
-    ) -> dict[str, Any]:
-        """
-        Get file metadata and content from a repository.
-
-        Args:
-            repo_path: Repository full name (owner/repo)
-            file_path: Path to file in the repository
-            ref: Git reference (branch, tag, commit)
-
-        Returns:
-            Dictionary with file data
-        """
-        encoded_repo_path = quote(repo_path, safe="")
-        encoded_file_path = quote(file_path, safe="")
-        path = f"repos/{encoded_repo_path}/contents/{encoded_file_path}"
-        params = {"ref": ref}
-
-        response = await self.send_api_request("GET", path, params=params)
-        if not response:
-            return {}
-
-        # Convert base64 content if it exists
-        if "content" in response and response.get("encoding") == "base64":
-            content = response["content"].replace("\n", "")
-            response["content"] = base64.b64decode(content).decode("utf-8")
-
-        return response
+        except ValueError as e:
+            logger.error(f"Invalid repo_path format '{repo_path}': {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching file content for {repo_path}/{file_path}: {e}")
+            return None
 
     async def get_page_links(self, response) -> Dict[str, str]:
         """

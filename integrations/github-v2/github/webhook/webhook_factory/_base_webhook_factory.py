@@ -42,7 +42,7 @@ class BaseWebhookFactory(Generic[T], ABC):
             Webhook data or empty dict if already exists
         """
         # Check if webhook already exists
-        if await self._exists(webhook_url, github_webhook_endpoint):
+        if response  := await self._exists(webhook_url, github_webhook_endpoint):
             logger.info(f"Webhook already exists: {webhook_url}")
             return {}
 
@@ -51,7 +51,7 @@ class BaseWebhookFactory(Generic[T], ABC):
             events = self.webhook_events()
             payload = self._build_payload(webhook_url, events)
             response = await self._send_request(github_webhook_endpoint, payload)
-
+            response = response.json()
             if not self._validate_response(response):
                 raise Exception("Invalid webhook response")
 
@@ -59,7 +59,6 @@ class BaseWebhookFactory(Generic[T], ABC):
             return response
 
         except Exception as e:
-            logger.error(f"Webhook creation failed: {e}")
             raise
 
     async def _exists(self, webhook_url: str, github_webhook_endpoint: str) -> bool:
@@ -73,8 +72,6 @@ class BaseWebhookFactory(Generic[T], ABC):
         Returns:
             True if webhook exists, False otherwise
         """
-        # Get the current webhooks
-        webhooks_endpoint = github_webhook_endpoint.replace("/hooks", "/hooks")
 
         async for hooks_batch in self._client.rest.get_paginated_resource(webhooks_endpoint):
             for hook in hooks_batch:

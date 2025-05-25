@@ -46,7 +46,6 @@ class RepositoryWebhookFactory(BaseWebhookFactory[RepositoryEvents]):
             return True
 
         except Exception as exc:
-            logger.warning(f"Failed to create webhook for repository {owner}/{repo}: {exc}")
             return False
 
     async def create_webhooks_for_repositories(self, repositories: list[dict]) -> None:

@@ -16,26 +16,18 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
-from github.entity_processors.entity_processor import FileEntityProcessor, SearchEntityProcessor
+from github.entity_processors.entity_processor import FileEntityProcessor
 
 
 FILE_PROPERTY_PREFIX = "file://"
-SEARCH_PROPERTY_PREFIX = "search://"
 
 
-class RepositorySelector(Selector):
-    """Selector for GitHub repositories."""
-    include_languages: bool = Field(
-        alias="includeLanguages",
-        default=False,
-        description="Whether to include the languages of the repository, defaults to false",
-    )
 
 
 class RepositoryResourceConfig(ResourceConfig):
     """Resource configuration for GitHub repositories."""
     kind: Literal["repository"]
-    selector: RepositorySelector
+    selector: Selector
 
 
 class GitHubTeamWithMembersResourceConfig(ResourceConfig):
@@ -97,8 +89,6 @@ class GitManipulationHandler(JQEntityProcessor):
 
         if pattern.startswith(FILE_PROPERTY_PREFIX):
             entity_processor = FileEntityProcessor
-        elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
-            entity_processor = SearchEntityProcessor
         else:
             entity_processor = JQEntityProcessor
 

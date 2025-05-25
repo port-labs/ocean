@@ -26,8 +26,9 @@ from github.webhook.webhook_processors.pull_request_webhook_processor import (
 from github.webhook.webhook_processors.issue_webhook_processor import (
     IssueWebhookProcessor,
 )
-from github.webhook.webhook_processors.workflow_webhook_processor import (
-    WorkflowWebhookProcessor,
+
+from github.webhook.webhook_processors.ping_webhook_processor import (
+    PingWebhookProcessor,
 )
 
 from github.webhook.webhook_processors.organization_webhook_processor import (
@@ -87,22 +88,7 @@ async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     client = create_github_client()
 
-    # Default value for include_languages
-    include_languages = False
-
-    # Safely get the include_languages attribute if it exists
-    try:
-        selector = event.resource_config.selector
-        if hasattr(selector, 'include_languages'):
-            include_languages = bool(selector.include_languages)
-    except (AttributeError, TypeError):
-        # Handle case where selector might not exist or be of unexpected type
-        logger.warning("Could not access include_languages attribute, using default value (False)")
-
-    logger.info(f"Syncing repositories with include_languages={include_languages}")
-    async for repos_batch in client.get_repositories(
-        include_languages=include_languages
-    ):
+    async for repos_batch in client.get_repositories():
         logger.info(f"Received repository batch with {len(repos_batch)} repositories")
         yield repos_batch
 
@@ -275,10 +261,10 @@ async def on_resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
     async for repos_batch in client.get_repositories():
-        logger.info(f"Processing batch of {len(repos_batch)} repositories for workflow runs")
+        logger.info(f"Processing batch of {len(repos_batch)} repositories for workflows")
 
         async for workflows_batch in client.get_repository_resource(
-            repos_batch, "actions/runs", params=params
+            repos_batch, "actions/workflows", params=params
         ):
             # Enrich workflow runs with repository information
             for workflow in workflows_batch:
@@ -301,4 +287,6 @@ ocean.add_webhook_processor("/hook/org/{org_name}", OrganizationWebhookProcessor
 ocean.add_webhook_processor("/hook/{owner}/{repo}", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", IssueWebhookProcessor)
-ocean.add_webhook_processor("/hook/{owner}/{repo}", WorkflowWebhookProcessor)
+
+ocean.add_webhook_processor("/hook/org/{org_name}", PingWebhookProcessor)
+ocean.add_webhook_processor("/hook/{owner}/{repo}", PingWebhookProcessor)

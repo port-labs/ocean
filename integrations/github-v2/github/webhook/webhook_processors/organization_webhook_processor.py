@@ -120,27 +120,6 @@ class OrganizationWebhookProcessor(GitHubAbstractWebhookProcessor):
                     updated_raw_results=[],
                     deleted_raw_results=[team],
                 )
-            else:
-                # Enrich team with members if needed
-                try:
-                    enriched_team = await self._github_webhook_client.enrich_organization_with_members(
-                        {**team, "organization": org},
-                        team_slug,
-                        include_bot_members=False
-                    )
-                    return WebhookEventRawResults(
-                        updated_raw_results=[enriched_team],
-                        deleted_raw_results=[],
-                    )
-                except Exception as e:
-                    logger.warning(f"Could not enrich team {team_slug}: {e}")
-                    team["organization"] = org
-                    return WebhookEventRawResults(
-                        updated_raw_results=[team],
-                        deleted_raw_results=[],
-                    )
-
-        # Handle other organization events
         else:
             logger.info(f"Unhandled organization event: {event_type} - {action}")
             return WebhookEventRawResults(

@@ -1,34 +1,73 @@
 [
   {
-    "identifier": "githubRepository",
-    "title": "GitHub Repository",
-    "icon": "GitHub",
-    "schema": {
-      "properties": {
-        "readme": {
-          "title": "README",
-          "type": "string",
-          "format": "markdown",
-          "icon": "Book"
-        },
-        "url": {
-          "title": "URL",
-          "format": "url",
-          "type": "string",
-          "icon": "Link"
-        },
-        "language": {
-          "type": "string",
-          "title": "Language",
-          "icon": "Git"
-        }
+  "identifier": "githubRepository",
+  "title": "GitHub Repository",
+  "icon": "GitHub",
+  "schema": {
+    "properties": {
+      "name": {
+        "title": "Repository Name",
+        "type": "string",
+        "icon": "Git"
       },
-      "required": []
+      "description": {
+        "title": "Description",
+        "type": "string",
+        "icon": "Text"
+      },
+      "owner": {
+        "title": "Owner",
+        "type": "string",
+        "icon": "User"
+      },
+      "created_at": {
+        "title": "Created At",
+        "type": "string",
+        "format": "date-time",
+        "icon": "Calendar"
+      },
+      "pushed_at": {
+        "title": "Last Push",
+        "type": "string",
+        "format": "date-time",
+        "icon": "GitCommit"
+      },
+      "git_url": {
+        "title": "Git URL",
+        "type": "string",
+        "format": "url",
+        "icon": "Git"
+      },
+      "html_url": {
+        "title": "Repository URL",
+        "type": "string",
+        "format": "url",
+        "icon": "Link"
+      },
+      "language": {
+        "type": "string",
+        "title": "Primary Language",
+        "icon": "Code"
+      },
+      "readme": {
+        "title": "README",
+        "type": "string",
+        "format": "markdown",
+        "icon": "Book"
+      },
+      "url": {
+        "title": "API URL",
+        "format": "url",
+        "type": "string",
+        "icon": "Link"
+      }
     },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {}
   },
   {
     "identifier": "githubMember",
@@ -53,7 +92,13 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "teams": {
+      "title": "Teams",
+      "target": "githubTeam",
+      "many": true
+     }
+    }
   },
   {
     "identifier": "githubTeam",
@@ -78,14 +123,7 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {
-      "githubMembers": {
-        "title": "Members",
-        "target": "githubMember",
-        "required": false,
-        "many": true
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "githubPullRequest",
@@ -103,22 +141,10 @@
           "type": "string",
           "format": "date-time"
         },
-        "mergedAt": {
-          "title": "Merged At",
-          "type": "string",
-          "format": "date-time"
-        },
         "link": {
           "title": "Link",
           "format": "url",
           "type": "string"
-        },
-        "reviewers": {
-          "title": "Reviewers",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "required": []
@@ -191,34 +217,42 @@
           "title": "Workflow Name",
           "type": "string"
         },
-        "runNumber": {
-          "title": "Run Number",
-          "type": "number"
-        },
-        "event": {
-          "title": "Triggering Event",
-          "type": "string"
-        },
-        "branch": {
-          "title": "Branch",
-          "type": "string"
-        },
-        "actor": {
-          "title": "Actor",
-          "type": "string"
-        },
-        "createdAt": {
-          "title": "Created At",
+        "path": {
           "type": "string",
-          "format": "date-time"
+          "title": "File Path"
         },
-        "link": {
-          "title": "Link",
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": ["active", "disabled", "deleted"],
+          "enumColors": {
+            "active": "green",
+            "disabled": "yellow",
+            "deleted": "red"
+            }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Updated"
+        },
+        "html_url": {
+          "type": "string",
           "format": "url",
-          "type": "string"
+          "title": "GitHub URL"
+        },
+        "badge_url": {
+          "type": "string",
+          "format": "url",
+          "title": "Badge URL"
         }
       },
-      "required": []
+      "required": ["workflowName", "path", "state"]
     },
     "mirrorProperties": {},
     "calculationProperties": {},

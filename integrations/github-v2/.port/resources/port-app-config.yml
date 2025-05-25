@@ -10,9 +10,16 @@ resources:
           title: .name
           blueprint: '"githubRepository"'
           properties:
-            url: .html_url
+            name: .full_name
+            description: .description
+            owner: .owner.login
+            created_at: .created_at
+            pushed_at: .pushed_at
+            git_url: .git_url
+            html_url: .html_url
+            language: .language
             readme: file://README.md
-            language: .__languages | to_entries | max_by(.value) | .key
+            url: .url
   - kind: user
     selector:
       query: 'true'
@@ -25,6 +32,8 @@ resources:
           properties:
             name: .login
             url: .html_url
+          relations:
+            repository: .team.slug
 
   - kind: team
     selector:
@@ -38,8 +47,6 @@ resources:
           properties:
             url: .html_url
             description: .description
-          relations:
-            githubMembers: .__members | map(.login)
   - kind: pull-request
     selector:
       query: 'true'
@@ -55,7 +62,6 @@ resources:
             updatedAt: .updated_at
             mergedAt: .merged_at
             link: .html_url
-            reviewers: .requested_reviewers | map(.login)
           relations:
             repository: .repository.full_name
   - kind: issue
@@ -85,11 +91,11 @@ resources:
           blueprint: '"githubWorkflow"'
           properties:
             workflowName: .name
-            runNumber: .run_number
-            event: .event
-            branch: .head_branch
-            actor: .actor.login
-            createdAt: .created_at
-            link: .html_url
+            path: .path
+            state: .state
+            created_at: .created_at
+            updated_at: .updated_at
+            html_url: .html_url
+            badge_url: .badge_url
           relations:
             repository: .repository.full_name

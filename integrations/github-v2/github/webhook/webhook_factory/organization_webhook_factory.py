@@ -46,7 +46,6 @@ class OrganizationWebhookFactory(BaseWebhookFactory[OrganizationEvents]):
             return True
 
         except Exception as exc:
-            logger.error(f"Failed to create webhook for organization {org_name}: {exc}")
             return False
 
     async def create_webhooks_for_organizations(self) -> None:

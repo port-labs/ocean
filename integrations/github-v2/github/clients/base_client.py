@@ -67,7 +67,7 @@ class HTTPBaseClient:
                     continue
 
                 response.raise_for_status()
-                return response.json() if response.content else {}
+                return response
 
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 404:
@@ -78,36 +78,12 @@ class HTTPBaseClient:
                     logger.warning(f"Rate limited. Waiting {wait_time}s...")
                     await asyncio.sleep(wait_time)
                     continue
-                raise
-
+                logger.warning(
+                    f"HTTP error {e.response.status_code} for {method} {url}: {e.response.text}"
+                )
+                return response
             except httpx.HTTPError:
-                raise
-
-    async def get_page_links(self, response: httpx.Response) -> Dict[str, str]:
-        """
-        Parse GitHub API pagination links from response headers.
-
-        Args:
-            response: The HTTP response
-
-        Returns:
-            Dictionary of link relations to URLs
-        """
-        links = {}
-
-        if "Link" not in response.headers:
-            return links
-
-        for link in response.headers["Link"].split(","):
-            parts = link.strip().split(";")
-            if len(parts) < 2:
-                continue
-
-            url = parts[0].strip("<>")
-            rel = parts[1].strip()
-
-            if 'rel="' in rel:
-                rel_type = rel.split('rel="')[1].rstrip('"')
-                links[rel_type] = url
-
-        return links
+                logger.warning(
+                    f"HTTP error during {method} {url}: {str(e)}"
+                )
+                return response
