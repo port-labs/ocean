@@ -59,7 +59,7 @@ class GraphQLClient(HTTPBaseClient):
             resource_data = group_data[resource_type]
 
             batch = resource_data["nodes"]
-            page_info = resource_data.get("pageInfo", {})
+            page_info = resource_data["pageInfo"]
 
             if not batch:
                 logger.debug(f"No more {resource_type} for group {group_path}")
