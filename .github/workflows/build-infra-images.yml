@@ -14,6 +14,14 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Configure AWS Credentials 🔒
+        id: aws-credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.MAIN_ACCOUNT_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.MAIN_ACCOUNT_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
       - name: Build Docker Image
         uses: ./.github/workflows/actions/build-docker-image
         with:
@@ -22,6 +30,8 @@ jobs:
           tags: ghcr.io/port-labs/port-ocean-base-builder:latest
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          build-args: |
+            ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Build Docker Image
         uses: ./.github/workflows/actions/build-docker-image
@@ -32,3 +42,5 @@ jobs:
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
           skip-init: 'true'
+          build-args: |
+            ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
