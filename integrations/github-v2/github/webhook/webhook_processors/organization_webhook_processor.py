@@ -22,8 +22,6 @@ class OrganizationWebhookProcessor(GitHubAbstractWebhookProcessor):
 
     Handles events related to organization membership, teams, and repositories.
     """
-
-    # GitHub organization events
     events = ["organization", "member", "membership", "team", "team_add", "repository"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -43,9 +41,9 @@ class OrganizationWebhookProcessor(GitHubAbstractWebhookProcessor):
         elif event_type in ["member", "membership"]:
             return [ObjectKind.MEMBER]
         elif event_type in ["team", "team_add"]:
-            return [ObjectKind.TEAM_WITH_MEMBERS]
+            return [ObjectKind.TEAM]
         elif event_type == "organization":
-            return []  # Organization events don't map to specific entities yet
+            return []
         else:
             return []
 
@@ -71,7 +69,6 @@ class OrganizationWebhookProcessor(GitHubAbstractWebhookProcessor):
             f"Handling organization {event_type} {action} event for {org_name}"
         )
 
-        # Handle repository events at organization level
         if "repository" in payload:
             repo = payload["repository"]
             repo_name = repo.get("full_name", "")
@@ -84,14 +81,13 @@ class OrganizationWebhookProcessor(GitHubAbstractWebhookProcessor):
                     deleted_raw_results=[repo],
                 )
             else:
-                # Get updated repository data
                 updated_repo = await self._github_webhook_client.get_repository(repo_name)
+                updated_repo = updated_repo.json() if updated_repo else None
                 return WebhookEventRawResults(
                     updated_raw_results=[updated_repo] if updated_repo else [],
                     deleted_raw_results=[],
                 )
 
-        # Handle member events
         elif "member" in payload:
             member = payload["member"]
             logger.info(f"Member event: {action} for {member.get('login', '')}")
@@ -102,14 +98,12 @@ class OrganizationWebhookProcessor(GitHubAbstractWebhookProcessor):
                     deleted_raw_results=[member],
                 )
             else:
-                # Add organization context to member
                 member["organization"] = org
                 return WebhookEventRawResults(
                     updated_raw_results=[member],
                     deleted_raw_results=[],
                 )
 
-        # Handle team events
         elif "team" in payload:
             team = payload["team"]
             team_slug = team.get("slug", "")
@@ -119,6 +113,11 @@ class OrganizationWebhookProcessor(GitHubAbstractWebhookProcessor):
                 return WebhookEventRawResults(
                     updated_raw_results=[],
                     deleted_raw_results=[team],
+                )
+            else:
+                return WebhookEventRawResults(
+                    updated_raw_results=[team],
+                    deleted_raw_results=[],
                 )
         else:
             logger.info(f"Unhandled organization event: {event_type} - {action}")

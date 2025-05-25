@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "github-v2"
 version = "0.1.0-beta"
-description = "GitHuB Integration"
+description = "A GitHub Integration for the Port Platform"
 authors = ["Jackson Mumo <mumojak@gmail.com>"]
 
 [tool.poetry.dependencies]

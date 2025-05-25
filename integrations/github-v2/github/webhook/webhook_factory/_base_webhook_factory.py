@@ -6,9 +6,7 @@ from loguru import logger
 from github.webhook.events import EventConfig
 from github.clients.github_client import GitHubClient
 
-# Type variable for event config types
 T = TypeVar('T', bound=EventConfig)
-
 
 class BaseWebhookFactory(Generic[T], ABC):
     """
@@ -41,25 +39,20 @@ class BaseWebhookFactory(Generic[T], ABC):
         Returns:
             Webhook data or empty dict if already exists
         """
-        # Check if webhook already exists
-        if response  := await self._exists(webhook_url, github_webhook_endpoint):
+        if await self._exists(webhook_url, github_webhook_endpoint):
             logger.info(f"Webhook already exists: {webhook_url}")
             return {}
 
-        # Prepare and send webhook creation request
-        try:
-            events = self.webhook_events()
-            payload = self._build_payload(webhook_url, events)
-            response = await self._send_request(github_webhook_endpoint, payload)
-            response = response.json()
-            if not self._validate_response(response):
-                raise Exception("Invalid webhook response")
+        events = self.webhook_events()
+        payload = self._build_payload(webhook_url, events)
+        response = await self._send_request(github_webhook_endpoint, payload)
+        response = response.json()
+        if not self._validate_response(response):
+            raise Exception("Invalid webhook response")
 
-            logger.info(f"Created webhook with id {response['id']} at {webhook_url}")
-            return response
+        logger.info(f"Created webhook with id {response['id']} at {webhook_url}")
 
-        except Exception as e:
-            raise
+        return response
 
     async def _exists(self, webhook_url: str, github_webhook_endpoint: str) -> bool:
         """
@@ -72,13 +65,11 @@ class BaseWebhookFactory(Generic[T], ABC):
         Returns:
             True if webhook exists, False otherwise
         """
-
-        async for hooks_batch in self._client.rest.get_paginated_resource(webhooks_endpoint):
+        async for hooks_batch in self._client.rest.get_paginated_resource(github_webhook_endpoint):
             for hook in hooks_batch:
-                # Check config.url for the webhook URL
                 if hook.get("config", {}).get("url") == webhook_url:
                     return True
-        return False
+            return False
 
     def _build_payload(self, webhook_url: str, events: T) -> Dict[str, Any]:
         """

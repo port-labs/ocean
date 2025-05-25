@@ -58,7 +58,6 @@ class HTTPBaseClient:
                     json=data,
                 )
 
-                 # Handle rate limiting
                 if response.status_code == 403 and response.headers.get("X-RateLimit-Remaining") == "0":
                     reset_time = int(response.headers.get("X-RateLimit-Reset", time.time() + 60))
                     wait_time = reset_time - int(time.time()) + 1

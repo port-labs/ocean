@@ -26,7 +26,6 @@ class RestClient(HTTPBaseClient):
             Batches of resources
         """
         params_dict = params or {}
-        # GitHub recommends using per_page parameter
         if "per_page" not in params_dict:
             params_dict["per_page"] = self.DEFAULT_PAGE_SIZE
 
@@ -45,19 +44,15 @@ class RestClient(HTTPBaseClient):
             else:
                 break
 
-            # GitHub returns lists directly for collection endpoints
             if isinstance(batch, list):
                 if not batch:
                     break
                 yield batch
 
-                # Get next page URL from Link header
                 links = await self.get_page_links(response)
                 url = links.get("next", "")
-                # Clear params since they're included in the next URL
                 params_dict = None
             else:
-                # Some endpoints return an object with items
                 items = batch.get("items", []) or batch.get("workflows", [])
                 if not items:
                     break
@@ -145,60 +140,43 @@ class RestClient(HTTPBaseClient):
         """
         try:
             owner, repo_name = repo_path.split('/', 1)
-            # Encode owner and repo name separately
             owner, repo_name = quote(owner, safe=""), quote(repo_name, safe="")
-            # Also encode the file path to handle special characters
             encoded_file_path = quote(file_path, safe="/")
 
             path = f"repos/{owner}/{repo_name}/contents/{encoded_file_path}"
             params = {"ref": ref}
-
             response = await self.send_api_request("GET", path, params=params)
             if not response:
                 return None
             response = response.json()
-            # Handle different content encodings
             if "content" in response:
                 encoding = response.get("encoding", "")
                 raw_content = response["content"]
 
                 if encoding == "base64":
-                    # GitHub content might include newlines which need to be removed
                     clean_content = raw_content.replace("\n", "").replace("\r", "")
-
                     try:
-                        # Decode base64 content
                         decoded_bytes = base64.b64decode(clean_content)
-
-                        # Try UTF-8 first, fall back to other encodings if needed
                         try:
                             return decoded_bytes.decode("utf-8")
                         except UnicodeDecodeError:
-                            # Try other common encodings
                             for encoding_attempt in ["latin-1", "cp1252", "iso-8859-1"]:
                                 try:
                                     return decoded_bytes.decode(encoding_attempt)
                                 except UnicodeDecodeError:
                                     continue
-
-                            # If all encodings fail, decode with error handling
                             return decoded_bytes.decode("utf-8", errors="replace")
-
                     except Exception as e:
                         logger.error(f"Failed to decode base64 content for {repo_path}/{file_path}: {e}")
                         return None
-
                 elif encoding == "utf-8" or not encoding:
-                    # Content is already in text format
                     return raw_content
                 else:
                     logger.warning(f"Unknown encoding '{encoding}' for {repo_path}/{file_path}")
                     return raw_content
 
-            # Check if this is a large file (GitHub returns download_url for large files)
             if "download_url" in response and response["download_url"]:
                 logger.info(f"File {repo_path}/{file_path} is large, download_url provided")
-                # You could optionally fetch from download_url here
                 return None
 
             return None

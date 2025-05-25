@@ -12,7 +12,6 @@ resources:
           properties:
             name: .full_name
             description: .description
-            owner: .owner.login
             created_at: .created_at
             pushed_at: .pushed_at
             git_url: .git_url
@@ -20,6 +19,8 @@ resources:
             language: .language
             readme: file://README.md
             url: .url
+          relations:
+            owner: .owner.login
   - kind: user
     selector:
       query: 'true'
@@ -33,7 +34,7 @@ resources:
             name: .login
             url: .html_url
           relations:
-            repository: .team.slug
+            teams: .team.slug
 
   - kind: team
     selector:

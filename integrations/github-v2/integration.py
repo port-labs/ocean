@@ -116,7 +116,6 @@ class GitHubIntegration(BaseIntegration):
     def __init__(self, context: PortOceanContext):
         super().__init__(context)
 
-        # Replace default webhook manager with GitHub-specific one
         self.context.app.webhook_manager = GitHubLiveEventsProcessorManager(
             self.context.app.integration_router,
             signal_handler,

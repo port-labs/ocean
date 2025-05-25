@@ -62,12 +62,11 @@ class PullRequestWebhookProcessor(GitHubAbstractWebhookProcessor):
             repo_name, pr_number
         )
 
+        updated_pr = updated_pr.json() if updated_pr else None
         if not updated_pr:
             logger.warning(f"Could not fetch pull request {repo_name}#{pr_number}")
-            # If we can't fetch the PR, use the one from the payload
             updated_pr = pull_request
 
-        # Add repository information to the pull request
         updated_pr["repository"] = repo
 
         return WebhookEventRawResults(

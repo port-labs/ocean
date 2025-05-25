@@ -31,14 +31,11 @@ def parse_file_content(
     Returns:
         Parsed content or original string if parsing fails
     """
-    # Quick check for empty or whitespace-only strings
     if not content.strip():
         logger.debug(
             f"File '{file_path}' in '{context}' is empty; returning raw content."
         )
         return content
-
-    # Try JSON
     try:
         return json.loads(content)
     except json.JSONDecodeError:

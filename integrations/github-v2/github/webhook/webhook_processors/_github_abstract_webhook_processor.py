@@ -1,3 +1,4 @@
+from loguru import logger
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -31,9 +32,6 @@ class GitHubAbstractWebhookProcessor(AbstractWebhookProcessor):
         Returns:
             True if authenticated, False otherwise
         """
-        # GitHub sends a X-GitHub-Event header with the event name
-        # For simplicity, we'll consider all events authenticated
-        # In production, you'd verify the signature in X-Hub-Signature-256
         return True
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
@@ -46,9 +44,13 @@ class GitHubAbstractWebhookProcessor(AbstractWebhookProcessor):
         Returns:
             True if this processor should handle the event, False otherwise
         """
-        # GitHub sends the event type in X-GitHub-Event header
         event_type = event.headers.get("x-github-event", "")
-        return event_type in self.events
+        if event_type in self.events:
+            logger.info(
+                f"Processing event: {event_type}, with {self.__class__.__name__}"
+            )
+            return True
+        return False
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         """
@@ -60,6 +62,4 @@ class GitHubAbstractWebhookProcessor(AbstractWebhookProcessor):
         Returns:
             True if valid, False otherwise
         """
-        # Basic validation checking for common fields
-        # Override in subclasses as needed
         return "repository" in payload

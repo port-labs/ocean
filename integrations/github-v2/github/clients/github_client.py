@@ -14,10 +14,8 @@ from port_ocean.utils.async_iterators import (
 )
 
 from github.clients.rest_client import RestClient
-from github.helpers.utils import parse_file_content
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
-
 
 class GitHubClient:
     """Main GitHub client with high-level methods for Port Ocean integration."""

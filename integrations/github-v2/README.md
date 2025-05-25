@@ -1,6 +1,6 @@
-# github-v2
+# github
 
-An integration used to import github-v2 resources into Port.
+An integration used to import github resources into Port.
 
 #### Install & use the integration - [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/) *Replace this link with a link to this integration's documentation*
 

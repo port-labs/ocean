@@ -19,7 +19,6 @@ class RepositoryWebhookProcessor(GitHubAbstractWebhookProcessor):
     Handles events related to repository creation, updates, and deletion.
     """
 
-    # GitHub repository events
     events = ["repository"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -62,7 +61,6 @@ class RepositoryWebhookProcessor(GitHubAbstractWebhookProcessor):
                 deleted_raw_results=[repo],
             )
 
-        # For other actions, get the updated repository data
         repo_full_name = repo.get("full_name", "")
 
         if not repo_full_name:
@@ -73,7 +71,7 @@ class RepositoryWebhookProcessor(GitHubAbstractWebhookProcessor):
             )
 
         updated_repo = await self._github_webhook_client.get_repository(repo_full_name)
-
+        updated_repo = updated_repo.json() if updated_repo else None
         return WebhookEventRawResults(
             updated_raw_results=[updated_repo] if updated_repo else [],
             deleted_raw_results=[],

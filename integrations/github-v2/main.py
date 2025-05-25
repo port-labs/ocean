@@ -27,8 +27,8 @@ from github.webhook.webhook_processors.issue_webhook_processor import (
     IssueWebhookProcessor,
 )
 
-from github.webhook.webhook_processors.ping_webhook_processor import (
-    PingWebhookProcessor,
+from github.webhook.webhook_processors.placeholder_webhook_processor import (
+    PlaceholderWebhookProcessor,
 )
 
 from github.webhook.webhook_processors.organization_webhook_processor import (
@@ -62,11 +62,9 @@ async def on_start() -> None:
         logger.info(f"Creating webhooks using base URL: {base_url}")
         client = create_github_client()
 
-        #Create organization webhooks
         org_webhook_factory = OrganizationWebhookFactory(client, base_url)
         await org_webhook_factory.create_webhooks_for_organizations()
 
-        # Create repository webhooks
         repos = []
         async for repos_batch in client.get_repositories():
             repos.extend(repos_batch)
@@ -117,14 +115,13 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             repos_batch, "issues", params=params
         ):
 
-            # Enrich issues with repository information
             for issue in issues_batch:
                 for repo in repos_batch:
                     if issue.get("repository_url", "").endswith(f"/{repo.get('full_name', '')}"):
                         issue["repository"] = repo
                         break
 
-            if issues_batch:  # Only yield if we have issues after filtering
+            if issues_batch:
                 yield issues_batch
 
 
@@ -143,14 +140,12 @@ async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for repos_batch in client.get_repositories():
         logger.info(f"Processing batch of {len(repos_batch)} repositories for pull requests")
-
-        # Get open pull requests by default
         params = {"state": "open"}
 
         async for prs_batch in client.get_repository_resource(
             repos_batch, "pulls", params=params
         ):
-            # Enrich pull requests with repository information
+
             for pr in prs_batch:
                 for repo in repos_batch:
                     if pr.get("url", "").startswith(repo.get("url", "") + "/"):
@@ -176,17 +171,14 @@ async def on_resync_teams_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
         GitHubTeamWithMembersResourceConfig, event.resource_config
     ).selector
 
-    # Get organizations
     orgs = []
     async for orgs_batch in client.get_organizations():
         orgs.extend(orgs_batch)
 
-    # For each organization, get teams
     for org in orgs:
         org_login = org["login"]
         teams = []
 
-        # Get teams for the organization
         async for teams_batch in client.rest.get_paginated_org_resource(
             org_login, "teams"
         ):
@@ -207,32 +199,27 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
     selector = cast(GitHubMemberResourceConfig, event.resource_config).selector
 
-    # Get organizations
     orgs = []
     async for orgs_batch in client.get_organizations():
         orgs.extend(orgs_batch)
 
-    # For each organization, get teams and members
     for org in orgs:
         org_login = org["login"]
         teams = []
 
-        # Get teams for the organization
+
         async for teams_batch in client.rest.get_paginated_org_resource(
             org_login, "teams"
         ):
             teams.extend(teams_batch)
 
-        # Process teams in batches
         for i in range(0, len(teams), RESYNC_TEAM_MEMBERS_BATCH_SIZE):
             current_batch = teams[i:i + RESYNC_TEAM_MEMBERS_BATCH_SIZE]
 
-            # For each team, get members
             for team in current_batch:
                 async for members_batch in client.get_team_members(
                     org_login, team["slug"]
                 ):
-                    # Add team and organization context to each member
                     for member in members_batch:
                         member["team"] = team
 
@@ -266,7 +253,6 @@ async def on_resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for workflows_batch in client.get_repository_resource(
             repos_batch, "actions/workflows", params=params
         ):
-            # Enrich workflow runs with repository information
             for workflow in workflows_batch:
                 for repo in repos_batch:
                     if workflow.get("repository", {}).get("full_name") == repo.get("full_name"):
@@ -276,17 +262,16 @@ async def on_resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield workflows_batch
 
 
-@ocean.on_resync()  # Catch-all handler
+@ocean.on_resync()
 async def debug_handler(kind: str):
     logger.info(f"Port requested sync for kind: {kind}")
     yield []
 
 
-# Register webhook processors
 ocean.add_webhook_processor("/hook/org/{org_name}", OrganizationWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", IssueWebhookProcessor)
 
-ocean.add_webhook_processor("/hook/org/{org_name}", PingWebhookProcessor)
-ocean.add_webhook_processor("/hook/{owner}/{repo}", PingWebhookProcessor)
+ocean.add_webhook_processor("/hook/org/{org_name}", PlaceholderWebhookProcessor)
+ocean.add_webhook_processor("/hook/{owner}/{repo}", PlaceholderWebhookProcessor)

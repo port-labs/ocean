@@ -15,11 +15,6 @@
         "type": "string",
         "icon": "Text"
       },
-      "owner": {
-        "title": "Owner",
-        "type": "string",
-        "icon": "User"
-      },
       "created_at": {
         "title": "Created At",
         "type": "string",
@@ -67,7 +62,14 @@
   "mirrorProperties": {},
   "calculationProperties": {},
   "aggregationProperties": {},
-  "relations": {}
+  "relations": {
+    "owner": {
+        "title": "Owner",
+        "target": "githubMember",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "githubMember",
@@ -223,13 +225,7 @@
         },
         "state": {
           "type": "string",
-          "title": "State",
-          "enum": ["active", "disabled", "deleted"],
-          "enumColors": {
-            "active": "green",
-            "disabled": "yellow",
-            "deleted": "red"
-            }
+          "title": "State"
         },
         "created_at": {
           "type": "string",
