@@ -32,24 +32,59 @@ def mock_http_client() -> MagicMock:
     mock_upserted_entities = []
 
     async def post(url: str, *args: Any, **kwargs: Any) -> Response:
-        entity = kwargs.get("json", {})
-        if entity.get("properties", {}).get("mock_is_to_fail", {}):
-            return Response(
-                404, headers=MagicMock(), json={"ok": False, "error": "not_found"}
-            )
+        if "/bulk" in url:
+            success_entities = []
+            failed_entities = []
+            entities_body = kwargs.get("json", {})
+            entities = entities_body.get("entities", [])
+            for index, entity in enumerate(entities):
+                if entity.get("properties", {}).get("mock_is_to_fail", False):
+                    failed_entities.append(
+                        {
+                            "identifier": entity.get("identifier"),
+                            "index": index,
+                            "statusCode": 404,
+                            "error": "not_found",
+                            "message": "Entity not found",
+                        }
+                    )
+                else:
+                    mock_upserted_entities.append(
+                        f"{entity.get('identifier')}-{entity.get('blueprint')}"
+                    )
+                    success_entities.append(
+                        (
+                            {
+                                "identifier": entity.get("identifier"),
+                                "index": index,
+                                "created": True,
+                            }
+                        )
+                    )
 
-        mock_upserted_entities.append(
-            f"{entity.get('identifier')}-{entity.get('blueprint')}"
-        )
-        return Response(
-            200,
-            json={
-                "entity": {
-                    "identifier": entity.get("identifier"),
-                    "blueprint": entity.get("blueprint"),
-                }
-            },
-        )
+            return Response(
+                207,
+                json={"entities": success_entities, "errors": failed_entities},
+            )
+        else:
+            entity = kwargs.get("json", {})
+            if entity.get("properties", {}).get("mock_is_to_fail", False):
+                return Response(
+                    404, headers=MagicMock(), json={"ok": False, "error": "not_found"}
+                )
+
+            mock_upserted_entities.append(
+                f"{entity.get('identifier')}-{entity.get('blueprint')}"
+            )
+            return Response(
+                200,
+                json={
+                    "entity": {
+                        "identifier": entity.get("identifier"),
+                        "blueprint": entity.get("blueprint"),
+                    }
+                },
+            )
 
     mock_http_client.post = AsyncMock(side_effect=post)
     return mock_http_client
