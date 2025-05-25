@@ -1,9 +1,9 @@
-import httpx
+from typing import Any, AsyncIterator, Optional
+
 from loguru import logger
 
 from gitlab.clients.base_client import HTTPBaseClient
 from gitlab.clients.queries.group_vulnerabilities import VULNERABILITIES_QUERY
-from typing import Any, AsyncIterator, Optional
 
 
 class GraphQLClient(HTTPBaseClient):
