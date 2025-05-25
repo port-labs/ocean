@@ -12,10 +12,10 @@ class FileIPC:
         self.default_return = default_return
         os.makedirs(self.dir_path, exist_ok=True)
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.delete()
 
-    def save(self, object: Any):
+    def save(self, object: Any) -> None:
         with open(self.file_path, "wb") as f:
             pickle.dump(object, f)
 
@@ -25,6 +25,6 @@ class FileIPC:
         with open(self.file_path, "rb") as f:
             return pickle.load(f)
 
-    def delete(self):
+    def delete(self) -> None:
         if os.path.exists(self.file_path):
             os.remove(self.file_path)
