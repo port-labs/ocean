@@ -29,13 +29,12 @@ ARG BUILD_CONTEXT
 WORKDIR /app
 
 COPY . .
-
+RUN rm -rf .venv-docker ${BUILD_CONTEXT}/.venv-docker
 RUN python3 -m venv .venv-docker
 RUN python3 -m venv ${BUILD_CONTEXT}/.venv-docker
 
-RUN . .venv-docker/bin/activate && make install
+
 WORKDIR /app/${BUILD_CONTEXT}
-RUN . .venv-docker/bin/activate && make install && make install/local-core && python3 -m pip install debugpy
 
 WORKDIR /app
 
