@@ -603,7 +603,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(f"Process finished for {resource.kind} with index {index}")
 
     async def process_resource(self,resource,index,user_agent_type):
-            if ocean.config.multiprocessing_enabled:
+            if ocean.config.runtime_mode == "multiprocessing":
                 id = uuid.uuid4()
                 logger.info(f"Starting subprocess with id {id}")
                 file_ipc_map = {
