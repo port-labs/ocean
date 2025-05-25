@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.22.11 (2025-05-25)
+
+### Improvements
+- Enhanced metrics reporting by implementing direct integration with Port's metrics endpoint for improved monitoring and observability
+
 ## 0.22.10 (2025-05-20)
 
 ### Improvements
