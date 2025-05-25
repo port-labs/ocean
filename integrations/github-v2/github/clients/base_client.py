@@ -1,6 +1,7 @@
 from typing import Any, Optional, Dict, Tuple
-
+import time
 import httpx
+import asyncio
 from loguru import logger
 from port_ocean.utils import http_async_client
 
@@ -81,7 +82,7 @@ class HTTPBaseClient:
                     f"HTTP error {e.response.status_code} for {method} {url}: {e.response.text}"
                 )
                 return response
-            except httpx.HTTPError:
+            except httpx.HTTPError as e:
                 logger.warning(
                     f"HTTP error during {method} {url}: {str(e)}"
                 )
