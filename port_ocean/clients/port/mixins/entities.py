@@ -17,6 +17,9 @@ from starlette import status
 
 from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 
+ENTITIES_BULK_SAMPLES_SIZE = 10
+ENTITIES_BULK_ESTIMATED_SIZE_MULTIPLIER = 1.5
+
 
 class EntityClientMixin:
     def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
@@ -43,7 +46,7 @@ class EntityClientMixin:
             return 1
 
         # Calculate average entity size from a sample
-        SAMPLE_SIZE = min(10, len(entities))
+        SAMPLE_SIZE = min(ENTITIES_BULK_SAMPLES_SIZE, len(entities))
         sample_entities = entities[:SAMPLE_SIZE]
         average_entity_size = (
             sum(
@@ -54,7 +57,9 @@ class EntityClientMixin:
         )
 
         # Use a conservative estimate (1.5x the average) to ensure we stay under the limit
-        estimated_entity_size = int(average_entity_size * 1.5)
+        estimated_entity_size = int(
+            average_entity_size * ENTITIES_BULK_ESTIMATED_SIZE_MULTIPLIER
+        )
         max_entities_per_batch = min(
             ocean.config.upsert_entities_batch_max_length,
             ocean.config.upsert_entities_batch_max_size_in_bytes
@@ -226,13 +231,22 @@ class EntityClientMixin:
             entity_result["index"]: entity_result
             for entity_result in result.get("entities", [])
         }
-
         error_entities = {error["index"]: error for error in result.get("errors", [])}
 
+        return self.parse_upsert_entities_batch_response(
+            index_to_entity, successful_entities, error_entities
+        )
+
+    def parse_upsert_entities_batch_response(
+        self,
+        index_to_entity: dict[int, Entity],
+        successful_entities: dict[int, Entity],
+        error_entities: dict[int, Entity],
+    ) -> list[tuple[bool, Entity]]:
         result_tuples: list[tuple[bool | None, Entity]] = []
-        for i, original_entity in index_to_entity.items():
+        for entity_index, original_entity in index_to_entity.items():
             reduced_entity = self._reduce_entity(original_entity)
-            if i in successful_entities:
+            if entity_index in successful_entities:
                 ocean.metrics.inc_metric(
                     name=MetricType.OBJECT_COUNT_NAME,
                     labels=[
@@ -242,12 +256,12 @@ class EntityClientMixin:
                     ],
                     value=1,
                 )
-                success_entity = successful_entities[i]
+                success_entity = successful_entities[entity_index]
                 # Create a copy of the original entity with the new identifier
                 updated_entity = reduced_entity.copy()
                 updated_entity.identifier = success_entity["identifier"]
                 result_tuples.append((True, updated_entity))
-            elif i in error_entities:
+            elif entity_index in error_entities:
                 ocean.metrics.inc_metric(
                     name=MetricType.OBJECT_COUNT_NAME,
                     labels=[
@@ -257,7 +271,7 @@ class EntityClientMixin:
                     ],
                     value=1,
                 )
-                error = error_entities[i]
+                error = error_entities[entity_index]
                 if error.get("identifier") == "unknown":
                     result_tuples.append((None, reduced_entity))
                 else:
