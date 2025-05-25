@@ -638,3 +638,100 @@ class TestGitLabClient:
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Pipeline"
             mock_get_project_resource.assert_called_once_with("1", "pipelines")
+
+    async def test_get_group_vulnerabilities(self, client: GitLabClient) -> None:
+        """Test fetching group vulnerabilities via GraphQL client"""
+        # Arrange
+        mock_groups = [{"id": "1", "full_path": "group1"}]
+        mock_vulnerabilities = [
+            {"id": "vuln1", "severity": "high"},
+            {"id": "vuln2", "severity": "medium"},
+        ]
+
+        with patch.object(
+            client.graphql,
+            "get_paginated_group_resource",
+            return_value=async_mock_generator([mock_vulnerabilities]),
+        ) as mock_get_resource:
+            # Act
+            results = []
+            async for batch in client.get_group_vulnerabilities(
+                groups_batch=mock_groups,
+                max_concurrent=1,
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 2
+            assert results[0]["id"] == "vuln1"
+            assert results[1]["id"] == "vuln2"
+            mock_get_resource.assert_called_once_with("group1", "vulnerabilities", None)
+
+    async def test_get_dependencies_with_project(self, client: GitLabClient) -> None:
+        """Test fetching dependencies for a single project with project info"""
+        # Arrange
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project1",
+        }
+        mock_dependencies = [
+            {"name": "numpy", "version": "1.23.0"},
+            {"name": "pandas", "version": "1.5.0"},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_dependencies]),
+        ) as mock_get_resource:
+            with patch("gitlab.clients.gitlab_client.logger") as mock_logger:
+                # Act
+                results = []
+                async for dependencies_batch in client._get_dependencies_with_project(
+                    project=mock_project
+                ):
+                    results.extend(dependencies_batch)
+
+                # Assert
+                assert len(results) == 2
+                assert results[0]["project"] == {
+                    "id": "1",
+                    "path_with_namespace": "group/project1",
+                }
+                assert results[0]["name"] == "numpy"
+                assert results[1]["name"] == "pandas"
+                mock_get_resource.assert_called_once_with("1", "dependencies", None)
+
+    async def test_get_project_dependencies(self, client: GitLabClient) -> None:
+        """Test fetching dependencies for multiple projects"""
+        # Arrange
+        mock_projects = [
+            {"id": "1", "path_with_namespace": "group/project1"},
+        ]
+        mock_dependencies = [
+            {"name": "numpy", "version": "1.23.0"},
+            {"name": "pandas", "version": "1.5.0"},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_dependencies]),
+        ) as mock_get_resource:
+            # Act
+            results = []
+            async for dependencies_batch in client.get_project_dependencies(
+                projects_batch=mock_projects,
+                max_concurrent=1,
+            ):
+                results.extend(dependencies_batch)
+
+            # Assert
+            assert len(results) == 2
+            assert results[0]["project"] == {
+                "id": "1",
+                "path_with_namespace": "group/project1",
+            }
+            assert results[0]["name"] == "numpy"
+            assert results[1]["name"] == "pandas"
+            mock_get_resource.assert_called_once_with("1", "dependencies", None)

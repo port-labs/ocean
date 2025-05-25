@@ -13,6 +13,7 @@ from urllib.parse import quote
 from gitlab.helpers.utils import parse_file_content
 
 from gitlab.clients.rest_client import RestClient
+from gitlab.clients.graphql_client import GraphQLClient
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
@@ -26,6 +27,7 @@ class GitLabClient:
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
+        self.graphql = GraphQLClient(base_url, token, endpoint="api/graphql")
 
     async def get_project(self, project_path: str | int) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
@@ -424,3 +426,66 @@ class GitLabClient:
                 data[index] = await self._resolve_file_references(item, project_id, ref)
 
         return data
+
+    async def get_group_vulnerabilities(
+        self,
+        groups_batch: list[dict[str, Any]],
+        params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        semaphore = asyncio.Semaphore(max_concurrent)
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(
+                    self.graphql.get_paginated_group_resource,
+                    group["full_path"],
+                    "vulnerabilities",
+                    params,
+                ),
+            )
+            for group in groups_batch
+        ]
+        async for batch in stream_async_iterators_tasks(*tasks):
+            if batch:
+                yield batch
+
+    async def _get_dependencies_with_project(
+        self, project: dict[str, Any], params: Optional[dict[str, Any]] = None
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        logger.info(
+            f"Fetching dependencies for project {project['path_with_namespace']}"
+        )
+
+        project_id = str(project["id"])
+        project_info = {
+            "id": project_id,
+            "path_with_namespace": project["path_with_namespace"],
+        }
+
+        async for dependencies_batch in self.rest.get_paginated_project_resource(
+            project_id, "dependencies", params
+        ):
+            yield [
+                {"project": project_info, **dependencies}
+                for dependencies in dependencies_batch
+            ]
+
+    async def get_project_dependencies(
+        self,
+        projects_batch: list[dict[str, Any]],
+        params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 5,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch dependencies for projects with project info attached."""
+        semaphore = asyncio.Semaphore(max_concurrent)
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(self._get_dependencies_with_project, project, params),
+            )
+            for project in projects_batch
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch

@@ -230,6 +230,30 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield folders_batch
 
 
+@ocean.on_resync(ObjectKind.VULNERABILITY)
+async def on_resync_vulnerabilities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    async for groups_batch in client.get_groups():
+        logger.info(
+            f"Processing batch of {len(groups_batch)} groups for vulnerabilities"
+        )
+        async for vulnerabilities_batch in client.get_group_vulnerabilities(
+            groups_batch
+        ):
+            yield vulnerabilities_batch
+
+
+@ocean.on_resync(ObjectKind.DEPENDENCY)
+async def on_resync_dependencies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    async for projects_batch in client.get_projects():
+        logger.info(
+            f"Processing batch of {len(projects_batch)} projects for dependencies"
+        )
+        async for dependencies_batch in client.get_project_dependencies(projects_batch):
+            yield dependencies_batch
+
+
 ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)

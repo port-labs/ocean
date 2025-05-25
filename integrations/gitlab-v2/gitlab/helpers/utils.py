@@ -16,6 +16,8 @@ class ObjectKind(StrEnum):
     PIPELINE = "pipeline"
     JOB = "job"
     FOLDER = "folder"
+    VULNERABILITY = "vulnerability"
+    DEPENDENCY = "dependency"
 
 
 def parse_file_content(
@@ -36,7 +38,7 @@ def parse_file_content(
     # Quick check for empty or whitespace-only strings
     if not content.strip():
         logger.debug(
-            f"File '{file_path}' in '{context}' is empty; returning raw content."
+            f"File '{file_path}' in '{context}' is empty; returning raw conten."
         )
         return content
 
