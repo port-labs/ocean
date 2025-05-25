@@ -32,7 +32,6 @@ def create_default_app(
 ) -> Ocean:
     sys.path.append(".")
     try:
-        print(f"path: {path}")
         integration_path = f"{path}/integration.py" if path else "integration.py"
         module = load_module(integration_path)
         integration_class = _get_base_integration_class_from_module(module)
