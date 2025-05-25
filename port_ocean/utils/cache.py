@@ -2,7 +2,9 @@ import functools
 import hashlib
 import base64
 from typing import Callable, AsyncIterator, Awaitable, Any
+from port_ocean.cache.errors import FailedToReadCacheError, FailedToWriteCacheError
 from port_ocean.context.ocean import ocean
+from loguru import logger
 
 AsyncIteratorCallable = Callable[..., AsyncIterator[list[Any]]]
 AsyncCallable = Callable[..., Awaitable[Any]]
@@ -46,9 +48,12 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
             cache_key = hash_func(func.__name__, *args, **kwargs)
 
             # Check if the result is already in the cache
-            if cache := await ocean.app.cache_provider.get(cache_key):
-                yield cache
-                return
+            try:
+                if cache := await ocean.app.cache_provider.get(cache_key):
+                    yield cache
+                    return
+            except FailedToReadCacheError as e:
+                logger.warning(f"Failed to read cache for {cache_key}: {str(e)}")
 
             # If not in cache, fetch the data
             cached_results = list()
@@ -57,10 +62,13 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
                 yield result
 
             # Cache the results
-            await ocean.app.cache_provider.set(
-                cache_key,
-                cached_results,
-            )
+            try:
+                await ocean.app.cache_provider.set(
+                    cache_key,
+                    cached_results,
+                )
+            except FailedToWriteCacheError as e:
+                logger.warning(f"Failed to write cache for {cache_key}: {str(e)}")
             return
 
         return wrapper
@@ -91,15 +99,20 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             cache_key = hash_func(func.__name__, *args, **kwargs)
-
-            if cache := await ocean.app.cache_provider.get(cache_key):
-                return cache
+            try:
+                if cache := await ocean.app.cache_provider.get(cache_key):
+                    return cache
+            except FailedToReadCacheError as e:
+                logger.warning(f"Failed to read cache for {cache_key}: {str(e)}")
 
             result = await func(*args, **kwargs)
-            await ocean.app.cache_provider.set(
-                cache_key,
-                result,
-            )
+            try:
+                await ocean.app.cache_provider.set(
+                    cache_key,
+                    result,
+                )
+            except FailedToWriteCacheError as e:
+                logger.warning(f"Failed to write cache for {cache_key}: {str(e)}")
             return result
 
         return wrapper
