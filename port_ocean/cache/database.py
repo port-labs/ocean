@@ -8,11 +8,14 @@ from port_ocean.database.manager import DatabaseManager
 from port_ocean.database.models.cache import CacheEntry
 from port_ocean.cache.base import CacheProvider
 
+
 class FailedToReadDatabaseCacheError(FailedToReadCacheError):
     pass
 
+
 class FailedToWriteDatabaseCacheError(FailedToWriteCacheError):
     pass
+
 
 class DatabaseCacheProvider(CacheProvider):
     """Database cache provider that uses SQLAlchemy for storage."""
