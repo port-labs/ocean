@@ -67,6 +67,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
         fns = self._collect_resync_functions(resource_config)
+        logger.info(f"Found {len(fns)} resync functions for {resource_config.kind}")
 
         results, errors = await self._execute_resync_tasks(fns, resource_config)
 
@@ -96,8 +97,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results = []
         for task in fns:
             if inspect.isasyncgenfunction(task):
+                logger.info(f"Found async generator function for {resource_config.kind} name: {task.__qualname__}")
                 results.append(resync_generator_wrapper(task, resource_config.kind))
             else:
+                logger.info(f"Found sync function for {resource_config.kind} name: {task.__qualname__}")
                 task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
                 tasks.append(resync_function_wrapper(task, resource_config.kind))
 
