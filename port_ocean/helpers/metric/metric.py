@@ -25,7 +25,7 @@ class MetricPhase:
 
     class TransformResult:
         TRANSFORMED = "transformed"
-        FILTERED_OUT = "filteredOut"
+        FILTERED_OUT = "filtered_out"
         FAILED = "failed"
 
     class LoadResult:
@@ -34,7 +34,7 @@ class MetricPhase:
         SKIPPED = "skipped"
 
     class ExtractResult:
-        EXTRACTED = "rawExtracted"
+        EXTRACTED = "raw_extracted"
 
     class DeletionResult:
         DELETED = "deleted"
@@ -42,17 +42,16 @@ class MetricPhase:
 
 class MetricType:
     # Define metric names as constants
-    DURATION_NAME = "durationSeconds"
-    OBJECT_COUNT_NAME = "objectCount"
-    ERROR_COUNT_NAME = "errorCount"
+    DURATION_NAME = "duration_seconds"
+    OBJECT_COUNT_NAME = "object_count"
     SUCCESS_NAME = "success"
-    RATE_LIMIT_WAIT_NAME = "rateLimitWaitSeconds"
+    RATE_LIMIT_WAIT_NAME = "rate_limit_wait_seconds"
 
 
 class SyncState:
     SYNCING = "syncing"
     COMPLETED = "completed"
-    QUEUED = "queued"
+    PENDING = "pending"
     FAILED = "failed"
 
 
@@ -66,12 +65,7 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
     MetricType.OBJECT_COUNT_NAME: (
         MetricType.OBJECT_COUNT_NAME,
         "object_count description",
-        ["kind", "phase", "objectCountType"],
-    ),
-    MetricType.ERROR_COUNT_NAME: (
-        MetricType.ERROR_COUNT_NAME,
-        "error_count description",
-        ["kind", "phase"],
+        ["kind", "phase", "object_count_type"],
     ),
     MetricType.SUCCESS_NAME: (
         MetricType.SUCCESS_NAME,
@@ -124,7 +118,7 @@ class Metrics:
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
         self.event_id = ""
-        self.sync_state = SyncState.QUEUED
+        self.sync_state = SyncState.PENDING
 
     @property
     def event_id(self) -> str:
