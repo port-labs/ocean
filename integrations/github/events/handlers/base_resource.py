@@ -20,7 +20,7 @@ class ResourceHandler(HookHandler):
 class RepositoryHandler(ResourceHandler):
     """Base handler for repository-related events."""
     
-    async def handle(self, event: str, body: Dict[str, Any]) -> None:
+    async def handle(self, event: str, body: Dict[str, Any], raw_body: bytes = None, signature: str = None) -> None:
         repo = body.get("repository", {})
         if not repo:
             logger.warning(f"No repository data in {event} event")
@@ -57,9 +57,11 @@ class RepositoryHandler(ResourceHandler):
             return resource
             
         try:
+            org_name = resource.get("owner", {}).get("login")
             repo_name = resource.get("name")
-            if repo_name:
-                details = await self.client.get_repository_details(repo_name)
+            if org_name and repo_name:
+                full_repo_name = f"{org_name}/{repo_name}"
+                details = await self.client.get_repository_details(full_repo_name)
                 resource.update(details)
         except Exception as e:
             logger.warning(f"Error enriching repository data: {e}")
