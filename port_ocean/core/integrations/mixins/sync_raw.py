@@ -626,6 +626,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         # config as we might have multiple resources in the same event
         async with resource_context(resource,index):
             resource_kind_id = f"{resource.kind}-{index}"
+            ocean.metrics.sync_state = SyncState.SYNCING
             task = asyncio.create_task(
                 self._register_in_batches(resource, user_agent_type)
             )
@@ -637,8 +638,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 value=len(kind_results[0])
             )
 
+            if ocean.metrics.sync_state != SyncState.FAILED:
+                ocean.metrics.sync_state = SyncState.COMPLETED
 
+            await ocean.metrics.send_metrics_to_webhook(
+                kind=resource_kind_id
+            )
+            # await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id) # TODO: uncomment this when end points are ready
             await ocean.metrics.flush(kind=resource_kind_id)
+            
             return kind_results
 
     @TimeMetric(MetricPhase.RESYNC)
@@ -674,8 +682,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 use_cache=False
             )
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
-            ocean.metrics.initialize_metrics([f"{resource.kind}-{index}" for index, resource in enumerate(app_config.resources)])
-            await ocean.metrics.flush()
+
+            kinds = [f"{resource.kind}-{index}" for index, resource in enumerate(app_config.resources)]
+            ocean.metrics.initialize_metrics(kinds)
+            # await ocean.metrics.report_sync_metrics(kinds=kinds) # TODO: uncomment this when end points are ready
 
             # Execute resync_start hooks
             for resync_start_fn in self.event_strategy["resync_start"]:
@@ -700,7 +710,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for index,resource in enumerate(app_config.resources):
 
                     logger.info(f"Starting processing resource {resource.kind} with index {index}")
-
+                    
                     creation_results.append(await self.process_resource(resource,index,user_agent_type))
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)

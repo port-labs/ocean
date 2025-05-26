@@ -25,6 +25,10 @@ class LogAttributes(TypedDict):
     ingestUrl: str
 
 
+class MetricsAttributes(TypedDict):
+    ingestUrl: str
+
+
 class IntegrationClientMixin:
     def __init__(
         self,
@@ -38,6 +42,7 @@ class IntegrationClientMixin:
         self.auth = auth
         self.client = client
         self._log_attributes: LogAttributes | None = None
+        self._metrics_attributes: MetricsAttributes | None = None
 
     async def is_integration_provision_enabled(
         self, integration_type: str, should_raise: bool = True, should_log: bool = True
@@ -105,6 +110,12 @@ class IntegrationClientMixin:
             response = await self.get_current_integration()
             self._log_attributes = response["logAttributes"]
         return self._log_attributes
+
+    async def get_metrics_attributes(self) -> LogAttributes:
+        if self._metrics_attributes is None:
+            response = await self.get_current_integration()
+            self._metrics_attributes = response["metricAttributes"]
+        return self._metrics_attributes
 
     async def _poll_integration_until_default_provisioning_is_complete(
         self,
@@ -196,6 +207,40 @@ class IntegrationClientMixin:
         )
         handle_port_status_code(response)
         return response.json()["integration"]
+
+    async def post_integration_sync_metrics(
+        self, metrics: list[dict[str, Any]]
+    ) -> None:
+        logger.debug("starting POST metrics request", metrics=metrics)
+        metrics_attributes = await self.get_metrics_attributes()
+        headers = await self.auth.headers()
+        response = await self.client.post(
+            metrics_attributes["ingestUrl"],
+            headers=headers,
+            json={
+                "syncKindsMetrics": metrics,
+            },
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Finished POST metrics request")
+
+    async def put_integration_sync_metrics(self, kind_metrics: dict[str, Any]) -> None:
+        logger.debug("starting PUT metrics request", kind_metrics=kind_metrics)
+        metrics_attributes = await self.get_metrics_attributes()
+        url = (
+            metrics_attributes["ingestUrl"]
+            + f"/resync/{kind_metrics['eventId']}/kind/{kind_metrics['kindIdentifier']}"
+        )
+        headers = await self.auth.headers()
+        response = await self.client.put(
+            url,
+            headers=headers,
+            json={
+                "syncKindMetrics": kind_metrics,
+            },
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Finished PUT metrics request")
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
