@@ -7,15 +7,15 @@ from port_ocean.context.ocean import ocean
 from .types import FakePerson
 from .static import FAKE_DEPARTMENTS
 
+
 API_URL = "http://localhost:8000/integration/department"
-API_URL_DOCKER = "http://host.docker.internal:8001/integration/department"
 USER_AGENT = "Ocean Framework Fake Integration (https://github.com/port-labs/ocean)"
 
 
 class FakeIntegrationDefaults(IntEnum):
-    ENTITY_AMOUNT = 1
-    ENTITY_KB_SIZE = 350
-    THIRD_PARTY_BATCH_SIZE = 1
+    ENTITY_AMOUNT = 20
+    ENTITY_KB_SIZE = 1
+    THIRD_PARTY_BATCH_SIZE = 1000
     THIRD_PARTY_LATENCY_MS = 0
 
 
@@ -69,8 +69,7 @@ def get_config() -> Tuple[List[int], int, int]:
 async def get_fake_persons_batch(
     department_id: str, limit: int, entity_kb_size: int, latency_ms: int
 ) -> List[Dict[Any, Any]]:
-    api_url = API_URL_DOCKER if ocean.config.multiprocessing_enabled else API_URL
-    url = f"{api_url}/{department_id}/employees?limit={limit}&entity_kb_size={entity_kb_size}&latency={latency_ms}"
+    url = f"{API_URL}/{department_id}/employees?limit={limit}&entity_kb_size={entity_kb_size}&latency={latency_ms}"
     response = await http_async_client.get(
         url,
         headers={

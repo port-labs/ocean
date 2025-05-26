@@ -24,6 +24,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.models import Entity
 from port_ocean.ocean import Ocean
+from port_ocean.cache.memory import InMemoryCacheProvider
 
 
 @pytest.fixture
@@ -82,10 +83,11 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config = MagicMock()
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
-        ocean_mock.config.multiprocessing_enabled = False
+        ocean_mock.config.runtime_mode = "single_process"
         ocean_mock.port_client = mock_port_client
         ocean_mock.metrics = MagicMock()
         ocean_mock.metrics.flush = AsyncMock()
+        ocean_mock.cache_provider = InMemoryCacheProvider()
 
         return ocean_mock
 

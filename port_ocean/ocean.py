@@ -62,17 +62,6 @@ class Ocean:
             *self.config.get_sensitive_fields_data()
         )
         self.integration_router = integration_router or APIRouter()
-        self.metrics = port_ocean.helpers.metric.metric.Metrics(
-            metrics_settings=self.config.metrics,
-            integration_configuration=self.config.integration,
-        )
-
-        self.webhook_manager = LiveEventsProcessorManager(
-            self.integration_router,
-            signal_handler,
-            max_event_processing_seconds=self.config.max_event_processing_seconds,
-            max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
-        )
 
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
@@ -82,6 +71,21 @@ class Ocean:
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
         )
+
+        self.metrics = port_ocean.helpers.metric.metric.Metrics(
+            metrics_settings=self.config.metrics,
+            integration_configuration=self.config.integration,
+            port_client=self.port_client,
+            multiprocessing_enabled=self.config.runtime_mode == "multiprocessing",
+        )
+
+        self.webhook_manager = LiveEventsProcessorManager(
+            self.integration_router,
+            signal_handler,
+            max_event_processing_seconds=self.config.max_event_processing_seconds,
+            max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
+        )
+
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
@@ -99,7 +103,7 @@ class Ocean:
         self.cache_provider: CacheProvider = self._get_caching_provider()
 
     def _get_caching_provider(self) -> CacheProvider:
-        if self.config.caching_storage_type:
+        if self.config.caching_storage_mode:
             caching_type_to_provider = {
                 DiskCacheProvider.STORAGE_TYPE: DiskCacheProvider(),
                 InMemoryCacheProvider.STORAGE_TYPE: InMemoryCacheProvider(),
@@ -107,12 +111,10 @@ class Ocean:
                     self._database_manager
                 ),
             }
-            if self.config.caching_storage_type in caching_type_to_provider:
-                return caching_type_to_provider[self.config.caching_storage_type]
+            if self.config.caching_storage_mode in caching_type_to_provider:
+                return caching_type_to_provider[self.config.caching_storage_mode]
 
-        if self.config.database.is_configured:
-            return DatabaseCacheProvider(self._database_manager)
-        if self.config.multiprocessing_enabled:
+        if self.config.runtime_mode == "multiprocessing":
             return DiskCacheProvider()
         return InMemoryCacheProvider()
 

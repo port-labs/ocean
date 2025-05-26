@@ -94,8 +94,10 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
-    multiprocessing_enabled: bool = Field(default=False)
-    caching_storage_type: Optional[str] = Field(default=None)
+    caching_storage_mode: Optional[Literal["disk", "memory"]] = Field(default=None)
+    runtime_mode: Literal["multiprocessing", "single_process"] = Field(
+        default="single_process"
+    )
     database: DatabaseSettings = Field(default_factory=lambda: DatabaseSettings())
 
     @validator("metrics", pre=True)

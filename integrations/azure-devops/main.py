@@ -14,6 +14,7 @@ from azure_devops.misc import (
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     Kind,
+    AzureDevopsFolderResourceConfig,
 )
 from azure_devops.webhooks.webhook_event import WebhookEvent
 from bootstrap import setup_listeners, webhook_event_handler
@@ -174,6 +175,17 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if files_batch:
             logger.info(f"Resyncing batch of {len(files_batch)} files")
             yield files_batch
+
+
+@ocean.on_resync(Kind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync folders based on configuration."""
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(AzureDevopsFolderResourceConfig, event.resource_config).selector
+    async for matching_folders in azure_devops_client.process_folder_patterns(
+        selector.folders, selector.project_name
+    ):
+        yield matching_folders
 
 
 @ocean.router.post("/webhook")
