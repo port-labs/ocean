@@ -4,6 +4,9 @@ from contextlib import asynccontextmanager
 import threading
 from typing import Any, AsyncIterator, Callable, Dict, Type
 
+from port_ocean.cache.base import CacheProvider
+from port_ocean.cache.disk import DiskCacheProvider
+from port_ocean.cache.memory import InMemoryCacheProvider
 import port_ocean.helpers.metric.metric
 
 from fastapi import FastAPI, APIRouter
@@ -90,6 +93,20 @@ class Ocean:
         )
 
         self.app_initialized = False
+        self.cache_provider: CacheProvider = self._get_caching_provider()
+
+    def _get_caching_provider(self) -> CacheProvider:
+        if self.config.caching_storage_mode:
+            caching_type_to_provider = {
+                DiskCacheProvider.STORAGE_TYPE: DiskCacheProvider,
+                InMemoryCacheProvider.STORAGE_TYPE: InMemoryCacheProvider,
+            }
+            if self.config.caching_storage_mode in caching_type_to_provider:
+                return caching_type_to_provider[self.config.caching_storage_mode]()
+
+        if self.config.runtime_mode == "multiprocessing":
+            return DiskCacheProvider()
+        return InMemoryCacheProvider()
 
     def is_saas(self) -> bool:
         return self.config.runtime.is_saas_runtime

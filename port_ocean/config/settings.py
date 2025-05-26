@@ -1,4 +1,4 @@
-from typing import Any, Literal, Type, cast
+from typing import Any, Literal, Optional, Type, cast
 
 from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
@@ -93,6 +93,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
+    caching_storage_mode: Optional[Literal["disk", "memory"]] = Field(default=None)
     runtime_mode: Literal["multiprocessing", "single_process"] = Field(
         default="single_process"
     )
