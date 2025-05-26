@@ -9,6 +9,7 @@ from pydantic.main import BaseModel
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
 from port_ocean.core.models import CreatePortResourcesOrigin, Runtime
+from port_ocean.database.manager import DatabaseSettings
 from port_ocean.utils.misc import get_integration_name, get_spec_file
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
@@ -97,6 +98,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     runtime_mode: Literal["multiprocessing", "single_process"] = Field(
         default="single_process"
     )
+    database: DatabaseSettings = Field(default_factory=lambda: DatabaseSettings())
 
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:

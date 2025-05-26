@@ -5,8 +5,10 @@ import threading
 from typing import Any, AsyncIterator, Callable, Dict, Type
 
 from port_ocean.cache.base import CacheProvider
+from port_ocean.cache.database import DatabaseCacheProvider
 from port_ocean.cache.disk import DiskCacheProvider
 from port_ocean.cache.memory import InMemoryCacheProvider
+from port_ocean.database.manager import DatabaseManager
 import port_ocean.helpers.metric.metric
 
 from fastapi import FastAPI, APIRouter
@@ -93,16 +95,24 @@ class Ocean:
         )
 
         self.app_initialized = False
+
+        if self.config.database.is_configured:
+            self._database_manager = DatabaseManager(
+                self.config.database, integration_id=self.config.integration.identifier
+            )
         self.cache_provider: CacheProvider = self._get_caching_provider()
 
     def _get_caching_provider(self) -> CacheProvider:
         if self.config.caching_storage_mode:
             caching_type_to_provider = {
-                DiskCacheProvider.STORAGE_TYPE: DiskCacheProvider,
-                InMemoryCacheProvider.STORAGE_TYPE: InMemoryCacheProvider,
+                DiskCacheProvider.STORAGE_TYPE: DiskCacheProvider(),
+                InMemoryCacheProvider.STORAGE_TYPE: InMemoryCacheProvider(),
+                DatabaseCacheProvider.STORAGE_TYPE: DatabaseCacheProvider(
+                    self._database_manager
+                ),
             }
             if self.config.caching_storage_mode in caching_type_to_provider:
-                return caching_type_to_provider[self.config.caching_storage_mode]()
+                return caching_type_to_provider[self.config.caching_storage_mode]
 
         if self.config.runtime_mode == "multiprocessing":
             return DiskCacheProvider()
@@ -186,6 +196,8 @@ class Ocean:
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
+                if self.config.database.is_configured:
+                    await self._database_manager.initialize()
                 await self.integration.start()
                 if self.base_url:
                     await self.webhook_manager.start_processing_event_messages()
