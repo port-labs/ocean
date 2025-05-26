@@ -71,6 +71,7 @@ class Ocean:
             metrics_settings=self.config.metrics,
             integration_configuration=self.config.integration,
             port_client=self.port_client,
+            multiprocessing_enabled=self.config.runtime_mode == "multiprocessing",
         )
 
         self.webhook_manager = LiveEventsProcessorManager(

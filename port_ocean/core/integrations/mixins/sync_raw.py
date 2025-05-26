@@ -634,7 +634,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             kind_results: tuple[list[Entity], list[Exception]] = await task
             ocean.metrics.set_metric(
                 name=MetricType.OBJECT_COUNT_NAME,
-                labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
+                labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.LOADED],
                 value=len(kind_results[0])
             )
 
@@ -645,8 +645,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 kind=resource_kind_id
             )
             # await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id) # TODO: uncomment this when end points are ready
-            await ocean.metrics.flush(kind=resource_kind_id)
-            
+
             return kind_results
 
     @TimeMetric(MetricPhase.RESYNC)
@@ -710,7 +709,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for index,resource in enumerate(app_config.resources):
 
                     logger.info(f"Starting processing resource {resource.kind} with index {index}")
-                    
+
                     creation_results.append(await self.process_resource(resource,index,user_agent_type))
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
