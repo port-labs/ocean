@@ -36,6 +36,10 @@ configurations:
     type: string
     sensitive: true
     description: GitHub webhook secret
+  - name: webhookUrl
+    required: true
+    type: string
+    description: Webhook URL
   - name: githubBaseURL
     required: true
     type: string

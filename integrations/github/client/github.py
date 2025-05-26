@@ -1,3 +1,5 @@
+import asyncio
+from datetime import datetime, timedelta
 from typing import Any, AsyncGenerator, Optional, ClassVar
 from loguru import logger
 from port_ocean.utils import http_async_client
@@ -7,12 +9,58 @@ from port_ocean.utils.cache import cache_iterator_result
 
 PAGE_SIZE: ClassVar[int] = 100  # GitHub API max items per page
 
+# Set of supported webhook events
+SUPPORTED_EVENTS = {
+    # Repository events
+    "repository", "repository_import", "repository_vulnerability_alert",
+    "star", "fork",
+    # Team events
+    "team", "team_add", "membership",
+    # Workflow events
+    "workflow_run", "workflow_dispatch", "workflow_job",
+    # Issue events
+    "issues", "issue_comment",
+    # Pull request events
+    "pull_request", "pull_request_review", "pull_request_review_comment"
+}
+
+class RateLimiter:
+    def __init__(self, max_requests: int, time_window: int):
+        self.max_requests = max_requests
+        self.time_window = time_window  # in seconds
+        self.requests = []
+        self._lock = asyncio.Lock()
+    
+    async def acquire(self):
+        async with self._lock:
+            now = datetime.now()
+            # Remove expired timestamps
+            self.requests = [ts for ts in self.requests 
+                           if ts > now - timedelta(seconds=self.time_window)]
+            
+            if len(self.requests) >= self.max_requests:
+                # Calculate sleep time
+                sleep_time = (self.requests[0] + 
+                            timedelta(seconds=self.time_window) - now).total_seconds()
+                if sleep_time > 0:
+                    logger.info(f"Rate limit reached. Waiting {sleep_time:.2f} seconds")
+                    await asyncio.sleep(sleep_time)
+                    # Recursive call after sleep
+                    await self.acquire()
+                    return
+            
+            self.requests.append(now)
+
+
 class GitHubClient:
-    def __init__(self, base_url: str, token: str) -> None:
+    def __init__(self, base_url: str, token: str, org: str) -> None:
         self._token = token
         self._base_url = base_url
+        self._org = org
         self._client = http_async_client
         self._client.follow_redirects = True
+        # Initialize rate limiter (5000 requests per hour per GitHub docs)
+        self._rate_limiter = RateLimiter(max_requests=5000, time_window=3600)
 
     @classmethod
     def from_ocean_configuration(cls) -> "GitHubClient":
@@ -23,7 +71,8 @@ class GitHubClient:
         """
         return cls(
             base_url=ocean.integration_config["github_base_url"],
-            token=ocean.integration_config["github_token"]
+            token=ocean.integration_config["github_token"],
+            org=ocean.integration_config["github_org"]
         )
 
     def _headers(self) -> dict[str, str]:
@@ -41,6 +90,8 @@ class GitHubClient:
         headers: Optional[dict[str, Any]] = None,
         timeout: int = 30
     ) -> Response | None:
+        # Apply rate limiting
+        await self._rate_limiter.acquire()
         request_headers = {**(headers or {}), **self._headers()}
         
         try:
@@ -108,30 +159,58 @@ class GitHubClient:
             current_url = next_url
 
     @cache_iterator_result()
-    async def get_repositories(self, org: str) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for repositories in self._get_paginated(f"orgs/{org}/repos"):
+    async def get_repositories(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for repositories in self._get_paginated(f"orgs/{self._org}/repos"):
             yield repositories
 
-    @cache_iterator_result()
-    async def get_issues(self, org: str, repo: str) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for issues in self._get_paginated(f"repos/{org}/{repo}/issues"):
+    async def get_issues(self, repo: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for issues in self._get_paginated(f"repos/{self._org}/{repo}/issues"):
             yield issues
 
-    @cache_iterator_result()
-    async def get_pull_requests(self, org: str, repo: str) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for pull_requests in self._get_paginated(f"repos/{org}/{repo}/pulls"):
+    async def get_pull_requests(self, repo: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for pull_requests in self._get_paginated(f"repos/{self._org}/{repo}/pulls"):
             yield pull_requests
 
-    @cache_iterator_result()
-    async def get_workflows(self, org: str, repo: str) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for workflows in self._get_paginated(f"repos/{org}/{repo}/actions/workflows"):
+    async def get_workflows(self, repo: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for workflows in self._get_paginated(f"repos/{self._org}/{repo}/actions/workflows"):
             yield workflows
 
-    @cache_iterator_result()
-    async def get_teams(self, org: str) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for teams in self._get_paginated(f"orgs/{org}/teams"):
+    async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for teams in self._get_paginated(f"orgs/{self._org}/teams"):
             yield teams
             
+    async def create_webhook(self, repo: str, url: str, secret: str) -> dict[str, Any]:
+        """Create a webhook for a repository.
+        
+        Args:
+            repo: Repository name
+            url: Webhook callback URL
+            secret: Webhook secret for verification
+            
+        Returns:
+            Created webhook details
+        """
+        data = {
+            "name": "web",
+            "active": True,
+            "events": list(SUPPORTED_EVENTS),
+            "config": {
+                "url": url,
+                "content_type": "json",
+                "secret": secret,
+                "insecure_ssl": "0"
+            }
+        }
+        
+        response = await self.send_request(
+            "POST", 
+            f"{self._base_url}/repos/{self._org}/{repo}/hooks",
+            data=data
+        )
+        if response:
+            return response.json()
+        return {}
+    
     async def get_repository_details(self, repo_name: str) -> dict[str, Any]:
         """Get detailed information about a repository.
         
