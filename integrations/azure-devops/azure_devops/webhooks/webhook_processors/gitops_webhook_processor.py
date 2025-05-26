@@ -59,16 +59,17 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         updates = payload["resource"]["refUpdates"]
         await self._process_push_updates(config, payload, updates)
 
-        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+        return WebhookEventRawResults(
+            updated_raw_results=[], deleted_raw_results=[]
+        )  # update happens in ocean.update_diff
 
     async def _process_push_updates(
         self,
         config: GitPortAppConfig,
         push_data: Dict[str, Any],
         updates: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
+    ) -> None:
         """Process ref updates from push event and generate entities for GitOps"""
-        processed_entities: List[Dict[str, Any]] = []
         tasks = []
 
         for update in updates:
@@ -89,12 +90,7 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             tasks.append(task)
 
         if tasks:
-            results = await asyncio.gather(*tasks)
-            for result in results:
-                if result is not None:
-                    processed_entities.extend(result)
-
-        return processed_entities
+            await asyncio.gather(*tasks)
 
     async def _process_ref_update(
         self,
@@ -103,30 +99,33 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         update: Dict[str, Any],
     ) -> None:
         """Process a single ref update and generate entities for GitOps"""
-        logger.info(f"Processing GitOps ref update: {update}")
-        repo_id = push_data["resource"]["repository"]["id"]
-        old_commit = update["oldObjectId"]
-        new_commit = update["newObjectId"]
-        client = AzureDevopsClient.create_from_ocean_config()
+        try:
+            logger.info(f"Processing GitOps ref update: {update}")
+            repo_id = push_data["resource"]["repository"]["id"]
+            old_commit = update["oldObjectId"]
+            new_commit = update["newObjectId"]
+            client = AzureDevopsClient.create_from_ocean_config()
 
-        # Generate entities from new commit
-        new_entities_dict = await generate_entities_from_commit_id(
-            client, config.spec_path, new_commit, repo_id
-        )
-        logger.info(f"Got {len(new_entities_dict)} new entities from GitOps")
+            # Generate entities from new commit
+            new_entities_dict = await generate_entities_from_commit_id(
+                client, config.spec_path, new_commit, repo_id
+            )
+            logger.info(f"Got {len(new_entities_dict)} new entities from GitOps")
 
-        # Generate entities from old commit
-        old_entities_dict = await generate_entities_from_commit_id(
-            client, config.spec_path, old_commit, repo_id
-        )
-        logger.info(f"Got {len(old_entities_dict)} old entities from GitOps")
+            # Generate entities from old commit
+            old_entities_dict = await generate_entities_from_commit_id(
+                client, config.spec_path, old_commit, repo_id
+            )
+            logger.info(f"Got {len(old_entities_dict)} old entities from GitOps")
 
-        # Convert dictionaries to Entity objects
-        new_entities = [Entity(**entity_dict) for entity_dict in new_entities_dict]
-        old_entities = [Entity(**entity_dict) for entity_dict in old_entities_dict]
+            # Convert dictionaries to Entity objects
+            new_entities = [Entity(**entity_dict) for entity_dict in new_entities_dict]
+            old_entities = [Entity(**entity_dict) for entity_dict in old_entities_dict]
 
-        # Calculate diff and update Port
-        await ocean.update_diff(
-            {"before": old_entities, "after": new_entities},
-            UserAgentType.gitops,
-        )
+            # Calculate diff and update Port
+            await ocean.update_diff(
+                {"before": old_entities, "after": new_entities},
+                UserAgentType.gitops,
+            )
+        except Exception as e:
+            logger.error(f"Error processing ref update: {e}")
