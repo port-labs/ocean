@@ -19,14 +19,6 @@ class WebhookSubscription(BaseModel):
         webhook_secret: Optional[str] = None,
         project_id: Optional[str] = None,
     ) -> None:
-        """Configure webhook subscription details with authentication.
-
-        Args:
-            url: The webhook URL to receive events
-            auth_username: Basic auth username
-            webhook_secret: Optional basic auth password
-            project_id: Optional project ID to scope the subscription
-        """
         self.consumerInputs = {
             "url": url,
             **(
