@@ -1,7 +1,7 @@
 from loguru import logger
 from azure_devops.client.azure_devops_client import AzureDevopsClient
-from azure_devops.webhooks.webhook_processors._base_processor import (
-    _AzureDevOpsBaseWebhookProcessor,
+from azure_devops.webhooks.webhook_processors.base_processor import (
+    AzureDevOpsBaseWebhookProcessor,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -13,7 +13,7 @@ from azure_devops.misc import Kind
 from azure_devops.webhooks.events import PullRequestEvents
 
 
-class PullRequestWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
+class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.PULL_REQUEST]
 

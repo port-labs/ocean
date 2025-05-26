@@ -11,14 +11,14 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from integration import AzureDevopsFileResourceConfig
 from azure_devops.misc import Kind, extract_branch_name_from_ref
-from azure_devops.webhooks.webhook_processors._base_processor import (
-    _AzureDevOpsBaseWebhookProcessor,
+from azure_devops.webhooks.webhook_processors.base_processor import (
+    AzureDevOpsBaseWebhookProcessor,
 )
 from azure_devops.client.file_processing import parse_file_content
 from azure_devops.webhooks.events import PushEvents
 
 
-class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
+class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.FILE]
 
@@ -44,9 +44,10 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
+        client = AzureDevopsClient.create_from_ocean_config()
         updates = payload["resource"]["refUpdates"]
         created, modified, deleted = await self._process_push_updates(
-            matching_resource_config, payload, updates
+            matching_resource_config, payload, updates, client
         )
         return WebhookEventRawResults(
             updated_raw_results=created + modified,
@@ -58,6 +59,7 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         config: AzureDevopsFileResourceConfig,
         push_data: Dict[str, Any],
         updates: List[Dict[str, Any]],
+        client: AzureDevopsClient,
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         created_files: List[Dict[str, Any]] = []
         modified_files: List[Dict[str, Any]] = []
@@ -74,7 +76,9 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
                 logger.info("Skipping ref update for non-default branch")
                 continue
 
-            task = self._process_changed_files_for_ref(config, push_data, update)
+            task = self._process_changed_files_for_ref(
+                config, push_data, update, client
+            )
             tasks.append(task)
 
         if tasks:
@@ -92,24 +96,28 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         config: AzureDevopsFileResourceConfig,
         push_data: Dict[str, Any],
         update: Dict[str, Any],
+        client: AzureDevopsClient,
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         logger.info(f"Processing ref update: {update}")
         repo_id = push_data["resource"]["repository"]["id"]
         new_commit = update["newObjectId"]
         created, modified, deleted = await self._get_file_changes(
-            repo_id, new_commit, config
+            repo_id, new_commit, config, client
         )
 
         return created, modified, deleted
 
     async def _get_file_changes(
-        self, repo_id: str, commit_id: str, config: AzureDevopsFileResourceConfig
+        self,
+        repo_id: str,
+        commit_id: str,
+        config: AzureDevopsFileResourceConfig,
+        client: AzureDevopsClient,
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         logger.info(f"Fetching file changes for commit {commit_id} in repo {repo_id}")
         created_files: List[Dict[str, Any]] = []
         modified_files: List[Dict[str, Any]] = []
         deleted_files: List[Dict[str, Any]] = []
-        client = AzureDevopsClient.create_from_ocean_config()
 
         try:
             repo_info = await client.get_repository(repo_id)
@@ -148,7 +156,7 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
                 match change_type:
                     case "add":
                         file_entity = await self._build_file_entity(
-                            repo_info, commit_id, changed_file
+                            repo_info, commit_id, changed_file, client
                         )
                         if file_entity:
                             created_files.append(file_entity)
@@ -158,7 +166,7 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
                         )
                     case _:
                         file_entity = await self._build_file_entity(
-                            repo_info, commit_id, changed_file
+                            repo_info, commit_id, changed_file, client
                         )
                         if file_entity:
                             modified_files.append(file_entity)
@@ -169,14 +177,16 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         return created_files, modified_files, deleted_files
 
     async def _build_file_entity(
-        self, repo_info: Dict[str, Any], commit_id: str, changed_file: Dict[str, Any]
+        self,
+        repo_info: Dict[str, Any],
+        commit_id: str,
+        changed_file: Dict[str, Any],
+        client: AzureDevopsClient,
     ) -> Optional[Dict[str, Any]]:
         try:
             file_path = changed_file["item"]["path"]
-            file_content = (
-                await AzureDevopsClient.create_from_ocean_config().get_file_by_commit(
-                    file_path, repo_info["id"], commit_id
-                )
+            file_content = await client.get_file_by_commit(
+                file_path, repo_info["id"], commit_id
             )
             if not file_content:
                 logger.warning(f"No content found for file {file_path}")

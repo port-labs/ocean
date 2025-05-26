@@ -7,14 +7,14 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from azure_devops.client.azure_devops_client import AzureDevopsClient
-from azure_devops.webhooks.webhook_processors._base_processor import (
-    _AzureDevOpsBaseWebhookProcessor,
+from azure_devops.webhooks.webhook_processors.base_processor import (
+    AzureDevOpsBaseWebhookProcessor,
 )
 from azure_devops.misc import Kind
 from azure_devops.webhooks.events import RepositoryEvents
 
 
-class RepositoryWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
+class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.REPOSITORY]
 

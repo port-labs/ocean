@@ -9,12 +9,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from azure_devops.webhooks.webhook_processors._base_processor import (
-    _AzureDevOpsBaseWebhookProcessor,
+from azure_devops.webhooks.webhook_processors.base_processor import (
+    AzureDevOpsBaseWebhookProcessor,
 )
 
 
-class AzureDevOpsWebhookProcessorImpl(_AzureDevOpsBaseWebhookProcessor):
+class AzureDevOpsWebhookProcessorImpl(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["test-kind"]
 

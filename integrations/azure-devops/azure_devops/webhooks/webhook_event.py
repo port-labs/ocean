@@ -15,7 +15,7 @@ class WebhookSubscription(BaseModel):
     def set_webhook_details(
         self,
         url: str,
-        auth_username: str,
+        auth_username: str | None = None,
         webhook_secret: Optional[str] = None,
         project_id: Optional[str] = None,
     ) -> None:
@@ -34,7 +34,7 @@ class WebhookSubscription(BaseModel):
                     "basicAuthUsername": auth_username,
                     "basicAuthPassword": webhook_secret,
                 }
-                if webhook_secret is not None
+                if webhook_secret and auth_username
                 else {}
             ),
         }

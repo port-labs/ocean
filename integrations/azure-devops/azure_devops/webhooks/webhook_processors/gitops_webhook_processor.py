@@ -10,16 +10,18 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.models import Entity
 from integration import GitPortAppConfig
 from azure_devops.misc import Kind, extract_branch_name_from_ref
-from azure_devops.webhooks.webhook_processors._base_processor import (
-    _AzureDevOpsBaseWebhookProcessor,
+from azure_devops.webhooks.webhook_processors.base_processor import (
+    AzureDevOpsBaseWebhookProcessor,
 )
 from azure_devops.webhooks.events import PushEvents
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 
 
-class GitopsWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
+class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         all_kinds = [kind.value for kind in Kind]
         return all_kinds
@@ -28,7 +30,6 @@ class GitopsWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         try:
             event_type = event.payload["eventType"]
             config = cast(GitPortAppConfig, port_ocean_event.port_app_config)
-            # Only process if it's a push event and GitOps is configured
             is_push_event = bool(PushEvents(event_type))
             has_spec_path = (
                 hasattr(config, "spec_path") and config.spec_path is not None
@@ -99,18 +100,23 @@ class GitopsWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         repo_id = push_data["resource"]["repository"]["id"]
         old_commit = update["oldObjectId"]
         new_commit = update["newObjectId"]
+        client = AzureDevopsClient.create_from_ocean_config()
 
         # Generate entities from new commit
-        new_entities = await generate_entities_from_commit_id(
-            config.spec_path, repo_id, new_commit
+        new_entities_dict = await generate_entities_from_commit_id(
+            client, config.spec_path, new_commit, repo_id
         )
-        logger.info(f"Got {len(new_entities)} new entities from GitOps")
+        logger.info(f"Got {len(new_entities_dict)} new entities from GitOps")
 
         # Generate entities from old commit
-        old_entities = await generate_entities_from_commit_id(
-            config.spec_path, repo_id, old_commit
+        old_entities_dict = await generate_entities_from_commit_id(
+            client, config.spec_path, old_commit, repo_id
         )
-        logger.info(f"Got {len(old_entities)} old entities from GitOps")
+        logger.info(f"Got {len(old_entities_dict)} old entities from GitOps")
+
+        # Convert dictionaries to Entity objects
+        new_entities = [Entity(**entity_dict) for entity_dict in new_entities_dict]
+        old_entities = [Entity(**entity_dict) for entity_dict in old_entities_dict]
 
         # Calculate diff and update Port
         await ocean.update_diff(
@@ -118,5 +124,4 @@ class GitopsWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
             UserAgentType.gitops,
         )
 
-        # Convert Entity objects to dictionaries
-        return [entity.dict() for entity in new_entities]
+        return new_entities_dict
