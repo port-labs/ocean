@@ -14,6 +14,17 @@ def get_client() -> GitHubClient:
 webhook_handler = WebhookHandler()
 webhook_handler.configure_client(get_client())
 
+# Register webhook route
+@ocean.router.post("/webhook")
+async def handle_webhook(request: Request) -> dict:
+    """Handle incoming GitHub webhook events.
+    
+    This endpoint receives webhook events from GitHub when activities like
+    pull request merges, issue creation, etc. occur. The events are validated
+    using the webhook secret and then processed by the appropriate handlers.
+    """
+    return await webhook_handler.handle(request)
+
 @ocean.on_start()
 async def on_start() -> None:
     client = get_client()
@@ -105,8 +116,4 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received batch with {len(teams)} teams")
         yield teams
 
-
-@ocean.router.post("/webhook")
-async def handle_webhook_request(request: Request):
-    return await webhook_handler.handle(request)
 

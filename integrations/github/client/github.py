@@ -76,9 +76,15 @@ class GitHubClient:
         )
 
     def _headers(self) -> dict[str, str]:
+        """Get default headers for GitHub API requests.
+        
+        For fine-grained tokens (github_pat_*), just use the token as is.
+        GitHub will handle the authentication format internally.
+        """
         return {
-            "Authorization": f"token {self._token}",
-            "Accept": "application/vnd.github+json"
+            "Authorization": self._token,
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
         }
 
     async def send_request(
