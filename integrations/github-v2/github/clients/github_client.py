@@ -1,6 +1,5 @@
+import os
 import asyncio
-import json
-import yaml
 from functools import partial
 
 import anyio
@@ -12,10 +11,10 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
+from port_ocean.utils.cache import cache_iterator_result
 
 from github.clients.rest_client import RestClient
 
-PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 class GitHubClient:
     """Main GitHub client with high-level methods for Port Ocean integration."""

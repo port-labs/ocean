@@ -36,16 +36,17 @@ class OrganizationWebhookProcessor(GitHubAbstractWebhookProcessor):
         """
         event_type = event.headers.get("x-github-event", "")
 
-        if event_type == "repository":
-            return [ObjectKind.REPOSITORY]
-        elif event_type in ["member", "membership"]:
-            return [ObjectKind.MEMBER]
-        elif event_type in ["team", "team_add"]:
-            return [ObjectKind.TEAM]
-        elif event_type == "organization":
-            return []
-        else:
-            return []
+        match event_type:
+            case "repository":
+                return [ObjectKind.REPOSITORY]
+            case "member" | "membership":
+                return [ObjectKind.USER]
+            case "team" | "team_add":
+                return [ObjectKind.TEAM]
+            case "organization":
+                return []
+            case _:
+                return []
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
