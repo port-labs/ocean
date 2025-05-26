@@ -3,6 +3,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   detect-changes:
     uses: ./.github/workflows/detect-changes-matrix.yml
@@ -19,6 +23,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: "eu-west-1"
+
           role-to-assume: ${{ secrets.AWS_ECR_ROLE_ARN }}
 
       - name: Build Docker Image
