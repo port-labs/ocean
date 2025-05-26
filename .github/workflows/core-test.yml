@@ -82,11 +82,6 @@ jobs:
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
           OCEAN__RUNTIME_MODE: multiprocessing
         run: |
-          python -m venv integrations/fake-integration/.venv
-          . integrations/fake-integration/.venv/bin/activate
-          python -m pip install poetry
-          python -m poetry install
-          PYTHONPATH=$PYTHONPATH:$(pwd)/integrations/fake-integration python integrations/fake-integration/fake_org_data/fake_router.py &
           ./scripts/run-smoke-test.sh
 
       - name: Smoke Test Core
