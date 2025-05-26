@@ -27,5 +27,19 @@ configurations:
     required: false
     type: url
     description: The URL of the Port Ocean app. This is required for real-time event processing, ensuring Port always reflects the latest state of your Azure DevOps resources.
+  - name: webhookSecret
+    description: Optional secret token for securing webhook communication between Azure DevOps and Port. This ensures that only legitimate events from Azure DevOps are accepted. To learn more, see the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/service-hooks/services/webhooks?view=azure-devops">Azure DevOps webhook documentation</a>.
+    type: string
+    required: false
+    sensitive: true
+  - name: webhookAuthUsername
+    description: The username used by Azure DevOps to authenticate webhook requests.
+    type: string
+    required: false
+    default: port
 deploymentMethodOverride:
   - type: helm
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true

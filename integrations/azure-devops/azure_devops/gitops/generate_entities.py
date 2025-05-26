@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Any, List
 
 import yaml
 from loguru import logger
@@ -14,11 +15,11 @@ JSON_SUFFIX = ".json"
 
 
 async def _generate_entity_from_port_yaml(
-    raw_entity: Entity,
     azure_devops_client: AzureDevopsClient,
+    raw_entity: Entity,
     commit_id: str,
     repository_id: str,
-) -> Entity:
+) -> dict[str, Any]:
     properties = {}
     for key, value in raw_entity.properties.items():
         if isinstance(value, str) and value.startswith(FILE_PROPERTY_PREFIX):
@@ -36,12 +37,10 @@ async def _generate_entity_from_port_yaml(
         else:
             properties[key] = value
 
-    return Entity(
-        **{
-            **raw_entity.dict(exclude_unset=True),
-            "properties": properties,
-        }
-    )
+    return {
+        **raw_entity.dict(exclude_unset=True),
+        "properties": properties,
+    }
 
 
 async def _generate_entities_from_port_yaml(
@@ -49,7 +48,7 @@ async def _generate_entities_from_port_yaml(
     file_name: str,
     repository_id: str,
     commit_id: str,
-) -> list[Entity]:
+) -> List[dict[str, Any]]:
     try:
         file_content = await azure_devops_client.get_file_by_commit(
             file_name, repository_id, commit_id
@@ -61,7 +60,7 @@ async def _generate_entities_from_port_yaml(
         ]
         return [
             await _generate_entity_from_port_yaml(
-                entity_data, azure_devops_client, commit_id, repository_id
+                azure_devops_client, entity_data, commit_id, repository_id
             )
             for entity_data in raw_entities
         ]
@@ -75,9 +74,9 @@ async def _generate_entities_from_port_yaml(
 async def generate_entities_from_commit_id(
     azure_devops_client: AzureDevopsClient,
     spec_paths: list[str] | str,
-    repo_id: str,
     commit_id: str,
-) -> list[Entity]:
+    repository_id: str,
+) -> List[dict[str, Any]]:
     if isinstance(spec_paths, str):
         spec_paths = [spec_paths]
 
@@ -86,7 +85,7 @@ async def generate_entities_from_commit_id(
         for path in spec_paths
         for entity in (
             await _generate_entities_from_port_yaml(
-                azure_devops_client, path, repo_id, commit_id
+                azure_devops_client, path, repository_id, commit_id
             )
         )
     ]

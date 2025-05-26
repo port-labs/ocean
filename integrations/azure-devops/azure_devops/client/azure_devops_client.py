@@ -8,9 +8,13 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
-from azure_devops.webhooks.webhook_event import WebhookEvent
+from azure_devops.webhooks.webhook_event import WebhookSubscription
+from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
+
+from azure_devops.client.base_client import HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
-from azure_devops.client.base_client import HTTPBaseClient, PAGE_SIZE
+from azure_devops.client.base_client import PAGE_SIZE
+
 from azure_devops.client.file_processing import (
     parse_file_content,
 )
@@ -25,6 +29,8 @@ import fnmatch
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
+API_PARAMS = {"api-version": "7.1"}
+WEBHOOK_URL_SUFFIX = "/integration/webhook"
 # Maximum number of work item IDs allowed in a single API request
 # (based on Azure DevOps API limitations) https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/list?view=azure-devops-rest-7.1&tabs=HTTP
 MAX_WORK_ITEMS_PER_REQUEST = 200
@@ -34,11 +40,29 @@ MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 
+# Webhook subscriptions for Azure DevOps events
+AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
+    WebhookSubscription(
+        publisherId="tfs", eventType=PullRequestEvents.PULL_REQUEST_CREATED
+    ),
+    WebhookSubscription(
+        publisherId="tfs", eventType=PullRequestEvents.PULL_REQUEST_UPDATED
+    ),
+    WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH),
+    WebhookSubscription(publisherId="tfs", eventType=RepositoryEvents.REPO_CREATED),
+]
+
 
 class AzureDevopsClient(HTTPBaseClient):
-    def __init__(self, organization_url: str, personal_access_token: str) -> None:
+    def __init__(
+        self,
+        organization_url: str,
+        personal_access_token: str,
+        webhook_auth_username: Optional[str] = None,
+    ) -> None:
         super().__init__(personal_access_token)
         self._organization_base_url = organization_url
+        self.webhook_auth_username = webhook_auth_username
 
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
@@ -47,6 +71,7 @@ class AzureDevopsClient(HTTPBaseClient):
         azure_devops_client = cls(
             ocean.integration_config["organization_url"].strip("/"),
             ocean.integration_config["personal_access_token"],
+            ocean.integration_config["webhook_auth_username"],
         )
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
@@ -439,7 +464,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 for board in boards
             ]
 
-    async def generate_subscriptions_webhook_events(self) -> list[WebhookEvent]:
+    async def generate_subscriptions_webhook_events(self) -> list[WebhookSubscription]:
         headers = {"Content-Type": "application/json"}
         try:
             get_subscriptions_url = (
@@ -455,21 +480,25 @@ class AzureDevopsClient(HTTPBaseClient):
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
             logger.warning(err_str)
             raise Exception(err_str)
-        return [WebhookEvent(**subscription) for subscription in subscriptions_raw]
+        return [
+            WebhookSubscription(**subscription) for subscription in subscriptions_raw
+        ]
 
-    async def create_subscription(self, webhook_event: WebhookEvent) -> None:
+    async def create_subscription(
+        self, webhook_subscription: WebhookSubscription
+    ) -> None:
         headers = {"Content-Type": "application/json"}
         create_subscription_url = (
             f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
         )
-        webhook_event_json = webhook_event.json()
-        logger.info(f"Creating subscription to event: {webhook_event_json}")
+        webhook_subscription_json = webhook_subscription.json()
+        logger.info(f"Creating subscription to event: {webhook_subscription_json}")
         response = await self.send_request(
             "POST",
             create_subscription_url,
             params=WEBHOOK_API_PARAMS,
             headers=headers,
-            data=webhook_event_json,
+            data=webhook_subscription_json,
         )
         if not response:
             return
@@ -478,10 +507,12 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Created subscription id: {response_content['id']} for eventType {response_content['eventType']}"
         )
 
-    async def delete_subscription(self, webhook_event: WebhookEvent) -> None:
+    async def delete_subscription(
+        self, webhook_subscription: WebhookSubscription
+    ) -> None:
         headers = {"Content-Type": "application/json"}
-        delete_subscription_url = f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_event.id}"
-        logger.info(f"Deleting subscription to event: {webhook_event.json()}")
+        delete_subscription_url = f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_subscription.id}"
+        logger.info(f"Deleting subscription to event: {webhook_subscription.json()}")
         await self.send_request(
             "DELETE",
             delete_subscription_url,
@@ -616,7 +647,7 @@ class AzureDevopsClient(HTTPBaseClient):
             response = await self.send_request(
                 "POST",
                 items_batch_url,
-                params={"api-version": "7.1"},
+                params=API_PARAMS,
                 data=json.dumps(request_data),
                 headers={"Content-Type": "application/json"},
             )
@@ -719,6 +750,64 @@ class AzureDevopsClient(HTTPBaseClient):
         except Exception as e:
             logger.error(f"Failed to process file {file_path}: {str(e)}")
             raise
+
+    async def get_commit_changes(
+        self, project_id: str, repository_id: str, commit_id: str
+    ) -> dict[str, Any]:
+        try:
+            url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/commits/{commit_id}/changes"
+            response = await self.send_request("GET", url, params=API_PARAMS)
+            return response.json() if response else {}
+        except Exception as e:
+            logger.error(f"Failed to commit changes from {url}: {str(e)}")
+            raise
+
+    async def create_webhook_subscriptions(
+        self,
+        base_url: str,
+        project_id: Optional[str] = None,
+        webhook_secret: Optional[str] = None,
+    ) -> None:
+        auth_username = self.webhook_auth_username
+
+        existing_subscriptions = await self.generate_subscriptions_webhook_events()
+
+        subs_to_create = []
+        subs_to_delete = []
+
+        webhook_subs = AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
+
+        for sub in webhook_subs:
+            sub.set_webhook_details(
+                url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
+                auth_username=auth_username,
+                webhook_secret=webhook_secret,
+                project_id=project_id,
+            )
+            existing_sub = sub.get_event_by_subscription(existing_subscriptions)
+
+            if existing_sub and not existing_sub.is_enabled():
+                subs_to_delete.append(existing_sub)
+                subs_to_create.append(sub)
+            elif not existing_sub:
+                subs_to_create.append(sub)
+
+        if subs_to_delete:
+            await asyncio.gather(
+                *[self.delete_subscription(sub) for sub in subs_to_delete]
+            )
+
+        if subs_to_create:
+            results = await asyncio.gather(
+                *[self.create_subscription(sub) for sub in subs_to_create],
+                return_exceptions=True,
+            )
+
+            errors = [result for result in results if isinstance(result, Exception)]
+            if errors:
+                logger.error(f"Failed to create {len(errors)} webhooks:")
+                for idx, error in enumerate(errors, start=1):
+                    logger.error(f"[{idx}] {type(error).__name__}: {str(error)}")
 
     async def get_repository_tree(
         self,
