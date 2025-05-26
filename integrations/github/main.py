@@ -57,9 +57,8 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the organization."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    client = create_github_client()
-    exporter_factory = ExporterFactory()
-    exporter = exporter_factory.get_exporter(ObjectKind(kind))(client)
+    rest_client = create_github_client()
+    exporter = RestRepositoryExporter(rest_client)
 
     port_app_config = cast("GithubPortAppConfig", event.port_app_config)
     options = ListRepositoryOptions(type=port_app_config.repository_visibility_filter)

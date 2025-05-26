@@ -1,14 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import (
-    Any,
-    AsyncGenerator,
-    Dict,
-    List,
-    Optional,
-    Callable,
-    Awaitable,
-    TYPE_CHECKING,
-)
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
 from loguru import logger
 import httpx
@@ -36,8 +27,7 @@ class AbstractGithubClient(ABC):
     @property
     async def headers(self) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
-        header = self.authenticator.get_headers().as_dict()
-        return header
+        return (await self.authenticator.get_headers()).as_dict()
 
     @property
     @abstractmethod

@@ -4,13 +4,13 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 from github.core.options import ListRepositoryOptions, SingleRepositoryOptions
-from github.clients.rest_client import GithubRestClient
+from github.clients.http.rest_client import GithubRestClient
 
 
 class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[ExporterOptionsT: SingleRepositoryOptions](
-        self, options: ExporterOptionsT
-    ) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionsT: SingleRepositoryOptions
+    ](self, options: ExporterOptionsT) -> RAW_ITEM:
         endpoint = (
             f"{self.client.base_url}/repos/{self.client.organization}/{options['name']}"
         )
@@ -19,9 +19,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         return response.json()
 
     @cache_iterator_result()
-    async def get_paginated_resources[ExporterOptionsT: ListRepositoryOptions](
-        self, options: Optional[ExporterOptionsT] = None
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListRepositoryOptions
+    ](self, options: Optional[ExporterOptionsT] = None) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
 
         params: Dict[str, Any] = dict(options) if options else {}

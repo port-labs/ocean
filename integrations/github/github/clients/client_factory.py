@@ -1,11 +1,12 @@
-from typing import Any, Dict, Type
+from typing import Dict, Type, overload, Literal
+
+from port_ocean.context.ocean import ocean
 from github.clients.http.rest_client import GithubRestClient
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.clients.http.base_client import AbstractGithubClient
-from port_ocean.context.ocean import ocean
 from loguru import logger
 from github.helpers.utils import GithubClientType
-from github.webhook.webhook_client import GithubWebhookClient
+from github.clients.utils import integration_config
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.personal_access_token_authenticator import (
@@ -50,7 +51,6 @@ class GithubClientFactory:
     _clients: Dict[GithubClientType, Type[AbstractGithubClient]] = {
         GithubClientType.REST: GithubRestClient,
         GithubClientType.GRAPHQL: GithubGraphQLClient,
-        GithubClientType.WEBHOOK: GithubWebhookClient,
     }
     _instances: Dict[GithubClientType, AbstractGithubClient] = {}
 
@@ -59,9 +59,7 @@ class GithubClientFactory:
             cls._instance = super(GithubClientFactory, cls).__new__(cls)
         return cls._instance
 
-    def get_client(
-        self, client_type: GithubClientType, **kwargs: Any
-    ) -> AbstractGithubClient:
+    def get_client(self, client_type: GithubClientType) -> AbstractGithubClient:
         """Get or create a client instance from Ocean configuration.
 
         Args:
@@ -91,28 +89,27 @@ class GithubClientFactory:
                 **integration_config(authenticator),
             )
 
-            return token_app
-        else:
-            return self._clients["rest_token"]
+        return self._instances[client_type]
 
-    async def _get_app_client(self) -> AbstractGithubClient:
-        if "rest_app" not in self._clients:
-            decoded_private_key = base64.b64decode(self.ocean_config["app_private_key"])
 
-            rest_app = self._clients["rest_app"] = await GithubAppRestClient(
-                organization=self.ocean_config["organization"],
-                github_host=self.ocean_config["github_host"],
-                app_id=self.ocean_config["app_id"],
-                private_key=decoded_private_key,
-            ).set_up()
+@overload
+def create_github_client(
+    client_type: Literal[GithubClientType.REST],
+) -> GithubRestClient: ...
 
-            return rest_app
-        else:
-            return self._clients["rest_app"]
+
+@overload
+def create_github_client(client_type: None = None) -> GithubRestClient: ...
+
+
+@overload
+def create_github_client(
+    client_type: Literal[GithubClientType.GRAPHQL],
+) -> GithubGraphQLClient: ...
 
 
 def create_github_client(
-    client_type: GithubClientType | None = GithubClientType.REST, **kwargs: Any
+    client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
     factory = GithubClientFactory()
-    return factory.get_client(client_type or GithubClientType.REST, **kwargs)
+    return factory.get_client(client_type or GithubClientType.REST)
