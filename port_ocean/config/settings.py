@@ -8,7 +8,12 @@ from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
-from port_ocean.core.models import CreatePortResourcesOrigin, Runtime
+from port_ocean.core.models import (
+    CachingStorageMode,
+    CreatePortResourcesOrigin,
+    Runtime,
+    ProcessExecutionMode,
+)
 from port_ocean.utils.misc import get_integration_name, get_spec_file
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
@@ -93,10 +98,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
-    caching_storage_mode: Optional[Literal["disk", "memory"]] = Field(default=None)
-    runtime_mode: Literal["multiprocessing", "single_process"] = Field(
-        default="single_process"
-    )
+    caching_storage_mode: Optional[CachingStorageMode] = Field(default=None)
+    process_execution_mode: Optional[ProcessExecutionMode] = Field(default=None)
 
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:

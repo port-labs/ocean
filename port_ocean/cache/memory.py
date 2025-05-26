@@ -1,6 +1,7 @@
 from typing import Any, Optional
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.errors import FailedToReadCacheError, FailedToWriteCacheError
+from port_ocean.core.models import CachingStorageMode
 
 
 class FailedToReadCacheMemoryError(FailedToReadCacheError):
@@ -13,7 +14,7 @@ class FailedToWriteCacheMemoryError(FailedToWriteCacheError):
 
 class InMemoryCacheProvider(CacheProvider):
     CACHE_KEY = "cache"
-    STORAGE_TYPE = "memory"
+    STORAGE_TYPE = CachingStorageMode.memory
 
     def __init__(self, caching_storage: dict[str, Any] | None = None) -> None:
         self._storage = caching_storage or {}

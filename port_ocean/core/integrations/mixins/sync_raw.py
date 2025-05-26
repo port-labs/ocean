@@ -20,7 +20,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, ProcessExecutionMode
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -590,7 +590,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> None:
         logger.info(f"process started successfully for {resource.kind} with index {index}")
 
-        async def process_resource_task():
+        async def process_resource_task() -> None:
             result = await self._process_resource(
                 resource, index, user_agent_type
             )
@@ -602,8 +602,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         asyncio.run(process_resource_task())
         logger.info(f"Process finished for {resource.kind} with index {index}")
 
-    async def process_resource(self,resource,index,user_agent_type):
-            if ocean.config.runtime_mode == "multiprocessing":
+    async def process_resource(self, resource: ResourceConfig, index: int, user_agent_type: UserAgentType) -> tuple[list[Entity], list[Exception]]:
+            if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
                 id = uuid.uuid4()
                 logger.info(f"Starting subprocess with id {id}")
                 file_ipc_map = {
@@ -621,7 +621,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else:
                 return await self._process_resource(resource,index,user_agent_type)
 
-    async def _process_resource(self,resource,index,user_agent_type):
+    async def _process_resource(self,resource: ResourceConfig, index: int, user_agent_type: UserAgentType)-> tuple[list[Entity], list[Exception]]:
         # create resource context per resource kind, so resync method could have access to the resource
         # config as we might have multiple resources in the same event
         async with resource_context(resource,index):

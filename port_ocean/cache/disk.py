@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.errors import FailedToReadCacheError, FailedToWriteCacheError
+from port_ocean.core.models import CachingStorageMode
 
 
 class FailedToReadCacheFileError(FailedToReadCacheError):
@@ -15,7 +16,7 @@ class FailedToWriteCacheFileError(FailedToWriteCacheError):
 
 
 class DiskCacheProvider(CacheProvider):
-    STORAGE_TYPE = "disk"
+    STORAGE_TYPE = CachingStorageMode.disk
 
     def __init__(self, cache_dir: str | None = None) -> None:
         if cache_dir is None:

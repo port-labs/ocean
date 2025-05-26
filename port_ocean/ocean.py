@@ -7,6 +7,7 @@ from typing import Any, AsyncIterator, Callable, Dict, Type
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.disk import DiskCacheProvider
 from port_ocean.cache.memory import InMemoryCacheProvider
+from port_ocean.core.models import ProcessExecutionMode
 import port_ocean.helpers.metric.metric
 
 from fastapi import FastAPI, APIRouter
@@ -74,7 +75,8 @@ class Ocean:
             metrics_settings=self.config.metrics,
             integration_configuration=self.config.integration,
             port_client=self.port_client,
-            multiprocessing_enabled=self.config.runtime_mode == "multiprocessing",
+            multiprocessing_enabled=self.config.process_execution_mode
+            == "multiprocessing",
         )
 
         self.webhook_manager = LiveEventsProcessorManager(
@@ -94,6 +96,14 @@ class Ocean:
 
         self.app_initialized = False
         self.cache_provider: CacheProvider = self._get_caching_provider()
+        self.process_execution_mode: ProcessExecutionMode = (
+            self._get_process_execution_mode()
+        )
+
+    def _get_process_execution_mode(self) -> ProcessExecutionMode:
+        if self.config.process_execution_mode:
+            return self.config.process_execution_mode
+        return ProcessExecutionMode.single_process
 
     def _get_caching_provider(self) -> CacheProvider:
         if self.config.caching_storage_mode:
@@ -104,7 +114,7 @@ class Ocean:
             if self.config.caching_storage_mode in caching_type_to_provider:
                 return caching_type_to_provider[self.config.caching_storage_mode]()
 
-        if self.config.runtime_mode == "multiprocessing":
+        if self.config.process_execution_mode == "multiprocessing":
             return DiskCacheProvider()
         return InMemoryCacheProvider()
 

@@ -23,7 +23,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, ProcessExecutionMode
 from port_ocean.helpers.metric.metric import Metrics
 from port_ocean.ocean import Ocean
 from port_ocean.cache.memory import InMemoryCacheProvider
@@ -86,7 +86,7 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
         ocean_mock.port_client = mock_port_client
-        ocean_mock.config.runtime_mode = "single_process"
+        ocean_mock.process_execution_mode = ProcessExecutionMode.single_process
         ocean_mock.cache_provider = InMemoryCacheProvider()
         metrics_settings = MetricsSettings(enabled=True)
         integration_settings = IntegrationSettings(type="test", identifier="test")
