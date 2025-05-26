@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "github"
+name = "github-ocean"
 version = "0.1.0-dev"
 description = "This integration ingest data from github"
 authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>"]
