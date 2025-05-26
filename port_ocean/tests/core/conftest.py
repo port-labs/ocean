@@ -6,6 +6,7 @@ import pytest
 from httpx import Response
 
 from port_ocean.clients.port.client import PortClient
+from port_ocean.config.settings import IntegrationSettings, MetricsSettings
 from port_ocean.context.event import EventContext
 from port_ocean.context.ocean import PortOceanContext, ocean
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
@@ -23,6 +24,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.models import Entity
+from port_ocean.helpers.metric.metric import Metrics
 from port_ocean.ocean import Ocean
 from port_ocean.cache.memory import InMemoryCacheProvider
 
@@ -83,11 +85,16 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config = MagicMock()
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
-        ocean_mock.config.runtime_mode = "single_process"
         ocean_mock.port_client = mock_port_client
-        ocean_mock.metrics = MagicMock()
-        ocean_mock.metrics.flush = AsyncMock()
+        ocean_mock.config.runtime_mode = "single_process"
         ocean_mock.cache_provider = InMemoryCacheProvider()
+        metrics_settings = MetricsSettings(enabled=True)
+        integration_settings = IntegrationSettings(type="test", identifier="test")
+        ocean_mock.metrics = Metrics(
+            metrics_settings=metrics_settings,
+            integration_configuration=integration_settings,
+            port_client=mock_port_client,
+        )
 
         return ocean_mock
 
