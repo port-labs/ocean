@@ -16,6 +16,8 @@ class ObjectKind(StrEnum):
     PIPELINE = "pipeline"
     JOB = "job"
     FOLDER = "folder"
+    VULNERABILITY = "vulnerability"
+    DEPENDENCY = "dependency"
 
 
 def parse_file_content(
