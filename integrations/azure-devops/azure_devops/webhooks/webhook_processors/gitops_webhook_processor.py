@@ -12,19 +12,27 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from integration import GitPortAppConfig
-from azure_devops.misc import Kind, extract_branch_name_from_ref
+from azure_devops.misc import extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
 )
 from azure_devops.webhooks.events import PushEvents
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+import typing
+from port_ocean.context.event import event as ocean_event
 
 
 class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        all_kinds = [kind.value for kind in Kind]
-        return all_kinds
+        existing_config = self._get_any_existing_config()
+        return [existing_config.kind]
+
+    def _get_any_existing_config(self) -> ResourceConfig:
+        resource_configs = typing.cast(
+            GitPortAppConfig, ocean_event.port_app_config
+        ).resources
+        return resource_configs[0]
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
