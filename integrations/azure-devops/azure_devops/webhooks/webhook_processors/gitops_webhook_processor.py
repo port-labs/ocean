@@ -57,11 +57,9 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             GitPortAppConfig, port_ocean_event.port_app_config
         )
         updates = payload["resource"]["refUpdates"]
-        processed_entities = await self._process_push_updates(config, payload, updates)
+        await self._process_push_updates(config, payload, updates)
 
-        return WebhookEventRawResults(
-            updated_raw_results=processed_entities, deleted_raw_results=[]
-        )
+        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     async def _process_push_updates(
         self,
