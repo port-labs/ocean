@@ -174,7 +174,7 @@ async def setup_webhooks() -> None:
         return
 
     if not base_url:
-        logger.warning("No app host provided, skipping webhook creation")
+        logger.warning("No base url provided, skipping webhook creation")
         return
 
     client = AzureDevopsClient.create_from_ocean_config()
