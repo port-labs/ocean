@@ -1,26 +1,21 @@
-from typing import Any, Dict, List, Optional
+import fnmatch
+from typing import Any, Dict, List, Optional, cast
 import asyncio
 from loguru import logger
-from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context.ocean import ocean
-from port_ocean.context.event import event
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
-from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-)
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from azure_devops.client.azure_devops_client import AzureDevopsClient
-from integration import GitPortAppConfig
+from integration import AzureDevopsFileResourceConfig
 from azure_devops.misc import Kind, extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_processors._base_processor import (
     _AzureDevOpsBaseWebhookProcessor,
 )
 from azure_devops.client.file_processing import parse_file_content
 from azure_devops.webhooks.events import PushEvents
-from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
 
 
 class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
@@ -37,145 +32,145 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        config: GitPortAppConfig = event.port_app_config  # type: ignore
-        updates = payload["resource"]["refUpdates"]
-        # Process updates and generate entities
-        processed_entities = await self._process_push_updates(config, payload, updates)
+        matching_resource_config = cast(AzureDevopsFileResourceConfig, resource_config)
+        selector = matching_resource_config.selector
+        tracked_repository = selector.files.repos
+        repository_name = payload["resource"]["repository"]["name"]
+        if tracked_repository and (repository_name not in tracked_repository):
+            logger.info(
+                f"Skipping push event for repository {repository_name} because it is not in {tracked_repository}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
+        updates = payload["resource"]["refUpdates"]
+        created, modified, deleted = await self._process_push_updates(
+            matching_resource_config, payload, updates
+        )
         return WebhookEventRawResults(
-            updated_raw_results=processed_entities, deleted_raw_results=[]
+            updated_raw_results=created + modified,
+            deleted_raw_results=deleted,
         )
 
     async def _process_push_updates(
         self,
-        config: GitPortAppConfig,
+        config: AzureDevopsFileResourceConfig,
         push_data: Dict[str, Any],
         updates: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        """Process ref updates from push event and generate entities"""
-        processed_entities: List[Dict[str, Any]] = []
+    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+        created_files: List[Dict[str, Any]] = []
+        modified_files: List[Dict[str, Any]] = []
+        deleted_files: List[Dict[str, Any]] = []
         tasks = []
 
         for update in updates:
             branch = extract_branch_name_from_ref(update["name"])
-            if config.use_default_branch:
-                default_branch_with_ref = push_data["resource"]["repository"][
-                    "defaultBranch"
-                ]
-                default_branch = extract_branch_name_from_ref(default_branch_with_ref)
-            else:
-                default_branch = config.branch
-
+            default_branch = extract_branch_name_from_ref(
+                push_data["resource"]["repository"]["defaultBranch"]
+            )
+            logger.info(f"Branch: {branch}, Default branch: {default_branch}")
             if branch != default_branch:
                 logger.info("Skipping ref update for non-default branch")
                 continue
 
-            task = self._process_ref_update(config, push_data, update)
+            task = self._process_changed_files_for_ref(config, push_data, update)
             tasks.append(task)
 
         if tasks:
             results = await asyncio.gather(*tasks)
             for result in results:
-                processed_entities.extend(result)
+                created, modified, deleted = result
+                created_files.extend(created)
+                modified_files.extend(modified)
+                deleted_files.extend(deleted)
 
-        return processed_entities
+        return created_files, modified_files, deleted_files
 
-    async def _process_ref_update(
+    async def _process_changed_files_for_ref(
         self,
-        config: GitPortAppConfig,
+        config: AzureDevopsFileResourceConfig,
         push_data: Dict[str, Any],
         update: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
-        """Process a single ref update and generate entities"""
+    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         logger.info(f"Processing ref update: {update}")
         repo_id = push_data["resource"]["repository"]["id"]
-        old_commit = update["oldObjectId"]
         new_commit = update["newObjectId"]
-
-        # Check if GitOps is being used (spec_path is configured to port.yaml)
-        if (
-            hasattr(config, "spec_path")
-            and config.spec_path
-            and config.spec_path.endswith("port.yaml")
-        ):
-            logger.warning(
-                "GitOps usage detected via spec_path configuration ending with 'port.yaml'. "
-                "This is deprecated in favor of file-based processing."
-            )
-
-            # Generate entities from new commit
-            new_entities = await generate_entities_from_commit_id(
-                config.spec_path, repo_id, new_commit
-            )
-            logger.info(f"Got {len(new_entities)} new entities from GitOps")
-
-            # Generate entities from old commit
-            old_entities = await generate_entities_from_commit_id(
-                config.spec_path, repo_id, old_commit
-            )
-            logger.info(f"Got {len(old_entities)} old entities from GitOps")
-
-            # Calculate diff and update Port
-            await ocean.update_diff(
-                {"before": old_entities, "after": new_entities},
-                UserAgentType.gitops,
-            )
-            # Convert Entity objects to dictionaries
-            new_entities_dicts = [entity.dict() for entity in new_entities]
-        else:
-            new_entities_dicts = []
-
-        # Process changed files in commit
-        file_entities: List[Dict[str, Any]] = await self._sync_changed_files(
-            repo_id, new_commit
+        created, modified, deleted = await self._get_file_changes(
+            repo_id, new_commit, config
         )
 
-        return new_entities_dicts + file_entities
+        return created, modified, deleted
 
-    async def _sync_changed_files(
-        self, repo_id: str, commit_id: str
-    ) -> List[Dict[str, Any]]:
-        """Sync changed files from commit to Port"""
+    async def _get_file_changes(
+        self, repo_id: str, commit_id: str, config: AzureDevopsFileResourceConfig
+    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         logger.info(f"Fetching file changes for commit {commit_id} in repo {repo_id}")
-        file_entities: List[Dict[str, Any]] = []
+        created_files: List[Dict[str, Any]] = []
+        modified_files: List[Dict[str, Any]] = []
+        deleted_files: List[Dict[str, Any]] = []
         client = AzureDevopsClient.create_from_ocean_config()
 
         try:
             repo_info = await client.get_repository(repo_id)
             if not repo_info:
                 logger.warning(f"Could not find repository with ID {repo_id}")
-                return file_entities
-
+                return created_files, modified_files, deleted_files
             project_id = repo_info["project"]["id"]
-            url = f"{client._organization_base_url}/{project_id}/_apis/git/repositories/{repo_id}/commits/{commit_id}/changes"
+            if not config.selector.files.path:
+                return created_files, modified_files, deleted_files
+            if isinstance(config.selector.files.path, str):
+                path_to_track = [config.selector.files.path]
+            else:
+                path_to_track = config.selector.files.path
 
-            response = await client.send_request(
-                "GET", url, params={"api-version": "7.1"}
-            )
+            response = await client.get_commit_changes(project_id, repo_id, commit_id)
             if not response:
                 logger.warning(
                     f"No response when fetching changes for commit {commit_id}"
                 )
-                return file_entities
+                return created_files, modified_files, deleted_files
 
-            changed_files = response.json().get("changes", [])
+            changed_files = response.get("changes", []) if response else []
 
             for changed_file in changed_files:
-                file_entity = await self._process_changed_file(
-                    repo_info, commit_id, changed_file
-                )
-                if file_entity:
-                    file_entities.append(file_entity)
+                file_path = changed_file["item"]["path"]
+                if not any(
+                    fnmatch.fnmatch(file_path.strip("/"), pattern.strip("/"))
+                    for pattern in path_to_track
+                ):
+                    logger.info(
+                        f"Skipping file {file_path} as it doesn't match any patterns in {path_to_track}"
+                    )
+                    continue
+                change_type = changed_file.get("changeType", "")
+                logger.info(f"Change type: {change_type}")
+                match change_type:
+                    case "add":
+                        file_entity = await self._build_file_entity(
+                            repo_info, commit_id, changed_file
+                        )
+                        if file_entity:
+                            created_files.append(file_entity)
+                    case "delete":
+                        deleted_files.append(
+                            self._build_deleted_file_entity(repo_info, changed_file)
+                        )
+                    case _:
+                        file_entity = await self._build_file_entity(
+                            repo_info, commit_id, changed_file
+                        )
+                        if file_entity:
+                            modified_files.append(file_entity)
 
         except Exception as e:
             logger.error(f"Error fetching file changes: {e}")
 
-        return file_entities
+        return created_files, modified_files, deleted_files
 
-    async def _process_changed_file(
+    async def _build_file_entity(
         self, repo_info: Dict[str, Any], commit_id: str, changed_file: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
-        """Process a single changed file and create file entity"""
         try:
             file_path = changed_file["item"]["path"]
             file_content = (
@@ -211,3 +206,15 @@ class FileWebhookProcessor(_AzureDevOpsBaseWebhookProcessor):
         except Exception as e:
             logger.error(f"Error processing file {changed_file['item']['path']}: {e}")
             return None
+
+    def _build_deleted_file_entity(
+        self, repo_info: Dict[str, Any], changed_file: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        return {
+            "kind": Kind.FILE,
+            "file": {
+                "path": changed_file["item"]["path"],
+                "isDeleted": True,
+            },
+            "repo": repo_info,
+        }
