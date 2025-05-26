@@ -67,21 +67,6 @@ async def test_get_paginated_resource(mock_client: BitbucketClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_latest_commit(mock_client: BitbucketClient) -> None:
-    """Test getting the latest commit for a repository."""
-    # Arrange
-    mock_commit = {"id": "abc123", "message": "Test commit"}
-    mock_client._send_api_request = AsyncMock(return_value={"values": [mock_commit]})  # type: ignore[method-assign]
-
-    # Act
-    commit = await mock_client.get_latest_commit("TEST", "test-repo")
-
-    # Assert
-    assert commit == mock_commit
-    mock_client._send_api_request.assert_called_once()
-
-
-@pytest.mark.asyncio
 async def test_healthcheck(mock_client: BitbucketClient) -> None:
     """Test health check functionality."""
     # Arrange

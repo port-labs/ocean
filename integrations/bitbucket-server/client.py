@@ -190,25 +190,6 @@ class BitbucketClient:
             async for project_batch in self._get_all_projects():
                 yield project_batch
 
-    async def _enrich_repository_with_readme_and_latest_commit(
-        self, repository: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Internal method to enrich repository data with README and latest commit information.
-
-        Args:
-            repository: Repository data to enrich
-
-        Returns:
-            Enriched repository data
-        """
-        # README fetching will be supported in future versions.
-        repository["__readme"] = ""
-        repository["__latestCommit"] = await self.get_latest_commit(
-            repository["project"]["key"], repository["slug"]
-        )
-        return repository
-
     async def get_repositories_for_project(
         self, project_key: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -224,14 +205,7 @@ class BitbucketClient:
         async for repo_batch in self.get_paginated_resource(
             f"projects/{project_key}/repos"
         ):
-            repositories: list[dict[str, Any]] = []
-            for repository in repo_batch:
-                repositories.append(
-                    await self._enrich_repository_with_readme_and_latest_commit(
-                        cast(dict[str, Any], repository)
-                    )
-                )
-            yield repositories
+            yield repo_batch
 
     @cache_iterator_result()
     async def get_repositories(
@@ -311,42 +285,6 @@ class BitbucketClient:
         async for user_batch in self.get_paginated_resource("users"):
             yield cast(list[dict[str, Any]], user_batch)
 
-    async def get_repository_readme(self, project_key: str, repo_slug: str) -> str:
-        """
-        Get the README content for a specific repository.
-        NOTE: README fetching is currently disabled and will be supported in future versions.
-        """
-        # Args project_key and repo_slug are kept for future compatibility but are not used currently.
-        logger.info(
-            f"README fetching for {project_key}/{repo_slug} is currently disabled. Returning empty string."
-        )
-        return ""
-
-    async def get_latest_commit(
-        self, project_key: str, repo_slug: str
-    ) -> Dict[str, Any]:
-        """
-        Get the latest commit for a specific repository.
-
-        Args:
-            project_key: Key of the project
-            repo_slug: Slug of the repository
-
-        Returns:
-            Latest commit data or empty dict if not found
-        """
-        response = await self._send_api_request(
-            "GET",
-            f"projects/{project_key}/repos/{repo_slug}/commits",
-            payload={"limit": 1},
-        )
-        if not response:
-            return {}
-        values = response.get("values")
-        if not values:
-            return {}
-        return values[0]
-
     async def get_single_project(self, project_key: str) -> dict[str, Any]:
         """
         Get a single project by its key.
@@ -379,7 +317,7 @@ class BitbucketClient:
         if not repository:
             return {}
 
-        return await self._enrich_repository_with_readme_and_latest_commit(repository)
+        return repository
 
     async def get_single_pull_request(
         self, project_key: str, repo_slug: str, pr_key: str

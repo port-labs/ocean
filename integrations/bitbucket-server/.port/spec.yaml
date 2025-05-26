@@ -18,7 +18,7 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: Bitbucket Server password or access token
+    description: Bitbucket Server password
   - name: bitbucketBaseUrl
     required: true
     type: url
