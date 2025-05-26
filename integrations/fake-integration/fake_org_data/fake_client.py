@@ -7,8 +7,8 @@ from port_ocean.context.ocean import ocean
 from .types import FakePerson
 from .static import FAKE_DEPARTMENTS
 
-
 API_URL = "http://localhost:8000/integration/department"
+API_URL_DOCKER = "http://localhost:8001/integration/department"
 USER_AGENT = "Ocean Framework Fake Integration (https://github.com/port-labs/ocean)"
 
 
@@ -69,7 +69,8 @@ def get_config() -> Tuple[List[int], int, int]:
 async def get_fake_persons_batch(
     department_id: str, limit: int, entity_kb_size: int, latency_ms: int
 ) -> List[Dict[Any, Any]]:
-    url = f"{API_URL}/{department_id}/employees?limit={limit}&entity_kb_size={entity_kb_size}&latency={latency_ms}"
+    api_url = API_URL_DOCKER if ocean.config.runtime_mode == "multiprocessing" else API_URL
+    url = f"{api_url}/{department_id}/employees?limit={limit}&entity_kb_size={entity_kb_size}&latency={latency_ms}"
     response = await http_async_client.get(
         url,
         headers={
