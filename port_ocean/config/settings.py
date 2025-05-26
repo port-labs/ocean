@@ -94,13 +94,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
     caching_storage_type: Optional[str] = Field(default=None)
-    multiprocessing_enabled: bool = Field(default=True)
-
-    @validator("multiprocessing_enabled")
-    def validate_multiprocessing_enabled(cls, multiprocessing_enabled: bool) -> bool:
-        if multiprocessing_enabled:
-            return True
-        return False
+    runtime_mode: Literal["multiprocessing", "single_process"] = Field(
+        default="single_process"
+    )
 
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:

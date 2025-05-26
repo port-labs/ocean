@@ -603,7 +603,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(f"Process finished for {resource.kind} with index {index}")
 
     async def process_resource(self,resource,index,user_agent_type):
-            if ocean.config.multiprocessing_enabled:
+            if ocean.config.runtime_mode == "multiprocessing":
                 id = uuid.uuid4()
                 logger.info(f"Starting subprocess with id {id}")
                 file_ipc_map = {
@@ -626,6 +626,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         # config as we might have multiple resources in the same event
         async with resource_context(resource,index):
             resource_kind_id = f"{resource.kind}-{index}"
+            ocean.metrics.sync_state = SyncState.SYNCING
             task = asyncio.create_task(
                 self._register_in_batches(resource, user_agent_type)
             )
@@ -633,12 +634,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             kind_results: tuple[list[Entity], list[Exception]] = await task
             ocean.metrics.set_metric(
                 name=MetricType.OBJECT_COUNT_NAME,
-                labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD],
+                labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.LOADED],
                 value=len(kind_results[0])
             )
 
+            if ocean.metrics.sync_state != SyncState.FAILED:
+                ocean.metrics.sync_state = SyncState.COMPLETED
 
-            await ocean.metrics.flush(kind=resource_kind_id)
+            await ocean.metrics.send_metrics_to_webhook(
+                kind=resource_kind_id
+            )
+            # await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id) # TODO: uncomment this when end points are ready
+
             return kind_results
 
     @TimeMetric(MetricPhase.RESYNC)
@@ -674,8 +681,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 use_cache=False
             )
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
-            ocean.metrics.initialize_metrics([f"{resource.kind}-{index}" for index, resource in enumerate(app_config.resources)])
-            await ocean.metrics.flush()
+
+            kinds = [f"{resource.kind}-{index}" for index, resource in enumerate(app_config.resources)]
+            ocean.metrics.initialize_metrics(kinds)
+            # await ocean.metrics.report_sync_metrics(kinds=kinds) # TODO: uncomment this when end points are ready
 
             # Clear cache
             await ocean.app.cache_provider.clear()

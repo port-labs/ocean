@@ -60,17 +60,6 @@ class Ocean:
             *self.config.get_sensitive_fields_data()
         )
         self.integration_router = integration_router or APIRouter()
-        self.metrics = port_ocean.helpers.metric.metric.Metrics(
-            metrics_settings=self.config.metrics,
-            integration_configuration=self.config.integration,
-        )
-
-        self.webhook_manager = LiveEventsProcessorManager(
-            self.integration_router,
-            signal_handler,
-            max_event_processing_seconds=self.config.max_event_processing_seconds,
-            max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
-        )
 
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
@@ -80,6 +69,21 @@ class Ocean:
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
         )
+
+        self.metrics = port_ocean.helpers.metric.metric.Metrics(
+            metrics_settings=self.config.metrics,
+            integration_configuration=self.config.integration,
+            port_client=self.port_client,
+            multiprocessing_enabled=self.config.runtime_mode == "multiprocessing",
+        )
+
+        self.webhook_manager = LiveEventsProcessorManager(
+            self.integration_router,
+            signal_handler,
+            max_event_processing_seconds=self.config.max_event_processing_seconds,
+            max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
+        )
+
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
