@@ -1,8 +1,8 @@
-# Contributing to Ocean - github-v2
+# Contributing to Ocean - github
 
 ## Running locally
 
-#### NOTE: Add your own instructions of how to run github-v2
+#### NOTE: Add your own instructions of how to run github
 
 This could be any gotcha's such as rate limiting, how to setup credentials and so forth
 
