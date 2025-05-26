@@ -22,6 +22,9 @@ from azure_devops.webhooks.webhook_processors.repository_processor import (
 from azure_devops.webhooks.webhook_processors.file_webhook_processor import (
     FileWebhookProcessor,
 )
+from azure_devops.webhooks.webhook_processors.gitops_webhook_processor import (
+    GitopsWebhookProcessor,
+)
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -190,3 +193,4 @@ async def setup_webhooks() -> None:
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
+ocean.add_webhook_processor("/webhook", GitopsWebhookProcessor)
