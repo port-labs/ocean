@@ -19,6 +19,7 @@ from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 
 ENTITIES_BULK_SAMPLES_SIZE = 10
 ENTITIES_BULK_ESTIMATED_SIZE_MULTIPLIER = 1.5
+ENTITIES_BULK_MINIMUM_BATCH_SIZE = 1
 
 
 class EntityClientMixin:
@@ -43,7 +44,7 @@ class EntityClientMixin:
             int: The optimal batch size to use
         """
         if not entities:
-            return 1
+            return ENTITIES_BULK_MINIMUM_BATCH_SIZE
 
         # Calculate average entity size from a sample
         SAMPLE_SIZE = min(ENTITIES_BULK_SAMPLES_SIZE, len(entities))
@@ -56,7 +57,7 @@ class EntityClientMixin:
             / SAMPLE_SIZE
         )
 
-        # Use a conservative estimate (1.5x the average) to ensure we stay under the limit
+        # Use a conservative estimate to ensure we stay under the limit
         estimated_entity_size = int(
             average_entity_size * ENTITIES_BULK_ESTIMATED_SIZE_MULTIPLIER
         )
@@ -66,7 +67,7 @@ class EntityClientMixin:
             // estimated_entity_size,
         )
 
-        return max(1, max_entities_per_batch)
+        return max(ENTITIES_BULK_MINIMUM_BATCH_SIZE, max_entities_per_batch)
 
     async def upsert_entity(
         self,
@@ -233,17 +234,17 @@ class EntityClientMixin:
         }
         error_entities = {error["index"]: error for error in result.get("errors", [])}
 
-        return self.parse_upsert_entities_batch_response(
+        return self._parse_upsert_entities_batch_response(
             index_to_entity, successful_entities, error_entities
         )
 
-    def parse_upsert_entities_batch_response(
+    def _parse_upsert_entities_batch_response(
         self,
         index_to_entity: dict[int, Entity],
         successful_entities: dict[int, Any],
         error_entities: dict[int, Any],
     ) -> list[tuple[bool | None, Entity]]:
-        result_tuples: list[tuple[bool | None, Entity]] = []
+        batch_results: list[tuple[bool | None, Entity]] = []
         for entity_index, original_entity in index_to_entity.items():
             reduced_entity = self._reduce_entity(original_entity)
             if entity_index in successful_entities:
@@ -260,7 +261,7 @@ class EntityClientMixin:
                 # Create a copy of the original entity with the new identifier
                 updated_entity = reduced_entity.copy()
                 updated_entity.identifier = success_entity["identifier"]
-                result_tuples.append((True, updated_entity))
+                batch_results.append((True, updated_entity))
             elif entity_index in error_entities:
                 ocean.metrics.inc_metric(
                     name=MetricType.OBJECT_COUNT_NAME,
@@ -272,14 +273,16 @@ class EntityClientMixin:
                     value=1,
                 )
                 error = error_entities[entity_index]
-                if error.get("identifier") == "unknown":
-                    result_tuples.append((None, reduced_entity))
+                if (
+                    error.get("identifier") == "unknown"
+                ):  # when using the search identifier we might not have an actual identifier
+                    batch_results.append((None, reduced_entity))
                 else:
-                    result_tuples.append((False, reduced_entity))
+                    batch_results.append((False, reduced_entity))
             else:
-                result_tuples.append((False, reduced_entity))
+                batch_results.append((False, reduced_entity))
 
-        return result_tuples
+        return batch_results
 
     async def upsert_entities_in_batches(
         self,
