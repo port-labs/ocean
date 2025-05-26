@@ -9,7 +9,6 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.webhooks.webhook_event import WebhookSubscription
-from azure_devops.webhooks.webhook_event import WebhookEvent
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 
 MOCK_ORG_URL = "https://your_organization_url.com"
@@ -1309,7 +1308,9 @@ def test_format_service_url(
 @pytest.mark.asyncio
 async def test_get_repository_tree() -> None:
     """Test getting repository tree structure."""
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_get_paginated_by_top_and_continuation_token(
         url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
@@ -1360,7 +1361,9 @@ async def test_get_repository_tree() -> None:
 @pytest.mark.asyncio
 async def test_get_repository_tree_with_recursion() -> None:
     """Test getting repository tree structure with recursion."""
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     call_count = 0
 
@@ -1409,7 +1412,9 @@ async def test_get_repository_tree_with_recursion() -> None:
 @pytest.mark.asyncio
 async def test_get_repository_tree_will_skip_404(mock_event_context: MagicMock) -> None:
     """Test that get_repository_tree gracefully handles 404 errors."""
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_get_paginated_by_top_and_continuation_token(
         url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
@@ -1433,7 +1438,9 @@ async def test_get_repository_tree_will_skip_404(mock_event_context: MagicMock) 
 @pytest.mark.asyncio
 async def test_get_repository_tree_with_deep_path() -> None:
     """Test getting repository tree structure with deep path using **."""
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_get_paginated_by_top_and_continuation_token(
         url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any

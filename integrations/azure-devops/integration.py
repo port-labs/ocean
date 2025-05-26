@@ -17,6 +17,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.utils.signal import signal_handler
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
+from azure_devops.misc import AzureDevopsFolderResourceConfig
 
 
 class AzureDevopsProjectResourceConfig(ResourceConfig):
@@ -175,6 +176,7 @@ class GitPortAppConfig(PortAppConfig):
     branch: str = "main"
     resources: list[
         AzureDevopsProjectResourceConfig
+        | AzureDevopsFolderResourceConfig
         | AzureDevopsWorkItemResourceConfig
         | AzureDevopsTeamResourceConfig
         | AzureDevopsFileResourceConfig

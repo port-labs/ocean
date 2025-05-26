@@ -12,9 +12,8 @@ from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
 
 from azure_devops.client.base_client import HTTPBaseClient
-from azure_devops.webhooks.webhook_event import WebhookEvent
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
-from azure_devops.client.base_client import HTTPBaseClient, PAGE_SIZE
+from azure_devops.client.base_client import PAGE_SIZE
 
 from azure_devops.client.file_processing import (
     parse_file_content,

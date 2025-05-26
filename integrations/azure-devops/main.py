@@ -4,14 +4,13 @@ from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
     PULL_REQUEST_SEARCH_CRITERIA,
     Kind,
+    AzureDevopsFolderResourceConfig,
 )
 from integration import (
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
-    Kind,
-    AzureDevopsFolderResourceConfig,
 )
 
 from azure_devops.webhooks.webhook_processors.pull_request_processor import (
@@ -190,6 +189,7 @@ async def setup_webhooks() -> None:
         await client.create_webhook_subscriptions(
             base_url, webhook_secret=webhook_secret
         )
+
 
 @ocean.on_resync(Kind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
