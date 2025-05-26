@@ -10,6 +10,8 @@ from integration import (
     AzureDevopsFileResourceConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
+    Kind,
+    AzureDevopsFolderResourceConfig,
 )
 
 from azure_devops.webhooks.webhook_processors.pull_request_processor import (
@@ -188,6 +190,16 @@ async def setup_webhooks() -> None:
         await client.create_webhook_subscriptions(
             base_url, webhook_secret=webhook_secret
         )
+
+@ocean.on_resync(Kind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync folders based on configuration."""
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(AzureDevopsFolderResourceConfig, event.resource_config).selector
+    async for matching_folders in azure_devops_client.process_folder_patterns(
+        selector.folders, selector.project_name
+    ):
+        yield matching_folders
 
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)

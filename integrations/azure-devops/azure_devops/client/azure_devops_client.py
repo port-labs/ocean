@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, Callable
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
@@ -12,6 +12,10 @@ from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
 
 from azure_devops.client.base_client import HTTPBaseClient
+from azure_devops.webhooks.webhook_event import WebhookEvent
+from azure_devops.misc import FolderPattern, RepositoryBranchMapping
+from azure_devops.client.base_client import HTTPBaseClient, PAGE_SIZE
+
 from azure_devops.client.file_processing import (
     parse_file_content,
 )
@@ -21,6 +25,7 @@ from port_ocean.utils.async_iterators import (
 )
 from port_ocean.utils.queue_utils import process_in_queue
 from urllib.parse import urlparse
+import fnmatch
 
 
 API_URL_PREFIX = "_apis"
@@ -799,3 +804,204 @@ class AzureDevopsClient(HTTPBaseClient):
                 logger.error(f"Failed to create {len(errors)} webhooks:")
                 for idx, error in enumerate(errors, start=1):
                     logger.error(f"[{idx}] {type(error).__name__}: {str(error)}")
+
+    async def get_repository_tree(
+        self,
+        repository_id: str,
+        recursion_level: str,  # Options: none, oneLevel, full
+        path: str = "/",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch repository folder structure with rate limit awareness.
+
+        Args:
+            repository_id: The ID of the repository to scan
+            path: The folder path to start scanning from
+            recursion_level: How deep to scan (none, oneLevel, full)
+
+        Yields:
+            Lists of folder information dictionaries
+        """
+        items_batch_url = f"{self._organization_base_url}/_apis/git/repositories/{repository_id}/items"
+
+        params = {
+            "scopePath": path,
+            "recursionLevel": recursion_level,
+            "$top": PAGE_SIZE,
+            "api-version": "7.1",
+        }
+
+        try:
+            async for items in self._get_paginated_by_top_and_continuation_token(
+                items_batch_url, additional_params=params
+            ):
+                # Filter for folders only
+                folders = [
+                    item for item in items if item.get("gitObjectType") == "tree"
+                ]
+
+                if folders:
+                    yield folders
+
+        except Exception as e:
+            logger.error(
+                f"Error fetching folder tree for repository {repository_id}: {str(e)}"
+            )
+            raise
+
+    def _build_tree_fetcher(
+        self,
+        repository_id: str,
+        pattern: str,
+    ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
+
+        # Get the base path (everything before the first wildcard)
+        parts = pattern.split("/")
+        base_parts = []
+        for part in parts:
+            if "*" not in part:
+                base_parts.append(part)
+            else:
+                break
+        base_path = "/".join(base_parts)
+
+        return functools.partial(
+            self.get_repository_tree,
+            repository_id,
+            path=base_path or "/",
+            recursion_level="oneLevel",  # Always use oneLevel recursion
+        )
+
+    async def get_repository_folders(
+        self,
+        repository_id: str,
+        folder_patterns: list[str],
+        concurrency: int = 5,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get folders matching patterns with concurrency control.
+
+        Args:
+            repository_id: The ID of the repository to scan
+            folder_patterns: List of folder paths to scan (supports * wildcard only)
+            concurrency: Maximum number of concurrent requests
+
+        Yields:
+            Lists of folder information dictionaries
+        """
+        semaphore = asyncio.BoundedSemaphore(concurrency)
+
+        tasks = [
+            semaphore_async_iterator(
+                semaphore, self._build_tree_fetcher(repository_id, pattern)
+            )
+            for pattern in folder_patterns
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            matching_folders = []
+            for folder in batch:
+                # For each folder in the batch, check if it matches any of our patterns
+                for pattern in folder_patterns:
+                    folder_path = folder.get("path", "").strip("/")
+                    pattern = pattern.strip("/")
+                    # Check if path depth matches and pattern matches
+                    if folder_path.count("/") == pattern.count("/") and fnmatch.fnmatch(
+                        folder_path, pattern
+                    ):
+                        matching_folders.append(folder)
+            if matching_folders:
+                yield matching_folders
+
+    async def _process_pattern(
+        self,
+        repo: dict[str, Any],
+        folder_pattern: FolderPattern,
+        repo_mapping: RepositoryBranchMapping,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        branch = repo_mapping.branch
+        if branch is None and "defaultBranch" in repo:
+            branch = repo["defaultBranch"].replace("refs/heads/", "")
+
+        async for found_folders in self.get_repository_folders(
+            repo["id"], [folder_pattern.path]
+        ):
+            processed_folders = []
+            for folder in found_folders:
+                folder_dict = dict(folder)
+                folder_dict["__repository"] = repo
+                folder_dict["__branch"] = branch
+                folder_dict["__pattern"] = folder_pattern.path
+                processed_folders.append(folder_dict)
+            if processed_folders:
+                yield processed_folders
+
+    async def _process_repository_folder_patterns(
+        self,
+        repo: dict[str, Any],
+        repo_pattern_map: dict[
+            str, list[tuple[FolderPattern, RepositoryBranchMapping]]
+        ],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        repo_name = repo["name"]
+        if repo_name not in repo_pattern_map:
+            return
+
+        matching_patterns = repo_pattern_map[repo_name]
+        tasks = [
+            self._process_pattern(repo, folder_pattern, repo_mapping)
+            for folder_pattern, repo_mapping in matching_patterns
+        ]
+
+        async for result in stream_async_iterators_tasks(*tasks):
+            yield result
+
+    async def get_repository_by_name(
+        self, project_name: str, repo_name: str
+    ) -> dict[str, Any] | None:
+        """Get a single repository by name using Azure DevOps API."""
+        repo_url = f"{self._organization_base_url}/{project_name}/{API_URL_PREFIX}/git/repositories/{repo_name}"
+        response = await self.send_request(
+            "GET", repo_url, params={"api-version": "7.1"}
+        )
+        if not response:
+            return None
+        return response.json()
+
+    async def process_folder_patterns(
+        self,
+        folder_patterns: list[FolderPattern],
+        project_name: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Process folder patterns and yield matching folders with optimized performance.
+
+        Args:
+            folder_patterns: List of folder patterns to process
+            project_name: The project name
+        """
+        # Create a mapping of repository names to their patterns
+        repo_pattern_map: dict[
+            str, list[tuple[FolderPattern, RepositoryBranchMapping]]
+        ] = {}
+        for pattern in folder_patterns:
+            for repo_mapping in pattern.repos:
+                if repo_mapping.name not in repo_pattern_map:
+                    repo_pattern_map[repo_mapping.name] = []
+                repo_pattern_map[repo_mapping.name].append((pattern, repo_mapping))
+
+        # Process only the specified repositories
+        tasks = []
+        for repo_name, patterns in repo_pattern_map.items():
+            repo = await self.get_repository_by_name(project_name, repo_name)
+            if not repo:
+                logger.warning(
+                    f"Repository {repo_name} in project {project_name} not found, skipping"
+                )
+                continue
+
+            tasks.append(
+                self._process_repository_folder_patterns(
+                    repo, dict([(repo_name, patterns)])
+                )
+            )
+
+        async for result in stream_async_iterators_tasks(*tasks):
+            yield result
