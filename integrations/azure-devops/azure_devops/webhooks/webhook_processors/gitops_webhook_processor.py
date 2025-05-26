@@ -91,7 +91,8 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         if tasks:
             results = await asyncio.gather(*tasks)
             for result in results:
-                processed_entities.extend(result)
+                if result is not None:
+                    processed_entities.extend(result)
 
         return processed_entities
 
@@ -100,7 +101,7 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         config: GitPortAppConfig,
         push_data: Dict[str, Any],
         update: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
+    ) -> None:
         """Process a single ref update and generate entities for GitOps"""
         logger.info(f"Processing GitOps ref update: {update}")
         repo_id = push_data["resource"]["repository"]["id"]
@@ -129,5 +130,3 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             {"before": old_entities, "after": new_entities},
             UserAgentType.gitops,
         )
-
-        return new_entities_dict
