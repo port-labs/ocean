@@ -19,7 +19,7 @@ class BaseEventHandler:
         """Subscribe an observer to an event."""
         self._observers[event].append(observer)
 
-    async def notify(self, event: str, body: Dict[str, Any]) -> None:
+    async def notify(self, event: str, body: Dict[str, Any], raw_body: bytes, signature: Optional[str]) -> None:
         """Notify all observers of an event with parallel processing."""
         observers = self._observers.get(event, [])
         if not observers:
@@ -35,7 +35,7 @@ class BaseEventHandler:
                         event=event,
                         handler=handler,
                     )
-                tasks.append(observer(event, body))
+                tasks.append(observer(event, body, raw_body, signature))
 
         if tasks:
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -78,12 +78,14 @@ class GitHubEventHandler(BaseEventHandler):
         """Add a GitHub client instance."""
         self._clients.append(client)
 
-    async def handle_webhook(self, event: str, body: Dict[str, Any]) -> None:
+    async def handle_webhook(self, event: str, body: Dict[str, Any], raw_body: bytes, signature: Optional[str]) -> None:
         """Handle an incoming webhook event with parallel processing and retries.
         
         Args:
             event: The GitHub event type from x-github-event header
             body: The webhook payload
+            raw_body: Raw request body for signature verification
+            signature: X-Hub-Signature-256 header value
         """
         if not event:
             logger.warning("No event type provided in webhook")
@@ -102,7 +104,7 @@ class GitHubEventHandler(BaseEventHandler):
                     raise ValueError("No GitHub client configured")
                     
                 handler = handler_class(client)
-                tasks.append(handler.handle_with_retry(event, body))
+                tasks.append(handler.handle_with_retry(event, body, raw_body, signature))
             except Exception as e:
                 logger.error(f"Error creating handler {handler_class.__name__}: {e}")
 

@@ -63,16 +63,20 @@ class WebhookHandler:
         Raises:
             HTTPException: If validation fails
         """
-        # Add webhook secret validation here if configured
         if "x-github-event" not in request.headers:
             raise HTTPException(status_code=400, detail="Missing x-github-event header")
+        
+        if "x-hub-signature-256" not in request.headers:
+            raise HTTPException(status_code=400, detail="Missing x-hub-signature-256 header")
 
-    async def _process_webhook(self, event: str, payload: Dict[str, Any]) -> None:
+    async def _process_webhook(self, event: str, payload: Dict[str, Any], raw_body: bytes, signature: Optional[str]) -> None:
         """Process a validated webhook.
         
         Args:
             event: GitHub event type
             payload: Webhook payload
+            raw_body: Raw request body for signature verification
+            signature: X-Hub-Signature-256 header value
             
         Raises:
             Exception: If processing fails
@@ -80,7 +84,7 @@ class WebhookHandler:
         if not self.github_client:
             logger.warning("No GitHub client configured, some features may be limited")
 
-        await self.event_handler.handle_webhook(event, payload)
+        await self.event_handler.handle_webhook(event, payload, raw_body, signature)
 
     async def handle(self, request: Request) -> Dict[str, Any]:
         """Handle an incoming webhook request.
@@ -97,11 +101,17 @@ class WebhookHandler:
         try:
             await self._validate_webhook(request)
             
+            # Get raw body for signature verification
+            raw_body = await request.body()
+            # Get signature from header
+            signature = request.headers.get("x-hub-signature-256")
+            
+            # Parse JSON after getting raw body
             payload = await request.json()
             event = request.headers["x-github-event"]
             
             logger.info(f"Processing GitHub event: {event}")
-            await self._process_webhook(event, payload)
+            await self._process_webhook(event, payload, raw_body, signature)
             
             return {"ok": True, "event": event}
 

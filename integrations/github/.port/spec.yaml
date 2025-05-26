@@ -31,6 +31,11 @@ configurations:
     required: true
     type: string
     description: GitHub repository
+  - name: githubWebhookSecret
+    required: true
+    type: string
+    sensitive: true
+    description: GitHub webhook secret
   - name: githubBaseURL
     required: true
     type: string
