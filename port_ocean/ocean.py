@@ -96,15 +96,15 @@ class Ocean:
         self.cache_provider: CacheProvider = self._get_caching_provider()
 
     def _get_caching_provider(self) -> CacheProvider:
-        if self.config.caching_storage_type:
+        if self.config.caching_storage_mode:
             caching_type_to_provider = {
                 DiskCacheProvider.STORAGE_TYPE: DiskCacheProvider,
                 InMemoryCacheProvider.STORAGE_TYPE: InMemoryCacheProvider,
             }
-            if self.config.caching_storage_type in caching_type_to_provider:
-                return caching_type_to_provider[self.config.caching_storage_type]()
+            if self.config.caching_storage_mode in caching_type_to_provider:
+                return caching_type_to_provider[self.config.caching_storage_mode]()
 
-        if self.config.multiprocessing_enabled:
+        if self.config.runtime_mode == "multiprocessing":
             return DiskCacheProvider()
         return InMemoryCacheProvider()
 
