@@ -18,9 +18,8 @@ jobs:
         id: aws-credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.MAIN_ACCOUNT_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.MAIN_ACCOUNT_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-1
+          aws-region: "eu-west-1"
+          role-to-assume: ${{ secrets.AWS_ECR_ROLE_ARN }}
 
       - name: Build Docker Image
         uses: ./.github/workflows/actions/build-docker-image
