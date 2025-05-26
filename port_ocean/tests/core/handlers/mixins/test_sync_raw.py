@@ -1,5 +1,5 @@
 from graphlib import CycleError
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
@@ -75,7 +75,7 @@ def mock_sync_raw_mixin(
     ]
 
     # Create an async generator that yields the raw data
-    async def raw_results_generator():
+    async def raw_results_generator() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield raw_data
 
     # Return a list containing the async generator and an empty error list
