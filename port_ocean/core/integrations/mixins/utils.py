@@ -3,6 +3,9 @@ from typing import Awaitable, Generator, Callable
 
 from loguru import logger
 
+import asyncio
+import multiprocessing
+
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -72,3 +75,15 @@ def unsupported_kind_response(
 ) -> tuple[RESYNC_RESULT, list[Exception]]:
     logger.error(f"Kind {kind} is not supported in this integration")
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
+class ProcessWrapper(multiprocessing.Process):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def join_async(self) -> None:
+        while self.exitcode is None:
+            await asyncio.sleep(2)
+        if self.exitcode != 0:
+            logger.error(f"Process {self.pid} failed with exit code {self.exitcode}")
+        else:
+            logger.info(f"Process {self.pid} finished with exit code {self.exitcode}")
+        return super().join()
