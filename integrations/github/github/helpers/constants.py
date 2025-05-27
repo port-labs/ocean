@@ -21,7 +21,9 @@ query OrgMemberQuery(
           login
           email
         }}
+        pageInfo {{
         ...PageInfoFields
+        }}
       }}
     }}
 }}

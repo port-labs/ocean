@@ -15,3 +15,7 @@ class ListRepositoryOptions(TypedDict):
 
 class SingleUserOptions(TypedDict):
     login: str
+
+
+class SingleTeamOptions(TypedDict):
+    slug: str
