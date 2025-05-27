@@ -689,11 +689,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             kinds = [f"{resource.kind}-{index}" for index, resource in enumerate(app_config.resources)]
             ocean.metrics.initialize_metrics(kinds)
-            # await ocean.metrics.report_sync_metrics(kinds=kinds) # TODO: uncomment this when end points are ready
+            await ocean.metrics.report_sync_metrics(kinds=kinds)
 
             # Clear cache
             await ocean.app.cache_provider.clear()
-            await ocean.metrics.report_sync_metrics(kinds=kinds)
 
             # Execute resync_start hooks
             for resync_start_fn in self.event_strategy["resync_start"]:
