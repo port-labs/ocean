@@ -240,6 +240,11 @@ class Metrics:
                 [kind, MetricPhase.LOAD, MetricPhase.LoadResult.SKIPPED],
                 0,
             )
+            self.set_metric(
+                MetricType.OBJECT_COUNT_NAME,
+                [kind, MetricPhase.DELETE, MetricPhase.DeletionResult.DELETED],
+                0,
+            )
 
     def create_mertic_router(self) -> APIRouter:
         if not self.enabled:
