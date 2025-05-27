@@ -119,6 +119,15 @@ class Metrics:
         self._ocean_version: Optional[str] = None
         self.event_id = ""
         self.sync_state = SyncState.PENDING
+        self.reconciliation = False
+
+    @property
+    def reconciliation(self) -> bool:
+        return self._reconciliation
+
+    @reconciliation.setter
+    def reconciliation(self, value: bool) -> None:
+        self._reconciliation = value
 
     @property
     def event_id(self) -> str:
@@ -247,6 +256,8 @@ class Metrics:
         try:
             return f"{resource.resource.kind}-{resource.resource.index}"
         except ResourceContextNotFoundError:
+            if self.reconciliation:
+                return "reconciliation"
             return "__runtime__"
 
     def generate_latest(self) -> str:
