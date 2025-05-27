@@ -6,11 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.22.13 (2025-05-27)
+## 0.23.0 (2025-05-27)
 
 ### Features
-- Add Multiprocessing mode to ocean accessible via the OCEAN__PROCESS_EXECUTION_MODE env variable.
-- Add caching to ocean that is saved on disk aaccessible via OCEAN__CACHING_STORAGE_MODE env variable.
+- Add Multiprocessing mode to ocean accessible via the OCEAN__PROCESS_EXECUTION_MODE env variable with possible values - multi_process/single_process.
+- Add caching to ocean that is saved on disk or memory accessible via OCEAN__CACHING_STORAGE_MODE env variable with possible values - disk/memory.
 - Add support for multiprocessing to prometheus accessible via the PROMETHEUS_MULTIPROC_DIR env variable.
 
 ## 0.22.12 (2025-05-26)
