@@ -18,7 +18,7 @@ def mock_ocean_context() -> None | MagicMock:
     }
     try:
         mock_app.cache_provider = AsyncMock()
-mock_app.cache_provider.get.return_value = None
+        mock_app.cache_provider.get.return_value = None
         initialize_port_ocean_context(mock_app)
     except PortOceanContextAlreadyInitializedError:
         # Context already initialized, ignore

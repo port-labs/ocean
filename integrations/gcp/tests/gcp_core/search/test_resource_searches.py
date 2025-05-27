@@ -25,7 +25,7 @@ def mock_ocean_context() -> None:
     mock_app = MagicMock()
     mock_app.config.integration.config = {"search_all_resources_per_minute_quota": 100}
     mock_app.cache_provider = AsyncMock()
-mock_app.cache_provider.get.return_value = None
+    mock_app.cache_provider.get.return_value = None
     initialize_port_ocean_context(mock_app)
 
 
