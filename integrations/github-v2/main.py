@@ -68,7 +68,6 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
 
     async for repos_batch in client.get_repositories():
-        logger.info(f"Processing batch of {len(repos_batch)} repositories for issues")
         async for issues in client.get_repository_resource(repos_batch, "issues"):
             yield issues
 
@@ -76,7 +75,6 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
     async for repos_batch in client.get_repositories():
-        logger.info(f"Processing batch of {len(repos_batch)} repositories for pull requests")
         async for pulls in client.get_repository_resource(repos_batch, "pulls"):
             yield pulls
 
@@ -84,7 +82,6 @@ async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
     async for repos_batch in client.get_repositories():
-        logger.info(f"Processing batch of {len(repos_batch)} repositories for workflows")
         async for workflows in client.get_repository_resource(repos_batch, "actions/workflows"):
             yield workflows
 
