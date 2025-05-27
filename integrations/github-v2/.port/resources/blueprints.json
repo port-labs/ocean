@@ -62,45 +62,7 @@
   "mirrorProperties": {},
   "calculationProperties": {},
   "aggregationProperties": {},
-  "relations": {
-    "owner": {
-        "title": "Owner",
-        "target": "githubMember",
-        "required": false,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "githubMember",
-    "title": "GitHub Member",
-    "icon": "User",
-    "schema": {
-      "properties": {
-        "name": {
-          "type": "string",
-          "title": "Username",
-          "description": "The member's GitHub username"
-        },
-        "url": {
-          "type": "string",
-          "title": "URL",
-          "format": "url",
-          "description": "Link to the member's GitHub profile"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "teams": {
-      "title": "Teams",
-      "target": "githubTeam",
-      "many": true
-     }
-    }
+  "relations": {}
   },
   {
     "identifier": "githubTeam",

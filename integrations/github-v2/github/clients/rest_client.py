@@ -98,8 +98,7 @@ class RestClient(HTTPBaseClient):
     async def get_paginated_repo_resource(
         self,
         repo_path: str,
-        resource_type: str,
-        params: Optional[dict[str, Any]] = None,
+        resource_type: str
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """
         Fetch a paginated resource for a specific repository.
@@ -115,6 +114,7 @@ class RestClient(HTTPBaseClient):
         owner, repo = repo_path.split('/', 1)
         encoded_owner = quote(owner, safe="")
         encoded_repo = quote(repo, safe="")
+        params = {'per_page': 100}
         path = f"repos/{encoded_owner}/{encoded_repo}/{resource_type}"
 
         async for batch in self.get_paginated_resource(path, params=params):
@@ -122,6 +122,7 @@ class RestClient(HTTPBaseClient):
                 logger.info(
                     f"Received batch of {len(batch)} {resource_type} for repo {repo_path}"
                 )
+                batch = self._enrich_repo_resource(batch, owner, repo, repo_path)
                 yield batch
 
     async def get_file_content(
@@ -146,9 +147,12 @@ class RestClient(HTTPBaseClient):
             path = f"repos/{owner}/{repo_name}/contents/{encoded_file_path}"
             params = {"ref": ref}
             response = await self.send_api_request("GET", path, params=params)
-            if not response:
-                return None
+
+            if not response: return None
+
             response = response.json()
+            if 'content' not in response:
+                return None
             if "content" in response:
                 encoding = response.get("encoding", "")
                 raw_content = response["content"]
@@ -157,33 +161,12 @@ class RestClient(HTTPBaseClient):
                     clean_content = raw_content.replace("\n", "").replace("\r", "")
                     try:
                         decoded_bytes = base64.b64decode(clean_content)
-                        try:
-                            return decoded_bytes.decode("utf-8")
-                        except UnicodeDecodeError:
-                            for encoding_attempt in ["latin-1", "cp1252", "iso-8859-1"]:
-                                try:
-                                    return decoded_bytes.decode(encoding_attempt)
-                                except UnicodeDecodeError:
-                                    continue
-                            return decoded_bytes.decode("utf-8", errors="replace")
+                        return decoded_bytes.decode("utf-8", errors="ignore")
                     except Exception as e:
                         logger.error(f"Failed to decode base64 content for {repo_path}/{file_path}: {e}")
                         return None
-                elif encoding == "utf-8" or not encoding:
-                    return raw_content
                 else:
-                    logger.warning(f"Unknown encoding '{encoding}' for {repo_path}/{file_path}")
                     return raw_content
-
-            if "download_url" in response and response["download_url"]:
-                logger.info(f"File {repo_path}/{file_path} is large, download_url provided")
-                return None
-
-            return None
-
-        except ValueError as e:
-            logger.error(f"Invalid repo_path format '{repo_path}': {e}")
-            return None
         except Exception as e:
             logger.error(f"Error fetching file content for {repo_path}/{file_path}: {e}")
             return None
@@ -216,3 +199,25 @@ class RestClient(HTTPBaseClient):
                 links[rel_type] = url
 
         return links
+
+    def _enrich_repo_resource(
+        self, batch: list[dict[str, Any]], owner: str, repo: str, repo_path: str
+        ) -> list[dict[str, Any]]:
+        """
+        Enrich a batch of resources with repository information.
+
+        Args:
+            batch: List of resources
+            repo_path: Repository full name (owner/repo)
+
+        Returns:
+            Enriched batch with repository information
+        """
+        owner, repo = repo_path.split('/', 1)
+        for item in batch:
+            item["repository"] = {
+                "full_name": repo_path,
+                "owner": {'login': owner},
+                "name": repo
+            }
+        return batch

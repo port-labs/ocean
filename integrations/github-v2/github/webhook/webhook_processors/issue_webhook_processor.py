@@ -57,14 +57,12 @@ class IssueWebhookProcessor(GitHubAbstractWebhookProcessor):
             f"Handling issue {action} event for {repo_name}#{issue_number}"
         )
 
-        # For issue deletion, return it in deleted_raw_results
         if action == "deleted":
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[issue],
             )
 
-        # Get the full issue data from the API
         updated_issue = await self._github_webhook_client.get_issue(
             repo_name, issue_number
         )

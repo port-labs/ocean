@@ -1,6 +1,5 @@
-
-from typing import Literal, Any, Type
-from pydantic import BaseModel, Field
+from typing import Any, Type
+from pydantic import Field
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
@@ -21,54 +20,9 @@ from github.entity_processors.entity_processor import FileEntityProcessor
 
 FILE_PROPERTY_PREFIX = "file://"
 
-
-
-
-class RepositoryResourceConfig(ResourceConfig):
-    """Resource configuration for GitHub repositories."""
-    kind: Literal["repository"]
-    selector: Selector
-
-
-class GitHubTeamWithMembersResourceConfig(ResourceConfig):
-    """Resource configuration for GitHub teams with members."""
-    kind: Literal["team"] # type: ignore
-    selector: Selector
-
-
-class GitHubMemberResourceConfig(ResourceConfig):
-    """Resource configuration for GitHub members."""
-    kind: Literal["member"]
-    selector: Selector
-
-
-class GitHubPullRequestResourceConfig(ResourceConfig):
-    """Resource configuration for GitHub pull requests."""
-    kind: Literal["pull-request"]
-    selector: Selector
-
-class GitHubWorkflowResourceConfig(ResourceConfig):
-    """Resource configuration for GitHub workflows."""
-    kind: Literal["workflow"]
-    selector: Selector
-
-class GitHubIssueResourceConfig(ResourceConfig):
-    """Resource configuration for GitHub issues."""
-    kind: Literal["issue"]
-    selector: Selector
-
-
 class GitHubPortAppConfig(PortAppConfig):
     """Port app configuration for GitHub integration."""
-    resources: list[
-        RepositoryResourceConfig
-        | GitHubTeamWithMembersResourceConfig
-        | GitHubMemberResourceConfig
-        | GitHubPullRequestResourceConfig
-        | GitHubIssueResourceConfig
-        | GitHubWorkflowResourceConfig
-        | ResourceConfig
-    ] = Field(default_factory=list)
+    resources: list[ResourceConfig] = Field(default_factory=list)
 
 
 class GitManipulationHandler(JQEntityProcessor):
@@ -99,11 +53,9 @@ class GitHubHandlerMixin(HandlerMixin):
     """Mixin for GitHub entity processing."""
     EntityProcessorClass = GitManipulationHandler
 
-
 class GitHubLiveEventsProcessorManager(LiveEventsProcessorManager, GitHubHandlerMixin):
     """Manager for GitHub webhook events."""
     pass
-
 
 class GitHubIntegration(BaseIntegration):
     """Main GitHub integration class."""

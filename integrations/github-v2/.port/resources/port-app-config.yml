@@ -19,23 +19,6 @@ resources:
             language: .language
             readme: file://README.md
             url: .url
-          relations:
-            owner: .owner.login
-  - kind: user
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .login | tostring
-          title: .login
-          blueprint: '"githubMember"'
-          properties:
-            name: .login
-            url: .html_url
-          relations:
-            teams: .team.slug
-
   - kind: team
     selector:
       query: 'true'

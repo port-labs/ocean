@@ -7,7 +7,6 @@ features:
     resources:
       - kind: repository
       - kind: pull-request
-      - kind: user
       - kind: team
       - kind: workflow
       - kind: issue
@@ -22,3 +21,8 @@ configurations:
     type: url
     default: https://api.github.com
     description: The host of the GitHub API. If not specified, the default will be https://api.github.com.
+  - name: gitHubOrganization
+    type: string
+    required: true
+    default: ${GITHUB_ORGANIZATION}
+    description: "GitHub organization name"

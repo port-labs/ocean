@@ -149,32 +149,6 @@ class TestGitHubClient:
                 "GET", f"repos/{repo_path}/issues/{issue_number}"
             )
 
-    async def test_get_team_members(self, client: GitHubClient) -> None:
-        """Test fetching team members"""
-        # Arrange
-        org_name = "test-org"
-        team_slug = "test-team"
-        mock_members = [
-            {"id": 1, "login": "user1"},
-            {"id": 2, "login": "user2"},
-        ]
-
-        with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            return_value=async_mock_generator([mock_members]),
-        ) as mock_get_resource:
-            # Act
-            results = []
-            async for batch in client.get_team_members(org_name, team_slug):
-                results.extend(batch)
-
-            # Assert
-            assert len(results) == 2
-            assert results[0]["login"] == "user1"
-            assert results[1]["login"] == "user2"
-            mock_get_resource.assert_called_once_with(f"orgs/{org_name}/teams/{team_slug}/members")
-
     async def test_get_file_content(self, client: GitHubClient) -> None:
         """Test fetching file content"""
         # Arrange

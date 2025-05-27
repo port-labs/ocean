@@ -57,7 +57,6 @@ class PullRequestWebhookProcessor(GitHubAbstractWebhookProcessor):
             f"Handling pull request {action} event for {repo_name}#{pr_number}"
         )
 
-        # Get the full pull request data from the API
         updated_pr = await self._github_webhook_client.get_pull_request(
             repo_name, pr_number
         )

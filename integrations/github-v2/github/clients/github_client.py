@@ -42,17 +42,7 @@ class GitHubClient:
         encoded_path = quote(str(repo_path), safe="")
         return await self.rest.send_api_request("GET", f"repos/{encoded_path}")
 
-    async def get_organization(self, org_name: str) -> dict[str, Any]:
-        """
-        Get an organization by name.
 
-        Args:
-            org_name: Organization name
-
-        Returns:
-            Organization data
-        """
-        return await self.rest.send_api_request("GET", f"orgs/{org_name}")
 
     async def get_pull_request(
         self, repo_path: str, pull_request_number: int
@@ -103,27 +93,9 @@ class GitHubClient:
         ):
             yield orgs_batch
 
-    async def get_team_member(
-        self, org_name: str, team_slug: str, username: str
-    ) -> dict[str, Any]:
-        """
-        Get a team member.
-
-        Args:
-            org_name: Organization name
-            team_slug: Team slug
-            username: Username
-
-        Returns:
-            Team member data
-        """
-        return await self.rest.send_api_request(
-            "GET", f"orgs/{org_name}/teams/{team_slug}/members/{username}"
-        )
 
     async def get_repositories(
         self,
-        params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
         include_languages: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
@@ -138,7 +110,7 @@ class GitHubClient:
         Yields:
             Batches of repositories
         """
-        request_params = params or {}
+        request_params =  {}
         logger.info("Getting repositories for the authenticated user")
         async for repos_batch in self.rest.get_paginated_resource(
             "user/repos", params=request_params
@@ -151,7 +123,6 @@ class GitHubClient:
         repos_batch: list[dict[str, Any]],
         resource_type: str,
         max_concurrent: int = 10,
-        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """
         Get a resource for multiple repositories.
@@ -173,7 +144,6 @@ class GitHubClient:
                     self.rest.get_paginated_repo_resource,
                     repo["full_name"],
                     resource_type,
-                    params,
                 ),
             )
             for repo in repos_batch
@@ -182,7 +152,6 @@ class GitHubClient:
         async for batch in stream_async_iterators_tasks(*tasks):
             if batch:
                 yield batch
-
 
     async def get_organization_resource(
         self,
@@ -236,28 +205,3 @@ class GitHubClient:
             File content as string or None if not found
         """
         return await self.rest.get_file_content(repo_path, file_path, ref)
-
-
-    async def get_team_members(
-        self, org_name: str, team_slug: str
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """
-        Get members of a team in an organization.
-
-        Args:
-            org_name: Organization name
-            team_slug: Team slug
-            include_bot_members: Whether to include bot users
-
-        Yields:
-            Batches of team members
-        """
-        async for batch in self.rest.get_paginated_resource(
-            f"orgs/{org_name}/teams/{team_slug}/members"
-        ):
-            if batch:
-
-                logger.info(
-                    f"Received batch of {len(batch)} members for team {team_slug}"
-                )
-                yield batch

@@ -71,7 +71,7 @@ class HTTPBaseClient:
 
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 404:
-                    return {}
+                    return response
                 if e.response.status_code == 403 and e.response.headers.get("X-RateLimit-Remaining") == "0":
                     reset_time = int(e.response.headers.get("X-RateLimit-Reset", time.time() + 60))
                     wait_time = reset_time - int(time.time()) + 1
@@ -86,4 +86,4 @@ class HTTPBaseClient:
                 logger.warning(
                     f"HTTP error during {method} {url}: {str(e)}"
                 )
-                return response
+                raise e

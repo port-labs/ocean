@@ -135,7 +135,7 @@ class TestRestClient:
             assert len(results) == 1
             assert results[0]["title"] == "Issue 1"
             mock_get_paginated.assert_called_once_with(
-                "repos/owner/repo/issues", params=None
+                "repos/owner/repo/issues", params={'per_page': 100}
             )
 
     async def test_get_paginated_org_resource(self, client: RestClient) -> None:
