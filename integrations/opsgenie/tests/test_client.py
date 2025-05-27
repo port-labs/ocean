@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.context.event import event_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from client import OpsGenieClient, ObjectKind, PAGE_SIZE, MAX_OPSGENIE_OFFSET_LIMIT  # type: ignore[attr-defined]
+from client import OpsGenieClient, ObjectKind, PAGE_SIZE  # type: ignore[attr-defined]
 
 
 @pytest.fixture(autouse=True)
