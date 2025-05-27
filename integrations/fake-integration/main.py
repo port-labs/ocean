@@ -1,4 +1,6 @@
 from typing import Any
+import multiprocessing
+import time
 
 from fastapi import Request
 from port_ocean.context.ocean import ocean
@@ -9,8 +11,9 @@ from fake_org_data.fake_client import (
     get_departments,
     get_random_person_from_batch,
 )
+from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from fake_org_data.fake_router import initialize_fake_routes
+from fake_org_data.fake_router import initialize_fake_routes, initialize_fake_routes_standalone
 
 
 @ocean.on_resync("fake-department")
@@ -26,8 +29,13 @@ async def resync_persons(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Got a batch of {len(persons_batch)} persons")
         yield persons_batch
 
-
-initialize_fake_routes()
+if ocean.app.process_execution_mode == ProcessExecutionMode.single_process:
+    initialize_fake_routes()
+elif ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
+    logger.info("Starting fake routes in a separate process")
+    multiprocessing.Process(target=initialize_fake_routes_standalone).start()
+    time.sleep(2)
+    logger.info("Fake routes started in a separate process")
 
 
 @ocean.router.post("/webhook")
