@@ -17,7 +17,7 @@ Key Principles
 - Follow SOLID principles
 - Keep memory usage efficient
 - Write clear changelogs
-- Implement Github CI checks
+- Implement GitHub CI checks
 
 Core Development Guidelines
 
