@@ -70,7 +70,10 @@ class Ocean:
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
         )
-
+        self.cache_provider: CacheProvider = self._get_caching_provider()
+        self.process_execution_mode: ProcessExecutionMode = (
+            self._get_process_execution_mode()
+        )
         self.metrics = port_ocean.helpers.metric.metric.Metrics(
             metrics_settings=self.config.metrics,
             integration_configuration=self.config.integration,
@@ -95,10 +98,6 @@ class Ocean:
         )
 
         self.app_initialized = False
-        self.cache_provider: CacheProvider = self._get_caching_provider()
-        self.process_execution_mode: ProcessExecutionMode = (
-            self._get_process_execution_mode()
-        )
 
     def _get_process_execution_mode(self) -> ProcessExecutionMode:
         if self.config.process_execution_mode:
