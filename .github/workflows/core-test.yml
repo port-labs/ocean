@@ -49,6 +49,7 @@ jobs:
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
           OCEAN__PROCESS_EXECUTION_MODE: single_process
+          OCEAN__CACHING_STORAGE_MODE: memory
         run: |
           ./scripts/run-smoke-test.sh
 
@@ -81,6 +82,7 @@ jobs:
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
           OCEAN__PROCESS_EXECUTION_MODE: multi_process
+          OCEAN__CACHING_STORAGE_MODE: disk
         run: |
           ./scripts/run-smoke-test.sh
 
