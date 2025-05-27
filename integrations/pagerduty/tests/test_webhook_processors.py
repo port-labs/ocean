@@ -32,6 +32,7 @@ def mock_ocean_context() -> None:
         mock_ocean_app.port_client = MagicMock()
         mock_ocean_app.base_url = "https://ingest-test-url.com"
         mock_ocean_app.cache_provider = AsyncMock()
+        mock_ocean_app.cache_provider.get.return_value = None
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
         pass

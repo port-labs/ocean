@@ -49,6 +49,7 @@ def mock_ocean_context() -> None:
         mock_ocean_app.port_client = MagicMock()
         mock_ocean_app.base_url = TEST_INTEGRATION_CONFIG["app_host"]
         mock_ocean_app.cache_provider = AsyncMock()
+        mock_ocean_app.cache_provider.get.return_value = None
 
         def get_mock_external_access_token() -> str:
             return "pd_test_external_access_token"
