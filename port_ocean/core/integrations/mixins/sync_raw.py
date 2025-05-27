@@ -649,7 +649,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             await ocean.metrics.send_metrics_to_webhook(
                 kind=resource_kind_id
             )
-            # await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id) # TODO: uncomment this when end points are ready
+            await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id)
 
             return kind_results
 
@@ -719,29 +719,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.info(f"Starting processing resource {resource.kind} with index {index}")
 
                     creation_results.append(await self.process_resource(resource,index,user_agent_type))
-                    # create resource context per resource kind, so resync method could have access to the resource
-                    # config as we might have multiple resources in the same event
-                    async with resource_context(resource,index):
-                        resource_kind_id = f"{resource.kind}-{index}"
-                        ocean.metrics.sync_state = SyncState.SYNCING
-                        await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id)
-
-                        task = asyncio.create_task(
-                            self._register_in_batches(resource, user_agent_type)
-                        )
-
-                        event.on_abort(lambda: task.cancel())
-                        kind_results: tuple[list[Entity], list[Exception]] = await task
-
-                        creation_results.append(kind_results)
-
-                        if ocean.metrics.sync_state != SyncState.FAILED:
-                            ocean.metrics.sync_state = SyncState.COMPLETED
-
-                        await ocean.metrics.send_metrics_to_webhook(
-                            kind=resource_kind_id
-                        )
-                        await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
 
