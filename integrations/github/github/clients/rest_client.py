@@ -58,7 +58,8 @@ class GithubRestClient(AbstractGithubClient):
                 resource, method=method, params=params
             )
             items = response.json()
-            if not items:
+
+            if not items or response.status_code == 404:
                 return
 
             yield items
