@@ -359,7 +359,7 @@ class Metrics:
                         if "-" in kind_key
                         else kind_key
                     ),
-                    "kindIndex": kind_key[-1] if kind_key[-1].isdigit() else 0,
+                    "kindIndex": int(kind_key[-1]) if kind_key[-1].isdigit() else 0,
                     "eventId": self.event_id,
                     "syncState": self.sync_state,
                     "metrics": metrics,
