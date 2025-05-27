@@ -166,6 +166,7 @@ class EntityClientMixin:
 
     async def upsert_entities_batch(
         self,
+        blueprint: str,
         entities: list[Entity],
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
@@ -183,6 +184,7 @@ class EntityClientMixin:
                             should_raise=False,
                         )
         ```
+        :param blueprint: The blueprint of the entities to be upserted
         :param entities: A list of Entities to be upserted
         :param request_options: A dictionary specifying how to upsert the entity
         :param user_agent_type: a UserAgentType specifying who is preforming the action
@@ -193,7 +195,6 @@ class EntityClientMixin:
         """
         validation_only = request_options["validation_only"]
         async with self.semaphore:
-            blueprint = entities[0].blueprint
             logger.debug(
                 f"{'Validating' if validation_only else 'Upserting'} {len(entities)} of blueprint: {blueprint}"
             )
@@ -228,22 +229,26 @@ class EntityClientMixin:
         result = response.json()
         index_to_entity = {i: entity for i, entity in enumerate(entities)}
 
+        return self._parse_upsert_entities_batch_response(index_to_entity, result)
+
+    def _parse_upsert_entities_batch_response(
+        self,
+        index_to_entity: dict[int, Entity],
+        result: dict[str, Any],
+    ) -> list[tuple[bool | None, Entity]]:
+        """
+        Parse the response from a bulk upsert operation and map it to the original entities.
+
+        :param index_to_entity: Mapping of entity indices to their original entities
+        :param result: The response from the bulk upsert operation
+        :return: A list of tuples containing the success status and the entity
+        """
         successful_entities = {
             entity_result["index"]: entity_result
             for entity_result in result.get("entities", [])
         }
         error_entities = {error["index"]: error for error in result.get("errors", [])}
 
-        return self._parse_upsert_entities_batch_response(
-            index_to_entity, successful_entities, error_entities
-        )
-
-    def _parse_upsert_entities_batch_response(
-        self,
-        index_to_entity: dict[int, Entity],
-        successful_entities: dict[int, Any],
-        error_entities: dict[int, Any],
-    ) -> list[tuple[bool | None, Entity]]:
         batch_results: list[tuple[bool | None, Entity]] = []
         for entity_index, original_entity in index_to_entity.items():
             reduced_entity = self._reduce_entity(original_entity)
@@ -305,8 +310,9 @@ class EntityClientMixin:
             - Second value: The reduced entity with updated identifier (if successful) or the original entity (if failed)
         """
         entities_results: list[tuple[bool, Entity]] = []
+        blueprint = entities[0].blueprint
 
-        if ocean.app.is_saas() and ocean.config.bulk_upserts_enabled:
+        if ocean.config.bulk_upserts_enabled:
             batch_size = self.calculate_entities_batch_size(entities)
             batches = [
                 entities[i : i + batch_size]
@@ -316,6 +322,7 @@ class EntityClientMixin:
             batch_results = await asyncio.gather(
                 *(
                     self.upsert_entities_batch(
+                        blueprint,
                         batch,
                         request_options,
                         user_agent_type,
@@ -326,10 +333,10 @@ class EntityClientMixin:
                 return_exceptions=True,
             )
 
-            for batch, result in zip(batches, batch_results):
-                if isinstance(result, Exception):
+            for batch, batch_result in zip(batches, batch_results):
+                if isinstance(batch_result, Exception):
                     if should_raise:
-                        raise result
+                        raise batch_result
                     # If should_raise is False, mark all entities in the batch as failed
                     for entity in batch:
                         failed_result: tuple[bool, Entity] = (
@@ -337,11 +344,16 @@ class EntityClientMixin:
                             self._reduce_entity(entity),
                         )
                         entities_results.append(failed_result)
-                elif isinstance(result, list):
-                    for status, entity in result:
-                        if status is not None:
-                            batch_result: tuple[bool, Entity] = (bool(status), entity)
-                            entities_results.append(batch_result)
+                elif isinstance(batch_result, list):
+                    for status, entity in batch_result:
+                        if (
+                            status is not None
+                        ):  # when using the search identifier we might not have an actual identifier
+                            batch_result_tuple: tuple[bool, Entity] = (
+                                bool(status),
+                                entity,
+                            )
+                            entities_results.append(batch_result_tuple)
         else:
             modified_entities_results = await asyncio.gather(
                 *(
@@ -356,12 +368,14 @@ class EntityClientMixin:
                 return_exceptions=True,
             )
 
-            for original_entity, result in zip(entities, modified_entities_results):  # type: ignore
-                if isinstance(result, Exception) and should_raise:
-                    raise result
-                elif isinstance(result, Entity):
-                    entities_results.append((True, result))
-                elif result is False:
+            for original_entity, single_result in zip(
+                entities, modified_entities_results
+            ):
+                if isinstance(single_result, Exception) and should_raise:
+                    raise single_result
+                elif isinstance(single_result, Entity):
+                    entities_results.append((True, single_result))
+                elif single_result is False:
                     entities_results.append((False, original_entity))
 
         return entities_results
