@@ -9,6 +9,7 @@ import httpx
 from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
+from port_ocean.context.metric_resource import metric_resource_context
 from port_ocean.context.ocean import ocean
 from port_ocean.context.resource import resource_context
 from port_ocean.context import resource
@@ -31,7 +32,7 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.helpers.metric.metric import SyncState, MetricType, MetricPhase
+from port_ocean.helpers.metric.metric import MetricResourceKind, SyncState, MetricType, MetricPhase
 from port_ocean.helpers.metric.utils import TimeMetric
 from port_ocean.utils.ipc import FileIPC
 
@@ -576,10 +577,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 return None
             logger.info(f"Executings topological sort of {event.entity_topological_sorter.get_entities_count()} entities failed to upsert.",failed_toupsert_entities_count=event.entity_topological_sorter.get_entities_count())
 
-            ocean.metrics.reconciliation = True
             for entity in event.entity_topological_sorter.get_entities():
                 await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
-            ocean.metrics.reconciliation = False
 
         except OceanAbortException as ocean_abort:
             logger.info(f"Failed topological sort of failed to upsert entites - trying to upsert unordered {event.entity_topological_sorter.get_entities_count()} entities.",failed_topological_sort_entities_count=event.entity_topological_sorter.get_entities_count() )
@@ -720,7 +719,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                     creation_results.append(await self.process_resource(resource,index,user_agent_type))
 
-                await self.sort_and_upsert_failed_entities(user_agent_type)
+                async with metric_resource_context(MetricResourceKind.RECONCILIATION):
+                    await self.sort_and_upsert_failed_entities(user_agent_type)
 
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
@@ -757,12 +757,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     entities_at_port = await ocean.port_client.search_entities(
                         user_agent_type
                     )
-                    ocean.metrics.reconciliation = True
-                    await self.entities_state_applier.delete_diff(
-                        {"before": entities_at_port, "after": generated_entities},
-                        user_agent_type, app_config.get_entity_deletion_threshold()
-                    )
-                    ocean.metrics.reconciliation = False
+                    async with metric_resource_context(MetricResourceKind.RECONCILIATION):
+                        await self.entities_state_applier.delete_diff(
+                            {"before": entities_at_port, "after": generated_entities},
+                            user_agent_type, app_config.get_entity_deletion_threshold()
+                        )
+
                     logger.info("Resync finished successfully")
 
                     # Execute resync_complete hooks

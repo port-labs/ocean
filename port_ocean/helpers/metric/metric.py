@@ -5,7 +5,7 @@ import prometheus_client
 from httpx import AsyncClient
 
 from loguru import logger
-from port_ocean.context import resource
+from port_ocean.context import metric_resource, resource
 from prometheus_client import Gauge
 import prometheus_client.openmetrics
 import prometheus_client.openmetrics.exposition
@@ -54,6 +54,11 @@ class SyncState:
     COMPLETED = "completed"
     PENDING = "pending"
     FAILED = "failed"
+
+
+class MetricResourceKind:
+    RECONCILIATION = "__reconciliation__"
+    RESYNC = "__resync__"
 
 
 # Registry for core and custom metrics
@@ -123,15 +128,6 @@ class Metrics:
         self._ocean_version: Optional[str] = None
         self.event_id = ""
         self.sync_state = SyncState.PENDING
-        self.reconciliation = False
-
-    @property
-    def reconciliation(self) -> bool:
-        return self._reconciliation
-
-    @reconciliation.setter
-    def reconciliation(self, value: bool) -> None:
-        self._reconciliation = value
 
     @property
     def event_id(self) -> str:
@@ -260,8 +256,12 @@ class Metrics:
         try:
             return f"{resource.resource.kind}-{resource.resource.index}"
         except ResourceContextNotFoundError:
-            if self.reconciliation:
-                return "reconciliation"
+            return self.current_metric_resource_kind()
+
+    def current_metric_resource_kind(self) -> str:
+        try:
+            return metric_resource.metric_resource.metric_resource_kind
+        except ResourceContextNotFoundError:
             return "__runtime__"
 
     def generate_latest(self) -> str:
