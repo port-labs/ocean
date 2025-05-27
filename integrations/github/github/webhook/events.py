@@ -20,6 +20,15 @@ DEPENDABOT_ALERT_EVENTS = [
     "fixed",
 ]
 
+DEPENDABOT_ACTION_TO_STATE = {
+    "created": "open",
+    "reopened": "open",
+    "auto_reopened": "open",
+    "dismissed": "dismissed",
+    "auto_dismissed": "auto_dismissed",
+    "fixed": "fixed",
+}
+
 CODE_SCANNING_ALERT_UPSERT_EVENTS = [
     "appeared_in_branch",
     "created",

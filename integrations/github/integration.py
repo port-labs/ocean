@@ -10,22 +10,11 @@ from typing import Literal, Optional, List
 
 
 class GithubDependabotAlertSelector(Selector):
-    state: Optional[List[str]] = Field(
-        default=None,
-        description="Filter alerts by state (auto_dismissed, dismissed, fixed, open)"
+    state: List[str] = Field(
+        default=["open"],
+        description="Filter alerts by state (open, closed, dismissed, fixed)"
     )
-    severity: Optional[List[str]] = Field(
-        default=None,
-        description="Filter alerts by severity (low, medium, high, critical)"
-    )
-    ecosystem: Optional[List[str]] = Field(
-        default=None,
-        description="Filter alerts by ecosystem (composer, go, maven, npm, nuget, pip, pub, rubygems, rust)"
-    )
-    scope: Optional[str] = Field(
-        default=None,
-        description="Filter alerts by scope (development, runtime)"
-    )
+
 
 class GithubDependabotAlertConfig(ResourceConfig):
     selector: GithubDependabotAlertSelector
@@ -33,9 +22,9 @@ class GithubDependabotAlertConfig(ResourceConfig):
 
 
 class GithubCodeScanningAlertSelector(Selector):
-    tool_name: Optional[List[str]] = Field(
-        default=None,
-        description="Filter alerts by tool name (e.g., CodeQL, GitHub Advanced Security)"
+    state: List[str] = Field(
+        default=["open"],
+        description="Filter alerts by state (open, closed, dismissed, fixed)"
     )
 
 class GithubCodeScanningAlertConfig(ResourceConfig):

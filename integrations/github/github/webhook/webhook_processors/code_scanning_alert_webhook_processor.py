@@ -15,7 +15,20 @@ from github.core.exporters.code_scanning_alert_exporter import RestCodeScanningA
 from github.core.options import SingleCodeScanningAlertOptions
 
 class CodeScanningAlertWebhookProcessor(_GithubAbstractWebhookProcessor):
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        if not {"action", "alert", "repository"} <= payload.keys():
+            return False
+
+        if payload["action"] not in (
+            CODE_SCANNING_ALERT_UPSERT_EVENTS + CODE_SCANNING_ALERT_DELETE_EVENTS
+        ):
+            return False
+
+        return bool(payload["alert"].get("number") and payload["repository"].get("name")) 
+
     async def _should_process_event(self, event: WebhookEvent) -> bool:
+        print(event.payload)
+        print(event.headers.get("x-github-event"))
         return event.headers.get("x-github-event") == "code_scanning_alert"
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -33,7 +46,7 @@ class CodeScanningAlertWebhookProcessor(_GithubAbstractWebhookProcessor):
         logger.info(f"Processing code scanning alert event: {action} for alert {alert_number} in {repo_name}")
 
         if action in CODE_SCANNING_ALERT_DELETE_EVENTS:
-            logger.info(f"Code scanning alert {alert_number} in {repo_name} was {action}")
+            alert["repo"] = repo_name
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[alert]
             )
@@ -49,13 +62,3 @@ class CodeScanningAlertWebhookProcessor(_GithubAbstractWebhookProcessor):
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
 
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        if not {"action", "alert", "repository"} <= payload.keys():
-            return False
-
-        if payload["action"] not in (
-            CODE_SCANNING_ALERT_UPSERT_EVENTS + CODE_SCANNING_ALERT_DELETE_EVENTS
-        ):
-            return False
-
-        return bool(payload["alert"].get("number") and payload["repository"].get("name")) 

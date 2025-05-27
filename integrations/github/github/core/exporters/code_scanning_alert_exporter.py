@@ -5,7 +5,7 @@ from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 from github.core.options import ListCodeScanningAlertOptions, SingleCodeScanningAlertOptions
 from github.clients.rest_client import GithubRestClient
-
+from github.helpers.utils import filter_options_none_values
 
 class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
 
@@ -33,11 +33,12 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         params: Dict[str, Any] = dict(options) if options else {}
         repo_name = params.pop("repo_name")
 
+        params = filter_options_none_values(params)
+
         async for alerts in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/code-scanning/alerts",
             params
         ):
-            print("alerts", alerts)
             logger.info(
                 f"Fetched batch of {len(alerts)} code scanning alerts from repository {repo_name}"
             )

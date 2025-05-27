@@ -24,10 +24,7 @@ class ListDependabotAlertOptions(TypedDict):
     """Options for listing Dependabot alerts."""
 
     repo_name: str
-    state: Optional[list[str]]
-    severity: Optional[str]
-    ecosystem: Optional[str]
-    scope: Optional[str]
+    state: list[str]
 
 
 class SingleCodeScanningAlertOptions(TypedDict):
@@ -40,4 +37,4 @@ class ListCodeScanningAlertOptions(TypedDict):
     """Options for listing code scanning alerts."""
 
     repo_name: str
-    tool_name: Optional[str]
+    state: list[str]

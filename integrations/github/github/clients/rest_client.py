@@ -58,6 +58,7 @@ class GithubRestClient(AbstractGithubClient):
                 resource, method=method, params=params
             )
             items = response.json()
+            print("items", items, params)
 
             if not items or response.status_code == 404:
                 return
