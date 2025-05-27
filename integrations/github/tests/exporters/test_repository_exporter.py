@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator
+from typing import Any
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
@@ -7,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
@@ -88,16 +88,11 @@ class TestRestRepositoryExporter:
         mock_event_context: MagicMock,
     ) -> None:
 
-        # Create an async mock to return the test repos
-        async def mock_paginated_request(
-            *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield TEST_REPOS
-
         with patch.object(
-            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+            rest_client,
+            "send_api_request",
+            AsyncMock(return_value=httpx.Response(json=TEST_REPOS, status_code=200)),
         ) as mock_request:
-
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     type=mock_port_app_config.repository_visibility_filter
@@ -114,5 +109,6 @@ class TestRestRepositoryExporter:
 
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/orgs/{rest_client.organization}/repos",
-                    {"type": "all"},
+                    method="GET",
+                    params={"type": "all", "per_page": 100},
                 )
