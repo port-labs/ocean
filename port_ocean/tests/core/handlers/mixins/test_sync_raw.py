@@ -1,7 +1,6 @@
 from graphlib import CycleError
-from typing import Any
+from typing import Any, AsyncGenerator
 
-from port_ocean.clients.port.client import PortClient
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from port_ocean.exceptions.core import OceanAbortException
 import pytest
@@ -37,7 +36,47 @@ def mock_sync_raw_mixin(
     sync_raw_mixin._entity_processor = mock_entity_processor
     sync_raw_mixin._entities_state_applier = mock_entities_state_applier
     sync_raw_mixin._port_app_config_handler = mock_port_app_config_handler
-    sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([{}], []))  # type: ignore
+
+    # Create raw data that matches the entity structure
+    raw_data = [
+        {
+            "id": "entity_1",
+            "name": "Entity 1",
+            "service": "entity_3",
+            "web_url": "https://example.com/entity1",
+        },
+        {
+            "id": "entity_2",
+            "name": "Entity 2",
+            "service": "entity_4",
+            "web_url": "https://example.com/entity2",
+        },
+        {
+            "id": "entity_3",
+            "name": "Entity 3",
+            "service": "",
+            "web_url": "https://example.com/entity3",
+        },
+        {
+            "id": "entity_4",
+            "name": "Entity 4",
+            "service": "entity_3",
+            "web_url": "https://example.com/entity4",
+        },
+        {
+            "id": "entity_5",
+            "name": "Entity 5",
+            "service": "entity_1",
+            "web_url": "https://example.com/entity5",
+        },
+    ]
+
+    # Create an async generator that yields the raw data
+    async def raw_results_generator() -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield raw_data
+
+    # Return a list containing the async generator and an empty error list
+    sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([raw_results_generator()], []))  # type: ignore
     sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=MagicMock())  # type: ignore
 
     return sync_raw_mixin
@@ -52,23 +91,6 @@ def mock_sync_raw_mixin_with_jq_processor(
     return mock_sync_raw_mixin
 
 
-@pytest.fixture
-def mock_ocean(mock_port_client: PortClient) -> Ocean:
-    with patch("port_ocean.ocean.Ocean.__init__", return_value=None):
-        ocean_mock = Ocean(
-            MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
-        )
-        ocean_mock.config = MagicMock()
-        ocean_mock.config.port = MagicMock()
-        ocean_mock.config.port.port_app_config_cache_ttl = 60
-        ocean_mock.port_client = mock_port_client
-        ocean_mock.metrics = MagicMock()
-        ocean_mock.metrics.post_metrics = AsyncMock()
-        ocean_mock.metrics.flush = AsyncMock()
-
-        return ocean_mock
-
-
 @pytest.mark.asyncio
 async def test_sync_raw_mixin_self_dependency(
     mock_sync_raw_mixin: SyncRawMixin,
@@ -81,13 +103,17 @@ async def test_sync_raw_mixin_self_dependency(
     entities = [create_entity(*entity_param) for entity_param in entities_params]
 
     calc_result_mock = MagicMock()
-    calc_result_mock.entity_selector_diff.passed = entities
-    calc_result_mock.errors = []
+    calc_result_mock.entity_selector_diff = EntitySelectorDiff(
+        passed=entities, failed=[]  # No failed entities in this test case
+    )
+    calc_result_mock.errors = []  # No errors in this test case
+    calc_result_mock.number_of_transformed_entities = len(
+        entities
+    )  # Add this to match real behavior
+    calc_result_mock.misonfigured_entity_keys = {}  # Add this to match real behavior
 
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
-    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
@@ -126,6 +152,50 @@ async def test_sync_raw_mixin_self_dependency(
                     for call in mock_order_by_entities_dependencies.call_args_list
                 ] == [entity for entity in entities if entity.identifier == "entity_1"]
 
+                # Add assertions for actual metrics
+                metrics = mock_ocean.metrics.generate_metrics()
+                assert len(metrics) == 2
+
+                # Verify object counts
+                for metric in metrics:
+                    if metric["kind"] == "project":
+                        assert (
+                            metric["metrics"]["phase"]["extract"]["object_count_type"][
+                                "raw_extracted"
+                            ]["object_count"]
+                            == 5
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["transform"][
+                                "object_count_type"
+                            ]["transformed"]["object_count"]
+                            == 2
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["transform"][
+                                "object_count_type"
+                            ]["filtered_out"]["object_count"]
+                            == 3
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["load"]["object_count_type"][
+                                "failed"
+                            ]["object_count"]
+                            == 1
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["load"]["object_count_type"][
+                                "loaded"
+                            ]["object_count"]
+                            == 2
+                        )
+
+                        # Verify success
+                        assert metric["metrics"]["phase"]["resync"]["success"] == 1
+
+                        # Verify sync state
+                        assert metric["syncState"] == "completed"
+
 
 @pytest.mark.asyncio
 async def test_sync_raw_mixin_circular_dependency(
@@ -138,13 +208,17 @@ async def test_sync_raw_mixin_circular_dependency(
     entities = [create_entity(*entity_param) for entity_param in entities_params]
 
     calc_result_mock = MagicMock()
-    calc_result_mock.entity_selector_diff.passed = entities
-    calc_result_mock.errors = []
+    calc_result_mock.entity_selector_diff = EntitySelectorDiff(
+        passed=entities, failed=[]  # No failed entities in this test case
+    )
+    calc_result_mock.errors = []  # No errors in this test case
+    calc_result_mock.number_of_transformed_entities = len(
+        entities
+    )  # Add this to match real behavior
+    calc_result_mock.misonfigured_entity_keys = {}  # Add this to match real behavior
 
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
-    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
@@ -206,11 +280,56 @@ async def test_sync_raw_mixin_circular_dependency(
                     == 2
                 )
 
+                # Add assertions for actual metrics
+                metrics = mock_ocean.metrics.generate_metrics()
+                assert len(metrics) == 2
+
+                # Verify object counts
+                for metric in metrics:
+                    if metric["kind"] == "project":
+                        assert (
+                            metric["metrics"]["phase"]["extract"]["object_count_type"][
+                                "raw_extracted"
+                            ]["object_count"]
+                            == 5
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["transform"][
+                                "object_count_type"
+                            ]["transformed"]["object_count"]
+                            == 2
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["transform"][
+                                "object_count_type"
+                            ]["filtered_out"]["object_count"]
+                            == 3
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["load"]["object_count_type"][
+                                "failed"
+                            ]["object_count"]
+                            == 2
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["load"]["object_count_type"][
+                                "loaded"
+                            ]["object_count"]
+                            == 2
+                        )
+
+                        # Verify success
+                        assert metric["metrics"]["phase"]["resync"]["success"] == 1
+
+                        # Verify sync state
+                        assert metric["syncState"] == "completed"
+
 
 @pytest.mark.asyncio
 async def test_sync_raw_mixin_dependency(
     mock_sync_raw_mixin: SyncRawMixin, mock_ocean: Ocean
 ) -> None:
+    # Create entities with more realistic data
     entities_params = [
         ("entity_1", "service", {"service": "entity_3"}, True),
         ("entity_2", "service", {"service": "entity_4"}, True),
@@ -219,13 +338,19 @@ async def test_sync_raw_mixin_dependency(
         ("entity_5", "service", {"service": "entity_1"}, True),
     ]
     entities = [create_entity(*entity_param) for entity_param in entities_params]
-    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
-    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
-    calc_result_mock = MagicMock()
-    calc_result_mock.entity_selector_diff.passed = entities
-    calc_result_mock.errors = []
 
+    # Create a more realistic CalculationResult mock
+    calc_result_mock = MagicMock()
+    calc_result_mock.entity_selector_diff = EntitySelectorDiff(
+        passed=entities, failed=[]  # No failed entities in this test case
+    )
+    calc_result_mock.errors = []  # No errors in this test case
+    calc_result_mock.number_of_transformed_entities = len(
+        entities
+    )  # Add this to match real behavior
+    calc_result_mock.misonfigured_entity_keys = {}  # Add this to match real behavior
+
+    # Mock the parse_items method to return our realistic mock
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
@@ -294,6 +419,44 @@ async def test_sync_raw_mixin_dependency(
                     "entity_3-entity_1-entity_4-entity_2-entity_5",
                     "entity_3-entity_1-entity_4-entity_5-entity_2",
                 )
+
+                # Add assertions for actual metrics
+                metrics = mock_ocean.metrics.generate_metrics()
+                assert len(metrics) == 2
+
+                # Verify object counts
+                for metric in metrics:
+                    if metric["kind"] == "project":
+                        assert (
+                            metric["metrics"]["phase"]["extract"]["object_count_type"][
+                                "raw_extracted"
+                            ]["object_count"]
+                            == 5
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["transform"][
+                                "object_count_type"
+                            ]["transformed"]["object_count"]
+                            == 5
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["transform"][
+                                "object_count_type"
+                            ]["filtered_out"]["object_count"]
+                            == 0
+                        )
+                        assert (
+                            metric["metrics"]["phase"]["load"]["object_count_type"][
+                                "failed"
+                            ]["object_count"]
+                            == 5
+                        )
+
+                        # Verify success
+                        assert metric["metrics"]["phase"]["resync"]["success"] == 1
+
+                        # Verify sync state
+                        assert metric["syncState"] == "completed"
 
 
 @pytest.mark.asyncio

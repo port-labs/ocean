@@ -1,12 +1,12 @@
 import asyncio
+import uuid
 from graphlib import CycleError
 import inspect
 import typing
 from typing import Callable, Awaitable, Any
-
+import multiprocessing
 import httpx
 from loguru import logger
-
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.ocean import ocean
@@ -20,7 +20,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, ProcessExecutionMode
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -33,6 +33,7 @@ from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gath
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.helpers.metric.metric import SyncState, MetricType, MetricPhase
 from port_ocean.helpers.metric.utils import TimeMetric
+from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 
@@ -67,6 +68,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
         fns = self._collect_resync_functions(resource_config)
+        logger.info(f"Found {len(fns)} resync functions for {resource_config.kind}")
 
         results, errors = await self._execute_resync_tasks(fns, resource_config)
 
@@ -96,8 +98,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results = []
         for task in fns:
             if inspect.isasyncgenfunction(task):
+                logger.info(f"Found async generator function for {resource_config.kind} name: {task.__qualname__}")
                 results.append(resync_generator_wrapper(task, resource_config.kind))
             else:
+                logger.info(f"Found sync function for {resource_config.kind} name: {task.__qualname__}")
                 task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
                 tasks.append(resync_function_wrapper(task, resource_config.kind))
 
@@ -264,7 +268,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     objects_diff[0].entity_selector_diff.passed, user_agent_type
                     )
 
-
         return CalculationResult(
             number_of_transformed_entities=len(objects_diff[0].entity_selector_diff.passed),
             entity_selector_diff=objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
@@ -341,8 +344,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         user_agent_type,
                         send_raw_data_examples_amount=send_raw_data_examples_amount
                     )
-                    errors.extend(calculation_result.errors)
                     passed_entities.extend(calculation_result.entity_selector_diff.passed)
+                    errors.extend(calculation_result.errors)
                     number_of_transformed_entities += calculation_result.number_of_transformed_entities
             except* OceanAbortException as error:
                 ocean.metrics.sync_state = SyncState.FAILED
@@ -351,6 +354,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(
             f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
         )
+
 
         ocean.metrics.set_metric(
             name=MetricType.SUCCESS_NAME,
@@ -583,6 +587,72 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for entity in event.entity_topological_sorter.get_entities(False):
                     await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
 
+    def process_resource_in_subprocess(self,
+        file_ipc_map: dict[str, FileIPC],
+        resource: ResourceConfig,
+        index: int,
+        user_agent_type: UserAgentType,
+    ) -> None:
+        logger.info(f"process started successfully for {resource.kind} with index {index}")
+
+        async def process_resource_task() -> None:
+            result = await self._process_resource(
+                resource, index, user_agent_type
+            )
+            file_ipc_map["process_resource"].save(result)
+            file_ipc_map["topological_entities"].save(
+                event.entity_topological_sorter.entities
+            )
+
+        asyncio.run(process_resource_task())
+        logger.info(f"Process finished for {resource.kind} with index {index}")
+
+    async def process_resource(self, resource: ResourceConfig, index: int, user_agent_type: UserAgentType) -> tuple[list[Entity], list[Exception]]:
+            if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
+                id = uuid.uuid4()
+                logger.info(f"Starting subprocess with id {id}")
+                file_ipc_map = {
+                    "process_resource": FileIPC(id, "process_resource",([],[])),
+                    "topological_entities": FileIPC(id, "topological_entities",[]),
+                }
+                process = multiprocessing.Process(target=self.process_resource_in_subprocess, args=(file_ipc_map,resource,index,user_agent_type))
+                process.start()
+                process.join()
+                if process.exitcode != 0:
+                    logger.error(f"Process {id} failed with exit code {process.exitcode}")
+                event.entity_topological_sorter.entities.extend(file_ipc_map["topological_entities"].load())
+                return file_ipc_map["process_resource"].load()
+
+            else:
+                return await self._process_resource(resource,index,user_agent_type)
+
+    async def _process_resource(self,resource: ResourceConfig, index: int, user_agent_type: UserAgentType)-> tuple[list[Entity], list[Exception]]:
+        # create resource context per resource kind, so resync method could have access to the resource
+        # config as we might have multiple resources in the same event
+        async with resource_context(resource,index):
+            resource_kind_id = f"{resource.kind}-{index}"
+            ocean.metrics.sync_state = SyncState.SYNCING
+            task = asyncio.create_task(
+                self._register_in_batches(resource, user_agent_type)
+            )
+            event.on_abort(lambda: task.cancel())
+            kind_results: tuple[list[Entity], list[Exception]] = await task
+            ocean.metrics.set_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.LOADED],
+                value=len(kind_results[0])
+            )
+
+            if ocean.metrics.sync_state != SyncState.FAILED:
+                ocean.metrics.sync_state = SyncState.COMPLETED
+
+            await ocean.metrics.send_metrics_to_webhook(
+                kind=resource_kind_id
+            )
+            # await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id) # TODO: uncomment this when end points are ready
+
+            return kind_results
+
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
         self,
@@ -619,6 +689,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             kinds = [f"{resource.kind}-{index}" for index, resource in enumerate(app_config.resources)]
             ocean.metrics.initialize_metrics(kinds)
+            # await ocean.metrics.report_sync_metrics(kinds=kinds) # TODO: uncomment this when end points are ready
+
+            # Clear cache
+            await ocean.app.cache_provider.clear()
             await ocean.metrics.report_sync_metrics(kinds=kinds)
 
             # Execute resync_start hooks
@@ -639,9 +713,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
-
+            multiprocessing.set_start_method('fork', True)
             try:
                 for index,resource in enumerate(app_config.resources):
+
+                    logger.info(f"Starting processing resource {resource.kind} with index {index}")
+
+                    creation_results.append(await self.process_resource(resource,index,user_agent_type))
                     # create resource context per resource kind, so resync method could have access to the resource
                     # config as we might have multiple resources in the same event
                     async with resource_context(resource,index):
@@ -721,3 +799,5 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         logger.info("Finished executing resync_complete hooks")
 
                     return True
+            finally:
+                await ocean.app.cache_provider.clear()
