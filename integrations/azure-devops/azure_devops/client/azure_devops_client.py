@@ -1,17 +1,21 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, Callable
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
-from azure_devops.webhooks.webhook_event import WebhookEvent
+from azure_devops.webhooks.webhook_event import WebhookSubscription
+from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
 
-from .base_client import HTTPBaseClient
-from .file_processing import (
+from azure_devops.client.base_client import HTTPBaseClient
+from azure_devops.misc import FolderPattern, RepositoryBranchMapping
+from azure_devops.client.base_client import PAGE_SIZE
+
+from azure_devops.client.file_processing import (
     parse_file_content,
 )
 from port_ocean.utils.async_iterators import (
@@ -20,10 +24,13 @@ from port_ocean.utils.async_iterators import (
 )
 from port_ocean.utils.queue_utils import process_in_queue
 from urllib.parse import urlparse
+import fnmatch
 
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
+API_PARAMS = {"api-version": "7.1"}
+WEBHOOK_URL_SUFFIX = "/integration/webhook"
 # Maximum number of work item IDs allowed in a single API request
 # (based on Azure DevOps API limitations) https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/list?view=azure-devops-rest-7.1&tabs=HTTP
 MAX_WORK_ITEMS_PER_REQUEST = 200
@@ -33,11 +40,29 @@ MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 
+# Webhook subscriptions for Azure DevOps events
+AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
+    WebhookSubscription(
+        publisherId="tfs", eventType=PullRequestEvents.PULL_REQUEST_CREATED
+    ),
+    WebhookSubscription(
+        publisherId="tfs", eventType=PullRequestEvents.PULL_REQUEST_UPDATED
+    ),
+    WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH),
+    WebhookSubscription(publisherId="tfs", eventType=RepositoryEvents.REPO_CREATED),
+]
+
 
 class AzureDevopsClient(HTTPBaseClient):
-    def __init__(self, organization_url: str, personal_access_token: str) -> None:
+    def __init__(
+        self,
+        organization_url: str,
+        personal_access_token: str,
+        webhook_auth_username: Optional[str] = None,
+    ) -> None:
         super().__init__(personal_access_token)
         self._organization_base_url = organization_url
+        self.webhook_auth_username = webhook_auth_username
 
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
@@ -46,6 +71,7 @@ class AzureDevopsClient(HTTPBaseClient):
         azure_devops_client = cls(
             ocean.integration_config["organization_url"].strip("/"),
             ocean.integration_config["personal_access_token"],
+            ocean.integration_config["webhook_auth_username"],
         )
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
@@ -438,7 +464,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 for board in boards
             ]
 
-    async def generate_subscriptions_webhook_events(self) -> list[WebhookEvent]:
+    async def generate_subscriptions_webhook_events(self) -> list[WebhookSubscription]:
         headers = {"Content-Type": "application/json"}
         try:
             get_subscriptions_url = (
@@ -454,21 +480,25 @@ class AzureDevopsClient(HTTPBaseClient):
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
             logger.warning(err_str)
             raise Exception(err_str)
-        return [WebhookEvent(**subscription) for subscription in subscriptions_raw]
+        return [
+            WebhookSubscription(**subscription) for subscription in subscriptions_raw
+        ]
 
-    async def create_subscription(self, webhook_event: WebhookEvent) -> None:
+    async def create_subscription(
+        self, webhook_subscription: WebhookSubscription
+    ) -> None:
         headers = {"Content-Type": "application/json"}
         create_subscription_url = (
             f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
         )
-        webhook_event_json = webhook_event.json()
-        logger.info(f"Creating subscription to event: {webhook_event_json}")
+        webhook_subscription_json = webhook_subscription.json()
+        logger.info(f"Creating subscription to event: {webhook_subscription_json}")
         response = await self.send_request(
             "POST",
             create_subscription_url,
             params=WEBHOOK_API_PARAMS,
             headers=headers,
-            data=webhook_event_json,
+            data=webhook_subscription_json,
         )
         if not response:
             return
@@ -477,10 +507,12 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Created subscription id: {response_content['id']} for eventType {response_content['eventType']}"
         )
 
-    async def delete_subscription(self, webhook_event: WebhookEvent) -> None:
+    async def delete_subscription(
+        self, webhook_subscription: WebhookSubscription
+    ) -> None:
         headers = {"Content-Type": "application/json"}
-        delete_subscription_url = f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_event.id}"
-        logger.info(f"Deleting subscription to event: {webhook_event.json()}")
+        delete_subscription_url = f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_subscription.id}"
+        logger.info(f"Deleting subscription to event: {webhook_subscription.json()}")
         await self.send_request(
             "DELETE",
             delete_subscription_url,
@@ -615,7 +647,7 @@ class AzureDevopsClient(HTTPBaseClient):
             response = await self.send_request(
                 "POST",
                 items_batch_url,
-                params={"api-version": "7.1"},
+                params=API_PARAMS,
                 data=json.dumps(request_data),
                 headers={"Content-Type": "application/json"},
             )
@@ -718,3 +750,262 @@ class AzureDevopsClient(HTTPBaseClient):
         except Exception as e:
             logger.error(f"Failed to process file {file_path}: {str(e)}")
             raise
+
+    async def get_commit_changes(
+        self, project_id: str, repository_id: str, commit_id: str
+    ) -> dict[str, Any]:
+        try:
+            url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/commits/{commit_id}/changes"
+            response = await self.send_request("GET", url, params=API_PARAMS)
+            return response.json() if response else {}
+        except Exception as e:
+            logger.error(f"Failed to commit changes from {url}: {str(e)}")
+            raise
+
+    async def create_webhook_subscriptions(
+        self,
+        base_url: str,
+        project_id: Optional[str] = None,
+        webhook_secret: Optional[str] = None,
+    ) -> None:
+        auth_username = self.webhook_auth_username
+
+        existing_subscriptions = await self.generate_subscriptions_webhook_events()
+
+        subs_to_create = []
+        subs_to_delete = []
+
+        webhook_subs = AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
+
+        for sub in webhook_subs:
+            sub.set_webhook_details(
+                url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
+                auth_username=auth_username,
+                webhook_secret=webhook_secret,
+                project_id=project_id,
+            )
+            existing_sub = sub.get_event_by_subscription(existing_subscriptions)
+
+            if existing_sub and not existing_sub.is_enabled():
+                subs_to_delete.append(existing_sub)
+                subs_to_create.append(sub)
+            elif not existing_sub:
+                subs_to_create.append(sub)
+
+        if subs_to_delete:
+            await asyncio.gather(
+                *[self.delete_subscription(sub) for sub in subs_to_delete]
+            )
+
+        if subs_to_create:
+            results = await asyncio.gather(
+                *[self.create_subscription(sub) for sub in subs_to_create],
+                return_exceptions=True,
+            )
+
+            errors = [result for result in results if isinstance(result, Exception)]
+            if errors:
+                logger.error(f"Failed to create {len(errors)} webhooks:")
+                for idx, error in enumerate(errors, start=1):
+                    logger.error(f"[{idx}] {type(error).__name__}: {str(error)}")
+
+    async def get_repository_tree(
+        self,
+        repository_id: str,
+        recursion_level: str,  # Options: none, oneLevel, full
+        path: str = "/",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch repository folder structure with rate limit awareness.
+
+        Args:
+            repository_id: The ID of the repository to scan
+            path: The folder path to start scanning from
+            recursion_level: How deep to scan (none, oneLevel, full)
+
+        Yields:
+            Lists of folder information dictionaries
+        """
+        items_batch_url = f"{self._organization_base_url}/_apis/git/repositories/{repository_id}/items"
+
+        params = {
+            "scopePath": path,
+            "recursionLevel": recursion_level,
+            "$top": PAGE_SIZE,
+            "api-version": "7.1",
+        }
+
+        try:
+            async for items in self._get_paginated_by_top_and_continuation_token(
+                items_batch_url, additional_params=params
+            ):
+                # Filter for folders only
+                folders = [
+                    item for item in items if item.get("gitObjectType") == "tree"
+                ]
+
+                if folders:
+                    yield folders
+
+        except Exception as e:
+            logger.error(
+                f"Error fetching folder tree for repository {repository_id}: {str(e)}"
+            )
+            raise
+
+    def _build_tree_fetcher(
+        self,
+        repository_id: str,
+        pattern: str,
+    ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
+
+        # Get the base path (everything before the first wildcard)
+        parts = pattern.split("/")
+        base_parts = []
+        for part in parts:
+            if "*" not in part:
+                base_parts.append(part)
+            else:
+                break
+        base_path = "/".join(base_parts)
+
+        return functools.partial(
+            self.get_repository_tree,
+            repository_id,
+            path=base_path or "/",
+            recursion_level="oneLevel",  # Always use oneLevel recursion
+        )
+
+    async def get_repository_folders(
+        self,
+        repository_id: str,
+        folder_patterns: list[str],
+        concurrency: int = 5,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get folders matching patterns with concurrency control.
+
+        Args:
+            repository_id: The ID of the repository to scan
+            folder_patterns: List of folder paths to scan (supports * wildcard only)
+            concurrency: Maximum number of concurrent requests
+
+        Yields:
+            Lists of folder information dictionaries
+        """
+        semaphore = asyncio.BoundedSemaphore(concurrency)
+
+        tasks = [
+            semaphore_async_iterator(
+                semaphore, self._build_tree_fetcher(repository_id, pattern)
+            )
+            for pattern in folder_patterns
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            matching_folders = []
+            for folder in batch:
+                # For each folder in the batch, check if it matches any of our patterns
+                for pattern in folder_patterns:
+                    folder_path = folder.get("path", "").strip("/")
+                    pattern = pattern.strip("/")
+                    # Check if path depth matches and pattern matches
+                    if folder_path.count("/") == pattern.count("/") and fnmatch.fnmatch(
+                        folder_path, pattern
+                    ):
+                        matching_folders.append(folder)
+            if matching_folders:
+                yield matching_folders
+
+    async def _process_pattern(
+        self,
+        repo: dict[str, Any],
+        folder_pattern: FolderPattern,
+        repo_mapping: RepositoryBranchMapping,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        branch = repo_mapping.branch
+        if branch is None and "defaultBranch" in repo:
+            branch = repo["defaultBranch"].replace("refs/heads/", "")
+
+        async for found_folders in self.get_repository_folders(
+            repo["id"], [folder_pattern.path]
+        ):
+            processed_folders = []
+            for folder in found_folders:
+                folder_dict = dict(folder)
+                folder_dict["__repository"] = repo
+                folder_dict["__branch"] = branch
+                folder_dict["__pattern"] = folder_pattern.path
+                processed_folders.append(folder_dict)
+            if processed_folders:
+                yield processed_folders
+
+    async def _process_repository_folder_patterns(
+        self,
+        repo: dict[str, Any],
+        repo_pattern_map: dict[
+            str, list[tuple[FolderPattern, RepositoryBranchMapping]]
+        ],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        repo_name = repo["name"]
+        if repo_name not in repo_pattern_map:
+            return
+
+        matching_patterns = repo_pattern_map[repo_name]
+        tasks = [
+            self._process_pattern(repo, folder_pattern, repo_mapping)
+            for folder_pattern, repo_mapping in matching_patterns
+        ]
+
+        async for result in stream_async_iterators_tasks(*tasks):
+            yield result
+
+    async def get_repository_by_name(
+        self, project_name: str, repo_name: str
+    ) -> dict[str, Any] | None:
+        """Get a single repository by name using Azure DevOps API."""
+        repo_url = f"{self._organization_base_url}/{project_name}/{API_URL_PREFIX}/git/repositories/{repo_name}"
+        response = await self.send_request(
+            "GET", repo_url, params={"api-version": "7.1"}
+        )
+        if not response:
+            return None
+        return response.json()
+
+    async def process_folder_patterns(
+        self,
+        folder_patterns: list[FolderPattern],
+        project_name: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Process folder patterns and yield matching folders with optimized performance.
+
+        Args:
+            folder_patterns: List of folder patterns to process
+            project_name: The project name
+        """
+        # Create a mapping of repository names to their patterns
+        repo_pattern_map: dict[
+            str, list[tuple[FolderPattern, RepositoryBranchMapping]]
+        ] = {}
+        for pattern in folder_patterns:
+            for repo_mapping in pattern.repos:
+                if repo_mapping.name not in repo_pattern_map:
+                    repo_pattern_map[repo_mapping.name] = []
+                repo_pattern_map[repo_mapping.name].append((pattern, repo_mapping))
+
+        # Process only the specified repositories
+        tasks = []
+        for repo_name, patterns in repo_pattern_map.items():
+            repo = await self.get_repository_by_name(project_name, repo_name)
+            if not repo:
+                logger.warning(
+                    f"Repository {repo_name} in project {project_name} not found, skipping"
+                )
+                continue
+
+            tasks.append(
+                self._process_repository_folder_patterns(
+                    repo, dict([(repo_name, patterns)])
+                )
+            )
+
+        async for result in stream_async_iterators_tasks(*tasks):
+            yield result
