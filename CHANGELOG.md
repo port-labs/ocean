@@ -8,6 +8,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 <!-- towncrier release notes start -->
 ## 0.23.1 (2025-05-27)
 
+### Bug Fixes
+
+- Event loop is blocked by waiting for a process.
+
+## 0.23.1 (2025-05-27)
+
 ### Improvements
 - Fixed metrics urls and added reconciliation kind to report
 
