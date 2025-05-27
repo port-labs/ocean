@@ -70,8 +70,11 @@ class TestRestRepositoryExporter:
 
         exporter = RestRepositoryExporter(rest_client)
 
+        async def mock_send_api_request(*args: Any, **kwargs: Any) -> httpx.Response:
+            return mock_response
+
         with patch.object(
-            rest_client, "send_api_request", return_value=mock_response
+            rest_client, "send_api_request", side_effect=mock_send_api_request
         ) as mock_request:
             repo = await exporter.get_resource(SingleRepositoryOptions(name="repo1"))
 
