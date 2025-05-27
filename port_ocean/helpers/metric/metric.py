@@ -128,7 +128,7 @@ class Metrics:
         self._ocean_version: Optional[str] = None
         self.event_id = ""
         self.sync_state = SyncState.PENDING
-        self.blueprint = ""
+        self.blueprint = "default"
 
     @property
     def blueprint(self) -> str:

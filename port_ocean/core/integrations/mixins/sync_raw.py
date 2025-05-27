@@ -721,7 +721,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.info(f"Starting processing resource {resource.kind} with index {index}")
 
                     creation_results.append(await self.process_resource(resource,index,user_agent_type))
-                ocean.metrics.blueprint = ""
+                ocean.metrics.blueprint = MetricResourceKind.RECONCILIATION
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
                     await self.sort_and_upsert_failed_entities(user_agent_type)
 
