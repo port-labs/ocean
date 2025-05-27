@@ -1,7 +1,6 @@
 from graphlib import CycleError
 from typing import Any, AsyncGenerator
 
-from port_ocean.clients.port.client import PortClient
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from port_ocean.exceptions.core import OceanAbortException
 import pytest
@@ -25,8 +24,6 @@ from port_ocean.clients.port.types import UserAgentType
 from dataclasses import dataclass
 from typing import List, Optional
 from port_ocean.tests.core.conftest import create_entity, no_op_event_context
-from port_ocean.helpers.metric.metric import Metrics
-from port_ocean.config.settings import MetricsSettings, IntegrationSettings
 
 
 @pytest.fixture
@@ -92,29 +89,6 @@ def mock_sync_raw_mixin_with_jq_processor(
 ) -> SyncRawMixin:
     mock_sync_raw_mixin._entity_processor = JQEntityProcessor(mock_context)
     return mock_sync_raw_mixin
-
-
-@pytest.fixture
-def mock_ocean(mock_port_client: PortClient) -> Ocean:
-    with patch("port_ocean.ocean.Ocean.__init__", return_value=None):
-        ocean_mock = Ocean(
-            MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
-        )
-        ocean_mock.config = MagicMock()
-        ocean_mock.config.port = MagicMock()
-        ocean_mock.config.port.port_app_config_cache_ttl = 60
-        ocean_mock.port_client = mock_port_client
-
-        # Create real metrics instance
-        metrics_settings = MetricsSettings(enabled=True)
-        integration_settings = IntegrationSettings(type="test", identifier="test")
-        ocean_mock.metrics = Metrics(
-            metrics_settings=metrics_settings,
-            integration_configuration=integration_settings,
-            port_client=mock_port_client,
-        )
-
-        return ocean_mock
 
 
 @pytest.mark.asyncio
@@ -213,7 +187,7 @@ async def test_sync_raw_mixin_self_dependency(
                             metric["metrics"]["phase"]["load"]["object_count_type"][
                                 "loaded"
                             ]["object_count"]
-                            == 1
+                            == 2
                         )
 
                         # Verify success
@@ -341,7 +315,7 @@ async def test_sync_raw_mixin_circular_dependency(
                             metric["metrics"]["phase"]["load"]["object_count_type"][
                                 "loaded"
                             ]["object_count"]
-                            == 0
+                            == 2
                         )
 
                         # Verify success
