@@ -24,6 +24,7 @@ def mock_ocean_context() -> None:
     """Fixture to initialize the PortOcean context."""
     mock_app = MagicMock()
     mock_app.config.integration.config = {"search_all_resources_per_minute_quota": 100}
+    mock_app.cache_provider = AsyncMock()
     initialize_port_ocean_context(mock_app)
 
 

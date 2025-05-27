@@ -14,6 +14,7 @@ def mock_ocean_context() -> None:
     try:
         mock_app = MagicMock()
         mock_app.config.integration.config = {"new_relic_account_id": "test_account"}
+        mock_app.cache_provider = AsyncMock()
         initialize_port_ocean_context(mock_app)
     except PortOceanContextAlreadyInitializedError:
         pass

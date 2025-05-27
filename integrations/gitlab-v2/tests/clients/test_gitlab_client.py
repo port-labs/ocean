@@ -17,6 +17,7 @@ def mock_ocean_context() -> None:
             "gitlab_host": "https://gitlab.example.com",
             "gitlab_token": "test-token",
         }
+        mock_app.cache_provider = AsyncMock()
         initialize_port_ocean_context(mock_app)
     except PortOceanContextAlreadyInitializedError:
         pass

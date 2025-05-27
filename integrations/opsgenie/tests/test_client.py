@@ -15,6 +15,7 @@ def mock_ocean_context() -> None:
             "api_url": "https://api.opsgenie.com",
             "token": "test-token",
         }
+        mock_app.cache_provider = AsyncMock()
         initialize_port_ocean_context(mock_app)
     except PortOceanContextAlreadyInitializedError:
         pass
