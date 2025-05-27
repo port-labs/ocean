@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Any, Dict, Optional, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -11,3 +11,33 @@ class ListRepositoryOptions(TypedDict):
     """Options for listing repositories."""
 
     type: str
+
+
+class SingleDependabotAlertOptions(TypedDict):
+    """Options for fetching a single Dependabot alert."""
+
+    repo_name: str
+    alert_number: str
+
+
+class ListDependabotAlertOptions(TypedDict):
+    """Options for listing Dependabot alerts."""
+
+    repo_name: str
+    state: Optional[list[str]]
+    severity: Optional[str]
+    ecosystem: Optional[str]
+    scope: Optional[str]
+
+
+class SingleCodeScanningAlertOptions(TypedDict):
+    """Options for fetching a single code scanning alert."""
+
+    repo_name: str
+    alert_number: str
+
+class ListCodeScanningAlertOptions(TypedDict):
+    """Options for listing code scanning alerts."""
+
+    repo_name: str
+    tool_name: Optional[str]

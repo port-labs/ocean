@@ -9,14 +9,43 @@ from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
+from github.webhook.webhook_processors.dependabot_alert_webhook_processor import (
+    DependabotAlertWebhookProcessor,
+)
+from github.webhook.webhook_processors.code_scanning_alert_webhook_processor import (
+    CodeScanningAlertWebhookProcessor,
+)
+from github.webhook.webhook_processors.release_webhook_processor import (
+    ReleaseWebhookProcessor,
+)
+from github.webhook.webhook_processors.tag_webhook_processor import (
+    TagWebhookProcessor,
+)
+from github.webhook.webhook_processors.branch_webhook_processor import (
+    BranchWebhookProcessor,
+)
 from github.webhook.webhook_client import GithubWebhookClient
 from github.core.exporters.repository_exporter import RestRepositoryExporter
-from github.core.options import ListRepositoryOptions
+from github.core.exporters.dependabot_alert_exporter import RestDependabotAlertExporter
+from github.core.exporters.code_scanning_alert_exporter import RestCodeScanningAlertExporter
+from github.core.exporters.release_exporter import RestReleaseExporter
+from github.core.exporters.tag_exporter import RestTagExporter
+from github.core.exporters.branch_exporter import RestBranchExporter
+from github.core.options import (
+    ListRepositoryOptions,
+    ListDependabotAlertOptions,
+    ListCodeScanningAlertOptions,
+    ListReleaseOptions,
+    ListTagOptions,
+    ListBranchOptions,
+)
 from typing import TYPE_CHECKING
 from port_ocean.context.event import event
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from integration import GithubPortAppConfig, GithubDependabotAlertConfig, GithubCodeScanningAlertConfig, GithubBranchConfig
 
-if TYPE_CHECKING:
-    from integration import GithubPortAppConfig
+# if TYPE_CHECKING:
+#     from integration import GithubPortAppConfig, GithubDependabotAlertConfig, GithubCodeScanningAlertConfig, GithubBranchConfig
 
 
 @ocean.on_start()
@@ -56,4 +85,61 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield repositories
 
 
+@ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
+async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all Dependabot alerts in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    dependabot_alert_exporter = RestDependabotAlertExporter(rest_client)
+
+    config = cast("GithubDependabotAlertConfig", event.resource_config)
+    
+    async for repositories in repository_exporter.get_paginated_resources():
+        tasks = [
+            dependabot_alert_exporter.get_paginated_resources(
+                ListDependabotAlertOptions(
+                    repo_name=repo["name"],
+                    state=config.selector.state,
+                    severity=config.selector.severity,
+                    ecosystem=config.selector.ecosystem,
+                    scope=config.selector.scope,
+                )
+            )
+            for repo in repositories
+        ]
+        async for alerts in stream_async_iterators_tasks(*tasks):
+            print("alerts", alerts)
+            yield alerts
+
+
+@ocean.on_resync(ObjectKind.CODE_SCANNING_ALERT)
+async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all code scanning alerts in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    code_scanning_alert_exporter = RestCodeScanningAlertExporter(rest_client)
+
+    config = cast(GithubCodeScanningAlertConfig, event.resource_config)
+    
+    async for repositories in repository_exporter.get_paginated_resources():
+        tasks = [
+            code_scanning_alert_exporter.get_paginated_resources(
+                ListCodeScanningAlertOptions(
+                    repo_name=repo["name"],
+                    tool_name=config.selector.tool_name,
+                )
+            )
+            for repo in repositories
+        ]
+        async for alerts in stream_async_iterators_tasks(*tasks):
+            yield alerts
+
+
+
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", DependabotAlertWebhookProcessor)
+ocean.add_webhook_processor("/webhook", CodeScanningAlertWebhookProcessor)
