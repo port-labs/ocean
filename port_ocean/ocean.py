@@ -75,8 +75,8 @@ class Ocean:
             metrics_settings=self.config.metrics,
             integration_configuration=self.config.integration,
             port_client=self.port_client,
-            multiprocessing_enabled=self.config.process_execution_mode
-            == "multiprocessing",
+            multiprocessing_enabled=self.process_execution_mode
+            == ProcessExecutionMode.multi_process,
         )
 
         self.webhook_manager = LiveEventsProcessorManager(
@@ -114,7 +114,7 @@ class Ocean:
             if self.config.caching_storage_mode in caching_type_to_provider:
                 return caching_type_to_provider[self.config.caching_storage_mode]()
 
-        if self.config.process_execution_mode == "multiprocessing":
+        if self.config.process_execution_mode == ProcessExecutionMode.multi_process:
             return DiskCacheProvider()
         return InMemoryCacheProvider()
 
