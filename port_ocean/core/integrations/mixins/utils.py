@@ -22,9 +22,9 @@ def resync_error_handling() -> Generator[None, None, None]:
     try:
         yield
     except RawObjectValidationException as error:
-        raise OceanAbortException(
-            f"Failed to validate raw data for returned data from resync function, error: {error}"
-        ) from error
+        err_msg = f"Failed to validate raw data for returned data from resync function, error: {error}"
+        logger.exception(err_msg)
+        raise OceanAbortException(err_msg) from error
     except StopAsyncIteration:
         raise
     except Exception as error:
