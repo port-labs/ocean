@@ -16,6 +16,17 @@ from github.core.exporters.repository_exporter import RestRepositoryExporter
 
 
 class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        if not {"action", "repository"} <= payload.keys():
+            return False
+
+        if payload["action"] not in (
+            REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
+        ):
+            return False
+
+        return bool(payload["repository"].get("name"))
+
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         return event.headers.get("x-github-event") == "repository"
 
@@ -44,14 +55,3 @@ class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        if not {"action", "repository"} <= payload.keys():
-            return False
-
-        if payload["action"] not in (
-            REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
-        ):
-            return False
-
-        return bool(payload["repository"].get("name"))
