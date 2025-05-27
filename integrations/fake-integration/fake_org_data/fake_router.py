@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from fake_org_data.generator import generate_fake_persons
 import uvicorn
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI
 
 FAKE_DEPARTMENT_EMPLOYEES = "/department/{department_id}/employees"
 
@@ -36,7 +36,7 @@ def initialize_fake_routes_standalone() -> None:
     fastapi_app = FastAPI()
     router = fastapi_app.router
 
-    @router.get('/integration'+FAKE_DEPARTMENT_EMPLOYEES)
+    @router.get("/integration" + FAKE_DEPARTMENT_EMPLOYEES)
     async def get_employees_per_department(
         department_id: str,
         limit: int = -1,
@@ -56,5 +56,6 @@ def initialize_fake_routes_standalone() -> None:
             department_id, limit, entity_kb_size, latency
         )
         return result
+
     print("Starting fake routes in a separate process")
     uvicorn.run(fastapi_app, host="0.0.0.0", port=8001)

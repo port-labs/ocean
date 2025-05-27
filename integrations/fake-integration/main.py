@@ -13,7 +13,10 @@ from fake_org_data.fake_client import (
 )
 from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from fake_org_data.fake_router import initialize_fake_routes, initialize_fake_routes_standalone
+from fake_org_data.fake_router import (
+    initialize_fake_routes,
+    initialize_fake_routes_standalone,
+)
 
 
 @ocean.on_resync("fake-department")
@@ -28,6 +31,7 @@ async def resync_persons(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for persons_batch in get_fake_persons():
         logger.info(f"Got a batch of {len(persons_batch)} persons")
         yield persons_batch
+
 
 if ocean.app.process_execution_mode == ProcessExecutionMode.single_process:
     initialize_fake_routes()
