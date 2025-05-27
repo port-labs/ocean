@@ -128,6 +128,15 @@ class Metrics:
         self._ocean_version: Optional[str] = None
         self.event_id = ""
         self.sync_state = SyncState.PENDING
+        self.blueprint = ""
+
+    @property
+    def blueprint(self) -> str:
+        return self._blueprint
+
+    @blueprint.setter
+    def blueprint(self, value: str) -> None:
+        self._blueprint = value
 
     @property
     def event_id(self) -> str:
@@ -367,6 +376,7 @@ class Metrics:
                     "kindIndex": int(kind_key[-1]) if kind_key[-1].isdigit() else 0,
                     "eventId": self.event_id,
                     "syncState": self.sync_state,
+                    "blueprint": self.blueprint,
                     "metrics": metrics,
                 }
                 events.append(event)

@@ -631,6 +631,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with resource_context(resource,index):
             resource_kind_id = f"{resource.kind}-{index}"
             ocean.metrics.sync_state = SyncState.SYNCING
+            ocean.metrics.blueprint = resource.port.entity.mappings.blueprint
+
             task = asyncio.create_task(
                 self._register_in_batches(resource, user_agent_type)
             )
@@ -718,7 +720,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.info(f"Starting processing resource {resource.kind} with index {index}")
 
                     creation_results.append(await self.process_resource(resource,index,user_agent_type))
-
+                ocean.metrics.blueprint = ""
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
                     await self.sort_and_upsert_failed_entities(user_agent_type)
 
