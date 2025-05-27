@@ -2,7 +2,7 @@ import pytest
 import json
 import hashlib
 import hmac
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from typing import Any
 from fastapi import Request
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
