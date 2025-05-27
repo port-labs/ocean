@@ -1,5 +1,3 @@
-from typing import override
-
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -8,7 +6,6 @@ from github.helpers.constants import LIST_ORG_MEMBER_GQL
 
 
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    @override
     async def get_resource[
         ExporterOptionT: SingleUserOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
@@ -28,7 +25,6 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         data = res.json()
         return data["data"]["user"]
 
-    @override
     async def get_paginated_resources(
         self, options: None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

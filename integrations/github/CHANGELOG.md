@@ -16,3 +16,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented efficient pagination using GitHub's Link header
 - Added support for webhook event processors
 - Add Tests for client and base webhook processor
+- Implement support for User kinds
+- Implement support for Team kinds

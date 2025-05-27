@@ -79,9 +79,7 @@ class TestRestTeamExporter:
                 f"{rest_client.base_url}/orgs/{rest_client.organization}/teams/team-alpha"
             )
 
-    async def test_get_paginated_resources(
-        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
-    ) -> None:
+    async def test_get_paginated_resources(self, rest_client: GithubRestClient) -> None:
         # Create an async mock to return the test teams
         async def mock_paginated_request(
             *args: Any, **kwargs: Any

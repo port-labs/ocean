@@ -1,5 +1,3 @@
-from typing import override
-
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -7,7 +5,6 @@ from github.core.options import SingleTeamOptions
 
 
 class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
-    @override
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
@@ -16,7 +13,6 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
         data = res.json()
         return data
 
-    @override
     async def get_paginated_resources(
         self, options: None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

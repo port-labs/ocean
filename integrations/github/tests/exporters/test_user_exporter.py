@@ -90,7 +90,6 @@ class TestGraphQLUserExporter:
     async def test_get_paginated_resources(
         self,
         graphql_client: GithubGraphQLClient,
-        mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         # Create an async mock to return the test users
         async def mock_paginated_request(
