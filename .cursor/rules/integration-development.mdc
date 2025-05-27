@@ -18,8 +18,6 @@ Key Principles
 - Follow established design patterns for maintainability
 - Adhere to existing file structure conventions
 - Maintain detailed changelogs
-- Ensure comprehensive test coverage
-
 Integration Development Guidelines
 
 1. Third-Party Expertise
