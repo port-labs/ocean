@@ -289,6 +289,37 @@ class EntityClientMixin:
 
         return batch_results
 
+    async def _upsert_entities_batch_sequential(
+        self,
+        entities: list[Entity],
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
+        should_raise: bool = True,
+    ) -> list[tuple[bool, Entity]]:
+        entities_results: list[tuple[bool, Entity]] = []
+        modified_entities_results = await asyncio.gather(
+            *(
+                self.upsert_entity(
+                    entity,
+                    request_options,
+                    user_agent_type,
+                    should_raise=should_raise,
+                )
+                for entity in entities
+            ),
+            return_exceptions=True,
+        )
+
+        for original_entity, single_result in zip(entities, modified_entities_results):
+            if isinstance(single_result, Exception) and should_raise:
+                raise single_result
+            elif isinstance(single_result, Entity):
+                entities_results.append((True, single_result))
+            elif single_result is False:
+                entities_results.append((False, original_entity))
+
+        return entities_results
+
     async def upsert_entities_in_batches(
         self,
         entities: list[Entity],
@@ -337,13 +368,25 @@ class EntityClientMixin:
                 if isinstance(batch_result, Exception):
                     if should_raise:
                         raise batch_result
-                    # If should_raise is False, mark all entities in the batch as failed
-                    for entity in batch:
-                        failed_result: tuple[bool, Entity] = (
-                            False,
-                            self._reduce_entity(entity),
+                    # If should_raise is False, retry batch in sequential order as a fallback only for 413 errors
+                    if (
+                        isinstance(batch_result, httpx.HTTPStatusError)
+                        and batch_result.response.status_code == 413
+                    ):
+                        sequential_results = (
+                            await self._upsert_entities_batch_sequential(
+                                batch, request_options, user_agent_type, should_raise
+                            )
                         )
-                        entities_results.append(failed_result)
+                        entities_results.extend(sequential_results)
+                    else:
+                        # For other errors, mark all entities in the batch as failed
+                        for entity in batch:
+                            failed_result: tuple[bool, Entity] = (
+                                False,
+                                self._reduce_entity(entity),
+                            )
+                            entities_results.append(failed_result)
                 elif isinstance(batch_result, list):
                     for status, entity in batch_result:
                         if (
@@ -355,28 +398,10 @@ class EntityClientMixin:
                             )
                             entities_results.append(batch_result_tuple)
         else:
-            modified_entities_results = await asyncio.gather(
-                *(
-                    self.upsert_entity(
-                        entity,
-                        request_options,
-                        user_agent_type,
-                        should_raise=should_raise,
-                    )
-                    for entity in entities
-                ),
-                return_exceptions=True,
+            sequential_results = await self._upsert_entities_batch_sequential(
+                entities, request_options, user_agent_type, should_raise
             )
-
-            for original_entity, single_result in zip(
-                entities, modified_entities_results
-            ):
-                if isinstance(single_result, Exception) and should_raise:
-                    raise single_result
-                elif isinstance(single_result, Entity):
-                    entities_results.append((True, single_result))
-                elif single_result is False:
-                    entities_results.append((False, original_entity))
+            entities_results.extend(sequential_results)
 
         return entities_results
 
