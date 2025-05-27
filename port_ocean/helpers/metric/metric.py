@@ -10,6 +10,7 @@ from prometheus_client import Gauge
 import prometheus_client.openmetrics
 import prometheus_client.openmetrics.exposition
 import prometheus_client.parser
+from prometheus_client import multiprocess
 
 if TYPE_CHECKING:
     from port_ocean.config.settings import MetricsSettings, IntegrationSettings
@@ -108,11 +109,14 @@ class Metrics:
         metrics_settings: "MetricsSettings",
         integration_configuration: "IntegrationSettings",
         port_client: "PortClient",
+        multiprocessing_enabled: bool = False,
     ) -> None:
         self.metrics_settings = metrics_settings
         self.integration_configuration = integration_configuration
         self.port_client = port_client
         self.registry = prometheus_client.CollectorRegistry()
+        if multiprocessing_enabled:
+            multiprocess.MultiProcessCollector(self.registry)
         self.metrics: dict[str, Gauge] = {}
         self.load_metrics()
         self._integration_version: Optional[str] = None
