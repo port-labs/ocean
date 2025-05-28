@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 from typing import Awaitable, Generator, Callable
-import os
 
 from loguru import logger
 
@@ -22,6 +21,8 @@ from port_ocean.exceptions.core import (
 
 from port_ocean.utils.async_http import _http_client
 from port_ocean.clients.port.utils import _http_client as _port_http_client
+
+from port_ocean.context.ocean import ocean
 
 @contextmanager
 def resync_error_handling() -> Generator[None, None, None]:
@@ -79,17 +80,7 @@ def unsupported_kind_response(
     logger.error(f"Kind {kind} is not supported in this integration")
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
 
-def cleanup_prometheus_metrics(pid: int | None=None) -> None:
-    try:
-        prometheus_multiproc_dir = os.environ.get('PROMETHEUS_MULTIPROC_DIR')
-        for file in os.listdir(prometheus_multiproc_dir):
-            if pid:
-                if file.endswith('.db') and file[0:-3].split('_')[-1] == str(pid):
-                    os.remove(f'{prometheus_multiproc_dir}/{file}')
-            else:
-                os.remove(f'{prometheus_multiproc_dir}/{file}')
-    except Exception as e:
-        logger.error(f"Failed to cleanup prometheus metrics: {e}")
+
 class ProcessWrapper(multiprocessing.Process):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -101,7 +92,7 @@ class ProcessWrapper(multiprocessing.Process):
             logger.error(f"Process {self.pid} failed with exit code {self.exitcode}")
         else:
             logger.info(f"Process {self.pid} finished with exit code {self.exitcode}")
-        cleanup_prometheus_metrics(self.pid)
+        ocean.metrics.cleanup_prometheus_metrics(self.pid)
         return super().join()
 
 def clear_http_client_context() -> None:

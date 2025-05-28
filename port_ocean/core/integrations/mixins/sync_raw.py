@@ -16,7 +16,6 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
 from port_ocean.core.integrations.mixins.utils import (
     ProcessWrapper,
-    cleanup_prometheus_metrics,
     clear_http_client_context,
     is_resource_supported,
     unsupported_kind_response,
@@ -779,4 +778,4 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             finally:
                 await ocean.app.cache_provider.clear()
                 if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
-                    cleanup_prometheus_metrics()
+                    ocean.metrics.cleanup_prometheus_metrics()

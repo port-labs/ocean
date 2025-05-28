@@ -1,3 +1,4 @@
+import os
 from typing import Any, TYPE_CHECKING, Optional, Dict, List, Tuple
 from fastapi import APIRouter
 from port_ocean.exceptions.context import ResourceContextNotFoundError
@@ -193,7 +194,21 @@ class Metrics:
         """
         self.get_metric(name, labels).set(value)
 
+    @staticmethod
+    def cleanup_prometheus_metrics(pid: int | None = None) -> None:
+        try:
+            prometheus_multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+            for file in os.listdir(prometheus_multiproc_dir):
+                if pid:
+                    if file.endswith(".db") and file[0:-3].split("_")[-1] == str(pid):
+                        os.remove(f"{prometheus_multiproc_dir}/{file}")
+                else:
+                    os.remove(f"{prometheus_multiproc_dir}/{file}")
+        except Exception as e:
+            logger.error(f"Failed to cleanup prometheus metrics: {e}")
+
     def initialize_metrics(self, kind_blockes: list[str]) -> None:
+        self.cleanup_prometheus_metrics()
         for kind in kind_blockes:
             self.set_metric(MetricType.SUCCESS_NAME, [kind, MetricPhase.RESYNC], 0)
             self.set_metric(MetricType.DURATION_NAME, [kind, MetricPhase.RESYNC], 0)
