@@ -1,3 +1,4 @@
+from typing import List, cast
 from loguru import logger
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -5,12 +6,17 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from azure_devops.misc import Kind, extract_branch_name_from_ref
+from azure_devops.misc import (
+    Kind,
+    extract_branch_name_from_ref,
+    AzureDevopsFolderResourceConfig,
+)
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
 )
 from azure_devops.webhooks.events import PushEvents
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+import fnmatch
 
 
 class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
@@ -25,17 +31,51 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         except ValueError:
             return False
 
+    def _matches_folder_pattern(
+        self, folder_path: str, folder_patterns: List[str]
+    ) -> bool:
+        """Check if a folder path matches any of the configured patterns."""
+        folder_path = folder_path.strip("/")
+        for pattern in folder_patterns:
+            pattern = pattern.strip("/")
+            if folder_path.count("/") == pattern.count("/") and fnmatch.fnmatch(
+                folder_path, pattern
+            ):
+                return True
+        return False
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         try:
             logger.info("Processing folder webhook event")
             client = AzureDevopsClient.create_from_ocean_config()
-
             repository = payload["resource"]["repository"]
             repo_id = repository["id"]
             project_id = repository["project"]["id"]
             updates = payload["resource"]["refUpdates"]
+
+            # Get folder patterns from config
+            folder_config = cast(AzureDevopsFolderResourceConfig, resource_config)
+            folder_patterns = [
+                pattern.path for pattern in folder_config.selector.folders
+            ]
+
+            # Check if repository is in configured repos
+            repo_name = repository["name"]
+            configured_repos = {
+                repo_mapping.name
+                for pattern in folder_config.selector.folders
+                for repo_mapping in pattern.repos
+            }
+
+            if repo_name not in configured_repos:
+                logger.info(
+                    f"Skipping folder event for repository {repo_name} as it's not in configured repos"
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
 
             created_folders = []
             modified_folders = []
@@ -59,6 +99,17 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
                     for change in folder_changes:
                         item = change["item"]
+                        folder_path = item["path"]
+
+                        # Skip if folder doesn't match any configured pattern
+                        if not self._matches_folder_pattern(
+                            folder_path, folder_patterns
+                        ):
+                            logger.info(
+                                f"Skipping folder {folder_path} as it doesn't match any configured patterns"
+                            )
+                            continue
+
                         change_type = change["changeType"]
 
                         folder_entity = {
