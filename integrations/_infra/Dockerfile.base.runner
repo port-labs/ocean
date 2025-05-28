@@ -1,5 +1,6 @@
-ARG BASE_PYTHON_IMAGE=debian:trixie-slim
-# debian:trixie-slim - Python 3.12
+ARG ACCOUNT_ID=1
+ARG BASE_PYTHON_IMAGE=${ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/echo/python:3.13
+
 FROM ${BASE_PYTHON_IMAGE}
 
 LABEL org.opencontainers.image.source=https://github.com/port-labs/ocean
