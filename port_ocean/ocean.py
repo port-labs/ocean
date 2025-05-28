@@ -1,5 +1,4 @@
 import asyncio
-import os
 import sys
 from contextlib import asynccontextmanager
 import threading
@@ -75,7 +74,6 @@ class Ocean:
         self.process_execution_mode: ProcessExecutionMode = (
             self._get_process_execution_mode()
         )
-        self._initialize_prometheus_metrics_multiproc_dir()
         self.metrics = port_ocean.helpers.metric.metric.Metrics(
             metrics_settings=self.config.metrics,
             integration_configuration=self.config.integration,
@@ -99,22 +97,6 @@ class Ocean:
             self.port_client, self.config.scheduled_resync_interval
         )
         self.app_initialized = False
-
-    def _initialize_prometheus_metrics_multiproc_dir(self) -> None:
-        if self.process_execution_mode == ProcessExecutionMode.multi_process:
-            prometheus_multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-            if prometheus_multiproc_dir:
-                if os.path.exists(prometheus_multiproc_dir) and os.listdir(
-                    prometheus_multiproc_dir
-                ):
-                    logger.info(
-                        f"PROMETHEUS_MULTIPROC_DIR is set to {prometheus_multiproc_dir}"
-                    )
-                else:
-                    logger.warning(f"{prometheus_multiproc_dir} is not found, creating")
-                    os.makedirs(prometheus_multiproc_dir, exist_ok=True)
-            else:
-                logger.warning("PROMETHEUS_MULTIPROC_DIR is not set")
 
     def _get_process_execution_mode(self) -> ProcessExecutionMode:
         if self.config.process_execution_mode:
