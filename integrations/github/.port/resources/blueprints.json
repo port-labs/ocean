@@ -1,0 +1,255 @@
+[
+  {
+    "identifier": "RepositoryBlueprint",
+    "title": "Repository",
+    "icon": "Repository",
+    "schema": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ID"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "full_name": {
+          "type": "string",
+          "title": "Full Name"
+        },
+        "private": {
+          "type": "boolean",
+          "title": "Private"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL"
+        },
+        "fork": {
+          "type": "boolean",
+          "title": "Fork"
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At"
+        },
+        "pushed_at": {
+          "type": "string",
+          "title": "Pushed At"
+        },
+        "size": {
+          "type": "number",
+          "title": "Size"
+        },
+        "stargazers_count": {
+          "type": "number",
+          "title": "Stargazers Count"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "PullRequestBlueprint",
+    "title": "Pull Request",
+    "icon": "GitPullRequest",
+    "schema": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ID"
+        },
+        "number": {
+          "type": "number",
+          "title": "Number"
+        },
+        "title": {
+          "type": "string",
+          "title": "Title"
+        },
+        "state": {
+          "type": "string",
+          "title": "State"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL"
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At"
+        },
+        "repository": {
+          "type": "string",
+          "title": "Repository"
+        },
+        "author": {
+          "type": "string",
+          "title": "Author"
+        },
+        "draft": {
+          "type": "boolean",
+          "title": "Draft"
+        },
+        "mergeable": {
+          "type": "boolean",
+          "title": "Mergeable"
+        },
+        "mergeable_state": {
+          "type": "string",
+          "title": "Mergeable State"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "IssueBlueprint",
+    "title": "Issue",
+    "icon": "GitIssue",
+    "schema": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ID"
+        },
+        "number": {
+          "type": "number",
+          "title": "Number"
+        },
+        "title": {
+          "type": "string",
+          "title": "Title"
+        },
+        "state": {
+          "type": "string",
+          "title": "State"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL"
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At"
+        },
+        "repository": {
+          "type": "string",
+          "title": "Repository"
+        },
+        "author": {
+          "type": "string",
+          "title": "Author"
+        },
+        "labels": {
+          "type": "array",
+          "title": "Labels",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assignees": {
+          "type": "array",
+          "title": "Assignees",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "TeamBlueprint",
+    "title": "Team",
+    "icon": "Users",
+    "schema": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ID"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "slug": {
+          "type": "string",
+          "title": "Slug"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "privacy": {
+          "type": "string",
+          "title": "Privacy"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "WorkflowBlueprint",
+    "title": "Workflow",
+    "icon": "GitBranch",
+    "schema": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ID"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "path": {
+          "type": "string",
+          "title": "Path"
+        },
+        "state": {
+          "type": "string",
+          "title": "State"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL"
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At"
+        },
+        "repository": {
+          "type": "string",
+          "title": "Repository"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  }
+]
