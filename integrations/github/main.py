@@ -18,16 +18,21 @@ from github.webhook.webhook_processors.code_scanning_alert_webhook_processor imp
 from github.webhook.webhook_client import GithubWebhookClient
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.exporters.dependabot_alert_exporter import RestDependabotAlertExporter
-from github.core.exporters.code_scanning_alert_exporter import RestCodeScanningAlertExporter
+from github.core.exporters.code_scanning_alert_exporter import (
+    RestCodeScanningAlertExporter,
+)
 from github.core.options import (
     ListRepositoryOptions,
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
 )
-from typing import TYPE_CHECKING
 from port_ocean.context.event import event
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-from integration import GithubPortAppConfig, GithubDependabotAlertConfig, GithubCodeScanningAlertConfig
+from integration import (
+    GithubPortAppConfig,
+    GithubDependabotAlertConfig,
+    GithubCodeScanningAlertConfig,
+)
 
 
 @ocean.on_start()
@@ -77,7 +82,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dependabot_alert_exporter = RestDependabotAlertExporter(rest_client)
 
     config = cast("GithubDependabotAlertConfig", event.resource_config)
-    
+
     async for repositories in repository_exporter.get_paginated_resources():
         tasks = [
             dependabot_alert_exporter.get_paginated_resources(
@@ -102,7 +107,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     code_scanning_alert_exporter = RestCodeScanningAlertExporter(rest_client)
 
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
-    
+
     async for repositories in repository_exporter.get_paginated_resources():
         tasks = [
             code_scanning_alert_exporter.get_paginated_resources(
@@ -115,7 +120,6 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         async for alerts in stream_async_iterators_tasks(*tasks):
             yield alerts
-
 
 
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)

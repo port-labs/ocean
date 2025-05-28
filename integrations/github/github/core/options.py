@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, TypedDict
+from typing import TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -32,6 +32,7 @@ class SingleCodeScanningAlertOptions(TypedDict):
 
     repo_name: str
     alert_number: str
+
 
 class ListCodeScanningAlertOptions(TypedDict):
     """Options for listing code scanning alerts."""

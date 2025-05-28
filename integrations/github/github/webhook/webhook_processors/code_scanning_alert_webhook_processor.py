@@ -1,6 +1,9 @@
 from typing import cast
 from loguru import logger
-from github.webhook.events import CODE_SCANNING_ALERT_ACTION_TO_STATE, CODE_SCANNING_ALERT_EVENTS
+from github.webhook.events import (
+    CODE_SCANNING_ALERT_ACTION_TO_STATE,
+    CODE_SCANNING_ALERT_EVENTS,
+)
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
@@ -13,8 +16,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.core.exporters.code_scanning_alert_exporter import RestCodeScanningAlertExporter
+from github.core.exporters.code_scanning_alert_exporter import (
+    RestCodeScanningAlertExporter,
+)
 from github.core.options import SingleCodeScanningAlertOptions
+
 
 class CodeScanningAlertWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
@@ -42,7 +48,9 @@ class CodeScanningAlertWebhookProcessor(_GithubAbstractWebhookProcessor):
         alert_number = alert["number"]
         repo_name = repo["name"]
 
-        logger.info(f"Processing code scanning alert event: {action} for alert {alert_number} in {repo_name}")
+        logger.info(
+            f"Processing code scanning alert event: {action} for alert {alert_number} in {repo_name}"
+        )
 
         config = cast(GithubCodeScanningAlertConfig, resource_config)
         current_states = CODE_SCANNING_ALERT_ACTION_TO_STATE[action]
@@ -50,18 +58,18 @@ class CodeScanningAlertWebhookProcessor(_GithubAbstractWebhookProcessor):
         if not any(state in config.selector.state for state in current_states):
             alert["repo"] = repo_name
             return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[alert]
+                updated_raw_results=[], deleted_raw_results=[alert]
             )
 
         rest_client = create_github_client()
         exporter = RestCodeScanningAlertExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleCodeScanningAlertOptions(repo_name=repo_name, alert_number=alert_number)
+            SingleCodeScanningAlertOptions(
+                repo_name=repo_name, alert_number=alert_number
+            )
         )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
-

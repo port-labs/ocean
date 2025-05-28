@@ -6,13 +6,13 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
-from typing import Literal, Optional, List
+from typing import Literal, List
 
 
 class GithubDependabotAlertSelector(Selector):
     state: List[str] = Field(
         default=["open"],
-        description="Filter alerts by state (open, closed, dismissed, fixed)"
+        description="Filter alerts by state (open, closed, dismissed, fixed)",
     )
 
 
@@ -24,8 +24,9 @@ class GithubDependabotAlertConfig(ResourceConfig):
 class GithubCodeScanningAlertSelector(Selector):
     state: List[str] = Field(
         default=["open"],
-        description="Filter alerts by state (open, closed, dismissed, fixed)"
+        description="Filter alerts by state (open, closed, dismissed, fixed)",
     )
+
 
 class GithubCodeScanningAlertConfig(ResourceConfig):
     selector: GithubCodeScanningAlertSelector
@@ -36,7 +37,9 @@ class GithubPortAppConfig(PortAppConfig):
     repository_visibility_filter: str = Field(
         alias="repositoryVisibilityFilter", default="all"
     )
-    resources: list[GithubDependabotAlertConfig | GithubCodeScanningAlertConfig | ResourceConfig]
+    resources: list[
+        GithubDependabotAlertConfig | GithubCodeScanningAlertConfig | ResourceConfig
+    ]
 
 
 class GithubIntegration(BaseIntegration):
