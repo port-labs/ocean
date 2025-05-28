@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, TypeVar
+from typing import Any, Dict, Generic, TypeVar, Optional
 import httpx
 
 from loguru import logger
@@ -108,7 +108,7 @@ class BaseWebhookFactory(Generic[T], ABC):
 
     async def _send_request(
         self, github_webhook_endpoint: str, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    ) -> Optional[httpx.Response]:
         """
         Send webhook creation request.
 

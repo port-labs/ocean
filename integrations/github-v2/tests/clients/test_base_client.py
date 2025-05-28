@@ -107,7 +107,7 @@ class TestHTTPBaseClient:
         mock_response = MagicMock()
         mock_response.status_code = 404
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "Not Found", request=MagicMock(), response=MagicMock(status_code=404)
+            "Not Found", request=MagicMock(), response=mock_response
         )
 
         with patch.object(
@@ -117,7 +117,7 @@ class TestHTTPBaseClient:
             result = await client.send_api_request(method, path)
 
             # Assert
-            assert result == {}
+            assert result is None
             mock_request.assert_called_once()
 
     async def test_send_api_request_network_error(self, client: HTTPBaseClient) -> None:
@@ -133,9 +133,8 @@ class TestHTTPBaseClient:
             "request",
             AsyncMock(return_value=mock_response),
         ) as mock_request:
-            # Act
-            result = await client.send_api_request(method, path)
-
-            # Assert
-            assert result == mock_response
+            # Act & Assert
+            import pytest
+            with pytest.raises(httpx.NetworkError):
+                await client.send_api_request(method, path)
             mock_request.assert_called_once()

@@ -3,6 +3,7 @@ import time
 import httpx
 import asyncio
 from loguru import logger
+from httpx import Response
 from port_ocean.utils import http_async_client
 
 from github.clients.auth_client import AuthClient
@@ -30,7 +31,7 @@ class HTTPBaseClient:
         path: str,
         params: Optional[dict[str, Any]] = None,
         data: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
+    ) -> Optional[Response]:
         """
         Send an API request to GitHub.
 
@@ -70,8 +71,6 @@ class HTTPBaseClient:
                 return response
 
             except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    return response
                 if e.response.status_code == 403 and e.response.headers.get("X-RateLimit-Remaining") == "0":
                     reset_time = int(e.response.headers.get("X-RateLimit-Reset", time.time() + 60))
                     wait_time = reset_time - int(time.time()) + 1
@@ -81,9 +80,9 @@ class HTTPBaseClient:
                 logger.warning(
                     f"HTTP error {e.response.status_code} for {method} {url}: {e.response.text}"
                 )
-                return response
+                return None
             except httpx.HTTPError as e:
-                logger.warning(
-                    f"HTTP error during {method} {url}: {str(e)}"
+                logger.error(
+                    f"HTTP error during {method} {url}: {e}", exc_info=True
                 )
                 raise e

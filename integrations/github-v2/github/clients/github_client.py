@@ -1,5 +1,6 @@
 import os
 import asyncio
+import httpx
 from functools import partial
 
 import anyio
@@ -29,7 +30,7 @@ class GitHubClient:
         """
         self.rest = RestClient(base_url, token)
 
-    async def get_repository(self, repo_path: str) -> dict[str, Any]:
+    async def get_repository(self, repo_path: str) -> Optional[httpx.Response]:
         """
         Get a repository by full name.
 
@@ -46,7 +47,7 @@ class GitHubClient:
 
     async def get_pull_request(
         self, repo_path: str, pull_request_number: int
-    ) -> dict[str, Any]:
+    ) -> Optional[httpx.Response]:
         """
         Get a pull request by number.
 
@@ -61,7 +62,7 @@ class GitHubClient:
             "GET", f"repos/{repo_path}/pulls/{pull_request_number}"
         )
 
-    async def get_issue(self, repo_path: str, issue_number: int) -> dict[str, Any]:
+    async def get_issue(self, repo_path: str, issue_number: int) -> Optional[httpx.Response]:
         """
         Get an issue by number.
 
