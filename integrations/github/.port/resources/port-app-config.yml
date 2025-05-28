@@ -1,6 +1,7 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
 repositoryVisibilityFilter: "all"
+enableMergeEntity: true
 resources:
   - kind: repository
     selector:
@@ -19,18 +20,41 @@ resources:
             language: if .language then .language else "" end
   - kind: workflow
     selector:
-      query: "true" # JQ boolean query. If evaluated to false - skip syncing the object.
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: ".repo + (.id|tostring)"
-          title: ".name"
+          identifier: .repo + (.id|tostring)
+          title: .name
           blueprint: '"githubWorkflow"'
           properties:
-            path: ".path"
-            status: ".state"
-            createdAt: ".created_at"
-            updatedAt: ".updated_at"
-            link: ".html_url"
+            path: .path
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            link: .html_url
           relations:
-            repository: ".repo"
+            repository: .repo
+  - kind: workflow-run
+    selector:
+      query: .status != "completed"
+    port:
+      entity:
+        mappings:
+          identifier: .repository.name + (.id|tostring)
+          title: .display_title
+          blueprint: '"githubWorkflowRun"'
+          properties:
+            name: .name
+            triggeringActor: .triggering_actor.login
+            status: .status
+            conclusion: .conclusion
+            createdAt: .created_at
+            runStartedAt: .run_started_at
+            updatedAt: .updated_at
+            deletedAt: .deleted_at
+            runNumber: .run_number
+            runAttempt: .run_attempt
+            link: .html_url
+          relations:
+            workflow: .repository.name + (.workflow_id|tostring)

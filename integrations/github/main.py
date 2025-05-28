@@ -7,7 +7,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
-from integration import GithubWorkflowConfig
+from github.core.exporters.workflow_runs_exporter import WorkflowRunExporter
+from integration import GithubWorkflowConfig, GithubWorkflowRunConfig
 from github.clients.client_factory import create_github_client
 from github.clients.utils import integration_config
 from github.helpers.utils import ObjectKind
@@ -79,8 +80,28 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             workflow_exporter.get_paginated_resources({"repo": repo["name"]})
             for repo in repositories
         )
-        async for workflow_batch in stream_async_iterators_tasks(*tasks):
-            yield workflow_batch
+        async for workflows in stream_async_iterators_tasks(*tasks):
+            yield workflows
+
+
+@ocean.on_resync(ObjectKind.WORKFLOW_RUN)
+async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all workflow runs for specified Github repositories"""
+    logger.info(f"Starting resync for kind: {kind}")
+    client = create_github_client()
+    repo_exporter = RestRepositoryExporter(client)
+    workflow_run_exporter = WorkflowRunExporter(client)
+
+    config = typing.cast(GithubWorkflowRunConfig, event.resource_config)
+    options = ListRepositoryOptions(type=config.selector.repo_type)
+
+    async for repositories in repo_exporter.get_paginated_resources(options=options):
+        tasks = (
+            workflow_run_exporter.get_paginated_resources({"repo": repo["name"]})
+            for repo in repositories
+        )
+        async for runs in stream_async_iterators_tasks(*tasks):
+            yield runs
 
 
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)

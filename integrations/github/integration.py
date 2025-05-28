@@ -23,11 +23,21 @@ class GithubWorkflowConfig(ResourceConfig):
     kind: Literal["workflow"]
 
 
+class GithubWorkflowRunConfig(ResourceConfig):
+    selector: GithubWorkflowSelector
+    kind: Literal["workflow-run"]
+
+
 class GithubPortAppConfig(PortAppConfig):
     repository_visibility_filter: str = Field(
         alias="repositoryVisibilityFilter", default="all"
     )
-    resources: list[GithubWorkflowConfig | ResourceConfig]
+    resources: list[
+        GithubRepositoryConfig
+        | GithubWorkflowConfig
+        | GithubWorkflowRunConfig
+        | ResourceConfig
+    ]
 
 
 class GithubIntegration(BaseIntegration):
