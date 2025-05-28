@@ -9,7 +9,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.23.2 (2025-05-28)
 
-## Improvements
+### Improvements
 
 - Replaced based image to use echo images in order to reduce vulnerability exposure
 
