@@ -171,7 +171,7 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> list[tuple[bool | None, Entity]]:
+    ) -> list[tuple[bool | None, Entity]] | httpx.HTTPStatusError:
         """
         This function upserts a list of entities into Port.
 
@@ -192,6 +192,7 @@ class EntityClientMixin:
         :return: A list of tuples where each tuple contains:
             - First value: True if entity was created successfully, False if there was an error, None if there was an error and the entity use search identifier
             - Second value: The original entity (if failed) or the reduced entity with updated identifier (if successful)
+        :return: httpx.HTTPStatusError if there was an HTTP error and should_raise is False
         """
         validation_only = request_options["validation_only"]
         async with self.semaphore:
@@ -224,7 +225,12 @@ class EntityClientMixin:
                 f"{len(entities)} entities of "
                 f"blueprint: {blueprint}"
             )
-            result = response.json()
+            handle_port_status_code(response, should_raise)
+            return httpx.HTTPStatusError(
+                f"HTTP {response.status_code}",
+                request=response.request,
+                response=response,
+            )
         handle_port_status_code(response, should_raise)
         result = response.json()
         index_to_entity = {i: entity for i, entity in enumerate(entities)}
@@ -365,14 +371,11 @@ class EntityClientMixin:
             )
 
             for batch, batch_result in zip(batches, batch_results):
-                if isinstance(batch_result, Exception):
+                if isinstance(batch_result, httpx.HTTPStatusError):
                     if should_raise:
                         raise batch_result
                     # If should_raise is False, retry batch in sequential order as a fallback only for 413 errors
-                    if (
-                        isinstance(batch_result, httpx.HTTPStatusError)
-                        and batch_result.response.status_code == 413
-                    ):
+                    if batch_result.response.status_code == 413:
                         sequential_results = (
                             await self._upsert_entities_batch_sequential(
                                 batch, request_options, user_agent_type, should_raise
