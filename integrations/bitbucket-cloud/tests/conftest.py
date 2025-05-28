@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 from httpx import AsyncClient
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -17,6 +17,8 @@ def mock_ocean_context() -> None | MagicMock:
         "bitbucket_workspace": "test_workspace",
     }
     try:
+        mock_app.cache_provider = AsyncMock()
+        mock_app.cache_provider.get.return_value = None
         initialize_port_ocean_context(mock_app)
     except PortOceanContextAlreadyInitializedError:
         # Context already initialized, ignore

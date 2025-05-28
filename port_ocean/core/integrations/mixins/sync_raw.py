@@ -15,6 +15,7 @@ from port_ocean.context import resource
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
 from port_ocean.core.integrations.mixins.utils import (
+    ProcessWrapper,
     is_resource_supported,
     unsupported_kind_response,
     resync_generator_wrapper,
@@ -613,11 +614,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     "process_resource": FileIPC(id, "process_resource",([],[])),
                     "topological_entities": FileIPC(id, "topological_entities",[]),
                 }
-                process = multiprocessing.Process(target=self.process_resource_in_subprocess, args=(file_ipc_map,resource,index,user_agent_type))
+                process = ProcessWrapper(target=self.process_resource_in_subprocess, args=(file_ipc_map,resource,index,user_agent_type))
                 process.start()
-                process.join()
-                if process.exitcode != 0:
-                    logger.error(f"Process {id} failed with exit code {process.exitcode}")
+                await process.join_async()
+
+
                 event.entity_topological_sorter.entities.extend(file_ipc_map["topological_entities"].load())
                 return file_ipc_map["process_resource"].load()
 
