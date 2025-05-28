@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from port_ocean.exceptions.context import ResourceContextNotFoundError
 import prometheus_client
 from httpx import AsyncClient
-
+from fastapi.responses import PlainTextResponse
 from loguru import logger
 from port_ocean.context import resource
 from prometheus_client import Gauge
@@ -241,7 +241,7 @@ class Metrics:
             return APIRouter()
         router = APIRouter()
 
-        @router.get("/")
+        @router.get("/", response_class=PlainTextResponse)
         async def prom_metrics() -> str:
             return self.generate_latest()
 
