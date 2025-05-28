@@ -17,3 +17,94 @@ resources:
             defaultBranch: .default_branch
             url: .html_url
             language: if .language then .language else "" end
+
+  - kind: dependabot-alert
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .repo.name + "-" + (.number | tostring)
+          title: .number | tostring
+          blueprint: '"githubDependabotAlert"'
+          properties:
+            state: .state
+            severity: .security_advisory.severity
+            packageName: .dependency.package.name
+            packageEcosystem: .dependency.package.ecosystem
+            manifestPath: .dependency.manifest_path
+            scope: .dependency.scope
+            ghsaID: .security_advisory.ghsa_id
+            cveID: .security_advisory.cve_id
+            url: .html_url
+            references: "[.security_advisory.references[].url]"
+            alertCreatedAt: .created_at
+            alertUpdatedAt: .updated_at
+          relations:
+            repository: .repo.name
+  
+  - kind: code-scanning-alerts
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .repo + "-" + (.number | tostring)
+          title: .rule.name
+          blueprint: '"code_scan_alerts"'
+          properties:
+            state: .state
+            severity: .rule.severity
+            tags: .rule.tags
+            description: .rule.description
+            url: .html_url
+          relations:
+            repository: .repo
+
+  - kind: release
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .release.name
+          title: .release.name
+          blueprint: '"release"'
+          properties:
+            author: .release.author.login
+            description: .release.body
+            release_creation_time: .release.created_at
+          relations:
+            tag: .release.tag_name
+            repository: .repo.name
+            
+  - kind: tag
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .tag.name
+          title: .tag.name
+          blueprint: '"tag"'
+          properties:
+            commit_sha: if .commit.sha then .commit.sha else "" end
+          relations:
+            repository: .repo.name
+
+
+  - kind: branch
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .repository.name + "_" + .branch.name
+          title: .repository.name + " " + .branch.name
+          blueprint: '"branch"'
+          properties:
+            is_protected: .branch.protected
+            commit_sha: .branch.commit.sha
+            commit_url: .branch.commit.url
+          relations:
+            repository: .repository.name
