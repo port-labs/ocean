@@ -247,8 +247,6 @@ class Metrics:
             )
 
     def create_mertic_router(self) -> APIRouter:
-        if not self.enabled:
-            return APIRouter()
         router = APIRouter()
 
         @router.get("/")
