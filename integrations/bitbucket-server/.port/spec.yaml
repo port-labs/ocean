@@ -3,12 +3,14 @@ description: Bitbucket Server integration for Port Ocean
 icon: BitBucket
 features:
   - type: exporter
-    section: Under Development
+    section: Git Providers
     resources:
       - kind: project
       - kind: repository
       - kind: pull-request
       - kind: user
+deploymentMethodOverride:
+  - type: helm
 configurations:
   - name: bitbucketUsername
     required: true
