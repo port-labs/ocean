@@ -268,75 +268,6 @@ async def resync_members(
         raise
 
 
-async def resync_workflow_runs(
-    client: GitHubCloudClient,
-) -> AsyncIterator[List[Dict[str, Any]]]:
-    """
-    Resync workflow runs from GitHub Cloud.
-
-    Args:
-        client: GitHub Cloud client instance
-
-    Yields:
-        Batches of workflow run data
-
-    Note:
-        The function fetches workflow runs for each repository and enriches
-        them with repository information.
-    """
-    try:
-        async for repos_batch in client.get_repositories():
-            logger.info(f"Processing batch of {len(repos_batch)} repositories for workflow runs")
-
-            for repo in repos_batch:
-                repo_full_name = repo["full_name"]
-                async for runs_batch in client.get_workflow_runs(repo_full_name):
-                    enriched_runs = [
-                        {**run, "repository": repo}
-                        for run in runs_batch
-                    ]
-                    yield enriched_runs
-    except Exception as e:
-        logger.error(f"Failed to sync workflow runs: {str(e)}")
-        raise
-
-
-async def resync_workflow_jobs(
-    client: GitHubCloudClient,
-) -> AsyncIterator[List[Dict[str, Any]]]:
-    """
-    Resync workflow jobs from GitHub Cloud.
-
-    Args:
-        client: GitHub Cloud client instance
-
-    Yields:
-        Batches of workflow job data
-
-    Note:
-        The function fetches jobs for each workflow run and enriches
-        them with repository and run information.
-    """
-    try:
-        async for repos_batch in client.get_repositories():
-            logger.info(f"Processing batch of {len(repos_batch)} repositories for workflow jobs")
-
-            for repo in repos_batch:
-                repo_full_name = repo["full_name"]
-                async for runs_batch in client.get_workflow_runs(repo_full_name):
-                    for run in runs_batch:
-                        run_id = run["id"]
-                        async for jobs_batch in client.get_workflow_jobs(repo_full_name, run_id):
-                            enriched_jobs = [
-                                {**job, "repository": repo, "workflow_run": run}
-                                for job in jobs_batch
-                            ]
-                            yield enriched_jobs
-    except Exception as e:
-        logger.error(f"Failed to sync workflow jobs: {str(e)}")
-        raise
-
-
 async def resync_workflows(
     client: GitHubCloudClient,
 ) -> AsyncIterator[List[Dict[str, Any]]]:
@@ -347,20 +278,16 @@ async def resync_workflows(
         client: GitHub Cloud client instance
 
     Yields:
-        Batches of workflow data with their content
-
-    Note:
-        The function fetches all workflows for each repository and includes
-        their file content. If file content fetch fails, the workflow is still
-        included but without content.
+        Batches of workflow data with their content, mapped to Port's githubWorkflow blueprint
     """
     try:
         async for repos_batch in client.get_repositories():
             logger.info(f"Processing batch of {len(repos_batch)} repositories for workflows")
 
+            workflows_to_yield = []
             for repo in repos_batch:
                 repo_full_name = repo["full_name"]
-                workflows = []
+                repo_default_branch = repo.get("default_branch", "main")
 
                 async for workflows_batch in client.rest.get_paginated_repository_resource(
                     repo_full_name,
@@ -368,26 +295,32 @@ async def resync_workflows(
                 ):
                     for workflow in workflows_batch:
                         try:
-                            # Get workflow file content
                             workflow_file = await client.rest.get_file_content(
                                 repo_full_name,
-                                workflow["path"],
-                                repo.get("default_branch", "main")
+                                workflow.get("path"),
+                                repo_default_branch
                             )
-                            if workflow_file:
-                                workflow["content"] = workflow_file
-
-                            # Add repository info
-                            workflow["repository"] = repo
-                            workflows.append(workflow)
                         except Exception as e:
-                            logger.error(f"Failed to get workflow file for {workflow['path']}: {str(e)}")
-                            # Add workflow without content if file fetch fails
-                            workflow["repository"] = repo
-                            workflows.append(workflow)
+                            logger.error(f"Failed to get workflow file for {workflow.get('path')}: {str(e)}")
+                            workflow_file = None
 
-                if workflows:
-                    yield workflows
+                        # Build the workflow entity with all required fields at the top level
+                        workflow_entity = {
+                            "id": workflow.get("id"),
+                            "name": workflow.get("name"),
+                            "path": workflow.get("path"),
+                            "state": workflow.get("state"),
+                            "created_at": workflow.get("created_at"),
+                            "updated_at": workflow.get("updated_at"),
+                            "html_url": workflow.get("html_url"),
+                            "repo": repo_full_name,
+                        }
+                        if workflow_file:
+                            workflow_entity["content"] = workflow_file
+                        workflows_to_yield.append(workflow_entity)
+
+            if workflows_to_yield:
+                yield workflows_to_yield
     except Exception as e:
         logger.error(f"Failed to sync workflows: {str(e)}")
         raise

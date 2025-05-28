@@ -8,8 +8,6 @@ def test_repository_events_default_values():
     assert events.pull_request is True
     assert events.issues is True
     assert events.release is True
-    assert events.workflow_run is True
-    assert events.workflow_job is True
     assert events.member is True
 
 def test_repository_events_custom_values():
@@ -18,16 +16,12 @@ def test_repository_events_custom_values():
         pull_request=False,
         issues=False,
         release=False,
-        workflow_run=False,
-        workflow_job=False,
         member=False
     )
     assert events.push is False
     assert events.pull_request is False
     assert events.issues is False
     assert events.release is False
-    assert events.workflow_run is False
-    assert events.workflow_job is False
     assert events.member is False
 
 def test_repository_events_to_dict():
@@ -40,6 +34,7 @@ def test_repository_events_to_dict():
         "release": True,
         "workflow_run": True,
         "workflow_job": True,
+        "workflow": True,
         "member": True
     }
 

@@ -13,9 +13,7 @@ class ObjectKind(str, Enum):
     MEMBER = "member"
     TEAM_WITH_MEMBERS = "team-with-members"
     PULL_REQUEST = "pull-request"
-    WORKFLOW_RUN = "workflow-run"
     WORKFLOW = "workflow"
-    WORKFLOW_JOB = "workflow-job"
     ISSUE = "issue"
 
 

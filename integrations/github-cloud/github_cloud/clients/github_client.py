@@ -12,6 +12,7 @@ from port_ocean.utils.async_iterators import (
 
 from github_cloud.clients.rest_client import RestClient
 from github_cloud.helpers.utils import parse_file_content
+from port_ocean.utils.cache import cache_iterator_result
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
@@ -41,18 +42,6 @@ class GitHubCloudClient:
         """
         encoded_path = quote(str(repo_path), safe="")
         return await self.rest.send_api_request("GET", f"repos/{encoded_path}")
-
-    async def get_organization(self, org_name: str) -> dict[str, Any]:
-        """
-        Get an organization by name.
-
-        Args:
-            org_name: Organization name
-
-        Returns:
-            Organization data
-        """
-        return await self.rest.send_api_request("GET", f"orgs/{org_name}")
 
     async def get_pull_request(
         self, repo_path: str, pull_request_number: int
@@ -103,101 +92,7 @@ class GitHubCloudClient:
         ):
             yield orgs_batch
 
-    async def get_workflow_run(self, repo_full_name: str, run_id: int) -> Optional[Dict[str, Any]]:
-        """
-        Get a workflow run by ID.
-
-        Args:
-            repo_full_name: Repository full name (owner/repo)
-            run_id: Workflow run ID
-
-        Returns:
-            Workflow run data or None if not found
-        """
-        try:
-            return await self.rest.send_api_request(
-                "GET", f"repos/{repo_full_name}/actions/runs/{run_id}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to get workflow run {run_id} for {repo_full_name}: {str(e)}")
-            return None
-
-    async def get_workflow_job(self, repo_full_name: str, job_id: int) -> Optional[Dict[str, Any]]:
-        """
-        Get a workflow job by ID.
-
-        Args:
-            repo_full_name: Repository full name (owner/repo)
-            job_id: Workflow job ID
-
-        Returns:
-            Workflow job data or None if not found
-        """
-        try:
-            return await self.rest.send_api_request(
-                "GET", f"repos/{repo_full_name}/actions/jobs/{job_id}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to get workflow job {job_id} for {repo_full_name}: {str(e)}")
-            return None
-
-    async def get_workflow_runs(self, repo_full_name: str) -> AsyncIterator[List[Dict[str, Any]]]:
-        """
-        Get workflow runs for a repository.
-
-        Args:
-            repo_full_name: Repository full name (owner/repo)
-
-        Yields:
-            Batches of workflow runs
-        """
-        try:
-            async for runs_batch in self.rest.get_paginated_repository_resource(
-                repo_full_name, "actions/runs"
-            ):
-                yield runs_batch
-        except Exception as e:
-            logger.error(f"Failed to get workflow runs for {repo_full_name}: {str(e)}")
-            yield []
-
-    async def get_workflow_jobs(self, repo_full_name: str, run_id: int) -> AsyncIterator[List[Dict[str, Any]]]:
-        """
-        Get workflow jobs for a run.
-
-        Args:
-            repo_full_name: Repository full name (owner/repo)
-            run_id: Workflow run ID
-
-        Yields:
-            Batches of workflow jobs
-        """
-        try:
-            async for jobs_batch in self.rest.get_paginated_repository_resource(
-                repo_full_name, f"actions/runs/{run_id}/jobs"
-            ):
-                yield jobs_batch
-        except Exception as e:
-            logger.error(f"Failed to get workflow jobs for run {run_id} in {repo_full_name}: {str(e)}")
-            yield []
-
-    async def get_team_member(
-        self, org_name: str, team_slug: str, username: str
-    ) -> dict[str, Any]:
-        """
-        Get a team member.
-
-        Args:
-            org_name: Organization name
-            team_slug: Team slug
-            username: Username
-
-        Returns:
-            Team member data
-        """
-        return await self.rest.send_api_request(
-            "GET", f"orgs/{org_name}/teams/{team_slug}/members/{username}"
-        )
-
+    @cache_iterator_result()
     async def get_repositories(
         self,
         params: Optional[dict[str, Any]] = None,
@@ -259,58 +154,6 @@ class GitHubCloudClient:
                     params,
                 ),
             )
-            for repo in repos_batch
-        ]
-
-        async for batch in stream_async_iterators_tasks(*tasks):
-            if batch:
-                yield batch
-
-    async def get_repository_workflow_runs(
-        self, repos_batch: list[dict[str, Any]], max_concurrent: int = 10
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """
-        Get workflow runs for repositories.
-
-        Args:
-            repos_batch: Batch of repositories
-            max_concurrent: Maximum concurrent requests
-
-        Yields:
-            Batches of workflow runs
-        """
-        return await self.get_repository_resource(
-            repos_batch, "actions/runs", max_concurrent
-        )
-
-    async def get_repository_workflow_jobs(
-        self, repos_batch: list[dict[str, Any]], max_concurrent: int = 10
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """
-        Get workflow jobs for repositories.
-
-        Args:
-            repos_batch: Batch of repositories
-            max_concurrent: Maximum concurrent requests
-
-        Yields:
-            Batches of workflow jobs
-        """
-        async def _get_jobs(
-            repo: dict[str, Any]
-        ) -> AsyncIterator[list[dict[str, Any]]]:
-            async for runs_batch in self.rest.get_paginated_repo_resource(
-                repo["full_name"], "actions/runs"
-            ):
-                for run in runs_batch:
-                    async for jobs_batch in self.rest.get_paginated_repo_resource(
-                        repo["full_name"], f"actions/runs/{run['id']}/jobs"
-                    ):
-                        yield jobs_batch
-
-        semaphore = asyncio.Semaphore(max_concurrent)
-        tasks = [
-            semaphore_async_iterator(semaphore, _get_jobs(repo))
             for repo in repos_batch
         ]
 
@@ -439,73 +282,6 @@ class GitHubCloudClient:
             logger.error(f"Error processing file in {context}: {e}")
             return file
 
-    async def _resolve_file_references(
-        self, data: Union[dict[str, Any], list[Any], Any], repo_path: str, ref: str
-    ) -> Union[dict[str, Any], list[Any], Any]:
-        """
-        Resolve file references in data.
-
-        Args:
-            data: Data to process
-            repo_path: Repository full name (owner/repo)
-            ref: Git reference (branch, tag, commit)
-
-        Returns:
-            Data with resolved file references
-        """
-        if isinstance(data, dict):
-            return {
-                key: await self._resolve_file_references(value, repo_path, ref)
-                for key, value in data.items()
-            }
-        elif isinstance(data, list):
-            return [
-                await self._resolve_file_references(item, repo_path, ref)
-                for item in data
-            ]
-        elif isinstance(data, str) and data.startswith("file://"):
-            file_path = data[7:]
-            content = await self.get_file_content(repo_path, file_path, ref)
-            return content if content else data
-        return data
-
-    async def search_files(
-        self,
-        query: str,
-        path: str,
-        repositories: Optional[list[str]] = None,
-        skip_parsing: bool = False,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """
-        Search for files in repositories.
-
-        Args:
-            query: Search query
-            path: Path to search in
-            repositories: List of repositories to search in
-            skip_parsing: Whether to skip parsing file content
-
-        Yields:
-            Batches of matching files
-        """
-        search_query = f"path:{path}"
-        if query:
-            search_query = f"{query} {search_query}"
-        if repositories:
-            repo_filter = " ".join(f"repo:{repo}" for repo in repositories)
-            search_query = f"{search_query} {repo_filter}"
-
-        async for files_batch in self.rest.get_paginated_resource(
-            "search/code", params={"q": search_query}
-        ):
-            processed_batch = []
-            for file in files_batch:
-                processed_file = await self._process_file(
-                    file, f"search_files: {search_query}", skip_parsing
-                )
-                processed_batch.append(processed_file)
-            yield processed_batch
-
     async def get_team_members(
         self, org_name: str, team_slug: str, include_bot_members: bool = False
     ) -> AsyncIterator[list[dict[str, Any]]]:
@@ -615,44 +391,6 @@ class GitHubCloudClient:
             members.extend(members_batch)
         org["team_members"] = members
         return org
-
-    async def get_single_workflow_run(self, repo_full_name: str, run_id: int) -> Optional[Dict[str, Any]]:
-        """
-        Get a single workflow run by ID.
-
-        Args:
-            repo_full_name: Repository full name (owner/repo)
-            run_id: Workflow run ID
-
-        Returns:
-            Workflow run data or None if not found
-        """
-        try:
-            return await self.rest.send_api_request(
-                "GET", f"repos/{repo_full_name}/actions/runs/{run_id}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to get workflow run {run_id} for {repo_full_name}: {str(e)}")
-            return None
-
-    async def get_single_workflow_job(self, repo_full_name: str, job_id: int) -> Optional[Dict[str, Any]]:
-        """
-        Get a single workflow job by ID.
-
-        Args:
-            repo_full_name: Repository full name (owner/repo)
-            job_id: Workflow job ID
-
-        Returns:
-            Workflow job data or None if not found
-        """
-        try:
-            return await self.rest.send_api_request(
-                "GET", f"repos/{repo_full_name}/actions/jobs/{job_id}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to get workflow job {job_id} for {repo_full_name}: {str(e)}")
-            return None
 
     async def get_issues(self, repo_name: str, state: str = "open") -> AsyncIterator[List[Dict[str, Any]]]:
         """

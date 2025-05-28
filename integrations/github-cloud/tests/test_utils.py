@@ -7,8 +7,6 @@ def test_object_kind_enum():
     assert ObjectKind.ISSUE == "issue"
     assert ObjectKind.TEAM_WITH_MEMBERS == "team-with-members"
     assert ObjectKind.MEMBER == "member"
-    assert ObjectKind.WORKFLOW_RUN == "workflow-run"
-    assert ObjectKind.WORKFLOW_JOB == "workflow-job"
 
 def test_parse_file_content_empty():
     content = ""
