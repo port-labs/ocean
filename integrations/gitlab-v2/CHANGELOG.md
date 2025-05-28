@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.15 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.3
+
+
+## 0.1.14 (2025-05-28)
+
+
+### Improvements
+
+- Added Helm deployment method override configuration to spec.yaml
+
+
 ## 0.1.13 (2025-05-28)
 
 
@@ -56,14 +72,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.7 (2025-05-19)
-
-
-### Improvements
-
-- Add Oauth2 Support
-
-
-## 0.1.6 (2025-05-19)
 
 
 ### Improvements

@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.23.3 (2025-05-28)
+
+### Bug Fixes
+
+- Asyncio lock error in subprocess's http request.
+- PROMETHEUS_MULTIPROC_DIR default missing.
+
+
 ## 0.23.2 (2025-05-28)
 
 ### Improvements
