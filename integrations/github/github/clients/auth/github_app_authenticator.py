@@ -1,3 +1,4 @@
+import asyncio
 import base64
 from typing import Optional
 from loguru import logger
@@ -27,17 +28,19 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         self.github_host = github_host.rstrip("/")
         self.installation_id: Optional[int] = None
         self.cached_token: Optional[GitHubToken] = None
+        self.lock = asyncio.Lock()
 
     async def get_token(self) -> GitHubToken:
-        if self.cached_token and not self.cached_token.is_expired:
+        async with self.lock:
+            if self.cached_token and not self.cached_token.is_expired:
+                return self.cached_token
+
+            if not self.installation_id:
+                self.installation_id = await self._fetch_installation_id()
+
+            self.cached_token = await self._fetch_installation_token()
+            logger.info("New GitHub App token acquired.")
             return self.cached_token
-
-        if not self.installation_id:
-            self.installation_id = await self._fetch_installation_id()
-
-        self.cached_token = await self._fetch_installation_token()
-        logger.info("New GitHub App token acquired.")
-        return self.cached_token
 
     async def get_headers(self) -> GitHubHeaders:
         token_response = await self.get_token()
