@@ -55,13 +55,11 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             project_id = repository["project"]["id"]
             updates = payload["resource"]["refUpdates"]
 
-            # Get folder patterns from config
             folder_config = cast(AzureDevopsFolderResourceConfig, resource_config)
             folder_patterns = [
                 pattern.path for pattern in folder_config.selector.folders
             ]
 
-            # Check if repository is in configured repos
             repo_name = repository["name"]
             configured_repos = {
                 repo_mapping.name
@@ -101,7 +99,6 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                         item = change["item"]
                         folder_path = item["path"]
 
-                        # Skip if folder doesn't match any configured pattern
                         if not self._matches_folder_pattern(
                             folder_path, folder_patterns
                         ):
