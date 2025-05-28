@@ -96,7 +96,6 @@ class Ocean:
         self.resync_state_updater = ResyncStateUpdater(
             self.port_client, self.config.scheduled_resync_interval
         )
-
         self.app_initialized = False
 
     def _get_process_execution_mode(self) -> ProcessExecutionMode:

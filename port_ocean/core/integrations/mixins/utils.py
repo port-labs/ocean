@@ -19,6 +19,10 @@ from port_ocean.exceptions.core import (
     KindNotImplementedException,
 )
 
+from port_ocean.utils.async_http import _http_client
+from port_ocean.clients.port.utils import _http_client as _port_http_client
+
+from port_ocean.context.ocean import ocean
 
 @contextmanager
 def resync_error_handling() -> Generator[None, None, None]:
@@ -76,6 +80,7 @@ def unsupported_kind_response(
     logger.error(f"Kind {kind} is not supported in this integration")
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
 
+
 class ProcessWrapper(multiprocessing.Process):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -87,4 +92,18 @@ class ProcessWrapper(multiprocessing.Process):
             logger.error(f"Process {self.pid} failed with exit code {self.exitcode}")
         else:
             logger.info(f"Process {self.pid} finished with exit code {self.exitcode}")
+        ocean.metrics.cleanup_prometheus_metrics(self.pid)
         return super().join()
+
+def clear_http_client_context() -> None:
+    try:
+        while _http_client.top is not None:
+            _http_client.pop()
+    except (RuntimeError, AttributeError):
+        pass
+
+    try:
+        while _port_http_client.top is not None:
+            _port_http_client.pop()
+    except (RuntimeError, AttributeError):
+        pass
