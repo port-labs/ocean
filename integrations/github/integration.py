@@ -8,9 +8,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 
 
 class GithubPortAppConfig(PortAppConfig):
-    repository_visibility_filter: str = Field(
-        alias="repositoryVisibilityFilter", default="all"
-    )
+    repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[ResourceConfig]
 
 

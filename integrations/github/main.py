@@ -61,7 +61,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = RestRepositoryExporter(rest_client)
 
     port_app_config = cast("GithubPortAppConfig", event.port_app_config)
-    options = ListRepositoryOptions(type=port_app_config.repository_visibility_filter)
+    options = ListRepositoryOptions(type=port_app_config.repository_type)
 
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories

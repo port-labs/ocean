@@ -67,7 +67,7 @@ class TestBaseRepositoryWebhookProcessor:
         mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         # Mock the port_app_config
-        mock_port_app_config.repository_visibility_filter = visibility_filter
+        mock_port_app_config.repository_type = visibility_filter
 
         async with event_context("test_event") as event:
             event.port_app_config = mock_port_app_config

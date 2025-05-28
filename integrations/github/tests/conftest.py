@@ -112,7 +112,7 @@ def mock_port_app_config() -> GithubPortAppConfig:
     return GithubPortAppConfig(
         delete_dependent_entities=True,
         create_missing_related_entities=False,
-        repository_visibility_filter="all",
+        repository_type="all",
         resources=[
             ResourceConfig(
                 kind="repository",
