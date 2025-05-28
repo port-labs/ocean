@@ -31,7 +31,7 @@ def mock_ocean() -> Generator[MagicMock, None, None]:
 
 
 async def mock_upsert_entities_batch(
-    entities: list[Entity], *args: Any, **kwargs: Any
+    blueprint: str, entities: list[Entity], *args: Any, **kwargs: Any
 ) -> list[tuple[bool | None, Entity]]:
     results: list[tuple[bool | None, Entity]] = []
     for entity in entities:
