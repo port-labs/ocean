@@ -12,9 +12,6 @@ on:
 
 jobs:
   trigger-sync:
-    concurrency:
-      group: docs-sync-${{ github.ref_name }}
-      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,68 +26,11 @@ jobs:
           files: |
             integrations/**/.port/resources/port-app-config.yaml
 
-      - name: Log changed files
-        if: steps.changed-files.outputs.all_changed_files != '[]'
-        run: |
-          echo "Changed files detected:"
-          echo "${{ steps.changed-files.outputs.all_changed_files }}"
-
-      - name: Notify if no files changed
-        if: steps.changed-files.outputs.all_changed_files == '[]'
-        run: echo "No relevant configuration files were changed. Skipping docs sync."
-
-      - name: Set client payload
-        if: steps.changed-files.outputs.all_changed_files != '[]'
-        id: payload
-        run: |
-          echo "client_payload<<EOF" >> $GITHUB_OUTPUT
-          echo '{
-            "repository": "${{ github.repository }}",
-            "commit_url": "${{ github.event.head_commit.html_url }}",
-            "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}
-          }' >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
       - name: Trigger docs sync
-        if: steps.changed-files.outputs.all_changed_files != '[]'
-        id: dispatch
-        continue-on-error: true
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          # PORT_DOCS_SYNC_TOKEN should have repo scope permissions to trigger workflows in the target repository
-          token: ${{ secrets.PORT_DOCS_SYNC_TOKEN }}
-          repository: ${{ github.repository_owner }}/port-docs
-          event-type: sync-docs
-          client-payload: ${{ steps.payload.outputs.client_payload }}
-
-      - name: Retry dispatch on failure
-        if: steps.dispatch.conclusion == 'failure' && steps.changed-files.outputs.all_changed_files != '[]'
-        id: retry_dispatch
-        continue-on-error: true
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.PORT_DOCS_SYNC_TOKEN }}
           repository: ${{ github.repository_owner }}/port-docs
           event-type: sync-docs
-          client-payload: ${{ steps.payload.outputs.client_payload }}
-
-      - name: Set default for retry_dispatch conclusion
-        run: echo "conclusion=${{ steps.retry_dispatch.conclusion || 'skipped' }}" >> $GITHUB_OUTPUT
-        id: set-default-retry-dispatch
-
-      - name: Verify dispatch success
-        if: steps.changed-files.outputs.all_changed_files != '[]'
-        run: |
-          if [ "${{ steps.dispatch.conclusion }}" != "success" ] && [ "${{ steps.set-default-retry-dispatch.outputs.conclusion }}" != "success" ]; then
-            echo "::error::Failed to dispatch documentation sync event to port-docs repository"
-            echo "Please verify that PORT_DOCS_SYNC_TOKEN has the correct permissions and the target repository exists"
-            exit 1
-          else
-            echo "Successfully dispatched documentation sync event"
-          fi
-
-      - name: Notify on repeated failure
-        if: failure() && steps.changed-files.outputs.all_changed_files != '[]'
-        run: |
-          echo "::warning::Documentation sync dispatch failed after retry. Manual intervention may be required."
-          echo "Affected files: ${{ steps.changed-files.outputs.all_changed_files }}"
+          client-payload: '{"repository": "${{ github.repository }}", "commit_url": "${{ github.event.head_commit.url }}", "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}}'
