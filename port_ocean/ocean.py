@@ -103,15 +103,18 @@ class Ocean:
     def _initialize_prometheus_metrics_multiproc_dir(self) -> None:
         if self.process_execution_mode == ProcessExecutionMode.multi_process:
             prometheus_multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-            if os.path.exists(prometheus_multiproc_dir) and os.listdir(
-                prometheus_multiproc_dir
-            ):
-                logger.info(
-                    f"PROMETHEUS_MULTIPROC_DIR is set to {prometheus_multiproc_dir}"
-                )
+            if prometheus_multiproc_dir:
+                if os.path.exists(prometheus_multiproc_dir) and os.listdir(
+                    prometheus_multiproc_dir
+                ):
+                    logger.info(
+                        f"PROMETHEUS_MULTIPROC_DIR is set to {prometheus_multiproc_dir}"
+                    )
+                else:
+                    logger.warning(f"{prometheus_multiproc_dir} is not found, creating")
+                    os.makedirs(prometheus_multiproc_dir, exist_ok=True)
             else:
-                logger.warning(f"{prometheus_multiproc_dir} is not found, creating")
-                os.makedirs(prometheus_multiproc_dir, exist_ok=True)
+                logger.warning("PROMETHEUS_MULTIPROC_DIR is not set")
 
     def _get_process_execution_mode(self) -> ProcessExecutionMode:
         if self.config.process_execution_mode:
