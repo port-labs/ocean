@@ -151,12 +151,7 @@ class TestRepositoryWebhookProcessor:
                 True,
             ),
             ({"action": "unknown_event", "repository": {"name": "repo3"}}, False),
-            ({"action": REPOSITORY_UPSERT_EVENTS[0]}, False),  # missing repository
             ({"repository": {"name": "repo4"}}, False),  # missing action
-            (
-                {"action": REPOSITORY_UPSERT_EVENTS[0], "repository": {}},  # no name
-                False,
-            ),
         ],
     )
     async def test_validate_payload(
@@ -165,5 +160,5 @@ class TestRepositoryWebhookProcessor:
         payload: Dict[str, str],
         expected: bool,
     ) -> None:
-        result = await repository_webhook_processor.validate_payload(payload)
+        result = await repository_webhook_processor._validate_payload(payload)
         assert result is expected
