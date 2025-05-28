@@ -101,9 +101,12 @@ class TestIssueWebhookProcessor:
     ) -> None:
         """Test handling when API call fails"""
         resource_config = MagicMock(spec=ResourceConfig)
+        mock_response = MagicMock()
+        mock_response.is_success = False
+        mock_response.json.return_value = {}
 
         processor._github_webhook_client = MagicMock()
-        processor._github_webhook_client.get_issue = AsyncMock(return_value=None)
+        processor._github_webhook_client.get_issue = AsyncMock(return_value=mock_response)
 
         result = await processor.handle_event(issue_payload, resource_config)
 

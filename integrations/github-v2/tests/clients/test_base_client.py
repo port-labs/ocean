@@ -117,7 +117,7 @@ class TestHTTPBaseClient:
             result = await client.send_api_request(method, path)
 
             # Assert
-            assert result is None
+            assert result == mock_response
             mock_request.assert_called_once()
 
     async def test_send_api_request_network_error(self, client: HTTPBaseClient) -> None:

@@ -80,7 +80,7 @@ class HTTPBaseClient:
                 logger.warning(
                     f"HTTP error {e.response.status_code} for {method} {url}: {e.response.text}"
                 )
-                return None
+                return response
             except httpx.HTTPError as e:
                 logger.error(
                     f"HTTP error during {method} {url}: {e}", exc_info=True

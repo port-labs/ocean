@@ -83,7 +83,7 @@ class OrganizationWebhookProcessor(GitHubAbstractWebhookProcessor):
                 )
             else:
                 updated_repo = await self._github_webhook_client.get_repository(repo_name)
-                updated_repo = updated_repo.json() if updated_repo else None
+                updated_repo = updated_repo.json() if updated_repo.is_success else None
                 return WebhookEventRawResults(
                     updated_raw_results=[updated_repo] if updated_repo else [],
                     deleted_raw_results=[],

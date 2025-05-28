@@ -109,16 +109,19 @@ class TestBaseWebhookFactory:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test successful webhook creation"""
+        mock_response = MagicMock()
+        mock_response.is_success = True
+        mock_response.json.return_value = {
+            "id": 1,
+            "config": {"url": "https://app.example.com/hook/123"},
+            "url": "https://api.github.com/repos/owner/repo/hooks/1",
+        }
         monkeypatch.setattr(concrete_factory, "_exists", AsyncMock(return_value=False))
         monkeypatch.setattr(
             concrete_factory,
             "_send_request",
             AsyncMock(
-                return_value={
-                    "id": 1,
-                    "config": {"url": "https://app.example.com/hook/123"},
-                    "url": "https://api.github.com/repos/owner/repo/hooks/1",
-                }
+                return_value=mock_response
             ),
         )
 

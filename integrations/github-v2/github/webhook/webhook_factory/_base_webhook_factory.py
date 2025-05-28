@@ -47,7 +47,7 @@ class BaseWebhookFactory(Generic[T], ABC):
         events = self.webhook_events()
         payload = self._build_payload(webhook_url, events)
         response = await self._send_request(github_webhook_endpoint, payload)
-        response = response.json() if isinstance(response, httpx.Response) else response
+        response = response.json() if response.is_success else {}
         if not self._validate_response(response):
             raise Exception("Invalid webhook response")
 

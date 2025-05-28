@@ -67,7 +67,7 @@ class IssueWebhookProcessor(GitHubAbstractWebhookProcessor):
             repo_name, issue_number
         )
 
-        updated_issue = updated_issue.json() if updated_issue else None
+        updated_issue = updated_issue.json() if updated_issue.is_success else {}
         if not updated_issue:
             logger.warning(f"Could not fetch issue {repo_name}#{issue_number}")
             updated_issue = issue

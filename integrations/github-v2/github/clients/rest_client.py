@@ -39,7 +39,7 @@ class RestClient(HTTPBaseClient):
                 params=params_dict if not url.startswith("http") else None,
             )
 
-            if response:
+            if response.is_success:
                 batch = response.json()
             else:
                 break
@@ -58,17 +58,9 @@ class RestClient(HTTPBaseClient):
                     break
                 yield items
 
-                if "next_page" in batch:
-                    if params_dict is None:
-                        params_dict = {}
-                    params_dict["page"] = batch["next_page"]
-                else:
-                    links = await self.get_page_links(response)
-                    url = links.get("next", "")
-                    params_dict = None
-
-                if not url and not ("next_page" in batch):
-                    break
+                links = await self.get_page_links(response)
+                url = links.get("next", "")
+                params_dict = None
 
     async def get_paginated_org_resource(
         self,
@@ -148,7 +140,7 @@ class RestClient(HTTPBaseClient):
             params = {"ref": ref}
             response = await self.send_api_request("GET", path, params=params)
 
-            if not response: return None
+            if not response.is_success: return None
 
             response = response.json()
             if 'content' not in response:
