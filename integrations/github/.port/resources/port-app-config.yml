@@ -1,10 +1,10 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
-repositoryVisibilityFilter: 'all'
+repositoryVisibilityFilter: "all"
 resources:
   - kind: repository
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -17,3 +17,22 @@ resources:
             defaultBranch: .default_branch
             url: .html_url
             language: if .language then .language else "" end
+  - kind: folder
+    selector:
+      query: "true"
+      folders:
+        - path: "*" # Using "*" will ingest the folders from the root of each of repository as entities
+          repos: # Add any repositories you want to map folders from to the following list
+            - journeytopic
+    port:
+      entity:
+        mappings:
+          identifier: .folder.name
+          title: .folder.name
+          blueprint: '"githubFolder"'
+          properties:
+            url: >-
+              .repo.html_url + "/tree/" + .repo.default_branch  + "/" + .folder.path
+            readme: file://README.md
+          relations:
+            repository: .repo.name

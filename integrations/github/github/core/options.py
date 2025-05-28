@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Optional, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -11,3 +11,13 @@ class ListRepositoryOptions(TypedDict):
     """Options for listing repositories."""
 
     type: str
+
+
+class SingleFolderOptions(TypedDict):
+    repo: str
+    path: str
+
+
+class ListFolderOptions(TypedDict):
+    repo: str
+    path: Optional[str]

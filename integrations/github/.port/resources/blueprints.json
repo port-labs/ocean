@@ -1,39 +1,73 @@
 [
-    {
-        "identifier": "githubRepository",
-        "title": "Repository",
-        "icon": "Microservice",
-        "schema": {
-            "properties": {
-                "description": {
-                    "type": "string",
-                    "title": "Description"
-                },
-                "visibility": {
-                    "type": "string",
-                    "title": "Visibility",
-                    "enum": ["all", "public", "private"],
-                    "enumColors": {
-                        "all": "green",
-                        "public": "blue",
-                        "private": "red"
-                    }
-                },
-                "defaultBranch": {
-                    "type": "string",
-                    "title": "Default Branch"
-                },
-                "url": {
-                    "type": "string",
-                    "title": "URL",
-                    "format": "url"
-                },
-                "language": {
-                    "type": "string",
-                    "title": "Primary Language"
-                }
-            },
-            "required": []
+  {
+    "identifier": "githubRepository",
+    "title": "Repository",
+    "icon": "Microservice",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "visibility": {
+          "type": "string",
+          "title": "Visibility",
+          "enum": [
+            "all",
+            "public",
+            "private"
+          ],
+          "enumColors": {
+            "all": "green",
+            "public": "blue",
+            "private": "red"
+          }
+        },
+        "defaultBranch": {
+          "type": "string",
+          "title": "Default Branch"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url"
+        },
+        "language": {
+          "type": "string",
+          "title": "Primary Language"
         }
+      },
+      "required": []
     }
+  },
+  {
+    "identifier": "githubFolder",
+    "title": "Folder",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "readme": {
+          "title": "README",
+          "type": "string",
+          "format": "markdown"
+        },
+        "url": {
+          "title": "Folder URL",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "githubRepository",
+        "required": false,
+        "many": false
+      }
+    }
+  }
 ]
