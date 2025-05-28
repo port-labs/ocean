@@ -46,7 +46,12 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 config.spec_path, str
             ) and config.spec_path.endswith("port.yml")
 
-            return is_push_event and has_spec_path and is_port_yaml
+            if is_push_event and has_spec_path and is_port_yaml:
+                logger.warning(
+                    "GitOps usage detected - processing GitOps webhook event"
+                )
+                return True
+            return False
         except ValueError:
             return False
 
