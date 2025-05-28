@@ -28,7 +28,7 @@ class MetricResourceContext:
         return self.metric_resource_kind
 
 
-_resource_context_stack: LocalStack[str] = LocalStack()
+_resource_context_stack: LocalStack[MetricResourceContext] = LocalStack()
 
 
 def _get_metric_resource_context() -> MetricResourceContext:
@@ -50,7 +50,7 @@ metric_resource: MetricResourceContext = LocalProxy(lambda: _get_metric_resource
 @asynccontextmanager
 async def metric_resource_context(
     metric_resource_kind: str, index: int = 0
-) -> AsyncIterator[str]:
+) -> AsyncIterator[MetricResourceContext]:
     _resource_context_stack.push(
         MetricResourceContext(metric_resource_kind=metric_resource_kind, index=index)
     )
