@@ -22,9 +22,8 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
         response = await self.client.send_api_request(endpoint)
         logger.info(f"Fetched Dependabot alert with number: {alert_number} for repo: {repo_name}")
         
-        data = response.json()
-        data["repo"] = {"name": repo_name}
-        return data
+        response["repo"] = {"name": repo_name}
+        return response
 
     async def get_paginated_resources[
         ExporterOptionsT: ListDependabotAlertOptions
@@ -36,8 +35,6 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name = params.pop("repo_name")
 
         params = filter_options_none_values(params)
-
-        print("params", params)
 
         async for alerts in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/dependabot/alerts",

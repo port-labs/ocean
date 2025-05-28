@@ -15,17 +15,21 @@ from github.core.options import SingleDependabotAlertOptions
 from github.core.exporters.dependabot_alert_exporter import RestDependabotAlertExporter
 from typing import Dict, Set, cast
 from integration import GithubDependabotAlertConfig
+from github.webhook.webhook_processors.base_repository_webhook_processor import (
+    BaseRepositoryWebhookProcessor,
+)
 
-
-class DependabotAlertWebhookProcessor(_GithubAbstractWebhookProcessor):
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        if not {"action", "alert", "repository"} <= payload.keys():
+class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
+    async def _validate_payload(self, payload: EventPayload) -> bool:
+        if not (action := payload.get("action")):
             return False
 
-        if payload["action"] not in DEPENDABOT_ALERT_EVENTS:
-            return False
+        return (
+            action in DEPENDABOT_ALERT_EVENTS
+            and "alert" in payload
+            and "number" in payload["alert"]
+        )
 
-        return bool(payload["alert"].get("number") and payload["repository"].get("name")) 
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         return event.headers.get("x-github-event") == "dependabot_alert"

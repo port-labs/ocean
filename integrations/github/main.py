@@ -114,7 +114,6 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for repo in repositories
         ]
         async for alerts in stream_async_iterators_tasks(*tasks):
-            print("alerts", alerts)
             yield alerts
 
 

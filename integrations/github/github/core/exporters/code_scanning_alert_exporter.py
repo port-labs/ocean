@@ -21,9 +21,8 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         response = await self.client.send_api_request(endpoint)
         logger.info(f"Fetched code scanning alert with number: {alert_number} for repo: {repo_name}")
 
-        data = response.json()
-        data["repo"] = repo_name
-        return data
+        response["repo"] = repo_name
+        return response
 
     async def get_paginated_resources[
         ExporterOptionsT: ListCodeScanningAlertOptions
@@ -31,6 +30,7 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all code scanning alerts in the repository with pagination."""
 
         params: Dict[str, Any] = dict(options) if options else {}
+        params["state"] = ",".join(params["state"]) if params["state"] else None
         repo_name = params.pop("repo_name")
 
         params = filter_options_none_values(params)
