@@ -278,7 +278,7 @@ class Metrics:
         self,
         metric_name: Optional[str] = None,
         kinds: Optional[list[str]] = None,
-        blueprints: Optional[list[str]] = None,
+        blueprints: Optional[list[Optional[str]]] = None,
     ) -> None:
         if kinds is None:
             return None
