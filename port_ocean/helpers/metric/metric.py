@@ -128,15 +128,6 @@ class Metrics:
         self._ocean_version: Optional[str] = None
         self.event_id = ""
         self.sync_state = SyncState.PENDING
-        self.blueprint = "default"
-
-    @property
-    def blueprint(self) -> str:
-        return self._blueprint
-
-    @blueprint.setter
-    def blueprint(self, value: str) -> None:
-        self._blueprint = value
 
     @property
     def event_id(self) -> str:
@@ -284,15 +275,21 @@ class Metrics:
         ).decode()
 
     async def report_sync_metrics(
-        self, metric_name: Optional[str] = None, kinds: Optional[list[str]] = None
+        self,
+        metric_name: Optional[str] = None,
+        kinds: Optional[list[str]] = None,
+        blueprints: Optional[list[str]] = None,
     ) -> None:
         if kinds is None:
             return None
 
         metrics = []
 
-        for kind in kinds:
-            metric = self.generate_metrics(metric_name, kind)
+        if blueprints is None:
+            blueprints = [None] * len(kinds)
+
+        for kind, blueprint in zip(kinds, blueprints):
+            metric = self.generate_metrics(metric_name, kind, blueprint)
             metrics.extend(metric)
 
         try:
@@ -301,9 +298,12 @@ class Metrics:
             logger.error(f"Error posting metrics: {e}", metrics=metrics)
 
     async def report_kind_sync_metrics(
-        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+        self,
+        metric_name: Optional[str] = None,
+        kind: Optional[str] = None,
+        blueprint: Optional[str] = None,
     ) -> None:
-        metrics = self.generate_metrics(metric_name, kind)
+        metrics = self.generate_metrics(metric_name, kind, blueprint)
         if not metrics:
             return None
 
@@ -314,7 +314,10 @@ class Metrics:
             logger.error(f"Error putting metrics: {e}", metrics=metrics)
 
     def generate_metrics(
-        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+        self,
+        metric_name: Optional[str] = None,
+        kind: Optional[str] = None,
+        blueprint: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         try:
             latest_raw = self.generate_latest()
@@ -376,7 +379,7 @@ class Metrics:
                     "kindIndex": int(kind_key[-1]) if kind_key[-1].isdigit() else 0,
                     "eventId": self.event_id,
                     "syncState": self.sync_state,
-                    "blueprint": self.blueprint,
+                    "blueprint": blueprint if blueprint else "default",
                     "metrics": metrics,
                 }
                 events.append(event)

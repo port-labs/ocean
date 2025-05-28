@@ -632,7 +632,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with resource_context(resource,index):
             resource_kind_id = f"{resource.kind}-{index}"
             ocean.metrics.sync_state = SyncState.SYNCING
-            ocean.metrics.blueprint = resource.port.entity.mappings.blueprint
 
             task = asyncio.create_task(
                 self._register_in_batches(resource, user_agent_type)
@@ -651,7 +650,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             await ocean.metrics.send_metrics_to_webhook(
                 kind=resource_kind_id
             )
-            await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id)
+            await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id, blueprint=resource.port.entity.mappings.blueprint)
 
             return kind_results
 
@@ -690,8 +689,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
 
             kinds = [f"{resource.kind}-{index}" for index, resource in enumerate(app_config.resources)]
+            blueprints = [resource.port.entity.mappings.blueprint for resource in app_config.resources]
             ocean.metrics.initialize_metrics(kinds)
-            await ocean.metrics.report_sync_metrics(kinds=kinds)
+            await ocean.metrics.report_sync_metrics(kinds=kinds, blueprints=blueprints)
 
             # Clear cache
             await ocean.app.cache_provider.clear()
@@ -721,7 +721,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.info(f"Starting processing resource {resource.kind} with index {index}")
 
                     creation_results.append(await self.process_resource(resource,index,user_agent_type))
-                ocean.metrics.blueprint = MetricResourceKind.RECONCILIATION
+
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
                     await self.sort_and_upsert_failed_entities(user_agent_type)
 
