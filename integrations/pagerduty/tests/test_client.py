@@ -1,6 +1,6 @@
 import pytest
 from typing import Any, Optional
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -48,6 +48,8 @@ def mock_ocean_context() -> None:
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
         mock_ocean_app.base_url = TEST_INTEGRATION_CONFIG["app_host"]
+        mock_ocean_app.cache_provider = AsyncMock()
+        mock_ocean_app.cache_provider.get.return_value = None
 
         def get_mock_external_access_token() -> str:
             return "pd_test_external_access_token"

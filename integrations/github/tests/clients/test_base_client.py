@@ -48,7 +48,7 @@ class TestAbstractGithubClient:
         ):
             response = await client.send_api_request("repos/test-org/test-repo")
 
-            assert response == mock_response
+            assert response == mock_response.json()
 
     async def test_send_api_request_with_params_and_json(
         self, authenticator: AbstractGitHubAuthenticator
@@ -107,7 +107,7 @@ class TestAbstractGithubClient:
         ):
             # Should return the response instead of raising for 404
             response = await client.send_api_request("repos/test-org/nonexistent-repo")
-            assert response.status_code == 404
+            assert response == {}
 
     async def test_send_api_request_403_error(
         self, authenticator: AbstractGitHubAuthenticator

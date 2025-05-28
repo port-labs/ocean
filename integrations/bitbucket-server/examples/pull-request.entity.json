@@ -1,0 +1,149 @@
+{
+  "id": 1,
+  "version": 1,
+  "title": "readme.md edited online with Bitbucket",
+  "state": "OPEN",
+  "open": true,
+  "closed": false,
+  "draft": false,
+  "createdDate": 1747730324792,
+  "updatedDate": 1747730324792,
+  "fromRef": {
+    "id": "refs/heads/main",
+    "displayId": "main",
+    "latestCommit": "3e4df0573a0ba1845ebdfa919c907745497313aa",
+    "type": "BRANCH",
+    "repository": {
+      "slug": "repostiroy-3",
+      "id": 3,
+      "name": "Repostiroy 3",
+      "hierarchyId": "0a8dadb07bb606236d8c",
+      "scmId": "git",
+      "state": "AVAILABLE",
+      "statusMessage": "Available",
+      "forkable": true,
+      "project": {
+        "key": "PRO3",
+        "id": 3,
+        "name": "Project Three",
+        "public": false,
+        "type": "NORMAL",
+        "links": {
+          "self": [
+            {
+              "href": "http://localhost:7990/projects/PRO3"
+            }
+          ]
+        }
+      },
+      "public": false,
+      "archived": false,
+      "links": {
+        "clone": [
+          {
+            "href": "ssh://git@localhost:7999/pro3/repostiroy-3.git",
+            "name": "ssh"
+          },
+          {
+            "href": "http://localhost:7990/scm/pro3/repostiroy-3.git",
+            "name": "http"
+          }
+        ],
+        "self": [
+          {
+            "href": "http://localhost:7990/projects/PRO3/repos/repostiroy-3/browse"
+          }
+        ]
+      }
+    }
+  },
+  "toRef": {
+    "id": "refs/heads/master",
+    "displayId": "master",
+    "latestCommit": "9534663d88977c0aa5c25249986eae851fd83a8d",
+    "type": "BRANCH",
+    "repository": {
+      "slug": "repostiroy-3",
+      "id": 3,
+      "name": "Repostiroy 3",
+      "hierarchyId": "0a8dadb07bb606236d8c",
+      "scmId": "git",
+      "state": "AVAILABLE",
+      "statusMessage": "Available",
+      "forkable": true,
+      "project": {
+        "key": "PRO3",
+        "id": 3,
+        "name": "Project Three",
+        "public": false,
+        "type": "NORMAL",
+        "links": {
+          "self": [
+            {
+              "href": "http://localhost:7990/projects/PRO3"
+            }
+          ]
+        }
+      },
+      "public": false,
+      "archived": false,
+      "links": {
+        "clone": [
+          {
+            "href": "ssh://git@localhost:7999/pro3/repostiroy-3.git",
+            "name": "ssh"
+          },
+          {
+            "href": "http://localhost:7990/scm/pro3/repostiroy-3.git",
+            "name": "http"
+          }
+        ],
+        "self": [
+          {
+            "href": "http://localhost:7990/projects/PRO3/repos/repostiroy-3/browse"
+          }
+        ]
+      }
+    }
+  },
+  "locked": false,
+  "author": {
+    "user": {
+      "name": "[REDACTED]",
+      "emailAddress": "admin@mail.com",
+      "active": true,
+      "displayName": "Admin",
+      "id": 3,
+      "slug": "[REDACTED]",
+      "type": "NORMAL",
+      "links": {
+        "self": [
+          {
+            "href": "http://localhost:7990/users/[REDACTED]"
+          }
+        ]
+      }
+    },
+    "role": "AUTHOR",
+    "approved": false,
+    "status": "UNAPPROVED"
+  },
+  "reviewers": [],
+  "participants": [],
+  "properties": {
+    "mergeResult": {
+      "outcome": "CLEAN",
+      "current": false
+    },
+    "resolvedTaskCount": 0,
+    "commentCount": 0,
+    "openTaskCount": 0
+  },
+  "links": {
+    "self": [
+      {
+        "href": "http://localhost:7990/projects/PRO3/repos/repostiroy-3/pull-requests/1"
+      }
+    ]
+  }
+}

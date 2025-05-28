@@ -1,13 +1,6 @@
 from typing import Any, AsyncGenerator
-from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-    Selector,
-    PortResourceConfig,
-    EntityMapping,
-    MappingsConfig,
-)
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
@@ -34,31 +27,6 @@ TEST_REPOS = [
 ]
 
 
-@pytest.fixture
-def mock_port_app_config() -> GithubPortAppConfig:
-    return GithubPortAppConfig(
-        delete_dependent_entities=True,
-        create_missing_related_entities=False,
-        repository_visibility_filter="all",
-        resources=[
-            ResourceConfig(
-                kind="repository",
-                selector=Selector(query="true"),
-                port=PortResourceConfig(
-                    entity=MappingsConfig(
-                        mappings=EntityMapping(
-                            identifier=".full_name",
-                            title=".name",
-                            blueprint='"githubRepository"',
-                            properties={},
-                        )
-                    )
-                ),
-            )
-        ],
-    )
-
-
 @pytest.mark.asyncio
 class TestRestRepositoryExporter:
     async def test_get_resource(self, rest_client: GithubRestClient) -> None:
@@ -70,8 +38,9 @@ class TestRestRepositoryExporter:
         exporter = RestRepositoryExporter(rest_client)
 
         with patch.object(
-            rest_client, "send_api_request", return_value=mock_response
+            rest_client, "send_api_request", new_callable=AsyncMock
         ) as mock_request:
+            mock_request.return_value = mock_response.json()
             repo = await exporter.get_resource(SingleRepositoryOptions(name="repo1"))
 
             assert repo == TEST_REPOS[0]

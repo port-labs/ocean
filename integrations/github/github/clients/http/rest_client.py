@@ -55,8 +55,12 @@ class GithubRestClient(AbstractGithubClient):
 
         while True:
             response = await self.send_api_request(
-                resource, method=method, params=params
+                resource, method=method, params=params, return_full_response=True
             )
+
+            if not response:
+                return
+
             items = response.json()
             if not items:
                 return

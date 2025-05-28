@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
 from loguru import logger
 import httpx
-from httpx import Response
 
 if TYPE_CHECKING:
     from github.clients.auth.abstract_authenticator import (
@@ -39,7 +38,8 @@ class AbstractGithubClient(ABC):
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
-    ) -> Response:
+        return_full_response: bool = False,
+    ) -> Any:
         """Send request to GitHub API with error handling and rate limiting."""
 
         try:
@@ -53,12 +53,12 @@ class AbstractGithubClient(ABC):
             response.raise_for_status()
 
             logger.debug(f"Successfully fetched {method} {resource}")
-            return response
+            return response if return_full_response else response.json()
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 logger.debug(f"Resource not found at endpoint '{resource}'")
-                return e.response
+                return {}
             logger.error(
                 f"GitHub API error for endpoint '{resource}': Status {e.response.status_code}, "
                 f"Method: {method}, Response: {e.response.text}"
