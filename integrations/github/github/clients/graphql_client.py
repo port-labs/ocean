@@ -31,14 +31,16 @@ class GithubGraphQLClient(AbstractGithubClient):
         self,
         resource: str,
         params: Optional[Dict[str, Any]] = None,
-        method: str = "GET",
+        method: str = "POST",
         json_data: Optional[Dict[str, Any]] = None,
-    ) -> Response:
+        return_full_response: bool = True,
+    ) -> Any:
         response = await super().send_api_request(
             resource=resource,
             params=params,
             method=method,
             json_data=json_data,
+            return_full_response=return_full_response,
         )
         self._handle_graphql_errors(response)
         return response

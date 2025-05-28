@@ -3,6 +3,14 @@ from typing import Any, Dict, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+from integration import GithubPortAppConfig
+from port_ocean.core.handlers.port_app_config.models import (
+    ResourceConfig,
+    Selector,
+    PortResourceConfig,
+    EntityMapping,
+    MappingsConfig,
+)
 from port_ocean.context.event import EventContext
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context, ocean
@@ -83,3 +91,28 @@ def mock_event_context() -> Generator[MagicMock, None, None]:
 
     with patch("port_ocean.context.event.event", mock_event):
         yield mock_event
+
+
+@pytest.fixture
+def mock_port_app_config() -> GithubPortAppConfig:
+    return GithubPortAppConfig(
+        delete_dependent_entities=True,
+        create_missing_related_entities=False,
+        repository_visibility_filter="all",
+        resources=[
+            ResourceConfig(
+                kind="repository",
+                selector=Selector(query="true"),
+                port=PortResourceConfig(
+                    entity=MappingsConfig(
+                        mappings=EntityMapping(
+                            identifier=".full_name",
+                            title=".name",
+                            blueprint='"githubRepository"',
+                            properties={},
+                        )
+                    )
+                ),
+            )
+        ],
+    )
