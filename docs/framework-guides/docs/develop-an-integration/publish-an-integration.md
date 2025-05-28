@@ -1,7 +1,7 @@
 ---
 title: Publish an Integration
 sidebar_label: 📦 Publish an Integration
-sidebar_position: 4
+sidebar_position: 16
 ---
 
 # 📦 Publish an Integration

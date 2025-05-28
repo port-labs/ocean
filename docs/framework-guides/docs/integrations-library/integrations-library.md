@@ -10,6 +10,6 @@ import Integrations from '@components/Integrations';
 
 # 📝 Integrations Library
 
-This page contains the list of integrations powered by the Port framework
+Below you'll find our catalog of Ocean-powered integrations. All of these integrations are open source, so feel free to dive into their code to learn and get inspired while building your own integration. Think of them as lighthouses guiding your development journey! ⚓
 
 <Integrations />
