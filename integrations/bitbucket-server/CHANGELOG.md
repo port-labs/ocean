@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.2-beta (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.2
+
+
+## 0.1.1-beta (2025-05-28)
+
+
+### Improvements
+
+- Changed section type to GitProvider and added a deployment Method override
+
+
 ## 0.1.0-beta (2025-05-22)
 
 ### Features
