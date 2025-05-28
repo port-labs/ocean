@@ -11,6 +11,9 @@ class ObjectKind(StrEnum):
     REPOSITORY = "repository"
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
+    RELEASE = "release"
+    TAG = "tag"
+    BRANCH = "branch"
 
 
 def filter_options_none_values(options: Optional[Dict[str, Any]]) -> Dict[str, Any]:

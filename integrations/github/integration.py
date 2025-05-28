@@ -33,9 +33,10 @@ class GithubCodeScanningAlertConfig(ResourceConfig):
     kind: Literal["code-scanning-alerts"]
 
 
+
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
-    resources: list[ResourceConfig]
+    resources: list[GithubDependabotAlertConfig | GithubCodeScanningAlertConfig | ResourceConfig]
 
 
 class GithubIntegration(BaseIntegration):

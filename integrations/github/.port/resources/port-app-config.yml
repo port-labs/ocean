@@ -61,4 +61,50 @@ resources:
           relations:
             repository: .repo
 
-  
+  - kind: release
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .release.name
+          title: .release.name
+          blueprint: '"release"'
+          properties:
+            author: .release.author.login
+            description: .release.body
+            release_creation_time: .release.created_at
+          relations:
+            tag: .release.tag_name
+            repository: .repo.name
+            
+  - kind: tag
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .tag.name
+          title: .tag.name
+          blueprint: '"tag"'
+          properties:
+            commit_sha: if .commit.sha then .commit.sha else "" end
+          relations:
+            repository: .repo.name
+
+
+  - kind: branch
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .repository.name + "_" + .branch.name
+          title: .repository.name + " " + .branch.name
+          blueprint: '"branch"'
+          properties:
+            is_protected: .branch.protected
+            commit_sha: .branch.commit.sha
+            commit_url: .branch.commit.url
+          relations:
+            repository: .repository.name

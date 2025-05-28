@@ -171,5 +171,108 @@
           "many": true
         }
       }
+    },
+    {
+      "identifier": "release",
+      "title": "Release",
+      "icon": "Github",
+      "schema": {
+        "properties": {
+          "release_creation_time": {
+            "icon": "DefaultProperty",
+            "type": "string",
+            "title": "Release creation time",
+            "format": "date-time"
+          },
+          "author": {
+            "type": "string",
+            "title": "Author"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "required": []
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {},
+      "aggregationProperties": {},
+      "relations": {
+        "repository": {
+          "title": "Repository",
+          "target": "githubRepository",
+          "required": false,
+          "many": false
+        },
+        "tag": {
+          "title": "Tag",
+          "target": "tag",
+          "required": false,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "tag",
+      "title": "Tag",
+      "icon": "Github",
+      "schema": {
+        "properties": {
+          "commit_sha": {
+            "icon": "DefaultProperty",
+            "type": "string",
+            "title": "Commit sha"
+          }
+        },
+        "required": []
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {},
+      "aggregationProperties": {},
+      "relations": {
+        "repository": {
+          "title": "Repository",
+          "target": "githubRepository",
+          "required": false,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "branch",
+      "title": "Branch",
+      "icon": "Microservice",
+      "schema": {
+        "properties": {
+          "is_protected": {
+            "title": "Is branch protected",
+            "type": "boolean",
+            "icon": "DefaultProperty"
+          },
+          "commit_sha": {
+            "title": "Commit SHA",
+            "type": "string",
+            "icon": "DefaultProperty"
+          },
+          "commit_url": {
+            "title": "Commit URL",
+            "type": "string",
+            "format": "url"
+          }
+        },
+        "required": []
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {},
+      "aggregationProperties": {},
+      "relations": {
+        "repository": {
+          "title": "Repository",
+          "target": "githubRepository",
+          "required": false,
+          "many": false
+        }
+      }
     }
 ]

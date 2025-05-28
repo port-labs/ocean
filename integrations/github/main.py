@@ -25,6 +25,9 @@ from github.core.options import (
     ListRepositoryOptions,
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
+    ListReleaseOptions,
+    ListTagOptions,
+    ListBranchOptions,
 )
 from port_ocean.context.event import event
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
@@ -33,6 +36,12 @@ from integration import (
     GithubDependabotAlertConfig,
     GithubCodeScanningAlertConfig,
 )
+from github.core.exporters.release_exporter import RestReleaseExporter
+from github.core.exporters.tag_exporter import RestTagExporter
+from github.core.exporters.branch_exporter import RestBranchExporter
+from github.webhook.webhook_processors.release_webhook_processor import ReleaseWebhookProcessor
+from github.webhook.webhook_processors.tag_webhook_processor import TagWebhookProcessor
+from github.webhook.webhook_processors.branch_webhook_processor import BranchWebhookProcessor
 
 
 @ocean.on_start()
@@ -81,8 +90,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repository_exporter = RestRepositoryExporter(rest_client)
     dependabot_alert_exporter = RestDependabotAlertExporter(rest_client)
 
-    config = cast("GithubDependabotAlertConfig", event.resource_config)
-
+    config = cast(GithubDependabotAlertConfig, event.resource_config)
     async for repositories in repository_exporter.get_paginated_resources():
         tasks = [
             dependabot_alert_exporter.get_paginated_resources(
@@ -107,7 +115,6 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     code_scanning_alert_exporter = RestCodeScanningAlertExporter(rest_client)
 
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
-
     async for repositories in repository_exporter.get_paginated_resources():
         tasks = [
             code_scanning_alert_exporter.get_paginated_resources(
@@ -122,6 +129,69 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield alerts
 
 
+@ocean.on_resync(ObjectKind.RELEASE)
+async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all releases in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    release_exporter = RestReleaseExporter(rest_client)
+    
+    async for repositories in repository_exporter.get_paginated_resources():
+        tasks = [
+            release_exporter.get_paginated_resources(
+                ListReleaseOptions(repo_name=repo["name"])
+            )
+            for repo in repositories
+        ]
+        async for releases in stream_async_iterators_tasks(*tasks):
+            yield releases
+
+
+@ocean.on_resync(ObjectKind.TAG)
+async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all tags in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    tag_exporter = RestTagExporter(rest_client)
+    
+    async for repositories in repository_exporter.get_paginated_resources():
+        tasks = [
+            tag_exporter.get_paginated_resources(
+                ListTagOptions(repo_name=repo["name"])
+            )
+            for repo in repositories
+        ]
+        async for tags in stream_async_iterators_tasks(*tasks):
+            yield tags
+
+
+@ocean.on_resync(ObjectKind.BRANCH)
+async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all branches in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    branch_exporter = RestBranchExporter(rest_client)
+    
+    async for repositories in repository_exporter.get_paginated_resources():
+        tasks = [
+            branch_exporter.get_paginated_resources(
+                ListBranchOptions(repo_name=repo["name"])
+            )
+            for repo in repositories
+        ]
+        async for branches in stream_async_iterators_tasks(*tasks):
+            yield branches
+
+
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", DependabotAlertWebhookProcessor)
 ocean.add_webhook_processor("/webhook", CodeScanningAlertWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ReleaseWebhookProcessor)
+ocean.add_webhook_processor("/webhook", TagWebhookProcessor)
+ocean.add_webhook_processor("/webhook", BranchWebhookProcessor)

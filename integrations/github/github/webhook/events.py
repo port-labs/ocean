@@ -47,12 +47,19 @@ CODE_SCANNING_ALERT_ACTION_TO_STATE = {
 }
 
 
-ALL_EVENTS = (
-    REPOSITORY_UPSERT_EVENTS
-    + REPOSITORY_DELETE_EVENTS
-    + DEPENDABOT_ALERT_EVENTS
-    + CODE_SCANNING_ALERT_EVENTS
-)
+RELEASE_UPSERT_EVENTS = [
+    "created",
+    "edited",
+    "prereleased",
+    "published",
+    "released",
+    "unpublished",
+]
+RELEASE_DELETE_EVENTS = ["deleted"]
+RELEASE_EVENTS = RELEASE_UPSERT_EVENTS + RELEASE_DELETE_EVENTS
 
 
-WEBHOOK_CREATE_EVENTS = ["repository", "dependabot_alert", "code_scanning_alert"]
+ALL_EVENTS = REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS + DEPENDABOT_ALERT_EVENTS + CODE_SCANNING_ALERT_EVENTS
+
+
+WEBHOOK_CREATE_EVENTS = ["repository", "dependabot_alert", "code_scanning_alert", "release", "create", "delete", "push"]

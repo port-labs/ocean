@@ -8,6 +8,9 @@ features:
       - kind: repository
       - kind: dependabot-alert
       - kind: code-scanning-alert
+      - kind: release
+      - kind: tag
+      - kind: branch
 configurations:
   - name: githubHost
     required: false
