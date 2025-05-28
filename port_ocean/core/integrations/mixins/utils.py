@@ -81,12 +81,13 @@ def unsupported_kind_response(
 
 def cleanup_prometheus_metrics(pid: int | None=None) -> None:
     try:
-        for file in os.listdir('/tmp/prometheus_multiproc_dir'):
+        prometheus_multiproc_dir = os.environ.get('PROMETHEUS_MULTIPROC_DIR')
+        for file in os.listdir(prometheus_multiproc_dir):
             if pid:
                 if file.endswith('.db') and file[0:-3].split('_')[-1] == str(pid):
-                    os.remove(f'/tmp/prometheus_multiproc_dir/{file}')
+                    os.remove(f'{prometheus_multiproc_dir}/{file}')
             else:
-                os.remove(f'/tmp/prometheus_multiproc_dir/{file}')
+                os.remove(f'{prometheus_multiproc_dir}/{file}')
     except Exception as e:
         logger.error(f"Failed to cleanup prometheus metrics: {e}")
 class ProcessWrapper(multiprocessing.Process):
