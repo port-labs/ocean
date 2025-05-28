@@ -2,7 +2,7 @@ from loguru import logger
 from github.core.exporters.workflow_runs_exporter import WorkflowRunExporter
 from github.core.options import SingleWorkflowOptions
 from github.webhook.events import WORKFLOW_DELETE_EVENTS, WORKFLOW_UPSERT_EVENTS
-from github.utils import ObjectKind
+from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,

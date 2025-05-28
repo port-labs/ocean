@@ -2,6 +2,7 @@ from typing import Any, AsyncGenerator
 from httpx import Response
 import pytest
 from unittest.mock import MagicMock, patch
+from github.clients.rest_client import GithubRestClient
 from github.core.exporters.workflows_exporter import (
     WorkflowExporter,
 )
@@ -9,7 +10,6 @@ from github.core.options import (
     ListWorkflowOptions,
     SingleWorkflowOptions,
 )
-from github.clients.base_client import AbstractGithubClient
 from port_ocean.context.event import event_context
 
 
@@ -39,8 +39,8 @@ TEST_DATA: dict[str, Any] = {
 
 
 @pytest.mark.asyncio
-async def test_single_resource(client: AbstractGithubClient) -> None:
-    exporter = WorkflowExporter(client)
+async def test_single_resource(rest_client: GithubRestClient) -> None:
+    exporter = WorkflowExporter(rest_client)
     options: SingleWorkflowOptions = {"repo": "test", "resource_id": "12343"}
 
     # Create an async mock to return the test repos
@@ -50,20 +50,20 @@ async def test_single_resource(client: AbstractGithubClient) -> None:
         return response
 
     with patch.object(
-        client, "send_api_request", side_effect=mock_request
+        rest_client, "send_api_request", side_effect=mock_request
     ) as mock_request:
         async with event_context("test_event"):
             wf = await exporter.get_resource(options)
             assert wf == TEST_DATA["workflows"][0]
             mock_request.assert_called_with(
-                f"repos/{client.organization}/{options['repo']}/actions/workflows/{options['resource_id']}"
+                f"repos/{rest_client.organization}/{options['repo']}/actions/workflows/{options['resource_id']}"
             )
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_resources(client: AbstractGithubClient) -> None:
+async def test_get_paginated_resources(rest_client: GithubRestClient) -> None:
     options: ListWorkflowOptions = {"repo": "test"}
-    exporter = WorkflowExporter(client)
+    exporter = WorkflowExporter(rest_client)
 
     # Create an async mock to return the test repos
     async def mock_paginated_request(
@@ -72,7 +72,7 @@ async def test_get_paginated_resources(client: AbstractGithubClient) -> None:
         yield TEST_DATA
 
     with patch.object(
-        client, "send_paginated_request", side_effect=mock_paginated_request
+        rest_client, "send_paginated_request", side_effect=mock_paginated_request
     ) as mock_request:
         async with event_context("test_event"):
             wf: list[list[dict[str, Any]]] = [
@@ -84,5 +84,5 @@ async def test_get_paginated_resources(client: AbstractGithubClient) -> None:
             assert wf[0] == TEST_DATA["workflows"]
 
         mock_request.assert_called_once_with(
-            f"repos/{client.organization}/{options['repo']}/actions/workflows"
+            f"repos/{rest_client.organization}/{options['repo']}/actions/workflows"
         )

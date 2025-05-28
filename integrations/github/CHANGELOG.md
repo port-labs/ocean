@@ -7,13 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.0-dev (2025-05-16)
-
-### Features
-
-- add support for Github workflows
-- add support for Github workflow runs
-
 ## 0.1.0-dev (2025-05-12)
 
 ### Features
@@ -23,3 +16,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented efficient pagination using GitHub's Link header
 - Added support for webhook event processors
 - Add Tests for client and base webhook processor
+- Add support for Github workflows
+- Add support for Github workflow runs

@@ -7,6 +7,12 @@ class SingleRepositoryOptions(TypedDict):
     name: str
 
 
+class ListRepositoryOptions(TypedDict):
+    """Options for listing repositories."""
+
+    type: str
+
+
 class RepoOptions(TypedDict):
     """Base options requiring a repository name."""
 

@@ -1,5 +1,4 @@
 from typing import cast, TYPE_CHECKING
-import typing
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -8,7 +7,6 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
 from github.core.exporters.workflow_runs_exporter import WorkflowRunExporter
-from integration import GithubWorkflowConfig, GithubWorkflowRunConfig
 from github.webhook.webhook_processors.workflow_run_webhook_processor import (
     WorkflowRunWebhookProcessor,
 )
@@ -73,8 +71,8 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_exporter = RestRepositoryExporter(client)
     workflow_exporter = WorkflowExporter(client)
 
-    config = typing.cast(GithubWorkflowConfig, event.resource_config)
-    options = ListRepositoryOptions(type=config.selector.repo_type)
+    port_app_config = cast("GithubPortAppConfig", event.port_app_config)
+    options = ListRepositoryOptions(type=port_app_config.repository_visibility_filter)
 
     async for repositories in repo_exporter.get_paginated_resources(options=options):
         tasks = (
@@ -95,8 +93,8 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_exporter = RestRepositoryExporter(client)
     workflow_run_exporter = WorkflowRunExporter(client)
 
-    config = typing.cast(GithubWorkflowRunConfig, event.resource_config)
-    options = ListRepositoryOptions(type=config.selector.repo_type)
+    port_app_config = cast("GithubPortAppConfig", event.port_app_config)
+    options = ListRepositoryOptions(type=port_app_config.repository_visibility_filter)
 
     async for repositories in repo_exporter.get_paginated_resources(options=options):
         tasks = (
