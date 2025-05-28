@@ -34,12 +34,8 @@ class GithubCodeScanningAlertConfig(ResourceConfig):
 
 
 class GithubPortAppConfig(PortAppConfig):
-    repository_visibility_filter: str = Field(
-        alias="repositoryVisibilityFilter", default="all"
-    )
-    resources: list[
-        GithubDependabotAlertConfig | GithubCodeScanningAlertConfig | ResourceConfig
-    ]
+    repository_type: str = Field(alias="repositoryType", default="all")
+    resources: list[ResourceConfig]
 
 
 class GithubIntegration(BaseIntegration):
