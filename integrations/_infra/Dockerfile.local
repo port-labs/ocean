@@ -1,0 +1,46 @@
+ARG BASE_PYTHON_IMAGE=debian:trixie-slim
+# debian:trixie-slim - Python 3.12
+FROM ${BASE_PYTHON_IMAGE}
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends librdkafka-dev python3 \
+    && apt-get clean
+RUN apt-get update \
+    && apt-get install -y \
+        --no-install-recommends \
+        wget \
+        g++ \
+        libssl-dev \
+        autoconf \
+        automake \
+        libtool \
+        curl \
+        librdkafka-dev \
+        python3 \
+        python3-pip \
+        python3-poetry \
+        build-essential\
+        git \
+        python3-venv \
+    && apt-get clean
+
+ARG BUILD_CONTEXT
+ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
+
+ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR}
+
+RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
+
+WORKDIR /app
+
+COPY . .
+RUN rm -rf .venv-docker ${BUILD_CONTEXT}/.venv-docker
+RUN python3 -m venv .venv-docker
+RUN python3 -m venv ${BUILD_CONTEXT}/.venv-docker
+
+
+WORKDIR /app/${BUILD_CONTEXT}
+
+WORKDIR /app
+
+ENTRYPOINT ["./integrations/_infra/entry_local.sh"]

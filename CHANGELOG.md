@@ -6,6 +6,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.23.3 (2025-05-28)
+
+### Bug Fixes
+
+- Asyncio lock error in subprocess's http request.
+- PROMETHEUS_MULTIPROC_DIR default missing.
+
+
+## 0.23.2 (2025-05-28)
+
+### Improvements
+
+- Replaced based image to use echo images in order to reduce vulnerability exposure
+
+
+## 0.23.1 (2025-05-27)
+
+### Bug Fixes
+
+- Event loop is blocked by waiting for a process.
+
+## 0.23.0 (2025-05-27)
+
+### Features
+- Add Multiprocessing mode to ocean accessible via the OCEAN__PROCESS_EXECUTION_MODE env variable with possible values - multi_process/single_process.
+- Add caching to ocean that is saved on disk or memory accessible via OCEAN__CACHING_STORAGE_MODE env variable with possible values - disk/memory.
+- Add support for multiprocessing to prometheus accessible via the PROMETHEUS_MULTIPROC_DIR env variable.
+
+## 0.22.12 (2025-05-26)
+
+### Improvements
+- Enhanced logs on integration initialization
+
+## 0.22.11 (2025-05-25)
+
+### Improvements
+- Enhanced metrics reporting by implementing direct integration with Port's metrics endpoint for improved monitoring and observability
+
 ## 0.22.10 (2025-05-20)
 
 ### Improvements

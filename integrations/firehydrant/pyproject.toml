@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "firehydrant"
-version = "0.1.146"
+version = "0.1.152"
 description = "FireHydrant Integration Powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.22.10", extras = ["cli"]}
+port_ocean = {version = "^0.23.3", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "kafka"
-version = "0.1.148"
+version = "0.1.154"
 description = "Integration to import information from a Kafka cluster into Port. The integration supports importing metadata regarding the Kafka cluster, brokers and topics."
 authors = ["Tal Sabag <tal@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.22.10", extras = ["cli"]}
+port_ocean = {version = "^0.23.3", extras = ["cli"]}
 confluent-kafka = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
