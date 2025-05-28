@@ -289,6 +289,7 @@ class TestGithubWebhookClient:
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = hooks
         mock_response.headers = {}
+        mock_response.status_code = 200
 
         with patch.object(
             client, "send_api_request", AsyncMock(return_value=mock_response)
