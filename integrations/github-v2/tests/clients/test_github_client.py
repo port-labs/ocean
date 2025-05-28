@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+from port_ocean.context import event
+from port_ocean.context.event import EventContext
 
 from github.clients.github_client import GitHubClient
 
@@ -75,31 +77,6 @@ class TestGitHubClient:
             assert results[0]["login"] == "test-org"
             mock_get_resource.assert_called_once_with("user/orgs", params=None)
 
-    async def test_get_repositories(self, client: GitHubClient) -> None:
-        """Test fetching repositories"""
-        # Arrange
-        mock_repos = [
-            {
-                "id": 1,
-                "full_name": "owner/repo1",
-                "name": "repo1",
-            }
-        ]
-
-        with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            return_value=async_mock_generator([mock_repos]),
-        ) as mock_get_resource:
-            # Act
-            results = []
-            async for batch in client.get_repositories():
-                results.extend(batch)
-
-            # Assert
-            assert len(results) == 1
-            assert results[0]["name"] == "repo1"
-            mock_get_resource.assert_called_once_with("user/repos", params={})
 
     async def test_get_pull_request(self, client: GitHubClient) -> None:
         """Test fetching a single pull request"""

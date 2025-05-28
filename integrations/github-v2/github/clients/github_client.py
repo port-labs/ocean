@@ -77,6 +77,7 @@ class GitHubClient:
             "GET", f"repos/{repo_path}/issues/{issue_number}"
         )
 
+
     async def get_organizations(
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
@@ -95,6 +96,7 @@ class GitHubClient:
             yield orgs_batch
 
 
+    @cache_iterator_result()
     async def get_repositories(
         self,
         max_concurrent: int = 10,

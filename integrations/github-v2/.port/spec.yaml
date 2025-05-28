@@ -21,8 +21,7 @@ configurations:
     type: url
     default: https://api.github.com
     description: The host of the GitHub API. If not specified, the default will be https://api.github.com.
-  - name: gitHubOrganization
+  - name: githubOrganization
     type: string
     required: true
-    default: ${GITHUB_ORGANIZATION}
-    description: "GitHub organization name"
+    description: "The GitHub organization to which the workspace belongs"
