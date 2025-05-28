@@ -43,7 +43,7 @@ async def mock_upsert_entities_batch(
 
 
 async def mock_exception_upsert_entities_batch(
-    entities: list[Entity], *args: Any, **kwargs: Any
+    blueprint: str, entities: list[Entity], *args: Any, **kwargs: Any
 ) -> list[tuple[bool | None, Entity]]:
     for entity in entities:
         if entity.identifier == errored_entity_identifier:

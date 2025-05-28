@@ -371,11 +371,16 @@ class EntityClientMixin:
             )
 
             for batch, batch_result in zip(batches, batch_results):
-                if isinstance(batch_result, httpx.HTTPStatusError):
+                if isinstance(batch_result, httpx.HTTPStatusError) or isinstance(
+                    batch_result, Exception
+                ):
                     if should_raise:
                         raise batch_result
                     # If should_raise is False, retry batch in sequential order as a fallback only for 413 errors
-                    if batch_result.response.status_code == 413:
+                    if (
+                        isinstance(batch_result, httpx.HTTPStatusError)
+                        and batch_result.response.status_code == 413
+                    ):
                         sequential_results = (
                             await self._upsert_entities_batch_sequential(
                                 batch, request_options, user_agent_type, should_raise
