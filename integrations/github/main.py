@@ -29,7 +29,7 @@ async def handle_webhook(request: Request) -> dict:
 async def on_start() -> None:
     client = get_client()
     
-    # Create webhook subscription
+    # Create webhook subscriptions
     try:
         webhook_secret = ocean.integration_config.get("github_webhook_secret")
         if not webhook_secret:
@@ -41,15 +41,35 @@ async def on_start() -> None:
             logger.error("No webhook URL configured - webhooks will not work")
             return
             
-        # Create webhook for the repository
-        await client.create_webhook(
-            repo=ocean.integration_config["github_repo"],
-            url=webhook_url,
-            secret=webhook_secret
-        )
-        logger.info("GitHub webhook subscription created successfully")
+        # Get all repositories and create webhooks for each
+        success_count = 0
+        error_count = 0
+        
+        async for repos in client.get_repositories():
+            for repo in repos:
+                try:
+                    repo_name = repo.get("full_name")
+                    if not repo_name:
+                        continue
+                        
+                    await client.create_webhook(
+                        repo=repo_name,
+                        url=webhook_url,
+                        secret=webhook_secret
+                    )
+                    success_count += 1
+                    logger.info(f"Created webhook for repository: {repo_name}")
+                except Exception as e:
+                    error_count += 1
+                    logger.error(f"Failed to create webhook for repository {repo.get('full_name', 'unknown')}: {e}")
+                    
+        if success_count > 0:
+            logger.info(f"Successfully created webhooks for {success_count} repositories")
+        if error_count > 0:
+            logger.warning(f"Failed to create webhooks for {error_count} repositories")
+            
     except Exception as e:
-        logger.error(f"Failed to create webhook subscription: {e}")
+        logger.error(f"Failed to setup webhook subscriptions: {e}")
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
