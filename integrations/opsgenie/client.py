@@ -70,26 +70,25 @@ class OpsGenieClient:
         api_version = await self.get_resource_api_version(resource_type)
         url = f"{self.api_url}/{api_version}/{resource_type.value}s"
 
-        pagination_params: dict[str, Any] = {"limit": PAGE_SIZE, **(query_params or {})}
+        request_params: dict[str, Any] = {"limit": PAGE_SIZE, **(query_params or {})}
+        current_offset = 0
+
         while url:
             max_offset_limit = self.get_resource_offset_limit(resource_type)
-            if max_offset_limit is not None:
-                offset = int(pagination_params.get("offset", 0))
-                limit = int(pagination_params.get("limit", PAGE_SIZE))
-                if offset + limit > max_offset_limit:
-                    logger.warning(
-                        f"Stopped pagination for {resource_type.value}s at offset {offset}: "
-                        f"reached OpsGenie API limit of {max_offset_limit} (offset + limit = {offset + limit})"
-                    )
-                    break
+            if max_offset_limit is not None and current_offset >= max_offset_limit:
+                logger.warning(
+                    f"Stopped pagination for {resource_type.value}s at offset {current_offset}: "
+                    f"reached OpsGenie API limit of {max_offset_limit}"
+                )
+                break
 
             try:
-                response = await self._get_single_resource(
-                    url=url, query_params=pagination_params
-                )
+                params = request_params if current_offset == 0 else None
+                response = await self._get_single_resource(url=url, query_params=params)
                 yield response["data"]
 
                 url = response.get("paging", {}).get("next")
+                current_offset += PAGE_SIZE
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
