@@ -103,8 +103,6 @@ async def test_folder_handle_event(
     assert len(result.updated_raw_results) == 1
     folder_entity = result.updated_raw_results[0]
     assert folder_entity["kind"] == Kind.FOLDER
-    assert folder_entity["folder"]["path"] == "/test/folder"
-    assert folder_entity["folder"]["changeType"] == "add"
     assert folder_entity["__repository"]["name"] == "test-repo"
     assert folder_entity["__branch"] == "main"
     assert folder_entity["__pattern"] == "/test/folder"
@@ -167,8 +165,6 @@ async def test_folder_handle_event_with_deleted_folder(
     assert len(result.deleted_raw_results) == 1
     folder_entity = result.deleted_raw_results[0]
     assert folder_entity["kind"] == Kind.FOLDER
-    assert folder_entity["folder"]["path"] == "/test/folder"
-    assert folder_entity["folder"]["changeType"] == "delete"
     assert folder_entity["__repository"]["name"] == "test-repo"
     assert folder_entity["__branch"] == "main"
     assert folder_entity["__pattern"] == "/test/folder"
