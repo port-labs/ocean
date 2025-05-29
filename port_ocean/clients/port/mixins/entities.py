@@ -12,7 +12,11 @@ from port_ocean.clients.port.utils import (
     handle_port_status_code,
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
 )
-from port_ocean.core.models import Entity, PortAPIErrorMessage
+from port_ocean.core.models import (
+    BulkUpsertResponse,
+    Entity,
+    PortAPIErrorMessage,
+)
 from starlette import status
 
 from port_ocean.helpers.metric.metric import MetricPhase, MetricType
@@ -164,7 +168,7 @@ class EntityClientMixin:
             return None
         return self._reduce_entity(result_entity)
 
-    async def upsert_entities_batch(
+    async def upsert_entities_bulk(
         self,
         blueprint: str,
         entities: list[Entity],
@@ -233,22 +237,22 @@ class EntityClientMixin:
             )
         handle_port_status_code(response, should_raise)
         result = response.json()
-        index_to_entity = {i: entity for i, entity in enumerate(entities)}
 
-        return self._parse_upsert_entities_batch_response(index_to_entity, result)
+        return self._parse_upsert_entities_batch_response(entities, result)
 
     def _parse_upsert_entities_batch_response(
         self,
-        index_to_entity: dict[int, Entity],
-        result: dict[str, Any],
+        entities: list[Entity],
+        result: BulkUpsertResponse,
     ) -> list[tuple[bool | None, Entity]]:
         """
         Parse the response from a bulk upsert operation and map it to the original entities.
 
-        :param index_to_entity: Mapping of entity indices to their original entities
+        :param entities: The original entities
         :param result: The response from the bulk upsert operation
         :return: A list of tuples containing the success status and the entity
         """
+        index_to_entity = {i: entity for i, entity in enumerate(entities)}
         successful_entities = {
             entity_result["index"]: entity_result
             for entity_result in result.get("entities", [])
@@ -295,7 +299,7 @@ class EntityClientMixin:
 
         return batch_results
 
-    async def _upsert_entities_batch_sequential(
+    async def _upsert_entities_batch_individually(
         self,
         entities: list[Entity],
         request_options: RequestOptions,
@@ -350,66 +354,65 @@ class EntityClientMixin:
         blueprint = entities[0].blueprint
 
         if ocean.config.bulk_upserts_enabled:
-            batch_size = self.calculate_entities_batch_size(entities)
-            batches = [
-                entities[i : i + batch_size]
-                for i in range(0, len(entities), batch_size)
+            bulk_size = self.calculate_entities_batch_size(entities)
+            bulks = [
+                entities[i : i + bulk_size] for i in range(0, len(entities), bulk_size)
             ]
 
-            batch_results = await asyncio.gather(
+            bulk_results = await asyncio.gather(
                 *(
-                    self.upsert_entities_batch(
+                    self.upsert_entities_bulk(
                         blueprint,
-                        batch,
+                        bulk,
                         request_options,
                         user_agent_type,
                         should_raise=should_raise,
                     )
-                    for batch in batches
+                    for bulk in bulks
                 ),
                 return_exceptions=True,
             )
 
-            for batch, batch_result in zip(batches, batch_results):
-                if isinstance(batch_result, httpx.HTTPStatusError) or isinstance(
-                    batch_result, Exception
+            for bulk, bulk_result in zip(bulks, bulk_results):
+                if isinstance(bulk_result, httpx.HTTPStatusError) or isinstance(
+                    bulk_result, Exception
                 ):
                     if should_raise:
-                        raise batch_result
+                        raise bulk_result
                     # If should_raise is False, retry batch in sequential order as a fallback only for 413 errors
                     if (
-                        isinstance(batch_result, httpx.HTTPStatusError)
-                        and batch_result.response.status_code == 413
+                        isinstance(bulk_result, httpx.HTTPStatusError)
+                        and bulk_result.response.status_code == 413
                     ):
-                        sequential_results = (
-                            await self._upsert_entities_batch_sequential(
-                                batch, request_options, user_agent_type, should_raise
+                        individual_upsert_results = (
+                            await self._upsert_entities_batch_individually(
+                                bulk, request_options, user_agent_type, should_raise
                             )
                         )
-                        entities_results.extend(sequential_results)
+                        entities_results.extend(individual_upsert_results)
                     else:
                         # For other errors, mark all entities in the batch as failed
-                        for entity in batch:
+                        for entity in bulk:
                             failed_result: tuple[bool, Entity] = (
                                 False,
                                 self._reduce_entity(entity),
                             )
                             entities_results.append(failed_result)
-                elif isinstance(batch_result, list):
-                    for status, entity in batch_result:
+                elif isinstance(bulk_result, list):
+                    for status, entity in bulk_result:
                         if (
                             status is not None
                         ):  # when using the search identifier we might not have an actual identifier
-                            batch_result_tuple: tuple[bool, Entity] = (
+                            bulk_result_tuple: tuple[bool, Entity] = (
                                 bool(status),
                                 entity,
                             )
-                            entities_results.append(batch_result_tuple)
+                            entities_results.append(bulk_result_tuple)
         else:
-            sequential_results = await self._upsert_entities_batch_sequential(
+            individual_upsert_results = await self._upsert_entities_batch_individually(
                 entities, request_options, user_agent_type, should_raise
             )
-            entities_results.extend(sequential_results)
+            entities_results.extend(individual_upsert_results)
 
         return entities_results
 
