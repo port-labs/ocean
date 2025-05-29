@@ -11,6 +11,16 @@ class CreatePortResourcesOrigin(StrEnum):
     Port = "Port"
 
 
+class ProcessExecutionMode(StrEnum):
+    multi_process = "multi_process"
+    single_process = "single_process"
+
+
+class CachingStorageMode(StrEnum):
+    disk = "disk"
+    memory = "memory"
+
+
 class Runtime(Enum):
     Saas = "Saas"
     OnPrem = "OnPrem"

@@ -1,0 +1,36 @@
+title: Bitbucket Server Integration
+description: Bitbucket Server integration for Port Ocean
+icon: BitBucket
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: project
+      - kind: repository
+      - kind: pull-request
+      - kind: user
+deploymentMethodOverride:
+  - type: helm
+configurations:
+  - name: bitbucketUsername
+    required: true
+    type: string
+    description: Bitbucket Server username
+  - name: bitbucketPassword
+    required: true
+    type: string
+    sensitive: true
+    description: Bitbucket Server password
+  - name: bitbucketBaseUrl
+    required: true
+    type: url
+    description: Bitbucket Server API URL
+  - name: bitbucketWebhookSecret
+    type: string
+    description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Bitbucket are accepted.
+    sensitive: true
+    required: false
+  - name: bitbucketIsVersion8Point7OrOlder
+    type: boolean
+    description: Whether the Bitbucket Server version is 8.7 or older
+    required: false

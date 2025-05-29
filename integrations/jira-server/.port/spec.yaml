@@ -1,0 +1,30 @@
+title: Jira Server (Self Hosted)
+description: Jira Server integration for Port Ocean
+icon: Jira
+docs: https://docs.port.io/build-your-software-catalog/custom-integration/webhook/examples/jira-server
+features:
+  - type: exporter
+    section: Project management
+    resources:
+      - kind: project
+      - kind: issue
+      - kind: user
+configurations:
+  - name: jiraServerHost
+    required: true
+    type: string
+    description: "The URL of your Jira, for example: https://example.atlassian.net"
+  - name: token
+    required: false
+    type: string
+    description: "The Personal Access token used to query Jira Server. Either token or username/password must be provided."
+    sensitive: true
+  - name: username
+    required: false
+    type: string
+    description: "The username for Jira Server authentication. Required if token is not provided."
+  - name: password
+    required: false
+    type: string
+    description: "The password for Jira Server authentication. Required if token is not provided."
+    sensitive: true
