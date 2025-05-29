@@ -57,7 +57,7 @@ By: Port.io
   [3/10] integration_short_description (A short description of the project): My custom integration made for Port
   [4/10] full_name (Your name): Monkey D. Luffy
   [5/10] email (Your address email <you@example.com>): straw@hat.com
-  [6/10] release_date (2025-04-25): 2023-08-06
+  [6/10] release_date (2023-08-06): 2023-08-06
   [7/10] is_private_integration [y/n] (y): y
   [8/10] port_client_id (you can find it using: https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials): <your-port-client-id>
   [9/10] port_client_secret (you can find it using: https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials): <your-port-client-secret>
@@ -104,7 +104,7 @@ By: Port.io
   [3/10] integration_short_description (A short description of the project): My custom integration made for Port
   [4/10] full_name (Your name): Monkey D. Luffy
   [5/10] email (Your address email <you@example.com>): straw@hat.com
-  [6/10] release_date (2025-04-25): 2023-08-06
+  [6/10] release_date (2023-08-06): 2023-08-06
   [7/10] is_private_integration [y/n] (n): n
   [8/10] port_client_id (you can find it using: https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials): <your-port-client-id>
   [9/10] port_client_secret (you can find it using: https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials): <your-port-client-secret>
@@ -188,7 +188,7 @@ Each component plays a specific role:
 
 ### Develop
 
-To continue this amazing voyage of developing your integration, see the [Developing an integration](../develop-an-integration/develop-an-integration.md) guide which describes the process of adding your custom logic to the integration and the best practices to follow.
+To continue this amazing voyage of developing your integration, see the [Developing an integration](../developing-an-integration/developing-an-integration.md) guide which describes the process of adding your custom logic to the integration and the best practices to follow.
 
 ### Run
 
