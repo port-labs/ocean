@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "launchdarkly"
-version = "0.1.123"
+version = "0.1.129"
 description = "LaunchDarkly integration for Port"
 authors = ["Michael Armah <michaelarmah@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.22.10", extras = ["cli"]}
+port_ocean = {version = "^0.23.3", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration

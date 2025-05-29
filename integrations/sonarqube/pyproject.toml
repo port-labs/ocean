@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "sonarqube"
-version = "0.1.176"
+version = "0.1.182"
 description = "SonarQube projects and code quality analysis integration"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.22.10", extras = ["cli"]}
+port_ocean = {version = "^0.23.3", extras = ["cli"]}
 rich = "^13.5.2"
 cookiecutter = "^2.3.0"
 

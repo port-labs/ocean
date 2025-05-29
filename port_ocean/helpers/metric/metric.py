@@ -1,18 +1,21 @@
+import os
 from typing import Any, TYPE_CHECKING, Optional, Dict, List, Tuple
 from fastapi import APIRouter
 from port_ocean.exceptions.context import ResourceContextNotFoundError
 import prometheus_client
 from httpx import AsyncClient
-
+from fastapi.responses import PlainTextResponse
 from loguru import logger
 from port_ocean.context import resource
 from prometheus_client import Gauge
 import prometheus_client.openmetrics
 import prometheus_client.openmetrics.exposition
 import prometheus_client.parser
+from prometheus_client import multiprocess
 
 if TYPE_CHECKING:
     from port_ocean.config.settings import MetricsSettings, IntegrationSettings
+    from port_ocean.clients.port.client import PortClient
 
 
 class MetricPhase:
@@ -35,21 +38,22 @@ class MetricPhase:
     class ExtractResult:
         EXTRACTED = "raw_extracted"
 
+    class DeletionResult:
+        DELETED = "deleted"
+
 
 class MetricType:
     # Define metric names as constants
     DURATION_NAME = "duration_seconds"
     OBJECT_COUNT_NAME = "object_count"
-    ERROR_COUNT_NAME = "error_count"
     SUCCESS_NAME = "success"
     RATE_LIMIT_WAIT_NAME = "rate_limit_wait_seconds"
-    DELETION_COUNT_NAME = "deletion_count"
 
 
 class SyncState:
     SYNCING = "syncing"
     COMPLETED = "completed"
-    QUEUED = "queued"
+    PENDING = "pending"
     FAILED = "failed"
 
 
@@ -65,11 +69,6 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
         "object_count description",
         ["kind", "phase", "object_count_type"],
     ),
-    MetricType.ERROR_COUNT_NAME: (
-        MetricType.ERROR_COUNT_NAME,
-        "error_count description",
-        ["kind", "phase"],
-    ),
     MetricType.SUCCESS_NAME: (
         MetricType.SUCCESS_NAME,
         "success description",
@@ -79,11 +78,6 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
         MetricType.RATE_LIMIT_WAIT_NAME,
         "rate_limit_wait description",
         ["kind", "phase", "endpoint"],
-    ),
-    MetricType.DELETION_COUNT_NAME: (
-        MetricType.DELETION_COUNT_NAME,
-        "deletion_count description",
-        ["kind", "phase"],
     ),
 }
 
@@ -115,16 +109,21 @@ class Metrics:
         self,
         metrics_settings: "MetricsSettings",
         integration_configuration: "IntegrationSettings",
+        port_client: "PortClient",
+        multiprocessing_enabled: bool = False,
     ) -> None:
         self.metrics_settings = metrics_settings
         self.integration_configuration = integration_configuration
+        self.port_client = port_client
         self.registry = prometheus_client.CollectorRegistry()
+        if multiprocessing_enabled:
+            multiprocess.MultiProcessCollector(self.registry)
         self.metrics: dict[str, Gauge] = {}
         self.load_metrics()
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
         self.event_id = ""
-        self.sync_state = SyncState.QUEUED
+        self.sync_state = SyncState.PENDING
 
     @property
     def event_id(self) -> str:
@@ -163,9 +162,6 @@ class Metrics:
         return self.metrics_settings.enabled
 
     def load_metrics(self) -> None:
-        if not self.enabled:
-            return None
-
         # Load all registered metrics
         for name, (_, description, labels) in _metrics_registry.items():
             self.metrics[name] = Gauge(
@@ -173,8 +169,6 @@ class Metrics:
             )
 
     def get_metric(self, name: str, labels: list[str]) -> Gauge | EmptyMetric:
-        if not self.enabled:
-            return EmptyMetric()
         metrics = self.metrics.get(name)
         if not metrics:
             return EmptyMetric()
@@ -188,9 +182,6 @@ class Metrics:
             labels (list[str]): The labels to apply to the metric.
             value (float): The value to inc.
         """
-        if not self.enabled:
-            return None
-
         self.get_metric(name, labels).inc(value)
 
     def set_metric(self, name: str, labels: list[str], value: float) -> None:
@@ -201,12 +192,23 @@ class Metrics:
             labels (list[str]): The labels to apply to the metric.
             value (float): The value to set.
         """
-        if not self.enabled:
-            return None
-
         self.get_metric(name, labels).set(value)
 
+    @staticmethod
+    def cleanup_prometheus_metrics(pid: int | None = None) -> None:
+        try:
+            prometheus_multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+            for file in os.listdir(prometheus_multiproc_dir):
+                if pid:
+                    if file.endswith(".db") and file[0:-3].split("_")[-1] == str(pid):
+                        os.remove(f"{prometheus_multiproc_dir}/{file}")
+                else:
+                    os.remove(f"{prometheus_multiproc_dir}/{file}")
+        except Exception as e:
+            logger.error(f"Failed to cleanup prometheus metrics: {e}")
+
     def initialize_metrics(self, kind_blockes: list[str]) -> None:
+        self.cleanup_prometheus_metrics()
         for kind in kind_blockes:
             self.set_metric(MetricType.SUCCESS_NAME, [kind, MetricPhase.RESYNC], 0)
             self.set_metric(MetricType.DURATION_NAME, [kind, MetricPhase.RESYNC], 0)
@@ -254,7 +256,7 @@ class Metrics:
             return APIRouter()
         router = APIRouter()
 
-        @router.get("/")
+        @router.get("/", response_class=PlainTextResponse)
         async def prom_metrics() -> str:
             return self.generate_latest()
 
@@ -271,15 +273,39 @@ class Metrics:
             self.registry
         ).decode()
 
-    async def flush(
+    async def report_sync_metrics(
+        self, metric_name: Optional[str] = None, kinds: Optional[list[str]] = None
+    ) -> None:
+        if kinds is None:
+            return None
+
+        metrics = []
+
+        for kind in kinds:
+            metric = self.generate_metrics(metric_name, kind)
+            metrics.extend(metric)
+
+        try:
+            await self.port_client.post_integration_sync_metrics(metrics)
+        except Exception as e:
+            logger.error(f"Error posting metrics: {e}", metrics=metrics)
+
+    async def report_kind_sync_metrics(
         self, metric_name: Optional[str] = None, kind: Optional[str] = None
     ) -> None:
-        if not self.enabled:
+        metrics = self.generate_metrics(metric_name, kind)
+        if not metrics:
             return None
 
-        if not self.metrics_settings.webhook_url:
-            return None
+        try:
+            for metric in metrics:
+                await self.port_client.put_integration_sync_metrics(metric)
+        except Exception as e:
+            logger.error(f"Error putting metrics: {e}", metrics=metrics)
 
+    def generate_metrics(
+        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+    ) -> list[dict[str, Any]]:
         try:
             latest_raw = self.generate_latest()
             metric_families = prometheus_client.parser.text_string_to_metric_families(
@@ -318,27 +344,54 @@ class Metrics:
 
             # If no metrics were filtered, exit early
             if not metrics_dict.get("kind", {}):
-                return None
+                return []
 
+            events = []
             for kind_key, metrics in metrics_dict.get("kind", {}).items():
                 # Skip if we're filtering by kind and this isn't the requested kind
                 if kind and kind_key != kind:
                     continue
 
                 event = {
-                    "integration_type": self.integration_configuration.type,
-                    "integration_identifier": self.integration_configuration.identifier,
-                    "integration_version": self.integration_version,
-                    "ocean_version": self.ocean_version,
-                    "kind_identifier": kind_key,
-                    "kind": "-".join(kind_key.split("-")[:-1]),
-                    "event_id": self.event_id,
-                    "sync_state": self.sync_state,
+                    "integrationType": self.integration_configuration.type,
+                    "integrationIdentifier": self.integration_configuration.identifier,
+                    "integrationVersion": self.integration_version,
+                    "oceanVersion": self.ocean_version,
+                    "kindIdentifier": kind_key,
+                    "kind": (
+                        "-".join(kind_key.split("-")[:-1])
+                        if "-" in kind_key
+                        else kind_key
+                    ),
+                    "kindIndex": 0 if kind_key == "__runtime__" else int(kind_key[-1]),
+                    "eventId": self.event_id,
+                    "syncState": self.sync_state,
                     "metrics": metrics,
                 }
-                logger.info(f"Sending metrics to webhook {kind_key}: {event}")
+                events.append(event)
+            return events
+        except Exception as e:
+            logger.error(f"Error sending metrics to webhook: {e}")
+            return []
+
+    async def send_metrics_to_webhook(
+        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+    ) -> None:
+        try:
+            if not self.enabled:
+                return None
+
+            if not self.metrics_settings.webhook_url:
+                return None
+
+            metrics = self.generate_metrics(metric_name, kind)
+            if not metrics:
+                return None
+
+            for metric in metrics:
+                logger.info(f"Sending metrics to webhook {metric['kind']}: {metric}")
                 await AsyncClient().post(
-                    url=self.metrics_settings.webhook_url, json=event
+                    url=self.metrics_settings.webhook_url, json=metric
                 )
         except Exception as e:
             logger.error(f"Error sending metrics to webhook: {e}")

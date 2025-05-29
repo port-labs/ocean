@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gitlab"
-version = "0.2.65"
+version = "0.2.71"
 description = "Gitlab integration for Port using Port-Ocean Framework"
 authors = ["Yair Siman-Tov <yair@getport.io>"]
 
@@ -11,7 +11,7 @@ aiolimiter = "^1.1.0"
 python-gitlab = "^3.14.0"
 pathlib = "^1.0.1"
 jsonschema = "^4.17.3"
-port_ocean = {version = "^0.22.10", extras = ["cli"]}
+port_ocean = {version = "^0.23.3", extras = ["cli"]}
 glob2 = "^0.7"
 braceexpand = "^0.1.7"
 

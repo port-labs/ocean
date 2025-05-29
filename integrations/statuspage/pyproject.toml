@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "statuspage"
-version = "0.1.96"
+version = "0.1.102"
 description = "Connect Statuspage to Ocean and automatically ingest incidents, updates, and impacted components for comprehensive monitoring"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.22.10", extras = ["cli"]}
+port_ocean = {version = "^0.23.3", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration

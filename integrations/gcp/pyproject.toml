@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "gcp"
-version = "0.1.130"
+version = "0.1.136"
 description = "A GCP ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.22.10", extras = ["cli"]}
+port_ocean = {version = "^0.23.3", extras = ["cli"]}
 google-cloud-asset = "^3.25.1"
 google-cloud-pubsub = "^2.21.1"
 google-cloud-resource-manager = "^1.12.3"

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "bitbucket-cloud"
-version = "0.1.18"
+version = "0.1.25"
 description = "This integration ingest data from bitbucket"
 authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.22.10", extras = ["cli"]}
+port_ocean = {version = "^0.23.3", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
