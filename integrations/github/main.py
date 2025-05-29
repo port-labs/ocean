@@ -19,10 +19,14 @@ from typing import TYPE_CHECKING
 from port_ocean.context.event import event
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from github.webhook.webhook_processors.pull_request_webhook_processor import (
+    PullRequestWebhookProcessor,
+)
 
 
 if TYPE_CHECKING:
     from integration import GithubPortAppConfig, GithubPullRequestConfig
+
 
 @ocean.on_start()
 async def on_start() -> None:
@@ -68,6 +72,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories
 
+
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests in the organization's repositories."""
@@ -78,7 +83,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     pull_request_exporter = RestPullRequestExporter(rest_client)
     config = cast("GithubPullRequestConfig", event.resource_config)
 
-    repo_options = ListRepositoryOptions(type=cast("GithubPortAppConfig", event.port_app_config).repository_type)
+    repo_options = ListRepositoryOptions(
+        type=cast("GithubPortAppConfig", event.port_app_config).repository_type
+    )
 
     async for repos in repository_exporter.get_paginated_resources(
         options=repo_options

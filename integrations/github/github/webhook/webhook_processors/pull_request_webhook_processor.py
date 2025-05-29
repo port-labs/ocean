@@ -3,9 +3,6 @@ from loguru import logger
 from github.webhook.events import PULL_REQUEST_EVENTS
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
-from github.webhook.webhook_processors.github_abstract_webhook_processor import (
-    _GithubAbstractWebhookProcessor,
-)
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -23,11 +20,8 @@ from github.webhook.webhook_processors.base_repository_webhook_processor import 
 class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
-        return (
-            "pull_request" in payload
-            and "number" in payload["pull_request"]
-        )
-        
+        return "pull_request" in payload and "number" in payload["pull_request"]
+
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         return (
             event.headers.get("x-github-event") == "pull_request"

@@ -12,11 +12,13 @@ class ListRepositoryOptions(TypedDict):
 
     type: str
 
+
 class SinglePullRequestOptions(TypedDict):
     """Options for fetching a single pull request."""
 
     repo_name: str
     pr_number: int
+
 
 class ListPullRequestOptions(TypedDict):
     """Options for listing pull requests."""
