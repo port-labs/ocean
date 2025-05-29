@@ -17,7 +17,7 @@ resources:
             defaultBranch: .default_branch
             url: .html_url
             language: if .language then .language else "" end
-  
+
   - kind: pull-request
     selector:
       query: 'true'
