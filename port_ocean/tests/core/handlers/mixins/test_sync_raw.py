@@ -162,7 +162,7 @@ async def test_sync_raw_mixin_self_dependency(
 
                 # Add assertions for actual metrics
                 metrics = mock_ocean.metrics.generate_metrics()
-                assert len(metrics) == 2
+                assert len(metrics) == 3
 
                 # Verify object counts
                 for metric in metrics:
@@ -195,7 +195,7 @@ async def test_sync_raw_mixin_self_dependency(
                             metric["metrics"]["phase"]["load"]["object_count_type"][
                                 "loaded"
                             ]["object_count"]
-                            == 2
+                            == 1
                         )
 
                         # Verify success
@@ -203,6 +203,14 @@ async def test_sync_raw_mixin_self_dependency(
 
                         # Verify sync state
                         assert metric["syncState"] == "completed"
+
+                    if metric["kind"] == "reconciliation":
+                        assert (
+                            metric["metrics"]["phase"]["load"]["object_count_type"][
+                                "failed"
+                            ]["object_count"]
+                            == 1
+                        )
 
 
 @pytest.mark.asyncio
@@ -294,7 +302,7 @@ async def test_sync_raw_mixin_circular_dependency(
 
                 # Add assertions for actual metrics
                 metrics = mock_ocean.metrics.generate_metrics()
-                assert len(metrics) == 2
+                assert len(metrics) == 3
 
                 # Verify object counts
                 for metric in metrics:
@@ -327,7 +335,7 @@ async def test_sync_raw_mixin_circular_dependency(
                             metric["metrics"]["phase"]["load"]["object_count_type"][
                                 "loaded"
                             ]["object_count"]
-                            == 2
+                            == 0
                         )
 
                         # Verify success
@@ -335,6 +343,14 @@ async def test_sync_raw_mixin_circular_dependency(
 
                         # Verify sync state
                         assert metric["syncState"] == "completed"
+
+                    if metric["kind"] == "reconciliation":
+                        assert (
+                            metric["metrics"]["phase"]["load"]["object_count_type"][
+                                "loaded"
+                            ]["object_count"]
+                            == 2
+                        )
 
 
 @pytest.mark.asyncio
@@ -440,7 +456,7 @@ async def test_sync_raw_mixin_dependency(
 
                 # Add assertions for actual metrics
                 metrics = mock_ocean.metrics.generate_metrics()
-                assert len(metrics) == 2
+                assert len(metrics) == 3
 
                 # Verify object counts
                 for metric in metrics:
@@ -475,6 +491,14 @@ async def test_sync_raw_mixin_dependency(
 
                         # Verify sync state
                         assert metric["syncState"] == "completed"
+
+                    if metric["kind"] == "reconciliation":
+                        assert (
+                            metric["metrics"]["phase"]["load"]["object_count_type"][
+                                "loaded"
+                            ]["object_count"]
+                            == 5
+                        )
 
 
 @pytest.mark.asyncio
