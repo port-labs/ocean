@@ -2,7 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-from github.clients.http.graphql_client import GithubGraphQLClient, GraphQLClientError
+from github.clients.http.graphql_client import GithubGraphQLClient
+from github.helpers.exceptions import GraphQLClientError
 
 
 @pytest.mark.asyncio
