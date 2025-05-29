@@ -82,7 +82,7 @@ class GitHubClient:
         GitHub will handle the authentication format internally.
         """
         return {
-            "Authorization": self._token,
+            "Authorization": f"token {self._token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28"
         }

@@ -1,6 +1,7 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from loguru import logger
 
+from constants import ObjectKind
 from ..base import HookHandler
 
 __all__ = ['TeamHandler']
@@ -9,7 +10,7 @@ class TeamHandler(HookHandler):
     """Handler for GitHub team events."""
     github_events = ["team", "team_add", "membership"]
     
-    async def handle(self, event: str, body: Dict[str, Any]) -> None:
+    async def handle(self, event: str, body: Dict[str, Any], raw_body: bytes, signature: Optional[str] = None) -> None:
         try:
             team = body.get("team", {})
             if not team:
@@ -18,7 +19,7 @@ class TeamHandler(HookHandler):
 
             # The team data from webhook is already enriched with members and permissions
             # We just need to register it
-            await self.register_resource("team", [team])
+            await self.register_resource(ObjectKind.TEAM, [team])
             
             # Handle team_add event which includes repository data
             if event == "team_add":
