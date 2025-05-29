@@ -214,8 +214,9 @@ class IntegrationClientMixin:
         logger.debug("starting POST metrics request", metrics=metrics)
         metrics_attributes = await self.get_metrics_attributes()
         headers = await self.auth.headers()
+        url = metrics_attributes["ingestUrl"] + "/syncMetrics"
         response = await self.client.post(
-            metrics_attributes["ingestUrl"],
+            url,
             headers=headers,
             json={
                 "syncKindsMetrics": metrics,
@@ -229,7 +230,7 @@ class IntegrationClientMixin:
         metrics_attributes = await self.get_metrics_attributes()
         url = (
             metrics_attributes["ingestUrl"]
-            + f"/resync/{kind_metrics['eventId']}/kind/{kind_metrics['kindIdentifier']}"
+            + f"/syncMetrics/resync/{kind_metrics['eventId']}/kind/{kind_metrics['kindIdentifier']}"
         )
         headers = await self.auth.headers()
         response = await self.client.put(

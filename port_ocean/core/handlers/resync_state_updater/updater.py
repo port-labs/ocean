@@ -94,6 +94,6 @@ class ResyncStateUpdater:
         await ocean.metrics.send_metrics_to_webhook(
             kind=ocean.metrics.current_resource_kind()
         )
-        # await ocean.metrics.report_sync_metrics(
-        #     kinds=[ocean.metrics.current_resource_kind()]
-        # ) # TODO: uncomment this when end points are ready
+        await ocean.metrics.report_sync_metrics(
+            kinds=[ocean.metrics.current_resource_kind()]
+        )
