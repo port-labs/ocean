@@ -101,10 +101,12 @@ class GitHubClient:
         request_headers = {**(headers or {}), **self._headers()}
         
         try:
+            logger.info(f"Sending {method} request to {url}")
+            logger.info(f"Request data: {data}")
             response = await self._client.request(
                 method=method,
                 url=url,
-                data=data,
+                json=data,
                 params=params,
                 headers=request_headers,
                 timeout=timeout
