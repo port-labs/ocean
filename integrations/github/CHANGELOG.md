@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.1-dev (2025-05-29)
+
+### Features
+
+- Added support for Pull Request resources with state-based filtering (open, closed, all)
+- Implemented pull request webhook processor for real-time updates
+
+
 ## 0.1.0-dev (2025-05-28)
 
 ### Features

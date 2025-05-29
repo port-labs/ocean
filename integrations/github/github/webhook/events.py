@@ -10,7 +10,22 @@ REPOSITORY_UPSERT_EVENTS = [
 ]
 REPOSITORY_DELETE_EVENTS = ["archived", "deleted"]
 
-ALL_EVENTS = REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
+
+# Pull request events
+PULL_REQUEST_EVENTS = [
+    "opened",
+    "edited",
+    "ready_for_review",
+    "reopened",
+    "synchronize",
+    "unassigned",
+    "review_request_removed",
+    "closed",
+]
 
 
-WEBHOOK_CREATE_EVENTS = ["repository"]
+ALL_EVENTS = REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS + PULL_REQUEST_EVENTS
+
+
+WEBHOOK_CREATE_EVENTS = ["repository", "pull_request"]
+
