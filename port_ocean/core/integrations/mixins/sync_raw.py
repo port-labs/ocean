@@ -17,6 +17,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
 from port_ocean.core.integrations.mixins.utils import (
     ProcessWrapper,
+    clear_http_client_context,
     is_resource_supported,
     unsupported_kind_response,
     resync_generator_wrapper,
@@ -595,6 +596,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> None:
         logger.info(f"process started successfully for {resource.kind} with index {index}")
 
+        clear_http_client_context()
         async def process_resource_task() -> None:
             result = await self._process_resource(
                 resource, index, user_agent_type
@@ -814,3 +816,5 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
             finally:
                 await ocean.app.cache_provider.clear()
+                if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
+                    ocean.metrics.cleanup_prometheus_metrics()

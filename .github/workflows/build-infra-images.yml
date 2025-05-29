@@ -3,6 +3,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   detect-changes:
     uses: ./.github/workflows/detect-changes-matrix.yml
@@ -14,6 +18,18 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Configure AWS Credentials 🔒
+        id: aws-credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: "eu-west-1"
+          role-to-assume: ${{ secrets.AWS_ECR_ROLE_ARN }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          mask-password: 'true'
+
       - name: Build Docker Image
         uses: ./.github/workflows/actions/build-docker-image
         with:
@@ -22,6 +38,8 @@ jobs:
           tags: ghcr.io/port-labs/port-ocean-base-builder:latest
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          build-args: |
+            ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Build Docker Image
         uses: ./.github/workflows/actions/build-docker-image
@@ -32,3 +50,5 @@ jobs:
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
           skip-init: 'true'
+          build-args: |
+            ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}

@@ -6,10 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.23.2 (2025-05-27)
+## 0.23.4 (2025-05-29)
 
 ### Improvements
 - Fixed metrics urls and added reconciliation kind to report
+
+## 0.23.3 (2025-05-28)
+
+### Bug Fixes
+
+- Asyncio lock error in subprocess's http request.
+- PROMETHEUS_MULTIPROC_DIR default missing.
+
+
+## 0.23.2 (2025-05-28)
+
+### Improvements
+
+- Replaced based image to use echo images in order to reduce vulnerability exposure
+
 
 ## 0.23.1 (2025-05-27)
 
