@@ -654,6 +654,88 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             return kind_results
 
+    @TimeMetric(MetricResourceKind.RECONCILIATION)
+    async def resync_reconciliation(
+        self,
+        creation_results: list[tuple[list[Entity], list[Exception]]],
+        did_fetched_current_state: bool,
+        user_agent_type: UserAgentType,
+        app_config: Any,
+        silent: bool = True,
+    ) -> bool:
+        """Handle the reconciliation phase of the resync process.
+
+        This method handles:
+        1. Sorting and upserting failed entities
+        2. Checking if current state was fetched
+        3. Calculating resync diff
+        4. Handling errors
+        5. Deleting entities that are no longer needed
+        6. Executing resync complete hooks
+
+        Args:
+            creation_results (list[tuple[list[Entity], list[Exception]]]): Results from entity creation
+            did_fetched_current_state (bool): Whether the current state was successfully fetched
+            user_agent_type (UserAgentType): The type of user agent
+            app_config (Any): The application configuration
+            silent (bool): Whether to raise exceptions or handle them silently
+
+        Returns:
+            bool: True if reconciliation was successful, False otherwise
+        """
+        async with metric_resource_context(MetricResourceKind.RECONCILIATION):
+            await self.sort_and_upsert_failed_entities(user_agent_type)
+
+            if not did_fetched_current_state:
+                logger.warning(
+                    "Due to an error before the resync, the previous state of entities at Port is unknown."
+                    " Skipping delete phase due to unknown initial state."
+                )
+                return False
+
+            logger.info("Starting resync diff calculation")
+            generated_entities, errors = zip_and_sum(creation_results) or [
+                [],
+                [],
+            ]
+
+            if errors:
+                message = f"Resync failed with {len(errors)} errors, skipping delete phase due to incomplete state"
+                error_group = ExceptionGroup(
+                    message,
+                    errors,
+                )
+                if not silent:
+                    raise error_group
+
+                logger.error(message, exc_info=error_group)
+                return False
+
+            logger.info(
+                f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
+            )
+            entities_at_port = await ocean.port_client.search_entities(
+                user_agent_type
+            )
+
+            await self.entities_state_applier.delete_diff(
+                {"before": entities_at_port, "after": generated_entities},
+                user_agent_type, app_config.get_entity_deletion_threshold()
+            )
+
+            logger.info("Resync finished successfully")
+
+            # Execute resync_complete hooks
+            if "resync_complete" in self.event_strategy:
+                logger.info("Executing resync_complete hooks")
+
+                for resync_complete_fn in self.event_strategy["resync_complete"]:
+                    await resync_complete_fn()
+
+                logger.info("Finished executing resync_complete hooks")
+
+            return True
+
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
         self,
@@ -717,66 +799,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             multiprocessing.set_start_method('fork', True)
             try:
                 for index,resource in enumerate(app_config.resources):
-
                     logger.info(f"Starting processing resource {resource.kind} with index {index}")
-
                     creation_results.append(await self.process_resource(resource,index,user_agent_type))
-
-                async with metric_resource_context(MetricResourceKind.RECONCILIATION):
-                    await self.sort_and_upsert_failed_entities(user_agent_type)
-
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise
             else:
-                if not did_fetched_current_state:
-                    logger.warning(
-                        "Due to an error before the resync, the previous state of entities at Port is unknown."
-                        " Skipping delete phase due to unknown initial state."
-                    )
-                    return
-
-                logger.info("Starting resync diff calculation")
-                generated_entities, errors = zip_and_sum(creation_results) or [
-                    [],
-                    [],
-                ]
-
-                if errors:
-                    message = f"Resync failed with {len(errors)} errors, skipping delete phase due to incomplete state"
-                    error_group = ExceptionGroup(
-                        message,
-                        errors,
-                    )
-                    if not silent:
-                        raise error_group
-
-                    logger.error(message, exc_info=error_group)
-                    return False
-                else:
-                    logger.info(
-                        f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
-                    )
-                    entities_at_port = await ocean.port_client.search_entities(
-                        user_agent_type
-                    )
-                    async with metric_resource_context(MetricResourceKind.RECONCILIATION):
-                        await self.entities_state_applier.delete_diff(
-                            {"before": entities_at_port, "after": generated_entities},
-                            user_agent_type, app_config.get_entity_deletion_threshold()
-                        )
-
-                    logger.info("Resync finished successfully")
-
-                    # Execute resync_complete hooks
-                    if "resync_complete" in self.event_strategy:
-                        logger.info("Executing resync_complete hooks")
-
-                        for resync_complete_fn in self.event_strategy["resync_complete"]:
-                            await resync_complete_fn()
-
-                        logger.info("Finished executing resync_complete hooks")
-
-                    return True
+                return await self.resync_reconciliation(
+                    creation_results,
+                    did_fetched_current_state,
+                    user_agent_type,
+                    app_config,
+                    silent
+                )
             finally:
                 await ocean.app.cache_provider.clear()
