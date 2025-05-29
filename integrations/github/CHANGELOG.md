@@ -12,7 +12,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Created GitHub Ocean integration with support for Repository
-- Added concurrent request limiting with configurable thresholds
-- Implemented efficient pagination using GitHub's Link header
 - Added support for webhook event processors
 - Add Tests for client and base webhook processor
