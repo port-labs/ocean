@@ -640,3 +640,32 @@ class TestGitLabClient:
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Pipeline"
             mock_get_project_resource.assert_called_once_with("1", "pipelines")
+
+    async def test_get_groups_all_groups(self, client: GitLabClient) -> None:
+        """Test group fetching when retrieving all groups (including nested)"""
+        mock_groups: list[dict[str, Any]] = [
+            {"id": 1, "name": "Root Group", "parent_id": None},
+            {"id": 2, "name": "Nested Group", "parent_id": 1},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
+
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_groups():
+                results.extend(batch)
+
+            assert len(results) == 2
+            assert results[0]["name"] == "Root Group"
+            assert results[1]["name"] == "Nested Group"
+            mock_get_resource.assert_called_once_with(
+                "groups",
+                params={
+                    "min_access_level": 30,
+                    "all_available": True,
+                    "top_level_only": False,
+                },
+            )
