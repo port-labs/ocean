@@ -11,3 +11,7 @@ class MissingCredentials(AuthenticationException):
 
 class InvalidTokenException(AuthenticationException):
     """Raised when a token is invalid or expired."""
+
+
+class GraphQLClientError(Exception):
+    """Exception raised for GraphQL API errors."""
