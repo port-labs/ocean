@@ -17,9 +17,15 @@ from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.options import ListRepositoryOptions
 from typing import TYPE_CHECKING
 from port_ocean.context.event import event
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from github.webhook.webhook_processors.issue_webhook_processor import (
+    IssueWebhookProcessor,
+)
+from github.core.exporters.issue_exporter import RestIssueExporter
+from github.core.options import ListIssueOptions
 
 if TYPE_CHECKING:
-    from integration import GithubPortAppConfig
+    from integration import GithubPortAppConfig, GithubIssueConfig
 
 
 @ocean.on_start()
@@ -67,4 +73,35 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield repositories
 
 
+@ocean.on_resync(ObjectKind.ISSUE)
+async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all issues from repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    issue_exporter = RestIssueExporter(rest_client)
+    config = cast("GithubIssueConfig", event.resource_config)
+
+    repo_options = ListRepositoryOptions(
+        type=cast("GithubPortAppConfig", event.port_app_config).repository_type
+    )
+
+    async for repos in repository_exporter.get_paginated_resources(
+        options=repo_options
+    ):
+        tasks = [
+            issue_exporter.get_paginated_resources(
+                ListIssueOptions(
+                    state=config.selector.state,
+                    repo_name=repo["name"],
+                )
+            )
+            for repo in repos
+        ]
+        async for issues in stream_async_iterators_tasks(*tasks):
+            yield issues
+
+
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)

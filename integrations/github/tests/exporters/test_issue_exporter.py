@@ -1,11 +1,9 @@
 from typing import Any, AsyncGenerator
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-import httpx
-from github.core.exporters.issue_exporter import IssueExporter
-from github.clients.base_client import AbstractGithubClient
+from unittest.mock import patch, AsyncMock
+from github.core.exporters.issue_exporter import RestIssueExporter
+from github.clients.http.rest_client import GithubRestClient
 from github.core.options import SingleIssueOptions, ListIssueOptions
-from github.utils import IssueState
 
 TEST_ISSUES = [
     {
@@ -32,31 +30,26 @@ TEST_REPOS = [
 
 @pytest.mark.asyncio
 class TestIssueExporter:
-    async def test_get_resource(self, client: AbstractGithubClient) -> None:
-        # Create a mock response
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.status_code = 200
-        mock_response.json.return_value = TEST_ISSUES[0]
-        mock_response.text = ""
+    async def test_get_resource(self, rest_client: GithubRestClient) -> None:
 
-        exporter = IssueExporter(client)
+        exporter = RestIssueExporter(rest_client)
 
         with patch.object(
-            client, "send_api_request", AsyncMock(return_value=mock_response)
+            rest_client, "send_api_request", AsyncMock(return_value=TEST_ISSUES[0])
         ) as mock_request:
             # Test with options
             issue = await exporter.get_resource(
                 SingleIssueOptions(repo_name="repo1", issue_number=101)
             )
 
-            assert issue == {**TEST_ISSUES[0], "repo": "repo1"}
+            assert issue == {**TEST_ISSUES[0], "repository": {"name": "repo1"}}
 
             mock_request.assert_called_once_with(
-                f"repos/{client.organization}/repo1/issues/101"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/issues/101"
             )
 
-    async def test_get_paginated_resources(self, client: AbstractGithubClient) -> None:
-        exporter = IssueExporter(client)
+    async def test_get_paginated_resources(self, rest_client: GithubRestClient) -> None:
+        exporter = RestIssueExporter(rest_client)
 
         # Mock paginated response
         async def mock_issues_generator(
@@ -65,31 +58,34 @@ class TestIssueExporter:
             yield TEST_ISSUES
 
         with patch.object(
-            client, "send_paginated_request", return_value=mock_issues_generator()
+            rest_client, "send_paginated_request", return_value=mock_issues_generator()
         ) as mock_paginated:
             issues = []
             async for batch in exporter.get_paginated_resources(
-                ListIssueOptions(repo_name="repo1", state=IssueState.OPEN)
+                ListIssueOptions(repo_name="repo1", state="open")
             ):
                 issues.extend(batch)
 
-            # Assert we received all issues with repo added
+            # Assert we received all issues with repository added
             assert len(issues) == 2
-            assert all(issue["repo"] == "repo1" for issue in issues)
+            assert all(issue["repository"]["name"] == "repo1" for issue in issues)
 
             # Verify specific values
-            expected_issues = [{**issue, "repo": "repo1"} for issue in TEST_ISSUES]
+            expected_issues = [
+                {**issue, "repository": {"name": "repo1"}} for issue in TEST_ISSUES
+            ]
             assert issues == expected_issues
 
             # Verify the API was called correctly
             mock_paginated.assert_called_once_with(
-                f"repos/{client.organization}/repo1/issues", {"state": "open"}
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/issues",
+                {"state": "open"},
             )
 
     async def test_get_paginated_resources_with_different_state(
-        self, client: AbstractGithubClient
+        self, rest_client: GithubRestClient
     ) -> None:
-        exporter = IssueExporter(client)
+        exporter = RestIssueExporter(rest_client)
 
         # Mock paginated response
         async def mock_issues_generator(
@@ -98,15 +94,16 @@ class TestIssueExporter:
             yield TEST_ISSUES
 
         with patch.object(
-            client, "send_paginated_request", return_value=mock_issues_generator()
+            rest_client, "send_paginated_request", return_value=mock_issues_generator()
         ) as mock_paginated:
             issues = []
             async for batch in exporter.get_paginated_resources(
-                ListIssueOptions(repo_name="repo1", state=IssueState.CLOSED)
+                ListIssueOptions(repo_name="repo1", state="closed")
             ):
                 issues.extend(batch)
 
             # Verify closed state was passed in parameters
             mock_paginated.assert_called_once_with(
-                f"repos/{client.organization}/repo1/issues", {"state": "closed"}
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/issues",
+                {"state": "closed"},
             )

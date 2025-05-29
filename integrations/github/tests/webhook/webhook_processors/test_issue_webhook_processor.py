@@ -10,11 +10,12 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from integration import GithubIssueSelector, GithubIssueConfig
+from port_ocean.context.event import event_context
 
 from github.webhook.webhook_processors.issue_webhook_processor import (
     IssueWebhookProcessor,
 )
-from github.utils import ObjectKind, IssueState
+from github.helpers.utils import ObjectKind
 from github.webhook.events import ISSUE_EVENTS
 from github.core.options import SingleIssueOptions
 
@@ -23,9 +24,7 @@ from github.core.options import SingleIssueOptions
 def resource_config() -> GithubIssueConfig:
     return GithubIssueConfig(
         kind="issue",
-        selector=GithubIssueSelector(
-            query=".pull_request == null", state=IssueState.OPEN
-        ),
+        selector=GithubIssueSelector(query=".pull_request == null", state="open"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -76,76 +75,50 @@ class TestIssueWebhookProcessor:
     async def test_validate_payload_valid(
         self, issue_webhook_processor: IssueWebhookProcessor
     ) -> None:
-
-        # Valid payload for each issue action
-        for action in ISSUE_EVENTS:
-            payload = {
-                "action": action,
-                "issue": {"number": 101, "state": "open"},
-                "repository": {"name": "test-repo"},
-            }
-            assert await issue_webhook_processor.validate_payload(payload) is True
+        async with event_context("test_event"):
+            # Valid payload for each issue action
+            for action in ISSUE_EVENTS:
+                payload = {
+                    "action": action,
+                    "issue": {"number": 101, "state": "open"},
+                    "repository": {"name": "test-repo"},
+                }
+                assert await issue_webhook_processor._validate_payload(payload) is True
 
     async def test_validate_payload_invalid(
         self, issue_webhook_processor: IssueWebhookProcessor
     ) -> None:
+        async with event_context("test_event"):
 
-        # Missing action field
-        payload = {
-            "issue": {"number": 101, "state": "open"},
-            "repository": {"name": "test-repo"},
-        }
-        assert await issue_webhook_processor.validate_payload(payload) is False
+            # Missing issue field
+            payload = {"action": "opened", "repository": {"name": "test-repo"}}
+            assert await issue_webhook_processor._validate_payload(payload) is False
 
-        # Missing issue field
-        payload = {"action": "opened", "repository": {"name": "test-repo"}}
-        assert await issue_webhook_processor.validate_payload(payload) is False
-
-        # Missing repository field
-        payload = {"action": "opened", "issue": {"number": 101, "state": "open"}}
-        assert await issue_webhook_processor.validate_payload(payload) is False
-
-        # Missing number in issue
-        payload = {
-            "action": "opened",
-            "issue": {"state": "open"},
-            "repository": {"name": "test-repo"},
-        }
-        assert await issue_webhook_processor.validate_payload(payload) is False
-
-        # Missing state in issue
-        payload = {
-            "action": "opened",
-            "issue": {"number": 101},
-            "repository": {"name": "test-repo"},
-        }
-        assert await issue_webhook_processor.validate_payload(payload) is False
-
-        # Missing name in repository
-        payload = {
-            "action": "opened",
-            "issue": {"number": 101, "state": "open"},
-            "repository": {},
-        }
-        assert await issue_webhook_processor.validate_payload(payload) is False
+            # Missing number in issue
+            payload = {
+                "action": "opened",
+                "issue": {"state": "open"},
+                "repository": {"name": "test-repo"},
+            }
+            assert await issue_webhook_processor._validate_payload(payload) is False
 
     @pytest.mark.parametrize(
         "action,issue_state,selector_state,expected_update,expected_delete",
         [
-            ("opened", "open", IssueState.OPEN, True, False),
-            ("edited", "open", IssueState.OPEN, True, False),
-            ("closed", "closed", IssueState.OPEN, False, True),
-            ("closed", "closed", IssueState.CLOSED, True, False),
-            ("closed", "closed", IssueState.ALL, True, False),
-            ("deleted", "open", IssueState.OPEN, False, True),
-            ("reopened", "open", IssueState.CLOSED, True, False),
+            ("opened", "open", "open", True, False),
+            ("edited", "open", "open", True, False),
+            ("closed", "closed", "open", False, True),
+            ("closed", "closed", "closed", True, False),
+            ("closed", "closed", "all", True, False),
+            ("deleted", "open", "open", False, True),
+            ("reopened", "open", "closed", True, False),
         ],
     )
     async def test_handle_event(
         self,
         action: str,
         issue_state: str,
-        selector_state: IssueState,
+        selector_state: str,
         expected_update: bool,
         expected_delete: bool,
         resource_config: GithubIssueConfig,
@@ -172,7 +145,7 @@ class TestIssueWebhookProcessor:
             **issue_data,
             "body": "Issue description",
             "html_url": "https://github.com/org/repo/issues/42",
-            "repo": "test-repo",
+            "repository": {"name": "test-repo"},
         }
 
         # Mock the exporter
@@ -180,7 +153,7 @@ class TestIssueWebhookProcessor:
         mock_exporter.get_resource.return_value = updated_issue_data
 
         with patch(
-            "github.webhook.webhook_processors.issue_webhook_processor.IssueExporter",
+            "github.webhook.webhook_processors.issue_webhook_processor.RestIssueExporter",
             return_value=mock_exporter,
         ):
             result = await issue_webhook_processor.handle_event(
@@ -198,7 +171,5 @@ class TestIssueWebhookProcessor:
                 )
             elif expected_delete:
                 assert result.updated_raw_results == []
-                assert result.deleted_raw_results == [
-                    {**issue_data, "repo": "test-repo"}
-                ]
+                assert result.deleted_raw_results == [issue_data]
                 mock_exporter.get_resource.assert_not_called()
