@@ -18,12 +18,11 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
             return False
 
         visibility = cast(GithubPortAppConfig, event.port_app_config).repository_type
-        if visibility == "all":
-            return True
+        validation_result = await self._validate_payload(payload)
 
-        return repository.get(
-            "visibility"
-        ) == visibility and await self._validate_payload(payload)
+        return validation_result and (
+            visibility == "all" or repository.get("visibility") == visibility
+        )
 
     @abstractmethod
     async def _validate_payload(self, payload: EventPayload) -> bool: ...
