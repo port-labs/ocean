@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.15 (2025-05-29)
+
+
+### Improvements
+
+- Fetch all groups and subgroups
+
+
 ## 0.1.14 (2025-05-28)
 
 
