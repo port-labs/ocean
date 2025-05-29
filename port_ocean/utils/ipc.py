@@ -7,7 +7,7 @@ class FileIPC:
     def __init__(self, process_id: str, name: str, default_return: Any = None):
         self.process_id = process_id
         self.name = name
-        self.dir_path = f"/tmp/p_{self.process_id}"
+        self.dir_path = f"/tmp/ocean/processes/p_{self.process_id}"
         self.file_path = f"{self.dir_path}/{self.name}.pkl"
         self.default_return = default_return
         os.makedirs(self.dir_path, exist_ok=True)

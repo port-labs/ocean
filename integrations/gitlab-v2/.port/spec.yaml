@@ -32,3 +32,5 @@ saas:
         gitlabHost: '"https://gitlab.com"'
   liveEvents:
     enabled: true
+deploymentMethodOverride:
+  - type: helm
