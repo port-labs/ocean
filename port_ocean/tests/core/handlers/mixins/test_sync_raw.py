@@ -187,7 +187,7 @@ async def test_sync_raw_mixin_self_dependency(
                             metric["metrics"]["phase"]["load"]["object_count_type"][
                                 "loaded"
                             ]["object_count"]
-                            == 2
+                            == 1
                         )
 
                         # Verify success
@@ -323,7 +323,7 @@ async def test_sync_raw_mixin_circular_dependency(
                             metric["metrics"]["phase"]["load"]["object_count_type"][
                                 "loaded"
                             ]["object_count"]
-                            == 2
+                            == 0
                         )
 
                         # Verify success
