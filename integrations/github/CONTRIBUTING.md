@@ -29,17 +29,20 @@ fragment RepositoryFields on Repository {
   createdAt
   updatedAt
   pushedAt
-  defaultBranchRef { name }
-  languages(first: 1) { nodes { name } }
+  defaultBranchRef {
+    name
+  }
+  languages(first: 1) {
+    nodes {
+      name
+    }
+  }
   visibility
 }
 ```
 
 ```graphql
-query SingleRepositoryQuery(
-  $organization: String!
-  $repositoryName: String!
-) {
+query SingleRepositoryQuery($organization: String!, $repositoryName: String!) {
   organization(login: $organization) {
     repository(name: $repositoryName) {
       ...RepositoryFields
@@ -59,7 +62,7 @@ query RepositoryQuery(
     repositories(
       first: $first
       after: $after
-      orderBy: {field: NAME, direction: ASC}
+      orderBy: { field: NAME, direction: ASC }
       visibility: $repositoryVisibility
     ) {
       nodes {
@@ -111,7 +114,7 @@ class GraphQLRepositoryExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         variables = {
             "organization": self.client.organization,
-            "visibility": port_app_config.repository_visibility_filter,
+            "visibility": port_app_config.repository_type,
             "__path": "organization.repositories",
             **params,
         }

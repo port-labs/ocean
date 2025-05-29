@@ -1,16 +1,20 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
-from github.clients.graphql_client import GithubGraphQLClient, GraphQLClientError
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.http.graphql_client import GithubGraphQLClient
+from github.helpers.exceptions import GraphQLClientError
 
 
 @pytest.mark.asyncio
 class TestGithubGraphQLClient:
-    async def test_handle_graphql_errors(self) -> None:
+    async def test_handle_graphql_errors(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubGraphQLClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         # Mock response with GraphQL errors
@@ -27,11 +31,10 @@ class TestGithubGraphQLClient:
         mock_config = MagicMock()
         mock_config.client_timeout = 30.0  # Set a proper float value for timeout
 
-        with (
-            patch.object(client, "client", new_callable=MagicMock, config=mock_config),
-            patch.object(
-                client.client, "request", AsyncMock(return_value=mock_response)
-            ),
+        with patch.object(
+            client.authenticator.client,
+            "request",
+            AsyncMock(return_value=mock_response),
         ):
             with pytest.raises(ExceptionGroup) as exc_info:
                 await client.send_api_request(
@@ -50,11 +53,13 @@ class TestGithubGraphQLClient:
                 == "{'message': 'Error 2', 'path': ['field2']}"
             )
 
-    async def test_handle_graphql_success(self) -> None:
+    async def test_handle_graphql_success(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubGraphQLClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         # Mock successful response
@@ -81,11 +86,13 @@ class TestGithubGraphQLClient:
                 {"id": 1, "name": "repo1"}
             ]
 
-    async def test_send_paginated_request_single_page(self) -> None:
+    async def test_send_paginated_request_single_page(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubGraphQLClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         # Mock response with no next page
@@ -114,11 +121,13 @@ class TestGithubGraphQLClient:
             assert len(results) == 1
             assert results[0] == [{"id": 1, "name": "repo1"}]
 
-    async def test_send_paginated_request_multiple_pages(self) -> None:
+    async def test_send_paginated_request_multiple_pages(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubGraphQLClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         # First response with next page
@@ -164,11 +173,13 @@ class TestGithubGraphQLClient:
             assert results[0] == [{"id": 1, "name": "repo1"}]
             assert results[1] == [{"id": 2, "name": "repo2"}]
 
-    async def test_send_paginated_request_empty_response(self) -> None:
+    async def test_send_paginated_request_empty_response(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubGraphQLClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         # Mock response with empty nodes
@@ -196,11 +207,13 @@ class TestGithubGraphQLClient:
 
             assert len(results) == 0
 
-    async def test_send_paginated_request_missing_path(self) -> None:
+    async def test_send_paginated_request_missing_path(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         client = GithubGraphQLClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         with pytest.raises(

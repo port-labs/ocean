@@ -1,7 +1,6 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
-repositoryVisibilityFilter: "all"
-enableMergeEntity: true
+repositoryType: "all"
 resources:
   - kind: repository
     selector:

@@ -2,17 +2,17 @@ from typing import Any, cast
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 
+from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import (
     AbstractGithubExporter,
 )
 from github.core.options import ListWorkflowOptions, SingleWorkflowOptions
-from github.clients.base_client import AbstractGithubClient
 
 
-class WorkflowExporter(AbstractGithubExporter[AbstractGithubClient]):
-    async def get_resource[
-        ExporterOptionsT: SingleWorkflowOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
+    async def get_resource[ExporterOptionsT: SingleWorkflowOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         endpoint = f"repos/{self.client.organization}/{options['repo']}/actions/workflows/{options['resource_id']}"
         response = await self.client.send_api_request(endpoint)
 
@@ -20,9 +20,9 @@ class WorkflowExporter(AbstractGithubExporter[AbstractGithubClient]):
 
         return response.json()
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListWorkflowOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListWorkflowOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
 
         url = f"repos/{self.client.organization}/{options['repo']}/actions/workflows"

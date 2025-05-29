@@ -2,12 +2,12 @@ from typing import Any, AsyncGenerator, Optional
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
-from github.clients.base_client import AbstractGithubClient
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.http.base_client import AbstractGithubClient
 
 
 # Create a concrete implementation of the abstract class for testing
 class ConcreteGithubClient(AbstractGithubClient):
-
     @property
     def base_url(self) -> str:
         return "https://api.github.com"
@@ -28,12 +28,14 @@ class ConcreteGithubClient(AbstractGithubClient):
 
 @pytest.mark.asyncio
 class TestAbstractGithubClient:
-    async def test_send_api_request_success(self) -> None:
+    async def test_send_api_request_success(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         # Test successful API request
         client = ConcreteGithubClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         mock_response = MagicMock(spec=httpx.Response)
@@ -48,12 +50,14 @@ class TestAbstractGithubClient:
 
             assert response == mock_response.json()
 
-    async def test_send_api_request_with_params_and_json(self) -> None:
+    async def test_send_api_request_with_params_and_json(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         # Test API request with query parameters and JSON body
         client = ConcreteGithubClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         mock_response = MagicMock(spec=httpx.Response)
@@ -77,15 +81,17 @@ class TestAbstractGithubClient:
                 url=url,
                 params=params,
                 json=json_data,
-                headers=client.headers,
+                headers=await client.headers,
             )
 
-    async def test_send_api_request_404_error(self) -> None:
+    async def test_send_api_request_404_error(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         # Test 404 Not Found error handling
         client = ConcreteGithubClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         mock_response = MagicMock(spec=httpx.Response)
@@ -103,12 +109,14 @@ class TestAbstractGithubClient:
             response = await client.send_api_request("repos/test-org/nonexistent-repo")
             assert response == {}
 
-    async def test_send_api_request_403_error(self) -> None:
+    async def test_send_api_request_403_error(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         # Test other HTTP error (e.g., 403 Forbidden)
         client = ConcreteGithubClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         mock_response = MagicMock(spec=httpx.Response)
@@ -128,12 +136,14 @@ class TestAbstractGithubClient:
 
             assert exc_info.value.response.status_code == 403
 
-    async def test_send_api_request_network_error(self) -> None:
+    async def test_send_api_request_network_error(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         # Test network-level HTTP error
         client = ConcreteGithubClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         # Create a network error
@@ -146,12 +156,14 @@ class TestAbstractGithubClient:
             with pytest.raises(httpx.HTTPError):
                 await client.send_api_request("orgs/test-org/repos")
 
-    async def test_send_api_request_different_http_methods(self) -> None:
+    async def test_send_api_request_different_http_methods(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
         # Test different HTTP methods
         client = ConcreteGithubClient(
-            token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
+            authenticator=authenticator,
         )
 
         mock_response = MagicMock(spec=httpx.Response)
@@ -169,7 +181,7 @@ class TestAbstractGithubClient:
                 url=url,
                 params=None,
                 json=None,
-                headers=client.headers,
+                headers=await client.headers,
             )
 
             # Test POST
@@ -180,7 +192,7 @@ class TestAbstractGithubClient:
                 url=url,
                 params=None,
                 json=None,
-                headers=client.headers,
+                headers=await client.headers,
             )
 
             # Test PUT
@@ -191,7 +203,7 @@ class TestAbstractGithubClient:
                 url=url,
                 params=None,
                 json=None,
-                headers=client.headers,
+                headers=await client.headers,
             )
 
             # Test PATCH
@@ -202,7 +214,7 @@ class TestAbstractGithubClient:
                 url=url,
                 params=None,
                 json=None,
-                headers=client.headers,
+                headers=await client.headers,
             )
 
             # Test DELETE
@@ -213,5 +225,5 @@ class TestAbstractGithubClient:
                 url=url,
                 params=None,
                 json=None,
-                headers=client.headers,
+                headers=await client.headers,
             )

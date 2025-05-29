@@ -13,23 +13,16 @@ from integration import GithubPortAppConfig
 class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        repository = payload.get("repository")
-        if not repository:
+        repository = payload.get("repository", {})
+        if not repository.get("name"):
             return False
 
-        has_repository_name = bool(repository.get("name"))
-        if not has_repository_name:
-            return False
+        visibility = cast(GithubPortAppConfig, event.port_app_config).repository_type
+        validation_result = await self._validate_payload(payload)
 
-        port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-        visibility = port_app_config.repository_visibility_filter
-
-        if visibility == "all":
-            return True
-
-        return repository.get(
-            "visibility"
-        ) == visibility and await self._validate_payload(payload)
+        return validation_result and (
+            visibility == "all" or repository.get("visibility") == visibility
+        )
 
     @abstractmethod
     async def _validate_payload(self, payload: EventPayload) -> bool: ...

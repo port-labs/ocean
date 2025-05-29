@@ -2,9 +2,9 @@ from typing import Any, AsyncGenerator
 from httpx import Response
 import pytest
 from unittest.mock import MagicMock, patch
-from github.clients.rest_client import GithubRestClient
+from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.workflows_exporter import (
-    WorkflowExporter,
+    RestWorkflowExporter,
 )
 from github.core.options import (
     ListWorkflowOptions,
@@ -40,7 +40,7 @@ TEST_DATA: dict[str, Any] = {
 
 @pytest.mark.asyncio
 async def test_single_resource(rest_client: GithubRestClient) -> None:
-    exporter = WorkflowExporter(rest_client)
+    exporter = RestWorkflowExporter(rest_client)
     options: SingleWorkflowOptions = {"repo": "test", "resource_id": "12343"}
 
     # Create an async mock to return the test repos
@@ -63,7 +63,7 @@ async def test_single_resource(rest_client: GithubRestClient) -> None:
 @pytest.mark.asyncio
 async def test_get_paginated_resources(rest_client: GithubRestClient) -> None:
     options: ListWorkflowOptions = {"repo": "test"}
-    exporter = WorkflowExporter(rest_client)
+    exporter = RestWorkflowExporter(rest_client)
 
     # Create an async mock to return the test repos
     async def mock_paginated_request(

@@ -1,5 +1,5 @@
 from loguru import logger
-from github.core.exporters.workflow_runs_exporter import WorkflowRunExporter
+from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.core.options import SingleWorkflowOptions
 from github.webhook.events import WORKFLOW_DELETE_EVENTS, WORKFLOW_UPSERT_EVENTS
 from github.helpers.utils import ObjectKind
@@ -37,7 +37,7 @@ class WorkflowRunWebhookProcessor(_GithubAbstractWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[workflow_run]
             )
-        exporter = WorkflowRunExporter(create_github_client())
+        exporter = RestWorkflowRunExporter(create_github_client())
         options = SingleWorkflowOptions(
             repo=repo["name"], resource_id=workflow_run["id"]
         )

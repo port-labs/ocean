@@ -1,16 +1,13 @@
 from typing import Any, AsyncGenerator, Dict, List, Optional
 from urllib.parse import urljoin
 
-from github.clients.base_client import AbstractGithubClient
 from loguru import logger
 from httpx import Response
 
+from github.clients.http.base_client import AbstractGithubClient
+from github.helpers.exceptions import GraphQLClientError
 
 PAGE_SIZE = 25
-
-
-class GraphQLClientError(Exception):
-    """Exception raised for GraphQL API errors."""
 
 
 class GithubGraphQLClient(AbstractGithubClient):

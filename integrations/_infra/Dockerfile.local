@@ -25,6 +25,11 @@ RUN apt-get update \
     && apt-get clean
 
 ARG BUILD_CONTEXT
+ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
+
+ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR}
+
+RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
 
 WORKDIR /app
 

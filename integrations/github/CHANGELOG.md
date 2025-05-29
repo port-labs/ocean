@@ -7,14 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.0-dev (2025-05-12)
+## 0.1.0-dev (2025-05-28)
 
 ### Features
 
 - Created GitHub Ocean integration with support for Repository
-- Added concurrent request limiting with configurable thresholds
-- Implemented efficient pagination using GitHub's Link header
-- Added support for webhook event processors
+- Added support for repository webhook event processor
 - Add Tests for client and base webhook processor
+- Added support for authenticating as a GitHub App
 - Add support for Github workflows
 - Add support for Github workflow runs

@@ -1,6 +1,6 @@
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from github.clients.base_client import AbstractGithubClient
+from github.clients.http.base_client import AbstractGithubClient
 from loguru import logger
 import re
 from urllib.parse import urlparse, urlunparse
@@ -58,22 +58,14 @@ class GithubRestClient(AbstractGithubClient):
                 resource, method=method, params=params, return_full_response=True
             )
 
-            if not response:
-                return
-
-            items = response.json()
-            if not items:
+            if not response or not (items := response.json()):
                 return
 
             yield items
 
-            # Get the Link header from the response object
-            link_header = response.headers.get("Link")
-            if not link_header:
-                break
-
-            next_resource = self._get_next_link(link_header)
-            if not next_resource:
+            if not (link_header := response.headers.get("Link")) or not (
+                next_resource := self._get_next_link(link_header)
+            ):
                 break
 
             resource = next_resource
