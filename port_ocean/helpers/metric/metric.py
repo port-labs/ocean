@@ -377,7 +377,7 @@ class Metrics:
                     "kindIndex": int(kind_key[-1]) if kind_key[-1].isdigit() else 0,
                     "eventId": self.event_id,
                     "syncState": self.sync_state,
-                    "blueprint": blueprint if blueprint else "default",
+                    "blueprint": blueprint if blueprint else "",
                     "metrics": metrics,
                 }
                 events.append(event)
