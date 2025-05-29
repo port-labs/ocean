@@ -12,6 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Created GitHub Ocean integration with support for Repository
-- Added support for webhook event processors
+- Added support for repository webhook event processor
 - Add Tests for client and base webhook processor
-- Added support for authenticating as a Github app
+- Added support for authenticating as a GitHub App
