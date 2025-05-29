@@ -118,6 +118,7 @@ class Metrics:
         self.registry = prometheus_client.CollectorRegistry()
         if multiprocessing_enabled:
             multiprocess.MultiProcessCollector(self.registry)
+        self.multiprocessing_enabled = multiprocessing_enabled
         self.metrics: dict[str, Gauge] = {}
         self.load_metrics()
         self._integration_version: Optional[str] = None
@@ -208,7 +209,8 @@ class Metrics:
             logger.error(f"Failed to cleanup prometheus metrics: {e}")
 
     def initialize_metrics(self, kind_blockes: list[str]) -> None:
-        self.cleanup_prometheus_metrics()
+        if self.multiprocessing_enabled:
+            self.cleanup_prometheus_metrics()
         for kind in kind_blockes:
             self.set_metric(MetricType.SUCCESS_NAME, [kind, MetricPhase.RESYNC], 0)
             self.set_metric(MetricType.DURATION_NAME, [kind, MetricPhase.RESYNC], 0)

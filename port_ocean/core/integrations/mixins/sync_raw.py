@@ -613,13 +613,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 id = uuid.uuid4()
                 logger.info(f"Starting subprocess with id {id}")
                 file_ipc_map = {
-                    "process_resource": FileIPC(id, "process_resource",([],[])),
+                    "process_resource": FileIPC(id, "process_resource",([],[Exception("Subprocess failed")])),
                     "topological_entities": FileIPC(id, "topological_entities",[]),
                 }
                 process = ProcessWrapper(target=self.process_resource_in_subprocess, args=(file_ipc_map,resource,index,user_agent_type))
                 process.start()
                 await process.join_async()
-
 
                 event.entity_topological_sorter.entities.extend(file_ipc_map["topological_entities"].load())
                 return file_ipc_map["process_resource"].load()
