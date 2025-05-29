@@ -210,6 +210,20 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 
 Give it some time and it should sync the data from Jira to your Port dashboard.
 
+## Debug Mode
+
+The `debug.py` file is used to trigger a local development run of the integration. It is useful for debugging your integration and examining its execution through your IDE or preferred Python debugging interface.
+
+In most cases, you should not change this file - only use it as the target for your debug execution of the integration.
+
+To enable detailed logging during debugging, add the following environment variable to your `.env` file:
+
+```shell
+APPLICATION__LOG_LEVEL="DEBUG"
+```
+
+This will provide more verbose logging output, which can be helpful when troubleshooting issues in your integration.
+
 ## Deploying the Integration
 If you are satisfied with the integration and would like to deploy it, you can follow the guides on deployment:
 

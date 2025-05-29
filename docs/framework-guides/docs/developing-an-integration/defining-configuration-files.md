@@ -30,7 +30,7 @@ Here is the standard structure for the `.port` folder:
     └── ...
 ```
 
-## 1. The `spec.yaml` File
+## The `spec.yaml` File
 
 The `spec.yaml` file is the only required configuration file. It defines:
 - What kinds of resources your integration can sync
@@ -164,7 +164,7 @@ saas:
 - **`resources`**: The types of data your integration can sync
 - **`configurations`**: Required environment variables users must provide to run the integration
 
-## 2. The `blueprints.json` File
+## The `blueprints.json` File
 
 The `blueprints.json` file defines how your data will be structured in Port. It's optional but recommended for a better user experience.
 
@@ -332,7 +332,7 @@ You can do this by visiting the [Port UI](https://app.port.io) and navigating to
 Once you have created the blueprint, you can copy the JSON object and add it to the `blueprints.json` file.
 :::
 
-## 3. The `port-app-config.yml` File
+## The `port-app-config.yml` File
 
 The `port-app-config.yml` file defines how to map your integration's data to Port's structure. It's optional but needed for proper data mapping.
 
