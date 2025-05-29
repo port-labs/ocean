@@ -48,7 +48,7 @@ async def on_start() -> None:
         async for repos in client.get_repositories():
             for repo in repos:
                 try:
-                    repo_name = repo.get("full_name")
+                    repo_name = repo.get("name")
                     if not repo_name:
                         continue
                         
@@ -61,7 +61,7 @@ async def on_start() -> None:
                     logger.info(f"Created webhook for repository: {repo_name}")
                 except Exception as e:
                     error_count += 1
-                    logger.error(f"Failed to create webhook for repository {repo.get('full_name', 'unknown')}: {e}")
+                    logger.error(f"Failed to create webhook for repository {repo.get('name', 'unknown')}: {e}")
                     
         if success_count > 0:
             logger.info(f"Successfully created webhooks for {success_count} repositories")
