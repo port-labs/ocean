@@ -25,7 +25,7 @@ class IssueHandler(HookHandler):
         if not issue_number or not repo_name:
             raise ValueError("Missing issue number or repo name in webhook payload")
             
-        issue_data = await self.client.get_issue(repo_name, issue_number)
+        issue_data = await self.client.get_issue_details(repo_name, issue_number)
         await self.register_resource(ObjectKind.ISSUE, [issue_data])
 
 class PushHandler(HookHandler):
@@ -46,7 +46,7 @@ class PushHandler(HookHandler):
         if not repo_name:
             raise ValueError("Missing repository name in webhook payload")
             
-        repo_data = await self.client.get_repository(repo_name)
+        repo_data = await self.client.get_repository_details(repo_name)
         await self.register_resource(ObjectKind.REPOSITORY, [repo_data])
 
 class PullRequestHandler(HookHandler):
@@ -69,5 +69,5 @@ class PullRequestHandler(HookHandler):
         if not pr_number or not repo_name:
             raise ValueError("Missing PR number or repo name in webhook payload")
             
-        pr_data = await self.client.get_pull_request(repo_name, pr_number)
+        pr_data = await self.client.get_pull_request_details(repo_name, pr_number)
         await self.register_resource(ObjectKind.PULLREQUEST, [pr_data])

@@ -11,6 +11,7 @@ class TeamHandler(HookHandler):
     github_events = ["team", "team_add", "membership"]
     
     async def handle(self, event: str, body: Dict[str, Any], raw_body: bytes, signature: Optional[str] = None) -> None:
+        await super().handle(event, body, raw_body, signature)
         try:
             team = body.get("team", {})
             if not team:
