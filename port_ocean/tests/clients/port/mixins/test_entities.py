@@ -30,7 +30,7 @@ def mock_ocean() -> Generator[MagicMock, None, None]:
         yield mock_ocean
 
 
-async def mock_upsert_entities_batch(
+async def mock_upsert_entities_bulk(
     blueprint: str, entities: list[Entity], *args: Any, **kwargs: Any
 ) -> list[tuple[bool | None, Entity]]:
     results: list[tuple[bool | None, Entity]] = []
@@ -42,7 +42,7 @@ async def mock_upsert_entities_batch(
     return results
 
 
-async def mock_exception_upsert_entities_batch(
+async def mock_exception_upsert_entities_bulk(
     blueprint: str, entities: list[Entity], *args: Any, **kwargs: Any
 ) -> list[tuple[bool | None, Entity]]:
     for entity in entities:
@@ -55,8 +55,8 @@ async def mock_exception_upsert_entities_batch(
 async def entity_client(monkeypatch: Any) -> EntityClientMixin:
     entity_client = EntityClientMixin(auth=MagicMock(), client=MagicMock())
     mock = AsyncMock()
-    mock.side_effect = mock_upsert_entities_batch
-    monkeypatch.setattr(entity_client, "upsert_entities_batch", mock)
+    mock.side_effect = mock_upsert_entities_bulk
+    monkeypatch.setattr(entity_client, "upsert_entities_bulk", mock)
 
     return entity_client
 
@@ -149,8 +149,8 @@ async def test_batch_upsert_entities_read_timeout_should_raise_false_with_except
 ) -> None:
     with patch("port_ocean.context.event.event", MagicMock()):
         # Override the mock for this test to use the exception-throwing version
-        mock = AsyncMock(side_effect=mock_exception_upsert_entities_batch)
-        monkeypatch.setattr(entity_client, "upsert_entities_batch", mock)
+        mock = AsyncMock(side_effect=mock_exception_upsert_entities_bulk)
+        monkeypatch.setattr(entity_client, "upsert_entities_bulk", mock)
         result_entities = await entity_client.upsert_entities_in_batches(
             entities=all_entities, request_options=MagicMock(), should_raise=False
         )
@@ -166,8 +166,8 @@ async def test_batch_upsert_entities_read_timeout_should_raise_true(
 ) -> None:
     with patch("port_ocean.context.event.event", MagicMock()):
         # Override the mock for this test to use the exception-throwing version
-        mock = AsyncMock(side_effect=mock_exception_upsert_entities_batch)
-        monkeypatch.setattr(entity_client, "upsert_entities_batch", mock)
+        mock = AsyncMock(side_effect=mock_exception_upsert_entities_bulk)
+        monkeypatch.setattr(entity_client, "upsert_entities_bulk", mock)
         with pytest.raises(ReadTimeout):
             await entity_client.upsert_entities_in_batches(
                 entities=all_entities, request_options=MagicMock(), should_raise=True
