@@ -1,5 +1,5 @@
 description: gitlab-v2 integration for Port Ocean
-title: GitLab (Beta)
+title: GitLab
 icon: GitLab
 features:
   - type: exporter
@@ -32,3 +32,5 @@ saas:
         gitlabHost: '"https://gitlab.com"'
   liveEvents:
     enabled: true
+deploymentMethodOverride:
+  - type: helm
