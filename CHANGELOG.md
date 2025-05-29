@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.23.4 (2025-05-29)
+
+### Bug Fixes
+
+- Update poetry lock.
+- Fix PROMETHEUS_MULTIPROC_DIR in docker file.
+- Skip deleteing entities if subprocess fails.
+- Clean up PROMETHEUS_MULTIPROC_DIR only in multiprocess mode.
+
+
 ## 0.23.3 (2025-05-28)
 
 ### Bug Fixes
