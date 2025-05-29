@@ -200,8 +200,8 @@ class GitLabClient:
                 ):
                     yield batch
         else:
-            logger.info("Searching across all top-level groups")
-            async for groups_batch in self.get_groups(top_level_only=True):
+            logger.info("Searching across all groups and subgroups")
+            async for groups_batch in self.get_groups():
                 logger.debug(f"Processing batch of {len(groups_batch)} groups")
                 for group in groups_batch:
                     group_id = str(group["id"])
