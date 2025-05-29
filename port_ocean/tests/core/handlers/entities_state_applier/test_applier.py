@@ -142,7 +142,7 @@ async def test_applier_with_mock_context(
         mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
         mock_upsert = AsyncMock(return_value=[(True, entity)])
-        setattr(mock_ocean.port_client, "upsert_entities_batch", mock_upsert)
+        setattr(mock_ocean.port_client, "upsert_entities_bulk", mock_upsert)
 
         result = await applier.upsert([entity], UserAgentType.exporter)
         mock_upsert.assert_called_once()
@@ -167,7 +167,7 @@ async def test_applier_one_not_upserted(
         mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
         mock_upsert = AsyncMock(return_value=[(False, entity)])
-        setattr(mock_ocean.port_client, "upsert_entities_batch", mock_upsert)
+        setattr(mock_ocean.port_client, "upsert_entities_bulk", mock_upsert)
 
         result = await applier.upsert([entity], UserAgentType.exporter)
 
@@ -193,7 +193,7 @@ async def test_applier_error_upserting(
         mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
         mock_upsert = AsyncMock(return_value=[(False, entity)])
-        setattr(mock_ocean.port_client, "upsert_entities_batch", mock_upsert)
+        setattr(mock_ocean.port_client, "upsert_entities_bulk", mock_upsert)
 
         result = await applier.upsert([entity], UserAgentType.exporter)
         mock_upsert.assert_called_once()
@@ -222,7 +222,7 @@ async def test_using_create_entity_helper(
         mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
         mock_upsert = AsyncMock(return_value=[(True, entity1)])
-        setattr(mock_ocean.port_client, "upsert_entities_batch", mock_upsert)
+        setattr(mock_ocean.port_client, "upsert_entities_bulk", mock_upsert)
 
         result = await applier.upsert([entity1], UserAgentType.exporter)
 
