@@ -9,13 +9,13 @@ from port_ocean.core.handlers.port_app_config.models import (
 import pytest
 from unittest.mock import patch, MagicMock
 import httpx
+from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.team_exporter import (
     RestTeamExporter,
 )
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 from github.core.options import SingleTeamOptions
-from github.clients.rest_client import GithubRestClient
 
 
 TEST_TEAMS = [

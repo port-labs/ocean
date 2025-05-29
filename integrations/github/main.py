@@ -2,15 +2,18 @@ from typing import cast
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import (
+    GitHubAuthenticatorFactory,
+    create_github_client,
+)
 from github.clients.utils import integration_config
-from github.core.exporters.team_exporter import RestTeamExporter
-from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.helpers.utils import GithubClientType, ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
+from github.core.exporters.team_exporter import RestTeamExporter
+from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.webhook.webhook_client import GithubWebhookClient
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.options import ListRepositoryOptions
@@ -41,8 +44,16 @@ async def on_start() -> None:
     if not base_url:
         return
 
+    authenticator = GitHubAuthenticatorFactory.create(
+        organization=ocean.integration_config["github_organization"],
+        github_host=ocean.integration_config["github_host"],
+        token=ocean.integration_config.get("github_token"),
+        app_id=ocean.integration_config.get("github_app_id"),
+        private_key=ocean.integration_config.get("github_app_private_key"),
+    )
+
     client = GithubWebhookClient(
-        **integration_config(),
+        **integration_config(authenticator),
         webhook_secret=ocean.integration_config["webhook_secret"],
     )
 
@@ -59,7 +70,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = RestRepositoryExporter(rest_client)
 
     port_app_config = cast("GithubPortAppConfig", event.port_app_config)
-    options = ListRepositoryOptions(type=port_app_config.repository_visibility_filter)
+    options = ListRepositoryOptions(type=port_app_config.repository_type)
 
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories

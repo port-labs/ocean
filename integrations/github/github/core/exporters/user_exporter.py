@@ -1,5 +1,5 @@
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-from github.clients.graphql_client import GithubGraphQLClient
+from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleUserOptions
 from github.helpers.constants import LIST_ORG_MEMBER_GQL

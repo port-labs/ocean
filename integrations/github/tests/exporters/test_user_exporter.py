@@ -9,11 +9,11 @@ from port_ocean.core.handlers.port_app_config.models import (
 import pytest
 from unittest.mock import patch, MagicMock
 import httpx
+from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 from github.core.options import SingleUserOptions
-from github.clients.graphql_client import GithubGraphQLClient
 from github.helpers.constants import LIST_ORG_MEMBER_GQL
 
 
