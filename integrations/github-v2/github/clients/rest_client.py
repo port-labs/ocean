@@ -140,25 +140,26 @@ class RestClient(HTTPBaseClient):
             params = {"ref": ref}
             response = await self.send_api_request("GET", path, params=params)
 
-            if not response.is_success: return None
+            if not response.is_success:
+                return None
 
             response = response.json()
             if 'content' not in response:
                 return None
-            if "content" in response:
-                encoding = response.get("encoding", "")
-                raw_content = response["content"]
 
-                if encoding == "base64":
-                    clean_content = raw_content.replace("\n", "").replace("\r", "")
-                    try:
-                        decoded_bytes = base64.b64decode(clean_content)
-                        return decoded_bytes.decode("utf-8", errors="ignore")
-                    except Exception as e:
-                        logger.error(f"Failed to decode base64 content for {repo_path}/{file_path}: {e}")
-                        return None
-                else:
-                    return raw_content
+            encoding = response.get("encoding", "")
+            raw_content = response["content"]
+
+            if encoding == "base64":
+                clean_content = raw_content.replace("\n", "").replace("\r", "")
+                try:
+                    decoded_bytes = base64.b64decode(clean_content)
+                    return decoded_bytes.decode("utf-8", errors="ignore")
+                except Exception as e:
+                    logger.error(f"Failed to decode base64 content for {repo_path}/{file_path}: {e}")
+                    return None
+            else:
+                return raw_content
         except Exception as e:
             logger.error(f"Error fetching file content for {repo_path}/{file_path}: {e}")
             return None
@@ -205,7 +206,6 @@ class RestClient(HTTPBaseClient):
         Returns:
             Enriched batch with repository information
         """
-        owner, repo = repo_path.split('/', 1)
         for item in batch:
             item["repository"] = {
                 "full_name": repo_path,

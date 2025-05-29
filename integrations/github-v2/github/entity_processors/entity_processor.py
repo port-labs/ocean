@@ -37,4 +37,9 @@ class FileEntityProcessor(JQEntityProcessor):
         logger.info(
             f"Fetching content for file: '{file_path}' in repository: '{repo_path}' (branch: '{ref}')"
         )
-        return await client.get_file_content(repo_path, file_path, ref)
+
+        try:
+            return await client.get_file_content(repo_path, file_path, ref)
+        except Exception as exc:
+            logger.error(f"Failed to fetch file content for '{file_path}' in '{repo_path}': {exc}")
+            return None

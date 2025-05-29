@@ -70,7 +70,7 @@ class BaseWebhookFactory(Generic[T], ABC):
             for hook in hooks_batch:
                 if hook.get("config", {}).get("url") == webhook_url:
                     return True
-            return False
+        return False
 
     def _build_payload(self, webhook_url: str, events: T) -> Dict[str, Any]:
         """
