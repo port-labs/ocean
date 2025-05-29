@@ -380,7 +380,7 @@ class TestGitLabClient:
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
         """Test file search across all groups using scope and query"""
-        mock_groups = [{"id": "1", "name": "Group1"}]
+        mock_groups = [{"id": "1", "name": "Group1", "full_path": "group1"}]
         processed_files = [
             {"path": "test.yaml", "project_id": "123", "content": {"key": "value"}}
         ]
@@ -644,3 +644,212 @@ class TestGitLabClient:
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Pipeline"
             mock_get_project_resource.assert_called_once_with("1", "pipelines")
+
+    async def test_search_groups_by_hierarchy_top_level_groups(
+        self, client: GitLabClient
+    ) -> None:
+        """Test searching files in top-level groups"""
+        # Arrange
+        mock_groups = [
+            {"id": 1, "name": "Top Group 1", "parent_id": None, "full_path": "group1"},
+            {"id": 2, "name": "Top Group 2", "parent_id": None, "full_path": "group2"},
+        ]
+        mock_files = [
+            {"path": "file1.json", "project_id": "123", "content": {"key": "value"}}
+        ]
+
+        with patch.object(
+            client,
+            "_search_files_in_group",
+            side_effect=[
+                async_mock_generator([mock_files]),
+                async_mock_generator([mock_files]),
+            ],
+        ) as mock_search_group:
+            # Act
+            results = []
+            async for batch in client._search_groups_by_hierarchy(
+                mock_groups, "blobs", "path:file1.json", False
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 2
+            assert mock_search_group.call_count == 2
+            mock_search_group.assert_any_call("1", "blobs", "path:file1.json", False)
+            mock_search_group.assert_any_call("2", "blobs", "path:file1.json", False)
+
+    async def test_search_groups_by_hierarchy_nested_groups(
+        self, client: GitLabClient
+    ) -> None:
+        """Test searching files in groups with no top-level groups"""
+        # Arrange
+        mock_groups: list[dict[str, Any]] = [
+            {"id": 1, "name": "Group A", "parent_id": 3, "full_path": "a/b/c"},
+            {"id": 2, "name": "Group B", "parent_id": 4, "full_path": "x/y"},
+            {"id": 3, "name": "Group C", "parent_id": 5, "full_path": "p/q/r"},
+        ]
+        mock_files = [
+            {"path": "file1.json", "project_id": "123", "content": {"key": "value"}}
+        ]
+
+        def mock_search_generator(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            return async_mock_generator([mock_files])
+
+        with patch.object(
+            client,
+            "_search_files_in_group",
+            side_effect=mock_search_generator,
+        ) as mock_search_group:
+            # Act
+            results = []
+            async for batch in client._search_groups_by_hierarchy(
+                mock_groups, "blobs", "path:file1.json", False
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 3
+            assert mock_search_group.call_count == 3
+            # Verify all groups were searched since none are top-level
+            mock_search_group.assert_any_call("1", "blobs", "path:file1.json", False)
+            mock_search_group.assert_any_call("2", "blobs", "path:file1.json", False)
+            mock_search_group.assert_any_call("3", "blobs", "path:file1.json", False)
+
+    async def test_search_groups_by_hierarchy_mixed_access(
+        self, client: GitLabClient
+    ) -> None:
+        """Test searching files when token has access to both top-level groups and subgroups"""
+        # Arrange
+        mock_groups = [
+            {"id": 1, "name": "Top Group A", "parent_id": None, "full_path": "a"},
+            {"id": 2, "name": "Top Group B", "parent_id": None, "full_path": "b"},
+            {"id": 3, "name": "Sub Group B1", "parent_id": 2, "full_path": "b/b1"},
+            {"id": 4, "name": "Sub Group B2", "parent_id": 2, "full_path": "b/b2"},
+            {"id": 5, "name": "Independent Group", "parent_id": 6, "full_path": "c/d"},
+        ]
+        mock_files = [
+            {"path": "file1.json", "project_id": "123", "content": {"key": "value"}}
+        ]
+
+        with patch.object(
+            client,
+            "_search_files_in_group",
+            side_effect=[
+                async_mock_generator([mock_files]),
+                async_mock_generator([mock_files]),
+                async_mock_generator([mock_files]),
+            ],
+        ) as mock_search_group:
+            # Act
+            results = []
+            async for batch in client._search_groups_by_hierarchy(
+                mock_groups, "blobs", "path:file1.json", False
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert (
+                len(results) == 3
+            )  # Called for both top-level groups and Independent Group
+            assert mock_search_group.call_count == 3
+            # Verify top-level groups were searched
+            mock_search_group.assert_any_call("1", "blobs", "path:file1.json", False)
+            mock_search_group.assert_any_call("2", "blobs", "path:file1.json", False)
+            # Verify Independent Group was searched (not a subgroup of processed groups)
+            mock_search_group.assert_any_call("5", "blobs", "path:file1.json", False)
+            # Verify subgroups of processed groups were not searched
+            call_args_list = [call[0] for call in mock_search_group.call_args_list]
+            assert ("3", "blobs", "path:file1.json", False) not in call_args_list
+            assert ("4", "blobs", "path:file1.json", False) not in call_args_list
+
+    async def test_search_groups_by_hierarchy_skip_subgroups(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that we skip searching in subgroups of already processed groups"""
+        # Arrange
+        mock_groups: list[dict[str, Any]] = [
+            {
+                "id": 1,
+                "name": "getport-labs",
+                "parent_id": None,
+                "full_path": "getport-labs",
+            },
+            {
+                "id": 2,
+                "name": "search_group",
+                "parent_id": 1,
+                "full_path": "getport-labs/search_group",
+            },
+            {
+                "id": 3,
+                "name": "subgrouppeee",
+                "parent_id": 2,
+                "full_path": "getport-labs/search_group/subgrouppeee",
+            },
+            {
+                "id": 4,
+                "name": "other-group",
+                "parent_id": None,
+                "full_path": "other-group",
+            },
+            {"id": 5, "name": "independent", "parent_id": 6, "full_path": "x/y"},
+        ]
+        mock_files = [
+            {"path": "file1.json", "project_id": "123", "content": {"key": "value"}}
+        ]
+
+        with patch.object(
+            client,
+            "_search_files_in_group",
+            side_effect=[
+                async_mock_generator([mock_files]),  # For getport-labs
+                async_mock_generator([mock_files]),  # For other-group
+                async_mock_generator([mock_files]),  # For independent
+            ],
+        ) as mock_search_group:
+            # Act
+            results = []
+            async for batch in client._search_groups_by_hierarchy(
+                mock_groups, "blobs", "path:file1.json", False
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert (
+                len(results) == 3
+            )  # Called for both top-level groups and independent group
+            assert mock_search_group.call_count == 3
+            # Verify top-level groups were searched
+            mock_search_group.assert_any_call("1", "blobs", "path:file1.json", False)
+            mock_search_group.assert_any_call("4", "blobs", "path:file1.json", False)
+            # Verify independent group was searched (not a subgroup of processed groups)
+            mock_search_group.assert_any_call("5", "blobs", "path:file1.json", False)
+            # Verify subgroups were not searched
+            call_args_list = [call[0] for call in mock_search_group.call_args_list]
+            assert ("2", "blobs", "path:file1.json", False) not in call_args_list
+            assert ("3", "blobs", "path:file1.json", False) not in call_args_list
+
+    async def test_search_groups_by_hierarchy_empty_groups(
+        self, client: GitLabClient
+    ) -> None:
+        """Test with empty groups batch"""
+        # Arrange
+        mock_groups: list[dict[str, Any]] = []
+
+        with patch.object(
+            client,
+            "_search_files_in_group",
+        ) as mock_search_group:
+            # Act
+            results = []
+            async for batch in client._search_groups_by_hierarchy(
+                mock_groups, "blobs", "path:file1.json", False
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 0
+            mock_search_group.assert_not_called()

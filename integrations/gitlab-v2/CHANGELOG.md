@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Fetch all groups and subgroups
+- Fetch all groups and subgroups when searching files
 
 
 ## 0.1.15 (2025-05-28)
