@@ -219,33 +219,10 @@ Service Event → Webhook Processor → Data Fetching → Port Update
    - Implement retry mechanisms
    - Log errors for debugging
 
-3. **Performance**
-   - Process events asynchronously
-   - Implement rate limiting
-   - Cache frequently accessed data
-
-4. **Maintenance**
+3. **Maintenance**
    - Keep processors focused and single-purpose
    - Document event types and payloads
    - Monitor webhook performance
 
-## Next Steps
-
-After implementing webhook processors:
-
-1. **Test Your Implementation**
-   - Send test events
-   - Verify data updates
-   - Check error handling
-
-2. **Monitor Performance**
-   - Track event processing
-   - Monitor error rates
-   - Check response times
-
-3. **Document Your Webhooks**
-   - Document event types
-   - List required fields
-   - Provide examples
 
 Remember, the Jira example above is just one way to implement webhooks. Your implementation will depend on your service's event structure and requirements.

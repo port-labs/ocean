@@ -1,47 +1,123 @@
 ---
+title: Testing the Integration
+sidebar_label: 🧪 Testing the Integration
 sidebar_position: 7
 ---
 
-
 # 🧪 Testing the Integration
+
 Having completed the implementation of the integration, the next step is to test it. In this guide, we will learn how to test the integration to ingest data into our dashboard on Port.
 
+## Configuration Mapping
+
+The configuration parameters defined in `.port/spec.yaml` are mapped to environment variables in your `.env` file. This mapping follows a specific pattern that helps organize and manage your integration's configuration.
+
+Port-level configuration parameters are standard Ocean framework parameters that control how your integration connects to Port. These parameters are always prefixed with `OCEAN__PORT__` and include essential credentials like client ID and secret.
+
+Integration-specific configuration parameters come directly from your `.port/spec.yaml` file. These parameters are prefixed with `OCEAN__INTEGRATION__CONFIG__` and their names match those defined in your spec file. The parameters in your spec files should be converted to `UPPER_SNAKE_CASE` and prefixed with `OCEAN__INTEGRATION__CONFIG__` to generate the environment variables. This separation ensures that your integration's custom configuration is properly isolated from the framework's core settings.
+
+:::note UPPER_SNAKE_CASE Conventions
+The converted environment variables in `UPPER_SNAKE_CASE` format should be seperated with single underscores.
+:::
+
+For example, if your `.port/spec.yaml` defines:
+
+<details>
+<summary><b>Specification File</b></summary>
+
+```yaml showLineNumbers title=".port/spec.yaml"
+title: Jira
+description: Jira integration for Port Ocean
+icon: Jira
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/jira
+features:
+  - type: exporter
+    section: Project management
+    resources:
+      - kind: project
+      - kind: issue
+      - kind: team
+      - kind: user
+configurations:
+  - name: appHost
+    required: false
+    type: url
+    description: "This field is deprecated. Please use the OCEAN__BASE_URL field instead."
+  - name: jiraHost
+    required: true
+    type: string
+    description: "The URL of your Jira, for example: https://example.atlassian.net"
+  - name: atlassianUserEmail
+    required: true
+    type: string
+    description: "The email of the user used to query Jira"
+    sensitive: true
+  - name: atlassianUserToken
+    required: true
+    type: string
+    description: You can configure the user token on the <a target="_blank" href="https://id.atlassian.com/manage-profile/security/api-tokens">Atlassian account page</a>
+    sensitive: true
+  - name: atlassianOrganizationId
+    required: false
+    type: string
+    description: To sync teams and team members your Atlassian Organization ID is required . Read <a target="_blank" href="https://confluence.atlassian.com/jirakb/what-it-is-the-organization-id-and-where-to-find-it-1207189876.html">How to find your Atlassian Organization ID</a>
+    sensitive: false
+```
+</details>
+
+These map to environment variables in your `.env` file as:
+
+<details>
+<summary><b>Environment Variables</b></summary>
+
+```shell showLineNumbers title=".env"
+# Port credentials
+OCEAN__PORT__CLIENT_ID=<your-port-client-id>
+OCEAN__PORT__CLIENT_SECRET=<your-port-client-secret>
+
+# Integration configuration (from .port/spec.yaml)
+OCEAN__INTEGRATION__CONFIG__APP_HOST=<your-jira-host>
+OCEAN__INTEGRATION__CONFIG__JIRA_HOST=<your-jira-host>
+OCEAN__INTEGRATION__CONFIG__ATLASSIAN_USER_EMAIL=<your-atlassian-user-email>
+OCEAN__INTEGRATION__CONFIG__ATLASSIAN_USER_TOKEN=<your-atlassian-user-token>
+OCEAN__INTEGRATION__CONFIG__ATLASSIAN_ORGANIZATION_ID=<your-atlassian-organization-id>
+```
+</details>
+
 ## Prerequisites
-Before we begin, ensure you have the following:
 
-- `PORT_CLIENT_ID`: Your Port acccount client ID. You can find that by following the [Find Your Port Credentials guide](https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials).
+Before testing your integration, you'll need the following Port credentials:
 
-- `PORT_CLIENT_SECRET`: Your Port account client secret. You can find that by following the [Find Your Port Credentials guide](https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials).
+- `OCEAN__PORT__CLIENT_ID`: Your Port account client ID
+- `OCEAN__PORT__CLIENT_SECRET`: Your Port account client secret
 
-- `JIRA_HOST`: Your Jira host URL. For example, `https://example.atlassian.net`.
-
-- `ATLASSIAN_USER_EMAIL`: The email of the user used to query Jira.
-
-- `ATLASSIAN_USER_TOKEN`: The token of the user used to query Jira. You can configure the user token on the [Atlassian account page](https://id.atlassian.com/manage-profile/security/api-tokens).
-
-- `BASE_URL`: This is the URL mapped to the running integration. This is only required if the integration has live events enabled. Since we're running the integration locally, we can use Ngrok to expose the local server to the internet. [Install Ngrok](https://ngrok.com/download) and run `ngrok http 8000` to get the URL. The integration will be running on port 8000.
-
+You can find these credentials by following the [Find Your Port Credentials guide](https://docs.port.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials).
 
 ## Running the Integration
+
 We will be running the integration locally using the Ocean CLI. You can run the integration with other means such as [Helm](../deployment/helm.md), [Terraform](../deployment/terraform.md), [Docker](../deployment//docker.md), and [ArgoCD](../deployment/argocd.md).
 
 Create a `.env` file in the integration directory to store the environment variables required to run the integration. Add the following environment variables to the file:
 
 <details>
-
 <summary><b>Environment Variables</b></summary>
 
 ```shell showLineNumbers title=".env"
-OCEAN__PORT__CLIENT_ID=<your-port-client-secret>
+# Port credentials
+OCEAN__PORT__CLIENT_ID=<your-port-client-id>
 OCEAN__PORT__CLIENT_SECRET=<your-port-client-secret>
-OCEAN__EVENT_LISTENER__TYPE=POLLING
-OCEAN__BASE_URL=<your-ngrok-url>
+
+# Integration configuration (from .port/spec.yaml)
 OCEAN__INTEGRATION__CONFIG__JIRA_HOST=<your-jira-host>
 OCEAN__INTEGRATION__CONFIG__ATLASSIAN_USER_EMAIL=<your-atlassian-user-email>
 OCEAN__INTEGRATION__CONFIG__ATLASSIAN_USER_TOKEN=<your-atlassian-user-token>
 
-```
+# Event listener configuration
+OCEAN__EVENT_LISTENER__TYPE=POLLING
 
+# Base URL for webhooks (if enabled)
+OCEAN__BASE_URL=<your-ngrok-url>
+```
 </details>
 
 Now, it is time to do what we have been waiting for. Run the integration using the Ocean CLI:

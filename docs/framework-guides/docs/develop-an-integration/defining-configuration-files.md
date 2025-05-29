@@ -466,4 +466,3 @@ Once an integration is running, changes to `blueprints.json` and `port-app-confi
    DELETE /api/v1/integrations/{integration_id}/configurations
    ```
 
-For more details on configuration files, see the [Integration Spec and Defaults documentation](https://ocean.port.io/develop-an-integration/integration-spec-and-default-resources).
