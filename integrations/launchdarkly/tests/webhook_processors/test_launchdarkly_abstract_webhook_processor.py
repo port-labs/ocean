@@ -2,7 +2,7 @@ import pytest
 import json
 import hashlib
 import hmac
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from typing import Any
 from fastapi import Request
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
@@ -80,6 +80,8 @@ def mock_ocean_context() -> None:
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
+        mock_ocean_app.cache_provider = AsyncMock()
+        mock_ocean_app.cache_provider.get.return_value = None
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
         pass

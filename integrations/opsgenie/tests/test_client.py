@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.context.event import event_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from client import OpsGenieClient, ObjectKind, PAGE_SIZE, MAX_OPSGENIE_ALERT_OFFSET_LIMIT  # type: ignore[attr-defined]
+from client import OpsGenieClient, ObjectKind, PAGE_SIZE  # type: ignore[attr-defined]
 
 
 @pytest.fixture(autouse=True)
@@ -15,6 +15,8 @@ def mock_ocean_context() -> None:
             "api_url": "https://api.opsgenie.com",
             "token": "test-token",
         }
+        mock_app.cache_provider = AsyncMock()
+        mock_app.cache_provider.get.return_value = None
         initialize_port_ocean_context(mock_app)
     except PortOceanContextAlreadyInitializedError:
         pass
@@ -163,35 +165,60 @@ class TestOpsGenieClient:
                 f"{client.api_url}/v2/teams/{team_identifier}"
             )
 
-    async def test_get_paginated_alerts_respects_max_offset_limit(
+    async def test_get_paginated_resources_respects_max_offset_limit(
         self, client: OpsGenieClient
     ) -> None:
-        """Test get_paginated_resources stops at MAX_OPSGENIE_ALERT_OFFSET_LIMIT for alerts"""
+        """Test get_paginated_resources stops at MAX_OPSGENIE_OFFSET_LIMIT for alerts, incidents, and services."""
         # Arrange
-        resource_type = ObjectKind.ALERT
-        base_url = f"{client.api_url}/v2/alerts"
-        large_offset = MAX_OPSGENIE_ALERT_OFFSET_LIMIT
-        mock_responses = [
-            {
-                "data": [{"id": "1"}, {"id": "2"}],
-                "paging": {
-                    "next": f"{base_url}?offset={large_offset + PAGE_SIZE}&limit={PAGE_SIZE}"
-                },
-            },
-            {"data": [{"id": "3"}], "paging": {}},
-        ]
+        resource_types = [ObjectKind.ALERT, ObjectKind.INCIDENT, ObjectKind.SERVICE]
+        base_urls = {
+            ObjectKind.ALERT: f"{client.api_url}/v2/alerts",
+            ObjectKind.INCIDENT: f"{client.api_url}/v2/incidents",
+            ObjectKind.SERVICE: f"{client.api_url}/v2/services",
+        }
 
-        with patch.object(
-            client, "_get_single_resource", AsyncMock(side_effect=mock_responses)
-        ) as mock_get:
-            # Act
-            async with event_context("test_event"):
-                results = []
-                async for page in client.get_paginated_resources(
-                    resource_type, query_params={"offset": large_offset}
-                ):
-                    results.extend(page)
+        for resource_type in resource_types:
+            base_url = base_urls[resource_type]
+            max_offset_limit = client.get_resource_offset_limit(resource_type)
+            if max_offset_limit is None:
+                pytest.skip(f"No offset limit defined for {resource_type.value}")
 
-            # Assert
-            assert results == []
-            mock_get.assert_not_called()
+            mock_responses = []
+            current_offset = max_offset_limit - PAGE_SIZE
+            mock_responses.append(
+                {
+                    "data": [
+                        {"id": f"{current_offset}_1"},
+                        {"id": f"{current_offset}_2"},
+                    ],
+                    "paging": {
+                        "next": f"{base_url}?offset={current_offset + PAGE_SIZE}&limit={PAGE_SIZE}"
+                    },
+                }
+            )
+            # Response at or beyond max_offset_limit should not be fetched
+            mock_responses.append(
+                {
+                    "data": [{"id": f"{current_offset + PAGE_SIZE}_1"}],
+                    "paging": {},
+                }
+            )
+
+            with patch.object(
+                client, "_get_single_resource", AsyncMock(side_effect=mock_responses)
+            ) as mock_get:
+                # Act
+                async with event_context("test_event"):
+                    results = []
+                    async for page in client.get_paginated_resources(resource_type):
+                        results.extend(page)
+
+                # Assert
+                expected_results = [
+                    {"id": f"{current_offset}_1"},
+                    {"id": f"{current_offset}_2"},
+                    {"id": f"{current_offset + PAGE_SIZE}_1"},
+                ]
+
+                assert results == expected_results
+                assert mock_get.call_count == 2
