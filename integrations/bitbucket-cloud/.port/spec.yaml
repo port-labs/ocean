@@ -35,6 +35,8 @@ configurations:
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Bitbucket are accepted.
     sensitive: true
     required: false
+deploymentMethodOverride:
+  - type: helm
 saas:
   enabled: true
   liveEvents:
