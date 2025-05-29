@@ -35,7 +35,7 @@ from port_ocean.core.ocean_types import (
 from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.helpers.metric.metric import MetricResourceKind, SyncState, MetricType, MetricPhase
-from port_ocean.helpers.metric.utils import TimeMetric
+from port_ocean.helpers.metric.utils import TimeMetric, TimeMetricWithResourceKind
 from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -656,7 +656,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             return kind_results
 
-    @TimeMetric(MetricResourceKind.RECONCILIATION)
+    @TimeMetricWithResourceKind(MetricPhase.RESYNC)
     async def resync_reconciliation(
         self,
         creation_results: list[tuple[list[Entity], list[Exception]]],
@@ -664,7 +664,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType,
         app_config: Any,
         silent: bool = True,
-    ) -> bool:
+    ) -> None:
         """Handle the reconciliation phase of the resync process.
 
         This method handles:
@@ -682,61 +682,57 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             app_config (Any): The application configuration
             silent (bool): Whether to raise exceptions or handle them silently
 
-        Returns:
-            bool: True if reconciliation was successful, False otherwise
         """
-        async with metric_resource_context(MetricResourceKind.RECONCILIATION):
-            await self.sort_and_upsert_failed_entities(user_agent_type)
+        await self.sort_and_upsert_failed_entities(user_agent_type)
 
-            if not did_fetched_current_state:
-                logger.warning(
-                    "Due to an error before the resync, the previous state of entities at Port is unknown."
-                    " Skipping delete phase due to unknown initial state."
-                )
-                return False
-
-            logger.info("Starting resync diff calculation")
-            generated_entities, errors = zip_and_sum(creation_results) or [
-                [],
-                [],
-            ]
-
-            if errors:
-                message = f"Resync failed with {len(errors)} errors, skipping delete phase due to incomplete state"
-                error_group = ExceptionGroup(
-                    message,
-                    errors,
-                )
-                if not silent:
-                    raise error_group
-
-                logger.error(message, exc_info=error_group)
-                return False
-
-            logger.info(
-                f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
+        if not did_fetched_current_state:
+            logger.warning(
+                "Due to an error before the resync, the previous state of entities at Port is unknown."
+                " Skipping delete phase due to unknown initial state."
             )
-            entities_at_port = await ocean.port_client.search_entities(
-                user_agent_type
+            return False
+
+        logger.info("Starting resync diff calculation")
+        generated_entities, errors = zip_and_sum(creation_results) or [
+            [],
+            [],
+        ]
+
+        if errors:
+            message = f"Resync failed with {len(errors)} errors, skipping delete phase due to incomplete state"
+            error_group = ExceptionGroup(
+                message,
+                errors,
             )
+            if not silent:
+                raise error_group
 
-            await self.entities_state_applier.delete_diff(
-                {"before": entities_at_port, "after": generated_entities},
-                user_agent_type, app_config.get_entity_deletion_threshold()
-            )
+            logger.error(message, exc_info=error_group)
+            return False
 
-            logger.info("Resync finished successfully")
+        logger.info(
+            f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
+        )
+        entities_at_port = await ocean.port_client.search_entities(
+            user_agent_type
+        )
 
-            # Execute resync_complete hooks
-            if "resync_complete" in self.event_strategy:
-                logger.info("Executing resync_complete hooks")
+        await self.entities_state_applier.delete_diff(
+            {"before": entities_at_port, "after": generated_entities},
+            user_agent_type, app_config.get_entity_deletion_threshold()
+        )
 
-                for resync_complete_fn in self.event_strategy["resync_complete"]:
-                    await resync_complete_fn()
+        logger.info("Resync finished successfully")
 
-                logger.info("Finished executing resync_complete hooks")
+        # Execute resync_complete hooks
+        if "resync_complete" in self.event_strategy:
+            logger.info("Executing resync_complete hooks")
 
-            return True
+            for resync_complete_fn in self.event_strategy["resync_complete"]:
+                await resync_complete_fn()
+
+            logger.info("Finished executing resync_complete hooks")
+
 
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
@@ -807,13 +803,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise
             else:
-                return await self.resync_reconciliation(
+                await self.resync_reconciliation(
                     creation_results,
                     did_fetched_current_state,
                     user_agent_type,
                     app_config,
                     silent
                 )
+                await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
             finally:
                 await ocean.app.cache_provider.clear()
                 if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
