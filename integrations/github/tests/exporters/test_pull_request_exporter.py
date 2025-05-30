@@ -47,7 +47,7 @@ class TestPullRequestExporter:
                 SinglePullRequestOptions(repo_name="repo1", pr_number=101)
             )
 
-            expected_pr = {**TEST_PULL_REQUESTS[0], "repository": {"name": "repo1"}}
+            expected_pr = {**TEST_PULL_REQUESTS[0], "__repository": "repo1"}
             assert pr == expected_pr
 
             mock_request.assert_called_once_with(
@@ -89,7 +89,7 @@ class TestPullRequestExporter:
                 assert len(prs) == 1
                 assert len(prs[0]) == 2
                 expected_prs = [
-                    {**pr, "repository": {"name": "repo1"}} for pr in TEST_PULL_REQUESTS
+                    {**pr, "__repository": "repo1"} for pr in TEST_PULL_REQUESTS
                 ]
                 assert prs[0] == expected_prs
 

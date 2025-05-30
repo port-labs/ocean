@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -16,12 +16,12 @@ class ListRepositoryOptions(TypedDict):
 class SinglePullRequestOptions(TypedDict):
     """Options for fetching a single pull request."""
 
-    repo_name: str
-    pr_number: int
+    repo_name: Required[str]
+    pr_number: Required[int]
 
 
 class ListPullRequestOptions(TypedDict):
     """Options for listing pull requests."""
 
     state: str
-    repo_name: str
+    repo_name: Required[str]

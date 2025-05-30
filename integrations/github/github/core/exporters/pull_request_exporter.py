@@ -19,7 +19,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
         logger.debug(f"Fetched pull request with identifier: {repo_name}/{pr_number}")
 
-        response["repository"] = {"name": repo_name}
+        response["__repository"] = repo_name
         return response
 
     async def get_paginated_resources[
@@ -37,7 +37,5 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             logger.info(
                 f"Fetched batch of {len(pull_requests)} pull requests from repository {repo_name}"
             )
-            batch_data = [
-                {**pr, "repository": {"name": repo_name}} for pr in pull_requests
-            ]
-            yield batch_data
+            batch = [{**pr, "__repository": repo_name} for pr in pull_requests]
+            yield batch

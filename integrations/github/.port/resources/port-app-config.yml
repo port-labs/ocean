@@ -47,4 +47,4 @@ resources:
                 if $mergedTimestamp == null then null else
                 (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
           relations:
-            repository: .repository.name
+            repository: .__repository.name
