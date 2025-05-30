@@ -3,6 +3,7 @@ import base64
 from typing import Optional
 from loguru import logger
 from datetime import datetime, timedelta, timezone
+from dateutil import parser
 import jwt
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
@@ -71,8 +72,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             response = await self.client.post(url, headers=headers)
             response.raise_for_status()
             data = response.json()
-            expires_at_str = data["expires_at"].replace("Z", "+00:00")
-            expires_at = datetime.fromisoformat(expires_at_str)
+            expires_at = parser.isoparse(data["expires_at"])
             return GitHubToken(token=data["token"], expires_at=expires_at)
         except Exception as e:
             raise AuthenticationException(
