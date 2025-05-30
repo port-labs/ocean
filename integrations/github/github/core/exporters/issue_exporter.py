@@ -19,7 +19,7 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
 
         logger.info(f"Fetched issue with identifier: {repo_name}/{issue_number}")
 
-        response["repository"] = {"name": repo_name}
+        response["__repository"] = repo_name
         return response
 
     async def get_paginated_resources[
@@ -36,5 +36,5 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
             logger.info(
                 f"Fetched batch of {len(issues)} issues from repository {repo_name}"
             )
-            batch = [{**issue, "repository": {"name": repo_name}} for issue in issues]
+            batch = [{**issue, "__repository": repo_name} for issue in issues]
             yield batch

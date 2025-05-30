@@ -42,7 +42,7 @@ class TestIssueExporter:
                 SingleIssueOptions(repo_name="repo1", issue_number=101)
             )
 
-            assert issue == {**TEST_ISSUES[0], "repository": {"name": "repo1"}}
+            assert issue == {**TEST_ISSUES[0], "__repository": "repo1"}
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/issues/101"
@@ -68,11 +68,11 @@ class TestIssueExporter:
 
             # Assert we received all issues with repository added
             assert len(issues) == 2
-            assert all(issue["repository"]["name"] == "repo1" for issue in issues)
+            assert all(issue["__repository"] == "repo1" for issue in issues)
 
             # Verify specific values
             expected_issues = [
-                {**issue, "repository": {"name": "repo1"}} for issue in TEST_ISSUES
+                {**issue, "__repository": "repo1"} for issue in TEST_ISSUES
             ]
             assert issues == expected_issues
 
