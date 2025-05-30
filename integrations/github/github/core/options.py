@@ -2,8 +2,6 @@ from typing import NotRequired, Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
-    """Options for fetching a single repository."""
-
     name: str
 
 
@@ -13,15 +11,19 @@ class ListRepositoryOptions(TypedDict):
     type: str
 
 
-class SinglePullRequestOptions(TypedDict):
-    """Options for fetching a single pull request."""
+class RepositoryIdentifier(TypedDict):
+    """Options for identifying a repository."""
 
     repo_name: Required[str]
+
+
+class SinglePullRequestOptions(RepositoryIdentifier):
+    """Options for fetching a single pull request."""
+
     pr_number: Required[int]
 
 
-class ListPullRequestOptions(TypedDict):
+class ListPullRequestOptions(RepositoryIdentifier):
     """Options for listing pull requests."""
 
-    repo_name: Required[str]
     state: NotRequired[str]
