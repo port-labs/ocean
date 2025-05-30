@@ -1,3 +1,4 @@
+from typing import Literal
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -21,7 +22,7 @@ class GithubFolderSelector(Selector):
 
 class GithubFolderResourceConfig(ResourceConfig):
     selector: GithubFolderSelector
-    kind: ObjectKind.FOLDER
+    kind: Literal[ObjectKind.FOLDER]
 
 
 class GithubPortAppConfig(PortAppConfig):

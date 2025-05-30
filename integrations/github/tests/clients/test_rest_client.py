@@ -2,7 +2,8 @@ from typing import Any, List, Dict
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
-from github.clients.rest_client import GithubRestClient
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.http.rest_client import GithubRestClient
 
 TEST_DATA: dict[str, list[dict[str, Any]]] = {
     "repositories": [
@@ -18,12 +19,12 @@ def rest_client() -> GithubRestClient:
         token="test-token",
         organization="test-org",
         github_host="https://api.github.com",
+        authenticator=MagicMock(spec=AbstractGitHubAuthenticator),
     )
 
 
 @pytest.mark.asyncio
 class TestGithubRestClient:
-
     async def test_send_paginated_request_single_page(
         self, rest_client: GithubRestClient
     ) -> None:

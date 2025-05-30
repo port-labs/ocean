@@ -2,7 +2,10 @@ from typing import cast
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import (
+    GitHubAuthenticatorFactory,
+    create_github_client,
+)
 from github.clients.utils import integration_config
 from github.core.exporters.folder_exporter import RestFolderExporter
 from github.helpers.utils import ObjectKind
@@ -35,8 +38,16 @@ async def on_start() -> None:
     if not base_url:
         return
 
+    authenticator = GitHubAuthenticatorFactory.create(
+        organization=ocean.integration_config["github_organization"],
+        github_host=ocean.integration_config["github_host"],
+        token=ocean.integration_config.get("github_token"),
+        app_id=ocean.integration_config.get("github_app_id"),
+        private_key=ocean.integration_config.get("github_app_private_key"),
+    )
+
     client = GithubWebhookClient(
-        **integration_config(),
+        **integration_config(authenticator),
         webhook_secret=ocean.integration_config["webhook_secret"],
     )
 

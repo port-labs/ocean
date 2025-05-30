@@ -8,7 +8,7 @@ from github.core.exporters.repository_exporter import (
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 from github.core.options import SingleRepositoryOptions, ListRepositoryOptions
-from github.clients.rest_client import GithubRestClient
+from github.clients.http.rest_client import GithubRestClient
 
 
 TEST_REPOS = [

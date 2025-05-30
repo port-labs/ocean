@@ -1,31 +1,32 @@
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
-from port_ocean.utils import http_async_client
 from loguru import logger
 import httpx
+
+if TYPE_CHECKING:
+    from github.clients.auth.abstract_authenticator import (
+        AbstractGitHubAuthenticator,
+    )
 
 
 class AbstractGithubClient(ABC):
     def __init__(
         self,
-        token: str,
         organization: str,
         github_host: str,
+        authenticator: "AbstractGitHubAuthenticator",
+        **kwargs: Any,
     ) -> None:
-        self.token = token
         self.organization = organization
         self.github_host = github_host
-        self.client = http_async_client
+        self.authenticator = authenticator
+        self.kwargs = kwargs
 
     @property
-    def headers(self) -> Dict[str, str]:
+    async def headers(self) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
-        return {
-            "Authorization": f"Bearer {self.token}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
+        return (await self.authenticator.get_headers()).as_dict()
 
     @property
     @abstractmethod
@@ -42,12 +43,12 @@ class AbstractGithubClient(ABC):
         """Send request to GitHub API with error handling and rate limiting."""
 
         try:
-            response = await self.client.request(
+            response = await self.authenticator.client.request(
                 method=method,
                 url=resource,
                 params=params,
                 json=json_data,
-                headers=self.headers,
+                headers=await self.headers,
             )
             response.raise_for_status()
 

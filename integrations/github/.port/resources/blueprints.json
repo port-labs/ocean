@@ -12,11 +12,7 @@
         "visibility": {
           "type": "string",
           "title": "Visibility",
-          "enum": [
-            "all",
-            "public",
-            "private"
-          ],
+          "enum": ["all", "public", "private"],
           "enumColors": {
             "all": "green",
             "public": "blue",

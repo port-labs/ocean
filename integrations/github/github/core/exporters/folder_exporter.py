@@ -1,9 +1,9 @@
+from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from typing import Optional
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
-from github.clients.rest_client import GithubRestClient
 from github.core.options import ListFolderOptions, SingleFolderOptions
 
 

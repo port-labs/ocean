@@ -2,13 +2,13 @@ from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
+from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
 )
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 from github.core.options import SingleFolderOptions, ListFolderOptions
-from github.clients.rest_client import GithubRestClient
 
 
 TEST_FILE = {
