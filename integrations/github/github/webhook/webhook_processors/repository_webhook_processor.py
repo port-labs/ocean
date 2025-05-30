@@ -2,8 +2,8 @@ from loguru import logger
 from github.webhook.events import REPOSITORY_DELETE_EVENTS, REPOSITORY_UPSERT_EVENTS
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
-from github.webhook.webhook_processors.github_abstract_webhook_processor import (
-    _GithubAbstractWebhookProcessor,
+from github.webhook.webhook_processors.base_repository_webhook_processor import (
+    BaseRepositoryWebhookProcessor,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -15,7 +15,15 @@ from github.core.options import SingleRepositoryOptions
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 
 
-class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
+class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
+    async def _validate_payload(self, payload: EventPayload) -> bool:
+        action = payload.get("action")
+        if not action:
+            return False
+
+        valid_actions = REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
+        return action in valid_actions
+
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         return event.headers.get("x-github-event") == "repository"
 
@@ -32,8 +40,6 @@ class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         logger.info(f"Processing repository event: {action} for {name}")
 
         if action in REPOSITORY_DELETE_EVENTS:
-            logger.info(f"Repository {name} was {action}")
-
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[repo]
             )
@@ -46,14 +52,3 @@ class RepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        if not {"action", "repository"} <= payload.keys():
-            return False
-
-        if payload["action"] not in (
-            REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
-        ):
-            return False
-
-        return bool(payload["repository"].get("name"))

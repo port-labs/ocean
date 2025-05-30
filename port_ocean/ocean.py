@@ -4,6 +4,10 @@ from contextlib import asynccontextmanager
 import threading
 from typing import Any, AsyncIterator, Callable, Dict, Type
 
+from port_ocean.cache.base import CacheProvider
+from port_ocean.cache.disk import DiskCacheProvider
+from port_ocean.cache.memory import InMemoryCacheProvider
+from port_ocean.core.models import ProcessExecutionMode
 import port_ocean.helpers.metric.metric
 
 from fastapi import FastAPI, APIRouter
@@ -57,17 +61,6 @@ class Ocean:
             *self.config.get_sensitive_fields_data()
         )
         self.integration_router = integration_router or APIRouter()
-        self.metrics = port_ocean.helpers.metric.metric.Metrics(
-            metrics_settings=self.config.metrics,
-            integration_configuration=self.config.integration,
-        )
-
-        self.webhook_manager = LiveEventsProcessorManager(
-            self.integration_router,
-            signal_handler,
-            max_event_processing_seconds=self.config.max_event_processing_seconds,
-            max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
-        )
 
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
@@ -77,6 +70,25 @@ class Ocean:
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
         )
+        self.cache_provider: CacheProvider = self._get_caching_provider()
+        self.process_execution_mode: ProcessExecutionMode = (
+            self._get_process_execution_mode()
+        )
+        self.metrics = port_ocean.helpers.metric.metric.Metrics(
+            metrics_settings=self.config.metrics,
+            integration_configuration=self.config.integration,
+            port_client=self.port_client,
+            multiprocessing_enabled=self.process_execution_mode
+            == ProcessExecutionMode.multi_process,
+        )
+
+        self.webhook_manager = LiveEventsProcessorManager(
+            self.integration_router,
+            signal_handler,
+            max_event_processing_seconds=self.config.max_event_processing_seconds,
+            max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
+        )
+
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
@@ -84,8 +96,25 @@ class Ocean:
         self.resync_state_updater = ResyncStateUpdater(
             self.port_client, self.config.scheduled_resync_interval
         )
-
         self.app_initialized = False
+
+    def _get_process_execution_mode(self) -> ProcessExecutionMode:
+        if self.config.process_execution_mode:
+            return self.config.process_execution_mode
+        return ProcessExecutionMode.single_process
+
+    def _get_caching_provider(self) -> CacheProvider:
+        if self.config.caching_storage_mode:
+            caching_type_to_provider = {
+                DiskCacheProvider.STORAGE_TYPE: DiskCacheProvider,
+                InMemoryCacheProvider.STORAGE_TYPE: InMemoryCacheProvider,
+            }
+            if self.config.caching_storage_mode in caching_type_to_provider:
+                return caching_type_to_provider[self.config.caching_storage_mode]()
+
+        if self.config.process_execution_mode == ProcessExecutionMode.multi_process:
+            return DiskCacheProvider()
+        return InMemoryCacheProvider()
 
     def is_saas(self) -> bool:
         return self.config.runtime.is_saas_runtime

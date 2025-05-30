@@ -48,6 +48,8 @@ jobs:
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+          OCEAN__PROCESS_EXECUTION_MODE: single_process
+          OCEAN__CACHING_STORAGE_MODE: memory
         run: |
           ./scripts/run-smoke-test.sh
 
@@ -58,6 +60,40 @@ jobs:
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+
+        run: |
+          make smoke/test
+
+      - name: Cleanup Smoke Test
+        if: always()
+        env:
+          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+        run: |
+          make smoke/clean
+
+      - name: Run fake integration for core test with multiprocessing enabled
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+          OCEAN__PROCESS_EXECUTION_MODE: multi_process
+          OCEAN__CACHING_STORAGE_MODE: disk
+        run: |
+          ./scripts/run-smoke-test.sh
+
+      - name: Smoke Test Core
+        env:
+          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+
         run: |
           make smoke/test
 

@@ -6,13 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.1.4-dev (2025-05-30)
 
-## 0.1.0-dev (2025-05-23)
+### Features
+
+- Added support for Environment resources to track repository environments
+- Added support for Deployment resources with environment tracking
+- Implemented deployment and environment webhook processors for real-time updates
+
+
+## 0.1.1-dev (2025-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.4
+
+
+## 0.1.0-dev (2025-05-28)
 
 ### Features
 
 - Created GitHub Ocean integration with support for Repository
-- Added concurrent request limiting with configurable thresholds
-- Implemented efficient pagination using GitHub's Link header
-- Added support for webhook event processors
+- Added support for repository webhook event processor
 - Add Tests for client and base webhook processor
+- Added support for authenticating as a GitHub App
