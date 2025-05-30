@@ -71,7 +71,8 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             response = await self.client.post(url, headers=headers)
             response.raise_for_status()
             data = response.json()
-            expires_at = datetime.fromisoformat(data["expires_at"])
+            expires_at_str = data["expires_at"].replace("Z", "+00:00")
+            expires_at = datetime.fromisoformat(expires_at_str)
             return GitHubToken(token=data["token"], expires_at=expires_at)
         except Exception as e:
             raise AuthenticationException(
