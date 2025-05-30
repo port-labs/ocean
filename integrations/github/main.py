@@ -79,6 +79,9 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = RestFolderExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
+    if not hasattr(selector, "folders"):
+        logger.info("Folders to ingest not passed, returning ..")
+        return
 
     for folder_config in selector.folders:
         for repo in folder_config.repos:
