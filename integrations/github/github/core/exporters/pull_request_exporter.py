@@ -27,7 +27,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all pull requests in the organization's repositories with pagination."""
 
-        params: Dict[str, Any] = dict(options) if options else {}
+        params = dict(options)
         repo_name = params.pop("repo_name")
 
         async for pull_requests in self.client.send_paginated_request(
