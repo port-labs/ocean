@@ -46,7 +46,17 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 config.spec_path, str
             ) and config.spec_path.endswith("port.yml")
 
-            return is_push_event and has_spec_path and is_port_yaml
+            if is_push_event and has_spec_path and is_port_yaml:
+                logger.warning(
+                    (
+                        "The GitOps feature using the spec_path selector and 'port.yaml' template is deprecated and will be removed in future versions. "
+                        "Please migrate to the 'File Kind' approach for GitOps workflows. "
+                        "For more information, refer to the documentation: "
+                        "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/azure-devops/gitops/"
+                    )
+                )
+                return True
+            return False
         except ValueError:
             return False
 
