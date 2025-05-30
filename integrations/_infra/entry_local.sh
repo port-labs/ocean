@@ -1,6 +1,4 @@
 #!/bin/bash
-mkdir -p /tmp/prometheus_multiproc_dir
-export PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc_dir
 if [ -z "$BUILD_CONTEXT" ]; then
     echo "BUILD_CONTEXT is not set"
     exit 1

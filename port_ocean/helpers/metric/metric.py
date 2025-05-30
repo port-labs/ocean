@@ -1,11 +1,12 @@
+import os
 from typing import Any, TYPE_CHECKING, Optional, Dict, List, Tuple
 from fastapi import APIRouter
 from port_ocean.exceptions.context import ResourceContextNotFoundError
 import prometheus_client
 from httpx import AsyncClient
-
+from fastapi.responses import PlainTextResponse
 from loguru import logger
-from port_ocean.context import resource
+from port_ocean.context import metric_resource, resource
 from prometheus_client import Gauge
 import prometheus_client.openmetrics
 import prometheus_client.openmetrics.exposition
@@ -54,6 +55,11 @@ class SyncState:
     COMPLETED = "completed"
     PENDING = "pending"
     FAILED = "failed"
+
+
+class MetricResourceKind:
+    RECONCILIATION = "__reconciliation__"
+    RESYNC = "__resync__"
 
 
 # Registry for core and custom metrics
@@ -193,7 +199,21 @@ class Metrics:
         """
         self.get_metric(name, labels).set(value)
 
+    @staticmethod
+    def cleanup_prometheus_metrics(pid: int | None = None) -> None:
+        try:
+            prometheus_multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+            for file in os.listdir(prometheus_multiproc_dir):
+                if pid:
+                    if file.endswith(".db") and file[0:-3].split("_")[-1] == str(pid):
+                        os.remove(f"{prometheus_multiproc_dir}/{file}")
+                else:
+                    os.remove(f"{prometheus_multiproc_dir}/{file}")
+        except Exception as e:
+            logger.error(f"Failed to cleanup prometheus metrics: {e}")
+
     def initialize_metrics(self, kind_blockes: list[str]) -> None:
+        self.cleanup_prometheus_metrics()
         for kind in kind_blockes:
             self.set_metric(MetricType.SUCCESS_NAME, [kind, MetricPhase.RESYNC], 0)
             self.set_metric(MetricType.DURATION_NAME, [kind, MetricPhase.RESYNC], 0)
@@ -237,11 +257,9 @@ class Metrics:
             )
 
     def create_mertic_router(self) -> APIRouter:
-        if not self.enabled:
-            return APIRouter()
         router = APIRouter()
 
-        @router.get("/")
+        @router.get("/", response_class=PlainTextResponse)
         async def prom_metrics() -> str:
             return self.generate_latest()
 
@@ -251,6 +269,12 @@ class Metrics:
         try:
             return f"{resource.resource.kind}-{resource.resource.index}"
         except ResourceContextNotFoundError:
+            return self.current_metric_resource_kind()
+
+    def current_metric_resource_kind(self) -> str:
+        try:
+            return metric_resource.metric_resource.metric_resource_kind
+        except ResourceContextNotFoundError:
             return "__runtime__"
 
     def generate_latest(self) -> str:
@@ -259,15 +283,21 @@ class Metrics:
         ).decode()
 
     async def report_sync_metrics(
-        self, metric_name: Optional[str] = None, kinds: Optional[list[str]] = None
+        self,
+        metric_name: Optional[str] = None,
+        kinds: Optional[list[str]] = None,
+        blueprints: Optional[list[Optional[str]]] = None,
     ) -> None:
         if kinds is None:
             return None
 
         metrics = []
 
-        for kind in kinds:
-            metric = self.generate_metrics(metric_name, kind)
+        if blueprints is None:
+            blueprints = [None] * len(kinds)
+
+        for kind, blueprint in zip(kinds, blueprints):
+            metric = self.generate_metrics(metric_name, kind, blueprint)
             metrics.extend(metric)
 
         try:
@@ -276,9 +306,12 @@ class Metrics:
             logger.error(f"Error posting metrics: {e}", metrics=metrics)
 
     async def report_kind_sync_metrics(
-        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+        self,
+        metric_name: Optional[str] = None,
+        kind: Optional[str] = None,
+        blueprint: Optional[str] = None,
     ) -> None:
-        metrics = self.generate_metrics(metric_name, kind)
+        metrics = self.generate_metrics(metric_name, kind, blueprint)
         if not metrics:
             return None
 
@@ -289,7 +322,10 @@ class Metrics:
             logger.error(f"Error putting metrics: {e}", metrics=metrics)
 
     def generate_metrics(
-        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+        self,
+        metric_name: Optional[str] = None,
+        kind: Optional[str] = None,
+        blueprint: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         try:
             latest_raw = self.generate_latest()
@@ -348,9 +384,10 @@ class Metrics:
                         if "-" in kind_key
                         else kind_key
                     ),
-                    "kindIndex": 0 if kind_key == "__runtime__" else int(kind_key[-1]),
+                    "kindIndex": int(kind_key[-1]) if kind_key[-1].isdigit() else 0,
                     "eventId": self.event_id,
                     "syncState": self.sync_state,
+                    "blueprint": blueprint if blueprint else "",
                     "metrics": metrics,
                 }
                 events.append(event)
