@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.1-dev (2025-05-29)
+## 0.1.2-dev (2025-05-30)
 
+### Bug Fixes
+
+- Fix timezone inconsistency issue while checking for expired Github App token (PORT-14913)
+
+### Improvements
+
+- Removed `Optional` from `AbstractGithubExporter` options to enforce stricter type adherence for concrete exporters.
+
+
+## 0.1.1-dev (2025-05-29)
 
 ### Improvements
 

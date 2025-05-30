@@ -1,21 +1,25 @@
 from typing import Dict, Optional
+from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, PrivateAttr, Field
-from datetime import datetime, timezone, timedelta
+from dateutil.parser import parse
+
 from port_ocean.utils import http_async_client
 import httpx
 
 
 class GitHubToken(BaseModel):
     token: str
-    expires_at: Optional[datetime] = None
+    expires_at: Optional[str] = None
     _time_buffer: timedelta = PrivateAttr(default_factory=lambda: timedelta(minutes=5))
 
     @property
     def is_expired(self) -> bool:
         if not self.expires_at:
             return False
-        return datetime.now(timezone.utc) >= (self.expires_at - self._time_buffer)
+
+        expires_at_dt = parse(self.expires_at)
+        return datetime.now(timezone.utc) >= (expires_at_dt - self._time_buffer)
 
 
 class GitHubHeaders(BaseModel):
