@@ -55,9 +55,7 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         updates = payload["resource"]["refUpdates"]
 
         folder_config = cast(AzureDevopsFolderResourceConfig, resource_config)
-        folder_patterns = [
-            pattern.path for pattern in folder_config.selector.folders
-        ]
+        folder_patterns = [pattern.path for pattern in folder_config.selector.folders]
 
         repo_name = repository["name"]
         configured_repos = {
@@ -81,9 +79,7 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         for update in updates:
             new_commit = update["newObjectId"]
 
-            changes = await client.get_commit_changes(
-                project_id, repo_id, new_commit
-            )
+            changes = await client.get_commit_changes(project_id, repo_id, new_commit)
 
             folder_changes = [
                 change
@@ -98,9 +94,7 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                     item = change["item"]
                     folder_path = item["path"]
 
-                    if not self._matches_folder_pattern(
-                        folder_path, folder_patterns
-                    ):
+                    if not self._matches_folder_pattern(folder_path, folder_patterns):
                         logger.info(
                             f"Skipping folder {folder_path} as it doesn't match any configured patterns"
                         )
