@@ -33,3 +33,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for repository webhook event processor
 - Add Tests for client and base webhook processor
 - Added support for authenticating as a GitHub App
+- Add support for Github workflows
+- Add support for Github workflow runs
