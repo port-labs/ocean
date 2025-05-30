@@ -1,0 +1,19 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+repositoryType: 'all'
+resources:
+  - kind: repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"githubRepository"'
+          properties:
+            description: if .description then .description else "" end
+            visibility: if .private then "private" else "public" end
+            defaultBranch: .default_branch
+            url: .html_url
+            language: if .language then .language else "" end
