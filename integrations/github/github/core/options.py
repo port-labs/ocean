@@ -13,15 +13,15 @@ class ListRepositoryOptions(TypedDict):
     type: str
 
 
-class ListIssueOptions(TypedDict):
-    """Options for listing issues."""
-
-    repo_name: Required[str]
-    state: NotRequired[str]
-
-
 class SingleIssueOptions(TypedDict):
     """Options for fetching a single issue."""
 
     repo_name: Required[str]
     issue_number: Required[int]
+
+
+class ListIssueOptions(TypedDict):
+    """Options for listing issues."""
+
+    repo_name: Required[str]
+    state: Required[str]
