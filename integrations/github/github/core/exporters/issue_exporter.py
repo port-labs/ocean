@@ -26,7 +26,7 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
         ExporterOptionsT: ListIssueOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
-        params: Dict[str, Any] = dict(options) if options else {}
+        params: Dict[str, Any] = dict(options)
         repo_name = params.pop("repo_name")
 
         async for issues in self.client.send_paginated_request(

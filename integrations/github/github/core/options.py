@@ -1,4 +1,4 @@
-from typing import Required, TypedDict
+from typing import Required, NotRequired, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -17,7 +17,7 @@ class ListIssueOptions(TypedDict):
     """Options for listing issues."""
 
     repo_name: Required[str]
-    state: str
+    state: NotRequired[str]
 
 
 class SingleIssueOptions(TypedDict):
