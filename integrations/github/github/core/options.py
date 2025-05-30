@@ -23,5 +23,5 @@ class SinglePullRequestOptions(TypedDict):
 class ListPullRequestOptions(TypedDict):
     """Options for listing pull requests."""
 
-    state: str
+    state: Required[str]
     repo_name: Required[str]
