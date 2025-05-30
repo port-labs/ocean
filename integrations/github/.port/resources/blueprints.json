@@ -35,5 +35,66 @@
             },
             "required": []
         }
-    }
+    },
+    {
+        "identifier": "githubUser",
+        "title": "Github User",
+        "icon": "Github",
+        "schema": {
+          "properties": {
+            "email": {
+              "title": "Email",
+              "type": "string"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+          "github_team": {
+            "title": "Github Team",
+            "target": "githubTeam",
+            "required": false,
+            "many": true
+          }
+        }
+      },
+      {
+        "identifier": "githubTeam",
+        "title": "GitHub Team",
+        "icon": "Github",
+        "schema": {
+          "properties": {
+            "slug": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "description": {
+              "title": "Description",
+              "type": "string"
+            },
+            "link": {
+              "title": "Link",
+              "icon": "Link",
+              "type": "string",
+              "format": "url"
+            },
+            "permission": {
+              "title": "Permission",
+              "type": "string"
+            },
+            "notification_setting": {
+              "title": "Notification Setting",
+              "type": "string"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {}
+      }
 ]
