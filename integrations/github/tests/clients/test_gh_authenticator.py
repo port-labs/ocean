@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import httpx
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from github.clients.auth.abstract_authenticator import GitHubToken
 from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
