@@ -1,5 +1,4 @@
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from typing import Any, Dict, Optional
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
@@ -21,10 +20,10 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     @cache_iterator_result()
     async def get_paginated_resources[
         ExporterOptionsT: ListRepositoryOptions
-    ](self, options: Optional[ExporterOptionsT] = None) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
 
-        params: Dict[str, Any] = dict(options) if options else {}
+        params = dict(options)
 
         async for repos in self.client.send_paginated_request(
             f"{self.client.base_url}/orgs/{self.client.organization}/repos", params
