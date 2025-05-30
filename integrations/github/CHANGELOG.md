@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.3-dev (2025-05-30)
+
+
+### Features
+
+- Implement support for User kinds
+- Implement support for Team kinds
+
+
+
 ## 0.1.2-dev (2025-05-30)
+
 
 ### Bug Fixes
 
@@ -18,7 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed `Optional` from `AbstractGithubExporter` options to enforce stricter type adherence for concrete exporters.
 
 
+
 ## 0.1.1-dev (2025-05-29)
+
 
 ### Improvements
 
@@ -33,5 +46,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for repository webhook event processor
 - Add Tests for client and base webhook processor
 - Added support for authenticating as a GitHub App
-- Implement support for User kinds
-- Implement support for Team kinds
