@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.1.4-dev (2025-05-30)
+
+### Features
+
+- Added support for Environment resources to track repository environments
+- Added support for Deployment resources with environment tracking
+- Implemented deployment and environment webhook processors for real-time updates
+
 
 ## 0.1.2-dev (2025-05-30)
 
