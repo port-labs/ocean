@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import SinglePullRequestOptions, ListPullRequestOptions
@@ -24,7 +24,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_paginated_resources[
         ExporterOptionsT: ListPullRequestOptions
-    ](self, options: Optional[ExporterOptionsT] = None) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all pull requests in the organization's repositories with pagination."""
 
         params: Dict[str, Any] = dict(options) if options else {}
