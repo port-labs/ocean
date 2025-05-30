@@ -4,3 +4,36 @@ fragment PageInfoFields on PageInfo {
   endCursor
 }
 """
+
+LIST_ORG_MEMBER_GQL = f"""
+{PAGE_INFO_FRAGMENT}
+query OrgMemberQuery(
+  $organization: String!
+  $first: Int = 25
+  $after: String
+) {{
+    organization(login: $organization) {{
+      membersWithRole(
+        first: $first
+        after: $after
+      ) {{
+        nodes {{
+          login
+          email
+        }}
+        pageInfo {{
+        ...PageInfoFields
+        }}
+      }}
+    }}
+}}
+"""
+
+FETCH_GITHUB_USER_GQL = """
+        query ($login: String!) {
+            user(login: $login) {
+                login
+                email
+            }
+        }
+        """

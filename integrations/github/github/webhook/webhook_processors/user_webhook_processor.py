@@ -20,6 +20,8 @@ from github.core.options import SingleUserOptions
 
 class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
+        if event.payload["action"] not in (USER_UPSERT_EVENTS + USER_DELETE_EVENTS):
+            return False
         return event.headers.get("x-github-event") == "organization"
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -54,9 +56,6 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         if not {"action", "membership"} <= payload.keys():
-            return False
-
-        if payload["action"] not in (USER_UPSERT_EVENTS + USER_DELETE_EVENTS):
             return False
 
         return bool(payload["membership"].get("user"))

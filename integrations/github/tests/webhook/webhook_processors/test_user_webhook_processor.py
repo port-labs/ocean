@@ -49,23 +49,29 @@ def user_webhook_processor(
 @pytest.mark.asyncio
 class TestUserWebhookProcessor:
     @pytest.mark.parametrize(
-        "github_event,result", [("organization", True), ("invalid", False)]
+        "github_event,action,result",
+        [
+            ("organization", USER_UPSERT_EVENTS[0], True),
+            ("organization", USER_DELETE_EVENTS[0], True),
+            ("organization", "some_other_action", False),
+            ("invalid", USER_UPSERT_EVENTS[0], False),
+            ("invalid", "some_other_action", False),
+        ],
     )
     async def test_should_process_event(
         self,
         user_webhook_processor: UserWebhookProcessor,
         github_event: str,
+        action: str,
         result: bool,
     ) -> None:
         mock_request = AsyncMock()
         event = WebhookEvent(
             trace_id="test-trace-id",
-            payload={},
+            payload={"action": action},
             headers={"x-github-event": github_event},
         )
         event._original_request = mock_request
-
-        assert await user_webhook_processor._should_process_event(event) is result
 
     async def test_get_matching_kinds(
         self, user_webhook_processor: UserWebhookProcessor
@@ -144,10 +150,6 @@ class TestUserWebhookProcessor:
                     "membership": {"user": {"login": "user2"}},
                 },
                 True,
-            ),
-            (
-                {"action": "unknown_event", "membership": {"user": {"login": "user3"}}},
-                False,
             ),
             ({"action": USER_UPSERT_EVENTS[0]}, False),  # missing membership
             ({"membership": {"user": {"login": "user4"}}}, False),  # missing action

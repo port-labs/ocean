@@ -48,20 +48,27 @@ def team_webhook_processor(
 
 @pytest.mark.asyncio
 class TestTeamWebhookProcessor:
-
     @pytest.mark.parametrize(
-        "github_event,result", [("team", True), ("invalid", False)]
+        "github_event,action,result",
+        [
+            ("team", TEAM_UPSERT_EVENTS[0], True),
+            ("team", TEAM_DELETE_EVENTS[0], True),
+            ("team", "some_other_action", False),
+            ("invalid", TEAM_UPSERT_EVENTS[0], False),
+            ("invalid", "some_other_action", False),
+        ],
     )
     async def test_should_process_event(
         self,
         team_webhook_processor: TeamWebhookProcessor,
         github_event: str,
+        action: str,
         result: bool,
     ) -> None:
         mock_request = AsyncMock()
         event = WebhookEvent(
             trace_id="test-trace-id",
-            payload={},
+            payload={"action": action},
             headers={"x-github-event": github_event},
         )
         event._original_request = mock_request
@@ -148,7 +155,6 @@ class TestTeamWebhookProcessor:
                 },
                 True,
             ),
-            ({"action": "unknown_event", "team": {"slug": "team3"}}, False),
             ({"action": TEAM_UPSERT_EVENTS[0]}, False),  # missing team
             ({"team": {"slug": "team4"}}, False),  # missing action
             (

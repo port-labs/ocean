@@ -14,7 +14,7 @@ from github.core.exporters.user_exporter import GraphQLUserExporter
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 from github.core.options import SingleUserOptions
-from github.helpers.constants import LIST_ORG_MEMBER_GQL
+from github.helpers.gql_queries import LIST_ORG_MEMBER_GQL
 
 
 TEST_USERS = [

@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -14,8 +14,8 @@ class ListRepositoryOptions(TypedDict):
 
 
 class SingleUserOptions(TypedDict):
-    login: str
+    login: Required[str]
 
 
 class SingleTeamOptions(TypedDict):
-    slug: str
+    slug: Required[str]
