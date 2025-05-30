@@ -9,7 +9,7 @@ features:
       - kind: pull-request
       - kind: member
       - kind: team-with-members
-      - kind: workflows
+      - kind: workflow
 configurations:
   - name: githubToken
     required: true

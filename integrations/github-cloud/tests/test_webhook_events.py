@@ -32,8 +32,6 @@ def test_repository_events_to_dict():
         "pull_request": True,
         "issues": True,
         "release": True,
-        "workflow_run": True,
-        "workflow_job": True,
         "workflow": True,
         "member": True
     }

@@ -138,8 +138,6 @@ def test_repository_webhook_factory_events():
     assert events.pull_request is True
     assert events.issues is True
     assert events.release is True
-    assert events.workflow_run is True
-    assert events.workflow_job is True
     assert events.member is True
 
 def test_organization_webhook_factory_events():

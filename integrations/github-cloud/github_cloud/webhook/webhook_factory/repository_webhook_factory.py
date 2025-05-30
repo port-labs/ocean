@@ -13,8 +13,7 @@ class RepositoryWebhookFactory(BaseWebhookFactory[RepositoryEvents]):
     - push
     - pull_request
     - issues
-    - workflow_run
-    - workflow_job
+    - workflow
     """
 
     def _get_repo_info(self, repo: Dict[str, Any]) -> tuple[str, str]:

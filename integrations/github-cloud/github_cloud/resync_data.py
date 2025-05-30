@@ -4,6 +4,7 @@ from port_ocean.context.event import event
 import json
 
 from github_cloud.clients.github_client import GitHubCloudClient
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
 RESYNC_TEAM_MEMBERS_BATCH_SIZE = 10
@@ -84,9 +85,9 @@ async def resync_repositories(
     logger.info(f"Syncing repositories with include_languages={include_languages}")
 
     try:
-        async for repos_batch in client.get_repositories(
+        async for repos_batch in stream_async_iterators_tasks(client.get_repositories(
             include_languages=include_languages
-        ):
+        )):
             logger.info(f"Received repository batch with {len(repos_batch)} repositories")
             yield repos_batch
     except Exception as e:
@@ -94,231 +95,178 @@ async def resync_repositories(
         raise
 
 
+async def _get_enriched_pull_requests(client, repos_batch, params):
+    async for prs_batch in client.get_repository_resource(repos_batch, "pulls", params=params):
+        for repo in repos_batch:
+            enriched_prs = [
+                _enrich_pull_request(pr, repo)
+                for pr in prs_batch
+            ]
+            yield enriched_prs
+
+async def _get_enriched_issues(client, repo):
+    repo_full_name = repo["full_name"]
+    async for issues_batch in client.get_issues(repo_full_name, state="all"):
+        for issue in issues_batch:
+            logger.debug(f"Raw issue data: {json.dumps(issue, indent=2)}")
+        enriched_issues = [
+            _enrich_issue(issue, repo)
+            for issue in issues_batch
+        ]
+        yield enriched_issues
+
+async def _get_enriched_teams_with_members(client, org, teams, include_bot_members):
+    for i in range(0, len(teams), RESYNC_TEAM_MEMBERS_BATCH_SIZE):
+        current_batch = teams[i:i + RESYNC_TEAM_MEMBERS_BATCH_SIZE]
+        logger.info(
+            f"Processing members for {i + len(current_batch)}/{len(teams)} teams in {org['login']}"
+        )
+        enriched_teams = []
+        for team in current_batch:
+            team_with_org = {**team, "organization": org}
+            enriched_team = await client.enrich_organization_with_members(
+                team_with_org, team["slug"], include_bot_members
+            )
+            enriched_teams.append(enriched_team)
+        yield enriched_teams
+
+async def _get_enriched_members(client, org, teams, include_bot_members):
+    for i in range(0, len(teams), RESYNC_TEAM_MEMBERS_BATCH_SIZE):
+        current_batch = teams[i:i + RESYNC_TEAM_MEMBERS_BATCH_SIZE]
+        for team in current_batch:
+            async for members_batch in client.get_team_members(
+                org["login"], team["slug"], include_bot_members
+            ):
+                enriched_members = [
+                    {**member, "team": team, "organization": org}
+                    for member in members_batch
+                ]
+                yield enriched_members
+
+async def _get_enriched_workflows(client, repo):
+    repo_full_name = repo["full_name"]
+    repo_default_branch = repo.get("default_branch", "main")
+    async for workflows_batch in client.rest.get_paginated_repository_resource(
+        repo_full_name,
+        "actions/workflows"
+    ):
+        for workflow in workflows_batch:
+            try:
+                workflow_file = await client.rest.get_file_content(
+                    repo_full_name,
+                    workflow.get("path"),
+                    repo_default_branch
+                )
+            except Exception as e:
+                logger.error(f"Failed to get workflow file for {workflow.get('path')}: {str(e)}")
+                workflow_file = None
+            workflow_entity = {
+                "id": workflow.get("id"),
+                "name": workflow.get("name"),
+                "path": workflow.get("path"),
+                "state": workflow.get("state"),
+                "created_at": workflow.get("created_at"),
+                "updated_at": workflow.get("updated_at"),
+                "html_url": workflow.get("html_url"),
+                "repo": repo_full_name,
+            }
+            if workflow_file:
+                workflow_entity["content"] = workflow_file
+            yield workflow_entity
+
 async def resync_pull_requests(
     client: GitHubCloudClient,
 ) -> AsyncIterator[List[Dict[str, Any]]]:
     """
     Resync pull requests from GitHub Cloud.
-
-    Args:
-        client: GitHub Cloud client instance
-
-    Yields:
-        Batches of pull request data
-
-    Note:
-        The function fetches open pull requests by default and enriches
-        them with repository information.
     """
     try:
         async for repos_batch in client.get_repositories():
             logger.info(f"Processing batch of {len(repos_batch)} repositories for pull requests")
-
             params = {"state": "open"}
-            async for prs_batch in client.get_repository_resource(
-                repos_batch, "pulls", params=params
-            ):
-                enriched_prs = [
-                    _enrich_pull_request(pr, repo)
-                    for pr in prs_batch
-                    for repo in repos_batch
-                ]
+            async for enriched_prs in _get_enriched_pull_requests(client, repos_batch, params):
                 yield enriched_prs
     except Exception as e:
         logger.error(f"Failed to sync pull requests: {str(e)}")
         raise
-
 
 async def resync_issues(
     client: GitHubCloudClient,
 ) -> AsyncIterator[List[Dict[str, Any]]]:
     """
     Resync issues from GitHub Cloud.
-
-    Args:
-        client: GitHub Cloud client instance
-
-    Yields:
-        Batches of issue data
-
-    Note:
-        The function fetches both open and closed issues and enriches
-        them with repository information.
     """
     try:
         async for repos_batch in client.get_repositories():
             logger.info(f"Processing batch of {len(repos_batch)} repositories for issues")
-
             for repo in repos_batch:
-                repo_full_name = repo["full_name"]
-                async for issues_batch in client.get_issues(repo_full_name, state="all"):
-                    for issue in issues_batch:
-                        logger.debug(f"Raw issue data: {json.dumps(issue, indent=2)}")
-
-                    enriched_issues = [
-                        _enrich_issue(issue, repo)
-                        for issue in issues_batch
-                    ]
+                async for enriched_issues in _get_enriched_issues(client, repo):
                     yield enriched_issues
     except Exception as e:
         logger.error(f"Failed to sync issues: {str(e)}")
         raise
-
 
 async def resync_teams_with_members(
     client: GitHubCloudClient,
 ) -> AsyncIterator[List[Dict[str, Any]]]:
     """
     Resync teams with members from GitHub Cloud.
-
-    Args:
-        client: GitHub Cloud client instance
-
-    Yields:
-        Batches of teams with members data
-
-    Note:
-        The function processes teams in batches to avoid rate limiting
-        and supports an optional include_bot_members configuration.
     """
     include_bot_members = _get_selector_config("include_bot_members", False)
     logger.info(f"Syncing teams with include_bot_members={include_bot_members}")
-
     try:
         orgs = []
         async for orgs_batch in client.get_organizations():
             orgs.extend(orgs_batch)
-
         for org in orgs:
-            org_login = org["login"]
             teams = []
-
             async for teams_batch in client.rest.get_paginated_org_resource(
-                org_login, "teams"
+                org["login"], "teams"
             ):
                 teams.extend(teams_batch)
-
-            for i in range(0, len(teams), RESYNC_TEAM_MEMBERS_BATCH_SIZE):
-                current_batch = teams[i:i + RESYNC_TEAM_MEMBERS_BATCH_SIZE]
-                logger.info(
-                    f"Processing members for {i + len(current_batch)}/{len(teams)} teams in {org_login}"
-                )
-
-                enriched_teams = []
-                for team in current_batch:
-                    team_with_org = {**team, "organization": org}
-                    enriched_team = await client.enrich_organization_with_members(
-                        team_with_org, team["slug"], include_bot_members
-                    )
-                    enriched_teams.append(enriched_team)
-
+            async for enriched_teams in _get_enriched_teams_with_members(client, org, teams, include_bot_members):
                 yield enriched_teams
     except Exception as e:
         logger.error(f"Failed to sync teams with members: {str(e)}")
         raise
-
 
 async def resync_members(
     client: GitHubCloudClient,
 ) -> AsyncIterator[List[Dict[str, Any]]]:
     """
     Resync members from GitHub Cloud.
-
-    Args:
-        client: GitHub Cloud client instance
-
-    Yields:
-        Batches of member data
-
-    Note:
-        The function processes teams in batches to avoid rate limiting
-        and supports an optional include_bot_members configuration.
     """
     include_bot_members = _get_selector_config("include_bot_members", False)
     logger.info(f"Syncing members with include_bot_members={include_bot_members}")
-
     try:
         orgs = []
-        async for orgs_batch in client.get_organizations():
+        async for orgs_batch in stream_async_iterators_tasks(client.get_organizations()):
             orgs.extend(orgs_batch)
-
         for org in orgs:
-            org_login = org["login"]
             teams = []
-
-            async for teams_batch in client.rest.get_paginated_org_resource(
-                org_login, "teams"
-            ):
+            async for teams_batch in stream_async_iterators_tasks(client.rest.get_paginated_org_resource(
+                org["login"], "teams"
+            )):
                 teams.extend(teams_batch)
-
-            for i in range(0, len(teams), RESYNC_TEAM_MEMBERS_BATCH_SIZE):
-                current_batch = teams[i:i + RESYNC_TEAM_MEMBERS_BATCH_SIZE]
-
-                for team in current_batch:
-                    async for members_batch in client.get_team_members(
-                        org_login, team["slug"], include_bot_members
-                    ):
-                        enriched_members = [
-                            {**member, "team": team, "organization": org}
-                            for member in members_batch
-                        ]
-                        yield enriched_members
+            async for enriched_members in _get_enriched_members(client, org, teams, include_bot_members):
+                yield enriched_members
     except Exception as e:
         logger.error(f"Failed to sync members: {str(e)}")
         raise
-
 
 async def resync_workflows(
     client: GitHubCloudClient,
 ) -> AsyncIterator[List[Dict[str, Any]]]:
     """
     Resync workflows from GitHub Cloud.
-
-    Args:
-        client: GitHub Cloud client instance
-
-    Yields:
-        Batches of workflow data with their content, mapped to Port's githubWorkflow blueprint
     """
     try:
-        async for repos_batch in client.get_repositories():
+        async for repos_batch in stream_async_iterators_tasks(client.get_repositories()):
             logger.info(f"Processing batch of {len(repos_batch)} repositories for workflows")
-
             workflows_to_yield = []
             for repo in repos_batch:
-                repo_full_name = repo["full_name"]
-                repo_default_branch = repo.get("default_branch", "main")
-
-                async for workflows_batch in client.rest.get_paginated_repository_resource(
-                    repo_full_name,
-                    "actions/workflows"
-                ):
-                    for workflow in workflows_batch:
-                        try:
-                            workflow_file = await client.rest.get_file_content(
-                                repo_full_name,
-                                workflow.get("path"),
-                                repo_default_branch
-                            )
-                        except Exception as e:
-                            logger.error(f"Failed to get workflow file for {workflow.get('path')}: {str(e)}")
-                            workflow_file = None
-
-                        # Build the workflow entity with all required fields at the top level
-                        workflow_entity = {
-                            "id": workflow.get("id"),
-                            "name": workflow.get("name"),
-                            "path": workflow.get("path"),
-                            "state": workflow.get("state"),
-                            "created_at": workflow.get("created_at"),
-                            "updated_at": workflow.get("updated_at"),
-                            "html_url": workflow.get("html_url"),
-                            "repo": repo_full_name,
-                        }
-                        if workflow_file:
-                            workflow_entity["content"] = workflow_file
-                        workflows_to_yield.append(workflow_entity)
-
+                async for workflow_entity in _get_enriched_workflows(client, repo):
+                    workflows_to_yield.append(workflow_entity)
             if workflows_to_yield:
                 yield workflows_to_yield
     except Exception as e:

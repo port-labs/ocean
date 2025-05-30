@@ -34,15 +34,6 @@ from github_cloud.resync_data import (
 
 
 async def _create_webhooks(base_url: str) -> None:
-    """
-    Create webhooks for organizations and repositories.
-
-    Args:
-        base_url: Base URL for webhook endpoints
-
-    Raises:
-        Exception: If webhook creation fails
-    """
     try:
         client = create_github_client()
         logger.info(f"Creating webhooks using base URL: {base_url}")
@@ -66,15 +57,6 @@ async def _create_webhooks(base_url: str) -> None:
 
 @ocean.on_start()
 async def on_start() -> None:
-    """
-    Initialize the integration on startup.
-
-    Creates webhooks for organizations and repositories if the event listener
-    is not set to ONCE mode.
-
-    Note:
-        Webhook creation is skipped if the event listener type is ONCE.
-    """
     logger.info("Starting Port Ocean GitHub Cloud Integration")
 
     if ocean.event_listener_type == "ONCE":
@@ -89,18 +71,6 @@ async def on_start() -> None:
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Resync GitHub repositories.
-
-    Args:
-        kind: Entity kind
-
-    Yields:
-        Batches of repositories
-
-    Raises:
-        Exception: If repository sync fails
-    """
     try:
         client = create_github_client()
         async for repos_batch in resync_repositories(client):
@@ -112,18 +82,6 @@ async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Resync GitHub pull requests.
-
-    Args:
-        kind: Entity kind
-
-    Yields:
-        Batches of pull requests
-
-    Raises:
-        Exception: If pull request sync fails
-    """
     try:
         client = create_github_client()
         async for prs_batch in resync_pull_requests(client):
@@ -135,18 +93,6 @@ async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.TEAM_WITH_MEMBERS)
 async def on_resync_teams_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Resync GitHub teams with members.
-
-    Args:
-        kind: Entity kind
-
-    Yields:
-        Batches of teams with members
-
-    Raises:
-        Exception: If team sync fails
-    """
     try:
         client = create_github_client()
         async for teams_batch in resync_teams_with_members(client):
@@ -158,18 +104,6 @@ async def on_resync_teams_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 
 @ocean.on_resync(ObjectKind.MEMBER)
 async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Resync GitHub members.
-
-    Args:
-        kind: Entity kind
-
-    Yields:
-        Batches of members
-
-    Raises:
-        Exception: If member sync fails
-    """
     try:
         client = create_github_client()
         async for members_batch in resync_members(client):
@@ -180,18 +114,6 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Resync GitHub issues.
-
-    Args:
-        kind: Entity kind
-
-    Yields:
-        Batches of issues
-
-    Raises:
-        Exception: If issue sync fails
-    """
     try:
         client = create_github_client()
         async for issues_batch in resync_issues(client):
@@ -203,40 +125,14 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.WORKFLOW)
 async def on_resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Resync GitHub workflows.
-
-    Args:
-        kind: Entity kind
-
-    Yields:
-        Batches of workflows
-
-    Raises:
-        Exception: If workflow sync fails
-    """
     try:
         client = create_github_client()
         async for workflows_batch in resync_workflows(client):
             yield workflows_batch
     except Exception as e:
         logger.error(f"Failed to sync workflows: {str(e)}")
-        raise
 
 
-@ocean.on_resync()
-async def debug_handler(kind: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
-    """
-    Debug handler for unknown entity kinds.
-
-    Args:
-        kind: Entity kind
-
-    Yields:
-        Empty list for unknown entity kinds
-    """
-    logger.info(f"Port requested sync for unknown kind: {kind}")
-    yield []
 
 ocean.add_webhook_processor("/hook/org/{org_name}", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/hook/{owner}/{repo}", RepositoryWebhookProcessor)

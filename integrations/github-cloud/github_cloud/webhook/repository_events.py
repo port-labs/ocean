@@ -22,7 +22,5 @@ class RepositoryEvents:
             "pull_request",
             "pull_request_review",
             "pull_request_review_comment",
-            "workflow_run",
             "workflow",
-            "workflow_job",
         ]

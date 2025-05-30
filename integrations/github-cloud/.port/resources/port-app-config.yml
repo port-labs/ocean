@@ -96,7 +96,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: ".repo + (.id|tostring)"
+          identifier: ".repository.full_name + (.id|tostring)"
           title: ".name"
           blueprint: '"githubWorkflow"'
           properties:
@@ -106,4 +106,4 @@ resources:
             updatedAt: ".updated_at"
             link: ".html_url"
           relations:
-            repository: ".repo"
+            repository: ".repository.full_name"

@@ -80,16 +80,16 @@ def mock_pull_request_event():
     )
 
 @pytest.fixture
-def mock_workflow_run_event():
+def mock_workflow_event():
     return WebhookEvent(
         headers={
-            "x-github-event": "workflow_run",
+            "x-github-event": "workflow",
             "x-github-delivery": "123",
             "x-hub-signature-256": "sha256=123"
         },
         payload={
             "action": "completed",
-            "workflow_run": {
+            "workflow": {
                 "id": 789,
                 "name": "Test Workflow",
                 "status": "completed",
@@ -107,50 +107,6 @@ def mock_workflow_run_event():
                 "id": 123,
                 "name": "test-repo",
                 "full_name": "owner/test-repo"
-            }
-        },
-        trace_id="test-trace-id"
-    )
-
-@pytest.fixture
-def mock_workflow_job_event():
-    return WebhookEvent(
-        headers={
-            "x-github-event": "workflow_job",
-            "x-github-delivery": "123",
-            "x-hub-signature-256": "sha256=123"
-        },
-        payload={
-            "action": "completed",
-            "workflow_job": {
-                "id": 456,
-                "name": "Test Job",
-                "status": "completed",
-                "conclusion": "success",
-                "started_at": "2024-01-01T00:00:00Z",
-                "completed_at": "2024-01-01T00:01:00Z",
-                "runner_name": "test-runner",
-                "runner_group_name": "test-group",
-                "run_id": 789,
-                "steps": [
-                    {
-                        "name": "Step 1",
-                        "status": "completed",
-                        "conclusion": "success",
-                        "number": 1,
-                        "started_at": "2024-01-01T00:00:00Z",
-                        "completed_at": "2024-01-01T00:00:30Z"
-                    }
-                ]
-            },
-            "repository": {
-                "id": 123,
-                "name": "test-repo",
-                "full_name": "owner/test-repo"
-            },
-            "workflow_run": {
-                "id": 789,
-                "name": "Test Workflow"
             }
         },
         trace_id="test-trace-id"
@@ -401,31 +357,21 @@ async def test_pull_request_webhook_processor_validate_payload_missing_repositor
     assert await processor.validate_payload(event.payload) is False
 
 @pytest.mark.asyncio
-async def test_workflow_webhook_processor_authenticate(mock_workflow_run_event):
-    processor = WorkflowWebhookProcessor(mock_workflow_run_event)
-    result = await processor.authenticate(mock_workflow_run_event.payload, mock_workflow_run_event.headers)
+async def test_workflow_webhook_processor_authenticate(mock_workflow_event):
+    processor = WorkflowWebhookProcessor(mock_workflow_event)
+    result = await processor.authenticate(mock_workflow_event.payload, mock_workflow_event.headers)
     assert result is True
 
 @pytest.mark.asyncio
-async def test_workflow_webhook_processor_should_process_event(mock_workflow_run_event):
-    processor = WorkflowWebhookProcessor(mock_workflow_run_event)
-    assert await processor.should_process_event(mock_workflow_run_event) is False
+async def test_workflow_webhook_processor_should_process_event(mock_workflow_event):
+    processor = WorkflowWebhookProcessor(mock_workflow_event)
+    assert await processor.should_process_event(mock_workflow_event) is True
 
 @pytest.mark.asyncio
 async def test_workflow_webhook_processor_should_not_process_event():
     event = WebhookEvent(headers={"x-github-event": "unknown"}, payload={}, trace_id="test-trace-id")
     processor = WorkflowWebhookProcessor(event)
     assert await processor.should_process_event(event) is False
-
-@pytest.mark.asyncio
-async def test_workflow_webhook_processor_validate_payload_workflow_run(mock_workflow_run_event):
-    processor = WorkflowWebhookProcessor(mock_workflow_run_event)
-    assert await processor.validate_payload(mock_workflow_run_event.payload) is True
-
-@pytest.mark.asyncio
-async def test_workflow_webhook_processor_validate_payload_workflow_job(mock_workflow_job_event):
-    processor = WorkflowWebhookProcessor(mock_workflow_job_event)
-    assert await processor.validate_payload(mock_workflow_job_event.payload) is True
 
 @pytest.mark.asyncio
 async def test_workflow_webhook_processor_validate_payload_invalid():

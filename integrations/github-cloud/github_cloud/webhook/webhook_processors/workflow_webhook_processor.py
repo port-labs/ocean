@@ -71,12 +71,6 @@ class WorkflowWebhookProcessor(GitHubCloudAbstractWebhookProcessor):
                     updated_raw_results=[workflow],
                     deleted_raw_results=[],
                 )
-        elif "workflow_run" in payload:
-            # Handle workflow_run event
-            return await self._process_workflow_run(payload)
-        elif "workflow_job" in payload:
-            # Handle workflow_job event
-            return await self._process_workflow_job(payload)
         else:
             logger.error(f"Unknown workflow event type in payload: {payload.keys()}")
             return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
@@ -95,86 +89,4 @@ class WorkflowWebhookProcessor(GitHubCloudAbstractWebhookProcessor):
         if "workflow" in payload:
             required_fields = ["workflow", "action", "repository"]
             return all(field in payload for field in required_fields)
-        elif "workflow_run" in payload:
-            required_fields = ["workflow_run", "action", "repository"]
-            return all(field in payload for field in required_fields)
-        elif "workflow_job" in payload:
-            required_fields = ["workflow_job", "action", "repository"]
-            return all(field in payload for field in required_fields)
         return False
-
-    async def process(self, payload: Dict[str, Any]) -> List[RawEntityDiff]:
-        """
-        Process workflow webhook events.
-
-        Args:
-            payload: Webhook payload
-
-        Returns:
-            List of entity diffs to be processed
-        """
-        action = payload.get("action")
-        if not action:
-            logger.warning("No action found in workflow webhook payload")
-            return []
-
-        if "workflow_run" in payload:
-            return await self._process_workflow_run(payload)
-        elif "workflow_job" in payload:
-            return await self._process_workflow_job(payload)
-        else:
-            logger.warning(f"Unknown workflow webhook event type: {payload.keys()}")
-            return []
-
-    async def _process_workflow_run(self, payload: Dict[str, Any]) -> List[RawEntityDiff]:
-        """
-        Process workflow run events.
-
-        Args:
-            payload: Webhook payload containing workflow_run data
-
-        Returns:
-            List of entity diffs
-        """
-        workflow_run = payload["workflow_run"]
-        repository = payload["repository"]
-
-        # Enrich workflow run with repository data
-        enriched_run = {**workflow_run, "repository": repository}
-
-        return [
-            {
-                "kind": ObjectKind.WORKFLOW_RUN,
-                "action": "upsert",
-                "entity": enriched_run,
-            }
-        ]
-
-    async def _process_workflow_job(self, payload: Dict[str, Any]) -> List[RawEntityDiff]:
-        """
-        Process workflow job events.
-
-        Args:
-            payload: Webhook payload containing workflow_job data
-
-        Returns:
-            List of entity diffs
-        """
-        workflow_job = payload["workflow_job"]
-        repository = payload["repository"]
-        workflow_run = payload.get("workflow_run", {})
-
-        # Enrich workflow job with repository and run data
-        enriched_job = {
-            **workflow_job,
-            "repository": repository,
-            "workflow_run": workflow_run,
-        }
-
-        return [
-            {
-                "kind": ObjectKind.WORKFLOW_JOB,
-                "action": "upsert",
-                "entity": enriched_job,
-            }
-        ]
