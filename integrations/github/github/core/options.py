@@ -1,10 +1,10 @@
-from typing import TypedDict
+from typing import Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
     """Options for fetching a single repository."""
 
-    name: str
+    name: Required[str]
 
 
 class ListRepositoryOptions(TypedDict):
@@ -16,12 +16,12 @@ class ListRepositoryOptions(TypedDict):
 class ListIssueOptions(TypedDict):
     """Options for listing issues."""
 
-    repo_name: str
+    repo_name: Required[str]
     state: str
 
 
 class SingleIssueOptions(TypedDict):
     """Options for fetching a single issue."""
 
-    repo_name: str
-    issue_number: int
+    repo_name: Required[str]
+    issue_number: Required[int]

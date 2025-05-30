@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -24,7 +24,7 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
 
     async def get_paginated_resources[
         ExporterOptionsT: ListIssueOptions
-    ](self, options: Optional[ExporterOptionsT] = None) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         params: Dict[str, Any] = dict(options) if options else {}
         repo_name = params.pop("repo_name")
