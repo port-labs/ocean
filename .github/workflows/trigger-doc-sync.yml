@@ -1,0 +1,36 @@
+name: Trigger Docs Sync
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'integrations/**/.port/resources/port-app-config.yaml'
+
+jobs:
+  trigger-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            integrations/**/.port/resources/port-app-config.yaml
+
+      - name: Trigger docs sync
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.PORT_DOCS_SYNC_TOKEN }}
+          repository: ${{ github.repository_owner }}/port-docs
+          event-type: sync-docs
+          client-payload: '{"repository": "${{ github.repository }}", "commit_url": "${{ github.event.head_commit.url }}", "changed_files": ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}}'
