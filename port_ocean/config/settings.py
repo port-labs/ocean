@@ -101,6 +101,10 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     caching_storage_mode: Optional[CachingStorageMode] = Field(default=None)
     process_execution_mode: Optional[ProcessExecutionMode] = Field(default=None)
 
+    upsert_entities_batch_max_length: int = 20
+    upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
+    bulk_upserts_enabled: bool = False
+
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:
         if v is None:

@@ -96,6 +96,10 @@ async def test_sync_raw_mixin_self_dependency(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_ocean: Ocean,
 ) -> None:
+    mock_ocean.config.upsert_entities_batch_max_length = 20
+    mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024
+    mock_ocean.config.bulk_upserts_enabled = True
+
     entities_params = [
         ("entity_1", "service", {"service": "entity_1"}, True),
         ("entity_2", "service", {"service": "entity_2"}, False),
@@ -148,9 +152,13 @@ async def test_sync_raw_mixin_self_dependency(
 
                 assert mock_order_by_entities_dependencies.call_count == 1
                 assert [
-                    call[0][0][0]
+                    call[0][0][0].identifier
                     for call in mock_order_by_entities_dependencies.call_args_list
-                ] == [entity for entity in entities if entity.identifier == "entity_1"]
+                ] == [
+                    entity.identifier
+                    for entity in entities
+                    if entity.identifier == "entity_1"
+                ]
 
                 # Add assertions for actual metrics
                 metrics = mock_ocean.metrics.generate_metrics()
@@ -209,6 +217,10 @@ async def test_sync_raw_mixin_self_dependency(
 async def test_sync_raw_mixin_circular_dependency(
     mock_sync_raw_mixin: SyncRawMixin, mock_ocean: Ocean
 ) -> None:
+    mock_ocean.config.upsert_entities_batch_max_length = 20
+    mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024
+    mock_ocean.config.bulk_upserts_enabled = True
+
     entities_params = [
         ("entity_1", "service", {"service": "entity_2"}, True),
         ("entity_2", "service", {"service": "entity_1"}, True),
@@ -284,8 +296,8 @@ async def test_sync_raw_mixin_circular_dependency(
                 assert isinstance(raiesed_error_handle_failed[0].__cause__, CycleError)
                 assert (
                     len(mock_ocean.port_client.client.post.call_args_list)  # type: ignore
-                    / len(entities)
-                    == 2
+                    - len(entities)
+                    == 1
                 )
 
                 # Add assertions for actual metrics
@@ -345,7 +357,10 @@ async def test_sync_raw_mixin_circular_dependency(
 async def test_sync_raw_mixin_dependency(
     mock_sync_raw_mixin: SyncRawMixin, mock_ocean: Ocean
 ) -> None:
-    # Create entities with more realistic data
+    mock_ocean.config.upsert_entities_batch_max_length = 20
+    mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024
+    mock_ocean.config.bulk_upserts_enabled = True
+
     entities_params = [
         ("entity_1", "service", {"service": "entity_3"}, True),
         ("entity_2", "service", {"service": "entity_4"}, True),
@@ -418,17 +433,20 @@ async def test_sync_raw_mixin_dependency(
                 ), "Expected one failed entity callback due to retry logic"
                 assert event.entity_topological_sorter.get_entities.call_count == 1
                 assert len(raiesed_error_handle_failed) == 0
-                assert mock_ocean.port_client.client.post.call_count == 10  # type: ignore
+                assert mock_ocean.port_client.client.post.call_count == 6  # type: ignore
                 assert mock_order_by_entities_dependencies.call_count == 1
 
-                first = mock_ocean.port_client.client.post.call_args_list[0:5]  # type: ignore
-                second = mock_ocean.port_client.client.post.call_args_list[5:10]  # type: ignore
+                result_bulk = mock_ocean.port_client.client.post.call_args_list[0]  # type: ignore
+                result_non_bulk = mock_ocean.port_client.client.post.call_args_list[1:6]  # type: ignore
 
                 assert "-".join(
-                    [call[1].get("json").get("identifier") for call in first]
+                    [
+                        entity.get("identifier")
+                        for entity in result_bulk[1].get("json").get("entities")
+                    ]
                 ) == "-".join([entity.identifier for entity in entities])
                 assert "-".join(
-                    [call[1].get("json").get("identifier") for call in second]
+                    [call[1].get("json").get("identifier") for call in result_non_bulk]
                 ) in (
                     "entity_3-entity_4-entity_1-entity_2-entity_5",
                     "entity_3-entity_4-entity_1-entity_5-entity_2",
@@ -892,6 +910,8 @@ async def test_on_resync_start_hooks_are_called(
         resync_start_called = True
 
     mock_sync_raw_mixin.on_resync_start(on_resync_start)
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
+
     mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
@@ -922,6 +942,7 @@ async def test_on_resync_complete_hooks_are_called_on_success(
 
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete)
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
     mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
@@ -994,6 +1015,7 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete1)
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete2)
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
 
     mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
