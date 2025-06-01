@@ -27,6 +27,9 @@ from github.core.options import (
 from typing import TYPE_CHECKING
 from port_ocean.context.event import event
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from github.webhook.webhook_processors.environment_webhook_processor import (
+    EnvironmentWebhookProcessor,
+)
 
 
 if TYPE_CHECKING:
@@ -132,3 +135,4 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", DeploymentWebhookProcessor)
+ocean.add_webhook_processor("/webhook", EnvironmentWebhookProcessor)
