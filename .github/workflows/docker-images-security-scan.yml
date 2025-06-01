@@ -131,7 +131,8 @@ jobs:
 
       - name: Set output for trivy results
         run: |
-          cat trivy-${{ steps.enrich-version.outputs.integration }}.txt
+          cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i "total:"
+          cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i "total:" | awk '{print $2}')
           echo "VULNERABILITIES_COUNT=$(cat trivy-${{ steps.enrich-version.outputs.integration }}.txt | grep -i "total:" | awk '{print $2}')" >> $GITHUB_ENV
           echo ${{ env.VULNERABILITIES_COUNT }}
 
