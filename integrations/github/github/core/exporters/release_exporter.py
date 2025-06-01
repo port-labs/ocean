@@ -1,0 +1,49 @@
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from typing import Any
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from loguru import logger
+from github.core.options import ListReleaseOptions, SingleReleaseOptions
+from github.clients.http.rest_client import GithubRestClient
+from github.core.exporters.utils import enrich_with_repository
+
+
+class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
+
+    def _enrich_release(
+        self, release: dict[str, Any], repo_name: str
+    ) -> dict[str, Any]:
+        """Enrich release with repository information."""
+        release["name"] = release["name"].replace(" ", "_")
+        return enrich_with_repository(release, repo_name)
+
+    async def get_resource[
+        ExporterOptionsT: SingleReleaseOptions
+    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+        repo_name = options["repo_name"]
+        release_id = options["release_id"]
+
+        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/releases/{release_id}"
+        response = await self.client.send_api_request(endpoint)
+        logger.info(f"Fetched release with id: {release_id} for repo: {repo_name}")
+
+        return self._enrich_release(response, repo_name)
+
+    async def get_paginated_resources[
+        ExporterOptionsT: ListReleaseOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get all releases in the repository with pagination."""
+
+        params = dict(options)
+        repo_name = str(params.pop("repo_name"))
+
+        async for releases in self.client.send_paginated_request(
+            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/releases",
+            params,
+        ):
+            logger.info(
+                f"Fetched batch of {len(releases)} releases from repository {repo_name}"
+            )
+            batch_data = [
+                self._enrich_release(release, repo_name) for release in releases
+            ]
+            yield batch_data

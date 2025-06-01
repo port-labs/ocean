@@ -6,6 +6,9 @@ features:
     section: Git
     resources:
       - kind: repository
+      - kind: release
+      - kind: tag
+      - kind: branch
 configurations:
   - name: githubHost
     required: false
