@@ -7,6 +7,151 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.5 (2025-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.4
+
+
+## 0.2.4 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.3
+
+
+## 0.2.3 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.2
+
+
+## 0.2.2 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.1
+
+
+## 0.2.1 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.0
+
+
+## 0.2.0 (2025-05-26)
+
+### Features
+
+ Transitioned live events management to ocean’s `LiveEventProcessorManager` to streamline processing
+
+## 0.1.156 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.12
+
+
+## 0.1.155 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.11
+
+
+## 0.1.154 (2025-05-21)
+
+
+### Improvements
+
+- Added support for monorepo
+
+
+## 0.1.153 (2025-05-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
+## 0.1.152 (2025-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.9
+
+
+## 0.1.151 (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+## 0.1.150 (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.1.149 (2025-05-07)
+
+
+### Bug Fixes
+
+- Fixed `AzureDevopsClient` to support self-hosted Azure DevOps instances to preserve base URLs for self-hosted cases.
+
+
+## 0.1.148 (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+## 0.1.147 (2025-04-27)
+
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
+## 0.1.146 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.1.145 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
 ## 0.1.144 (2025-04-07)
 
 

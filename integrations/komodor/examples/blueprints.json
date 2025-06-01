@@ -1,0 +1,144 @@
+[
+  {
+    "identifier": "komodorService",
+    "title": "Komodor Service",
+    "icon": "Komodor",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "healthy",
+            "unhealthy"
+          ],
+          "enumColors": {
+            "healthy": "green",
+            "unhealthy": "red"
+          }
+        },
+        "cluster_name": {
+          "icon": "Cluster",
+          "type": "string",
+          "title": "Cluster"
+        },
+        "workload_kind": {
+          "icon": "Deployment",
+          "type": "string",
+          "title": "Kind"
+        },
+        "service_name": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Service"
+        },
+        "namespace_name": {
+          "icon": "Environment",
+          "type": "string",
+          "title": "Namespace"
+        },
+        "last_deploy_at": {
+          "type": "string",
+          "title": "Last Deploy At",
+          "format": "date-time"
+        },
+        "komodor_link": {
+          "type": "string",
+          "title": "Komodor Link",
+          "format": "url",
+          "icon": "LinkOut"
+        },
+        "labels": {
+          "icon": "JsonEditor",
+          "type": "object",
+          "title": "Labels"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "komodorHealthMonitoring",
+    "title": "Komodor Health Monitoring",
+    "icon": "Komodor",
+    "schema": {
+      "properties": {
+        "supporting_data": {
+          "icon": "JsonEditor",
+          "type": "object",
+          "title": "Supporting Data"
+        },
+        "komodor_link": {
+          "icon": "LinkOut",
+          "type": "string",
+          "title": "Komodor Link",
+          "format": "url"
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "enumColors": {
+            "high": "red",
+            "medium": "orange",
+            "low": "yellow"
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created at",
+          "format": "date-time"
+        },
+        "last_evaluated_at": {
+          "icon": "Clock",
+          "type": "string",
+          "title": "Last Evaluated At",
+          "format": "date-time"
+        },
+        "check_type": {
+          "type": "string",
+          "title": "Check Type"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "open",
+            "confirmed",
+            "resolved",
+            "dismissed",
+            "ignored",
+            "manually_resolved"
+          ],
+          "enumColors": {
+            "open": "red",
+            "confirmed": "turquoise",
+            "resolved": "green",
+            "dismissed": "purple",
+            "ignored": "darkGray",
+            "manually_resolved": "bronze"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "service": {
+        "title": "Service",
+        "target": "komodorService",
+        "required": false,
+        "many": false
+      }
+    }
+  }]

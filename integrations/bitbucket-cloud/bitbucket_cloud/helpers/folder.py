@@ -140,7 +140,7 @@ async def process_repo_folders(
     folder_patterns: list[FolderPattern],
     client: "BitbucketClientManager",
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
-    repo_name = repo["name"]
+    repo_name = repo["name"].replace(" ", "-")
     if repo_name not in pattern_by_repo:
         return
     repo_branches = pattern_by_repo[repo_name]

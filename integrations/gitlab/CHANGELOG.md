@@ -7,6 +7,138 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.72 (2025-05-29)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.23.4
+
+
+0.2.71 (2025-05-28)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.23.3
+
+
+0.2.70 (2025-05-28)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.23.2
+
+
+0.2.69 (2025-05-27)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.23.1
+
+
+0.2.68 (2025-05-27)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.23.0
+
+
+0.2.67 (2025-05-26)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.12
+
+
+0.2.66 (2025-05-26)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.11
+
+
+0.2.65 (2025-05-20)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
+0.2.64 (2025-05-19)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.9
+
+
+0.2.63 (2025-05-15)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+0.2.62 (2025-05-12)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+0.2.61 (2025-05-06)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+0.2.60 (2025-05-01)
+===================
+
+### Bug Fixes
+
+- Fixed the Gitlab integration stripping `\n` from the file content
+
+
+0.2.59 (2025-04-27)
+===================
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
+0.2.58 (2025-04-15)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+0.2.57 (2025-04-15)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
 0.2.56 (2025-04-07)
 ===================
 

@@ -7,6 +7,138 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.12 (2025-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.4
+
+
+## 0.2.11 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.3
+
+
+## 0.2.10 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.2
+
+
+## 0.2.9 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.1
+
+
+## 0.2.8 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.0
+
+
+## 0.2.7 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.12
+
+
+## 0.2.6 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.11
+
+
+## 0.2.5 (2025-05-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
+## 0.2.4 (2025-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.9
+
+
+## 0.2.3 (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+## 0.2.2 (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.2.1 (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+## 0.2.0 (2025-04-30)
+
+
+### Improvements
+
+- Transitioned live events management to ocean’s `LiveEventProcessorManager` to streamline processing
+
+
+## 0.1.102 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
+## 0.1.101 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.1.100 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
 ## 0.1.99 (2025-04-07)
 
 

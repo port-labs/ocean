@@ -480,29 +480,29 @@ standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "htt
 
 [[package]]
 name = "h11"
-version = "0.14.0"
+version = "0.16.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "h11-0.14.0-py3-none-any.whl", hash = "sha256:e3fe4ac4b851c468cc8363d500db52c2ead036020723024a109d37346efaa761"},
-    {file = "h11-0.14.0.tar.gz", hash = "sha256:8f19fbbe99e72420ff35c00b27a34cb9937e902a8b810e2c88300c6f0a3b699d"},
+    {file = "h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"},
+    {file = "h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1"},
 ]
 
 [[package]]
 name = "httpcore"
-version = "1.0.7"
+version = "1.0.9"
 description = "A minimal low-level HTTP client."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "httpcore-1.0.7-py3-none-any.whl", hash = "sha256:a3fff8f43dc260d5bd363d9f9cf1830fa3a458b332856f34282de498ed420edd"},
-    {file = "httpcore-1.0.7.tar.gz", hash = "sha256:8551cb62a169ec7162ac7be8d4817d561f60e08eaa485234898414bb5a8a0b4c"},
+    {file = "httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"},
+    {file = "httpcore-1.0.9.tar.gz", hash = "sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8"},
 ]
 
 [package.dependencies]
 certifi = "*"
-h11 = ">=0.13,<0.15"
+h11 = ">=0.16"
 
 [package.extras]
 asyncio = ["anyio (>=4.0,<5.0)"]
@@ -980,13 +980,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.22.2"
+version = "0.23.4"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.22.2-py3-none-any.whl", hash = "sha256:44beb1a54febf106b72178c195ff0570ef3b92ef31fb0add282b2cde07dec692"},
-    {file = "port_ocean-0.22.2.tar.gz", hash = "sha256:e630949d01267a70c48594ee1674c639b9b41eef338e740156d7fd9180fd73f3"},
+    {file = "port_ocean-0.23.4-py3-none-any.whl", hash = "sha256:f356b752e8685ed0eb7af6a360a099658a694adf370e29ab716093d2e2d7b841"},
+    {file = "port_ocean-0.23.4.tar.gz", hash = "sha256:83d89c3f12001d2a9302114ccd4c89bc8a092bb6326d7a5661eef682ca9d7af5"},
 ]
 
 [package.dependencies]
@@ -1429,18 +1429,18 @@ files = [
 
 [[package]]
 name = "setuptools"
-version = "75.8.1"
+version = "78.1.1"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "setuptools-75.8.1-py3-none-any.whl", hash = "sha256:3bc32c0b84c643299ca94e77f834730f126efd621de0cc1de64119e0e17dab1f"},
-    {file = "setuptools-75.8.1.tar.gz", hash = "sha256:65fb779a8f28895242923582eadca2337285f0891c2c9e160754df917c3d2530"},
+    {file = "setuptools-78.1.1-py3-none-any.whl", hash = "sha256:c3a9c4211ff4c309edb8b8c4f1cbfa7ae324c4ba9f91ff254e3d305b9fd54561"},
+    {file = "setuptools-78.1.1.tar.gz", hash = "sha256:fcc17fd9cd898242f6b4adfaca46137a9edef687f43e6f78469692a5e70d851d"},
 ]
 
 [package.extras]
 check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1)", "ruff (>=0.8.0)"]
-core = ["importlib_metadata (>=6)", "jaraco.collections", "jaraco.functools (>=4)", "jaraco.text (>=3.7)", "more_itertools", "more_itertools (>=8.8)", "packaging", "packaging (>=24.2)", "platformdirs (>=4.2.2)", "tomli (>=2.0.1)", "wheel (>=0.43.0)"]
+core = ["importlib_metadata (>=6)", "jaraco.functools (>=4)", "jaraco.text (>=3.7)", "more_itertools", "more_itertools (>=8.8)", "packaging (>=24.2)", "platformdirs (>=4.2.2)", "tomli (>=2.0.1)", "wheel (>=0.43.0)"]
 cover = ["pytest-cov"]
 doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "pyproject-hooks (!=1.1)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier", "towncrier (<24.7)"]
 enabler = ["pytest-enabler (>=2.2)"]
@@ -1580,6 +1580,17 @@ files = [
 ]
 
 [[package]]
+name = "types-pyyaml"
+version = "6.0.12.20250326"
+description = "Typing stubs for PyYAML"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "types_pyyaml-6.0.12.20250326-py3-none-any.whl", hash = "sha256:961871cfbdc1ad8ae3cb6ae3f13007262bcfc168adc513119755a6e4d5d7ed65"},
+    {file = "types_pyyaml-6.0.12.20250326.tar.gz", hash = "sha256:5e2d86d8706697803f361ba0b8188eef2999e1c372cd4faee4ebb0844b8a4190"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.12.2"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -1659,4 +1670,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "ff19178711fd2e70545ae9122f629d7eae2c1acbea46a26e621b008a30e562fc"
+content-hash = "c0ae187254933edffcb46cd1fd2ad85e289dd6a8935c050eeb7fbf8ca897f6c6"

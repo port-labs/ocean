@@ -5,7 +5,7 @@ from urllib.parse import quote_plus
 import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 
@@ -25,6 +25,10 @@ class LogAttributes(TypedDict):
     ingestUrl: str
 
 
+class MetricsAttributes(TypedDict):
+    ingestUrl: str
+
+
 class IntegrationClientMixin:
     def __init__(
         self,
@@ -38,6 +42,7 @@ class IntegrationClientMixin:
         self.auth = auth
         self.client = client
         self._log_attributes: LogAttributes | None = None
+        self._metrics_attributes: MetricsAttributes | None = None
 
     async def is_integration_provision_enabled(
         self, integration_type: str, should_raise: bool = True, should_log: bool = True
@@ -56,7 +61,7 @@ class IntegrationClientMixin:
             headers=await self.auth.headers(),
         )
 
-        handle_status_code(response, should_raise, should_log)
+        handle_port_status_code(response, should_raise, should_log)
 
         return response.json().get("integrations", [])
 
@@ -75,7 +80,7 @@ class IntegrationClientMixin:
         has_provision_feature_flag: bool = False,
     ) -> dict[str, Any]:
         response = await self._get_current_integration()
-        handle_status_code(response, should_raise, should_log)
+        handle_port_status_code(response, should_raise, should_log)
         integration = response.json().get("integration", {})
         if integration.get("config", None) or not integration:
             return integration
@@ -105,6 +110,12 @@ class IntegrationClientMixin:
             response = await self.get_current_integration()
             self._log_attributes = response["logAttributes"]
         return self._log_attributes
+
+    async def get_metrics_attributes(self) -> LogAttributes:
+        if self._metrics_attributes is None:
+            response = await self.get_current_integration()
+            self._metrics_attributes = response["metricAttributes"]
+        return self._metrics_attributes
 
     async def _poll_integration_until_default_provisioning_is_complete(
         self,
@@ -164,7 +175,7 @@ class IntegrationClientMixin:
             json=json,
             params=query_params,
         )
-        handle_status_code(response)
+        handle_port_status_code(response)
         if create_port_resources_origin_in_port:
             result = (
                 await self._poll_integration_until_default_provisioning_is_complete()
@@ -194,8 +205,43 @@ class IntegrationClientMixin:
             headers=headers,
             json=json,
         )
-        handle_status_code(response)
+        handle_port_status_code(response)
         return response.json()["integration"]
+
+    async def post_integration_sync_metrics(
+        self, metrics: list[dict[str, Any]]
+    ) -> None:
+        logger.debug("starting POST metrics request", metrics=metrics)
+        metrics_attributes = await self.get_metrics_attributes()
+        headers = await self.auth.headers()
+        url = metrics_attributes["ingestUrl"] + "/syncMetrics"
+        response = await self.client.post(
+            url,
+            headers=headers,
+            json={
+                "syncKindsMetrics": metrics,
+            },
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Finished POST metrics request")
+
+    async def put_integration_sync_metrics(self, kind_metrics: dict[str, Any]) -> None:
+        logger.debug("starting PUT metrics request", kind_metrics=kind_metrics)
+        metrics_attributes = await self.get_metrics_attributes()
+        url = (
+            metrics_attributes["ingestUrl"]
+            + f"/syncMetrics/resync/{kind_metrics['eventId']}/kind/{kind_metrics['kindIdentifier']}"
+        )
+        headers = await self.auth.headers()
+        response = await self.client.put(
+            url,
+            headers=headers,
+            json={
+                "syncKindMetrics": kind_metrics,
+            },
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Finished PUT metrics request")
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
@@ -208,7 +254,7 @@ class IntegrationClientMixin:
                 "logs": logs,
             },
         )
-        handle_status_code(response, should_log=False)
+        handle_port_status_code(response, should_log=False)
         logger.debug("Logs successfully ingested")
 
     async def ingest_integration_kind_examples(
@@ -223,7 +269,7 @@ class IntegrationClientMixin:
                 "examples": sensitive_log_filter.mask_object(data, full_hide=True),
             },
         )
-        handle_status_code(response, should_log=should_log)
+        handle_port_status_code(response, should_log=should_log)
         logger.debug(f"Examples for kind {kind} successfully ingested")
 
     async def _delete_current_integration(self) -> httpx.Response:
@@ -238,5 +284,5 @@ class IntegrationClientMixin:
         self, should_raise: bool = True, should_log: bool = True
     ) -> dict[str, Any]:
         response = await self._delete_current_integration()
-        handle_status_code(response, should_raise, should_log)
+        handle_port_status_code(response, should_raise, should_log)
         return response.json()

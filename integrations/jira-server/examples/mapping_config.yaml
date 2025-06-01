@@ -1,0 +1,57 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+enableMergeEntity: true
+resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"jiraServerProject"'
+          properties:
+            url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .displayName
+          blueprint: '"jiraServerUser"'
+          properties:
+            emailAddress: .emailAddress
+            active: .active
+            timeZone: .timeZone
+            locale: .locale
+            avatarUrl: .avatarUrls["48x48"]
+  - kind: issue
+    selector:
+      query: 'true'
+      jql: (statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .fields.summary
+          blueprint: '"jiraServerIssue"'
+          properties:
+            url: (.self | split("/") | .[:3] | join("/")) + "/browse/" + .key
+            status: .fields.status.name
+            issueType: .fields.issuetype.name
+            components: .fields.components | map(.name)
+            creator: .fields.creator.key
+            priority: .fields.priority.name
+            labels: .fields.labels
+            created: .fields.created
+            updated: .fields.updated
+            resolutionDate: .fields.resolutiondate
+          relations:
+            project: .fields.project.key
+            parentIssue: .fields.parent.key
+            subtasks: .fields.subtasks | map(.key)
+            assignee: .fields.assignee.key
+            reporter: .fields.reporter.key

@@ -35,6 +35,22 @@
       "type": "debugpy"
     },
     {
+      "name": "Attach to docker fake-integration integration",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/app"
+        }
+      ],
+      "justMyCode": false
+    },
+    {
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/pagerduty",
       "envFile": "${workspaceFolder}/integrations/pagerduty/.env",
@@ -134,6 +150,28 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/gitlab-v2",
+      "envFile": "${workspaceFolder}/integrations/gitlab-v2/.env",
+      "justMyCode": true,
+      "name": "Run gitlab-v2 integration",
+      "program": "${workspaceFolder}/integrations/gitlab-v2/debug.py",
+      "python": "${workspaceFolder}/integrations/gitlab-v2/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/bitbucket-cloud",
+      "envFile": "${workspaceFolder}/integrations/bitbucket-cloud/.env",
+      "justMyCode": true,
+      "name": "Run bitbucket-cloud integration",
+      "program": "${workspaceFolder}/integrations/bitbucket-cloud/debug.py",
+      "python": "${workspaceFolder}/integrations/bitbucket-cloud/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/port_ocean/cli",
       "justMyCode": true,
       "name": "Run ocean new command",
@@ -153,6 +191,28 @@
       "name": "Run github-copilot integration",
       "program": "${workspaceFolder}/integrations/github-copilot/debug.py",
       "python": "${workspaceFolder}/integrations/github-copilot/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jira-server",
+      "envFile": "${workspaceFolder}/integrations/jira-server/.env",
+      "justMyCode": true,
+      "name": "Run jira-server integration",
+      "program": "${workspaceFolder}/integrations/jira-server/debug.py",
+      "python": "${workspaceFolder}/integrations/jira-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/komodor",
+      "envFile": "${workspaceFolder}/integrations/komodor/.env",
+      "justMyCode": true,
+      "name": "Run komodor integration",
+      "program": "${workspaceFolder}/integrations/komodor/debug.py",
+      "python": "${workspaceFolder}/integrations/komodor/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     }

@@ -25,4 +25,13 @@ configurations:
   - name: appHost
     type: url
     required: false
-    description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for webhooks created in LaunchDarkly
+    description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for webhooks created in LaunchDarkly. This field is deprecated. Please use the OCEAN__BASE_URL field instead.
+  - name: webhookSecret
+    type: string
+    description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Launchdarkly are accepted.
+    sensitive: true
+    required: false
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true

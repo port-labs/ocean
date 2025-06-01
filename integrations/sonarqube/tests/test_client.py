@@ -302,34 +302,74 @@ async def test_get_measures_is_called_with_correct_params(
     mock_ocean_context: Any,
     monkeypatch: Any,
 ) -> None:
+    # Arrange
     sonarqube_client = SonarQubeClient(
-        "https://sonarqube.com",
-        "token",
-        "organization_id",
-        "app_host",
-        False,
+        base_url="https://sonarqube.com",
+        api_key="token",
+        organization_id="org_id",
+        app_host="app_host",
+        is_onpremise=False,
     )
-    mock_paginated_request = AsyncMock()
-    mock_paginated_request.return_value = {}
-
     sonarqube_client.http_client = MockHttpxClient(  # type: ignore
-        [
-            {"status_code": 200, "json": PURE_PROJECTS[0]},
-        ]
+        [{"status_code": 200, "json": PURE_PROJECTS[0]}]
     )
+    mock_send_api_request = AsyncMock(return_value={})
+    monkeypatch.setattr(sonarqube_client, "_send_api_request", mock_send_api_request)
+    project_key = PURE_PROJECTS[0]["key"]
 
-    monkeypatch.setattr(sonarqube_client, "_send_api_request", mock_paginated_request)
+    # Act & Assert
+    with pytest.raises(ValueError, match="metrics cannot be empty"):
+        await sonarqube_client.get_measures(project_key)
 
-    await sonarqube_client.get_measures(PURE_PROJECTS[0]["key"])
-    mock_paginated_request.assert_called()
-
+    # Act
     sonarqube_client.metrics = ["coverage", "bugs"]
-    await sonarqube_client.get_measures(PURE_PROJECTS[0]["key"])
-    mock_paginated_request.assert_awaited_with(
+    await sonarqube_client.get_measures(project_key)
+
+    # Assert
+    mock_send_api_request.assert_awaited_once_with(
         endpoint="measures/component",
         query_params={
-            "component": PURE_PROJECTS[0]["key"],
+            "component": project_key,
             "metricKeys": "coverage,bugs",
+        },
+    )
+
+
+async def test_get_pull_request_measures_is_called_with_correct_params(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    # Arrange
+    sonarqube_client = SonarQubeClient(
+        base_url="https://sonarqube.com",
+        api_key="token",
+        organization_id="org_id",
+        app_host="app_host",
+        is_onpremise=False,
+    )
+    sonarqube_client.http_client = MockHttpxClient(  # type: ignore
+        [{"status_code": 200, "json": PURE_PROJECTS[0]}]
+    )
+    mock_send_api_request = AsyncMock(return_value={})
+    monkeypatch.setattr(sonarqube_client, "_send_api_request", mock_send_api_request)
+    project_key = PURE_PROJECTS[0]["key"]
+    pull_request_key = "PR123"
+
+    # Act & Assert
+    with pytest.raises(ValueError, match="metrics cannot be empty"):
+        await sonarqube_client.get_pull_request_measures(project_key, pull_request_key)
+
+    # Act
+    sonarqube_client.metrics = ["coverage", "bugs"]
+    await sonarqube_client.get_pull_request_measures(project_key, pull_request_key)
+
+    # Assert
+    mock_send_api_request.assert_awaited_once_with(
+        endpoint="measures/component",
+        query_params={
+            "component": project_key,
+            "metricKeys": "coverage,bugs",
+            "pullRequest": pull_request_key,
         },
     )
 
@@ -643,33 +683,6 @@ async def test_get_issues_by_component_handles_404(
             pass
 
     assert exc_info.value.response.status_code == 404
-
-
-async def test_get_measures_empty_metrics(
-    mock_ocean_context: Any,
-    monkeypatch: Any,
-) -> None:
-    sonarqube_client = SonarQubeClient(
-        "https://sonarqube.com",
-        "token",
-        "organization_id",
-        "app_host",
-        False,
-    )
-
-    sonarqube_client.metrics = []  # Empty metrics list
-
-    sonarqube_client.http_client = MockHttpxClient(
-        [  # type: ignore
-            {
-                "status_code": 200,
-                "json": {"component": {"key": "project1", "measures": []}},
-            }
-        ]
-    )
-
-    result = await sonarqube_client.get_measures("project1")
-    assert result == []
 
 
 async def test_get_branches_main_branch_missing(
@@ -999,3 +1012,89 @@ async def test_get_custom_projects_with_enrich_project(
             assert "__link" in project
 
         assert all(project["key"] in ["project1", "project2"] for project in results)
+
+
+async def test_issues_pagination_limit(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test that issue pagination stops when reaching the maximum limit of 10,000 issues"""
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    # Mock responses that would exceed the 10,000 issue limit
+    # Using PAGE_SIZE of 100 as defined in the code
+    mock_responses = [
+        *[
+            {
+                "status_code": 200,
+                "json": {
+                    "paging": {"pageIndex": i, "pageSize": 100, "total": 15000},
+                    "issues": [
+                        {"key": f"issue{j}"} for j in range((i - 1) * 100, i * 100)
+                    ],
+                },
+            }
+            for i in range(1, 101)  # 100 pages of 100 issues each = 10,000 issues
+        ],
+        # This response should never be reached due to the limit
+        {
+            "status_code": 200,
+            "json": {
+                "paging": {"pageIndex": 101, "pageSize": 100, "total": 15000},
+                "issues": [{"key": f"issue{i}"} for i in range(10000, 10100)],
+            },
+        },
+    ]
+
+    sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
+
+    # Test with issues endpoint
+    component = {"key": "test-project"}
+    issues = []
+    async for batch in sonarqube_client.get_issues_by_component(component):
+        issues.extend(batch)
+
+    # Verify we only got 10,000 issues and stopped pagination
+    assert len(issues) == 10000
+    assert all(issue["key"].startswith("issue") for issue in issues)
+    assert all(
+        int(issue["key"][5:]) < 10000 for issue in issues
+    )  # All issue numbers < 10000
+
+
+@pytest.mark.asyncio
+async def test_sonarqube_client_normalizes_trailing_slashes(
+    mock_ocean_context: Any,
+) -> None:
+    """Test that SonarQubeClient strips trailing slashes from base_url and app_host, and handles app_host=None"""
+    # Test 1: Trailing slashes in base_url and app_host
+    client = SonarQubeClient(
+        base_url="https://sonarqube.com/",
+        api_key="token",
+        organization_id="organization_id",
+        app_host="http://app.host//",
+        is_onpremise=False,
+        metrics=["coverage"],
+    )
+    assert client.base_url == "https://sonarqube.com"
+    assert client.app_host == "http://app.host"
+    assert client.webhook_invoke_url == "http://app.host/integration/webhook"
+
+    # Test 2: app_host=None
+    client_without_app_host = SonarQubeClient(
+        base_url="https://sonarqube.com/",
+        api_key="token",
+        organization_id="organization_id",
+        app_host=None,
+        is_onpremise=False,
+        metrics=["coverage"],
+    )
+    assert client_without_app_host.base_url == "https://sonarqube.com"
+    assert client_without_app_host.app_host is None
+    assert client_without_app_host.webhook_invoke_url == ""

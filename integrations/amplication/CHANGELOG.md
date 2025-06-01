@@ -1,3 +1,126 @@
+## 0.1.26 (2025-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.4
+
+
+## 0.1.25 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.3
+
+
+## 0.1.24 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.2
+
+
+## 0.1.23 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.1
+
+
+## 0.1.22 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.0
+
+
+## 0.1.21 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.12
+
+
+## 0.1.20 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.11
+
+
+## 0.1.19 (2025-05-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
+## 0.1.18 (2025-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.9
+
+
+## 0.1.17 (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+## 0.1.16 (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.1.15 (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+## 0.1.14 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
+## 0.1.13 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.1.12 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
 ## 0.1.11 (2025-04-07)
 
 

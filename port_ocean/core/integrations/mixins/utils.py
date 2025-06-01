@@ -3,6 +3,9 @@ from typing import Awaitable, Generator, Callable
 
 from loguru import logger
 
+import asyncio
+import multiprocessing
+
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -16,15 +19,19 @@ from port_ocean.exceptions.core import (
     KindNotImplementedException,
 )
 
+from port_ocean.utils.async_http import _http_client
+from port_ocean.clients.port.utils import _http_client as _port_http_client
+
+from port_ocean.context.ocean import ocean
 
 @contextmanager
 def resync_error_handling() -> Generator[None, None, None]:
     try:
         yield
     except RawObjectValidationException as error:
-        raise OceanAbortException(
-            f"Failed to validate raw data for returned data from resync function, error: {error}"
-        ) from error
+        err_msg = f"Failed to validate raw data for returned data from resync function, error: {error}"
+        logger.exception(err_msg)
+        raise OceanAbortException(err_msg) from error
     except StopAsyncIteration:
         raise
     except Exception as error:
@@ -72,3 +79,31 @@ def unsupported_kind_response(
 ) -> tuple[RESYNC_RESULT, list[Exception]]:
     logger.error(f"Kind {kind} is not supported in this integration")
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
+
+
+class ProcessWrapper(multiprocessing.Process):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def join_async(self) -> None:
+        while self.exitcode is None:
+            await asyncio.sleep(2)
+        if self.exitcode != 0:
+            logger.error(f"Process {self.pid} failed with exit code {self.exitcode}")
+        else:
+            logger.info(f"Process {self.pid} finished with exit code {self.exitcode}")
+        ocean.metrics.cleanup_prometheus_metrics(self.pid)
+        return super().join()
+
+def clear_http_client_context() -> None:
+    try:
+        while _http_client.top is not None:
+            _http_client.pop()
+    except (RuntimeError, AttributeError):
+        pass
+
+    try:
+        while _port_http_client.top is not None:
+            _port_http_client.pop()
+    except (RuntimeError, AttributeError):
+        pass

@@ -76,12 +76,12 @@ class ServicenowClient:
     async def sanity_check(self) -> None:
         try:
             response = await self.http_client.get(
-                f"{self.servicenow_url}/api/now/table/incident?sysparm_limit=1"
+                f"{self.servicenow_url}/api/now/table/sys_user?sysparm_limit=1"
             )
             response.raise_for_status()
             logger.info("Servicenow sanity check passed")
             logger.info(
-                f"Retrieved sample Servicenow incident with number: {response.json().get('result', [])[0].get('number')}"
+                f"Retrieved sample Servicenow user with first name: {response.json().get('result', [])[0].get('first_name')}"
             )
         except httpx.HTTPStatusError as e:
             logger.error(

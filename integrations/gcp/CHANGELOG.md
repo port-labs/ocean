@@ -7,6 +7,129 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.137 (2025-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.4
+
+
+## 0.1.136 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.3
+
+
+## 0.1.135 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.2
+
+
+## 0.1.134 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.1
+
+
+## 0.1.133 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.0
+
+
+## 0.1.132 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.12
+
+
+## 0.1.131 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.11
+
+
+## 0.1.130 (2025-05-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
+## 0.1.129 (2025-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.9
+
+
+## 0.1.128 (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+## 0.1.127 (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.1.126 (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+## 0.1.125 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
+## 0.1.124 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.4
+
+
+## 0.1.123 (2025-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.3
+
+
 ## 0.1.122 (2025-04-07)
 
 

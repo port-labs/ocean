@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -16,6 +16,8 @@ def mock_ocean_context() -> None:
             "gitlab_url": "https://gitlab.example.com",
             "access_token": "test-token",
         }
+        mock_app.cache_provider = AsyncMock()
+        mock_app.cache_provider.get.return_value = None
         initialize_port_ocean_context(mock_app)
     except PortOceanContextAlreadyInitializedError:
         pass

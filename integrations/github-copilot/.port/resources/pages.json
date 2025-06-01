@@ -1,7 +1,7 @@
 [
     {
         "icon": "Apps",
-        "title": "Copilot",
+        "title": "Copilot Metrics",
         "protected": false,
         "widgets": [
             {
@@ -209,7 +209,7 @@
                 ]
             }
         ],
-        "identifier": "copilot",
+        "identifier": "copilot_metrics",
         "showInSidebar": true,
         "requiredQueryParams": [],
         "section": "software_catalog",

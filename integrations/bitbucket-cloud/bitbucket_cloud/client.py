@@ -33,6 +33,30 @@ class BitbucketClient(BaseRotatingClient):
         self,
         url: str,
         method: str = "GET",
+        return_full_response: bool = False,
+    ) -> Any:
+        """Send request to Bitbucket API with error handling."""
+        response = await self.client.request(
+            method=method, url=url, params=params, json=json_data
+        )
+        try:
+            response.raise_for_status()
+            return response if return_full_response else response.json()
+        except HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(
+                    f"Requested resource not found: {url}; message: {str(e)}"
+                )
+                return {}
+            logger.error(f"Bitbucket API error: {str(e)}")
+            raise e
+        except HTTPError as e:
+            logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
+            raise e
+
+    async def _fetch_paginated_api_with_rate_limiter(
+        self,
+        url: str,
         params: Optional[dict[str, Any]] = None,
         data_key: str = "values",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -152,14 +176,20 @@ class BitbucketClient(BaseRotatingClient):
             yield repos
 
     async def get_directory_contents(
-        self, repo_slug: str, branch: str, path: str, max_depth: int = 2
+        self,
+        repo_slug: str,
+        branch: str,
+        path: str,
+        max_depth: int,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get contents of a directory."""
-        params = {
-            "max_depth": max_depth,
-            "pagelen": PAGE_SIZE,
-        }
-        async for contents in self._send_rate_limited_paginated_api_request(
+        if params is None:
+            params = {
+                "max_depth": max_depth,
+                "pagelen": PAGE_SIZE,
+            }
+        async for contents in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
             params=params,
         ):
@@ -222,3 +252,33 @@ class BitbucketClient(BaseRotatingClient):
         return await self.base_client.send_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )
+
+    async def get_repository_files(self, repo: str, branch: str, path: str) -> Any:
+        """Get the content of a file."""
+        response = await self._send_api_request(
+            f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
+            method="GET",
+            return_full_response=True,
+        )
+        logger.info(f"Retrieved file content for {repo}/{branch}/{path}")
+        return response.text
+
+    async def search_files(
+        self,
+        search_query: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Search for files using Bitbucket's search API."""
+        params = {
+            "pagelen": 300,
+            "search_query": search_query,
+            "fields": "+values.file.commit.repository.mainbranch.name",
+        }
+
+        async for results in self._send_paginated_api_request(
+            f"{self.base_url}/workspaces/{self.workspace}/search/code",
+            params=params,
+        ):
+            logger.info(
+                f"Fetched batch of {len(results)} matching files from workspace {self.workspace}"
+            )
+            yield results
