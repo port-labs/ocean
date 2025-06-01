@@ -33,7 +33,7 @@ from port_ocean.core.ocean_types import (
     CalculationResult,
 )
 from port_ocean.core.utils.utils import resolve_entities_diff, zip_and_sum, gather_and_split_errors_from_results
-from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.core import IntegrationSubProcessFailedException, OceanAbortException
 from port_ocean.helpers.metric.metric import MetricResourceKind, SyncState, MetricType, MetricPhase
 from port_ocean.helpers.metric.utils import TimeMetric, TimeMetricWithResourceKind
 from port_ocean.utils.ipc import FileIPC
@@ -626,7 +626,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 id = uuid.uuid4()
                 logger.info(f"Starting subprocess with id {id}")
                 file_ipc_map = {
-                    "process_resource": FileIPC(id, "process_resource",([],[Exception("Subprocess failed")])),
+                    "process_resource": FileIPC(id, "process_resource",([],[IntegrationSubProcessFailedException(f"Subprocess failed for {resource.kind} with index {index}")])),
                     "topological_entities": FileIPC(id, "topological_entities",[]),
                 }
                 process = ProcessWrapper(target=self.process_resource_in_subprocess, args=(file_ipc_map,resource,index,user_agent_type))
