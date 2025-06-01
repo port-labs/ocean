@@ -77,8 +77,8 @@ jobs:
             dockerfile_path=$folder/../Dockerfile
           fi
           echo "dockerfile_path=$dockerfile_path" >> $GITHUB_OUTPUT
-          # Check if the version is either numeric (e.g. 1.2.3) or a .post suffix (e.g. 1.2.3.post1)
-          if [[ "$version" =~ ^[0-9.]+$ || "$version" =~ ^[0-9.]+\.post[0-9]+$ ]]; then
+          # Check if the version is either numeric (e.g. 1.2.3) or has a post suffix (e.g. 1.2.3.post1 or 1.2.3-post1)
+          if [[ "$version" =~ ^[0-9.]+$ || "$version" =~ ^[0-9.]+[.-]post[0-9]+$ ]]; then
             # Allowed versions: stable and .post suffix → apply latest tag
             tags="ghcr.io/port-labs/port-ocean-$type:$version,ghcr.io/port-labs/port-ocean-$type:latest"
             echo "tags=$tags" >> $GITHUB_OUTPUT
