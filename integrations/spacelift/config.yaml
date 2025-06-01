@@ -1,0 +1,21 @@
+
+initializePortResources: true
+scheduledResyncInterval: 1440
+
+port:
+  clientId: "{{ from env PORT_CLIENT_ID }}" 
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" 
+
+eventListener:
+  type: KAFKA
+
+integration:
+  identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
+  type: "spacelift"
+  config:
+    spaceliftApiEndpoint: "{{ from env SPACELIFT_API_ENDPOINT }}"
+    spaceliftApiToken: "{{ from env SPACELIFT_API_TOKEN }}"
+    spaceliftApiKeyId: "{{ from env SPACELIFT_API_KEY_ID }}"
+    spaceliftApiKeySecret: "{{ from env SPACELIFT_API_KEY_SECRET }}"
+    pageSize: 50
+    maxRetries: 3 

@@ -1,0 +1,30 @@
+description: Spacelift integration for Port Ocean - Import Spaces, Stacks, Deployments, Policies, and Users
+icon: Spacelift
+features:
+  - type: exporter
+    section: Infrastructure as Code
+    resources:
+      - kind: space
+      - kind: stack  
+      - kind: deployment
+      - kind: policy
+      - kind: user
+configurations:
+  - name: spaceliftApiEndpoint
+    required: true
+    type: url
+    description: The Spacelift GraphQL API endpoint (e.g., https://yourcompany.app.spacelift.io/graphql)
+  - name: spaceliftApiKeyId
+    required: false
+    type: string
+    description: Spacelift API Key ID (required if not using spaceliftApiToken)
+  - name: spaceliftApiKeySecret
+    required: false
+    type: string
+    sensitive: true
+    description: Spacelift API Key Secret (required if not using spaceliftApiToken)
+  - name: spaceliftApiToken
+    required: false
+    type: string
+    sensitive: true
+    description: Spacelift API Token (alternative to API Key ID/Secret)

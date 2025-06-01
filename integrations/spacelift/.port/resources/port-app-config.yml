@@ -1,0 +1,107 @@
+createEntities: true
+deleteStaleEntities: true
+resources:
+  # Spacelift Spaces
+  - kind: space
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"spaceliftSpace"'
+          properties:
+            name: .name
+            description: .description
+            parentSpaceId: .parentSpace      
+            labels: .labels
+          relations:
+            parentSpace: .parentSpace       
+
+  # Spacelift Stacks  
+  - kind: stack
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"spaceliftStack"'
+          properties:
+            name: .name
+            description: .description
+            repository: .repository
+            branch: .branch
+            state: .state
+            administrative: .administrative
+            provider: .provider
+            terraformVersion: .terraformVersion
+            projectRoot: .projectRoot
+            labels: .labels
+          relations:
+            space: .space
+
+  # Spacelift Deployments (Tracked Runs)
+  - kind: deployment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '(.stack.name + " - " + .type + " Run #" + (.id | tostring))'
+          blueprint: '"spaceliftDeployment"'
+          properties:
+            type: .type
+            state: .state
+            branch: .branch
+            triggeredBy: .triggeredBy
+            commitHash: .commit.hash
+            commitMessage: .commit.message
+            commitAuthor: .commit.authorName
+            deltaAdded: 0
+            deltaChanged: 0
+            deltaDeleted: 0
+            totalResources: 0
+            driftDetection: .driftDetection
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+          relations:
+            stack: .stack.id
+
+  # Spacelift Policies
+  - kind: policy
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"spaceliftPolicy"'
+          properties:
+            name: .name
+            type: .type
+            body: .body
+            labels: .labels
+          relations:
+            space: .space
+
+  # Spacelift Users
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"spaceliftUser"'
+          properties:
+            name: .name
+            email: .email // "no-email-provided@spacelift.local"
+            role: .role
+            lastSeenAt: .lastSeenAt
+            createdAt: .createdAt

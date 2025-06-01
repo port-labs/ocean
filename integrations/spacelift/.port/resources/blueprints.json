@@ -1,0 +1,256 @@
+[
+    {
+      "identifier": "spaceliftSpace",
+      "title": "Spacelift Space",
+      "icon": "Spacelift",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "parentSpaceId": {
+            "type": "string",
+            "title": "Parent Space ID"
+          },
+          "labels": {
+            "type": "array",
+            "title": "Labels",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "relations": {
+        "parentSpace": {
+          "target": "spaceliftSpace",
+          "required": false,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "spaceliftStack",
+      "title": "Spacelift Stack",
+      "icon": "Terraform",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "repository": {
+            "type": "string",
+            "title": "Repository"
+          },
+          "branch": {
+            "type": "string",
+            "title": "Branch"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "administrative": {
+            "type": "boolean",
+            "title": "Administrative"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "terraformVersion": {
+            "type": "string",
+            "title": "Terraform Version"
+          },
+          "projectRoot": {
+            "type": "string",
+            "title": "Project Root"
+          },
+          "labels": {
+            "type": "array",
+            "title": "Labels",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "relations": {
+        "space": {
+          "target": "spaceliftSpace",
+          "required": false,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "spaceliftDeployment",
+      "title": "Spacelift Deployment",
+      "icon": "Deployment",
+      "schema": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Run Type"
+          },
+          "state": {
+            "type": "string",
+            "title": "State",
+            "enum": [
+              "QUEUED",
+              "PREPARING",
+              "RUNNING",
+              "FINISHED",
+              "FAILED",
+              "CANCELED",
+              "STOPPING",
+              "STOPPED"
+            ]
+          },
+          "branch": {
+            "type": "string",
+            "title": "Branch"
+          },
+          "triggeredBy": {
+            "type": "string",
+            "title": "Triggered By"
+          },
+          "commitHash": {
+            "type": "string",
+            "title": "Commit Hash"
+          },
+          "commitMessage": {
+            "type": "string",
+            "title": "Commit Message"
+          },
+          "commitAuthor": {
+            "type": "string",
+            "title": "Commit Author"
+          },
+          "deltaAdded": {
+            "type": "number",
+            "title": "Resources Added"
+          },
+          "deltaChanged": {
+            "type": "number",
+            "title": "Resources Changed"
+          },
+          "deltaDeleted": {
+            "type": "number",
+            "title": "Resources Deleted"
+          },
+          "totalResources": {
+            "type": "number",
+            "title": "Total Resources"
+          },
+          "driftDetection": {
+            "type": "boolean",
+            "title": "Drift Detection"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        }
+      },
+      "relations": {
+        "stack": {
+          "target": "spaceliftStack",
+          "required": true,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "spaceliftPolicy",
+      "title": "Spacelift Policy",
+      "icon": "Lock",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Policy Type",
+            "enum": [
+              "ACCESS",
+              "APPROVAL",
+              "GIT_PUSH",
+              "INITIALIZATION",
+              "LOGIN",
+              "PLAN",
+              "TRIGGER"
+            ]
+          },
+          "body": {
+            "type": "string",
+            "title": "Policy Body"
+          },
+          "labels": {
+            "type": "array",
+            "title": "Labels",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "relations": {
+        "space": {
+          "target": "spaceliftSpace",
+          "required": false,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "spaceliftUser",
+      "title": "Spacelift User",
+      "icon": "User",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Seen At"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        }
+      }
+    }
+  ]
