@@ -1,0 +1,1 @@
+/home/abdussamadbello/port_assesment/ocean/.venv/lib/python3.12/site-packages/port_ocean/cli/cookiecutter/../../../integrations/_infra/Makefile
