@@ -173,7 +173,7 @@ jobs:
                   latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
 
                   # Add integration's spec to global index file
-                  regexp="^([0-9.]+|[0-9.]+\.post[0-9]+)$"
+                  regexp="^([0-9.]+|[0-9.]+[.-]post[0-9]+)$"
                   if [[ ! "$latest_version" ]]; then
                       # Add new integration spec if latest tag doesn't exist
                       jq --argjson new_spec "[$(cat "$integration_spec")]" '. += $new_spec' "$index_file" >"$temp_file"
