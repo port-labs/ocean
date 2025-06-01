@@ -15,12 +15,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Skip deleteing entities if subprocess fails.
 - Clean up PROMETHEUS_MULTIPROC_DIR only in multiprocess mode.
 
-
 ## 0.23.4 (2025-05-29)
 
 ### Improvements
 - Fixed metrics urls and added reconciliation kind to report
-
 
 ## 0.23.3 (2025-05-28)
 
