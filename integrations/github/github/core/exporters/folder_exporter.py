@@ -1,58 +1,34 @@
+import re
+
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from typing import Optional
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 from github.core.options import ListFolderOptions, SingleFolderOptions
+from github.helpers.utils import translate_glob_pattern
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[ExporterOptionsT: SingleFolderOptions](
         self, options: ExporterOptionsT
     ) -> RAW_ITEM:
-        repo_name = options["repo"]
-        folder_path = options["path"]
-
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/contents/{folder_path}"
-        response = await self.client.send_api_request(endpoint)
-
-        # If the response is a dictionary, it means the path referred to a single file or an error.
-        # If it's a list, it means the path referred to a directory, and it contains its children.
-        if isinstance(response, dict):
-            logger.info(
-                f"Fetched single item at path: {folder_path} in repository: {repo_name}"
-            )
-            return response
-        elif isinstance(response, list):
-            logger.warning(
-                f"Path '{folder_path}' in repository '{repo_name}' is a directory. "
-                "Cannot represent a directory as a single RAW_ITEM directly. "
-                "Returning an empty dictionary. Use get_paginated_resources to list its contents."
-            )
-            return {}
-        else:
-            logger.warning(
-                f"Unexpected response type for path: {folder_path} in repository: {repo_name}"
-            )
-            return {}
+        "It is not clear to me what should be returned in a single resource."
+        return {}
 
     @cache_iterator_result()
     async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
-        self, options: Optional[ExporterOptionsT] = None
+        self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        if not options or "repo" not in options:
-            logger.error(
-                "repository name is required in ListFolderOptions for Folder Exporter."
-            )
-            yield []
-            return
-
+        path = options["path"]
         branch_ref = options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
+        params = {"recursive": "true"} if self._needs_recursive_search(path) else {}
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
-        async for contents in self.client.send_paginated_request(endpoint):
-            folders = [item for item in contents["tree"] if item.get("type") == "tree"]
+        async for contents in self.client.send_paginated_request(
+            endpoint, params=params
+        ):
+            folders = self._filter_folder_contents(contents["tree"], path)
             if folders:
                 formatted = self._format_for_port(folders, repo=options["repo"])
                 yield formatted
@@ -63,3 +39,22 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     def _format_for_port(folders: list[dict], repo: dict | None = None) -> list[dict]:
         formatted_folders = [{"folder": folder, "repo": repo} for folder in folders]
         return formatted_folders
+
+    @staticmethod
+    def _needs_recursive_search(path: str) -> bool:
+        "Determines whether a give path requires recursive Github request param"
+        if "**" in path and "/" in path:
+            return True
+        return False
+
+    @staticmethod
+    def _filter_folder_contents(folders: list[dict], path: str) -> list[dict]:
+        "Get only trees (folders), and in complex paths, only file paths that match a glob pattern"
+        just_trees = [item for item in folders if item.get("type") == "tree"]
+        if path == "" or path == "*":
+            return just_trees
+
+        path_regex = translate_glob_pattern(path)
+        return [
+            item for item in just_trees if bool(re.fullmatch(path_regex, item["path"]))
+        ]

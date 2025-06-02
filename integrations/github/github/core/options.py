@@ -20,4 +20,4 @@ class SingleFolderOptions(TypedDict):
 
 class ListFolderOptions(TypedDict):
     repo: dict
-    path: Optional[str]
+    path: str
