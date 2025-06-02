@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.3-dev (2025-06-01)
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.23.5
+
+### Features
+
+- Implement support for Github workflows
+- Implement support for Github workflow runs
 
 
 ## 0.1.2-dev (2025-05-30)
@@ -41,5 +45,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for repository webhook event processor
 - Add Tests for client and base webhook processor
 - Added support for authenticating as a GitHub App
-- Add support for Github workflows
-- Add support for Github workflow runs
