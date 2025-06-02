@@ -15,7 +15,11 @@ from github.webhook.webhook_processors.repository_webhook_processor import (
 )
 from github.webhook.webhook_client import GithubWebhookClient
 from github.core.exporters.repository_exporter import RestRepositoryExporter
-from github.core.options import ListFolderOptions, ListRepositoryOptions
+from github.core.options import (
+    ListFolderOptions,
+    ListRepositoryOptions,
+    SingleRepositoryOptions,
+)
 from typing import TYPE_CHECKING
 from port_ocean.context.event import event
 
@@ -76,7 +80,8 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client()
-    exporter = RestFolderExporter(rest_client)
+    folder_exporter = RestFolderExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
     if not hasattr(selector, "folders"):
@@ -85,9 +90,14 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     for folder_config in selector.folders:
         for repo in folder_config.repos:
-            base_path = folder_config.path if folder_config.path != "*" else None
-            options = ListFolderOptions(repo=repo, path=base_path)
-            async for folder_batch in exporter.get_paginated_resources(options):
+            repo_options = SingleRepositoryOptions(name=repo)
+            repository_object = await repo_exporter.get_resource(repo_options)
+
+            base_path = folder_config.path if folder_config.path != "*" else ""
+            folder_options = ListFolderOptions(repo=repository_object, path=base_path)
+            async for folder_batch in folder_exporter.get_paginated_resources(
+                folder_options
+            ):
                 yield folder_batch
 
 

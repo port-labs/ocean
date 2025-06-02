@@ -8,9 +8,9 @@ from github.core.options import ListFolderOptions, SingleFolderOptions
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionsT: SingleFolderOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         repo_name = options["repo"]
         folder_path = options["path"]
 
@@ -38,9 +38,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             return {}
 
     @cache_iterator_result()
-    async def get_paginated_resources[
-        ExporterOptionsT: ListFolderOptions
-    ](self, options: Optional[ExporterOptionsT] = None) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
+        self, options: Optional[ExporterOptionsT] = None
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if not options or "repo" not in options:
             logger.error(
                 "repository name is required in ListFolderOptions for Folder Exporter."
@@ -48,26 +48,18 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             yield []
             return
 
-        repo_name = options["repo"]
-        base_path = options.get("path", "")  # Defaults to root of the repository
-
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/contents/{base_path}"
+        branch_ref = options["repo"]["default_branch"]
+        repo_name = options["repo"]["name"]
+        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
         async for contents in self.client.send_paginated_request(endpoint):
-            if not isinstance(contents, list):
-                if isinstance(contents, dict) and contents.get("type") == "file":
-                    logger.info(
-                        f"Path '{base_path}' in repository '{repo_name}' is a file. No folders to yield."
-                    )
-                else:
-                    logger.warning(
-                        f"Unexpected response type for path: {base_path} in repository: {repo_name}. "
-                        f"Expected list or file, got {type(contents)}. Skipping."
-                    )
-                yield []
-                return
-
-            folders = [item for item in contents if item.get("type") == "dir"]
+            folders = [item for item in contents["tree"] if item.get("type") == "tree"]
             if folders:
-                yield folders
+                formatted = self._format_for_port(folders, repo=options["repo"])
+                yield formatted
             else:
                 yield []
+
+    @staticmethod
+    def _format_for_port(folders: list[dict], repo: dict | None = None) -> list[dict]:
+        formatted_folders = [{"folder": folder, "repo": repo} for folder in folders]
+        return formatted_folders

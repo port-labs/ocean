@@ -12,7 +12,11 @@
         "visibility": {
           "type": "string",
           "title": "Visibility",
-          "enum": ["all", "public", "private"],
+          "enum": [
+            "all",
+            "public",
+            "private"
+          ],
           "enumColors": {
             "all": "green",
             "public": "blue",
@@ -43,9 +47,8 @@
     "schema": {
       "properties": {
         "readme": {
-          "title": "README",
-          "type": "string",
-          "format": "markdown"
+          "title": "sha",
+          "type": "string"
         },
         "url": {
           "title": "Folder URL",
