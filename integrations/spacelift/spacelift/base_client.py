@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-from .auth import SpacelifAuthenticator, AuthenticationError
+from .auth import SpaceliftAuthenticator, AuthenticationError
 
 
 class RateLimitError(Exception):
@@ -14,22 +14,22 @@ class RateLimitError(Exception):
     pass
 
 
-class SpacelifBaseClient:
+class SpaceliftBaseClient:
     """Base client for making GraphQL requests to Spacelift API."""
 
     def __init__(self):
         self.http_client = http_async_client
-        self.authenticator = SpacelifAuthenticator()
+        self.authenticator = SpaceliftAuthenticator()
         self._rate_limit_retry_after: Optional[datetime] = None
 
     async def initialize(self) -> None:
         """Initialize the client and authenticate."""
         logger.info("Initializing Spacelift client")
         await self.authenticator.ensure_authenticated()
-        
+
         # Test the connection with a simple query
         await self._test_connection()
-        
+
         logger.success("Spacelift client initialized successfully")
 
     async def _handle_rate_limit(self, response) -> None:
@@ -116,12 +116,21 @@ class SpacelifBaseClient:
 
                 if "errors" in data:
                     logger.error(f"GraphQL errors: {data['errors']}")
-                    
+
                     # Check if it's an authorization error
-                    error_messages = [error.get("message", "").lower() for error in data["errors"]]
-                    if any("unauthorized" in msg or "forbidden" in msg or "access denied" in msg for msg in error_messages):
-                        raise AuthenticationError(f"Authorization failed: {data['errors']}")
-                    
+                    error_messages = [
+                        error.get("message", "").lower() for error in data["errors"]
+                    ]
+                    if any(
+                        "unauthorized" in msg
+                        or "forbidden" in msg
+                        or "access denied" in msg
+                        for msg in error_messages
+                    ):
+                        raise AuthenticationError(
+                            f"Authorization failed: {data['errors']}"
+                        )
+
                     raise Exception(f"GraphQL errors: {data['errors']}")
 
                 return data
@@ -151,12 +160,16 @@ class SpacelifBaseClient:
                 }
             }
             """
-            
+
             data = await self.make_graphql_request(query)
-            stacks = data["data"].get("stacks", []) if data.get("data") else []  # Handle None case
-            logger.info(f"Successfully connected to Spacelift API - found {len(stacks)} stacks")
-            
+            stacks = (
+                data["data"].get("stacks", []) if data.get("data") else []
+            )  # Handle None case
+            logger.info(
+                f"Successfully connected to Spacelift API - found {len(stacks)} stacks"
+            )
+
         except Exception as e:
             logger.warning(f"Connection test failed, but proceeding: {e}")
             # Don't fail initialization if connection test doesn't work, as it might not be available
-            # in all Spacelift plans or with all permissions 
+            # in all Spacelift plans or with all permissions

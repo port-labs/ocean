@@ -2,18 +2,18 @@ from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from spacelift.client import SpacelifClient
+from spacelift.client import SpaceliftClient
 
 
 class SpaceLiftIntegration:
     def __init__(self):
         self.client = None
 
-    async def initialize_client(self) -> SpacelifClient:
+    async def initialize_client(self) -> SpaceliftClient:
         """Initialize the Spacelift client with proper authentication and configuration."""
         if not self.client:
             logger.info("Initializing Spacelift client")
-            self.client = SpacelifClient()
+            self.client = SpaceliftClient()
             await self.client.initialize()
             logger.info("Spacelift client initialized successfully")
         return self.client
@@ -67,7 +67,6 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.warning(f"Unknown resource kind: {kind}")
 
 
-# Real-time webhook handler
 @ocean.router.post("/webhook")
 async def handle_webhook(body: dict) -> dict:
     """Handle real-time webhook events from Spacelift."""
@@ -76,15 +75,12 @@ async def handle_webhook(body: dict) -> dict:
     event_type = body.get("event_type")
 
     if event_type == "run_state_changed_event":
-        # Handle run state changes for deployments
         run_data = body.get("run", {})
         if run_data.get("type") == "TRACKED":
-            # This is a tracked run (deployment)
             logger.info(
                 f"Processing deployment state change for run: {run_data.get('id')}"
             )
 
-            # Convert webhook data to deployment format
             deployment = {
                 "id": run_data.get("id"),
                 "stack_id": body.get("stack", {}).get("id"),
@@ -100,7 +96,6 @@ async def handle_webhook(body: dict) -> dict:
             await ocean.register_raw("deployment", [deployment])
 
     elif event_type == "stack_updated_event":
-        # Handle stack updates
         stack_data = body.get("stack", {})
         logger.info(f"Processing stack update for: {stack_data.get('id')}")
         await ocean.register_raw("stack", [stack_data])

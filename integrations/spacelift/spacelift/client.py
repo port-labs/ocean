@@ -1,9 +1,9 @@
 from typing import Any, Dict, List, AsyncGenerator
 
-from .data_clients import SpacelifDataClients
+from .data_clients import SpaceliftDataClients
 
 
-class SpacelifClient(SpacelifDataClients):
+class SpaceliftClient(SpaceliftDataClients):
     """Main Spacelift client that combines all functionality."""
 
     async def initialize(self) -> None:

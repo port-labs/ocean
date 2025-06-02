@@ -1,4 +1,3 @@
-import asyncio
 from typing import Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -24,7 +23,7 @@ class AuthenticationError(Exception):
     pass
 
 
-class SpacelifAuthenticator:
+class SpaceliftAuthenticator:
     """Handles Spacelift authentication and token management."""
 
     def __init__(self):
@@ -47,22 +46,19 @@ class SpacelifAuthenticator:
         """Ensure we have a valid authentication token and return it."""
         if self._is_token_valid():
             return self._current_token
-            
+
         if self.auth_config.api_token:
-            # Use provided API token directly
             self._current_token = self.auth_config.api_token
-            # API tokens expire after 10 hours according to Spacelift docs
             self._token_expires_at = datetime.now() + timedelta(hours=9, minutes=30)
             logger.info("Using provided API token")
         elif self.auth_config.api_key_id and self.auth_config.api_key_secret:
-            # Exchange API key for token
             await self._authenticate_with_api_key()
         else:
             raise AuthenticationError(
                 "No valid authentication credentials provided. "
                 "Please provide either spaceliftApiToken or both spaceliftApiKeyId and spaceliftApiKeySecret"
             )
-        
+
         return self._current_token
 
     def _is_token_valid(self) -> bool:
@@ -71,7 +67,6 @@ class SpacelifAuthenticator:
             return False
         if not self._token_expires_at:
             return False
-        # Add 5 minute buffer to avoid token expiry during requests
         return datetime.now() + timedelta(minutes=5) < self._token_expires_at
 
     async def _authenticate_with_api_key(self) -> None:
@@ -81,11 +76,10 @@ class SpacelifAuthenticator:
                 "spaceliftApiEndpoint is required when using API key authentication"
             )
 
-        # Validate endpoint format
-        if not self.auth_config.api_endpoint.endswith('/graphql'):
-            if not self.auth_config.api_endpoint.endswith('/'):
-                self.auth_config.api_endpoint += '/'
-            self.auth_config.api_endpoint += 'graphql'
+        if not self.auth_config.api_endpoint.endswith("/graphql"):
+            if not self.auth_config.api_endpoint.endswith("/"):
+                self.auth_config.api_endpoint += "/"
+            self.auth_config.api_endpoint += "graphql"
 
         logger.info("Authenticating with Spacelift API key")
 
@@ -119,7 +113,9 @@ class SpacelifAuthenticator:
             data = response.json()
 
             if "errors" in data:
-                error_messages = [error.get("message", "Unknown error") for error in data["errors"]]
+                error_messages = [
+                    error.get("message", "Unknown error") for error in data["errors"]
+                ]
                 raise AuthenticationError(
                     f"GraphQL authentication error: {', '.join(error_messages)}"
                 )
@@ -130,7 +126,6 @@ class SpacelifAuthenticator:
 
             jwt_token = api_key_user["jwt"]
             self._current_token = jwt_token
-            # JWT tokens expire after 10 hours according to Spacelift docs
             self._token_expires_at = datetime.now() + timedelta(hours=9, minutes=30)
 
             logger.success("Successfully authenticated with Spacelift")
@@ -146,4 +141,4 @@ class SpacelifAuthenticator:
     def invalidate_token(self) -> None:
         """Invalidate the current token to force re-authentication."""
         self._current_token = None
-        self._token_expires_at = None 
+        self._token_expires_at = None

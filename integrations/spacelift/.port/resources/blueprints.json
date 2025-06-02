@@ -58,7 +58,12 @@
           },
           "state": {
             "type": "string",
-            "title": "State"
+            "title": "State",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE",
+              "DELETED"
+            ]
           },
           "administrative": {
             "type": "boolean",
