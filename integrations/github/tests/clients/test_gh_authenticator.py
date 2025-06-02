@@ -50,7 +50,7 @@ class TestGithubAuthenticator:
         mock_new_token = "mock-new-installation-token"
 
         # Create an expired token
-        expired_time = datetime.now(timezone.utc) - timedelta(minutes=5)
+        expired_time = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
         github_auth.cached_token = GitHubToken(
             token=mock_expired_token, expires_at=expired_time
         )
@@ -67,7 +67,9 @@ class TestGithubAuthenticator:
                 AsyncMock(
                     return_value=GitHubToken(
                         token=mock_new_token,
-                        expires_at=datetime.now(timezone.utc) + timedelta(minutes=11),
+                        expires_at=(
+                            datetime.now(timezone.utc) + timedelta(minutes=11)
+                        ).isoformat(),
                     )
                 ),
             ) as mock_get_install_token,
