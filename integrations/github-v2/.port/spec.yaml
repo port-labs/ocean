@@ -1,0 +1,40 @@
+description: github integration for Port Ocean
+icon: Github # Should be one of the available icons in Port
+title: Github
+
+features:
+  - type: exporter
+    section: Under Development # Should be one of the available sections in Port
+    resources:
+      - kind: repository
+      - kind: pull-request
+      - kind: issue
+      - kind: team
+      - kind: workflow
+
+configurations:
+  - name: githubToken
+    required: true
+    type: string
+    description: "The Github token to authenticate with the Github Rest API."
+    sensitive: true
+  - name: githubHost
+    type: url
+    require: false
+    default: https://api.github.com
+    description: The host of the Github instance. If not specified, the default will be https://api.github.com.
+
+saas:
+  enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: githubToken
+        value: ".oauthData.accessToken"
+        description: '"The Github token to authenticate with the Github Rest API."'
+    valuesOverride:
+      integrationSpec:
+        githubHost: '"https://api.github.com"'
+  liveEvents:
+    enabled: true
+deploymentMethodOverride:
+  - type: helm

@@ -1,0 +1,368 @@
+[
+  {
+    "identifier": "githubUser",
+    "title": "GitHub User",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "login": {
+          "type": "string",
+          "title": "Login"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "format": "email"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": ["User", "Bot", "Organization"]
+        },
+        "isAdmin": {
+          "type": "boolean",
+          "title": "Site Admin"
+        },
+        "company": {
+          "type": "string",
+          "title": "Company"
+        },
+        "publicRepos": {
+          "type": "number",
+          "title": "Public Repositories"
+        },
+        "followers": {
+          "type": "number",
+          "title": "Followers"
+        },
+        "following": {
+          "type": "number",
+          "title": "Following"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "repository",
+    "title": "Repository",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url"
+        },
+        "language": {
+          "type": "string",
+          "title": "Primary Language"
+        },
+        "forksCount": {
+          "type": "number",
+          "title": "Forks Count"
+        },
+        "starsCount": {
+          "type": "number",
+          "title": "Stars Count"
+        },
+        "watchersCount": {
+          "type": "number",
+          "title": "Watchers Count"
+        },
+        "size": {
+          "type": "number",
+          "title": "Size (KB)"
+        },
+        "defaultBranch": {
+          "type": "string",
+          "title": "Default Branch"
+        },
+        "isFork": {
+          "type": "boolean",
+          "title": "Is Fork"
+        },
+        "isArchived": {
+          "type": "boolean",
+          "title": "Archived"
+        },
+        "isTemplate": {
+          "type": "boolean",
+          "title": "Template"
+        },
+        "hasIssues": {
+          "type": "boolean",
+          "title": "Has Issues"
+        },
+        "openIssuesCount": {
+          "type": "number",
+          "title": "Open Issues Count"
+        },
+        "license": {
+          "type": "string",
+          "title": "License"
+        },
+        "visibility": {
+          "type": "string",
+          "title": "Visibility",
+          "enum": ["public", "private", "internal"]
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        },
+        "pushedAt": {
+          "type": "string",
+          "title": "Last Push",
+          "format": "date-time"
+        }
+      }
+    },
+    "relations": {
+      "owner": {
+        "target": "githubUser",
+        "title": "Owner",
+        "many": false,
+        "required": false
+      }
+    }
+  },
+  {
+    "identifier": "pullRequest",
+    "title": "Pull Request",
+    "icon": "GitPullRequest",
+    "schema": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url"
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": ["open", "closed", "merged"]
+        },
+        "isDraft": {
+          "type": "boolean",
+          "title": "Draft"
+        },
+        "mergeable": {
+          "type": "boolean",
+          "title": "Mergeable"
+        },
+        "author": {
+          "type": "string",
+          "title": "Author"
+        },
+        "commitsCount": {
+          "type": "number",
+          "title": "Commits Count"
+        },
+        "changedFilesCount": {
+          "type": "number",
+          "title": "Changed Files"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "type": "string",
+          "title": "Closed At",
+          "format": "date-time"
+        },
+        "mergedAt": {
+          "type": "string",
+          "title": "Merged At",
+          "format": "date-time"
+        }
+      }
+    },
+    "relations": {
+      "repository": {
+        "target": "repository",
+        "title": "Repository",
+        "many": false,
+        "required": true
+      }
+    }
+  },
+  {
+    "identifier": "issue",
+    "title": "Issue",
+    "icon": "GitIssue",
+    "schema": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url"
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": ["open", "closed"]
+        },
+        "author": {
+          "type": "string",
+          "title": "Author"
+        },
+        "assignees": {
+          "type": "array",
+          "title": "Assignees",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isLocked": {
+          "type": "boolean",
+          "title": "Locked"
+        },
+        "stateReason": {
+          "type": "string",
+          "title": "State Reason"
+        },
+        "body": {
+          "type": "string",
+          "title": "Body"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "type": "string",
+          "title": "Closed At",
+          "format": "date-time"
+        }
+      }
+    },
+    "relations": {
+      "repository": {
+        "target": "repository",
+        "title": "Repository",
+        "many": false,
+        "required": true
+      }
+    }
+  },
+  {
+    "identifier": "team",
+    "title": "Team",
+    "icon": "Team",
+    "schema": {
+      "properties": {
+        "slug": {
+          "type": "string",
+          "title": "Slug"
+        },
+        "privacy": {
+          "type": "string",
+          "title": "Privacy",
+          "enum": ["secret", "closed"]
+        },
+        "permission": {
+          "type": "string",
+          "title": "Permission",
+          "enum": ["pull", "push", "admin", "maintain", "triage"]
+        },
+        "membersCount": {
+          "type": "number",
+          "title": "Members Count"
+        },
+        "reposCount": {
+          "type": "number",
+          "title": "Repositories Count"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        }
+      }
+    },
+    "relations": {
+      "organization": {
+        "target": "githubUser",
+        "title": "Organization",
+        "many": false,
+        "required": false
+      }
+    }
+  },
+  {
+    "identifier": "workflow",
+    "title": "Workflow",
+    "icon": "GitWorkflow",
+    "schema": {
+      "properties": {
+        "path": {
+          "type": "string",
+          "title": "Path"
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": [
+            "active",
+            "deleted",
+            "disabled_fork",
+            "disabled_inactivity",
+            "disabled_manually"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        }
+      }
+    },
+    "relations": {
+      "repository": {
+        "target": "repository",
+        "title": "Repository",
+        "many": false,
+        "required": true
+      }
+    }
+  }
+]

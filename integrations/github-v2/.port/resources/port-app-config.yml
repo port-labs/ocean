@@ -1,0 +1,117 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"repository"'
+          properties:
+            url: .html_url
+            language: .language
+            forksCount: .forks_count
+            starsCount: .stargazers_count
+            watchersCount: .watchers_count
+            size: .size
+            defaultBranch: .default_branch
+            isFork: .fork
+            isArchived: .archived
+            isTemplate: .is_template
+            hasIssues: .has_issues
+            openIssuesCount: .open_issues_count
+            license: .license.name
+            visibility: .visibility
+            createdAt: .created_at
+            updatedAt: .updated_at
+            pushedAt: .pushed_at
+          relations:
+            owner: .owner.login
+
+  - kind: pull-request
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"pullRequest"'
+          properties:
+            url: .html_url
+            state: .state
+            isDraft: .draft
+            mergeable: .mergeable
+            author: .user.login
+            commitsCount: .commits
+            changedFilesCount: .changed_files
+            commentsCount: .comments
+            createdAt: .created_at
+            updatedAt: .updated_at
+            closedAt: .closed_at
+            mergedAt: .merged_at
+          relations:
+            repository: .repository.id | tostring
+
+  - kind: issue
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"issue"'
+          properties:
+            url: .html_url
+            state: .state
+            author: .user.login
+            commentsCount: .comments
+            isLocked: .locked
+            stateReason: .state_reason
+            body: .body
+            createdAt: .created_at
+            updatedAt: .updated_at
+            closedAt: .closed_at
+          relations:
+            repository: .repository.id | tostring
+
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"team"'
+          properties:
+            slug: .slug
+            privacy: .privacy
+            permission: .permission
+            membersCount: .members_count
+            reposCount: .repos_count
+            createdAt: .created_at
+            updatedAt: .updated_at
+          relations:
+            organization: .organization.login
+
+  - kind: workflow
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"workflow"'
+          properties:
+            path: .path
+            state: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+          relations:
+            repository: .repository.id | tostring
