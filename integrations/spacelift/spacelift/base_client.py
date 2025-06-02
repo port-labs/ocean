@@ -27,7 +27,6 @@ class SpaceliftBaseClient:
         logger.info("Initializing Spacelift client")
         await self.authenticator.ensure_authenticated()
 
-        # Test the connection with a simple query
         await self._test_connection()
 
         logger.success("Spacelift client initialized successfully")
@@ -61,7 +60,6 @@ class SpaceliftBaseClient:
         """Make a GraphQL request with authentication and rate limiting."""
         token = await self.authenticator.ensure_authenticated()
 
-        # Check if we're still in rate limit period
         if (
             self._rate_limit_retry_after
             and datetime.now() < self._rate_limit_retry_after
@@ -113,7 +111,7 @@ class SpaceliftBaseClient:
                         raise Exception(
                             f"GraphQL request failed: {response.status_code} - {response.text}"
                         )
-                    await asyncio.sleep(2**attempt)  # Exponential backoff
+                    await asyncio.sleep(2**attempt)  
                     continue
 
                 data = response.json()
@@ -121,7 +119,6 @@ class SpaceliftBaseClient:
                 if "errors" in data:
                     logger.error(f"GraphQL errors: {data['errors']}")
 
-                    # Check if it's an authorization error
                     error_messages = [
                         error.get("message", "").lower() for error in data["errors"]
                     ]
@@ -156,7 +153,6 @@ class SpaceliftBaseClient:
     async def _test_connection(self) -> None:
         """Test the connection with a simple query."""
         try:
-            # Use a simple stacks query instead of viewer which might not be available
             query = """
             query TestConnection {
                 stacks {
@@ -175,5 +171,4 @@ class SpaceliftBaseClient:
 
         except Exception as e:
             logger.warning(f"Connection test failed, but proceeding: {e}")
-            # Don't fail initialization if connection test doesn't work, as it might not be available
-            # in all Spacelift plans or with all permissions
+

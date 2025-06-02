@@ -139,7 +139,7 @@ class SpaceliftDataClients(SpaceliftBaseClient):
 
             try:
                 data = await self.make_graphql_request(simple_query)
-                stacks = data["data"]["stacks"] or []  # Handle None case
+                stacks = data["data"]["stacks"] or []  
 
                 for stack in stacks:
                     stack.setdefault("labels", [])
@@ -345,45 +345,45 @@ class SpaceliftDataClients(SpaceliftBaseClient):
         """Get all users."""
         logger.info("Fetching Spacelift users")
 
-        users = []
+        query = """
+        query GetBasicManagedUsers {
+            managedUsers {
+                id
+                username
+                invitationEmail
+                status
+                role
+                lastLoginTime
+            }
+        }
+        """
 
         try:
-            viewer_query = """
-            query GetViewer {
-                viewer {
-                    id
-                    name
-                }
-            }
-            """
+            data = await self.make_graphql_request(query)
+            managed_users = data["data"]["managedUsers"] or []
 
-            data = await self.make_graphql_request(viewer_query)
-            viewer = (
-                data["data"].get("viewer") if data.get("data") else None
-            )  # Handle None case
-
-            if viewer:
+            users = []
+            for user in managed_users:
                 user_data = {
-                    "id": viewer.get("id"),
-                    "name": viewer.get("name", ""),
-                    "email": viewer.get("email") or None,
-                    "role": "current_user",
-                    "lastSeenAt": None,
-                    "createdAt": None,
+                    "id": user.get("id"),
+                    "name": user.get("username", ""),
+                    "username": user.get("username"),
+                    "email": user.get("invitationEmail"),
+                    "status": user.get("status"),
+                    "role": user.get("role"),
+                    "lastLoginTime": user.get("lastLoginTime"),
                 }
-
                 users.append(user_data)
-                logger.debug(f"Processing current user: {user_data['id']}")
 
             if users:
                 yield users
-                logger.info(f"Fetched {len(users)} user(s)")
+                logger.info(f"Fetched {len(users)} managed users")
             else:
-                logger.warning("No viewer data available")
                 yield []
+                logger.info("No managed users found")
 
         except Exception as e:
             logger.warning(
-                f"Could not fetch user data - may require admin permissions or user access may be restricted: {e}"
+                f"Could not fetch managed users - may require admin permissions: {e}"
             )
             yield []
