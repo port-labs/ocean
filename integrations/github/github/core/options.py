@@ -1,4 +1,5 @@
-from typing import NotRequired, Required, TypedDict
+from datetime import datetime
+from typing import NotRequired, Optional, Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -27,3 +28,5 @@ class ListPullRequestOptions(RepositoryIdentifier):
     """Options for listing pull requests."""
 
     state: NotRequired[str]
+    start_time: NotRequired[Optional[datetime]]
+    end_time: NotRequired[Optional[datetime]]
