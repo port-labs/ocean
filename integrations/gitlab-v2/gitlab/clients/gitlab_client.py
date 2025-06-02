@@ -19,7 +19,7 @@ PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 class GitLabClient:
     DEFAULT_MIN_ACCESS_LEVEL = 30
-    DEFAULT_PARAMS = {
+    DEFAULT_PARAMS: dict[str, Union[int, bool]] = {
         "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,  # Minimum access level to fetch groups
         "all_available": True,  # Fetch all groups accessible to the user
     }
@@ -83,14 +83,16 @@ class GitLabClient:
             yield enriched_batch
 
     async def get_groups(
-        self, top_level_only: bool = False
+        self, top_level_only: bool = False, use_default_params: bool = True
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user.
 
         Args:
             top_level_only: If True, only fetch root groups
         """
-        params = {**self.DEFAULT_PARAMS, "top_level_only": top_level_only}
+        params: dict[str, Union[int, bool]] = {"top_level_only": top_level_only}
+        if use_default_params:
+            params = {**self.DEFAULT_PARAMS, **params}
         async for batch in self.rest.get_paginated_resource("groups", params=params):
             yield batch
 
@@ -181,55 +183,6 @@ class GitLabClient:
         response = await self.rest.send_api_request("GET", path, params=params)
         return bool(response)
 
-    async def _search_groups_by_hierarchy(
-        self,
-        groups_batch: list[dict[str, Any]],
-        scope: str,
-        search_query: str,
-        skip_parsing: bool = False,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search files in groups while maintaining proper hierarchy.
-
-        Only searches in the highest-level parent groups present in the batch,
-        avoiding duplicate searches in subgroups when their parent is present.
-        """
-
-        groups_by_full_path = {group["full_path"]: group for group in groups_batch}
-        all_group_paths = set(groups_by_full_path.keys())
-
-        root_group_paths = self._identify_root_groups(all_group_paths)
-
-        # Process only the root groups
-        for root_path in root_group_paths:
-            group = groups_by_full_path[root_path]
-            group_id = str(group["id"])
-            async for batch in self._search_files_in_group(
-                group_id, scope, search_query, skip_parsing
-            ):
-                yield batch
-
-    def _identify_root_groups(self, all_group_paths: set[str]) -> set[str]:
-        """Determine which group paths are root-most in the given set.
-
-        A group is considered root-most if none of its parent paths exist in the set.
-        """
-        root_paths = set()
-
-        for current_path in all_group_paths:
-            if not self._has_parent_in_set(current_path, all_group_paths):
-                root_paths.add(current_path)
-
-        return root_paths
-
-    def _has_parent_in_set(self, path: str, path_set: set[str]) -> bool:
-        path_components = path.split("/")
-        for i in range(1, len(path_components)):
-            parent_path = "/".join(path_components[:i])
-            if parent_path in path_set:
-                return True
-
-        return False
-
     async def search_files(
         self,
         scope: str,
@@ -250,15 +203,16 @@ class GitLabClient:
                     yield batch
         else:
             logger.info("Searching across groups")
-            async for groups_batch in self.get_groups():
+            async for groups_batch in self.get_groups(
+                top_level_only=True, use_default_params=False
+            ):
                 logger.debug(f"Processing batch of {len(groups_batch)} groups")
-                async for batch in self._search_groups_by_hierarchy(
-                    groups_batch,
-                    scope,
-                    search_query,
-                    skip_parsing,
-                ):
-                    yield batch
+                for group in groups_batch:
+                    group_id = str(group["id"])
+                    async for batch in self._search_files_in_group(
+                        group_id, scope, search_query, skip_parsing
+                    ):
+                        yield batch
 
     async def get_repository_tree(
         self,
