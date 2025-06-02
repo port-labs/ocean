@@ -21,7 +21,8 @@ def test_serialize_record_log_shape() -> None:
     )
     serialized_record = _serialize_record(record)
     assert all(key in serialized_record for key in expected_keys)
-    assert log_message in serialized_record.get("message", None)
+    message = serialized_record.get("message", None)
+    assert message is not None and log_message in message
 
 
 def test_serialize_record_exc_info_single_exception() -> None:
