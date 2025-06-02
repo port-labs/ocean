@@ -1,3 +1,5 @@
+from typing import Dict, Any, Optional
+
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -6,8 +8,8 @@ from spacelift.client import SpaceliftClient
 
 
 class SpaceLiftIntegration:
-    def __init__(self):
-        self.client = None
+    def __init__(self) -> None:
+        self.client: Optional[SpaceliftClient] = None
 
     async def initialize_client(self) -> SpaceliftClient:
         """Initialize the Spacelift client with proper authentication and configuration."""
@@ -68,7 +70,7 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.router.post("/webhook")
-async def handle_webhook(body: dict) -> dict:
+async def handle_webhook(body: Dict[str, Any]) -> Dict[str, Any]:
     """Handle real-time webhook events from Spacelift."""
     logger.info(f"Received webhook event: {body.get('event_type', 'unknown')}")
 

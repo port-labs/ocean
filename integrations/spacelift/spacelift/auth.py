@@ -26,7 +26,7 @@ class AuthenticationError(Exception):
 class SpaceliftAuthenticator:
     """Handles Spacelift authentication and token management."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.http_client = http_async_client
         self.auth_config = self._load_auth_config()
         self._current_token: Optional[str] = None
@@ -44,7 +44,7 @@ class SpaceliftAuthenticator:
 
     async def ensure_authenticated(self) -> str:
         """Ensure we have a valid authentication token and return it."""
-        if self._is_token_valid():
+        if self._is_token_valid() and self._current_token is not None:
             return self._current_token
 
         if self.auth_config.api_token:
@@ -59,6 +59,8 @@ class SpaceliftAuthenticator:
                 "Please provide either spaceliftApiToken or both spaceliftApiKeyId and spaceliftApiKeySecret"
             )
 
+        if self._current_token is None:
+            raise AuthenticationError("Failed to obtain authentication token")
         return self._current_token
 
     def _is_token_valid(self) -> bool:
@@ -134,8 +136,10 @@ class SpaceliftAuthenticator:
             logger.error(f"Failed to authenticate with Spacelift: {e}")
             raise AuthenticationError(f"Authentication failed: {e}")
 
-    def get_api_endpoint(self) -> Optional[str]:
+    def get_api_endpoint(self) -> str:
         """Get the API endpoint URL."""
+        if self.auth_config.api_endpoint is None:
+            raise AuthenticationError("API endpoint is not configured")
         return self.auth_config.api_endpoint
 
     def invalidate_token(self) -> None:

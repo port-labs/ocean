@@ -17,7 +17,7 @@ class RateLimitError(Exception):
 class SpaceliftBaseClient:
     """Base client for making GraphQL requests to Spacelift API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.http_client = http_async_client
         self.authenticator = SpaceliftAuthenticator()
         self._rate_limit_retry_after: Optional[datetime] = None
@@ -32,7 +32,7 @@ class SpaceliftBaseClient:
 
         logger.success("Spacelift client initialized successfully")
 
-    async def _handle_rate_limit(self, response) -> None:
+    async def _handle_rate_limit(self, response: Any) -> None:
         """Handle rate limiting with retry logic."""
         if response.status_code == 429:
             retry_after = response.headers.get("Retry-After", "60")
@@ -53,7 +53,10 @@ class SpaceliftBaseClient:
             )
 
     async def make_graphql_request(
-        self, query: str, variables: Optional[Dict] = None, max_retries: int = 3
+        self,
+        query: str,
+        variables: Optional[Dict[str, Any]] = None,
+        max_retries: int = 3,
     ) -> Dict[str, Any]:
         """Make a GraphQL request with authentication and rate limiting."""
         token = await self.authenticator.ensure_authenticated()
@@ -72,7 +75,7 @@ class SpaceliftBaseClient:
             "Content-Type": "application/json",
         }
 
-        request_data = {"query": query}
+        request_data: Dict[str, Any] = {"query": query}
         if variables:
             request_data["variables"] = variables
 
@@ -82,9 +85,10 @@ class SpaceliftBaseClient:
                     f"Making GraphQL request (attempt {attempt + 1}/{max_retries})"
                 )
 
+                api_endpoint = self.authenticator.get_api_endpoint()
                 response = await self.http_client.request(
                     method="POST",
-                    url=self.authenticator.get_api_endpoint(),
+                    url=api_endpoint,
                     json=request_data,
                     headers=headers,
                 )

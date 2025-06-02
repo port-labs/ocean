@@ -1,1 +1,1 @@
-../../../../integrations/_infra/Makefile
+../_infra/Makefile

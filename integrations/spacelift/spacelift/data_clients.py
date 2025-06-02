@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, AsyncGenerator
+from typing import Any, Dict, List, AsyncGenerator, Optional
 
 from loguru import logger
 
@@ -189,7 +189,7 @@ class SpaceliftDataClients(SpaceliftBaseClient):
                 yield deployments_batch
 
     async def _get_stack_runs(
-        self, stack_id: str, run_type: str = None
+        self, stack_id: str, run_type: Optional[str] = None
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get runs for a specific stack."""
         query = """
