@@ -7,6 +7,7 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
+from port_ocean.utils.cache import cache_iterator_result
 
 from github.clients.rest_client import RestClient
 from github.helpers.rate_limiter import BasicGitHubRateLimiter
@@ -23,6 +24,7 @@ class GitHubClient:
         self.rest = RestClient(base_url, token, github_client=self)
         # Note: Removed set_github_client call as rate limiting has been removed
 
+    @cache_iterator_result()
     async def get_repositories(
         self,
         params: Optional[dict[str, Any]] = None,
@@ -36,6 +38,7 @@ class GitHubClient:
             logger.info(f"Received batch with {len(repos_batch)} repositories")
             yield repos_batch
 
+    @cache_iterator_result()
     async def get_organizations(
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:

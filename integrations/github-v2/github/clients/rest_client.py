@@ -1,6 +1,7 @@
 from typing import Any, AsyncIterator, Optional, TYPE_CHECKING
 
 from loguru import logger
+from port_ocean.utils.cache import cache_iterator_result
 
 from github.clients.base_client import HTTPBaseClient
 
@@ -58,6 +59,7 @@ class RestClient(HTTPBaseClient):
                 )
                 yield batch
 
+    @cache_iterator_result()
     async def _make_paginated_request(
         self,
         path: str,
