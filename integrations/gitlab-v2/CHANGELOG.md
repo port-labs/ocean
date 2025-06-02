@@ -6,12 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-## 0.1.17 (2025-05-29)
+## 0.1.19 (2025-06-02)
 
 ### Improvements
 
-- Fetch all groups and subgroups when searching files
+- Added use_default_params to get_groups when searching files
+
+
+## 0.1.18 (2025-06-01)
+
+
+### Improvements
+
+- transfer the integration to GA phase
+
+
+## 0.1.17 (2025-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.5
 
 
 ## 0.1.16 (2025-05-29)
