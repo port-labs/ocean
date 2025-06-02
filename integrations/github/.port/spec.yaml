@@ -6,6 +6,8 @@ features:
     section: Git
     resources:
       - kind: repository
+      - kind: dependabot-alert
+      - kind: code-scanning-alerts
 configurations:
   - name: githubHost
     required: false

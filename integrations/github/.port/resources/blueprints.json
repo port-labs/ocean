@@ -35,5 +35,141 @@
             },
             "required": []
         }
+    },
+    {
+        "identifier": "githubDependabotAlert",
+        "title": "Dependabot Alert",
+        "icon": "Github",
+        "schema": {
+          "properties": {
+            "severity": {
+              "title": "Severity",
+              "type": "string",
+              "enum": ["low", "medium", "high", "critical"],
+              "enumColors": {
+                "low": "yellow",
+                "medium": "orange",
+                "high": "red",
+                "critical": "red"
+              },
+              "icon": "DefaultProperty"
+            },
+            "state": {
+              "title": "State",
+              "type": "string",
+              "enum": ["auto_dismissed", "dismissed", "fixed", "open"],
+              "enumColors": {
+                "auto_dismissed": "green",
+                "dismissed": "green",
+                "fixed": "green",
+                "open": "red"
+              },
+              "icon": "DefaultProperty"
+            },
+            "packageName": {
+              "icon": "DefaultProperty",
+              "title": "Package Name",
+              "type": "string"
+            },
+            "packageEcosystem": {
+              "title": "Package Ecosystem",
+              "type": "string"
+            },
+            "manifestPath": {
+              "title": "Manifest Path",
+              "type": "string"
+            },
+            "scope": {
+              "title": "Scope",
+              "type": "string"
+            },
+            "ghsaID": {
+              "title": "GHSA ID",
+              "type": "string"
+            },
+            "cveID": {
+              "title": "CVE ID",
+              "type": "string"
+            },
+            "url": {
+              "title": "URL",
+              "type": "string",
+              "format": "url"
+            },
+            "references": {
+              "icon": "Vulnerability",
+              "title": "References",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "url"
+              }
+            },
+            "alertCreatedAt": {
+              "icon": "DefaultProperty",
+              "type": "string",
+              "title": "Alert Created At",
+              "format": "date-time"
+            },
+            "alertUpdatedAt": {
+              "icon": "DefaultProperty",
+              "type": "string",
+              "title": "Alert Updated At",
+              "format": "date-time"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+          "repository": {
+            "title": "Repository",
+            "target": "githubRepository",
+            "required": true,
+            "many": false
+          }
+        }
+      },
+      {
+        "identifier": "code_scan_alerts",
+        "title": "Code Scan Alerts",
+        "icon": "Microservice",
+        "schema": {
+          "properties": {
+            "description": {
+              "title": "Alert description",
+              "type": "string"
+            },
+            "severity": {
+              "title": "Alert severity",
+              "type": "string"
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Alert tags",
+              "type": "array"
+            },
+            "url": {
+              "title": "alert URL",
+              "type": "string",
+              "format": "url"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+          "repository": {
+            "title": "Repository",
+            "target": "githubRepository",
+            "required": false,
+            "many": true
+          }
+        }
     }
 ]
