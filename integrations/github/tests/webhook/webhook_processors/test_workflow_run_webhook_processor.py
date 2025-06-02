@@ -49,18 +49,26 @@ def workflow_webhook_processor(
 @pytest.mark.asyncio
 class TestWorkflowRunWebhookProcessor:
     @pytest.mark.parametrize(
-        "github_event,result", [("workflow_run", True), ("invalid", False)]
+        "github_event,action,result",
+        [
+            ("workflow_run", WORKFLOW_UPSERT_EVENTS[0], True),
+            ("workflow_run", WORKFLOW_DELETE_EVENTS[0], True),
+            ("workflow_run", "unknown_action", False),
+            ("invalid", WORKFLOW_UPSERT_EVENTS[0], False),
+            ("invalid", "unknown_action", False),
+        ],
     )
     async def test_should_process_event(
         self,
         workflow_webhook_processor: WorkflowRunWebhookProcessor,
         github_event: str,
+        action: str,
         result: bool,
     ) -> None:
         mock_request = AsyncMock()
         event = WebhookEvent(
             trace_id="test-trace-id",
-            payload={},
+            payload={"action": action},
             headers={"x-github-event": github_event},
         )
         event._original_request = mock_request
@@ -157,7 +165,6 @@ class TestWorkflowRunWebhookProcessor:
                 },
                 True,
             ),
-            ({"action": "unknown_event", "workflow_run": {"name": "repo3"}}, False),
             (
                 {
                     "action": WORKFLOW_DELETE_EVENTS[0],
