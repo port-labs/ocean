@@ -380,7 +380,7 @@ class TestGitLabClient:
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
         """Test file search across all groups using scope and query"""
-        mock_groups = [{"id": "1", "name": "Group1", "full_path": "group1"}]
+        mock_groups = [{"id": "1", "name": "Group1"}]
         processed_files = [
             {"path": "test.yaml", "project_id": "123", "content": {"key": "value"}}
         ]
