@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added incident state and number properties to the servicenowIncident blueprint
+- Added incident `state` and `number` properties to the `servicenowIncident` blueprint and update the identifier to be mapped to the `sys_id`
 
 
 ## 0.1.149 (2025-06-03)
