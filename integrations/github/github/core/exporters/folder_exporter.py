@@ -1,4 +1,5 @@
 import re
+from typing import Any, cast
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -21,29 +22,45 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
-        branch_ref = options["repo"]["default_branch"]
+        branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
         params = {"recursive": "true"} if self._needs_recursive_search(path) else {}
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
+
         async for contents in self.client.send_paginated_request(
             endpoint, params=params
         ):
-            folders = self._filter_folder_contents(contents["tree"], path)
+            content_cast = cast(dict[str, Any], contents)
+            folders = self._filter_folder_contents(content_cast["tree"], path)
+            logger.info(f"fetched {len(folders)} folders from {repo_name}")
             if folders:
                 formatted = self._format_for_port(folders, repo=options["repo"])
                 yield formatted
             else:
                 yield []
 
-    @staticmethod
-    def _format_for_port(folders: list[dict], repo: dict | None = None) -> list[dict]:
-        formatted_folders = [{"folder": folder, "repo": repo} for folder in folders]
+    def _format_for_port(
+        self, folders: list[dict], repo: dict | None = None
+    ) -> list[dict]:
+        formatted_folders = [
+            {
+                "folder": {**folder, "name": self._get_folder_name(folder["path"])},
+                "repo": repo,
+            }
+            for folder in folders
+        ]
         return formatted_folders
+
+    @staticmethod
+    def _get_folder_name(folder_path: str) -> str:
+        path_split = folder_path.split("/")
+        name = path_split[len(path_split) - 1]
+        return name
 
     @staticmethod
     def _needs_recursive_search(path: str) -> bool:
         "Determines whether a give path requires recursive Github request param"
-        if "**" in path and "/" in path:
+        if "**" in path or re.match(r"\w+\/\w+", path):
             return True
         return False
 

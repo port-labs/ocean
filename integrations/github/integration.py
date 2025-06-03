@@ -11,9 +11,22 @@ from port_ocean.core.integrations.base import BaseIntegration
 from github.helpers.utils import ObjectKind
 
 
+class RepositoryBranchMapping(BaseModel):
+    name: str = Field(
+        default="",
+        alias="name",
+        description="Specify the repository name",
+    )
+    branch: str = Field(
+        default="",
+        alias="branch",
+        description="Specify the branch to bring the folders from, repo's default branch will be used if none is passed",
+    )
+
+
 class FolderSelector(BaseModel):
     path: str = Field(default="*")
-    repos: list[str]
+    repos: list[RepositoryBranchMapping]
 
 
 class GithubFolderSelector(Selector):
