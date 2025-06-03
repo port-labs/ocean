@@ -1,1 +1,1 @@
-include ../_infra/Makefile
+/Users/quabynah/src/projects/port.io/ocean/integrations/bitbucket-cloud-v2/.venv/lib/python3.12/site-packages/port_ocean/cli/cookiecutter/../../../integrations/_infra/Makefile

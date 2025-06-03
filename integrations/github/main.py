@@ -1,70 +1,93 @@
-from typing import cast
-from loguru import logger
+from typing import Any
+
+from integration.clients.github import IntegrationClient
+from integration.utils.kind import ObjectKind
+from integration.clients.auth import AuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from github.clients.client_factory import (
-    GitHubAuthenticatorFactory,
-    create_github_client,
-)
-from github.clients.utils import integration_config
-from github.helpers.utils import ObjectKind
-from github.webhook.events import WEBHOOK_CREATE_EVENTS
-from github.webhook.webhook_processors.repository_webhook_processor import (
-    RepositoryWebhookProcessor,
-)
-from github.webhook.webhook_client import GithubWebhookClient
-from github.core.exporters.repository_exporter import RestRepositoryExporter
-from github.core.options import ListRepositoryOptions
-from typing import TYPE_CHECKING
-from port_ocean.context.event import event
-
-if TYPE_CHECKING:
-    from integration import GithubPortAppConfig
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
-@ocean.on_start()
-async def on_start() -> None:
-    """Initialize the integration and set up webhooks."""
-    logger.info("Starting Port Ocean GitHub integration")
-
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
-        return
-
-    base_url = ocean.app.base_url
-    if not base_url:
-        return
-
-    authenticator = GitHubAuthenticatorFactory.create(
-        organization=ocean.integration_config["github_organization"],
-        github_host=ocean.integration_config["github_host"],
-        token=ocean.integration_config.get("github_token"),
-        app_id=ocean.integration_config.get("github_app_id"),
-        private_key=ocean.integration_config.get("github_app_private_key"),
-    )
-
-    client = GithubWebhookClient(
-        **integration_config(authenticator),
-        webhook_secret=ocean.integration_config["webhook_secret"],
-    )
-
-    logger.info("Subscribing to GitHub webhooks")
-    await client.upsert_webhook(base_url, WEBHOOK_CREATE_EVENTS)
+def init_client() -> IntegrationClient:
+    # config setup
+    access_token = ocean.integration_config.get("personal_access_token", None)
+    org = ocean.integration_config.get("github_organization", None)
+    auth_client = AuthClient(access_token=access_token, user_agent=org)
+    return IntegrationClient(auth_client)
 
 
+# resync all object kinds
+@ocean.on_resync()
+async def on_resync(kind: str) -> list[dict[Any, Any]]:
+    match kind:
+        case ObjectKind.REPOSITORY:
+            resync_repositories(kind)
+        case ObjectKind.ISSUE:
+            resync_issues(kind)
+        case ObjectKind.WORKFLOW:
+            resync_workflows(kind)
+        case ObjectKind.TEAM:
+            resync_teams(kind)
+        case ObjectKind.PULL_REQUEST:
+            resync_pull_requests(kind)
+
+    return []
+
+
+# resync repository
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all repositories in the organization."""
-    logger.info(f"Starting resync for kind: {kind}")
-
-    rest_client = create_github_client()
-    exporter = RestRepositoryExporter(rest_client)
-
-    port_app_config = cast("GithubPortAppConfig", event.port_app_config)
-    options = ListRepositoryOptions(type=port_app_config.repository_type)
-
-    async for repositories in exporter.get_paginated_resources(options):
-        yield repositories
+    if kind == ObjectKind.REPOSITORY:
+        client = init_client()
+        async for repositories in client.get_repositories():
+            yield repositories
 
 
-ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+# resync issues
+@ocean.on_resync(ObjectKind.ISSUE)
+async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind == ObjectKind.ISSUE:
+        client = init_client()
+        async for repositories in client.get_repositories():
+            tasks = [
+                client.get_issues(repo_slug=repo.get("name")) for repo in repositories
+            ]
+            async for issues in stream_async_iterators_tasks(*tasks):
+                yield issues
+
+
+# resync workflows
+@ocean.on_resync(ObjectKind.WORKFLOW)
+async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind == ObjectKind.WORKFLOW:
+        client = init_client()
+        async for repositories in client.get_repositories():
+            tasks = [
+                client.get_workflows(repo_slug=repo.get("name"))
+                for repo in repositories
+            ]
+            async for workflows in stream_async_iterators_tasks(*tasks):
+                yield workflows
+
+
+# resync teams
+@ocean.on_resync(ObjectKind.TEAM)
+async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind == ObjectKind.TEAM:
+        client = init_client()
+        async for teams in client.get_teams():
+            yield teams
+
+
+# resync pull_requests
+@ocean.on_resync(ObjectKind.PULL_REQUEST)
+async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind == ObjectKind.PULL_REQUEST:
+        client = init_client()
+        async for repositories in client.get_repositories():
+            tasks = [
+                client.get_pull_requests(repo_slug=repo.get("name"))
+                for repo in repositories
+            ]
+            async for prs in stream_async_iterators_tasks(*tasks):
+                yield prs

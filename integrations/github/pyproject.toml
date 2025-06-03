@@ -1,13 +1,12 @@
 [tool.poetry]
-name = "github-ocean"
-version = "0.1.4-dev"
-description = "This integration ingest data from github"
-authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <melodyogonna@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
+name = "github"
+version = "0.1.0-beta"
+description = "GitHub integration"
+authors = ["Dennis Bilson <quabynahdennis@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-pyjwt = {extras = ["crypto"], version = "^2.10.1"}
-port_ocean = {version = "^0.24.0", extras = ["cli"]}
+port_ocean = { version = "^0.22.10", extras = ["cli"] }
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
@@ -85,8 +84,6 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
-target-version = "py311"
-
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -114,3 +111,6 @@ exclude = '''
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-vv -n auto ./tests"
+
+[pytest]
+python_files = "test_*.py"

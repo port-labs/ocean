@@ -1,19 +1,76 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
-repositoryType: 'all'
 resources:
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '(.id|tostring)'
+          title: .name
+          blueprint: '"githubTeam"'
+          properties:
+            name: .name
+            url: .html_url
+            slug: .slug
+            description: .description
+
   - kind: repository
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .name
+          identifier: '(.id|tostring)'
           title: .name
           blueprint: '"githubRepository"'
           properties:
-            description: if .description then .description else "" end
-            visibility: if .private then "private" else "public" end
-            defaultBranch: .default_branch
+            name: .name
             url: .html_url
-            language: if .language then .language else "" end
+            language: .language
+            branch: .default_branch
+            description: .description
+
+  - kind: pull-request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '(.id|tostring)'
+          title: .title
+          blueprint: '"githubPullRequest"'
+          properties:
+            commits: .commits
+            changes: .changed_files
+            url: .html_url
+          relations:
+            repository: '(.head.repo.id|tostring)'
+
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '(.id|tostring)'
+          title: .title
+          blueprint: '"githubIssue"'
+          properties:
+            title: .title
+            url: .html_url
+            state: .state
+
+  - kind: workflow
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '(.id|tostring)'
+          title: .name
+          blueprint: '"githubWorkflow"'
+          properties:
+            name: .name
+            url: .html_url
