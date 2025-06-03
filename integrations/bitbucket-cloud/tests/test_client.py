@@ -4,6 +4,7 @@ from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Generator
 from bitbucket_cloud.client import BitbucketClient
+from bitbucket_cloud.token_manager import TokenManager
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 
 
@@ -270,3 +271,106 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
                 params={"state": "OPEN", "pagelen": 50},
             )
+
+
+@pytest.mark.asyncio
+async def test_client_init_with_multiple_tokens() -> None:
+    """Test client initialization with multiple workspace tokens."""
+    multiple_tokens = "token1,token2,token3"
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        workspace_token=multiple_tokens,
+    )
+    
+    assert client.token_manager is not None
+    assert len(client.token_manager.tokens) == 3
+    assert client.token_manager.tokens == ["token1", "token2", "token3"]
+    assert client.token_manager.current_token == "token1"
+    assert len(client.token_manager.rate_limiters) == 3
+    
+    # Check that headers are set correctly
+    assert "Bearer token1" in client.headers["Authorization"]
+
+
+@pytest.mark.asyncio
+async def test_client_init_with_single_token_in_multiple_format() -> None:
+    """Test client initialization with single token that has commas/spaces."""
+    single_token = "  token1  "
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        workspace_token=single_token,
+    )
+    
+    # Should be treated as single token (no token manager)
+    assert client.token_manager is None
+    assert "Bearer token1" in client.headers["Authorization"]
+
+
+@pytest.mark.asyncio
+async def test_token_manager_rotation() -> None:
+    """Test token manager rotation logic."""
+    tokens = ["token1", "token2", "token3"]
+    manager = TokenManager(tokens)
+    
+    assert manager.current_token == "token1"
+    assert manager.current_index == 0
+    
+    manager._rotate_to_next_token()
+    assert manager.current_token == "token2"
+    assert manager.current_index == 1
+    
+    manager._rotate_to_next_token()
+    assert manager.current_token == "token3"
+    assert manager.current_index == 2
+    
+    # Should wrap around
+    manager._rotate_to_next_token()
+    assert manager.current_token == "token1"
+    assert manager.current_index == 0
+
+
+@pytest.mark.asyncio
+async def test_fetch_with_token_rotation(mock_client: BitbucketClient) -> None:
+    """Test that fetch_paginated_api_with_rate_limiter works with token rotation."""
+    # Mock multiple tokens
+    mock_client.token_manager = TokenManager(["token1", "token2"])
+    
+    mock_data = {
+        "values": [{"id": 1}, {"id": 2}],
+        "next": None
+    }
+    
+    async with event_context("test_event"):
+        with (
+            patch.object(mock_client, "_send_api_request", new_callable=AsyncMock) as mock_request,
+            patch.object(mock_client.token_manager, "try_acquire_or_rotate", new_callable=AsyncMock) as mock_acquire,
+            patch.object(mock_client, "_update_authorization_header") as mock_update_header
+        ):
+            mock_request.return_value = mock_data
+            mock_acquire.return_value = mock_client.token_manager.current_rate_limiter
+            
+            batches = []
+            async for batch in mock_client._fetch_paginated_api_with_rate_limiter(
+                f"{mock_client.base_url}/test/endpoint"
+            ):
+                batches.append(batch)
+            
+            assert len(batches) == 1
+            assert batches[0] == [{"id": 1}, {"id": 2}]
+            
+            # Verify that token rotation was attempted
+            mock_acquire.assert_called()
+            mock_update_header.assert_called_with("token1")
+
+
+@pytest.mark.asyncio
+async def test_update_authorization_header(mock_client: BitbucketClient) -> None:
+    """Test that authorization header is updated correctly."""
+    new_token = "new_test_token"
+    mock_client._update_authorization_header(new_token)
+    
+    assert mock_client.headers["Authorization"] == f"Bearer {new_token}"
+    # Since mock_client uses a mock http client, we just verify the method was called correctly
+    mock_client.client.headers.update.assert_called_with(mock_client.headers)

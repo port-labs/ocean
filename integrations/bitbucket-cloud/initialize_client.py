@@ -2,9 +2,10 @@ from port_ocean.context.ocean import ocean
 from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
 
+client = BitbucketClient.create_from_ocean_config()
 
 def init_client() -> BitbucketClient:
-    return BitbucketClient.create_from_ocean_config()
+    return client
 
 
 def init_webhook_client() -> BitbucketWebhookClient:
