@@ -179,6 +179,32 @@ class ProjectWebhookProcessor(AbstractWebhookProcessor):
 
 </details>
 
+## Webhook Registration
+
+In the `main.py` file of your integration, you must register webhook processors that handle different types of events.
+This will allow the integration to start the processors which will receive webhook events from your service and process them accordingly.
+
+<details>
+<summary><b>Example: Jira Webhook Registration</b></summary>
+
+```python showLineNumbers
+from port_ocean.context.ocean import ocean
+from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
+from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
+from webhook_processors.user_webhook_processor import UserWebhookProcessor
+
+# All other content of the main.py file
+
+# Register webhook processors for different resource types
+ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
+```
+</details>
+
+For detailed implementation of webhook processors, see the [Implementing Webhooks](implementing-webhooks.md) guide.
+
+
 ## How Webhooks Work in Ocean
 
 When your service sends a webhook event to the integration:

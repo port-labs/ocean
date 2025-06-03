@@ -10,10 +10,10 @@ In this quickstart guide, you'll learn how to **install** the Ocean CLI, **scaff
 
 ## Requirements
 
-Python 3.12
+Python 3.13
 
 :::tip
-Visit official [Python website](https://www.python.org/downloads/) to install Python 3.12 on your machine.
+Visit official [Python website](https://www.python.org/downloads/) to install Python 3.13 on your machine.
 :::
 
 ## Installation

@@ -35,7 +35,7 @@ To develop and publish an integration you need to complete the following steps:
 These steps do not follow a specific order. Some steps only become relevant near the end of the integration's development, such as publishing.
 :::
 
-1. **Scaffold** a new integration, as seen in [getting started](../getting-started/getting-started.md#scaffold)
+1. **Scaffold** a new integration, as seen in [getting started](../getting-started/getting-started.md#scaffolding-a-new-integration)
 2. **Implement core logic** by adding the code and logic required for the new integration. [Create API clients](./implementing-an-api-client.md), [webhook processors](./implementing-webhooks.md), [resync functions](./handling-resyncs.md), and [define kinds configuration](./integration-configuration-and-kinds-in-ocean.md) in their respective directories.
 3. **Configure integration spec** by updating the [`.port/spec.yml`](./defining-configuration-files.md) file with metadata, supported resource kinds, required parameters, and webhook configurations.
 4. **Set up configuration** by updating the `integration.py` to add custom resource configs as described in [integration configuration](./integration-configuration-and-kinds-in-ocean.md).

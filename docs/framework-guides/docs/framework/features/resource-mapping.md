@@ -15,7 +15,7 @@ Resource Mapping is an ETL layer built into the Ocean framework. Ocean integrati
 
 A resource mapping is a YAML configuration that can be applied to an integration in the following ways:
 
-- Via a [`port-app-config.yml`](../../developing-an-integration/defining-configuration-files.md#3-the-port-app-configyml-file) file that is part of the [`.port`](../../developing-an-integration/defining-configuration-files.md#the-port-directory-structure) specification folder of the integration
+- Via a [`port-app-config.yml`](../../developing-an-integration/defining-configuration-files.md#the-port-app-configyml-file) file that is part of the [`.port`](../../developing-an-integration/defining-configuration-files.md#the-port-directory-structure) specification folder of the integration
 - By updating the integration configuration through Port's UI
 - By updating the integration configuration by making a PATCH request to Port's `https://api.getport.io/v1/integration/<INTEGRATION_IDENTIIFER>` route with the updated configuration
 

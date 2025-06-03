@@ -21,7 +21,6 @@ Resyncs are triggered in several scenarios:
 1. **Initial Data Load** - When the integration is first installed
 2. **Scheduled Updates** - Based on your configured schedule
 3. **Manual Triggers** - When users request a data refresh
-4. **Error Recovery** - After failed webhook events
 
 ## Core Components
 
@@ -237,27 +236,6 @@ ASYNC_GENERATOR_RESYNC_TYPE = AsyncGenerator[list[dict[str, Any]], None]
 
 Each batch should be a list of dictionaries representing your resources, with each dictionary containing the resource's data.
 
-## Webhook Registration
-
-Webhooks enable real-time updates from your service. In your `main.py`, you register webhook processors that handle different types of events.
-
-<details>
-<summary><b>Example: Jira Webhook Registration</b></summary>
-
-```python showLineNumbers
-from port_ocean.context.ocean import ocean
-from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
-from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
-from webhook_processors.user_webhook_processor import UserWebhookProcessor
-
-# Register webhook processors for different resource types
-ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
-ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
-ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
-```
-</details>
-
-For detailed implementation of webhook processors, see the [Implementing Webhooks](implementing-webhooks.md) guide.
 
 ## Best Practices
 
@@ -275,7 +253,7 @@ For detailed implementation of webhook processors, see the [Implementing Webhook
 
 4. **Security**
 
-   Ensure the security of your integration by validating all incoming data, using secure communication channels, and properly handling authentication. Implement proper credential management and never expose sensitive information in logs or error messages. Regular security audits and updates are essential to maintain the integrity of your integration.
+   Ensure the security of your integration by using secure protocols, and properly handling authentication. Implement proper credential management and never expose sensitive information in logs or error messages. Regular security audits and updates are essential to maintain the integrity of your integration.
 
 :::info Source Code
 Example implementations are available in the [Jira](https://github.com/port-labs/ocean/tree/main/integrations/jira) and [Octopus](https://github.com/port-labs/ocean/tree/main/integrations/octopus) integration directories.
