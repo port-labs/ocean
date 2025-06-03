@@ -35,13 +35,11 @@ class BitbucketClient:
         self.token_manager: Optional[TokenManager] = None
 
         if workspace_token:
-            # Check if we have multiple tokens (comma-separated)
             tokens = [
                 token.strip() for token in workspace_token.split(",") if token.strip()
             ]
 
             if len(tokens) > 1:
-                # Multiple tokens - use TokenManager
                 self.token_manager = TokenManager(tokens)
                 self.headers = {
                     "Authorization": f"Bearer {self.token_manager.current_token}",
@@ -52,7 +50,6 @@ class BitbucketClient:
                     f"Initialized BitbucketClient with {len(tokens)} tokens for rotation"
                 )
             else:
-                # Single token - traditional behavior
                 single_token = tokens[0] if tokens else workspace_token.strip()
                 self.headers = {
                     "Authorization": f"Bearer {single_token}",
@@ -127,14 +124,12 @@ class BitbucketClient:
         method: str = "GET",
         data_key: str = "values",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Handle rate-limited paginated requests to Bitbucket API"""
         if params is None:
             params = {
                 "pagelen": PAGE_SIZE,
             }
         while True:
             if self.token_manager:
-                # Multi-token rotation: get the appropriate rate limiter
                 rate_limiter = await self.token_manager.try_acquire_or_rotate()
                 current_token = await self.token_manager.get_current_token_safely()
                 self._update_authorization_header(current_token)
@@ -143,7 +138,6 @@ class BitbucketClient:
                         url, params=params, method=method
                     )
             else:
-                # Single token: use global rate limiter
                 async with RATE_LIMITER:
                     response = await self._send_api_request(
                         url, params=params, method=method

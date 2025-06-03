@@ -17,10 +17,8 @@ class TokenManager:
         self.tokens = tokens
         self.current_index = 0
         self.rate_limiters: Dict[str, RollingWindowLimiter] = {}
-        # Add async lock for thread safety
         self._lock = asyncio.Lock()
 
-        # Create a rate limiter for each token
         for token in tokens:
             self.rate_limiters[token] = RollingWindowLimiter(
                 limit=BitbucketRateLimiterConfig.LIMIT,
@@ -53,7 +51,6 @@ class TokenManager:
             start_index = self.current_index
 
             while attempts < len(self.tokens):
-                # Get current token and its rate limiter atomically
                 current_token = self.tokens[self.current_index]
                 current_limiter = self.rate_limiters[current_token]
 
@@ -66,24 +63,20 @@ class TokenManager:
                     )
                     return current_limiter
                 else:
-                    # Rate limit hit, try next token
                     logger.info(
                         f"Rate limit exhausted for token index {self.current_index}, rotating to next token"
                     )
                     self._rotate_to_next_token()
                     attempts += 1
 
-                    # If we've tried all tokens, return to the first token and let it wait
                     if attempts >= len(self.tokens):
                         logger.info(
                             "All tokens are rate limited, returning to first token to wait normally"
                         )
-                        # Reset to the original token and return its limiter for normal waiting
                         self.current_index = start_index
                         current_token = self.tokens[self.current_index]
                         return self.rate_limiters[current_token]
 
-            # Fallback - return current rate limiter
             current_token = self.tokens[self.current_index]
             return self.rate_limiters[current_token]
 
@@ -98,22 +91,10 @@ class TokenManager:
         logger.debug(f"Rotated from token index {old_index} to {self.current_index}")
 
     async def get_current_token_safely(self) -> str:
-        """
-        Get the current token in a thread-safe manner.
-
-        Returns:
-            The current token string
-        """
         async with self._lock:
             return self.tokens[self.current_index]
 
     async def get_token_metrics(self) -> Dict[str, Dict[str, Any]]:
-        """
-        Get metrics for all tokens in a thread-safe manner.
-
-        Returns:
-            Dictionary mapping token indices to their rate limiter metrics
-        """
         async with self._lock:
             metrics = {}
             for i, token in enumerate(self.tokens):
