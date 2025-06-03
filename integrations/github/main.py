@@ -95,8 +95,6 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 ListPullRequestOptions(
                     repo_name=repo["name"],
                     state=config.selector.state,
-                    start_time=config.selector.start_time,
-                    end_time=config.selector.end_time,
                 )
             )
             for repo in repos
