@@ -9,7 +9,7 @@ empowering engineers to effortlessly prioritize key features and streamline the 
 
 ## Prerequisites
 
-- Python 3.12
+- Python 3.13
 
 ## Installation
 

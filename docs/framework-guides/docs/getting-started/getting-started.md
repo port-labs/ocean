@@ -10,7 +10,7 @@ In this quickstart guide, you'll learn how to **install** the Ocean CLI, **scaff
 
 ## Requirements
 
-Python 3.12
+Python 3.13
 
 ## Installation
 
