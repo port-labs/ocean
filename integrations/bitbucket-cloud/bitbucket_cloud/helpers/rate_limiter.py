@@ -276,29 +276,29 @@ class RollingWindowLimiter(AbstractAsyncContextManager[None]):
     async def can_acquire(self) -> bool:
         """
         Check if a slot can be acquired without actually consuming it.
-        
+
         This method checks whether there is capacity available in the rolling window
         without consuming a slot. It's useful for checking availability before
         attempting to acquire a slot.
-        
+
         Returns:
             bool: True if a slot is available, False if rate limit is exhausted.
         """
         async with self._lock:
             now = time.monotonic()
             cutoff = now - self.window
-            
+
             # Purge expired timestamps
             purged_count = 0
             while self._timestamps and self._timestamps[0] <= cutoff:
                 self._timestamps.popleft()
                 purged_count += 1
-                
+
             if purged_count > 0:
                 self._logger.debug(
                     f"Purged {purged_count} expired timestamps during can_acquire check"
                 )
-            
+
             # Check if there's capacity without consuming a slot
             return len(self._timestamps) < self.limit
 

@@ -36,8 +36,10 @@ class BitbucketClient:
 
         if workspace_token:
             # Check if we have multiple tokens (comma-separated)
-            tokens = [token.strip() for token in workspace_token.split(",") if token.strip()]
-            
+            tokens = [
+                token.strip() for token in workspace_token.split(",") if token.strip()
+            ]
+
             if len(tokens) > 1:
                 # Multiple tokens - use TokenManager
                 self.token_manager = TokenManager(tokens)
@@ -46,7 +48,9 @@ class BitbucketClient:
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                 }
-                logger.info(f"Initialized BitbucketClient with {len(tokens)} tokens for rotation")
+                logger.info(
+                    f"Initialized BitbucketClient with {len(tokens)} tokens for rotation"
+                )
             else:
                 # Single token - traditional behavior
                 single_token = tokens[0] if tokens else workspace_token.strip()
@@ -65,7 +69,9 @@ class BitbucketClient:
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             }
-            logger.info("Initialized BitbucketClient with username/password authentication")
+            logger.info(
+                "Initialized BitbucketClient with username/password authentication"
+            )
         else:
             raise MissingIntegrationCredentialException(
                 "Either workspace token or both username and app password must be provided"
@@ -142,7 +148,7 @@ class BitbucketClient:
                     response = await self._send_api_request(
                         url, params=params, method=method
                     )
-            
+
             if values := response.get(data_key, []):
                 yield values
             url = response.get("next")

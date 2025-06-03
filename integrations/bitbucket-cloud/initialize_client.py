@@ -1,14 +1,22 @@
 from port_ocean.context.ocean import ocean
 from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
+from typing import Optional
 
-client = BitbucketClient.create_from_ocean_config()
+# Use None to indicate client hasn't been created yet
+_client: Optional[BitbucketClient] = None
+
 
 def init_client() -> BitbucketClient:
-    return client
+    """Initialize and return the BitbucketClient instance with lazy loading."""
+    global _client
+    if _client is None:
+        _client = BitbucketClient.create_from_ocean_config()
+    return _client
 
 
 def init_webhook_client() -> BitbucketWebhookClient:
+    """Initialize and return the BitbucketWebhookClient instance."""
     return BitbucketWebhookClient(
         secret=ocean.integration_config["webhook_secret"],
         workspace=ocean.integration_config["bitbucket_workspace"],
