@@ -28,6 +28,7 @@ ENV LIBRDKAFKA_VERSION=2.8.2 \
 
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
 
+
 RUN apt-get update \
     && apt-get install -y \
         ca-certificates \
