@@ -1,17 +1,94 @@
-from pydantic import Field
+from pydantic import Field, BaseModel
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
+    Selector,
 )
+from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.handlers.entity_processor.jq_entity_processor import JQEntityProcessor
+from port_ocean.core.handlers.webhook.processor_manager import LiveEventsProcessorManager
+from github.entity_processors.file_entity_processor import FileEntityProcessor
+from port_ocean.core.integrations.mixins.handler import HandlerMixin
+from typing import Any, Literal, Type
+from loguru import logger
+from port_ocean.utils.signal import signal_handler
+
+
+
+FILE_PROPERTY_PREFIX = "file://"
+
+
+class GithubFilePattern(BaseModel):
+    path: str = Field(
+        default="",
+        alias="path",
+        description="Specify the path to match files from",
+    )
+    repos: list[str] = Field(
+        default_factory=list,
+        alias="repos",
+        description="Specify the repositories to fetch files from",
+    )
+    skip_parsing: bool = Field(
+        default=False,
+        alias="skipParsing",
+        description="Skip parsing the files and just return the raw file content",
+    )
+    filenames: list[str] = Field(
+        default_factory=list,
+        alias="filenames",
+        description="Specify list of filenames to search and return",
+    )
+
+
+class GithubFileSelector(Selector):
+    files: GithubFilePattern
+
+
+class GithubFileResourceConfig(ResourceConfig):
+    kind: Literal["file"]
+    selector: GithubFileSelector
 
 
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
-    resources: list[ResourceConfig]
+    resources: list[ResourceConfig | GithubFileResourceConfig]
+
+
+class GitManipulationHandler(JQEntityProcessor):
+    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+        entity_processor: Type[JQEntityProcessor]
+        if pattern.startswith(FILE_PROPERTY_PREFIX):
+            entity_processor = FileEntityProcessor
+        else:
+            entity_processor = JQEntityProcessor
+        return await entity_processor(self.context)._search(data, pattern)
+
+
+class GithubHandlerMixin(HandlerMixin):
+    logger.info("Initializing GithubHandlerMixin")
+    EntityProcessorClass = GitManipulationHandler
+
+
+class GithubLiveEventsProcessorManager(LiveEventsProcessorManager, GithubHandlerMixin):
+    pass
 
 
 class GithubIntegration(BaseIntegration):
+    EntityProcessorClass = GitManipulationHandler
+
+    def __init__(self, context: PortOceanContext):
+        super().__init__(context)
+
+        # Replace the Ocean's webhook manager with our custom one
+        self.context.app.webhook_manager = GithubLiveEventsProcessorManager(
+            self.context.app.integration_router,
+            signal_handler,
+            self.context.config.max_event_processing_seconds,
+            self.context.config.max_wait_seconds_before_shutdown,
+        )
+
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GithubPortAppConfig
