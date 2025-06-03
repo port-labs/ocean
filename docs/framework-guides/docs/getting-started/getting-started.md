@@ -26,7 +26,7 @@ $ pip install "port-ocean[cli]"
 
 To create a new ocean integration, there are two options you can choose from depending on the way you want the integration to be maintained.
 
-#### Create a new integration using the Ocean CLI
+#### Create a private integration using the Ocean CLI
 
 The Ocean CLI is a command-line tool that helps you create, manage, and maintain your integrations. It provides a set of commands to scaffold, build, and deploy your integration. This method is recommended if you want to build an integration that can be easily maintained outside of the Ocean repository and usually privates.
 
