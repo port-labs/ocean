@@ -197,7 +197,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     repositories = (
         selector.files.repos
-        if hasattr(selector.files, "repos") and selector.files.repos
+        if hasattr(selector.files, "repos")
         else None
     )
 
