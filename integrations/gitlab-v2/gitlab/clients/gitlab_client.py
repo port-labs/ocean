@@ -19,7 +19,7 @@ PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 class GitLabClient:
     DEFAULT_MIN_ACCESS_LEVEL = 30
-    DEFAULT_PARAMS: dict[str, Union[int, bool]] = {
+    DEFAULT_PARAMS: dict[str, Any] = {
         "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,  # Minimum access level to fetch groups
         "all_available": True,  # Fetch all groups accessible to the user
     }
@@ -203,16 +203,29 @@ class GitLabClient:
                     yield batch
         else:
             logger.info("Searching across groups")
-            async for groups_batch in self.get_groups(
-                top_level_only=True, use_default_params=False
-            ):
-                logger.debug(f"Processing batch of {len(groups_batch)} groups")
-                for group in groups_batch:
-                    group_id = str(group["id"])
-                    async for batch in self._search_files_in_group(
-                        group_id, scope, search_query, skip_parsing
+            all_group_ids = set()
+            top_level_groups = []
+
+            async for group_batch in self.get_groups():
+                group_ids_in_batch = {group["id"] for group in group_batch}
+                for group in group_batch:
+                    parent_id = group.get("parent_id")
+                    if (
+                        parent_id not in all_group_ids
+                        and parent_id not in group_ids_in_batch
                     ):
-                        yield batch
+                        top_level_groups.append(group)
+                    all_group_ids.add(group["id"])
+
+            logger.info(f"Found {len(top_level_groups)} top-level searchable groups")
+
+            for group in top_level_groups:
+                group_id = str(group["id"])
+                logger.debug(f"Processing group: {group_id}")
+                async for batch in self._search_files_in_group(
+                    group_id, scope, search_query, skip_parsing
+                ):
+                    yield batch
 
     async def get_repository_tree(
         self,
