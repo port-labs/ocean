@@ -116,7 +116,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     ) -> ProcessExecutionMode:
         # Check if the system is macos, if so, set the process execution mode to single process since multiprocessing behavior is different on macos and some asyncio error pop up
         is_macos = platform.system() == "Darwin"
-        print(f"is_macos: {is_macos}")
         if is_macos:
             return ProcessExecutionMode.single_process
         return process_execution_mode
