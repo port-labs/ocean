@@ -71,14 +71,14 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                     f"Webhook event received for disabled resource types that can be handled by: {processors_that_can_handle}",
                     processors_available=processors_that_can_handle,
                     webhook_path=path,
-                    message="Processors are available to handle this webhook event, but the corresponding resource types are not configured in the integration."
+                    message="Processors are available to handle this webhook event, but the corresponding resource types are not configured in the integration.",
                 )
                 return []
             else:
                 logger.warning(
                     "Unknown webhook event type received",
                     webhook_path=path,
-                    message="No processors registered to handle this webhook event type."
+                    message="No processors registered to handle this webhook event type.",
                 )
                 raise ValueError("No matching processors found")
 
