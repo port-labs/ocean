@@ -142,12 +142,12 @@ class TestRestFolderExporter:
         rest_client: GithubRestClient,
         options: ListFolderOptions,
         expected_endpoint: str,
-        expected_params: dict,
-        expected_folders: list,
+        expected_params: dict[str, Any],
+        expected_folders: list[dict[str, Any]],
     ) -> None:
         async def mock_paginated_request(
             *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        ) -> AsyncGenerator[dict[str, Any], None]:
             yield {"tree": TEST_FULL_CONTENTS}
 
         with patch.object(
@@ -259,9 +259,9 @@ class TestRestFolderExporter:
     )
     def test_filter_folder_contents(
         self,
-        contents: list[dict],
+        contents: list[dict[str, Any]],
         path: str,
-        expected_filtered_folders: list[dict],
+        expected_filtered_folders: list[dict[str, Any]],
     ) -> None:
         assert (
             RestFolderExporter._filter_folder_contents(contents, path)

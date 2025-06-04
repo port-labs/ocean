@@ -1,3 +1,4 @@
+from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -97,7 +98,7 @@ class TestFolderWebhookProcessor:
     async def test_validate_payload(
         self,
         folder_webhook_processor: FolderWebhookProcessor,
-        payload: dict,
+        payload: dict[str, Any],
         expected: bool,
     ) -> None:
         result = await folder_webhook_processor.validate_payload(payload)
@@ -147,11 +148,10 @@ class TestFolderWebhookProcessor:
             },
         ]
 
-        async def async_generator():
+        async def async_generator() -> AsyncGenerator[list[dict[str, Any]], None]:
             yield [expected_folders_from_exporter[0], expected_folders_from_exporter[1]]
             yield [expected_folders_from_exporter[2]]
 
-        # Mock the RestFolderExporter and its get_paginated_resources method
         mock_exporter = MagicMock()
         mock_exporter.get_paginated_resources.return_value = async_generator()
 
@@ -167,7 +167,6 @@ class TestFolderWebhookProcessor:
         assert result.updated_raw_results == expected_folders_from_exporter
         assert result.deleted_raw_results == []
 
-        # Verify exporter was called with correct options for each folder selector
         mock_exporter.get_paginated_resources.assert_any_call(
             ListFolderOptions(
                 repo={"name": repo_name}, path="folder1/*", branch=branch_name

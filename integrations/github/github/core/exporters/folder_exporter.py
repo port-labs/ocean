@@ -40,8 +40,8 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
                 yield []
 
     def _format_for_port(
-        self, folders: list[dict], repo: dict | None = None
-    ) -> list[dict]:
+        self, folders: list[dict[str, Any]], repo: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         formatted_folders = [
             {
                 "folder": {**folder, "name": self._get_folder_name(folder["path"])},
@@ -65,7 +65,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         return False
 
     @staticmethod
-    def _filter_folder_contents(folders: list[dict], path: str) -> list[dict]:
+    def _filter_folder_contents(
+        folders: list[dict[str, Any]], path: str
+    ) -> list[dict[str, Any]]:
         "Get only trees (folders), and in complex paths, only file paths that match a glob pattern"
         just_trees = [item for item in folders if item.get("type") == "tree"]
         if path == "" or path == "*":

@@ -62,5 +62,5 @@ class TestTranslateGlobPattern:
             ("file[a-c]", "file[a\\-c]"),  # Range - is escaped by re.escape
         ],
     )
-    def test_translate_glob_pattern(self, pattern, expected):
+    def test_translate_glob_pattern(self, pattern: str, expected: str) -> None:
         assert translate_glob_pattern(pattern) == expected

@@ -1,4 +1,4 @@
-from typing import Required, TypedDict
+from typing import Any, Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -19,6 +19,6 @@ class SingleFolderOptions(TypedDict):
 
 
 class ListFolderOptions(TypedDict):
-    repo: Required[dict]
+    repo: Required[dict[str, Any]]
     path: Required[str]
     branch: Required[str]

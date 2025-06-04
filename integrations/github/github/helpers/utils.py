@@ -12,7 +12,7 @@ class ObjectKind(StrEnum):
     FOLDER = "folder"
 
 
-def translate_glob_pattern(pattern) -> str:
+def translate_glob_pattern(pattern: str) -> str:
     """
     Translates a glob-style pattern into a regular expression pattern.
     Mimics glob.translate from Python 3.13 for older versions.
