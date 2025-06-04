@@ -1,92 +1,269 @@
 from typing import Any, AsyncGenerator
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-import httpx
+from unittest.mock import patch
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
 )
-from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 from github.core.options import SingleFolderOptions, ListFolderOptions
 
-
 TEST_FILE = {
-    "name": "README.md",
     "path": "README.md",
-    "type": "file",
+    "type": "blob",
     "size": 123,
     "url": "https://api.github.com/repos/test-org/test-repo/contents/README.md",
 }
 
 TEST_DIR_1 = {
-    "name": "src",
     "path": "src",
-    "type": "dir",
+    "type": "tree",
     "size": 0,
     "url": "https://api.github.com/repos/test-org/test-repo/contents/src",
 }
 
 TEST_DIR_2 = {
-    "name": "docs",
     "path": "docs",
-    "type": "dir",
+    "type": "tree",
     "size": 0,
     "url": "https://api.github.com/repos/test-org/test-repo/contents/docs",
 }
 
-TEST_FOLDERS = [TEST_DIR_1, TEST_DIR_2]
-TEST_FULL_CONTENTS = [TEST_DIR_1, TEST_FILE, TEST_DIR_2]
+TEST_FULL_CONTENTS = [
+    TEST_DIR_1,
+    TEST_FILE,
+    TEST_DIR_2,
+    {
+        "path": "src/components",
+        "type": "tree",
+        "size": 0,
+        "url": "https://api.github.com/repos/test-org/test-repo/contents/src/components",
+    },
+    {
+        "path": "src/hooks",
+        "type": "tree",
+        "size": 0,
+        "url": "https://api.github.com/repos/test-org/test-repo/contents/src/hooks",
+    },
+]
+
+TEST_FOLDERS_ROOT = [
+    {
+        "folder": {
+            "path": "src",
+            "name": "src",
+            "type": "tree",
+            "size": 0,
+            "url": "https://api.github.com/repos/test-org/test-repo/contents/src",
+        },
+        "repo": {"name": "test-repo", "default_branch": "main"},
+    },
+    {
+        "folder": {
+            "path": "docs",
+            "name": "docs",
+            "type": "tree",
+            "size": 0,
+            "url": "https://api.github.com/repos/test-org/test-repo/contents/docs",
+        },
+        "repo": {"name": "test-repo", "default_branch": "main"},
+    },
+]
+
+TEST_FOLDERS_SRC = [
+    {
+        "folder": {
+            "path": "src/components",
+            "name": "components",
+            "type": "tree",
+            "size": 0,
+            "url": "https://api.github.com/repos/test-org/test-repo/contents/src/components",
+        },
+        "repo": {"name": "test-repo", "default_branch": "main"},
+    },
+    {
+        "folder": {
+            "path": "src/hooks",
+            "name": "hooks",
+            "type": "tree",
+            "size": 0,
+            "url": "https://api.github.com/repos/test-org/test-repo/contents/src/hooks",
+        },
+        "repo": {"name": "test-repo", "default_branch": "main"},
+    },
+]
+
+TEST_REPO_INFO = {"name": "test-repo", "default_branch": "main"}
 
 
-@pytest.mark.asyncio
 class TestRestFolderExporter:
+    @pytest.mark.asyncio
     async def test_get_resource(self, rest_client: GithubRestClient) -> None:
-        # Create a mock response
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.status_code = 200
-        mock_response.json.return_value = TEST_FILE
-
         exporter = RestFolderExporter(rest_client)
+        item = await exporter.get_resource(
+            SingleFolderOptions(repo="test-repo", path="README.md")
+        )
+        assert item == {}
 
-        with patch.object(
-            rest_client, "send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.return_value = mock_response.json()
-            item = await exporter.get_resource(
-                SingleFolderOptions(repo="test-repo", path="README.md")
-            )
-
-            assert item == TEST_FILE
-
-            mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/contents/README.md"
-            )
-
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "options, expected_endpoint, expected_params, expected_folders",
+        [
+            (
+                ListFolderOptions(repo=TEST_REPO_INFO, path="", branch="main"),
+                "{base_url}/repos/{organization}/test-repo/git/trees/main",
+                {},
+                TEST_FOLDERS_ROOT + TEST_FOLDERS_SRC,
+            ),
+            (
+                ListFolderOptions(repo=TEST_REPO_INFO, path="src", branch="main"),
+                "{base_url}/repos/{organization}/test-repo/git/trees/main",
+                {},
+                [TEST_FOLDERS_ROOT[0]],
+            ),
+            (
+                ListFolderOptions(repo=TEST_REPO_INFO, path="src/**", branch="main"),
+                "{base_url}/repos/{organization}/test-repo/git/trees/main",
+                {"recursive": "true"},
+                TEST_FOLDERS_SRC,
+            ),
+            (
+                ListFolderOptions(
+                    repo=TEST_REPO_INFO, path="src/components", branch="main"
+                ),
+                "{base_url}/repos/{organization}/test-repo/git/trees/main",
+                {"recursive": "true"},
+                [TEST_FOLDERS_SRC[0]],  # Only src/components
+            ),
+        ],
+    )
     async def test_get_paginated_resources(
-        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+        self,
+        rest_client: GithubRestClient,
+        options: ListFolderOptions,
+        expected_endpoint: str,
+        expected_params: dict,
+        expected_folders: list,
     ) -> None:
-        # Create an async mock to return the test folder contents (includes files and dirs)
         async def mock_paginated_request(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield TEST_FULL_CONTENTS
+            yield {"tree": TEST_FULL_CONTENTS}
 
         with patch.object(
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
             async with event_context("test_event"):
-                options = ListFolderOptions(repo="test-repo", path="")
                 exporter = RestFolderExporter(rest_client)
-
                 folders: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources(options)
                 ]
 
                 assert len(folders) == 1
-                assert len(folders[0]) == 2
-                assert folders[0] == TEST_FOLDERS
+                assert folders[0] == expected_folders
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/contents/"
+                    expected_endpoint.format(
+                        base_url=rest_client.base_url,
+                        organization=rest_client.organization,
+                    ),
+                    params=expected_params,
                 )
+
+    @pytest.mark.parametrize(
+        "folder_path, expected_name",
+        [
+            ("src", "src"),
+            ("src/components", "components"),
+            ("root/sub/folder", "folder"),
+            ("file.txt", "file.txt"),
+            ("", ""),
+            ("/", ""),
+        ],
+    )
+    def test_get_folder_name(self, folder_path: str, expected_name: str) -> None:
+        assert RestFolderExporter._get_folder_name(folder_path) == expected_name
+
+    @pytest.mark.parametrize(
+        "path, expected_recursive",
+        [
+            ("", False),
+            ("*", False),
+            ("src", False),
+            ("src/components", True),
+            ("src/**", True),
+        ],
+    )
+    def test_needs_recursive_search(self, path: str, expected_recursive: bool) -> None:
+        assert RestFolderExporter._needs_recursive_search(path) == expected_recursive
+
+    @pytest.mark.parametrize(
+        "contents, path, expected_filtered_folders",
+        [
+            (
+                [TEST_DIR_1, TEST_FILE, TEST_DIR_2],
+                "",
+                [TEST_DIR_1, TEST_DIR_2],
+            ),
+            (
+                [TEST_DIR_1, TEST_FILE, TEST_DIR_2],
+                "*",
+                [TEST_DIR_1, TEST_DIR_2],
+            ),
+            (
+                TEST_FULL_CONTENTS,
+                "src",
+                [TEST_DIR_1],  # Only src
+            ),
+            (
+                TEST_FULL_CONTENTS,
+                "src/**",
+                [
+                    {
+                        "path": "src/components",
+                        "type": "tree",
+                        "size": 0,
+                        "url": "https://api.github.com/repos/test-org/test-repo/contents/src/components",
+                    },
+                    {
+                        "path": "src/hooks",
+                        "type": "tree",
+                        "size": 0,
+                        "url": "https://api.github.com/repos/test-org/test-repo/contents/src/hooks",
+                    },
+                ],
+            ),
+            (
+                TEST_FULL_CONTENTS,
+                "src/components",
+                [
+                    {
+                        "path": "src/components",
+                        "type": "tree",
+                        "size": 0,
+                        "url": "https://api.github.com/repos/test-org/test-repo/contents/src/components",
+                    }
+                ],
+            ),
+            (
+                TEST_FULL_CONTENTS,
+                "nonexistent",
+                [],
+            ),
+            (
+                [],
+                "",
+                [],
+            ),
+        ],
+    )
+    def test_filter_folder_contents(
+        self,
+        contents: list[dict],
+        path: str,
+        expected_filtered_folders: list[dict],
+    ) -> None:
+        assert (
+            RestFolderExporter._filter_folder_contents(contents, path)
+            == expected_filtered_folders
+        )

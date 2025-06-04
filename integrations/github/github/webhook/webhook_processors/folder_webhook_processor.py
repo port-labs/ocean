@@ -23,6 +23,9 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.FOLDER]
 
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        return "ref" in payload and "repository" in payload
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
