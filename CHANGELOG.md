@@ -7,6 +7,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.24.2 (2025-06-05)
+
+### Improvements
+- Prevented unhandled exception when webhook event is received for resource types not present in mapping but can be handled by processors.
+
 ## 0.24.2 (2025-06-04)
 
 ### Improvements

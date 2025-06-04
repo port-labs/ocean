@@ -53,10 +53,12 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         """Find and extract the matching processor for an event"""
 
         created_processors: list[tuple[ResourceConfig, AbstractWebhookProcessor]] = []
+        processors_that_can_handle = []
 
         for processor_class in self._processors_classes[path]:
             processor = processor_class(webhook_event.clone())
             if await processor.should_process_event(webhook_event):
+                processors_that_can_handle.append(processor.__class__.__name__)
                 kinds = await processor.get_matching_kinds(webhook_event)
                 for kind in kinds:
                     for resource in event.port_app_config.resources:
@@ -64,7 +66,21 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                             created_processors.append((resource, processor))
 
         if not created_processors:
-            raise ValueError("No matching processors found")
+            if processors_that_can_handle:
+                logger.info(
+                    f"Webhook event received for disabled resource types that can be handled by: {processors_that_can_handle}",
+                    processors_available=processors_that_can_handle,
+                    webhook_path=path,
+                    message="Processors are available to handle this webhook event, but the corresponding resource types are not configured in the integration."
+                )
+                return []
+            else:
+                logger.warning(
+                    "Unknown webhook event type received",
+                    webhook_path=path,
+                    message="No processors registered to handle this webhook event type."
+                )
+                raise ValueError("No matching processors found")
 
         logger.info(
             "Found matching processors for webhook event",
