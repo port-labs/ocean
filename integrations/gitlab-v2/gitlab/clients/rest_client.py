@@ -28,12 +28,18 @@ class RestClient(HTTPBaseClient):
         encoded_project_path = quote(project_path, safe="")
         path = f"projects/{encoded_project_path}/{resource_type}"
 
-        async for batch in self._make_paginated_request(path, params=params):
-            if batch:
-                logger.info(
-                    f"Received batch of {len(batch)} {resource_type} for project {project_path}"
-                )
-                yield batch
+        try:
+            async for batch in self._make_paginated_request(path, params=params):
+                if batch:
+                    logger.info(
+                        f"Received batch of {len(batch)} {resource_type} for project {project_path}"
+                    )
+                    yield batch
+        except Exception as e:
+            logger.warning(
+                f"Failed to fetch {resource_type} for project {project_path}: {str(e)}"
+            )
+            yield []
 
     async def get_paginated_group_resource(
         self,
@@ -66,8 +72,8 @@ class RestClient(HTTPBaseClient):
         params = {"ref": ref}
 
         response = await self.send_api_request("GET", path, params=params)
-
-        response["content"] = base64.b64decode(response["content"]).decode("utf-8")
+        if response:
+            response["content"] = base64.b64decode(response["content"]).decode("utf-8")
         return response
 
     async def get_file_content(
@@ -94,16 +100,22 @@ class RestClient(HTTPBaseClient):
         params_dict: dict[str, Any] = params or {}
         if "per_page" not in params_dict:
             params_dict["per_page"] = page_size
+
         while True:
             request_params = {**params_dict, "page": page}
             logger.debug(f"Fetching page {page} from {path}")
+
             response = await self.send_api_request("GET", path, params=request_params)
             # HTTP API returns a list directly, or empty dict for 404
             batch: list[dict[str, Any]] = response if isinstance(response, list) else []
+
             if not batch:
                 break
+
             yield batch
+
             if len(batch) < page_size:
                 logger.debug(f"Last page reached for {path}, no more data.")
                 break
+
             page += 1
