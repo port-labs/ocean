@@ -1,15 +1,23 @@
 ```text
-└── my_new_integration
-    ├── tests
-    │   └── __init__.py
+
+└── my-integration/
     ├── pyproject.toml
     ├── poetry.toml
-    ├── main.py
-    ├── debug.py
-    ├── config.yaml
-    ├── changelog
+    ├── poetry.lock
     ├── README.md
+    ├── CONTRIBUTING.md
     ├── Makefile
-    ├── Dockerfile
-    └── CHANGELOG.md
+    ├── main.py
+    ├── .env.example
+    ├── debug.py
+    ├── CHANGELOG.md
+    ├── changelog/
+    ├── tests/
+    │   ├── __init__.py
+    │   └── test_sample.py
+    └── .port/
+        ├── spec.yaml
+        └── resources/
+            ├── blueprints.json
+            └── port-app-config.yaml
 ```

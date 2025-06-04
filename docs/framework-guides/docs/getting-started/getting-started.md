@@ -132,7 +132,7 @@ The Ocean framework provides several core components that you'll work with:
 1. **Event Listeners**: Handle different types of events:
    - `POLLING`: Periodically calls the `on_resync` method
    - `ONCE`: Runs the resync once and terminates
-   - `KAFKA`: Listens for events from a Kafka topic
+   - `KAFKA`: Listens for events from a Kafka topic (Deprecated, no longer supported)
    - `WEBHOOKS`: Handles HTTP webhook callbacks
 
 2. **Resource Mapping**: Defines how raw data from the external system is transformed into Port entities. Mappings are defined in the `port-app-config.yaml` file using JQ expressions.
@@ -148,26 +148,27 @@ The Ocean framework provides several core components that you'll work with:
 After scaffolding a new integration, you'll have the following project structure:
 
 ```
-my-integration/
-├── Dockerfile
-├── pyproject.toml
-├── poetry.toml
-├── poetry.lock
-├── README.md
-├── CONTRIBUTING.md
-├── Makefile
-├── main.py
-├── debug.py
-├── CHANGELOG.md
-├── changelog/
-├── tests/
-│   ├── __init__.py
-│   └── test_sample.py
-└── .port/
-    ├── spec.yaml
-    └── resources/
-        ├── blueprints.json
-        └── port-app-config.yaml
+└── my-integration/
+    ├── Dockerfile
+    ├── pyproject.toml
+    ├── poetry.toml
+    ├── poetry.lock
+    ├── README.md
+    ├── CONTRIBUTING.md
+    ├── Makefile
+    ├── main.py
+    ├── .env.example
+    ├── debug.py
+    ├── CHANGELOG.md
+    ├── changelog/
+    ├── tests/
+    │   ├── __init__.py
+    │   └── test_sample.py
+    └── .port/
+        ├── spec.yaml
+        └── resources/
+            ├── blueprints.json
+            └── port-app-config.yaml
 ```
 
 Each component plays a specific role:
@@ -177,6 +178,7 @@ Each component plays a specific role:
 - `README.md`: Project documentation
 - `CONTRIBUTING.md`: Guidelines for contributing to the project
 - `Makefile`: Common commands and automation
+- `.env.example`: Example environment variables
 - `main.py`: Main integration logic
 - `debug.py`: Debugging utilities
 - `CHANGELOG.md`: Version history and changes
