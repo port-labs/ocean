@@ -1,5 +1,5 @@
 from loguru import logger
-from github.webhook.events import DEPENDABOT_ALERT_EVENTS, DEPENDABOT_ACTION_TO_STATE
+from github.webhook.events import DEPENDABOT_ACTION_TO_STATE
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig

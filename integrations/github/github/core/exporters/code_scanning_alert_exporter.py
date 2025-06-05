@@ -1,5 +1,5 @@
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import (
@@ -32,7 +32,7 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all code scanning alerts in the repository with pagination."""
 
-        params = dict(options)
+        params: Dict[str, Any] = dict(options)
         repo_name = params.pop("repo_name")
 
         params["state"] = ",".join(params["state"])
@@ -47,4 +47,3 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
             )
             batch_data = [{"__repository": repo_name, **alert} for alert in alerts]
             yield batch_data
-

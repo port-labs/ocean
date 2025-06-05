@@ -2,15 +2,13 @@ from typing import cast
 from loguru import logger
 from github.webhook.events import (
     CODE_SCANNING_ALERT_ACTION_TO_STATE,
-    CODE_SCANNING_ALERT_EVENTS,
 )
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
-from github.webhook.webhook_processors.github_abstract_webhook_processor import (
-    _GithubAbstractWebhookProcessor,
-)
 from integration import GithubCodeScanningAlertConfig
-from github.webhook.webhook_processors.base_repository_webhook_processor import BaseRepositoryWebhookProcessor
+from github.webhook.webhook_processors.base_repository_webhook_processor import (
+    BaseRepositoryWebhookProcessor,
+)
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -24,9 +22,8 @@ from github.core.options import SingleCodeScanningAlertOptions
 
 
 class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
-    async def validate_payload(self, payload: EventPayload) -> bool:
+    async def _validate_payload(self, payload: EventPayload) -> bool:
         return "alert" in payload and "number" in payload["alert"]
-
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         return event.headers.get("x-github-event") == "code_scanning_alert"

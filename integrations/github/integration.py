@@ -8,6 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 
+
 class GithubDependabotAlertSelector(Selector):
     state: List[str] = Field(
         default=["open"],
@@ -32,11 +33,11 @@ class GithubCodeScanningAlertConfig(ResourceConfig):
     kind: Literal["code-scanning-alerts"]
 
 
-
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
-    resources: list[GithubDependabotAlertConfig | GithubCodeScanningAlertConfig | ResourceConfig]
-
+    resources: list[
+        GithubDependabotAlertConfig | GithubCodeScanningAlertConfig | ResourceConfig
+    ]
 
 
 class GithubIntegration(BaseIntegration):
