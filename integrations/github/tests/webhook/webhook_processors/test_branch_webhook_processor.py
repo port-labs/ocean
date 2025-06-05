@@ -155,9 +155,7 @@ class TestBranchWebhookProcessor:
             assert result.updated_raw_results == [branch_data]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [
-                {"name": branch_name, "__repository": "test-repo"}
-            ]
+            assert result.deleted_raw_results == [{"name": branch_name}]
 
     @pytest.mark.parametrize(
         "payload,expected",

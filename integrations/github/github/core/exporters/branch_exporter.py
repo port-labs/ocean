@@ -1,10 +1,10 @@
+from typing import cast
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListBranchOptions, SingleBranchOptions
 from github.clients.http.rest_client import GithubRestClient
-from github.helpers.utils import filter_options_none_values
-from github.core.exporters.utils import enrich_with_repository
+from github.helpers.utils import enrich_with_repository
 
 
 class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
@@ -26,8 +26,8 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all branches in the repository with pagination."""
 
-        params = filter_options_none_values(dict(options))
-        repo_name = params.pop("repo_name")
+        params = dict(options)
+        repo_name = cast(str, params.pop("repo_name"))
 
         async for branches in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/branches",

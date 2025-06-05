@@ -16,13 +16,14 @@ from github.core.exporters.tag_exporter import RestTagExporter
 
 class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
     _event_type: str | None = None
+    _allowed_tag_events = ["create", "delete"]
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
         return "ref" in payload
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.headers.get("x-github-event")
-        if event_type not in ["create", "delete"]:
+        if event_type not in self._allowed_tag_events:
             return False
 
         self._event_type = event_type

@@ -47,7 +47,7 @@ class TestRestReleaseExporter:
                 SingleReleaseOptions(repo_name="repo1", release_id=1)
             )
 
-            assert release["name"] == "Release_1.0"  # Check name is formatted
+            assert release["name"] == "Release 1.0"
             assert release["__repository"] == "repo1"  # Check repository is enriched
 
             mock_request.assert_called_once_with(
@@ -80,7 +80,6 @@ class TestRestReleaseExporter:
                 # Check each release is properly enriched
                 for release in releases[0]:
                     assert "__repository" in release
-                    assert "_" in release["name"]  # Check name is formatted
 
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/releases",

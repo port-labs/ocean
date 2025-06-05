@@ -16,13 +16,14 @@ from github.core.exporters.branch_exporter import RestBranchExporter
 
 class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
     _event_type: str | None = None
+    _allowed_branch_events = ["create", "delete", "push"]
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
         return "ref" in payload
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.headers.get("x-github-event")
-        if event_type not in ["create", "delete", "push"]:
+        if event_type not in self._allowed_branch_events:
             return False
 
         self._event_type = event_type
@@ -47,7 +48,7 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         if self._event_type == "delete":
-            data_to_delete = {"name": branch_name, "__repository": repo_name}
+            data_to_delete = {"name": branch_name}
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[data_to_delete]
             )
