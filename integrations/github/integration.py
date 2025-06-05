@@ -10,7 +10,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 
 
 class GithubIssueSelector(Selector):
-    state: str = Field(
+    state: Literal["open", "closed", "all"] = Field(
         default="open",
         description="Filter by issue state (open, closed, all)",
     )

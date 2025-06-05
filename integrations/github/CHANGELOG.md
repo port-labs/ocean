@@ -6,25 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.1.4-dev (2025-05-28)
+
+## 0.1.7-dev (2025-06-05)
 
 
 ### Improvements
 
 - Added support for Issue resources with state-based filtering (open, closed, all)
 - Implemented issue webhook processor for real-time updates
-
-
-## 0.1.2-dev (2025-05-30)
-
-
-### Bug Fixes
-
-- Fix timezone inconsistency issue while checking for expired Github App token (PORT-14913)
-
-### Improvements
-
-- Removed `Optional` from `AbstractGithubExporter` options to enforce stricter type adherence for concrete exporters.
 
 
 ## 0.1.6-dev (2025-06-04)

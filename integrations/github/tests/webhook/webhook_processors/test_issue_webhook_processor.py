@@ -1,3 +1,4 @@
+from typing import Literal
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -118,7 +119,7 @@ class TestIssueWebhookProcessor:
         self,
         action: str,
         issue_state: str,
-        selector_state: str,
+        selector_state: Literal["open", "closed", "all"],
         expected_update: bool,
         expected_delete: bool,
         resource_config: GithubIssueConfig,
