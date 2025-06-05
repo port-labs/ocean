@@ -118,11 +118,12 @@ class GitLabClient:
                 yield batch
 
     async def _get_pipeline_jobs(
-        self, project_id: dict[str, Any]
+        self, project_id: int | str
     ) -> AsyncIterator[list[dict[str, Any]]]:
         # First get pipelines
         async for pipeline_batch in self.rest.get_paginated_project_resource(
-            str(project_id), "pipelines", params={"per_page": 100}
+            str(project_id),
+            "pipelines",
         ):
             # Then get jobs for each pipeline
             for pipeline in pipeline_batch:
