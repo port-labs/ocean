@@ -7,7 +7,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 from github.core.options import ListFolderOptions, SingleFolderOptions
-from github.helpers.utils import translate_glob_pattern
+from github.helpers.glob import translate_glob
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
@@ -73,7 +73,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         if path == "" or path == "*":
             return just_trees
 
-        path_regex = translate_glob_pattern(path)
+        path_regex = translate_glob(path, recursive=True)
         return [
             item for item in just_trees if bool(re.fullmatch(path_regex, item["path"]))
         ]
