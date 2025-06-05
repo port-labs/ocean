@@ -16,4 +16,4 @@ resources:
             visibility: if .private then "private" else "public" end
             defaultBranch: .default_branch
             url: .html_url
-            language: .language
+            language: if .language then .language else "" end
