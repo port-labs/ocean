@@ -1,3 +1,4 @@
+from typing import Any, Dict
 import pytest
 from unittest.mock import AsyncMock
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -61,54 +62,54 @@ class TestBaseDeploymentWebhookProcessor:
             is result
         )
 
-    # @pytest.mark.parametrize(
-    #     "payload,expected",
-    #     [
-    #         (
-    #             {
-    #                 "deployment": {
-    #                     "id": 123,
-    #                     "environment": "production",
-    #                 }
-    #             },
-    #             True,
-    #         ),
-    #         (
-    #             {
-    #                 "deployment": {
-    #                     "id": None,
-    #                     "environment": None,
-    #                 }
-    #             },
-    #             False,
-    #         ),
-    #         (
-    #             {
-    #                 "deployment": {
-    #                     "id": 123,
-    #                     "environment": None,
-    #                 }
-    #             },
-    #             False,
-    #         ),
-    #         (
-    #             {
-    #                 "deployment": {
-    #                     "id": None,
-    #                     "environment": "production",
-    #                 }
-    #             },
-    #             False,
-    #         ),
-    #         ({"deployment": {}}, False),  # missing required fields
-    #         ({}, False),  # missing deployment
-    #     ],
-    # )
-    # async def test_validate_payload(
-    #     self,
-    #     base_deployment_webhook_processor: MockBaseDeploymentProcessor,
-    #     payload: Dict[str, Any],
-    #     expected: bool,
-    # ) -> None:
-    #     result = await base_deployment_webhook_processor._validate_payload(payload)
-    #     assert result is expected
+    @pytest.mark.parametrize(
+        "payload,expected",
+        [
+            (
+                {
+                    "deployment": {
+                        "id": 123,
+                        "environment": "production",
+                    }
+                },
+                True,
+            ),
+            (
+                {
+                    "deployment": {
+                        "id": None,
+                        "environment": None,
+                    }
+                },
+                False,
+            ),
+            (
+                {
+                    "deployment": {
+                        "id": 123,
+                        "environment": None,
+                    }
+                },
+                False,
+            ),
+            (
+                {
+                    "deployment": {
+                        "id": None,
+                        "environment": "production",
+                    }
+                },
+                False,
+            ),
+            ({"deployment": {}}, False),  # missing required fields
+            ({}, False),  # missing deployment
+        ],
+    )
+    async def test_validate_payload(
+        self,
+        base_deployment_webhook_processor: MockBaseDeploymentProcessor,
+        payload: Dict[str, Any],
+        expected: bool,
+    ) -> None:
+        result = await base_deployment_webhook_processor._validate_payload(payload)
+        assert result is expected
