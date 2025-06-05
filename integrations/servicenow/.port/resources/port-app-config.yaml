@@ -42,10 +42,12 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .number | tostring
+          identifier: .sys_id
           title: .short_description
           blueprint: '"servicenowIncident"'
           properties:
+            number: .number | tostring
+            state: .state
             category: .category
             reopenCount: .reopen_count
             severity: .severity
