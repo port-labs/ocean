@@ -57,7 +57,7 @@ class JiraClient(OAuthClient):
         self.jira_token = jira_token
 
         # If the Jira URL is directing to api.atlassian.com, we use OAuth2 Bearer Auth
-        if self.is_oauth_host():
+        if self.is_oauth_enabled():
             self.jira_api_auth = self._get_bearer()
             self.webhooks_url = f"{self.jira_rest_url}/api/3/webhook"
         else:
@@ -71,9 +71,6 @@ class JiraClient(OAuthClient):
         self.client.auth = self.jira_api_auth
         self.client.timeout = Timeout(30)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-
-    def is_oauth_host(self) -> bool:
-        return "api.atlassian.com" in self.jira_url
 
     def _get_bearer(self) -> BearerAuth:
         try:
@@ -224,7 +221,7 @@ class JiraClient(OAuthClient):
             )
             return
 
-        if self.is_oauth_host():
+        if self.is_oauth_enabled():
             await self._create_events_webhook_oauth(app_host)
         else:
             await self._create_events_webhook(app_host)
