@@ -7,6 +7,7 @@ from github.clients.client_factory import (
     create_github_client,
 )
 from github.clients.utils import integration_config
+from github.core.exporters.folder_exporter import RestFolderExporter
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_processors.repository_webhook_processor import (
@@ -14,9 +15,15 @@ from github.webhook.webhook_processors.repository_webhook_processor import (
 )
 from github.webhook.webhook_client import GithubWebhookClient
 from github.core.exporters.repository_exporter import RestRepositoryExporter
-from github.core.options import ListRepositoryOptions
+from github.core.options import (
+    ListFolderOptions,
+    ListRepositoryOptions,
+    SingleRepositoryOptions,
+)
 from typing import TYPE_CHECKING
 from port_ocean.context.event import event
+
+from integration import GithubFolderResourceConfig
 
 if TYPE_CHECKING:
     from integration import GithubPortAppConfig
@@ -65,6 +72,36 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories
+
+
+@ocean.on_resync(ObjectKind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all folders in specified repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    folder_exporter = RestFolderExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+
+    selector = cast(GithubFolderResourceConfig, event.resource_config).selector
+    print(selector)
+    if not hasattr(selector, "folders"):
+        logger.info("Folders to ingest not passed, returning ..")
+        return
+
+    for folder_config in selector.folders:
+        for repo in folder_config.repos:
+            repo_options = SingleRepositoryOptions(name=repo.name)
+            repository_object = await repo_exporter.get_resource(repo_options)
+
+            base_path = folder_config.path if folder_config.path != "*" else ""
+            folder_options = ListFolderOptions(
+                repo=repository_object, path=base_path, branch=repo.branch
+            )
+            async for folder_batch in folder_exporter.get_paginated_resources(
+                folder_options
+            ):
+                yield folder_batch
 
 
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)

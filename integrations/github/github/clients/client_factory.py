@@ -1,4 +1,4 @@
-from typing import Dict, Type, overload, Literal
+from typing import Dict, Type, overload, Literal, Optional
 
 from port_ocean.context.ocean import ocean
 from github.clients.http.rest_client import GithubRestClient
@@ -14,7 +14,6 @@ from github.clients.auth.personal_access_token_authenticator import (
 )
 from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
 from github.helpers.exceptions import MissingCredentials
-from typing import Optional
 
 
 class GitHubAuthenticatorFactory:
