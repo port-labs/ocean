@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.151 (2025-06-05)
+
+
+### Improvements
+
+- Added incident `state` and `number` properties to the `servicenowIncident` blueprint and updated the identifier to be mapped to the `sys_id`
+
+
 ## 0.1.150 (2025-06-04)
 
 
