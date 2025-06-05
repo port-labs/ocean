@@ -59,7 +59,7 @@ class TokenManager:
 
                 if can_acquire:
                     logger.debug(
-                        f"Rate limit available for token index {self.current_index}"
+                        f"Token {self.current_index} has available rate limit quota"
                     )
                     return current_limiter
                 else:
