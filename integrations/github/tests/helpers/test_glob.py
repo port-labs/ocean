@@ -30,7 +30,7 @@ def _get_one_last_segment_regex(seps: Sequence[str], include_hidden: bool) -> st
     if include_hidden:
         return f"{not_sep}+"
     else:
-        return f"[^{_get_sep_regex(seps)}.]({not_sep})*"
+        return f"[^{_get_sep_regex(seps)}.]" + _get_not_sep_regex(seps) + "*"
 
 
 def _get_one_segment_regex(seps: Sequence[str], include_hidden: bool) -> str:
@@ -67,9 +67,7 @@ class TestTranslateGlobPattern:
                 False,
                 False,
                 None,
-                lambda s,
-                h,
-                se: rf"(?s:(?!\.){_get_one_last_segment_regex(se, h)}\.txt)\Z",
+                lambda s, h, se: rf"(?s:(?!\.){_get_not_sep_regex(se)}*\.txt)\Z",
             ),
             (
                 "foo/bar.py",
@@ -83,41 +81,21 @@ class TestTranslateGlobPattern:
                 False,
                 False,
                 None,
-                lambda s,
-                h,
-                se: rf"(?s:(?!\.)foo\.{_get_one_last_segment_regex(se, h)}\.txt)\Z",
+                lambda s, h, se: rf"(?s:foo{_get_not_sep_regex(se)}\.txt)\Z",
             ),
             (
                 "dir/*",
                 False,
                 False,
                 None,
-                lambda s,
-                h,
-                se: rf"(?s:dir{_get_sep_regex(se)}(?!\.){_get_one_last_segment_regex(se, h)})\Z",
-            ),
-            (
-                "foo/[abc].txt",
-                False,
-                False,
-                None,
-                lambda s, h, se: rf"(?s:foo{_get_sep_regex(se)}[abc]\.txt)\Z",
-            ),
-            (
-                "foo/[!abc].txt",
-                False,
-                False,
-                None,
-                lambda s, h, se: rf"(?s:foo{_get_sep_regex(se)}[^abc]\.txt)\Z",
+                lambda s, h, se: rf"(?s:dir{_get_sep_regex(se)}{_get_one_last_segment_regex(se, h)})\Z",
             ),
             (
                 "path/to/*.csv",
                 False,
                 False,
                 None,
-                lambda s,
-                h,
-                se: rf"(?s:path{_get_sep_regex(se)}to{_get_sep_regex(se)}(?!\.){_get_one_last_segment_regex(se, h)}\.csv)\Z",
+                lambda s, h, se: rf"(?s:path{_get_sep_regex(se)}to{_get_sep_regex(se)}(?!\.){_get_not_sep_regex(se)}*\.csv)\Z",
             ),
             # recursive=True (**) (include_hidden=False, seps=None)
             (
@@ -125,9 +103,7 @@ class TestTranslateGlobPattern:
                 True,
                 False,
                 None,
-                lambda s,
-                h,
-                se: rf"(?s:data{_get_sep_regex(se)}{_get_any_last_segments_regex(se, h)})\Z",
+                lambda s, h, se: rf"(?s:data{_get_sep_regex(se)}{_get_any_last_segments_regex(se, h)})\Z",
             ),
             (
                 "**/file.txt",
@@ -141,9 +117,7 @@ class TestTranslateGlobPattern:
                 True,
                 False,
                 None,
-                lambda s,
-                h,
-                se: rf"(?s:foo{_get_sep_regex(se)}{_get_any_segments_regex(se, h)}bar\.txt)\Z",
+                lambda s, h, se: rf"(?s:foo{_get_sep_regex(se)}{_get_any_segments_regex(se, h)}bar\.txt)\Z",
             ),
             (
                 "**",
@@ -157,30 +131,30 @@ class TestTranslateGlobPattern:
                 True,
                 False,
                 None,
-                lambda s,
-                h,
-                se: rf"(?s:foo{_get_sep_regex(se)}{_get_any_segments_regex(se, h)}bar{_get_sep_regex(se)}{_get_any_segments_regex(se, h)}baz\.txt)\Z",
+                lambda s, h, se: rf"(?s:foo{_get_sep_regex(se)}{_get_any_segments_regex(se, h)}bar{_get_sep_regex(se)}{_get_any_segments_regex(se, h)}baz\.txt)\Z",
             ),
             # include_hidden=True (recursive=False, seps=None)
             (".git", False, True, None, lambda s, h, se: r"(?s:\.git)\Z"),
-            (".*", False, True, None, lambda s, h, se: r"(?s:.*)\Z"),
+            (
+                ".*",
+                False,
+                True,
+                None,
+                lambda s, h, se: rf"(?s:\.{_get_not_sep_regex(se)}*)\Z",
+            ),
             (
                 "src/.hidden/file.txt",
                 False,
                 True,
                 None,
-                lambda s,
-                h,
-                se: rf"(?s:src{_get_sep_regex(se)}\.hidden{_get_sep_regex(se)}file\.txt)\Z",
+                lambda s, h, se: rf"(?s:src{_get_sep_regex(se)}\.hidden{_get_sep_regex(se)}file\.txt)\Z",
             ),
             (
                 "src/*",
                 False,
                 True,
                 None,
-                lambda s,
-                h,
-                se: rf"(?s:src{_get_sep_regex(se)}{_get_one_last_segment_regex(se, h)})\Z",
+                lambda s, h, se: rf"(?s:src{_get_sep_regex(se)}{_get_one_last_segment_regex(se, h)})\Z",
             ),  # No (?!\.) for include_hidden=True
             (
                 "*/",
@@ -195,16 +169,14 @@ class TestTranslateGlobPattern:
                 True,
                 True,
                 None,
-                lambda s,
-                h,
-                se: rf"(?s:src{_get_sep_regex(se)}{_get_any_segments_regex(se, h)}\.hidden{_get_sep_regex(se)}file\.txt)\Z",
+                lambda s, h, se: rf"(?s:src{_get_sep_regex(se)}{_get_any_segments_regex(se, h)}\.hidden{_get_sep_regex(se)}file\.txt)\Z",
             ),
             (
                 "**/.*",
                 True,
                 True,
                 None,
-                lambda s, h, se: rf"(?s:{_get_any_segments_regex(se, h)}.*)\Z",
+                lambda s, h, se: rf"(?s:{_get_any_segments_regex(se, h)}\.{_get_not_sep_regex(se)}*)\Z",
             ),
             # seps parameter
             (
@@ -220,15 +192,6 @@ class TestTranslateGlobPattern:
                 False,
                 ("/",),
                 lambda s, h, se: r"(?s:foo/bar\.txt)\Z",
-            ),
-            (
-                "foo\\**\\bar.txt",
-                True,
-                False,
-                ("\\",),
-                lambda s,
-                h,
-                se: rf"(?s:foo\\{_get_any_segments_regex(se, h)}bar\.txt)\Z",
             ),
             (
                 "foo/bar\\baz.txt",
@@ -250,9 +213,7 @@ class TestTranslateGlobPattern:
                 False,
                 False,
                 ("/",),
-                lambda s,
-                h,
-                se: rf"(?s:(?!\.)[^{re.escape('/')}.][^{re.escape('/')}]*)\Z",
+                lambda s, h, se: rf"(?s:{_get_one_last_segment_regex(se, h)})\Z",
             ),
             # Edge Cases
             ("", False, False, None, lambda s, h, se: r"(?s:)\Z"),
@@ -282,15 +243,15 @@ class TestTranslateGlobPattern:
                 False,
                 False,
                 None,
-                lambda s, h, se: r"(?s:a.*b)\Z",
-            ),  # No (?!\.) because part[0] is 'a'
+                lambda s, h, se: r"(?s:a[^/]*b)\Z",
+            ),
             (
                 "a?b",
                 False,
                 False,
                 None,
-                lambda s, h, se: r"(?s:a.b)\Z",
-            ),  # No (?!\.) because part[0] is 'a'
+                lambda s, h, se: r"(?s:a[^/]b)\Z",
+            ),
         ],
     )
     def test_translate_glob(

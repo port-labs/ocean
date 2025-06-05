@@ -25,11 +25,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
         params = {"recursive": "true"} if self._needs_recursive_search(path) else {}
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
+        url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
 
-        async for contents in self.client.send_paginated_request(
-            endpoint, params=params
-        ):
+        async for contents in self.client.send_paginated_request(url, params=params):
             content_cast = cast(dict[str, Any], contents)
             folders = self._filter_folder_contents(content_cast["tree"], path)
             logger.info(f"fetched {len(folders)} folders from {repo_name}")

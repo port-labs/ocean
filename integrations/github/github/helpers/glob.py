@@ -37,14 +37,6 @@ def _translate(pattern: str, star: str, q_mark: str) -> list[str]:
     return res
 
 
-def translate_glob_pattern(pattern: str) -> str:
-    """
-    Translates a glob-style pattern into a regular expression pattern.
-    Mimics glob.translate from Python 3.13 for older versions.
-    """
-    return "".join(_translate(pattern, ".*", "."))
-
-
 def translate_glob(
     pat: str,
     *,
