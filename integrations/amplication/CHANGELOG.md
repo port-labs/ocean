@@ -1,3 +1,19 @@
+## 0.1.29 (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.1
+
+
+## 0.1.28 (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.0
+
+
 ## 0.1.27 (2025-06-01)
 
 

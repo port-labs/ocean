@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.4-dev (2025-05-30)
+## 0.1.6-dev (2025-06-05)
 
 
 ### Features
@@ -15,6 +15,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Environment resources to track repository environments
 - Added support for Deployment resources with environment tracking
 - Implemented deployment and environment webhook processors for real-time updates
+
+
+## 0.1.5-dev (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.1
+
+
+## 0.1.4-dev (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.0
 
 
 ## 0.1.3-dev (2025-06-01)
