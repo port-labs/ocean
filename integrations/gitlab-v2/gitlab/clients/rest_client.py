@@ -28,18 +28,12 @@ class RestClient(HTTPBaseClient):
         encoded_project_path = quote(project_path, safe="")
         path = f"projects/{encoded_project_path}/{resource_type}"
 
-        try:
-            async for batch in self._make_paginated_request(path, params=params):
-                if batch:
-                    logger.info(
-                        f"Received batch of {len(batch)} {resource_type} for project {project_path}"
-                    )
-                    yield batch
-        except Exception as e:
-            logger.warning(
-                f"Failed to fetch {resource_type} for project {project_path}: {str(e)}"
-            )
-            yield []
+        async for batch in self._make_paginated_request(path, params=params):
+            if batch:
+                logger.info(
+                    f"Received batch of {len(batch)} {resource_type} for project {project_path}"
+                )
+                yield batch
 
     async def get_paginated_group_resource(
         self,
