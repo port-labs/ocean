@@ -24,4 +24,4 @@ class ListIssueOptions(TypedDict):
     """Options for listing issues."""
 
     repo_name: Required[str]
-    state: NotRequired[str]
+    state: Required[str]
