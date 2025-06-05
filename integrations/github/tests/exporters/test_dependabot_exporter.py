@@ -120,7 +120,7 @@ class TestRestDependabotAlertExporter:
             # Verify the repo field was added
             expected_alert = {
                 **TEST_DEPENDABOT_ALERTS[0],
-                "repo": {"name": "test-repo"},
+                "__repository": "test-repo",
             }
             assert alert == expected_alert
 
@@ -155,11 +155,11 @@ class TestRestDependabotAlertExporter:
 
                 # Verify repo field was added to each alert
                 for alert in alerts[0]:
-                    assert alert["repo"] == {"name": "test-repo"}
+                    assert alert["__repository"] == "test-repo"
 
                 # Remove repo field for comparison with original data
                 alerts_without_repo = [
-                    {k: v for k, v in alert.items() if k != "repo"}
+                    {k: v for k, v in alert.items() if k != "__repository"}
                     for alert in alerts[0]
                 ]
                 assert alerts_without_repo == TEST_DEPENDABOT_ALERTS
@@ -194,7 +194,7 @@ class TestRestDependabotAlertExporter:
                 assert len(alerts) == 1
                 assert len(alerts[0]) == 1
                 assert alerts[0][0]["state"] == "open"
-                assert alerts[0][0]["repo"] == {"name": "test-repo"}
+                assert alerts[0][0]["__repository"] == "test-repo"
 
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts",
@@ -216,7 +216,7 @@ class TestRestDependabotAlertExporter:
 
             expected_alert = {
                 **TEST_DEPENDABOT_ALERTS[1],
-                "repo": {"name": "test-repo"},
+                "__repository": "test-repo",
             }
             assert alert == expected_alert
             assert alert["state"] == "dismissed"

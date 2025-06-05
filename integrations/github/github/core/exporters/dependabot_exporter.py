@@ -4,7 +4,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListDependabotAlertOptions, SingleDependabotAlertOptions
 from github.clients.http.rest_client import GithubRestClient
-from github.helpers.utils import filter_options_none_values
 
 
 class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
@@ -22,7 +21,7 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched Dependabot alert with number: {alert_number} for repo: {repo_name}"
         )
 
-        response["repo"] = {"name": repo_name}
+        response["__repository"] = repo_name
         return response
 
     async def get_paginated_resources[
@@ -34,7 +33,6 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
         params["state"] = ",".join(params["state"])
 
         repo_name = params.pop("repo_name")
-        params = filter_options_none_values(params)
 
         async for alerts in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/dependabot/alerts",
@@ -43,5 +41,5 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
             logger.info(
                 f"Fetched batch of {len(alerts)} Dependabot alerts from repository {repo_name}"
             )
-            batch = [{**alert, "repo": {"name": repo_name}} for alert in alerts]
+            batch = [{**alert, "__repository": repo_name} for alert in alerts]
             yield batch

@@ -7,7 +7,6 @@ from github.core.options import (
     SingleCodeScanningAlertOptions,
 )
 from github.clients.http.rest_client import GithubRestClient
-from github.helpers.utils import filter_options_none_values
 
 
 class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
@@ -36,7 +35,6 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name = params.pop("repo_name")
 
         params["state"] = ",".join(params["state"])
-        params = filter_options_none_values(params)
 
         async for alerts in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/code-scanning/alerts",
