@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import cast
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -26,8 +26,8 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
         ExporterOptionsT: ListIssueOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
-        params: Dict[str, Any] = dict(options)
-        repo_name = params.pop("repo_name")
+        params = dict(options)
+        repo_name = cast(str, params.pop("repo_name"))
 
         async for issues in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/issues",
