@@ -39,6 +39,8 @@ jobs:
         env:
           PYTEST_ADDOPTS: --junitxml=junit/test-results-${{ format('integrations/{0}', matrix.folder) }}.xml
         run: |
+          mkdir -p /tmp/ocean/prometheus/metrics
+          export PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
           make test
 
       - name: Publish Test Report
