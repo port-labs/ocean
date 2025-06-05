@@ -83,16 +83,14 @@ class GitLabClient:
             yield enriched_batch
 
     async def get_groups(
-        self, top_level_only: bool = False, use_default_params: bool = True
+        self, owned: bool = False
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user.
 
         Args:
-            top_level_only: If True, only fetch root groups
+            owned: If True, only fetch groups owned by the authenticated user
         """
-        params: dict[str, Union[int, bool]] = {"top_level_only": top_level_only}
-        if use_default_params:
-            params = {**self.DEFAULT_PARAMS, **params}
+        params = {**self.DEFAULT_PARAMS, "owned": owned}
         async for batch in self.rest.get_paginated_resource("groups", params=params):
             yield batch
 

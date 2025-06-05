@@ -101,15 +101,15 @@ class TestGitLabClient:
                 params={
                     "min_access_level": 30,
                     "all_available": True,
-                    "top_level_only": False,
+                    "owned": False,
                 },
             )
 
-    async def test_get_groups_top_level_only(self, client: GitLabClient) -> None:
-        """Test group fetching with top level only"""
+    async def test_get_groups_owned(self, client: GitLabClient) -> None:
+        """Test group fetching with owned parameter"""
         # Arrange
         mock_groups: list[dict[str, Any]] = [
-            {"id": 1, "name": "Test Group", "parent_id": None},
+            {"id": 1, "name": "Test Group"},
         ]
 
         # Use a context manager for patching
@@ -120,18 +120,17 @@ class TestGitLabClient:
         ) as mock_get_resource:
             # Act
             results: list[dict[str, Any]] = []
-            async for batch in client.get_groups(top_level_only=True):
+            async for batch in client.get_groups(owned=True):
                 results.extend(batch)
 
             # Assert
             assert len(results) == 1
             assert results[0]["name"] == "Test Group"
-            assert results[0]["parent_id"] is None
             mock_get_resource.assert_called_once_with(
                 "groups",
                 params={
                     "min_access_level": 30,
-                    "top_level_only": True,
+                    "owned": True,
                     "all_available": True,
                 },
             )
