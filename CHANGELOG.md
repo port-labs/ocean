@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.24.2 (2025-06-04)
+
+### Improvements
+- Set process_execution_mode default to multi_process.
+
+## 0.24.1 (2025-06-03)
+
+### Improvements
+- Using Port bulk upserts api in resyncs in Ocean SaaS
+
+## 0.24.0 (2025-06-03)
+
+### Improvements
+- Experimental - using Port bulk upserts api in resyncs
+
+## 0.23.5 (2025-06-01)
+
+### Bug Fixes
+
+- Update poetry lock.
+- Fix PROMETHEUS_MULTIPROC_DIR in docker file.
+- Skip deleteing entities if subprocess fails.
+- Clean up PROMETHEUS_MULTIPROC_DIR only in multiprocess mode.
+
 ## 0.23.4 (2025-05-29)
 
 ### Improvements
