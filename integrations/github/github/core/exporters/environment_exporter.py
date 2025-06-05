@@ -1,4 +1,4 @@
-from typing import Any, Dict, cast
+from typing import Any, cast
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
@@ -28,8 +28,8 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all environments for a repository with pagination."""
 
-        params: Dict[str, Any] = dict(options) if options else {}
-        repo_name = params.pop("repo_name")
+        params = dict(options)
+        repo_name = cast(str, params.pop("repo_name"))
 
         async for response in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/environments",

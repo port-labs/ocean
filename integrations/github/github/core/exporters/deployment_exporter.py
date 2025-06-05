@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import cast
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
@@ -29,8 +29,8 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all deployments for a repository with pagination."""
 
-        params: Dict[str, Any] = dict(options) if options else {}
-        repo_name = params.pop("repo_name")
+        params = dict(options)
+        repo_name = cast(str, params.pop("repo_name"))
 
         async for deployments in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/deployments",
