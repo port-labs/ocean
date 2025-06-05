@@ -7,6 +7,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.24.2 (2025-06-04)
+
+### Improvements
+- Set process_execution_mode default to multi_process.
+
 ## 0.24.1 (2025-06-03)
 
 ### Improvements
