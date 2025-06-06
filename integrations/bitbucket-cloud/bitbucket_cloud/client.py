@@ -1,73 +1,37 @@
+from http import HTTPStatus
 from typing import Any, AsyncGenerator, Optional
-from httpx import HTTPError, HTTPStatusError
 from loguru import logger
-from port_ocean.utils import http_async_client
-from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
-from port_ocean.context.ocean import ocean
-from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
-from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
-import base64
+from bitbucket_cloud.base_client import BitbucketBaseClient
+from bitbucket_cloud.base_rotating_client import BaseRotatingClient
+from bitbucket_cloud.helpers.exceptions import ClassAttributeNotInitializedError
+from httpx import HTTPStatusError, HTTPError
 
 PULL_REQUEST_STATE = "OPEN"
 PULL_REQUEST_PAGE_SIZE = 50
 PAGE_SIZE = 100
-RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
-    limit=BitbucketRateLimiterConfig.LIMIT, window=BitbucketRateLimiterConfig.WINDOW
-)
 
 
-class BitbucketClient:
+class BitbucketClient(BaseRotatingClient):
     """Client for interacting with Bitbucket Cloud API v2.0."""
 
-    def __init__(
-        self,
-        workspace: str,
-        host: str,
-        username: Optional[str] = None,
-        app_password: Optional[str] = None,
-        workspace_token: Optional[str] = None,
-    ) -> None:
-        self.base_url = host
-        self.workspace = workspace
-        self.client = http_async_client
-
-        if workspace_token:
-            self.headers = {
-                "Authorization": f"Bearer {workspace_token}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            }
-        elif app_password and username:
-            self.encoded_credentials = base64.b64encode(
-                f"{username}:{app_password}".encode()
-            ).decode()
-            self.headers = {
-                "Authorization": f"Basic {self.encoded_credentials}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            }
-        else:
-            raise MissingIntegrationCredentialException(
-                "Either workspace token or both username and app password must be provided"
-            )
-        self.client.headers.update(self.headers)
+    def __init__(self) -> None:
+        super().__init__()
 
     @classmethod
     def create_from_ocean_config(cls) -> "BitbucketClient":
-        return cls(
-            workspace=ocean.integration_config["bitbucket_workspace"],
-            host=ocean.integration_config["bitbucket_host_url"],
-            username=ocean.integration_config.get("bitbucket_username"),
-            app_password=ocean.integration_config.get("bitbucket_app_password"),
-            workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
-        )
+        """
+        Create a BitbucketClient instance from Ocean configuration
+        """
+        instance = cls()
+        base_client = BitbucketBaseClient.create_from_ocean_config()
+        instance.set_base_client(base_client)
+        return instance
 
-    async def _send_api_request(
+    async def _send_paginated_api_request(
         self,
         url: str,
-        params: Optional[dict[str, Any]] = None,
-        json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
         return_full_response: bool = False,
     ) -> Any:
@@ -94,52 +58,99 @@ class BitbucketClient:
         self,
         url: str,
         params: Optional[dict[str, Any]] = None,
-        method: str = "GET",
         data_key: str = "values",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Handle rate-limited paginated requests to Bitbucket API"""
+        """Handle paginated requests to Bitbucket API."""
         if params is None:
             params = {
                 "pagelen": PAGE_SIZE,
             }
         while True:
-            async with RATE_LIMITER:
-                response = await self._send_api_request(
-                    url, params=params, method=method
+            try:
+                if self.base_client is None:
+                    logger.error("Cannot send API request: base_client is None")
+                    raise ClassAttributeNotInitializedError(
+                        "Base client is not initialized"
+                    )
+
+                response = await self.base_client.send_api_request(
+                    method=method,
+                    url=url,
+                    params=params,
                 )
                 if values := response.get(data_key, []):
                     yield values
                 url = response.get("next")
                 if not url:
                     break
+            except (HTTPStatusError, Exception) as e:
+                logger.error(f"Error fetching data from {url}: {str(e)}")
+                raise
 
-    async def _send_paginated_api_request(
+    async def _send_rate_limited_paginated_api_request(
         self,
         url: str,
-        params: Optional[dict[str, Any]] = None,
         method: str = "GET",
+        params: Optional[dict[str, Any]] = None,
         data_key: str = "values",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Handle Bitbucket's pagination for API requests with a flexible data key.
-        Args:
-            url: The API endpoint to request.
-            params: Optional dictionary of query parameters.
-            method: The HTTP method to use.
-            data_key: The key to use when extracting data from the API response.
-        Yields:
-            Lists of dictionaries containing the paginated data.
+        """
+        Handle paginated requests to Bitbucket API with strict rate limiting.
+        This method ensures that a rate limiter is available before making requests.
         """
         if params is None:
             params = {
                 "pagelen": PAGE_SIZE,
             }
         while True:
-            response = await self._send_api_request(url, params=params, method=method)
-            if values := response.get(data_key, []):
-                yield values
-            url = response.get("next")
-            if not url:
-                break
+            try:
+                await self._ensure_client_available()
+
+                if self.current_limiter is None or self.base_client is None:
+                    logger.warning(
+                        "Either rate limiter or base client is not initialized"
+                    )
+                    raise ClassAttributeNotInitializedError(
+                        "Rate limiter or base client is not initialized"
+                    )
+
+                limiter_id = id(self.current_limiter)
+                logger.debug(
+                    f"Using client {self.client_id} with limiter {limiter_id} for rate-limited API call to {url}"
+                )
+                async with self.current_limiter:
+                    response = await self.base_client.send_api_request(
+                        method=method,
+                        url=url,
+                        params=params,
+                    )
+                if values := response.get(data_key, []):
+                    yield values
+                url = response.get("next")
+                if not url:
+                    break
+            except HTTPError as e:
+                if (
+                    hasattr(e, "response")
+                    and e.response
+                    and e.response.status_code == HTTPStatus.TOO_MANY_REQUESTS
+                ):
+                    logger.warning("Rate limit hit, rotating to next client")
+                    await self._rotate_base_client()
+                    continue  # Try next client
+                logger.error(f"Error while making request: {str(e)}")
+                raise  # Re-raise non-rate-limit errors
+            except HTTPStatusError as e:
+                if hasattr(e, "response") and e.response.status_code != 429:
+                    raise
+                logger.warning(
+                    f"Rate limit exceeded for client {self.client_id}, rotating to next client"
+                )
+                await self._rotate_base_client()
+                continue
+            except Exception as e:
+                logger.error(f"Error fetching data from {url}: {str(e)}")
+                raise
 
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all projects in the workspace."""
@@ -156,7 +167,7 @@ class BitbucketClient:
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the workspace."""
-        async for repos in self._fetch_paginated_api_with_rate_limiter(
+        async for repos in self._send_rate_limited_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}", params=params
         ):
             logger.info(
@@ -187,7 +198,7 @@ class BitbucketClient:
             )
             yield contents
 
-    async def get_pull_requests(
+    async def _get_pull_requests(
         self, repo_slug: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get pull requests for a repository."""
@@ -195,7 +206,10 @@ class BitbucketClient:
             "state": PULL_REQUEST_STATE,
             "pagelen": PULL_REQUEST_PAGE_SIZE,
         }
-        async for pull_requests in self._fetch_paginated_api_with_rate_limiter(
+        logger.info(
+            f"Fetching pull requests for repository {repo_slug} in workspace {self.workspace}"
+        )
+        async for pull_requests in self._send_rate_limited_paginated_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
             params=params,
         ):
@@ -203,18 +217,39 @@ class BitbucketClient:
                 f"Fetched batch of {len(pull_requests)} pull requests from repository {repo_slug} in workspace {self.workspace}"
             )
             yield pull_requests
+        logger.info(
+            f"Finished fetching pull requests for repository {repo_slug} in workspace {self.workspace}"
+        )
+
+    async def get_pull_requests(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for repositories in self.get_repositories():
+            tasks = [
+                self._get_pull_requests(repo.get("slug", repo["name"].lower()))
+                for repo in repositories
+            ]
+            logger.info(f"Resyncing pull requests for {len(tasks)} repositories")
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
 
     async def get_pull_request(
         self, repo_slug: str, pull_request_id: str
     ) -> dict[str, Any]:
         """Get a specific pull request by ID."""
-        return await self._send_api_request(
+        if self.base_client is None:
+            logger.error("Base client is not initialized")
+            raise ClassAttributeNotInitializedError("Base client is not initialized")
+
+        return await self.base_client.send_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests/{pull_request_id}"
         )
 
     async def get_repository(self, repo_slug: str) -> dict[str, Any]:
         """Get a specific repository by slug."""
-        return await self._send_api_request(
+        if self.base_client is None:
+            logger.error("Base client is not initialized")
+            raise ClassAttributeNotInitializedError("Base client is not initialized")
+
+        return await self.base_client.send_api_request(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )
 
