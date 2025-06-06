@@ -7,4 +7,8 @@ class GithubClientType(StrEnum):
 
 
 class ObjectKind(StrEnum):
+    """Enum for GitHub resource kinds."""
+
     REPOSITORY = "repository"
+    ENVIRONMENT = "environment"
+    DEPLOYMENT = "deployment"
