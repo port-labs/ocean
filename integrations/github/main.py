@@ -1,10 +1,8 @@
-from typing import Union, cast
+from typing import cast
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.event import event
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_processors.repository_webhook_processor import (
@@ -23,14 +21,13 @@ from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.exporters.file_exporter import RestFileExporter
 from github.core.options import ListRepositoryOptions, FileSearchOptions
 from typing import TYPE_CHECKING
-from integration import (
-    GithubPortAppConfig,
-    GithubFileResourceConfig,
-    GithubFileSelector,
-)
+
 
 if TYPE_CHECKING:
-    from integration import GithubPortAppConfig
+    from integration import (
+        GithubPortAppConfig,
+        GithubFileResourceConfig,
+    )
 
 
 @ocean.on_start()
@@ -82,20 +79,20 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync files based on configuration using the file exporter."""
     logger.info(f"Starting resync for kind: {kind}")
-    
-    config = cast(GithubFileResourceConfig, event.resource_config)
-    
+
     rest_client = create_github_client()
     exporter = RestFileExporter(rest_client)
-    
+
+    config = cast("GithubFileResourceConfig", event.resource_config)
     file_pattern = config.selector.files
+
     options = FileSearchOptions(
         repos=file_pattern.repos,
         path=file_pattern.path,
         filenames=file_pattern.filenames,
-        skip_parsing=file_pattern.skip_parsing
+        skip_parsing=file_pattern.skip_parsing,
     )
-    
+
     async for file_results in exporter.get_paginated_resources(options):
         yield file_results
 

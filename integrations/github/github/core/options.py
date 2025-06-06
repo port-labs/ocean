@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Optional
+from typing import NotRequired, Required, TypedDict, List, Optional
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -15,17 +15,16 @@ class ListRepositoryOptions(TypedDict):
 
 class FileSearchOptions(TypedDict):
     """Options for searching files in repositories."""
-    
-    repos: Optional[List[str]]
-    path: str
-    filenames: List[str]
-    skip_parsing: bool
+
+    repos: NotRequired[Optional[List[str]]]
+    path: Required[str]
+    filenames: Required[List[str]]
+    skip_parsing: Required[bool]
 
 
-class SingleFileOptions(TypedDict):
-    """Options for fetching a single file."""
-    
-    repo_name: str
-    ref: str
-    file_path: str
-    skip_parsing: bool
+class FileContentOptions(TypedDict):
+    """Options for fetching file content."""
+
+    repo_name: Required[str]
+    file_path: Required[str]
+    ref: NotRequired[Optional[str]]

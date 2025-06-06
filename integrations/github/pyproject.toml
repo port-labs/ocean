@@ -8,6 +8,7 @@ authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <mel
 python = "^3.12"
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 port_ocean = {version = "^0.23.5", extras = ["cli"]}
+types-pyyaml = "^6.0.12.20250516"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration

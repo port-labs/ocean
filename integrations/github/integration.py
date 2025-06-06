@@ -7,14 +7,17 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.core.handlers.entity_processor.jq_entity_processor import JQEntityProcessor
-from port_ocean.core.handlers.webhook.processor_manager import LiveEventsProcessorManager
+from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
+    JQEntityProcessor,
+)
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from typing import Any, Literal, Type
 from loguru import logger
 from port_ocean.utils.signal import signal_handler
-
 
 
 FILE_PROPERTY_PREFIX = "file://"
@@ -54,7 +57,7 @@ class GithubFileResourceConfig(ResourceConfig):
 
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
-    resources: list[ResourceConfig | GithubFileResourceConfig]
+    resources: list[GithubFileResourceConfig | ResourceConfig]
 
 
 class GitManipulationHandler(JQEntityProcessor):
@@ -76,9 +79,7 @@ class GithubLiveEventsProcessorManager(LiveEventsProcessorManager, GithubHandler
     pass
 
 
-class GithubIntegration(BaseIntegration):
-    EntityProcessorClass = GitManipulationHandler
-
+class GithubIntegration(BaseIntegration, GithubHandlerMixin):
     def __init__(self, context: PortOceanContext):
         super().__init__(context)
 
