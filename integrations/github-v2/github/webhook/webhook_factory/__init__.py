@@ -1,1 +1,0 @@
-# GitHub webhook factory package
