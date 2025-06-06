@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from typing import Any, cast
+from unittest.mock import call
 
 from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
 from gitlab.webhook.events import GroupEvents
@@ -93,12 +94,16 @@ class TestGroupWebHook:
         monkeypatch.setattr(
             group_webhook._client,
             "get_groups",
-            lambda top_level_only: AsyncIterator(mock_batches),
+            lambda owned: AsyncIterator(mock_batches),
         )
 
         await group_webhook.create_webhooks_for_all_groups()
 
         assert create_webhook_mock.call_count == 3
-        create_webhook_mock.assert_any_call("123")
-        create_webhook_mock.assert_any_call("456")
-        create_webhook_mock.assert_any_call("789")
+        create_webhook_mock.assert_has_calls(
+            [
+                call("123"),
+                call("456"),
+                call("789"),
+            ]
+        )
