@@ -37,7 +37,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.models import Entity
-from port_ocean.exceptions.webhook_processor import RetryableError
+from port_ocean.exceptions.webhook_processor import RetryableError, WebhookEventNotSupportedError
 from port_ocean.core.handlers.queue import LocalQueue
 
 
@@ -354,7 +354,7 @@ async def test_extractMatchingProcessors_noMatch(
     test_path = "/test"
     processor_manager.register_processor(test_path, MockProcessorFalse)
 
-    with pytest.raises(ValueError, match="No matching processors found"):
+    with pytest.raises(WebhookEventNotSupportedError, match="No matching processors found"):
         async with event_context(
             EventType.HTTP_REQUEST, trigger_type="request"
         ) as event:
@@ -853,7 +853,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
     except asyncio.TimeoutError:
         pytest.fail("Event processing timed out")
 
-    assert isinstance(test_state["exception_thrown"], ValueError) is True
+    assert isinstance(test_state["exception_thrown"], WebhookEventNotSupportedError) is True
 
     mock_upsert.assert_not_called()
     mock_delete.assert_not_called()

@@ -8,6 +8,7 @@ from port_ocean.context.event import EventType, event_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
+from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
 from .webhook_event import WebhookEvent, WebhookEventRawResults, LiveEventTimestamp
 from port_ocean.context.event import event
 
@@ -68,10 +69,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         if not created_processors:
             if processors_that_can_handle:
                 logger.info(
-                    f"Webhook event received for disabled resource types that can be handled by: {processors_that_can_handle}",
+                    "Webhook processors are available to handle this webhook event, but the corresponding kinds are not configured in the integration's mapping",
                     processors_available=processors_that_can_handle,
                     webhook_path=path,
-                    message="Processors are available to handle this webhook event, but the corresponding resource types are not configured in the integration.",
                 )
                 return []
             else:
@@ -80,7 +80,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                     webhook_path=path,
                     message="No processors registered to handle this webhook event type.",
                 )
-                raise ValueError("No matching processors found")
+                raise WebhookEventNotSupportedError(
+                    "No matching processors found for webhook event"
+                )
 
         logger.info(
             "Found matching processors for webhook event",
