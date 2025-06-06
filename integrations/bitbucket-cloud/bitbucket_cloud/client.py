@@ -7,6 +7,7 @@ from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
 from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
 from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
+from bitbucket_cloud.helpers.token_manager import TokenManager
 import base64
 
 PULL_REQUEST_STATE = "OPEN"
@@ -31,13 +32,31 @@ class BitbucketClient:
         self.base_url = host
         self.workspace = workspace
         self.client = http_async_client
+        self.token_manager: Optional[TokenManager] = None
 
         if workspace_token:
-            self.headers = {
-                "Authorization": f"Bearer {workspace_token}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            }
+            tokens = [
+                token.strip() for token in workspace_token.split(",") if token.strip()
+            ]
+
+            if len(tokens) > 1:
+                self.token_manager = TokenManager(tokens)
+                self.headers = {
+                    "Authorization": f"Bearer {self.token_manager.current_token}",
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                }
+                logger.info(
+                    f"Initialized BitbucketClient with {len(tokens)} tokens for rotation"
+                )
+            else:
+                single_token = tokens[0] if tokens else workspace_token.strip()
+                self.headers = {
+                    "Authorization": f"Bearer {single_token}",
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                }
+                logger.info("Initialized BitbucketClient with single token")
         elif app_password and username:
             self.encoded_credentials = base64.b64encode(
                 f"{username}:{app_password}".encode()
@@ -47,10 +66,18 @@ class BitbucketClient:
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             }
+            logger.info(
+                "Initialized BitbucketClient with username/password authentication"
+            )
         else:
             raise MissingIntegrationCredentialException(
                 "Either workspace token or both username and app password must be provided"
             )
+        self.client.headers.update(self.headers)
+
+    def _update_authorization_header(self, token: str) -> None:
+        """Update the authorization header with a new token."""
+        self.headers["Authorization"] = f"Bearer {token}"
         self.client.headers.update(self.headers)
 
     @classmethod
@@ -97,21 +124,30 @@ class BitbucketClient:
         method: str = "GET",
         data_key: str = "values",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Handle rate-limited paginated requests to Bitbucket API"""
         if params is None:
             params = {
                 "pagelen": PAGE_SIZE,
             }
         while True:
-            async with RATE_LIMITER:
-                response = await self._send_api_request(
-                    url, params=params, method=method
-                )
-                if values := response.get(data_key, []):
-                    yield values
-                url = response.get("next")
-                if not url:
-                    break
+            if self.token_manager:
+                rate_limiter = await self.token_manager.try_acquire_or_rotate()
+                current_token = await self.token_manager.get_current_token_safely()
+                self._update_authorization_header(current_token)
+                async with rate_limiter:
+                    response = await self._send_api_request(
+                        url, params=params, method=method
+                    )
+            else:
+                async with RATE_LIMITER:
+                    response = await self._send_api_request(
+                        url, params=params, method=method
+                    )
+
+            if values := response.get(data_key, []):
+                yield values
+            url = response.get("next")
+            if not url:
+                break
 
     async def _send_paginated_api_request(
         self,
