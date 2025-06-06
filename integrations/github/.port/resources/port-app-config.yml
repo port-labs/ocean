@@ -31,6 +31,10 @@ resources:
             language: .language
             branch: .default_branch
             description: .description
+            readme: file://README.md
+            creator: .owner.login
+            created_at: .created_at
+            updated_at: .updated_at
 
   - kind: pull-request
     selector:
@@ -42,9 +46,13 @@ resources:
           title: .title
           blueprint: '"githubPullRequest"'
           properties:
-            commits: .commits
-            changes: .changed_files
             url: .html_url
+            state: .state
+            creator: .user.login
+            created_at: .created_at
+            updated_at: .updated_at
+            closed_at: .closed_at
+            merged_at: .merged_at
           relations:
             repository: '(.head.repo.id|tostring)'
 
@@ -61,6 +69,10 @@ resources:
             title: .title
             url: .html_url
             state: .state
+            creator: .user.login
+            description: .body
+            created_at: .created_at
+            updated_at: .updated_at
 
   - kind: workflow
     selector:
@@ -74,3 +86,5 @@ resources:
           properties:
             name: .name
             url: .html_url
+            created_at: .created_at
+            updated_at: .updated_at

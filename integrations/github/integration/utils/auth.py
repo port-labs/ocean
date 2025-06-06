@@ -5,9 +5,9 @@ from .exceptions import TokenNotFoundException, UserAgentNotFoundException
 
 class AuthClient:
     def __init__(
-        self,
-        access_token: Optional[str] = None,
-        user_agent: Optional[str] = None,
+            self,
+            access_token: Optional[str] = None,
+            user_agent: Optional[str] = None,
     ):
         # access token config setup
         if access_token is None:

@@ -53,6 +53,23 @@
         "branch": {
           "title": "Default Branch",
           "type": "string"
+        },
+        "readme": {
+          "title": "README",
+          "type": "string",
+          "format": "markdown"
+        },
+        "creator": {
+          "title": "Creator",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "title": "Updated At",
+          "type": "string"
         }
       },
       "required": []
@@ -65,18 +82,46 @@
     "icon": "Pull Request",
     "schema": {
       "properties": {
-        "commits": {
-          "title": "Commits",
-          "type": "number"
-        },
-        "changes": {
-          "title": "Changed Files",
-          "type": "number"
-        },
         "url": {
           "title": "URL",
           "type": "string",
           "format": "url"
+        },
+        "state": {
+          "title": "State",
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "enumColors": {
+            "open": "green",
+            "closed": "red"
+          }
+        },
+        "creator": {
+          "title": "Creator",
+          "type": "string"
+        },
+        "reviewer": {
+          "title": "Reviewer",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "title": "Updated At",
+          "type": "string"
+        },
+        "closed_at": {
+          "title": "Closed At",
+          "type": "string"
+        },
+        "merged_at": {
+          "title": "Merged At",
+          "type": "string"
         }
       },
       "required": []
@@ -105,8 +150,32 @@
           "type": "string",
           "format": "url"
         },
+        "creator": {
+          "title": "Creator",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
         "state": {
           "title": "State",
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "enumColors": {
+            "open": "green",
+            "closed": "red"
+          }
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "title": "Updated At",
           "type": "string"
         }
       },
@@ -129,6 +198,14 @@
           "title": "URL",
           "type": "string",
           "format": "url"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "title": "Updated At",
+          "type": "string"
         }
       },
       "required": []

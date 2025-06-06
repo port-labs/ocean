@@ -29,3 +29,11 @@ configurations:
     type: url
     description: The base URL for GitHub's REST API
     default: https://api.github.com
+  - name: webhookSecret
+    type: string
+    description: Webhook secret for GitHub's Webhook
+    sensitive: true
+  - name: appHost
+    required: false
+    type: url
+    description: The host of the Port Ocean app. Used for setting up the webhooks against the GitHub.

@@ -1,19 +1,30 @@
 from typing import Any
 
-from integration.clients.github import IntegrationClient
-from integration.utils.kind import ObjectKind
-from integration.clients.auth import AuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from .integration.github_client import IntegrationClient
+from .integration.utils.auth import AuthClient
+from .integration.utils.kind import ObjectKind
+from .integration.webhook_client import WebhookClient
+from .integration.webhook_processor.repository import RepositoryWebhookProcessor
 
 
-def init_client() -> IntegrationClient:
-    # config setup
+def init_auth_client() -> "AuthClient":
     access_token = ocean.integration_config.get("personal_access_token", None)
     org = ocean.integration_config.get("github_organization", None)
-    auth_client = AuthClient(access_token=access_token, user_agent=org)
-    return IntegrationClient(auth_client)
+    return AuthClient(access_token=access_token, user_agent=org)
+
+
+def init_client() -> "IntegrationClient":
+    return IntegrationClient(init_auth_client())
+
+
+def init_webhook_client() -> "WebhookClient":
+    return WebhookClient(
+        client=init_client(),
+        auth_client=init_auth_client(),
+    )
 
 
 # resync all object kinds
@@ -91,3 +102,12 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ]
             async for prs in stream_async_iterators_tasks(*tasks):
                 yield prs
+
+
+@ocean.on_start()
+async def setup_webhooks() -> None:
+    client = init_webhook_client()
+    await client.setup_webhooks()
+
+
+ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
