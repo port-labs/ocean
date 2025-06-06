@@ -16,7 +16,6 @@ TEST_DATA: dict[str, list[dict[str, Any]]] = {
 @pytest.fixture
 def rest_client() -> GithubRestClient:
     return GithubRestClient(
-        token="test-token",
         organization="test-org",
         github_host="https://api.github.com",
         authenticator=MagicMock(spec=AbstractGitHubAuthenticator),
