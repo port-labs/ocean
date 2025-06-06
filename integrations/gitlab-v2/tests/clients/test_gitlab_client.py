@@ -597,26 +597,33 @@ class TestGitLabClient:
                 "123", "other_file.txt", "main"
             )
 
-    async def test_get_project_jobs(self, client: GitLabClient) -> None:
-        """Test fetching project jobs"""
+    async def test_get_pipeline_jobs(self, client: GitLabClient) -> None:
+        """Test fetching jobs through pipelines"""
         # Arrange
         mock_projects = [{"id": 1, "name": "Test Project"}]
+        mock_pipelines = [{"id": 1, "name": "Test Pipeline"}]
         mock_jobs = [{"id": 1, "name": "Test Job"}]
 
         with patch.object(
             client.rest,
             "get_paginated_project_resource",
-            return_value=async_mock_generator([mock_jobs]),
+            side_effect=[
+                async_mock_generator([mock_pipelines]),  # First call for pipelines
+                async_mock_generator([mock_jobs]),  # Second call for jobs
+            ],
         ) as mock_get_paginated:
             results = []
-            async for batch in client.get_project_jobs(mock_projects):
+            async for batch in client.get_pipeline_jobs(mock_projects):
                 results.extend(batch)
 
             assert len(results) == 1
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Job"
-            mock_get_paginated.assert_called_once_with(
-                "1", "jobs", params={"per_page": 100}
+            # Verify both pipeline and job API calls
+            assert mock_get_paginated.call_count == 2
+            mock_get_paginated.assert_any_call("1", "pipelines")
+            mock_get_paginated.assert_any_call(
+                "1", "pipelines/1/jobs", params={"per_page": 100}
             )
 
     async def test_project_resource(self, client: GitLabClient) -> None:
