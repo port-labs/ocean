@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.18 (2025-06-05)
+
+
+### Bug Fixes
+
+- Fixed bug where OAuth mode was incorrectly determined based on URL instead of actual OAuth configuration
+
+
 ## 0.4.17 (2025-06-04)
 
 
