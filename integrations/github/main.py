@@ -7,16 +7,25 @@ from github.clients.client_factory import (
     create_github_client,
 )
 from github.clients.utils import integration_config
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import GithubClientType, ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
+from github.core.exporters.team_exporter import RestTeamExporter
+from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.webhook.webhook_client import GithubWebhookClient
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.options import ListRepositoryOptions
 from typing import TYPE_CHECKING
 from port_ocean.context.event import event
+
+from github.webhook.webhook_processors.team_webhook_processor import (
+    TeamWebhookProcessor,
+)
+from github.webhook.webhook_processors.user_webhook_processor import (
+    UserWebhookProcessor,
+)
 
 if TYPE_CHECKING:
     from integration import GithubPortAppConfig
@@ -67,4 +76,30 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield repositories
 
 
+@ocean.on_resync(ObjectKind.USER)
+async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all users in the organization."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    graphql_client = create_github_client(GithubClientType.GRAPHQL)
+    exporter = GraphQLUserExporter(graphql_client)
+
+    async for users in exporter.get_paginated_resources():
+        yield users
+
+
+@ocean.on_resync(ObjectKind.TEAM)
+async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all teams in the organization."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    client = create_github_client()
+    exporter = RestTeamExporter(client)
+
+    async for teams in exporter.get_paginated_resources():
+        yield teams
+
+
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
+ocean.add_webhook_processor("/webhook", TeamWebhookProcessor)
