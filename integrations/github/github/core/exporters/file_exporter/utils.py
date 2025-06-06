@@ -1,6 +1,7 @@
 import binascii
 import json
-from typing import Dict, List, Any, Optional, TypedDict
+import os
+from typing import Dict, List, Any, Optional, Tuple, TypedDict
 from pathlib import Path
 import base64
 
@@ -19,6 +20,18 @@ class FileObject(TypedDict):
     repository: Dict[str, Any]
     branch: str
     metadata: Dict[str, Any]
+
+
+def normalize_path(path: str) -> str:
+    dir_path = os.path.dirname(path)
+    return os.path.normpath(dir_path)
+
+
+def validate_file_match(full_path: str, filename: str, path: str) -> bool:
+    normalized_path = normalize_path(path)
+    expected_path = os.path.normpath(os.path.join(normalized_path, filename))
+
+    return full_path == expected_path
 
 
 def build_search_query(
@@ -42,7 +55,7 @@ def build_search_query(
     else:
         search_terms.append(f"org:{organization}")
 
-    normalized_path = path.lstrip("/").rstrip("*")
+    normalized_path = normalize_path(path)
     search_terms.append(f"path:/{normalized_path}")
 
     return " ".join(search_terms)
@@ -90,8 +103,18 @@ def parse_content(content: str, file_path: str) -> Any:
         return content
 
 
-def find_deleted_files(files: List[Dict[str, Any]]) -> list[dict[str, Any]]:
-    return [file for file in files if file["status"] == "removed"]
+def group_files_by_status(
+    files: List[Dict[str, Any]]
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    deleted_files: List[Dict[str, Any]] = []
+    updated_files: List[Dict[str, Any]] = []
+
+    for file in files:
+        (deleted_files if file.get("status") == "removed" else updated_files).append(
+            file
+        )
+
+    return deleted_files, updated_files
 
 
 def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:

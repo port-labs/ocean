@@ -8,7 +8,13 @@ from loguru import logger
 from github.core.options import FileContentOptions, FileSearchOptions
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-from .utils import FileObject, decode_content, build_search_query, parse_content
+from .utils import (
+    FileObject,
+    decode_content,
+    build_search_query,
+    parse_content,
+    validate_file_match,
+)
 
 FILE_REFERENCE_PREFIX = "file://"
 MAX_FILE_SIZE = 1024 * 1024
@@ -77,6 +83,14 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 ]
 
                 for result in search_results_items:
+                    response_path = result["path"]
+
+                    if not validate_file_match(response_path, filename, path):
+                        logger.debug(
+                            f"Skipping file {response_path} as it doesn't match expected patterns"
+                        )
+                        continue
+
                     tasks.append(
                         self.process_file(
                             result["repository"], result["path"], skip_parsing
@@ -118,7 +132,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 content=f"[File too large: {file_size} bytes]",
                 repository=repository,
                 branch=branch,
-                metadata={**file_content, "processing_error": "file_too_large"},
+                metadata=file_content,
             )
             yield dict(result)
             return

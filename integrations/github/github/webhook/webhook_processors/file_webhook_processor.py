@@ -5,7 +5,7 @@ from github.webhook.webhook_processors.base_repository_webhook_processor import 
 from github.clients.client_factory import create_github_client
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import (
-    find_deleted_files,
+    group_files_by_status,
     is_matching_file,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -81,21 +81,17 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        deleted_files = find_deleted_files(files_to_process)
-        if deleted_files:
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=deleted_files,
-            )
+        deleted_raw_results, updated_raw_results = group_files_by_status(
+            files_to_process
+        )
 
-        updated_raw_results = []
         tasks = [
             exporter.process_file(
                 repository=repository,
                 file_path=file["filename"],
                 skip_parsing=skip_parsing,
             )
-            for file in files_to_process
+            for file in updated_raw_results
         ]
 
         async for file_results in stream_async_iterators_tasks(*tasks):
@@ -103,5 +99,5 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         return WebhookEventRawResults(
             updated_raw_results=updated_raw_results,
-            deleted_raw_results=[],
+            deleted_raw_results=deleted_raw_results,
         )
