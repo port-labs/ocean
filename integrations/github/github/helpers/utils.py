@@ -8,3 +8,5 @@ class GithubClientType(StrEnum):
 
 class ObjectKind(StrEnum):
     REPOSITORY = "repository"
+    DEPENDABOT_ALERT = "dependabot-alert"
+    CODE_SCANNING_ALERT = "code-scanning-alerts"
