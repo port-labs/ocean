@@ -14,7 +14,7 @@ class FileEntityProcessor(JQEntityProcessor):
     prefix = FILE_PROPERTY_PREFIX
 
     async def _get_file_content(
-        self, repo_name: str, ref: str, file_path: str
+        self, repo_name: str, file_path: str, ref: Optional[str] = None
     ) -> Optional[Any]:
         """Helper method to fetch and process file content."""
 
@@ -46,7 +46,7 @@ class FileEntityProcessor(JQEntityProcessor):
 
         repo_data = data.get("repository", data)
         is_monorepo = "repository" in data
-        
+
         repo_name = repo_data["name"]
         ref = data.get("branch") if is_monorepo else repo_data.get("default_branch")
 
@@ -61,4 +61,4 @@ class FileEntityProcessor(JQEntityProcessor):
             f"Searching for file {file_path} in Repository {repo_name}, ref {ref}"
         )
 
-        return await self._get_file_content(repo_name, ref, file_path)
+        return await self._get_file_content(repo_name, file_path, ref)
