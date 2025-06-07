@@ -8,3 +8,4 @@ class GithubClientType(StrEnum):
 
 class ObjectKind(StrEnum):
     REPOSITORY = "repository"
+    FILE = "file"
