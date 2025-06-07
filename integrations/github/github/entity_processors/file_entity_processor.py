@@ -1,3 +1,4 @@
+import os
 from typing import Any, Optional
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
@@ -44,14 +45,20 @@ class FileEntityProcessor(JQEntityProcessor):
         """
 
         repo_data = data.get("repository", data)
+        is_monorepo = "repository" in data
+        
         repo_name = repo_data["name"]
-        ref = repo_data["default_branch"]
+        ref = data.get("branch") if is_monorepo else repo_data.get("default_branch")
 
-        # TODO: Handle monorepo case
-
-        file_path = pattern.replace(self.prefix, "")
+        base_pattern = pattern.replace(self.prefix, "")
+        file_path = (
+            f"{os.path.dirname(data['metadata']['path'])}/{base_pattern}"
+            if is_monorepo
+            else base_pattern
+        )
 
         logger.info(
             f"Searching for file {file_path} in Repository {repo_name}, ref {ref}"
         )
+
         return await self._get_file_content(repo_name, ref, file_path)
