@@ -240,6 +240,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , MetricPhase.TransformResult.FAILED],
                 value=1
             )
+            raise e
 
         modified_objects = []
 
