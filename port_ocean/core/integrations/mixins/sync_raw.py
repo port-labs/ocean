@@ -230,17 +230,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0
     ) -> CalculationResult:
-        try:
-            objects_diff = await self._calculate_raw(
-                [(resource, results)], parse_all, send_raw_data_examples_amount
-            )
-        except Exception as e:
-            ocean.metrics.inc_metric(
-                name=MetricType.OBJECT_COUNT_NAME,
-                labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , MetricPhase.TransformResult.FAILED],
-                value=1
-            )
-            raise e
+        objects_diff = await self._calculate_raw(
+            [(resource, results)], parse_all, send_raw_data_examples_amount
+        )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM, MetricPhase.TransformResult.FAILED],
+            value=len(objects_diff[0].entity_selector_diff.failed)
+        )
 
         modified_objects = []
 
