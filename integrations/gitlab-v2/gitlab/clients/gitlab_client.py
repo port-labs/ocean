@@ -181,6 +181,27 @@ class GitLabClient:
         response = await self.rest.send_api_request("GET", path, params=params)
         return bool(response)
 
+    async def get_parent_groups(
+        self, owned: bool = False
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        all_group_ids = set()
+        top_level_groups = []
+
+        async for group_batch in self.get_groups(owned=owned):
+            group_ids_in_batch = {group["id"] for group in group_batch}
+            for group in group_batch:
+                parent_id = group.get("parent_id")
+                if (
+                    parent_id not in all_group_ids
+                    and parent_id not in group_ids_in_batch
+                ):
+                    top_level_groups.append(group)
+                all_group_ids.add(group["id"])
+
+            if top_level_groups:
+                yield top_level_groups
+                top_level_groups = []
+
     async def search_files(
         self,
         scope: str,
@@ -201,29 +222,18 @@ class GitLabClient:
                     yield batch
         else:
             logger.info("Searching across groups")
-            all_group_ids = set()
-            top_level_groups = []
+            async for top_level_groups in self.get_parent_groups():
+                logger.info(
+                    f"Found {len(top_level_groups)} top-level searchable groups"
+                )
 
-            async for group_batch in self.get_groups():
-                group_ids_in_batch = {group["id"] for group in group_batch}
-                for group in group_batch:
-                    parent_id = group.get("parent_id")
-                    if (
-                        parent_id not in all_group_ids
-                        and parent_id not in group_ids_in_batch
+                for group in top_level_groups:
+                    group_id = str(group["id"])
+                    logger.debug(f"Processing group: {group_id}")
+                    async for batch in self._search_files_in_group(
+                        group_id, scope, search_query, skip_parsing
                     ):
-                        top_level_groups.append(group)
-                    all_group_ids.add(group["id"])
-
-            logger.info(f"Found {len(top_level_groups)} top-level searchable groups")
-
-            for group in top_level_groups:
-                group_id = str(group["id"])
-                logger.debug(f"Processing group: {group_id}")
-                async for batch in self._search_files_in_group(
-                    group_id, scope, search_query, skip_parsing
-                ):
-                    yield batch
+                        yield batch
 
     async def get_repository_tree(
         self,

@@ -407,7 +407,7 @@ class TestGitLabClient:
                     assert results[0]["path"] == "test.yaml"
                     assert results[0]["content"] == {"key": "value"}
 
-                    mock_get_groups.assert_called_once_with()
+                    mock_get_groups.assert_called_once_with(owned=False)
                     mock_search_group.assert_called_once_with(
                         "1", "blobs", "path:test.yaml", False
                     )

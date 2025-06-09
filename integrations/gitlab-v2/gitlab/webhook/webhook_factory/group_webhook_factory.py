@@ -60,8 +60,8 @@ class GroupWebHook(BaseWebhookFactory[GroupEvents]):
         """
         logger.info("Initiating webhooks creation for owned groups.")
 
-        async for groups_batch in self._client.get_groups(owned=True):
-            for group in groups_batch:
+        async for top_level_groups in self._client.get_parent_groups(owned=True):
+            for group in top_level_groups:
                 await self.create_group_webhook(group["id"])
 
         logger.info("Completed webhooks creation process.")
