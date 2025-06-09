@@ -1,10 +1,10 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
-repositoryType: "all"
+repositoryType: 'all'
 resources:
   - kind: repository
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -19,7 +19,7 @@ resources:
             language: if .language then .language else "" end
   - kind: workflow
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:

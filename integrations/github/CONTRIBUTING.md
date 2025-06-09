@@ -29,20 +29,17 @@ fragment RepositoryFields on Repository {
   createdAt
   updatedAt
   pushedAt
-  defaultBranchRef {
-    name
-  }
-  languages(first: 1) {
-    nodes {
-      name
-    }
-  }
+  defaultBranchRef { name }
+  languages(first: 1) { nodes { name } }
   visibility
 }
 ```
 
 ```graphql
-query SingleRepositoryQuery($organization: String!, $repositoryName: String!) {
+query SingleRepositoryQuery(
+  $organization: String!
+  $repositoryName: String!
+) {
   organization(login: $organization) {
     repository(name: $repositoryName) {
       ...RepositoryFields
@@ -62,7 +59,7 @@ query RepositoryQuery(
     repositories(
       first: $first
       after: $after
-      orderBy: { field: NAME, direction: ASC }
+      orderBy: {field: NAME, direction: ASC}
       visibility: $repositoryVisibility
     ) {
       nodes {

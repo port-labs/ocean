@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped ocean version to ^0.24.3
 
+### Features
+
+- Implement support for Github workflows
+- Implement support for Github workflow runs
+
 
 ## 0.1.6-dev (2025-06-04)
 
@@ -44,11 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.23.5
-
-### Features
-
-- Implement support for Github workflows
-- Implement support for Github workflow runs
 
 
 ## 0.1.2-dev (2025-05-30)

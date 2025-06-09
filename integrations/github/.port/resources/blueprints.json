@@ -1,216 +1,146 @@
 [
-  {
-    "identifier": "githubRepository",
-    "title": "GitHub Repository",
-    "icon": "Github",
-    "schema": {
-      "properties": {
-        "description": {
-          "type": "string",
-          "title": "Description"
-        },
-        "visibility": {
-          "type": "string",
-          "title": "Visibility",
-          "enum": ["all", "public", "private"],
-          "enumColors": {
-            "all": "green",
-            "public": "blue",
-            "private": "red"
-          }
-        },
-        "defaultBranch": {
-          "type": "string",
-          "title": "Default Branch"
-        },
-        "url": {
-          "type": "string",
-          "title": "URL",
-          "format": "url"
-        },
-        "language": {
-          "type": "string",
-          "title": "Primary Language"
-        },
-        "forks": {
-          "type": "number",
-          "title": "Forks"
-        },
-        "readme": {
-          "title": "README",
-          "type": "string",
-          "format": "markdown",
-          "icon": "Book",
-          "description": "Contents of the repository's README.md file"
-        }
-      },
-      "required": ["visibility", "url"]
-    }
-  },
-  {
-    "identifier": "githubWorkflow",
-    "title": "Workflow",
-    "icon": "Github",
-    "schema": {
-      "properties": {
-        "path": {
-          "title": "Path",
-          "type": "string"
-        },
-        "status": {
-          "title": "Status",
-          "type": "string",
-          "enum": [
-            "active",
-            "deleted",
-            "disabled_fork",
-            "disabled_inactivity",
-            "disabled_manually"
-          ],
-          "enumColors": {
-            "active": "green",
-            "deleted": "red"
-          }
-        },
-        "createdAt": {
-          "title": "Created At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "title": "Updated At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "deletedAt": {
-          "title": "Deleted At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "link": {
-          "title": "Link",
-          "type": "string",
-          "format": "url"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {
-      "repository": {
+    {
+        "identifier": "githubRepository",
         "title": "Repository",
-        "target": "githubRepository",
-        "required": false,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "githubWorkflowRun",
-    "title": "Workflow Run",
-    "icon": "Github",
-    "schema": {
-      "properties": {
-        "name": {
-          "title": "Name",
-          "type": "string"
-        },
-        "triggeringActor": {
-          "title": "Triggering Actor",
-          "type": "string"
-        },
-        "status": {
-          "title": "Status",
-          "type": "string",
-          "enum": [
-            "completed",
-            "action_required",
-            "cancelled",
-            "startup_failure",
-            "failure",
-            "neutral",
-            "skipped",
-            "stale",
-            "success",
-            "timed_out",
-            "in_progress",
-            "queued",
-            "requested",
-            "waiting"
-          ],
-          "enumColors": {
-            "queued": "yellow",
-            "in_progress": "yellow",
-            "success": "green",
-            "failure": "red"
-          }
-        },
-        "conclusion": {
-          "title": "Conclusion",
-          "type": "string",
-          "enum": [
-            "completed",
-            "action_required",
-            "cancelled",
-            "startup_failure",
-            "failure",
-            "neutral",
-            "skipped",
-            "stale",
-            "success",
-            "timed_out",
-            "in_progress",
-            "queued",
-            "requested",
-            "waiting"
-          ],
-          "enumColors": {
-            "queued": "yellow",
-            "in_progress": "yellow",
-            "success": "green",
-            "failure": "red"
-          }
-        },
-        "createdAt": {
-          "title": "Created At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "runStartedAt": {
-          "title": "Run Started At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "title": "Updated At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "runNumber": {
-          "title": "Run Number",
-          "type": "number"
-        },
-        "runAttempt": {
-          "title": "Run Attempts",
-          "type": "number"
-        },
-        "link": {
-          "title": "Link",
-          "type": "string",
-          "format": "url"
+        "icon": "Microservice",
+        "schema": {
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "visibility": {
+                    "type": "string",
+                    "title": "Visibility",
+                    "enum": ["all", "public", "private"],
+                    "enumColors": {
+                        "all": "green",
+                        "public": "blue",
+                        "private": "red"
+                    }
+                },
+                "defaultBranch": {
+                    "type": "string",
+                    "title": "Default Branch"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL",
+                    "format": "url"
+                },
+                "language": {
+                    "type": "string",
+                    "title": "Primary Language"
+                }
+            },
+            "required": []
         }
-      },
-      "required": []
     },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {
-      "workflow": {
-        "target": "githubWorkflow",
-        "required": true,
-        "many": false
-      }
+    {
+        "identifier": "githubWorkflowRun",
+        "title": "Workflow Run",
+        "icon": "Github",
+        "schema": {
+            "properties": {
+                "name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "triggeringActor": {
+                    "title": "Triggering Actor",
+                    "type": "string"
+                },
+                "status": {
+                    "title": "Status",
+                    "type": "string",
+                    "enum": [
+                        "completed",
+                        "action_required",
+                        "cancelled",
+                        "startup_failure",
+                        "failure",
+                        "neutral",
+                        "skipped",
+                        "stale",
+                        "success",
+                        "timed_out",
+                        "in_progress",
+                        "queued",
+                        "requested",
+                        "waiting"
+                    ],
+                    "enumColors": {
+                        "queued": "yellow",
+                        "in_progress": "yellow",
+                        "success": "green",
+                        "failure": "red"
+                    }
+                },
+                "conclusion": {
+                    "title": "Conclusion",
+                    "type": "string",
+                    "enum": [
+                        "completed",
+                        "action_required",
+                        "cancelled",
+                        "startup_failure",
+                        "failure",
+                        "neutral",
+                        "skipped",
+                        "stale",
+                        "success",
+                        "timed_out",
+                        "in_progress",
+                        "queued",
+                        "requested",
+                        "waiting"
+                    ],
+                    "enumColors": {
+                        "queued": "yellow",
+                        "in_progress": "yellow",
+                        "success": "green",
+                        "failure": "red"
+                    }
+                },
+                "createdAt": {
+                    "title": "Created At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "runStartedAt": {
+                    "title": "Run Started At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "updatedAt": {
+                    "title": "Updated At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "runNumber": {
+                    "title": "Run Number",
+                    "type": "number"
+                },
+                "runAttempt": {
+                    "title": "Run Attempts",
+                    "type": "number"
+                },
+                "link": {
+                    "title": "Link",
+                    "type": "string",
+                    "format": "url"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+            "workflow": {
+                "target": "githubWorkflow",
+                "required": true,
+                "many": false
+            }
+        }
     }
-  }
 ]
