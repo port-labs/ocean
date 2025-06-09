@@ -1,7 +1,6 @@
 from typing import Any, AsyncGenerator
-from httpx import Response
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.workflows_exporter import (
     RestWorkflowExporter,
@@ -23,7 +22,7 @@ TEST_DATA: dict[str, Any] = {
             "state": "active",
             "created_at": "2020-01-08T23:48:37.000-08:00",
             "url": "https://HOSTNAME/repos/octo-org/octo-repo/actions/workflows/161335",
-            "repo": "test",
+            "__repository": "test",
         },
         {
             "id": 269289,
@@ -32,7 +31,7 @@ TEST_DATA: dict[str, Any] = {
             "state": "active",
             "created_at": "2020-01-08T23:48:37.000-08:00",
             "url": "https://HOSTNAME/repos/octo-org/octo-repo/actions/workflows/269289",
-            "repo": "test",
+            "__repository": "test",
         },
     ],
 }
@@ -45,9 +44,7 @@ async def test_single_resource(rest_client: GithubRestClient) -> None:
 
     # Create an async mock to return the test repos
     async def mock_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        response = MagicMock(Response)
-        response.json.return_value = TEST_DATA["workflows"][0]
-        return response
+        return TEST_DATA["workflows"][0]
 
     with patch.object(
         rest_client, "send_api_request", side_effect=mock_request

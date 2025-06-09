@@ -1,7 +1,6 @@
 from typing import Any, AsyncGenerator
-from httpx import Response
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.core.options import (
@@ -51,9 +50,7 @@ async def test_single_resource(rest_client: GithubRestClient) -> None:
 
     # Create an async mock to return the test repos
     async def mock_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        response = MagicMock(Response)
-        response.json.return_value = TEST_DATA["workflow_runs"][0]
-        return response
+        return TEST_DATA["workflow_runs"][0]
 
     with patch.object(
         rest_client, "send_api_request", side_effect=mock_request
