@@ -52,14 +52,7 @@
         "mirrorProperties": {},
         "calculationProperties": {},
         "aggregationProperties": {},
-        "relations": {
-            "github_team": {
-                "title": "Github Team",
-                "target": "githubTeam",
-                "required": false,
-                "many": true
-            }
-        }
+        "relations": {}
     },
     {
         "identifier": "githubTeam",

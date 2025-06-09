@@ -17,6 +17,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
+        if not event.payload.get("action"):
+            return False
+
         if event.payload["action"] not in (TEAM_UPSERT_EVENTS + TEAM_DELETE_EVENTS):
             return False
 

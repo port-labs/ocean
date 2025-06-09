@@ -9,8 +9,7 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionT: SingleTeamOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
         url = f"{self.client.base_url}/orgs/{self.client.organization}/teams/{options['slug']}"
-        res = await self.client.send_api_request(url)
-        data = res.json()
+        data = await self.client.send_api_request(url)
         return data
 
     async def get_paginated_resources(

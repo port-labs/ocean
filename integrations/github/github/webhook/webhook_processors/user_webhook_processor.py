@@ -20,6 +20,9 @@ from github.core.options import SingleUserOptions
 
 class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
+        if not event.payload.get("action"):
+            return False
+
         if event.payload["action"] not in (USER_UPSERT_EVENTS + USER_DELETE_EVENTS):
             return False
         return event.headers.get("x-github-event") == "organization"

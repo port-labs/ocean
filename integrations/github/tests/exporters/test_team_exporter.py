@@ -7,8 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 import pytest
-from unittest.mock import patch, MagicMock
-import httpx
+from unittest.mock import patch
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.team_exporter import (
     RestTeamExporter,
@@ -61,15 +60,10 @@ def mock_port_app_config() -> GithubPortAppConfig:
 @pytest.mark.asyncio
 class TestRestTeamExporter:
     async def test_get_resource(self, rest_client: GithubRestClient) -> None:
-        # Create a mock response
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.status_code = 200
-        mock_response.json.return_value = TEST_TEAMS[0]
-
         exporter = RestTeamExporter(rest_client)
 
         with patch.object(
-            rest_client, "send_api_request", return_value=mock_response
+            rest_client, "send_api_request", return_value=TEST_TEAMS[0]
         ) as mock_request:
             team = await exporter.get_resource(SingleTeamOptions(slug="team-alpha"))
 
