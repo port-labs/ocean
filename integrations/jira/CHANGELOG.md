@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.21 (2025-06-09)
+
+
+### Bug Fixes
+
+- Removed webhook permission check from oauth enabled integrations
+
+
 ## 0.4.20 (2025-06-09)
 
 

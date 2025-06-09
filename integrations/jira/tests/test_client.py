@@ -361,11 +361,7 @@ async def test_create_events_webhook_oauth(mock_jira_client: JiraClient) -> None
         patch.object(
             mock_jira_client, "_send_api_request", new_callable=AsyncMock
         ) as mock_request,
-        patch.object(
-            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
-        ) as mock_permission,
     ):
-        mock_permission.return_value = True
         mock_request.return_value = {"values": [{"url": webhook_url}]}
 
         await mock_jira_client.create_webhooks(app_host)
