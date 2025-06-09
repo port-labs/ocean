@@ -108,7 +108,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
-    bulk_upserts_enabled: bool = False
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(

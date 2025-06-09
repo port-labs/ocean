@@ -7,6 +7,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.24.3 (2025-06-08)
+
+### Improvements
+- Using Port bulk upserts api in resyncs in all Ocean.
+
 ## 0.24.2 (2025-06-04)
 
 ### Improvements
