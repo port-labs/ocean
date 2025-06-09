@@ -98,6 +98,19 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
+    # For WEBHOOKS_ONLY integrations, webhook creation failures should not prevent
+    # the integration from starting, as customers may have created webhooks manually
+    if ocean.event_listener_type == "WEBHOOKS_ONLY":
+        try:
+            await setup_application()
+        except Exception as e:
+            logger.warning(
+                f"Failed to create webhooks for WEBHOOKS_ONLY integration: {e}. "
+                "The integration will continue to run and listen for webhook events. "
+                "If you have manually created webhooks, this is expected."
+            )
+        return
+
     await setup_application()
 
 
