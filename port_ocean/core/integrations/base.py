@@ -83,7 +83,16 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
                             *(listener() for listener in self.event_strategy["start"])
                         )
                 except Exception as e:
-                    logger.exception("Error in start event listeners: %s", str(e))
+                    # For WEBHOOKS_ONLY integrations, webhook creation failures should not prevent
+                    # the integration from starting, as customers may have created webhooks manually
+                    if self.context.ocean.event_listener_type == "WEBHOOKS_ONLY":
+                        logger.warning(
+                            f"Failed to execute start event listeners for WEBHOOKS_ONLY integration: {e}. "
+                            "The integration will continue to run and listen for webhook events. "
+                            "If you have manually created webhooks, this is expected."
+                        )
+                    else:
+                        logger.exception("Error in start event listeners: %s", str(e))
 
             # This task will run the `on_start`s in the background and will not block the server startup
             asyncio.create_task(run_on_start_tasks())
