@@ -7,8 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.21 (2025-06-04)
+## 0.1.24 (2025-06-09)
 
+
+### Improvements
+
+- Bumped ocean version to ^0.24.4
+
+
+## 0.1.23 (2025-06-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.3
+
+
+## 0.1.22 (2025-06-05)
+
+- Graceful handling of HTTP error codes (401, 403, 404) to prevent resync failures
+
+
+## 0.1.21 (2025-06-04)
 
 ### Improvements
 
