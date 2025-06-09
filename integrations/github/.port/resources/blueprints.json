@@ -35,34 +35,5 @@
             },
             "required": []
         }
-    },
-    {
-        "identifier": "githubFolder",
-        "title": "Folder",
-        "icon": "Github",
-        "schema": {
-            "properties": {
-                "readme": {
-                    "title": "sha",
-                    "type": "string"
-                },
-                "url": {
-                    "title": "Folder URL",
-                    "type": "string",
-                    "format": "url"
-                }
-            },
-            "required": []
-        },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "relations": {
-            "repository": {
-                "title": "Repository",
-                "target": "githubRepository",
-                "required": false,
-                "many": false
-            }
-        }
     }
 ]
