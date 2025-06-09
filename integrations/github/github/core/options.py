@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -14,16 +14,16 @@ class ListRepositoryOptions(TypedDict):
 
 
 class ListWorkflowOptions(TypedDict):
-    repo: str
+    repo: Required[str]
 
 
 class SingleWorkflowOptions(ListWorkflowOptions):
-    resource_id: str
+    resource_id: Required[str]
 
 
 class ListWorkflowRunOptions(TypedDict):
-    repo: str
+    repo: Required[str]
 
 
 class SingleWorkflowRunOptions(ListWorkflowOptions):
-    resource_id: str
+    resource_id: Required[str]
