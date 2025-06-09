@@ -9,7 +9,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## 0.24.5 (2025-06-09)
 
 ### Improvements
-- Made on_start tasks start regardless of the Uvicorn server startup
+- Made on_start tasks start regardless of the Uvicorn server startup.
 
 ## 0.24.4 (2025-06-08)
 
