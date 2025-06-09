@@ -11,16 +11,16 @@ from github.helpers.glob import translate_glob
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionsT: SingleFolderOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         "It is not clear to me what should be returned in a single resource."
         return {}
 
     @cache_iterator_result()
-    async def get_paginated_resources[
-        ExporterOptionsT: ListFolderOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
@@ -32,18 +32,20 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             folders = self._filter_folder_contents(content_cast["tree"], path)
             logger.info(f"fetched {len(folders)} folders from {repo_name}")
             if folders:
-                formatted = self._format_for_port(folders, repo=options["repo"])
+                formatted = self._enrich_folder_with_repository(
+                    folders, repo=options["repo"]
+                )
                 yield formatted
             else:
                 yield []
 
-    def _format_for_port(
+    def _enrich_folder_with_repository(
         self, folders: list[dict[str, Any]], repo: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
         formatted_folders = [
             {
                 "folder": {**folder, "name": self._get_folder_name(folder["path"])},
-                "repo": repo,
+                "__repository": repo,
             }
             for folder in folders
         ]
@@ -58,6 +60,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     @staticmethod
     def _needs_recursive_search(path: str) -> bool:
         "Determines whether a give path requires recursive Github request param"
+
         if "**" in path or re.match(r"\w+\/\w+", path):
             return True
         return False
@@ -67,6 +70,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         folders: list[dict[str, Any]], path: str
     ) -> list[dict[str, Any]]:
         "Get only trees (folders), and in complex paths, only file paths that match a glob pattern"
+
         just_trees = [item for item in folders if item.get("type") == "tree"]
         if path == "" or path == "*":
             return just_trees

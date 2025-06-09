@@ -56,7 +56,7 @@ TEST_FOLDERS_ROOT = [
             "size": 0,
             "url": "https://api.github.com/repos/test-org/test-repo/contents/src",
         },
-        "repo": {"name": "test-repo", "default_branch": "main"},
+        "__repository": {"name": "test-repo", "default_branch": "main"},
     },
     {
         "folder": {
@@ -66,7 +66,7 @@ TEST_FOLDERS_ROOT = [
             "size": 0,
             "url": "https://api.github.com/repos/test-org/test-repo/contents/docs",
         },
-        "repo": {"name": "test-repo", "default_branch": "main"},
+        "__repository": {"name": "test-repo", "default_branch": "main"},
     },
 ]
 
@@ -79,7 +79,7 @@ TEST_FOLDERS_SRC = [
             "size": 0,
             "url": "https://api.github.com/repos/test-org/test-repo/contents/src/components",
         },
-        "repo": {"name": "test-repo", "default_branch": "main"},
+        "__repository": {"name": "test-repo", "default_branch": "main"},
     },
     {
         "folder": {
@@ -89,7 +89,7 @@ TEST_FOLDERS_SRC = [
             "size": 0,
             "url": "https://api.github.com/repos/test-org/test-repo/contents/src/hooks",
         },
-        "repo": {"name": "test-repo", "default_branch": "main"},
+        "__repository": {"name": "test-repo", "default_branch": "main"},
     },
 ]
 
