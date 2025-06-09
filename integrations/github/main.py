@@ -10,6 +10,9 @@ from github.clients.utils import integration_config
 from github.core.exporters.folder_exporter import RestFolderExporter
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
+from github.webhook.webhook_processors.folder_webhook_processor import (
+    FolderWebhookProcessor,
+)
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
@@ -84,7 +87,6 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_exporter = RestRepositoryExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
-    print(selector)
     if not hasattr(selector, "folders"):
         logger.info("Folders to ingest not passed, returning ..")
         return
@@ -105,3 +107,4 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)

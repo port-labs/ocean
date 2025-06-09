@@ -49,7 +49,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             matched_repo = False
             for repo in pattern.repos:
                 if repo.name == repository["name"] and (
-                    repo.branch is None or repo.branch == branch
+                    repo.branch == "" or repo.branch == branch
                 ):
                     matched_repo = True
                     break
