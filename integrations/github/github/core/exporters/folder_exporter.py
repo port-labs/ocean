@@ -11,16 +11,16 @@ from github.helpers.glob import translate_glob
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[ExporterOptionsT: SingleFolderOptions](
-        self, options: ExporterOptionsT
-    ) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionsT: SingleFolderOptions
+    ](self, options: ExporterOptionsT) -> RAW_ITEM:
         "It is not clear to me what should be returned in a single resource."
         return {}
 
     @cache_iterator_result()
-    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListFolderOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
