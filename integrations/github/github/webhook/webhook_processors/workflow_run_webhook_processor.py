@@ -36,7 +36,7 @@ class WorkflowRunWebhookProcessor(_GithubAbstractWebhookProcessor):
         logger.info(f"Processing workflow run event: {action}")
 
         if action in WORKFLOW_DELETE_EVENTS:
-            logger.info(f"Workflow run {workflow_run['name']} was deleted")
+            logger.info(f"Workflow run: {workflow_run['name']} - was deleted")
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[workflow_run]
@@ -45,7 +45,9 @@ class WorkflowRunWebhookProcessor(_GithubAbstractWebhookProcessor):
         options = SingleWorkflowOptions(
             repo=repo["name"], resource_id=workflow_run["id"]
         )
+
         data_to_upsert = await exporter.get_resource(options)
+        logger.info(f"Workflow run: {data_to_upsert['name']} - upserted")
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
