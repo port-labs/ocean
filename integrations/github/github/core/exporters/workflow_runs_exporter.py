@@ -8,19 +8,19 @@ from github.core.options import ListWorkflowRunOptions, SingleWorkflowRunOptions
 
 
 class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionsT: SingleWorkflowRunOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleWorkflowRunOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo']}/actions/runs/{options['resource_id']}"
         response = await self.client.send_api_request(endpoint)
 
         logger.info(f"Fetched workflow with identifier: {options['resource_id']}")
 
-        return response.json()
+        return response
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListWorkflowRunOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListWorkflowRunOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
 
         url = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo']}/actions/runs"

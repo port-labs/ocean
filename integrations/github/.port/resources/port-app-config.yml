@@ -23,7 +23,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .repo + (.id|tostring)
+          identifier: .__repository + (.id|tostring)
           title: .name
           blueprint: '"githubWorkflow"'
           properties:
@@ -33,7 +33,7 @@ resources:
             updatedAt: .updated_at
             link: .html_url
           relations:
-            repository: .repo
+            repository: .__repository
   - kind: workflow-run
     selector:
       query: .status != "completed"
