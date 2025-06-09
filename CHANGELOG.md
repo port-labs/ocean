@@ -7,6 +7,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.24.4 (2025-06-09)
+
+### Improvements
+- Made on_start tasks start regardless to the Uvicorn server startup.
+
 ## 0.24.3 (2025-06-08)
 
 ### Improvements
