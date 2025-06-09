@@ -13,29 +13,17 @@ class ListRepositoryOptions(TypedDict):
     type: str
 
 
-class RepoOptions(TypedDict):
-    """Base options requiring a repository name."""
-
+class ListWorkflowOptions(TypedDict):
     repo: str
 
 
-class SingleRepoResourceOptions(RepoOptions):
-    """Base options requiring a repository and a resource ID."""
-
+class SingleWorkflowOptions(ListWorkflowOptions):
     resource_id: str
 
 
-class ListWorkflowOptions(RepoOptions):
-    """Options for listing workflows within a repository."""
+class ListWorkflowRunOptions(TypedDict):
+    repo: str
 
 
-class SingleWorkflowOptions(SingleRepoResourceOptions):
-    """Options for fetching a single workflow within a repository."""
-
-
-class ListWorkflowRunOptions(RepoOptions):
-    """Options for listing workflow runs within a repository."""
-
-
-class SingleWorkflowRunOptions(SingleRepoResourceOptions):
-    """Options for fetching a single workflow run within a repository."""
+class SingleWorkflowRunOptions(ListWorkflowOptions):
+    resource_id: str
