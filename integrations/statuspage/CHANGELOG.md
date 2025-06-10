@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.112 (2025-06-10)
+
+
+### Improvements
+
+- Added a new `under_maintenance` option to the `status` property of Statuspage components blueprint
+
+
 ## 0.1.111 (2025-06-09)
 
 
