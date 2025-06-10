@@ -25,9 +25,12 @@ FILE_PROPERTY_PREFIX = "file://"
 
 class GithubFilePattern(BaseModel):
     path: str = Field(
-        default="",
         alias="path",
         description="Specify the path to match files from",
+    )
+    branch: str = Field(
+        alias="branch",
+        description="Specify the branch to fetch files from",
     )
     repos: list[str] = Field(
         default_factory=list,

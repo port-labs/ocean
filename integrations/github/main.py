@@ -91,6 +91,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path=file_pattern.path,
         filenames=file_pattern.filenames,
         skip_parsing=file_pattern.skip_parsing,
+        branch=file_pattern.branch,
     )
 
     async for file_results in exporter.get_paginated_resources(options):

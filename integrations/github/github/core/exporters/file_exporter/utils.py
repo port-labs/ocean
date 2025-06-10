@@ -24,7 +24,7 @@ class FileObject(TypedDict):
 
 def normalize_path(path: str) -> str:
     dir_path = os.path.dirname(path)
-    return os.path.normpath(dir_path)
+    return f"{os.path.normpath(dir_path)}/"
 
 
 def validate_file_match(full_path: str, filename: str, path: str) -> bool:

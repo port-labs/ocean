@@ -25,7 +25,6 @@ JSON_SUFFIX = ".json"
 
 
 class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
-    _branch = "main"
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
         return not ({"ref", "before", "after", "commits"} - payload.keys())
@@ -33,9 +32,8 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.headers.get("x-github-event")
 
-        return (
-            event_type == "push"
-            and event.payload.get("ref") == f"refs/heads/{self._branch}"
+        return event_type == "push" and event.payload.get("ref", "").startswith(
+            "refs/heads/"
         )
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -55,12 +53,16 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         tracked_repository = selector.files.repos
         path = selector.files.path
         filenames = selector.files.filenames
+        branch = selector.files.branch
 
         logger.info(
             f"Processing push event for file kind for repository {repo_name} with path: {path} and filenames: {filenames}"
         )
 
-        if repo_name not in tracked_repository:
+        if (
+            repo_name not in tracked_repository
+            or branch != payload["ref"].split("/")[-1]
+        ):
             logger.info(
                 f"Skipping push event for repository {repo_name} because it is not in {tracked_repository}"
             )
@@ -72,17 +74,27 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         rest_client = create_github_client()
         exporter = RestFileExporter(rest_client)
 
+        logger.info(
+            f"Fetching commit diff for repository {repo_name} from {before_sha} to {after_sha}"
+        )
+
         diff_data = await exporter.fetch_commit_diff(repo_name, before_sha, after_sha)
         files_to_process = diff_data["files"]
 
         if not is_matching_file(files_to_process, filenames):
+            logger.info(
+                f"No matching files found for filenames {filenames}, skipping processing"
+            )
+
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[],
             )
 
-        deleted_raw_results, updated_raw_results = group_files_by_status(
-            files_to_process
+        deleted_files, updated_files = group_files_by_status(files_to_process)
+
+        logger.info(
+            f"Found {len(deleted_files)} deleted files and {len(updated_files)} updated files"
         )
 
         tasks = [
@@ -90,13 +102,20 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                 repository=repository,
                 file_path=file["filename"],
                 skip_parsing=skip_parsing,
+                branch=branch,
             )
-            for file in updated_raw_results
+            for file in updated_files
         ]
 
+        updated_raw_results = []
         async for file_results in stream_async_iterators_tasks(*tasks):
             updated_raw_results.append(file_results)
 
+        logger.info(f"Successfully processed {len(updated_raw_results)} files")
+
+        deleted_raw_results = [
+            {"metadata": {"path": file["filename"]}} for file in deleted_files
+        ]
         return WebhookEventRawResults(
             updated_raw_results=updated_raw_results,
             deleted_raw_results=deleted_raw_results,

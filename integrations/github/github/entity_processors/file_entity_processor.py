@@ -14,7 +14,7 @@ class FileEntityProcessor(JQEntityProcessor):
     prefix = FILE_PROPERTY_PREFIX
 
     async def _get_file_content(
-        self, repo_name: str, file_path: str, ref: Optional[str] = None
+        self, repo_name: str, file_path: str, branch: str
     ) -> Optional[Any]:
         """Helper method to fetch and process file content."""
 
@@ -22,7 +22,7 @@ class FileEntityProcessor(JQEntityProcessor):
         exporter = RestFileExporter(rest_client)
 
         file_content_response = await exporter.get_resource(
-            FileContentOptions(repo_name=repo_name, file_path=file_path, ref=ref)
+            FileContentOptions(repo_name=repo_name, file_path=file_path, branch=branch)
         )
         decoded_content = file_content_response["content"]
         if not decoded_content:
@@ -48,7 +48,7 @@ class FileEntityProcessor(JQEntityProcessor):
         is_monorepo = "repository" in data
 
         repo_name = repo_data["name"]
-        ref = data.get("branch") if is_monorepo else repo_data.get("default_branch")
+        ref = data["branch"] if is_monorepo else repo_data["default_branch"]
 
         base_pattern = pattern.replace(self.prefix, "")
         file_path = (

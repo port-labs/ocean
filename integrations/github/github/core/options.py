@@ -20,6 +20,7 @@ class FileSearchOptions(TypedDict):
     path: Required[str]
     filenames: Required[List[str]]
     skip_parsing: Required[bool]
+    branch: Required[str]
 
 
 class FileContentOptions(TypedDict):
@@ -27,4 +28,4 @@ class FileContentOptions(TypedDict):
 
     repo_name: Required[str]
     file_path: Required[str]
-    ref: NotRequired[Optional[str]]
+    branch: Required[str]

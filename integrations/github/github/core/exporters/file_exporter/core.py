@@ -30,13 +30,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         """
         repo_name = options["repo_name"]
         file_path = options["file_path"]
-        ref = options.get("ref")
+        branch = options["branch"]
 
         resource = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/contents/{quote(file_path)}"
         logger.info(f"Fetching file: {file_path} from {repo_name}")
 
-        params = {"ref": ref} if ref else {}
-        response = await self.client.send_api_request(resource, params=params)
+        response = await self.client.send_api_request(resource, params={"ref": branch})
 
         response_size = response["size"]
         content = None
@@ -59,6 +58,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         path = cast(str, data["path"])
         repos = cast(Optional[List[str]], data.get("repos"))
         skip_parsing = cast(bool, data["skip_parsing"])
+        branch = cast(str, data["branch"])
 
         if not repos:
             logger.warning("No repositories were provided, searching all repositories")
@@ -93,7 +93,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
                     tasks.append(
                         self.process_file(
-                            result["repository"], result["path"], skip_parsing
+                            result["repository"], result["path"], skip_parsing, branch
                         )
                     )
 
@@ -104,7 +104,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     yield [file_results]
 
     async def process_file(
-        self, repository: Dict[str, Any], file_path: str, skip_parsing: bool
+        self,
+        repository: Dict[str, Any],
+        file_path: str,
+        skip_parsing: bool,
+        branch: str,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Process file content, optionally parsing it and handling nested structures.
@@ -118,11 +122,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         """
 
         file_content = await self.get_resource(
-            FileContentOptions(repo_name=repository["name"], file_path=file_path)
+            FileContentOptions(
+                repo_name=repository["name"], file_path=file_path, branch=branch
+            )
         )
 
-        url = file_content["url"]
-        branch = url.split("?ref=")[1]
         file_size = file_content["size"]
         file_path = file_content["path"]
         decoded_content = file_content.pop("content")
@@ -279,7 +283,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
         file_content_response = await self.get_resource(
-            FileContentOptions(repo_name=repository, file_path=file_path)
+            FileContentOptions(repo_name=repository, file_path=file_path, branch=branch)
         )
         decoded_content = file_content_response["content"]
         file_size = file_content_response["size"]
@@ -297,4 +301,8 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         """
 
         resource = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/compare/{before_sha}...{after_sha}"
-        return await self.client.send_api_request(resource)
+        response = await self.client.send_api_request(resource)
+
+        logger.info(f"Found {len(response['files'])} files in commit diff")
+
+        return response
