@@ -1,3 +1,4 @@
+import platform
 from typing import Any, Literal, Optional, Type, cast
 
 from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
@@ -98,12 +99,25 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
-    caching_storage_mode: Optional[CachingStorageMode] = Field(default=None)
-    process_execution_mode: Optional[ProcessExecutionMode] = Field(default=None)
+    caching_storage_mode: Optional[CachingStorageMode] = Field(
+        default=CachingStorageMode.disk
+    )
+    process_execution_mode: Optional[ProcessExecutionMode] = Field(
+        default=ProcessExecutionMode.multi_process
+    )
 
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
-    bulk_upserts_enabled: bool = False
+
+    @validator("process_execution_mode")
+    def validate_process_execution_mode(
+        cls, process_execution_mode: ProcessExecutionMode
+    ) -> ProcessExecutionMode:
+        # Check if the system is macos, if so, set the process execution mode to single process since multiprocessing behavior is different on macos and some asyncio error pop up
+        is_macos = platform.system() == "Darwin"
+        if is_macos:
+            return ProcessExecutionMode.single_process
+        return process_execution_mode
 
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:

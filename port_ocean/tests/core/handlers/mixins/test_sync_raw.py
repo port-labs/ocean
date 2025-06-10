@@ -98,7 +98,6 @@ async def test_sync_raw_mixin_self_dependency(
 ) -> None:
     mock_ocean.config.upsert_entities_batch_max_length = 20
     mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024
-    mock_ocean.config.bulk_upserts_enabled = True
 
     entities_params = [
         ("entity_1", "service", {"service": "entity_1"}, True),
@@ -219,7 +218,6 @@ async def test_sync_raw_mixin_circular_dependency(
 ) -> None:
     mock_ocean.config.upsert_entities_batch_max_length = 20
     mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024
-    mock_ocean.config.bulk_upserts_enabled = True
 
     entities_params = [
         ("entity_1", "service", {"service": "entity_2"}, True),
@@ -359,7 +357,6 @@ async def test_sync_raw_mixin_dependency(
 ) -> None:
     mock_ocean.config.upsert_entities_batch_max_length = 20
     mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024
-    mock_ocean.config.bulk_upserts_enabled = True
 
     entities_params = [
         ("entity_1", "service", {"service": "entity_3"}, True),
