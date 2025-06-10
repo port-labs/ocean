@@ -32,41 +32,67 @@ async def on_start() -> None:
     logger.success("Spacelift integration started successfully")
 
 
-@ocean.on_resync()
-async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Handle resync events for all supported resource kinds."""
-    logger.info(f"Starting resync for kind: {kind}")
-
+@ocean.on_resync(kind="space")
+async def on_resync_spaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Handle resync events for Spacelift spaces."""
+    logger.info("Starting resync for Spacelift spaces")
     client = await integration.initialize_client()
+    
+    async for spaces_batch in client.get_spaces():
+        logger.info(f"Received {len(spaces_batch)} spaces")
+        yield spaces_batch
 
-    match kind:
-        case "space":
-            logger.info("Resyncing Spacelift spaces")
-            async for spaces_batch in client.get_spaces():
-                logger.info(f"Received {len(spaces_batch)} spaces")
-                yield spaces_batch
-        case "stack":
-            logger.info("Resyncing Spacelift stacks")
-            async for stacks_batch in client.get_stacks():
-                logger.info(f"Received {len(stacks_batch)} stacks")
-                yield stacks_batch
-        case "deployment":
-            logger.info("Resyncing Spacelift deployments")
-            async for deployments_batch in client.get_deployments():
-                logger.info(f"Received {len(deployments_batch)} deployments")
-                yield deployments_batch
-        case "policy":
-            logger.info("Resyncing Spacelift policies")
-            async for policies_batch in client.get_policies():
-                logger.info(f"Received {len(policies_batch)} policies")
-                yield policies_batch
-        case "user":
-            logger.info("Resyncing Spacelift users")
-            async for users_batch in client.get_users():
-                logger.info(f"Received {len(users_batch)} users")
-                yield users_batch
-        case _:
-            logger.warning(f"Unknown resource kind: {kind}")
+
+@ocean.on_resync(kind="stack")
+async def on_resync_stacks(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Handle resync events for Spacelift stacks."""
+    logger.info("Starting resync for Spacelift stacks")
+    client = await integration.initialize_client()
+    
+    async for stacks_batch in client.get_stacks():
+        logger.info(f"Received {len(stacks_batch)} stacks")
+        yield stacks_batch
+
+
+@ocean.on_resync(kind="deployment")
+async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Handle resync events for Spacelift deployments."""
+    logger.info("Starting resync for Spacelift deployments")
+    client = await integration.initialize_client()
+    
+    async for deployments_batch in client.get_deployments():
+        logger.info(f"Received {len(deployments_batch)} deployments")
+        yield deployments_batch
+
+
+@ocean.on_resync(kind="policy")
+async def on_resync_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Handle resync events for Spacelift policies."""
+    logger.info("Starting resync for Spacelift policies")
+    client = await integration.initialize_client()
+    
+    async for policies_batch in client.get_policies():
+        logger.info(f"Received {len(policies_batch)} policies")
+        yield policies_batch
+
+
+@ocean.on_resync(kind="user")
+async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Handle resync events for Spacelift users."""
+    logger.info("Starting resync for Spacelift users")
+    client = await integration.initialize_client()
+    
+    async for users_batch in client.get_users():
+        logger.info(f"Received {len(users_batch)} users")
+        yield users_batch
+
+
+@ocean.on_resync()
+async def on_resync_global(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Handle resync events for undefined resource kinds."""
+    logger.warning(f"Received resync request for undefined resource kind: {kind}")
+    logger.info(f"Supported resource kinds are: space, stack, deployment, policy, user")
+    yield []
 
 
 @ocean.router.post("/webhook")

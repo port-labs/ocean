@@ -37,48 +37,15 @@ class SpaceliftDataClients(SpaceliftBaseClient):
                 logger.info("No spaces found")
 
         except AuthenticationError as e:
-            logger.warning(
+            logger.error(
                 "Authorization failed for spaces query. This may indicate insufficient permissions."
             )
-            logger.warning(f"Full error: {e}")
-            logger.info("Trying simplified spaces query...")
-
-            simple_query = """
-            query GetBasicSpaces {
-                spaces {
-                    id
-                    name
-                }
-            }
-            """
-
-            try:
-                data = await self.make_graphql_request(simple_query)
-                spaces = data["data"]["spaces"] or []
-
-                for space in spaces:
-                    space.setdefault("description", "")
-                    space.setdefault("parentSpace", None)
-                    space.setdefault("labels", [])
-
-                if spaces:
-                    yield spaces
-                    logger.info(f"Fetched {len(spaces)} spaces using simplified query")
-                else:
-                    yield []
-                    logger.info("No spaces found using simplified query")
-
-            except Exception as simple_e:
-                logger.error("Both full and simplified spaces queries failed.")
-                logger.error(
-                    "This usually indicates the API key lacks 'read' access to spaces."
-                )
-                logger.error("Please check your Spacelift API key permissions.")
-                logger.error(f"Error details: {simple_e}")
-                yield []
+            logger.error(f"Full error: {e}")
+            logger.error("Please check your Spacelift API key permissions.")
+            yield []
 
         except Exception as e:
-            logger.warning(f"Could not fetch spaces: {e}")
+            logger.error(f"Could not fetch spaces: {e}")
             yield []
 
     async def get_stacks(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -116,55 +83,15 @@ class SpaceliftDataClients(SpaceliftBaseClient):
                 logger.info("No stacks found")
 
         except AuthenticationError as e:
-            logger.warning(
+            logger.error(
                 "Authorization failed for stacks query. This may indicate insufficient permissions."
             )
-            logger.warning(f"Full error: {e}")
-            logger.info("Trying simplified stacks query...")
-
-            simple_query = """
-            query GetBasicStacks {
-                stacks {
-                    id
-                    name
-                    description
-                    repository
-                    branch
-                    state
-                    administrative
-                    space
-                }
-            }
-            """
-
-            try:
-                data = await self.make_graphql_request(simple_query)
-                stacks = data["data"]["stacks"] or []  
-
-                for stack in stacks:
-                    stack.setdefault("labels", [])
-                    stack.setdefault("provider", "")
-                    stack.setdefault("terraformVersion", "")
-                    stack.setdefault("projectRoot", "")
-
-                if stacks:
-                    yield stacks
-                    logger.info(f"Fetched {len(stacks)} stacks using simplified query")
-                else:
-                    yield []
-                    logger.info("No stacks found using simplified query")
-
-            except Exception as simple_e:
-                logger.error("Both full and simplified stacks queries failed.")
-                logger.error(
-                    "This usually indicates the API key lacks 'read' access to stacks."
-                )
-                logger.error("Please check your Spacelift API key permissions.")
-                logger.error(f"Error details: {simple_e}")
-                yield []
+            logger.error(f"Full error: {e}")
+            logger.error("Please check your Spacelift API key permissions.")
+            yield []
 
         except Exception as e:
-            logger.warning(f"Could not fetch stacks: {e}")
+            logger.error(f"Could not fetch stacks: {e}")
             yield []
 
     async def get_deployments(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -233,9 +160,7 @@ class SpaceliftDataClients(SpaceliftBaseClient):
                 if run_type and run.get("type") != run_type:
                     continue
 
-                run["url"] = None
-                run["delta"] = {"added": 0, "changed": 0, "deleted": 0}
-
+                # Only add minimal enrichment that can't be done in JQ
                 run["stack_id"] = stack_id
                 run["stack"] = {
                     "id": stack_data.get("id", stack_id),
@@ -246,67 +171,8 @@ class SpaceliftDataClients(SpaceliftBaseClient):
             yield filtered_runs
 
         except Exception as e:
-            logger.warning(f"Could not fetch runs for stack {stack_id}: {e}")
-
-            try:
-                logger.info(f"Attempting fallback query for stack {stack_id}")
-                simple_query = """
-                query GetBasicStackRuns($stackId: ID!) {
-                    stack(id: $stackId) {
-                        id
-                        name
-                        runs {
-                            id
-                            type
-                            state
-                            createdAt
-                        }
-                    }
-                }
-                """
-
-                data = await self.make_graphql_request(simple_query, variables)
-                stack_data = data.get("data", {}).get("stack") if data else None
-
-                if stack_data:
-                    runs = stack_data.get("runs", []) or []
-                    filtered_runs = []
-
-                    for run in runs:
-                        if run_type and run.get("type") != run_type:
-                            continue
-
-                        run.update(
-                            {
-                                "branch": None,
-                                "updatedAt": None,
-                                "triggeredBy": None,
-                                "commit": {
-                                    "hash": None,
-                                    "message": None,
-                                    "authorName": None,
-                                },
-                                "driftDetection": False,
-                                "url": None,
-                                "delta": {"added": 0, "changed": 0, "deleted": 0},
-                                "stack_id": stack_id,
-                                "stack": {
-                                    "id": stack_data.get("id", stack_id),
-                                    "name": stack_data.get("name", "Unknown"),
-                                },
-                            }
-                        )
-                        filtered_runs.append(run)
-
-                    yield filtered_runs
-                else:
-                    yield []
-
-            except Exception as fallback_e:
-                logger.warning(
-                    f"Fallback query also failed for stack {stack_id}: {fallback_e}"
-                )
-                yield []
+            logger.error(f"Could not fetch runs for stack {stack_id}: {e}")
+            yield []
 
     async def get_policies(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get all policies."""
@@ -336,7 +202,7 @@ class SpaceliftDataClients(SpaceliftBaseClient):
                 logger.info("No policies found")
 
         except Exception as e:
-            logger.warning(
+            logger.error(
                 f"Could not fetch policies - may require admin permissions: {e}"
             )
             yield []
@@ -362,28 +228,15 @@ class SpaceliftDataClients(SpaceliftBaseClient):
             data = await self.make_graphql_request(query)
             managed_users = data["data"]["managedUsers"] or []
 
-            users = []
-            for user in managed_users:
-                user_data = {
-                    "id": user.get("id"),
-                    "name": user.get("username", ""),
-                    "username": user.get("username"),
-                    "email": user.get("invitationEmail"),
-                    "status": user.get("status"),
-                    "role": user.get("role"),
-                    "lastLoginTime": user.get("lastLoginTime"),
-                }
-                users.append(user_data)
-
-            if users:
-                yield users
-                logger.info(f"Fetched {len(users)} managed users")
+            if managed_users:
+                yield managed_users
+                logger.info(f"Fetched {len(managed_users)} managed users")
             else:
                 yield []
                 logger.info("No managed users found")
 
         except Exception as e:
-            logger.warning(
+            logger.error(
                 f"Could not fetch managed users - may require admin permissions: {e}"
             )
             yield []

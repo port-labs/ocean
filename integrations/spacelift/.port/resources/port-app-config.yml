@@ -58,18 +58,18 @@ resources:
             state: .state
             branch: .branch
             triggeredBy: .triggeredBy
-            commitHash: .commit.hash
-            commitMessage: .commit.message
-            commitAuthor: .commit.authorName
-            deltaAdded: 0
+            commitHash: .commit.hash // null
+            commitMessage: .commit.message // null
+            commitAuthor: .commit.authorName // null
+            deltaAdded: 0 
             deltaChanged: 0
             deltaDeleted: 0
             totalResources: 0
-            driftDetection: .driftDetection
+            driftDetection: .driftDetection // false
             createdAt: .createdAt
             updatedAt: .updatedAt
           relations:
-            stack: .stack.id
+            stack: .stack_id
 
   # Spacelift Policies
   - kind: policy
@@ -97,11 +97,13 @@ resources:
       entity:
         mappings:
           identifier: .id
-          title: .name
+          title: .username // "Unknown User"
           blueprint: '"spaceliftUser"'
           properties:
-            name: .name
-            email: .email // "no-email-provided@spacelift.local"
+            name: .username // "Unknown User"
+            username: .username
+            email: .invitationEmail // "no-email-provided@spacelift.local"
+            status: .status
             role: .role
-            lastSeenAt: .lastSeenAt
-            createdAt: .createdAt
+            lastLoginTime: .lastLoginTime
+            lastSeenAt: .lastLoginTime  
