@@ -37,7 +37,7 @@ async def on_resync_spaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resync events for Spacelift spaces."""
     logger.info("Starting resync for Spacelift spaces")
     client = await integration.initialize_client()
-    
+
     async for spaces_batch in client.get_spaces():
         logger.info(f"Received {len(spaces_batch)} spaces")
         yield spaces_batch
@@ -48,7 +48,7 @@ async def on_resync_stacks(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resync events for Spacelift stacks."""
     logger.info("Starting resync for Spacelift stacks")
     client = await integration.initialize_client()
-    
+
     async for stacks_batch in client.get_stacks():
         logger.info(f"Received {len(stacks_batch)} stacks")
         yield stacks_batch
@@ -59,7 +59,7 @@ async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resync events for Spacelift deployments."""
     logger.info("Starting resync for Spacelift deployments")
     client = await integration.initialize_client()
-    
+
     async for deployments_batch in client.get_deployments():
         logger.info(f"Received {len(deployments_batch)} deployments")
         yield deployments_batch
@@ -70,7 +70,7 @@ async def on_resync_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resync events for Spacelift policies."""
     logger.info("Starting resync for Spacelift policies")
     client = await integration.initialize_client()
-    
+
     async for policies_batch in client.get_policies():
         logger.info(f"Received {len(policies_batch)} policies")
         yield policies_batch
@@ -81,7 +81,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resync events for Spacelift users."""
     logger.info("Starting resync for Spacelift users")
     client = await integration.initialize_client()
-    
+
     async for users_batch in client.get_users():
         logger.info(f"Received {len(users_batch)} users")
         yield users_batch
@@ -91,7 +91,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_global(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resync events for undefined resource kinds."""
     logger.warning(f"Received resync request for undefined resource kind: {kind}")
-    logger.info(f"Supported resource kinds are: space, stack, deployment, policy, user")
+    logger.info("Supported resource kinds are: space, stack, deployment, policy, user")
     yield []
 
 

@@ -111,7 +111,7 @@ class SpaceliftBaseClient:
                         raise Exception(
                             f"GraphQL request failed: {response.status_code} - {response.text}"
                         )
-                    await asyncio.sleep(2**attempt)  
+                    await asyncio.sleep(2**attempt)
                     continue
 
                 data = response.json()
@@ -171,4 +171,3 @@ class SpaceliftBaseClient:
 
         except Exception as e:
             logger.warning(f"Connection test failed, but proceeding: {e}")
-
