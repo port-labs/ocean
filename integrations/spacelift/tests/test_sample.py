@@ -1,7 +1,6 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 from typing import AsyncGenerator, Dict, Any, List
-import asyncio
 
 
 class TestSpaceLiftIntegration:
@@ -39,7 +38,7 @@ class TestSpaceLiftIntegration:
     async def test_initialize_client(self, mock_client):
         """Test client initialization."""
         from main import integration
-        
+
         with patch("main.SpaceliftClient", return_value=mock_client):
             client = await integration.initialize_client()
             assert client is not None
@@ -49,7 +48,7 @@ class TestSpaceLiftIntegration:
     async def test_on_resync_spaces(self, mock_client):
         """Test spaces resync handler."""
         from main import on_resync_spaces
-        
+
         with patch("main.integration.initialize_client", return_value=mock_client):
             results = []
             async for batch in on_resync_spaces("space"):
@@ -63,7 +62,7 @@ class TestSpaceLiftIntegration:
     async def test_on_resync_stacks(self, mock_client):
         """Test stacks resync handler."""
         from main import on_resync_stacks
-        
+
         with patch("main.integration.initialize_client", return_value=mock_client):
             results = []
             async for batch in on_resync_stacks("stack"):
@@ -77,7 +76,7 @@ class TestSpaceLiftIntegration:
     async def test_on_resync_deployments(self, mock_client):
         """Test deployments resync handler."""
         from main import on_resync_deployments
-        
+
         with patch("main.integration.initialize_client", return_value=mock_client):
             results = []
             async for batch in on_resync_deployments("deployment"):
@@ -91,7 +90,7 @@ class TestSpaceLiftIntegration:
     async def test_on_resync_policies(self, mock_client):
         """Test policies resync handler."""
         from main import on_resync_policies
-        
+
         with patch("main.integration.initialize_client", return_value=mock_client):
             results = []
             async for batch in on_resync_policies("policy"):
@@ -105,7 +104,7 @@ class TestSpaceLiftIntegration:
     async def test_on_resync_users(self, mock_client):
         """Test users resync handler."""
         from main import on_resync_users
-        
+
         with patch("main.integration.initialize_client", return_value=mock_client):
             results = []
             async for batch in on_resync_users("user"):
@@ -119,7 +118,7 @@ class TestSpaceLiftIntegration:
     async def test_on_resync_global_undefined_kind(self):
         """Test global resync handler for undefined resource kinds."""
         from main import on_resync_global
-        
+
         results = []
         async for batch in on_resync_global("undefined_kind"):
             results.extend(batch)
@@ -130,7 +129,7 @@ class TestSpaceLiftIntegration:
     async def test_handle_webhook_run_state_changed(self):
         """Test webhook handling for run state changed event."""
         from main import _handle_webhook_logic
-        
+
         webhook_body = {
             "event_type": "run_state_changed_event",
             "run": {
@@ -162,7 +161,7 @@ class TestSpaceLiftIntegration:
     async def test_handle_webhook_stack_updated(self):
         """Test webhook handling for stack updated event."""
         from main import _handle_webhook_logic
-        
+
         webhook_body = {
             "event_type": "stack_updated_event",
             "stack": {"id": "stack-789", "name": "Updated Stack", "state": "TRACKED"},
@@ -182,7 +181,7 @@ class TestSpaceLiftIntegration:
     async def test_handle_webhook_unhandled_event(self):
         """Test webhook handling for unhandled event types."""
         from main import _handle_webhook_logic
-        
+
         webhook_body = {"event_type": "unknown_event_type", "data": {"some": "data"}}
 
         with patch("port_ocean.context.ocean.ocean.register_raw") as mock_register:
@@ -195,7 +194,7 @@ class TestSpaceLiftIntegration:
     async def test_handle_webhook_non_tracked_run(self):
         """Test webhook handling for non-tracked runs."""
         from main import _handle_webhook_logic
-        
+
         webhook_body = {
             "event_type": "run_state_changed_event",
             "run": {
@@ -216,7 +215,7 @@ class TestSpaceLiftIntegration:
     async def test_handle_webhook_missing_event_type(self):
         """Test webhook handling for missing event type."""
         from main import _handle_webhook_logic
-        
+
         webhook_body = {"data": {"some": "data"}}
 
         result = await _handle_webhook_logic(webhook_body)
@@ -227,7 +226,7 @@ class TestSpaceLiftIntegration:
     async def test_handle_webhook_invalid_payload_structure(self):
         """Test webhook handling for invalid payload structure."""
         from main import _handle_webhook_logic
-        
+
         webhook_body = {
             "event_type": "run_state_changed_event",
             # Missing required 'run' and 'stack' fields
@@ -241,7 +240,7 @@ class TestSpaceLiftIntegration:
     async def test_handle_webhook_stack_updated_invalid_data(self):
         """Test webhook handling for stack updated event with invalid data."""
         from main import _handle_webhook_logic
-        
+
         webhook_body = {
             "event_type": "stack_updated_event",
             "stack": "invalid_stack_data",  # Should be a dict, not a string

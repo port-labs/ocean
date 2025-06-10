@@ -18,11 +18,11 @@ def mock_ocean_context() -> None:
         mock_ocean_app.port_client = MagicMock()
         mock_ocean_app.cache_provider = AsyncMock()
         mock_ocean_app.cache_provider.get.return_value = None
-        
+
         # Mock the router properly
         mock_router = MagicMock()
         mock_ocean_app.router = mock_router
-        
+
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
-        pass 
+        pass

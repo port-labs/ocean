@@ -24,7 +24,9 @@ class SpaceLiftIntegration:
 integration = SpaceLiftIntegration()
 
 
-def _safe_get_nested_value(data: Dict[str, Any], *keys: str, default: Any = None) -> Any:
+def _safe_get_nested_value(
+    data: Dict[str, Any], *keys: str, default: Any = None
+) -> Any:
     """Safely get nested value from dictionary with fallback to default."""
     current = data
     for key in keys:
@@ -67,7 +69,6 @@ async def on_resync_spaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resync events for Spacelift spaces."""
     logger.info("Starting resync for Spacelift spaces")
     client = await integration.initialize_client()
-
 
     async for spaces_batch in client.get_spaces():
         logger.info(f"Received {len(spaces_batch)} spaces")
@@ -131,20 +132,22 @@ async def _handle_webhook_logic(body: Dict[str, Any]) -> Dict[str, Any]:
     logger.info(f"Received webhook event: {body.get('event_type', 'unknown')}")
 
     event_type = body.get("event_type")
-    
+
     if not event_type:
         logger.warning("Received webhook without event_type field")
         return {"ok": False, "error": "missing event_type"}
 
     # Validate payload structure
     if not _validate_webhook_payload(body, event_type):
-        logger.warning(f"Invalid webhook payload structure for event type: {event_type}")
+        logger.warning(
+            f"Invalid webhook payload structure for event type: {event_type}"
+        )
         return {"ok": False, "error": "invalid payload structure"}
 
     if event_type == "run_state_changed_event":
         run_data = body.get("run", {})
         stack_data = body.get("stack", {})
-        
+
         if run_data.get("type") == "TRACKED":
             logger.info(
                 f"Processing deployment state change for run: {run_data.get('id')}"
@@ -189,7 +192,7 @@ async def _handle_webhook_logic(body: Dict[str, Any]) -> Dict[str, Any]:
         if not isinstance(stack_data, dict):
             logger.warning("Invalid stack data structure, skipping event")
             return {"ok": False, "error": "invalid stack data"}
-            
+
         logger.info(f"Processing stack update for: {stack_data.get('id')}")
         await ocean.register_raw("stack", [stack_data])
 

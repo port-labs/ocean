@@ -11,8 +11,6 @@ from .auth import SpaceliftAuthenticator, AuthenticationError
 class RateLimitError(Exception):
     """Raised when rate limit is exceeded."""
 
-    pass
-
 
 class SpaceliftBaseClient:
     """Base client for making GraphQL requests to Spacelift API."""
