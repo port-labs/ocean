@@ -37,16 +37,15 @@ class SpaceliftAuthenticator:
         """Load authentication configuration from Ocean context."""
         config = ocean.integration_config
         return AuthConfig(
-            api_key_id=config.get("spaceliftApiKeyId"),
-            api_key_secret=config.get("spaceliftApiKeySecret"),
-            api_endpoint=config.get("spaceliftApiEndpoint"),
-            api_token=config.get("spaceliftApiToken"),
+            api_key_id=config.get("spacelift_api_key_id"),
+            api_key_secret=config.get("spacelift_api_key_secret"),
+            api_endpoint=config.get("spacelift_api_endpoint"),
+            api_token=config.get("spacelift_api_token"),
         )
 
     def _extract_token_expiry(self, token: str) -> Optional[datetime]:
         """Extract expiry time from JWT token if possible."""
         try:
-            # Decode JWT token without verification to get expiry
             decoded = jwt.decode(token, options={"verify_signature": False})
             if "exp" in decoded:
                 return datetime.fromtimestamp(decoded["exp"])
@@ -59,21 +58,21 @@ class SpaceliftAuthenticator:
         if self._is_token_valid() and self._current_token is not None:
             return self._current_token
 
+
         if self.auth_config.api_token:
             self._current_token = self.auth_config.api_token
-            # Try to extract expiry from the token, fallback to hardcoded value
             extracted_expiry = self._extract_token_expiry(self.auth_config.api_token)
             if extracted_expiry:
                 self._token_expires_at = extracted_expiry
                 logger.info("Using provided API token with extracted expiry time")
             else:
-                # Fallback to hardcoded expiry with warning
                 self._token_expires_at = datetime.now() + timedelta(hours=9, minutes=30)
                 logger.warning(
                     "Using provided API token with hardcoded expiry time (9h 30m). Consider validating token lifetime."
                 )
             logger.info("Using provided API token")
         elif self.auth_config.api_key_id and self.auth_config.api_key_secret:
+            logger.info("Authenticating with API key")
             await self._authenticate_with_api_key()
         else:
             raise AuthenticationError(
