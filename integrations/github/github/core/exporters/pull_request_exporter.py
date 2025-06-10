@@ -1,5 +1,4 @@
-from typing import cast
-from github.helpers.utils import enrich_with_repository
+from github.helpers.utils import enrich_with_repository, extract_repo_params
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import SinglePullRequestOptions, ListPullRequestOptions
@@ -12,8 +11,8 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionsT: SinglePullRequestOptions
     ](self, options: ExporterOptionsT,) -> RAW_ITEM:
-        repo_name = options["repo_name"]
-        pr_number = options["pr_number"]
+        repo_name, params = extract_repo_params(dict(options))
+        pr_number = params["pr_number"]
 
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/pulls/{pr_number}"
         response = await self.client.send_api_request(endpoint)
@@ -27,8 +26,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all pull requests in the organization's repositories with pagination."""
 
-        params = dict(options)
-        repo_name = cast(str, params.pop("repo_name"))
+        repo_name, params = extract_repo_params(dict(options))
 
         endpoint = (
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/pulls"

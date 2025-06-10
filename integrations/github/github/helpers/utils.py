@@ -25,3 +25,9 @@ def enrich_with_repository(
     """
     response[key] = repo_name
     return response
+
+
+def extract_repo_params(params: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    """Extract the repository name and other parameters from the options."""
+    repo_name = params.pop("repo_name")
+    return repo_name, params

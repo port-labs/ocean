@@ -53,6 +53,7 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
             SinglePullRequestOptions(repo_name=repo_name, pr_number=number)
         )
 
+        logger.debug(f"Successfully fetched pull request data for {repo_name}/{number}")
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
