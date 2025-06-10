@@ -1,17 +1,7 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from typing import AsyncGenerator, Dict, Any, List
-
-from main import (
-    integration,
-    on_resync_spaces,
-    on_resync_stacks,
-    on_resync_deployments,
-    on_resync_policies,
-    on_resync_users,
-    on_resync_global,
-    handle_webhook,
-)
+import asyncio
 
 
 class TestSpaceLiftIntegration:
@@ -48,7 +38,9 @@ class TestSpaceLiftIntegration:
     @pytest.mark.asyncio
     async def test_initialize_client(self, mock_client):
         """Test client initialization."""
-        with patch("spacelift.client.SpaceliftClient", return_value=mock_client):
+        from main import integration
+        
+        with patch("main.SpaceliftClient", return_value=mock_client):
             client = await integration.initialize_client()
             assert client is not None
             mock_client.initialize.assert_called_once()
@@ -56,71 +48,78 @@ class TestSpaceLiftIntegration:
     @pytest.mark.asyncio
     async def test_on_resync_spaces(self, mock_client):
         """Test spaces resync handler."""
-        integration.client = mock_client
+        from main import on_resync_spaces
+        
+        with patch("main.integration.initialize_client", return_value=mock_client):
+            results = []
+            async for batch in on_resync_spaces("space"):
+                results.extend(batch)
 
-        results = []
-        async for batch in on_resync_spaces("space"):
-            results.extend(batch)
-
-        assert len(results) == 1
-        assert results[0]["id"] == "space-1"
-        assert results[0]["name"] == "Test Space"
+            assert len(results) == 1
+            assert results[0]["id"] == "space-1"
+            assert results[0]["name"] == "Test Space"
 
     @pytest.mark.asyncio
     async def test_on_resync_stacks(self, mock_client):
         """Test stacks resync handler."""
-        integration.client = mock_client
+        from main import on_resync_stacks
+        
+        with patch("main.integration.initialize_client", return_value=mock_client):
+            results = []
+            async for batch in on_resync_stacks("stack"):
+                results.extend(batch)
 
-        results = []
-        async for batch in on_resync_stacks("stack"):
-            results.extend(batch)
-
-        assert len(results) == 1
-        assert results[0]["id"] == "stack-1"
-        assert results[0]["name"] == "Test Stack"
+            assert len(results) == 1
+            assert results[0]["id"] == "stack-1"
+            assert results[0]["name"] == "Test Stack"
 
     @pytest.mark.asyncio
     async def test_on_resync_deployments(self, mock_client):
         """Test deployments resync handler."""
-        integration.client = mock_client
+        from main import on_resync_deployments
+        
+        with patch("main.integration.initialize_client", return_value=mock_client):
+            results = []
+            async for batch in on_resync_deployments("deployment"):
+                results.extend(batch)
 
-        results = []
-        async for batch in on_resync_deployments("deployment"):
-            results.extend(batch)
-
-        assert len(results) == 1
-        assert results[0]["id"] == "deployment-1"
-        assert results[0]["type"] == "TRACKED"
+            assert len(results) == 1
+            assert results[0]["id"] == "deployment-1"
+            assert results[0]["type"] == "TRACKED"
 
     @pytest.mark.asyncio
     async def test_on_resync_policies(self, mock_client):
         """Test policies resync handler."""
-        integration.client = mock_client
+        from main import on_resync_policies
+        
+        with patch("main.integration.initialize_client", return_value=mock_client):
+            results = []
+            async for batch in on_resync_policies("policy"):
+                results.extend(batch)
 
-        results = []
-        async for batch in on_resync_policies("policy"):
-            results.extend(batch)
-
-        assert len(results) == 1
-        assert results[0]["id"] == "policy-1"
-        assert results[0]["name"] == "Test Policy"
+            assert len(results) == 1
+            assert results[0]["id"] == "policy-1"
+            assert results[0]["name"] == "Test Policy"
 
     @pytest.mark.asyncio
     async def test_on_resync_users(self, mock_client):
         """Test users resync handler."""
-        integration.client = mock_client
+        from main import on_resync_users
+        
+        with patch("main.integration.initialize_client", return_value=mock_client):
+            results = []
+            async for batch in on_resync_users("user"):
+                results.extend(batch)
 
-        results = []
-        async for batch in on_resync_users("user"):
-            results.extend(batch)
-
-        assert len(results) == 1
-        assert results[0]["id"] == "user-1"
-        assert results[0]["username"] == "testuser"
+            assert len(results) == 1
+            assert results[0]["id"] == "user-1"
+            assert results[0]["username"] == "testuser"
 
     @pytest.mark.asyncio
     async def test_on_resync_global_undefined_kind(self):
         """Test global resync handler for undefined resource kinds."""
+        from main import on_resync_global
+        
         results = []
         async for batch in on_resync_global("undefined_kind"):
             results.extend(batch)
@@ -130,6 +129,8 @@ class TestSpaceLiftIntegration:
     @pytest.mark.asyncio
     async def test_handle_webhook_run_state_changed(self):
         """Test webhook handling for run state changed event."""
+        from main import _handle_webhook_logic
+        
         webhook_body = {
             "event_type": "run_state_changed_event",
             "run": {
@@ -147,7 +148,7 @@ class TestSpaceLiftIntegration:
         }
 
         with patch("port_ocean.context.ocean.ocean.register_raw") as mock_register:
-            result = await handle_webhook(webhook_body)
+            result = await _handle_webhook_logic(webhook_body)
 
             assert result == {"ok": True}
             mock_register.assert_called_once()
@@ -160,13 +161,15 @@ class TestSpaceLiftIntegration:
     @pytest.mark.asyncio
     async def test_handle_webhook_stack_updated(self):
         """Test webhook handling for stack updated event."""
+        from main import _handle_webhook_logic
+        
         webhook_body = {
             "event_type": "stack_updated_event",
             "stack": {"id": "stack-789", "name": "Updated Stack", "state": "TRACKED"},
         }
 
         with patch("port_ocean.context.ocean.ocean.register_raw") as mock_register:
-            result = await handle_webhook(webhook_body)
+            result = await _handle_webhook_logic(webhook_body)
 
             assert result == {"ok": True}
             mock_register.assert_called_once()
@@ -178,10 +181,12 @@ class TestSpaceLiftIntegration:
     @pytest.mark.asyncio
     async def test_handle_webhook_unhandled_event(self):
         """Test webhook handling for unhandled event types."""
+        from main import _handle_webhook_logic
+        
         webhook_body = {"event_type": "unknown_event_type", "data": {"some": "data"}}
 
         with patch("port_ocean.context.ocean.ocean.register_raw") as mock_register:
-            result = await handle_webhook(webhook_body)
+            result = await _handle_webhook_logic(webhook_body)
 
             assert result == {"ok": True}
             mock_register.assert_not_called()  # Should not process unknown events
@@ -189,6 +194,8 @@ class TestSpaceLiftIntegration:
     @pytest.mark.asyncio
     async def test_handle_webhook_non_tracked_run(self):
         """Test webhook handling for non-tracked runs."""
+        from main import _handle_webhook_logic
+        
         webhook_body = {
             "event_type": "run_state_changed_event",
             "run": {
@@ -200,7 +207,46 @@ class TestSpaceLiftIntegration:
         }
 
         with patch("port_ocean.context.ocean.ocean.register_raw") as mock_register:
-            result = await handle_webhook(webhook_body)
+            result = await _handle_webhook_logic(webhook_body)
 
             assert result == {"ok": True}
-            mock_register.assert_not_called()  # Should not process non-TRACKED runs
+            mock_register.assert_not_called()  # Should not process non-tracked runs
+
+    @pytest.mark.asyncio
+    async def test_handle_webhook_missing_event_type(self):
+        """Test webhook handling for missing event type."""
+        from main import _handle_webhook_logic
+        
+        webhook_body = {"data": {"some": "data"}}
+
+        result = await _handle_webhook_logic(webhook_body)
+
+        assert result == {"ok": False, "error": "missing event_type"}
+
+    @pytest.mark.asyncio
+    async def test_handle_webhook_invalid_payload_structure(self):
+        """Test webhook handling for invalid payload structure."""
+        from main import _handle_webhook_logic
+        
+        webhook_body = {
+            "event_type": "run_state_changed_event",
+            # Missing required 'run' and 'stack' fields
+        }
+
+        result = await _handle_webhook_logic(webhook_body)
+
+        assert result == {"ok": False, "error": "invalid payload structure"}
+
+    @pytest.mark.asyncio
+    async def test_handle_webhook_stack_updated_invalid_data(self):
+        """Test webhook handling for stack updated event with invalid data."""
+        from main import _handle_webhook_logic
+        
+        webhook_body = {
+            "event_type": "stack_updated_event",
+            "stack": "invalid_stack_data",  # Should be a dict, not a string
+        }
+
+        result = await _handle_webhook_logic(webhook_body)
+
+        assert result == {"ok": False, "error": "invalid stack data"}

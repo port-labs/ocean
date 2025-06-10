@@ -1,6 +1,7 @@
 from typing import Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import jwt
 
 from loguru import logger
 from port_ocean.utils import http_async_client
@@ -42,6 +43,17 @@ class SpaceliftAuthenticator:
             api_token=config.get("spacelift_api_token"),
         )
 
+    def _extract_token_expiry(self, token: str) -> Optional[datetime]:
+        """Extract expiry time from JWT token if possible."""
+        try:
+            # Decode JWT token without verification to get expiry
+            decoded = jwt.decode(token, options={"verify_signature": False})
+            if "exp" in decoded:
+                return datetime.fromtimestamp(decoded["exp"])
+        except Exception as e:
+            logger.debug(f"Could not decode JWT token to extract expiry: {e}")
+        return None
+
     async def ensure_authenticated(self) -> str:
         """Ensure we have a valid authentication token and return it."""
         if self._is_token_valid() and self._current_token is not None:
@@ -49,7 +61,15 @@ class SpaceliftAuthenticator:
 
         if self.auth_config.api_token:
             self._current_token = self.auth_config.api_token
-            self._token_expires_at = datetime.now() + timedelta(hours=9, minutes=30)
+            # Try to extract expiry from the token, fallback to hardcoded value
+            extracted_expiry = self._extract_token_expiry(self.auth_config.api_token)
+            if extracted_expiry:
+                self._token_expires_at = extracted_expiry
+                logger.info("Using provided API token with extracted expiry time")
+            else:
+                # Fallback to hardcoded expiry with warning
+                self._token_expires_at = datetime.now() + timedelta(hours=9, minutes=30)
+                logger.warning("Using provided API token with hardcoded expiry time (9h 30m). Consider validating token lifetime.")
             logger.info("Using provided API token")
         elif self.auth_config.api_key_id and self.auth_config.api_key_secret:
             await self._authenticate_with_api_key()
@@ -78,10 +98,12 @@ class SpaceliftAuthenticator:
                 "spaceliftApiEndpoint is required when using API key authentication"
             )
 
-        if not self.auth_config.api_endpoint.endswith("/graphql"):
-            if not self.auth_config.api_endpoint.endswith("/"):
-                self.auth_config.api_endpoint += "/"
-            self.auth_config.api_endpoint += "graphql"
+        # Use local variable instead of mutating configuration
+        graphql_endpoint = self.auth_config.api_endpoint
+        if not graphql_endpoint.endswith("/graphql"):
+            if not graphql_endpoint.endswith("/"):
+                graphql_endpoint += "/"
+            graphql_endpoint += "graphql"
 
         logger.info("Authenticating with Spacelift API key")
 
@@ -102,7 +124,7 @@ class SpaceliftAuthenticator:
         try:
             response = await self.http_client.request(
                 method="POST",
-                url=self.auth_config.api_endpoint,
+                url=graphql_endpoint,
                 json={"query": mutation, "variables": variables},
                 headers={"Content-Type": "application/json"},
             )
@@ -128,7 +150,16 @@ class SpaceliftAuthenticator:
 
             jwt_token = api_key_user["jwt"]
             self._current_token = jwt_token
-            self._token_expires_at = datetime.now() + timedelta(hours=9, minutes=30)
+            
+            # Extract expiry from JWT token, fallback to hardcoded value
+            extracted_expiry = self._extract_token_expiry(jwt_token)
+            if extracted_expiry:
+                self._token_expires_at = extracted_expiry
+                logger.info("Successfully authenticated with Spacelift using extracted token expiry")
+            else:
+                # Fallback to hardcoded expiry with warning
+                self._token_expires_at = datetime.now() + timedelta(hours=9, minutes=30)
+                logger.warning("Using hardcoded token expiry time (9h 30m). Could not extract expiry from JWT.")
 
             logger.success("Successfully authenticated with Spacelift")
 
@@ -137,10 +168,18 @@ class SpaceliftAuthenticator:
             raise AuthenticationError(f"Authentication failed: {e}")
 
     def get_api_endpoint(self) -> str:
-        """Get the API endpoint URL."""
+        """Get the API endpoint URL with GraphQL suffix."""
         if self.auth_config.api_endpoint is None:
             raise AuthenticationError("API endpoint is not configured")
-        return self.auth_config.api_endpoint
+        
+        # Use local variable instead of mutating configuration
+        graphql_endpoint = self.auth_config.api_endpoint
+        if not graphql_endpoint.endswith("/graphql"):
+            if not graphql_endpoint.endswith("/"):
+                graphql_endpoint += "/"
+            graphql_endpoint += "graphql"
+        
+        return graphql_endpoint
 
     def invalidate_token(self) -> None:
         """Invalidate the current token to force re-authentication."""

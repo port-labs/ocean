@@ -99,21 +99,49 @@ class SpaceliftDataClients(SpaceliftBaseClient):
         logger.info("Fetching Spacelift deployments")
 
         stack_ids = []
-        async for stacks_batch in self.get_stacks():
-            for stack in stacks_batch:
-                stack_ids.append(stack["id"])
+        stack_fetch_errors = []
+        
+        try:
+            async for stacks_batch in self.get_stacks():
+                if stacks_batch:  # Only process non-empty batches
+                    for stack in stacks_batch:
+                        stack_ids.append(stack["id"])
+                else:
+                    logger.debug("Received empty stacks batch")
+        except Exception as e:
+            logger.error(f"Failed to fetch stacks for deployments: {e}")
+            stack_fetch_errors.append(str(e))
 
         if not stack_ids:
-            logger.info("No stacks found, yielding empty deployments list")
+            if stack_fetch_errors:
+                logger.warning(f"No stacks found due to errors: {'; '.join(stack_fetch_errors)}")
+            else:
+                logger.info("No stacks found")
+            logger.info("Yielding empty deployments list")
             yield []
             return
 
+        logger.info(f"Fetching deployments for {len(stack_ids)} stacks")
+        deployment_fetch_errors = []
+        
         for stack_id in stack_ids:
-            logger.debug(f"Fetching deployments for stack: {stack_id}")
-            async for deployments_batch in self._get_stack_runs(
-                stack_id, run_type="TRACKED"
-            ):
-                yield deployments_batch
+            try:
+                logger.debug(f"Fetching deployments for stack: {stack_id}")
+                async for deployments_batch in self._get_stack_runs(
+                    stack_id, run_type="TRACKED"
+                ):
+                    if deployments_batch:  # Only yield non-empty batches
+                        yield deployments_batch
+                    else:
+                        logger.debug(f"No deployments found for stack: {stack_id}")
+            except Exception as e:
+                logger.error(f"Failed to fetch deployments for stack {stack_id}: {e}")
+                deployment_fetch_errors.append(f"Stack {stack_id}: {str(e)}")
+                # Continue with other stacks instead of failing completely
+                continue
+        
+        if deployment_fetch_errors:
+            logger.warning(f"Some deployment fetches failed: {'; '.join(deployment_fetch_errors)}")
 
     async def _get_stack_runs(
         self, stack_id: str, run_type: Optional[str] = None
