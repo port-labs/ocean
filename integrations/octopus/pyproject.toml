@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "octopus"
-version = "0.1.90"
+version = "0.1.96"
 description = "This integration ingest data from octopus deploy"
 authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.24.0", extras = ["cli"]}
+port_ocean = {version = "^0.24.6", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration

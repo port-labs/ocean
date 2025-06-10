@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "sentry"
-version = "0.1.158"
+version = "0.1.164"
 description = "Sentry Integration"
 authors = ["Dvir Segev <dvir@getport.io>","Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.24.0", extras = ["cli"]}
+port_ocean = {version = "^0.24.6", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration

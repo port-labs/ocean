@@ -353,66 +353,60 @@ class EntityClientMixin:
         entities_results: list[tuple[bool, Entity]] = []
         blueprint = entities[0].blueprint
 
-        if ocean.config.bulk_upserts_enabled:
-            bulk_size = self.calculate_entities_batch_size(entities)
-            bulks = [
-                entities[i : i + bulk_size] for i in range(0, len(entities), bulk_size)
-            ]
+        bulk_size = self.calculate_entities_batch_size(entities)
+        bulks = [
+            entities[i : i + bulk_size] for i in range(0, len(entities), bulk_size)
+        ]
 
-            bulk_results = await asyncio.gather(
-                *(
-                    self.upsert_entities_bulk(
-                        blueprint,
-                        bulk,
-                        request_options,
-                        user_agent_type,
-                        should_raise=should_raise,
-                    )
-                    for bulk in bulks
-                ),
-                return_exceptions=True,
-            )
+        bulk_results = await asyncio.gather(
+            *(
+                self.upsert_entities_bulk(
+                    blueprint,
+                    bulk,
+                    request_options,
+                    user_agent_type,
+                    should_raise=should_raise,
+                )
+                for bulk in bulks
+            ),
+            return_exceptions=True,
+        )
 
-            for bulk, bulk_result in zip(bulks, bulk_results):
-                if isinstance(bulk_result, httpx.HTTPStatusError) or isinstance(
-                    bulk_result, Exception
+        for bulk, bulk_result in zip(bulks, bulk_results):
+            if isinstance(bulk_result, httpx.HTTPStatusError) or isinstance(
+                bulk_result, Exception
+            ):
+                if should_raise:
+                    raise bulk_result
+                # If should_raise is False, retry batch in sequential order as a fallback only for 413 errors
+                if (
+                    isinstance(bulk_result, httpx.HTTPStatusError)
+                    and bulk_result.response.status_code == 413
                 ):
-                    if should_raise:
-                        raise bulk_result
-                    # If should_raise is False, retry batch in sequential order as a fallback only for 413 errors
-                    if (
-                        isinstance(bulk_result, httpx.HTTPStatusError)
-                        and bulk_result.response.status_code == 413
-                    ):
-                        individual_upsert_results = (
-                            await self._upsert_entities_batch_individually(
-                                bulk, request_options, user_agent_type, should_raise
-                            )
+                    individual_upsert_results = (
+                        await self._upsert_entities_batch_individually(
+                            bulk, request_options, user_agent_type, should_raise
                         )
-                        entities_results.extend(individual_upsert_results)
-                    else:
-                        # For other errors, mark all entities in the batch as failed
-                        for entity in bulk:
-                            failed_result: tuple[bool, Entity] = (
-                                False,
-                                self._reduce_entity(entity),
-                            )
-                            entities_results.append(failed_result)
-                elif isinstance(bulk_result, list):
-                    for status, entity in bulk_result:
-                        if (
-                            status is not None
-                        ):  # when using the search identifier we might not have an actual identifier
-                            bulk_result_tuple: tuple[bool, Entity] = (
-                                bool(status),
-                                entity,
-                            )
-                            entities_results.append(bulk_result_tuple)
-        else:
-            individual_upsert_results = await self._upsert_entities_batch_individually(
-                entities, request_options, user_agent_type, should_raise
-            )
-            entities_results.extend(individual_upsert_results)
+                    )
+                    entities_results.extend(individual_upsert_results)
+                else:
+                    # For other errors, mark all entities in the batch as failed
+                    for entity in bulk:
+                        failed_result: tuple[bool, Entity] = (
+                            False,
+                            self._reduce_entity(entity),
+                        )
+                        entities_results.append(failed_result)
+            elif isinstance(bulk_result, list):
+                for status, entity in bulk_result:
+                    if (
+                        status is not None
+                    ):  # when using the search identifier we might not have an actual identifier
+                        bulk_result_tuple: tuple[bool, Entity] = (
+                            bool(status),
+                            entity,
+                        )
+                        entities_results.append(bulk_result_tuple)
 
         return entities_results
 

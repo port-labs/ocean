@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "servicenow"
-version = "0.1.148"
+version = "0.1.154"
 description = "ServiceNow Ocean Integration"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.24.0", extras = ["cli"]}
+port_ocean = {version = "^0.24.6", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration

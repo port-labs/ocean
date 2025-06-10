@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "terraform-cloud"
-version = "0.1.146"
+version = "0.1.152"
 description = "Terraform Cloud Integration for Port"
 authors = ["Michael Armah <michaelarmah@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.24.0", extras = ["cli"]}
+port_ocean = {version = "^0.24.6", extras = ["cli"]}
 aiolimiter = "^1.1.0"
 
 [tool.poetry.group.dev.dependencies]

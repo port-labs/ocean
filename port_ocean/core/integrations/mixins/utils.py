@@ -21,7 +21,7 @@ from port_ocean.exceptions.core import (
 
 from port_ocean.utils.async_http import _http_client
 from port_ocean.clients.port.utils import _http_client as _port_http_client
-
+from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.context.ocean import ocean
 
 @contextmanager
@@ -61,6 +61,11 @@ async def resync_generator_wrapper(
                     yield validate_result(result)
             except OceanAbortException as error:
                 errors.append(error)
+                ocean.metrics.inc_metric(
+                    name=MetricType.OBJECT_COUNT_NAME,
+                    labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT , MetricPhase.ExtractResult.FAILED],
+                    value=1
+                )
     except StopAsyncIteration:
         if errors:
             raise ExceptionGroup(

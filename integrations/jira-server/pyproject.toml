@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "jira-server"
-version = "0.1.13-beta"
+version = "0.1.19-beta"
 description = "Integration with Jira Software"
 authors = ["Matar Peles <matar@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.24.0", extras = ["cli"]}
+port_ocean = {version = "^0.24.6", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "fake-integration"
-version = "0.1.83-dev"
+version = "0.1.89-dev"
 description = "A useless fake integration that helps us test the Ocean Core"
 authors = ["Erik Zaadi <erik@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.24.0", extras = ["cli"]}
+port_ocean = {version = "^0.24.6", extras = ["cli"]}
 faker = "^28.0.0"
 
 [tool.poetry.group.dev.dependencies]
