@@ -233,6 +233,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         objects_diff = await self._calculate_raw(
             [(resource, results)], parse_all, send_raw_data_examples_amount
         )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM, MetricPhase.TransformResult.FAILED],
+            value=len(objects_diff[0].entity_selector_diff.failed)
+        )
+
         modified_objects = []
 
         if event.event_type == EventType.RESYNC:
@@ -393,12 +400,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             name=MetricType.OBJECT_COUNT_NAME,
             labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , MetricPhase.TransformResult.FILTERED_OUT],
             value=number_of_raw_results -number_of_transformed_entities
-        )
-
-        ocean.metrics.inc_metric(
-            name=MetricType.OBJECT_COUNT_NAME,
-            labels=[ocean.metrics.current_resource_kind(), MetricPhase.TRANSFORM , MetricPhase.TransformResult.FAILED],
-            value=len(errors)
         )
 
         return passed_entities, errors
@@ -645,6 +646,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with resource_context(resource,index):
             resource_kind_id = f"{resource.kind}-{index}"
             ocean.metrics.sync_state = SyncState.SYNCING
+            await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id, blueprint=resource.port.entity.mappings.blueprint)
 
             task = asyncio.create_task(
                 self._register_in_batches(resource, user_agent_type)

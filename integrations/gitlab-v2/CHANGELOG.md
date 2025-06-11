@@ -7,8 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.21 (2025-06-04)
+## 0.1.29 (2025-06-11)
 
+
+### Improvements
+
+- Changed job fetching to use pipeline context instead of project context to establish proper parent-child relationships between pipelines and jobs
+
+
+## 0.1.28 (2025-06-11)
+
+
+### Improvements
+
+
+- Bumped ocean version to ^0.24.8
+
+
+## 0.1.27 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
+## 0.1.26 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.6
+
+
+## 0.1.25 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.5
+
+
+## 0.1.24 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.4
+
+
+## 0.1.23 (2025-06-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.3
+
+
+## 0.1.22 (2025-06-05)
+
+- Graceful handling of HTTP error codes (401, 403, 404) to prevent resync failures
+
+
+## 0.1.21 (2025-06-04)
 
 ### Improvements
 
