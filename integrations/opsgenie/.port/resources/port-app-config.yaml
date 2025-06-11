@@ -131,6 +131,8 @@ resources:
   - kind: comment
     selector:
       query: 'true'
+      apiQueryParams:
+        status: open
     port:
       entity:
         mappings:

@@ -11,6 +11,7 @@ from integration import (
     AlertAndIncidentResourceConfig,
     ScheduleResourceConfig,
     TeamResourceConfig,
+    CommentResourceConfig,
 )
 
 
@@ -167,9 +168,15 @@ async def on_schedule_oncall_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_comment_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     opsgenie_client = init_client()
 
-    # Get all alerts first, then fetch comments for each alert
+    selector = cast(CommentResourceConfig, event.resource_config).selector
+    # Get all alerts first (with filtering if configured), then fetch comments for each alert
     async for alerts_batch in opsgenie_client.get_paginated_resources(
-        resource_type=ObjectKind.ALERT
+        resource_type=ObjectKind.ALERT,
+        query_params=(
+            selector.api_query_params.generate_request_params()
+            if selector.api_query_params
+            else None
+        ),
     ):
         logger.info(f"Fetching comments for {len(alerts_batch)} alerts")
 

@@ -110,8 +110,16 @@ class TeamResourceConfig(ResourceConfig):
     selector: TeamSelector
 
 
+class CommentSelector(Selector):
+    api_query_params: APIQueryParams | None = Field(
+        alias="apiQueryParams",
+        description="The query parameters to filter alerts (which determines which comments are fetched)",
+    )
+
+
 class CommentResourceConfig(ResourceConfig):
     kind: Literal["comment"]
+    selector: CommentSelector
 
 
 class OpsGeniePortAppConfig(PortAppConfig):
