@@ -19,6 +19,7 @@ def mock_ocean_context() -> None:
             "atlassian_user_email": "jira@atlassian.net",
             "atlassian_user_token": "asdf",
             "atlassian_organisation_id": "asdf",
+            "oauth_access_token_file_path": None,
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
@@ -44,6 +45,7 @@ def mock_jira_client() -> JiraClient:
 async def test_client_initialization(mock_jira_client: JiraClient) -> None:
     """Test the correct initialization of JiraClient."""
     assert mock_jira_client.jira_rest_url == "https://example.atlassian.net/rest"
+    assert mock_jira_client.is_oauth_enabled() is False
     assert isinstance(mock_jira_client.jira_api_auth, BasicAuth)
 
 
