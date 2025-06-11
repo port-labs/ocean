@@ -487,7 +487,9 @@ async def test_enrich_teams_with_members() -> None:
     team1_members = [{"id": "member1", "displayName": "Member One"}]
     team2_members = [{"id": "member2", "displayName": "Member Two"}]
 
-    async def mock_get_team_members(team: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def mock_get_team_members(
+        team: Dict[str, Any], expand_nested_members: bool = False
+    ) -> List[Dict[str, Any]]:
         return team1_members if team["id"] == "team1" else team2_members
 
     with patch.object(
@@ -502,6 +504,180 @@ async def test_enrich_teams_with_members() -> None:
         assert len(enriched_teams) == 2
         assert enriched_teams[0]["__members"] == team1_members
         assert enriched_teams[1]["__members"] == team2_members
+
+
+@pytest.mark.asyncio
+async def test_get_team_members_with_recursive_expansion() -> None:
+    """Test recursive expansion of team members with nested groups."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    test_team = {"id": "team1", "projectId": "proj1", "name": "Team One"}
+
+    # Mock direct team members containing a group
+    direct_members = [
+        {
+            "identity": {
+                "id": "user1",
+                "subjectKind": "user",
+                "displayName": "Direct User",
+            }
+        },
+        {
+            "identity": {
+                "id": "group1",
+                "subjectKind": "group",
+                "displayName": "DevOps Group",
+            }
+        },
+    ]
+
+    # Mock expanded group members
+    group_members = [
+        {
+            "identity": {
+                "id": "user2",
+                "subjectKind": "user",
+                "displayName": "Nested User 1",
+            }
+        },
+        {
+            "identity": {
+                "id": "user3",
+                "subjectKind": "user",
+                "displayName": "Nested User 2",
+            }
+        },
+    ]
+
+    expected_expanded_members = [
+        direct_members[0],  # Direct user
+        group_members[0],  # Expanded user 1
+        group_members[1],  # Expanded user 2
+    ]
+
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield direct_members
+
+    async def mock_get_group_members(group_id: str) -> List[Dict[str, Any]]:
+        if group_id == "group1":
+            return group_members
+        return []
+
+    with (
+        patch.object(
+            client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_get_paginated_by_top_and_skip,
+        ),
+        patch.object(
+            client,
+            "_get_group_members",
+            side_effect=mock_get_group_members,
+        ),
+    ):
+        # Test without expansion (should return original members)
+        members_no_expansion = await client.get_team_members(
+            test_team, expand_nested_members=False
+        )
+        assert len(members_no_expansion) == 2
+        assert members_no_expansion == direct_members
+
+        # Test with expansion (should return expanded members)
+        members_with_expansion = await client.get_team_members(
+            test_team, expand_nested_members=True
+        )
+        assert len(members_with_expansion) == 3
+        assert members_with_expansion == expected_expanded_members
+
+
+@pytest.mark.asyncio
+async def test_expand_group_members_recursively_with_cycles() -> None:
+    """Test that recursive expansion handles circular group membership."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # Mock members with circular group reference
+    members = [
+        {"identity": {"id": "group1", "subjectKind": "group", "displayName": "Group 1"}}
+    ]
+
+    # Mock group members that create a cycle
+    group1_members = [
+        {"identity": {"id": "group2", "subjectKind": "group", "displayName": "Group 2"}}
+    ]
+
+    group2_members = [
+        {
+            "identity": {
+                "id": "group1",  # Circular reference back to group1
+                "subjectKind": "group",
+                "displayName": "Group 1",
+            }
+        }
+    ]
+
+    async def mock_get_group_members(group_id: str) -> List[Dict[str, Any]]:
+        if group_id == "group1":
+            return group1_members
+        elif group_id == "group2":
+            return group2_members
+        return []
+
+    with patch.object(
+        client,
+        "_get_group_members",
+        side_effect=mock_get_group_members,
+    ):
+        # This should not get stuck in an infinite loop due to cycle detection
+        expanded_members = await client._expand_group_members_recursively(members)
+        # Should return empty list since all members are groups with cycles
+        assert len(expanded_members) == 0
+
+
+@pytest.mark.asyncio
+async def test_enrich_teams_with_members_recursive_expansion() -> None:
+    """Test enriching teams with recursive member expansion."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    test_teams = [{"id": "team1", "projectId": "proj1", "name": "Team One"}]
+
+    expanded_members = [
+        {"identity": {"id": "user1", "subjectKind": "user", "displayName": "User One"}},
+        {"identity": {"id": "user2", "subjectKind": "user", "displayName": "User Two"}},
+    ]
+
+    async def mock_get_team_members(
+        team: Dict[str, Any], expand_nested_members: bool = False
+    ) -> List[Dict[str, Any]]:
+        if expand_nested_members:
+            return expanded_members
+        return [{"identity": {"id": "group1", "subjectKind": "group"}}]
+
+    with patch.object(
+        client,
+        "get_team_members",
+        side_effect=mock_get_team_members,
+    ):
+        # Test with expansion enabled
+        enriched_teams = await client.enrich_teams_with_members(
+            test_teams, expand_nested_members=True
+        )
+        assert len(enriched_teams) == 1
+        assert enriched_teams[0]["__members"] == expanded_members
+
+        # Test with expansion disabled
+        enriched_teams_no_expansion = await client.enrich_teams_with_members(
+            test_teams, expand_nested_members=False
+        )
+        assert len(enriched_teams_no_expansion) == 1
+        assert len(enriched_teams_no_expansion[0]["__members"]) == 1
 
 
 @pytest.mark.asyncio
