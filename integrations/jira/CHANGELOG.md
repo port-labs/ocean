@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.0 (TBD)
+
+### Features
+
+- Added Jira Service Management (JSM) support for incident management to replace OpsGenie
+- Added new resource kinds: `service`, `incident`, `request`, `asset`, `schedule`
+- Added JSM-specific API endpoints for Service Desk, OpsGenie integration, and Insight
+- Added webhook processors for JSM service requests and incidents
+- Enhanced webhook events to include JSM-specific events
+- Added selectors and configurations for JSM resources
+
+### Migration from OpsGenie
+
+This release provides JSM support to facilitate migration from OpsGenie:
+- **OpsGenie Alerts** → JSM Service Requests/Customer Requests
+- **OpsGenie Incidents** → JSM Incidents (via OpsGenie integration)
+- **OpsGenie Services** → JSM Service Desks
+- **OpsGenie Teams** → Jira Teams (already supported)
+- **OpsGenie Schedules** → JSM Schedules (via OpsGenie integration)
+
 ## 0.4.22 (2025-06-09)
 
 
