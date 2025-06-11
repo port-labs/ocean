@@ -21,9 +21,21 @@ class GithubPullRequestConfig(ResourceConfig):
     kind: Literal["pull-request"]
 
 
+class GithubIssueSelector(Selector):
+    state: Literal["open", "closed", "all"] = Field(
+        default="open",
+        description="Filter by issue state (open, closed, all)",
+    )
+
+
+class GithubIssueConfig(ResourceConfig):
+    selector: GithubIssueSelector
+    kind: Literal["issue"]
+
+
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
-    resources: list[GithubPullRequestConfig | ResourceConfig]
+    resources: list[GithubPullRequestConfig | GithubIssueConfig | ResourceConfig]
 
 
 class GithubIntegration(BaseIntegration):
