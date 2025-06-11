@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.24.8 (2025-06-11)
+
+### Bug Fixes
+- Fixed missing syncing state metrics reporting during resource processing
+
+
+## 0.24.7 (2025-06-11)
+
+### Bug Fixes
+- Update is oauth enabled condition to check if a path to oauth token is set.
+- Update requests.
+
+## 0.24.6 (2025-06-09)
+
+### Improvements
+- Added a check to not start upserting / deleting if we have 0 entities to update / delete.
+
 ## 0.24.5 (2025-06-09)
 
 ### Improvements

@@ -16,8 +16,10 @@ class LiveEventsMixin(HandlerMixin):
             webhook_events_raw_result: List of WebhookEventRawResults objects to process
         """
         entities_to_create, entities_to_delete = await self._parse_raw_event_results_to_entities(webhook_events_raw_result)
-        await self.entities_state_applier.upsert(entities_to_create, UserAgentType.exporter)
-        await self._delete_entities(entities_to_delete)
+        if entities_to_create:
+            await self.entities_state_applier.upsert(entities_to_create, UserAgentType.exporter)
+        if entities_to_delete:
+            await self._delete_entities(entities_to_delete)
 
 
     async def _parse_raw_event_results_to_entities(self, webhook_events_raw_result: list[WebhookEventRawResults]) -> tuple[list[Entity], list[Entity]]:
