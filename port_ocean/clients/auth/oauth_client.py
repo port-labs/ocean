@@ -12,7 +12,7 @@ class OAuthClient(AuthClient):
             register_on_retry_callback(self.refresh_request_auth_creds)
 
     def is_oauth_enabled(self) -> bool:
-        return ocean.app.load_external_oauth_access_token() is not None
+        return ocean.app.config.oauth_access_token_file_path is not None
 
     @property
     def external_access_token(self) -> str:
