@@ -7,6 +7,215 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.91 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
+## 0.2.90 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.6
+
+
+## 0.2.89 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.5
+
+
+## 0.2.88 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.4
+
+
+## 0.2.87 (2025-06-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.3
+
+
+## 0.2.86 (2025-06-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.2
+
+
+## 0.2.85 (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.1
+
+
+## 0.2.84 (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.0
+
+
+## 0.2.83 (2025-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.5
+
+
+## 0.2.82 (2025-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.4
+
+
+## 0.2.81 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.3
+
+
+## 0.2.80 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.2
+
+
+## 0.2.79 (2025-05-27)
+
+
+### Improvements
+
+- Fixed pagination offset handling in OpsGenie client.
+- Improved test coverage for pagination limits
+
+
+## 0.2.78 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.1
+
+
+## 0.2.77 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.0
+
+
+## 0.2.76 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.12
+
+
+## 0.2.75 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.11
+
+
+## 0.2.74 (2025-05-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
+## 0.2.73 (2025-05-19)
+
+
+### Bug Fixes
+
+- Extended MAX_OPSGENIE_OFFSET_LIMIT to apply to incidents and services in addition to alerts.
+
+
+## 0.2.72 (2025-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.9
+
+
+## 0.2.71 (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+## 0.2.70 (2025-05-14)
+
+
+### Bug Fixes
+
+- Added safeguard to OpsGenie client to respect maximum offset limit during pagination  
+
+### Improvements
+
+- Introduced test suite for OpsGenie client
+
+
+## 0.2.69 (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.2.68 (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+## 0.2.67 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
 ## 0.2.66 (2025-04-15)
 
 

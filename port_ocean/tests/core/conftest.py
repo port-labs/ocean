@@ -6,6 +6,7 @@ import pytest
 from httpx import Response
 
 from port_ocean.clients.port.client import PortClient
+from port_ocean.config.settings import IntegrationSettings, MetricsSettings
 from port_ocean.context.event import EventContext
 from port_ocean.context.ocean import PortOceanContext, ocean
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
@@ -22,8 +23,10 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, ProcessExecutionMode
+from port_ocean.helpers.metric.metric import Metrics
 from port_ocean.ocean import Ocean
+from port_ocean.cache.memory import InMemoryCacheProvider
 
 
 @pytest.fixture
@@ -32,24 +35,59 @@ def mock_http_client() -> MagicMock:
     mock_upserted_entities = []
 
     async def post(url: str, *args: Any, **kwargs: Any) -> Response:
-        entity = kwargs.get("json", {})
-        if entity.get("properties", {}).get("mock_is_to_fail", {}):
-            return Response(
-                404, headers=MagicMock(), json={"ok": False, "error": "not_found"}
-            )
+        if "/bulk" in url:
+            success_entities = []
+            failed_entities = []
+            entities_body = kwargs.get("json", {})
+            entities = entities_body.get("entities", [])
+            for index, entity in enumerate(entities):
+                if entity.get("properties", {}).get("mock_is_to_fail", False):
+                    failed_entities.append(
+                        {
+                            "identifier": entity.get("identifier"),
+                            "index": index,
+                            "statusCode": 404,
+                            "error": "not_found",
+                            "message": "Entity not found",
+                        }
+                    )
+                else:
+                    mock_upserted_entities.append(
+                        f"{entity.get('identifier')}-{entity.get('blueprint')}"
+                    )
+                    success_entities.append(
+                        (
+                            {
+                                "identifier": entity.get("identifier"),
+                                "index": index,
+                                "created": True,
+                            }
+                        )
+                    )
 
-        mock_upserted_entities.append(
-            f"{entity.get('identifier')}-{entity.get('blueprint')}"
-        )
-        return Response(
-            200,
-            json={
-                "entity": {
-                    "identifier": entity.get("identifier"),
-                    "blueprint": entity.get("blueprint"),
-                }
-            },
-        )
+            return Response(
+                207,
+                json={"entities": success_entities, "errors": failed_entities},
+            )
+        else:
+            entity = kwargs.get("json", {})
+            if entity.get("properties", {}).get("mock_is_to_fail", False):
+                return Response(
+                    404, headers=MagicMock(), json={"ok": False, "error": "not_found"}
+                )
+
+            mock_upserted_entities.append(
+                f"{entity.get('identifier')}-{entity.get('blueprint')}"
+            )
+            return Response(
+                200,
+                json={
+                    "entity": {
+                        "identifier": entity.get("identifier"),
+                        "blueprint": entity.get("blueprint"),
+                    }
+                },
+            )
 
     mock_http_client.post = AsyncMock(side_effect=post)
     return mock_http_client
@@ -83,8 +121,15 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
         ocean_mock.port_client = mock_port_client
-        ocean_mock.metrics = MagicMock()
-        ocean_mock.metrics.flush = AsyncMock()
+        ocean_mock.process_execution_mode = ProcessExecutionMode.single_process
+        ocean_mock.cache_provider = InMemoryCacheProvider()
+        metrics_settings = MetricsSettings(enabled=True)
+        integration_settings = IntegrationSettings(type="test", identifier="test")
+        ocean_mock.metrics = Metrics(
+            metrics_settings=metrics_settings,
+            integration_configuration=integration_settings,
+            port_client=mock_port_client,
+        )
 
         return ocean_mock
 

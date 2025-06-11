@@ -24,6 +24,8 @@ def mock_ocean_context() -> None:
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
+        mock_ocean_app.cache_provider = AsyncMock()
+        mock_ocean_app.cache_provider.get.return_value = None
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
         pass
@@ -105,7 +107,26 @@ def mock_session() -> AsyncMock:
                     return AsyncPaginatorMock()
 
             yield MockCloudControlClient()
+        elif service_name == "resource-groups":
 
+            class MockResourceGroupsClient:
+                def get_paginator(self, method_name: str) -> Any:
+                    class AsyncPaginatorMock:
+                        async def paginate(
+                            self, **kwargs: Any
+                        ) -> AsyncGenerator[Dict[str, Any], None]:
+                            yield {
+                                "Groups": [
+                                    {
+                                        "GroupName": "test-group",
+                                        "GroupArn": "test-group-arn",
+                                    }
+                                ]
+                            }
+
+                    return AsyncPaginatorMock()
+
+            yield MockResourceGroupsClient()
         else:
             raise NotImplementedError(f"Client for service '{service_name}' not mocked")
 

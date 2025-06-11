@@ -1,3 +1,183 @@
+## 0.1.83-beta (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
+## 0.1.82-beta (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.6
+
+
+## 0.1.81-beta (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.5
+
+
+## 0.1.80-beta (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.4
+
+
+## 0.1.79-beta (2025-06-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.3
+
+
+## 0.1.78-beta (2025-06-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.2
+
+
+## 0.1.77-beta (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.1
+
+
+## 0.1.76-beta (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.0
+
+
+## 0.1.75-beta (2025-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.5
+
+
+## 0.1.74-beta (2025-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.4
+
+
+## 0.1.73-beta (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.3
+
+
+## 0.1.72-beta (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.2
+
+
+## 0.1.71-beta (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.1
+
+
+## 0.1.70-beta (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.0
+
+
+## 0.1.69-beta (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.12
+
+
+## 0.1.68-beta (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.11
+
+
+## 0.1.67-beta (2025-05-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
+## 0.1.66-beta (2025-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.9
+
+
+## 0.1.65-beta (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+## 0.1.64-beta (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.1.63-beta (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+## 0.1.62-beta (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
 ## 0.1.61-beta (2025-04-15)
 
 

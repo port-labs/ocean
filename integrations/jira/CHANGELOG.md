@@ -7,6 +7,224 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.23 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
+## 0.4.22 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.6
+
+
+## 0.4.21 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.5
+
+
+## 0.4.20 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.4
+
+
+## 0.4.19 (2025-06-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.3
+
+
+## 0.4.18 (2025-06-05)
+
+
+### Bug Fixes
+
+- Fixed bug where OAuth mode was incorrectly determined based on URL instead of actual OAuth configuration
+
+
+## 0.4.17 (2025-06-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.2
+
+
+## 0.4.16 (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.1
+
+
+## 0.4.15 (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.0
+
+
+## 0.4.14 (2025-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.5
+
+
+## 0.4.13 (2025-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.4
+
+
+## 0.4.12 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.3
+
+
+## 0.4.11 (2025-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.2
+
+
+## 0.4.10 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.1
+
+
+## 0.4.9 (2025-05-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.0
+
+
+## 0.4.8 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.12
+
+
+## 0.4.7 (2025-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.11
+
+
+## 0.4.6 (2025-05-20)
+
+
+### Bug Fixes
+
+- Added permission check for webhook creation in `JiraClient`
+- Updated `create_webhooks` to skip creation and log warning if user lacks `ADMINISTER` permission to prevent 403 stopping resync.
+
+
+## 0.4.5 (2025-05-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
+## 0.4.4 (2025-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.9
+
+
+## 0.4.3 (2025-05-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+## 0.4.2 (2025-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+## 0.4.1 (2025-05-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+## 0.4.0 (2025-04-29)
+
+
+### Improvements
+
+- Updated Jira integration to use new JQL search endpoint (/rest/api/3/search/jql) in preparation for May 1st, 2025 deprecation
+- Added support for token-based pagination using nextPageToken
+- Ensured consistent field selection with *all default
+
+### Bug Fixes
+
+- Fixed issue where fields parameter wasn't being passed correctly in webhook processor
+- Updated tests to properly handle new endpoint parameters
+
+
+## 0.3.18 (2025-04-27)
+
+### Bug Fixes
+
+- Removed httpx dependency to resolve h11 vulnerability
+
+## 0.3.17 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
 ## 0.3.16 (2025-04-15)
 
 

@@ -10,7 +10,7 @@ from port_ocean.clients.port.types import (
     KafkaCreds,
 )
 from port_ocean.clients.port.utils import (
-    handle_status_code,
+    handle_port_status_code,
     get_internal_http_client,
 )
 from port_ocean.exceptions.clients import KafkaCredentialsNotFound
@@ -59,7 +59,7 @@ class PortClient(
         )
         if response.is_error:
             logger.error("Error getting kafka credentials")
-        handle_status_code(response)
+        handle_port_status_code(response)
 
         credentials = response.json().get("credentials")
 
@@ -76,7 +76,7 @@ class PortClient(
         )
         if response.is_error:
             logger.error(f"Error getting organization id, error: {response.text}")
-        handle_status_code(response)
+        handle_port_status_code(response)
 
         return response.json()["organization"]["id"]
 
@@ -90,7 +90,7 @@ class PortClient(
             headers=await self.auth.headers(),
             json=state,
         )
-        handle_status_code(response, should_raise, should_log)
+        handle_port_status_code(response, should_raise, should_log)
         if response.is_success and should_log:
             logger.info("Integration resync state updated successfully")
 

@@ -57,7 +57,7 @@ class JiraClient(OAuthClient):
         self.jira_token = jira_token
 
         # If the Jira URL is directing to api.atlassian.com, we use OAuth2 Bearer Auth
-        if self.is_oauth_host():
+        if self.is_oauth_enabled():
             self.jira_api_auth = self._get_bearer()
             self.webhooks_url = f"{self.jira_rest_url}/api/3/webhook"
         else:
@@ -71,9 +71,6 @@ class JiraClient(OAuthClient):
         self.client.auth = self.jira_api_auth
         self.client.timeout = Timeout(30)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-
-    def is_oauth_host(self) -> bool:
-        return "api.atlassian.com" in self.jira_url
 
     def _get_bearer(self) -> BearerAuth:
         try:
@@ -179,6 +176,17 @@ class JiraClient(OAuthClient):
             "startAt": startAt,
         }
 
+    async def has_webhook_permission(self) -> bool:
+        logger.info(f"Checking webhook permissions for Jira instance: {self.jira_url}")
+        response = await self._send_api_request(
+            method="GET",
+            url=f"{self.api_url}/mypermissions",
+            params={"permissions": "ADMINISTER"},
+        )
+        has_permission = response["permissions"]["ADMINISTER"]["havePermission"]
+
+        return has_permission
+
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
@@ -206,7 +214,14 @@ class JiraClient(OAuthClient):
         logger.info("Ocean real time reporting webhook created")
 
     async def create_webhooks(self, app_host: str) -> None:
-        if self.is_oauth_host():
+        """Create webhooks if the user has permission."""
+        if not await self.has_webhook_permission():
+            logger.warning(
+                f"Cannot create webhooks for {self.jira_url}: Ensure the token has Jira Administrator rights."
+            )
+            return
+
+        if self.is_oauth_enabled():
             await self._create_events_webhook_oauth(app_host)
         else:
             await self._create_events_webhook(app_host)
@@ -246,6 +261,32 @@ class JiraClient(OAuthClient):
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
         return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
+    async def _get_paginated_data_using_next_page_token(
+        self,
+        url: str,
+        extract_key: str | None = None,
+        initial_params: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get paginated data using token-based pagination for JQL endpoints."""
+        params = initial_params or {}
+        next_page_token = None
+
+        while True:
+            if next_page_token:
+                params["nextPageToken"] = next_page_token
+
+            response_data = await self._send_api_request("GET", url, params=params)
+            items = response_data.get(extract_key, []) if extract_key else response_data
+
+            if not items:
+                break
+
+            yield items
+
+            next_page_token = response_data.get("nextPageToken")
+            if not next_page_token:
+                break
+
     async def get_paginated_issues(
         self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -254,8 +295,8 @@ class JiraClient(OAuthClient):
         if "jql" in params:
             logger.info(f"Using JQL filter: {params['jql']}")
 
-        async for issues in self._get_paginated_data(
-            f"{self.api_url}/search", "issues", initial_params=params
+        async for issues in self._get_paginated_data_using_next_page_token(
+            f"{self.api_url}/search/jql", "issues", initial_params=params
         ):
             yield issues
 

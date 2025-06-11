@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "azure-devops"
-version = "0.1.146"
+version = "0.2.15"
 description = "An Azure Devops Ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.22.4", extras = ["cli"]}
+port_ocean = {version = "^0.24.7", extras = ["cli"]}
 braceexpand = "^0.1.7"
 
 [tool.poetry.group.dev.dependencies]

@@ -7,6 +7,164 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.97 (2025-06-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
+# Port_Ocean 0.1.96 (2025-06-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.6
+
+
+# Port_Ocean 0.1.95 (2025-06-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.5
+
+
+# Port_Ocean 0.1.94 (2025-06-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.4
+
+
+# Port_Ocean 0.1.93 (2025-06-08)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.3
+
+
+# Port_Ocean 0.1.92 (2025-06-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.2
+
+
+# Port_Ocean 0.1.91 (2025-06-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.1
+
+
+# Port_Ocean 0.1.90 (2025-06-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.0
+
+
+# Port_Ocean 0.1.89 (2025-06-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.23.5
+
+
+# Port_Ocean 0.1.88 (2025-05-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.23.4
+
+
+# Port_Ocean 0.1.87 (2025-05-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.23.3
+
+
+# Port_Ocean 0.1.86 (2025-05-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.23.2
+
+
+# Port_Ocean 0.1.85 (2025-05-27)
+
+### Improvements
+
+- Bumped ocean version to ^0.23.1
+
+
+# Port_Ocean 0.1.84 (2025-05-27)
+
+### Improvements
+
+- Bumped ocean version to ^0.23.0
+
+
+# Port_Ocean 0.1.83 (2025-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.22.12
+
+
+# Port_Ocean 0.1.82 (2025-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.22.11
+
+
+# Port_Ocean 0.1.81 (2025-05-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.22.10
+
+
+# Port_Ocean 0.1.80 (2025-05-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.22.9
+
+
+# Port_Ocean 0.1.79 (2025-05-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.22.8
+
+
+# Port_Ocean 0.1.78 (2025-05-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.22.7
+
+
+# Port_Ocean 0.1.77 (2025-05-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.22.6
+
+
+# Port_Ocean 0.1.76 (2025-04-27)
+
+### Bug Fixes
+
+- Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
+
+### Improvements
+
+- Bumped ocean version to ^0.22.5
+
+
 # Port_Ocean 0.1.75 (2025-04-15)
 
 ### Improvements

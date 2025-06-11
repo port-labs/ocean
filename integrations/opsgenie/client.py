@@ -9,6 +9,7 @@ from utils import ObjectKind, RESOURCE_API_VERSIONS
 
 PAGE_SIZE = 100
 CONCURRENT_REQUESTS = 5
+MAX_OPSGENIE_OFFSET_LIMIT = 20000
 
 
 class OpsGenieClient:
@@ -25,6 +26,18 @@ class OpsGenieClient:
 
     async def get_resource_api_version(self, resource_type: ObjectKind) -> str:
         return RESOURCE_API_VERSIONS.get(resource_type, "v2")
+
+    def get_resource_offset_limit(self, resource_type: ObjectKind) -> Optional[int]:
+        resource_types_with_limit = {
+            ObjectKind.ALERT,
+            ObjectKind.INCIDENT,
+            ObjectKind.SERVICE,
+        }
+        return (
+            MAX_OPSGENIE_OFFSET_LIMIT
+            if resource_type in resource_types_with_limit
+            else None
+        )
 
     async def _get_single_resource(
         self,
@@ -57,15 +70,25 @@ class OpsGenieClient:
         api_version = await self.get_resource_api_version(resource_type)
         url = f"{self.api_url}/{api_version}/{resource_type.value}s"
 
-        pagination_params: dict[str, Any] = {"limit": PAGE_SIZE, **(query_params or {})}
+        request_params: dict[str, Any] = {"limit": PAGE_SIZE, **(query_params or {})}
+        current_offset = 0
+
         while url:
-            try:
-                response = await self._get_single_resource(
-                    url=url, query_params=pagination_params
+            max_offset_limit = self.get_resource_offset_limit(resource_type)
+            if max_offset_limit is not None and current_offset >= max_offset_limit:
+                logger.warning(
+                    f"Stopped pagination for {resource_type.value}s at offset {current_offset}: "
+                    f"reached OpsGenie API limit of {max_offset_limit}"
                 )
+                break
+
+            try:
+                params = request_params if current_offset == 0 else None
+                response = await self._get_single_resource(url=url, query_params=params)
                 yield response["data"]
 
                 url = response.get("paging", {}).get("next")
+                current_offset += PAGE_SIZE
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"

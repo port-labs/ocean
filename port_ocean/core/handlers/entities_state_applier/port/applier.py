@@ -103,9 +103,13 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             and deletion_rate <= entity_deletion_threshold
         ):
             await self._safe_delete(diff.deleted, kept_entities, user_agent_type)
-            ocean.metrics.set_metric(
-                name=MetricType.DELETION_COUNT_NAME,
-                labels=[ocean.metrics.current_resource_kind(), MetricPhase.DELETE],
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.DELETE,
+                    MetricPhase.DeletionResult.DELETED,
+                ],
                 value=len(diff.deleted),
             )
         else:
@@ -123,7 +127,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         modified_entities: list[Entity] = []
         upserted_entities: list[tuple[bool, Entity]] = []
 
-        upserted_entities = await self.context.port_client.batch_upsert_entities(
+        upserted_entities = await self.context.port_client.upsert_entities_in_batches(
             entities,
             event.port_app_config.get_port_request_options(),
             user_agent_type,

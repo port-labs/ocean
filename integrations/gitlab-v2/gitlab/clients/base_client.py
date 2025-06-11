@@ -37,9 +37,10 @@ class HTTPBaseClient:
             return response.json()
 
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
+            status_code = e.response.status_code
+            if status_code in (401, 403, 404):
                 logger.warning(
-                    f"Resource not found at {url} for the following params {params}"
+                    f"Resource access error at {url} (status {status_code}): {e.response.text}"
                 )
                 return {}
             logger.error(f"HTTP status error for {method} request to {path}: {e}")

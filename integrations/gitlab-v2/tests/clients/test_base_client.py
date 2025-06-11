@@ -17,6 +17,8 @@ def mock_ocean_context() -> None:
             "gitlab_host": "https://gitlab.example.com",
             "gitlab_token": "test-token",
         }
+        mock_app.cache_provider = AsyncMock()
+        mock_app.cache_provider.get.return_value = None
         initialize_port_ocean_context(mock_app)
     except PortOceanContextAlreadyInitializedError:
         pass
@@ -175,6 +177,58 @@ class TestHTTPBaseClient:
             with pytest.raises(httpx.NetworkError):
                 await client.send_api_request(method, path)
 
+            mock_request.assert_called_once_with(
+                method=method,
+                url=f"{client.base_url}/{path}",
+                headers=client._headers,
+                params=None,
+                json=None,
+            )
+
+    async def test_send_api_request_403(self, client: HTTPBaseClient) -> None:
+        """Test API request with 403 Forbidden response"""
+        # Arrange
+        method = "GET"
+        path = "projects/secret"
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Forbidden", request=MagicMock(), response=MagicMock(status_code=403)
+        )
+
+        with patch.object(
+            client._client, "request", AsyncMock(return_value=mock_response)
+        ) as mock_request:
+            # Act
+            result = await client.send_api_request(method, path)
+
+            # Assert
+            assert result == {}
+            mock_request.assert_called_once_with(
+                method=method,
+                url=f"{client.base_url}/{path}",
+                headers=client._headers,
+                params=None,
+                json=None,
+            )
+
+    async def test_send_api_request_401(self, client: HTTPBaseClient) -> None:
+        """Test API request with 401 Unauthorized response"""
+        # Arrange
+        method = "GET"
+        path = "projects/private"
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Unauthorized", request=MagicMock(), response=MagicMock(status_code=401)
+        )
+
+        with patch.object(
+            client._client, "request", AsyncMock(return_value=mock_response)
+        ) as mock_request:
+            # Act
+            result = await client.send_api_request(method, path)
+
+            # Assert
+            assert result == {}
             mock_request.assert_called_once_with(
                 method=method,
                 url=f"{client.base_url}/{path}",

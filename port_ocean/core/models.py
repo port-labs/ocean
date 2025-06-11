@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum, StrEnum
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import BaseModel
 from pydantic.fields import Field
@@ -9,6 +9,16 @@ from pydantic.fields import Field
 class CreatePortResourcesOrigin(StrEnum):
     Ocean = "Ocean"
     Port = "Port"
+
+
+class ProcessExecutionMode(StrEnum):
+    multi_process = "multi_process"
+    single_process = "single_process"
+
+
+class CachingStorageMode(StrEnum):
+    disk = "disk"
+    memory = "memory"
 
 
 class Runtime(Enum):
@@ -55,6 +65,25 @@ class Entity(BaseModel):
         ) or (
             self.team is not None and any(isinstance(team, dict) for team in self.team)
         )
+
+
+class EntityBulkResult(TypedDict):
+    identifier: str
+    index: int
+    created: bool
+
+
+class EntityBulkError(TypedDict):
+    identifier: str
+    index: int
+    statusCode: int
+    error: str
+    message: str
+
+
+class BulkUpsertResponse(TypedDict):
+    entities: list[EntityBulkResult]
+    errors: list[EntityBulkError]
 
 
 class BlueprintRelation(BaseModel):

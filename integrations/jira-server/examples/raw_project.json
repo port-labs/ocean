@@ -1,0 +1,15 @@
+{
+  "expand": "description,lead,createdAt,createdBy,lastUpdatedAt,lastUpdatedBy,url,projectKeys",
+  "self": "http://localhost:8080/rest/api/2/project/10000",
+  "id": "10000",
+  "key": "MAT",
+  "name": "matar-new-project",
+  "avatarUrls": {
+    "48x48": "http://localhost:8080/secure/projectavatar?avatarId=10324",
+    "24x24": "http://localhost:8080/secure/projectavatar?size=small&avatarId=10324",
+    "16x16": "http://localhost:8080/secure/projectavatar?size=xsmall&avatarId=10324",
+    "32x32": "http://localhost:8080/secure/projectavatar?size=medium&avatarId=10324"
+  },
+  "projectTypeKey": "software",
+  "archived": false
+}

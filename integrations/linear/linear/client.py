@@ -1,6 +1,8 @@
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 
+from httpx import HTTPStatusError
+
 from loguru import logger
 import jinja2
 from linear.queries import QUERIES
@@ -33,6 +35,10 @@ class LinearClient:
         self.client = http_async_client
         self.client.headers.update(self.api_auth_header)
 
+    @classmethod
+    def create_from_ocean_configuration(cls) -> "LinearClient":
+        return cls(ocean.integration_config["linear_api_key"])
+
     async def _get_paginated_objects(
         self, object_type: str, page_size: int, end_cursor: Optional[str]
     ) -> dict[str, Any]:
@@ -56,31 +62,44 @@ class LinearClient:
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         logger.debug(f"Webhook check query: {QUERIES['GET_LIVE_EVENTS_WEBHOOKS']}")
-        webhook_check_response = await self.client.post(
-            self.linear_url, json={"query": QUERIES["GET_LIVE_EVENTS_WEBHOOKS"]}
-        )
-        webhook_check_response.raise_for_status()
-        webhook_check = webhook_check_response.json()
+        try:
+            webhook_check_response = await self.client.post(
+                self.linear_url, json={"query": QUERIES["GET_LIVE_EVENTS_WEBHOOKS"]}
+            )
+            webhook_check_response.raise_for_status()
+            webhook_check = webhook_check_response.json()
 
-        for webhook in webhook_check["data"]["webhooks"]["nodes"]:
-            if webhook["url"] == webhook_target_app_host:
-                logger.info("Ocean real time reporting webhook already exists")
-                return
+            for webhook in webhook_check["data"]["webhooks"]["nodes"]:
+                if webhook["url"] == webhook_target_app_host:
+                    logger.info("Ocean real time reporting webhook already exists")
+                    return
 
-        template = jinja2.Template(
-            QUERIES["CREATE_LIVE_EVENTS_WEBHOOK"], enable_async=True
-        )
-        query = await template.render_async(
-            webhook_label=f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
-            webhook_url=webhook_target_app_host,
-            resource_types=WEBHOOK_EVENTS,
-        )
-        logger.debug(f"Webhook create query: {query}")
-        webhook_create_response = await self.client.post(
-            self.linear_url, json={"query": query}
-        )
-        webhook_create_response.raise_for_status()
-        logger.info("Ocean real time reporting webhook created")
+            template = jinja2.Template(
+                QUERIES["CREATE_LIVE_EVENTS_WEBHOOK"], enable_async=True
+            )
+            query = await template.render_async(
+                webhook_label=f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
+                webhook_url=webhook_target_app_host,
+                resource_types=WEBHOOK_EVENTS,
+            )
+            logger.debug(f"Webhook create query: {query}")
+            webhook_create_response = await self.client.post(
+                self.linear_url, json={"query": query}
+            )
+            webhook_create_response.raise_for_status()
+            logger.info("Ocean real time reporting webhook created")
+        except HTTPStatusError as http_err:
+            logger.error(
+                "HTTP error occurred while creating webhook with URL {}: {}",
+                webhook_target_app_host,
+                http_err,
+            )
+        except Exception as err:
+            logger.error(
+                "Unexpected error occurred while creating webhook with URL {}: {}",
+                webhook_target_app_host,
+                err,
+            )
 
     async def get_paginated_teams(
         self,

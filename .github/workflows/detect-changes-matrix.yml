@@ -42,6 +42,7 @@ jobs:
               - '!scripts/*'
               - '!scripts/*'
               - '!./*.md'
+              - '!.github/**'
             integrations:
               - 'integrations/**'
               - '!integrations/**/*.md'

@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from httpx import Request, Response
@@ -8,7 +8,8 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
-from azure_devops.webhooks.webhook_event import WebhookEvent
+from azure_devops.webhooks.webhook_event import WebhookSubscription
+from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 
 MOCK_ORG_URL = "https://your_organization_url.com"
 MOCK_PERSONAL_ACCESS_TOKEN = "personal_access_token"
@@ -183,6 +184,25 @@ MOCK_FILE_PATH = "/path/to/file.txt"
 MOCK_REPOSITORY_ID = "repo123"
 MOCK_BRANCH_NAME = "main"
 MOCK_COMMIT_ID = "abc123"
+MOCK_AUTH_USERNAME = "port"
+
+EXPECTED_TREE_ITEMS = [
+    {
+        "objectId": "abc123",
+        "gitObjectType": "tree",
+        "path": "/src/main",
+    },
+    {
+        "objectId": "def456",
+        "gitObjectType": "tree",
+        "path": "/src/main/code",
+    },
+    {
+        "objectId": "ghi789",
+        "gitObjectType": "blob",
+        "path": "/src/main/code/file.txt",
+    },
+]
 
 
 async def async_generator(items: List[Any]) -> AsyncGenerator[Any, None]:
@@ -200,6 +220,8 @@ def mock_ocean_context() -> None:
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
+        mock_ocean_app.cache_provider = AsyncMock()
+        mock_ocean_app.cache_provider.get.return_value = None
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
         pass
@@ -220,7 +242,29 @@ def mock_event_context() -> Generator[MagicMock, None, None]:
 
 @pytest.fixture
 def mock_azure_client() -> AzureDevopsClient:
-    return AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    return AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+
+@pytest.fixture
+def sample_folder_patterns() -> List[FolderPattern]:
+    return [
+        FolderPattern(
+            path="/src/main",
+            repos=[
+                RepositoryBranchMapping(name="repo1", branch="main"),
+                RepositoryBranchMapping(name="repo2", branch="main"),
+            ],
+        ),
+        FolderPattern(
+            path="/docs",
+            repos=[
+                RepositoryBranchMapping(name="repo2", branch="main"),
+                RepositoryBranchMapping(name="repo3", branch="develop"),
+            ],
+        ),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -318,7 +362,9 @@ def test_repository_is_healthy(repository: Dict[str, Any], is_healthy: bool) -> 
 
 @pytest.mark.asyncio
 async def test_get_single_project() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -340,7 +386,9 @@ async def test_get_single_project() -> None:
 
 @pytest.mark.asyncio
 async def test_generate_projects(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_get_paginated_by_top_and_continuation_token(
@@ -366,7 +414,9 @@ async def test_generate_projects(mock_event_context: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_generate_teams(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_get_paginated_by_top_and_skip(
@@ -392,7 +442,9 @@ async def test_generate_teams(mock_event_context: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_get_team_members() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     test_team = {"id": "team1", "projectId": "proj1", "name": "Team One"}
 
@@ -423,7 +475,9 @@ async def test_get_team_members() -> None:
 
 @pytest.mark.asyncio
 async def test_enrich_teams_with_members() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     test_teams = [
         {"id": "team1", "projectId": "proj1", "name": "Team One"},
@@ -452,7 +506,9 @@ async def test_enrich_teams_with_members() -> None:
 
 @pytest.mark.asyncio
 async def test_generate_repositories(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -479,7 +535,9 @@ async def test_generate_repositories(mock_event_context: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_repositories(
@@ -510,12 +568,9 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
                 "_get_paginated_by_top_and_skip",
                 side_effect=mock_get_paginated_by_top_and_skip,
             ):
-                # ACT
                 pull_requests: List[Dict[str, Any]] = []
                 async for pr_batch in client.generate_pull_requests():
                     pull_requests.extend(pr_batch)
-
-                # ASSERT
                 assert pull_requests == EXPECTED_PULL_REQUESTS
 
 
@@ -523,7 +578,9 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
 async def test_generate_projects_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://google.com"))
@@ -533,8 +590,6 @@ async def test_generate_projects_will_skip_404(
             projects: List[Dict[str, Any]] = []
             async for project_batch in client.generate_projects():
                 projects.extend(project_batch)
-
-            # ASSERT
             assert not projects
 
 
@@ -542,7 +597,9 @@ async def test_generate_projects_will_skip_404(
 async def test_generate_teams_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://google.com"))
@@ -553,7 +610,6 @@ async def test_generate_teams_will_skip_404(
             async for team_batch in client.generate_teams():
                 teams.extend(team_batch)
 
-            # ASSERT
             assert not teams
 
 
@@ -561,7 +617,9 @@ async def test_generate_teams_will_skip_404(
 async def test_generate_repositories_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [{"id": "proj1", "name": "Project One"}]
@@ -577,8 +635,6 @@ async def test_generate_repositories_will_skip_404(
                 repositories: List[Dict[str, Any]] = []
                 async for repo_batch in client.generate_repositories():
                     repositories.extend(repo_batch)
-
-                # ASSERT
                 assert not repositories
 
 
@@ -586,7 +642,9 @@ async def test_generate_repositories_will_skip_404(
 async def test_generate_members_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://google.com"))
@@ -605,8 +663,6 @@ async def test_generate_members_will_skip_404(
             members: List[Dict[str, Any]] = []
             async for member_batch in client.generate_members():
                 members.extend(member_batch)
-
-            # ASSERT
             assert not members
 
 
@@ -614,7 +670,9 @@ async def test_generate_members_will_skip_404(
 async def test_generate_users_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://google.com"))
@@ -624,8 +682,6 @@ async def test_generate_users_will_skip_404(
             users: List[Dict[str, Any]] = []
             async for user_batch in client.generate_users():
                 users.extend(user_batch)
-
-            # ASSERT
             assert not users
 
 
@@ -633,7 +689,9 @@ async def test_generate_users_will_skip_404(
 async def test_generate_pull_requests_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_generate_repositories(
         *args: Any, **kwargs: Any
@@ -660,7 +718,6 @@ async def test_generate_pull_requests_will_skip_404(
             async for pr_batch in client.generate_pull_requests():
                 pull_requests.extend(pr_batch)
 
-            # ASSERT
             assert not pull_requests
 
 
@@ -668,7 +725,9 @@ async def test_generate_pull_requests_will_skip_404(
 async def test_generate_pipelines_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [{"id": "proj1", "name": "Project One"}]
@@ -687,7 +746,6 @@ async def test_generate_pipelines_will_skip_404(
             async for pipeline_batch in client.generate_pipelines():
                 pipelines.extend(pipeline_batch)
 
-            # ASSERT
             assert not pipelines
 
 
@@ -695,7 +753,9 @@ async def test_generate_pipelines_will_skip_404(
 async def test_generate_repository_policies_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_generate_repositories(
         *args: Any, **kwargs: Any
@@ -722,7 +782,6 @@ async def test_generate_repository_policies_will_skip_404(
             async for policy_batch in client.generate_repository_policies():
                 policies.extend(policy_batch)
 
-            # ASSERT
             assert not policies
 
 
@@ -730,7 +789,9 @@ async def test_generate_repository_policies_will_skip_404(
 async def test_generate_releases_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [{"id": "proj1", "name": "Project One"}]
@@ -749,7 +810,6 @@ async def test_generate_releases_will_skip_404(
             async for release_batch in client.generate_releases():
                 releases.extend(release_batch)
 
-            # ASSERT
             assert not releases
 
 
@@ -759,10 +819,9 @@ async def test_generate_work_items_will_skip_404(mock_event_context: MagicMock) 
     Tests that if a 404 is encountered anywhere in the pipeline (e.g. retrieving the WIQL
     or fetching work items), the client logs a warning and yields no items.
     """
-    client = AzureDevopsClient("https://fake_org_url.com", "fake_pat")
+    client = AzureDevopsClient("https://fake_org_url.com", "fake_pat", "fake_username")
 
     async def mock_make_request(**kwargs: Any) -> Response:
-        # Return a 404 every time
         return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
 
     async with event_context("test_event"):
@@ -770,14 +829,14 @@ async def test_generate_work_items_will_skip_404(mock_event_context: MagicMock) 
             collected_items: List[Dict[str, Any]] = []
             async for item_batch in client.generate_work_items(wiql=None, expand="all"):
                 collected_items.extend(item_batch)
-
-            # Since 404 is hit, we expect an empty result (skip).
             assert not collected_items
 
 
 @pytest.mark.asyncio
 async def test_get_columns_will_skip_404(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
@@ -795,7 +854,9 @@ async def test_get_columns_will_skip_404(mock_event_context: MagicMock) -> None:
 async def test_get_boards_in_organization_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
@@ -814,10 +875,12 @@ async def test_generate_subscriptions_webhook_events_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
     """
-    generate_subscriptions_webhook_events fetches a single endpoint and returns a list of WebhookEvent.
+    generate_subscriptions_webhook_events fetches a single endpoint and returns a list of WebhookSubscription.
     On 404, it should skip and return [].
     """
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async with event_context("test_event"):
         with patch.object(client, "send_request") as mock_send_request:
@@ -829,13 +892,14 @@ async def test_generate_subscriptions_webhook_events_will_skip_404(
             )
 
             events = await client.generate_subscriptions_webhook_events()
-            # If we follow the same pattern, that means no exceptions, returns []:
             assert events == []
 
 
 @pytest.mark.asyncio
 async def test_get_file_by_branch_will_skip_404(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     async def mock_make_request(**kwargs: Any) -> Response:
         return Response(status_code=404, request=Request("GET", "https://fake_url.com"))
@@ -851,7 +915,9 @@ async def test_get_file_by_branch_will_skip_404(mock_event_context: MagicMock) -
 
 @pytest.mark.asyncio
 async def test_generate_pipelines() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -884,7 +950,9 @@ async def test_generate_pipelines() -> None:
 
 @pytest.mark.asyncio
 async def test_generate_repository_policies() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_repositories(
@@ -926,7 +994,9 @@ async def test_generate_repository_policies() -> None:
 
 @pytest.mark.asyncio
 async def test_generate_releases(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -960,7 +1030,9 @@ async def test_generate_releases(mock_event_context: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_get_pull_request() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -982,7 +1054,9 @@ async def test_get_pull_request() -> None:
 
 @pytest.mark.asyncio
 async def test_get_repository() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -1004,7 +1078,9 @@ async def test_get_repository() -> None:
 
 @pytest.mark.asyncio
 async def test_get_columns() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_get_boards_in_organization() -> (
@@ -1028,7 +1104,9 @@ async def test_get_columns() -> None:
 
 @pytest.mark.asyncio
 async def test_get_boards_in_organization(mock_event_context: MagicMock) -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -1058,7 +1136,9 @@ async def test_get_boards_in_organization(mock_event_context: MagicMock) -> None
 
 @pytest.mark.asyncio
 async def test_generate_subscriptions_webhook_events() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -1076,8 +1156,10 @@ async def test_generate_subscriptions_webhook_events() -> None:
 
 @pytest.mark.asyncio
 async def test_create_subscription() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
-    webhook_event = WebhookEvent(
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+    webhook_event = WebhookSubscription(
         id=None,
         eventType="git.push",
         publisherId="tfs",
@@ -1108,8 +1190,10 @@ async def test_create_subscription() -> None:
 
 @pytest.mark.asyncio
 async def test_delete_subscription() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
-    webhook_event = WebhookEvent(
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+    webhook_event = WebhookSubscription(
         id="subscription123",
         publisherId="tfs",
         eventType="git.push",
@@ -1137,7 +1221,9 @@ async def test_delete_subscription() -> None:
 
 @pytest.mark.asyncio
 async def test_get_file_by_branch() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -1164,7 +1250,9 @@ async def test_get_file_by_branch() -> None:
 
 @pytest.mark.asyncio
 async def test_get_file_by_commit() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
 
     # MOCK
     with patch.object(client, "send_request") as mock_send_request:
@@ -1187,3 +1275,427 @@ async def test_get_file_by_commit() -> None:
                 "path": MOCK_FILE_PATH,
             },
         )
+
+
+@pytest.mark.parametrize(
+    "base_url,subdomain,expected_output",
+    [
+        (
+            "https://dev.azure.com/myorg",
+            "vsaex",
+            "https://vsaex.dev.azure.com/myorg",
+        ),
+        (
+            "https://myorg.visualstudio.com",
+            "vsaex",
+            "https://myorg.vsaex.visualstudio.com",
+        ),
+        (
+            "https://ado.local:8080/DefaultCollection",
+            "vsaex",
+            "https://ado.local:8080/DefaultCollection",
+        ),
+    ],
+)
+def test_format_service_url(
+    base_url: str,
+    subdomain: str,
+    expected_output: str,
+) -> None:
+    client = AzureDevopsClient(base_url, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME)
+    result = client._format_service_url(subdomain)
+    assert result == expected_output
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree() -> None:
+    """Test getting repository tree structure."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        assert url.endswith(f"/_apis/git/repositories/{MOCK_REPOSITORY_ID}/items")
+        assert additional_params is not None
+        assert additional_params["recursionLevel"] == "none"
+
+        if additional_params.get("scopePath", "/") != "/":
+            yield []
+            return
+
+        yield [
+            {
+                "objectId": "abc123",
+                "gitObjectType": "tree",
+                "path": "/src/main",
+            },
+            {
+                "objectId": "def456",
+                "gitObjectType": "tree",
+                "path": "/src/main/code",
+            },
+            {
+                "objectId": "ghi789",
+                "gitObjectType": "blob",
+                "path": "/src/main/code/file.txt",
+            },
+        ]
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID, recursion_level="none"
+        ):
+            folders.extend(folder_batch)
+
+        assert len(folders) == 2  # Only tree items
+        assert all(folder["gitObjectType"] == "tree" for folder in folders)
+        assert folders[0]["path"] == "/src/main"
+        assert folders[1]["path"] == "/src/main/code"
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree_with_recursion() -> None:
+    """Test getting repository tree structure with recursion."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    call_count = 0
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        nonlocal call_count
+        assert url.endswith(f"/_apis/git/repositories/{MOCK_REPOSITORY_ID}/items")
+        assert additional_params is not None
+        assert additional_params["recursionLevel"] == "full"
+
+        yield [
+            {
+                "objectId": "abc123",
+                "gitObjectType": "tree",
+                "path": "/src",
+            },
+            {
+                "objectId": "def456",
+                "gitObjectType": "tree",
+                "path": "/src/main",
+            },
+            {
+                "objectId": "ghi789",
+                "gitObjectType": "tree",
+                "path": "/src/test",
+            },
+        ]
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID, recursion_level="full"
+        ):
+            folders.extend(folder_batch)
+
+        assert len(folders) == 3
+        paths = {folder["path"] for folder in folders}
+        assert paths == {"/src", "/src/main", "/src/test"}
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree_will_skip_404(mock_event_context: MagicMock) -> None:
+    """Test that get_repository_tree gracefully handles 404 errors."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID, recursion_level="none"
+        ):
+            folders.extend(folder_batch)
+
+        assert len(folders) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree_with_deep_path() -> None:
+    """Test getting repository tree structure with deep path using **."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        assert url.endswith(f"/_apis/git/repositories/{MOCK_REPOSITORY_ID}/items")
+        assert additional_params is not None
+        assert additional_params["recursionLevel"] == "full"
+        assert additional_params["scopePath"] == "/src/**/*.py"
+
+        yield [
+            {
+                "objectId": "abc123",
+                "gitObjectType": "tree",
+                "path": "/src/main",
+            },
+            {
+                "objectId": "def456",
+                "gitObjectType": "tree",
+                "path": "/src/main/api",
+            },
+            {
+                "objectId": "ghi789",
+                "gitObjectType": "blob",
+                "path": "/src/main/api/app.py",
+            },
+            {
+                "objectId": "jkl012",
+                "gitObjectType": "tree",
+                "path": "/src/test",
+            },
+            {
+                "objectId": "mno345",
+                "gitObjectType": "blob",
+                "path": "/src/test/test_app.py",
+            },
+            {
+                "objectId": "pqr678",
+                "gitObjectType": "blob",
+                "path": "/src/main/utils.py",
+            },
+        ]
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        folders = []
+        async for folder_batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID, path="/src/**/*.py", recursion_level="full"
+        ):
+            folders.extend(folder_batch)
+
+        # Should only get tree (folder) items
+        assert len(folders) == 3
+        paths = {folder["path"] for folder in folders}
+        assert paths == {"/src/main", "/src/main/api", "/src/test"}
+        assert all(folder["gitObjectType"] == "tree" for folder in folders)
+
+
+@pytest.mark.asyncio
+async def test_process_folder_patterns(
+    sample_folder_patterns: List[FolderPattern],
+    mock_azure_client: AzureDevopsClient,
+) -> None:
+    async def mock_generate_repositories() -> (
+        AsyncGenerator[List[Dict[str, Any]], None]
+    ):
+        repos_data = [
+            {
+                "name": "repo1",
+                "id": "repo1-id",
+                "project": {"name": "test-project", "id": "project-123"},
+            },
+            {
+                "name": "repo2",
+                "id": "repo2-id",
+                "project": {"name": "test-project", "id": "project-123"},
+            },
+            {
+                "name": "repo3",
+                "id": "repo3-id",
+                "project": {"name": "test-project", "id": "project-123"},
+            },
+        ]
+        yield repos_data
+
+    async def mock_get_repository_folders(
+        repo_id: str, paths: List[str], **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        folders_data = []
+        if repo_id == "repo1-id" and any(p.strip("/") == "src/main" for p in paths):
+            folders_data = [
+                {
+                    "path": "src/main",
+                    "gitObjectType": "tree",
+                    "__repository": {
+                        "id": "repo1-id",
+                        "name": "repo1",
+                        "project": {"name": "test-project", "id": "project-123"},
+                    },
+                    "__branch": "main",
+                    "__pattern": "src/main",
+                }
+            ]
+        elif repo_id == "repo2-id":
+            if any(p.strip("/") == "src/main" for p in paths):
+                folders_data = [
+                    {
+                        "path": "src/main",
+                        "gitObjectType": "tree",
+                        "__repository": {
+                            "id": "repo2-id",
+                            "name": "repo2",
+                            "project": {"name": "test-project", "id": "project-123"},
+                        },
+                        "__branch": "main",
+                        "__pattern": "src/main",
+                    }
+                ]
+            elif any(p.strip("/") == "docs" for p in paths):
+                folders_data = [
+                    {
+                        "path": "docs",
+                        "gitObjectType": "tree",
+                        "__repository": {
+                            "id": "repo2-id",
+                            "name": "repo2",
+                            "project": {"name": "test-project", "id": "project-123"},
+                        },
+                        "__branch": "main",
+                        "__pattern": "docs",
+                    }
+                ]
+        elif repo_id == "repo3-id" and any(p.strip("/") == "docs" for p in paths):
+            folders_data = [
+                {
+                    "path": "docs",
+                    "gitObjectType": "tree",
+                    "__repository": {
+                        "id": "repo3-id",
+                        "name": "repo3",
+                        "project": {"name": "test-project", "id": "project-123"},
+                    },
+                    "__branch": "develop",
+                    "__pattern": "docs",
+                }
+            ]
+
+        if folders_data:
+            yield folders_data
+
+    async def mock_get_repository_by_name(
+        project_name: str, repo_name: str
+    ) -> Dict[str, Any]:
+        return {
+            "name": repo_name,
+            "id": f"{repo_name}-id",
+            "project": {"name": project_name, "id": "project-123"},
+        }
+
+    with (
+        patch.object(
+            mock_azure_client,
+            "generate_repositories",
+            side_effect=mock_generate_repositories,
+        ),
+        patch.object(
+            mock_azure_client,
+            "get_repository_folders",
+            side_effect=mock_get_repository_folders,
+        ),
+        patch.object(
+            mock_azure_client,
+            "get_repository_by_name",
+            side_effect=mock_get_repository_by_name,
+        ),
+    ):
+        results: List[Dict[str, Any]] = []
+        async for folders in mock_azure_client.process_folder_patterns(
+            sample_folder_patterns,
+            project_name="test-project",
+        ):
+            results.extend(folders)
+
+        # Verify we got all expected folders
+        assert len(results) == 4
+        paths = {r["path"] for r in results}
+        assert paths == {"src/main", "docs"}
+        repos = {r["__repository"]["name"] for r in results}
+        assert repos == {"repo1", "repo2", "repo3"}
+
+
+@pytest.mark.asyncio
+async def test_process_folder_patterns_empty_folders() -> None:
+    """Test with empty folder patterns"""
+    mock_client = AsyncMock(spec=AzureDevopsClient)
+    results = []
+    async for folders in mock_client.process_folder_patterns([]):
+        results.extend(folders)
+    assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_process_folder_patterns_no_matching_repos() -> None:
+    """Create patterns with non-existent repos"""
+    patterns = [
+        FolderPattern(
+            path="/src",
+            repos=[RepositoryBranchMapping(name="non-existent-repo", branch="main")],
+        )
+    ]
+
+    mock_client = AsyncMock(spec=AzureDevopsClient)
+
+    async def mock_generate_repositories() -> (
+        AsyncGenerator[List[Dict[str, Any]], None]
+    ):
+        yield []
+
+    mock_client.generate_repositories = mock_generate_repositories
+
+    results = []
+    async for folders in mock_client.process_folder_patterns(patterns):
+        results.extend(folders)
+    assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_process_folder_patterns_no_matching_folders() -> None:
+    """Create patterns with valid repo but non-existent folders"""
+    patterns = [
+        FolderPattern(
+            path="/non-existent-folder",
+            repos=[RepositoryBranchMapping(name="repo1", branch="main")],
+        )
+    ]
+    mock_client = AsyncMock(spec=AzureDevopsClient)
+
+    async def mock_generate_repositories() -> (
+        AsyncGenerator[List[Dict[str, Any]], None]
+    ):
+        yield [{"name": "repo1", "id": "repo1-id"}]
+
+    async def mock_get_repository_folders(
+        repo_id: str, paths: List[str]
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield []
+
+    mock_client.generate_repositories = mock_generate_repositories
+    mock_client.get_repository_folders = mock_get_repository_folders
+
+    results = []
+    async for folders in mock_client.process_folder_patterns(patterns):
+        results.extend(folders)
+    assert len(results) == 0

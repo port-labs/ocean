@@ -6,7 +6,7 @@ from httpx import BasicAuth, Request, Response
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from jira.client import PAGE_SIZE, WEBHOOK_EVENTS, JiraClient
+from jira.client import PAGE_SIZE, WEBHOOK_EVENTS, OAUTH2_WEBHOOK_EVENTS, JiraClient
 
 
 @pytest.fixture(autouse=True)
@@ -14,6 +14,8 @@ def mock_ocean_context() -> None:
     """Fixture to mock the Ocean context initialization."""
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.config = MagicMock()
+        mock_ocean_app.config.oauth_access_token_file_path = None
         mock_ocean_app.config.integration.config = {
             "jira_host": "https://getport.atlassian.net",
             "atlassian_user_email": "jira@atlassian.net",
@@ -22,6 +24,9 @@ def mock_ocean_context() -> None:
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
+        mock_ocean_app.cache_provider = AsyncMock()
+        mock_ocean_app.load_external_oauth_access_token = MagicMock(return_value=None)
+        mock_ocean_app.cache_provider.get.return_value = None
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
         pass
@@ -41,6 +46,7 @@ def mock_jira_client() -> JiraClient:
 async def test_client_initialization(mock_jira_client: JiraClient) -> None:
     """Test the correct initialization of JiraClient."""
     assert mock_jira_client.jira_rest_url == "https://example.atlassian.net/rest"
+    assert mock_jira_client.is_oauth_enabled() is False
     assert isinstance(mock_jira_client.jira_api_auth, BasicAuth)
 
 
@@ -157,12 +163,8 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
         # Verify params were passed correctly
         mock_request.assert_called_with(
             "GET",
-            f"{mock_jira_client.api_url}/search",
-            params={
-                "jql": "project = TEST",
-                "maxResults": PAGE_SIZE,
-                "startAt": 0,
-            },
+            f"{mock_jira_client.api_url}/search/jql",
+            params={"jql": "project = TEST"},
         )
 
 
@@ -265,9 +267,15 @@ async def test_create_events_webhook(mock_jira_client: JiraClient) -> None:
     webhook_url = f"{app_host}/integration/webhook"
 
     # Test when webhook doesn't exist
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
+    with (
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+        patch.object(
+            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
+        ) as mock_permission,
+    ):
+        mock_permission.return_value = True
         mock_request.side_effect = [
             [],  # No existing webhooks
             {"id": "new_webhook"},  # Creation response
@@ -283,10 +291,85 @@ async def test_create_events_webhook(mock_jira_client: JiraClient) -> None:
         assert create_call[1]["json"]["events"] == WEBHOOK_EVENTS
 
     # Test when webhook already exists
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
+    with (
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+        patch.object(
+            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
+        ) as mock_permission,
+    ):
+        mock_permission.return_value = True
         mock_request.return_value = [{"url": webhook_url}]
+
+        await mock_jira_client.create_webhooks(app_host)
+        mock_request.assert_called_once()  # Only checks for existence
+
+
+@pytest.mark.asyncio
+async def test_create_webhooks_no_permission(mock_jira_client: JiraClient) -> None:
+    """Test create_webhooks when user lacks ADMINISTER permission."""
+    app_host = "https://example.com"
+
+    with (
+        patch.object(
+            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
+        ) as mock_permission,
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+    ):
+        mock_permission.return_value = False
+
+        await mock_jira_client.create_webhooks(app_host)
+
+        mock_request.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_events_webhook_oauth(mock_jira_client: JiraClient) -> None:
+    """Test _create_events_webhook_oauth method"""
+    app_host = "https://example.com"
+    webhook_url = f"{app_host}/integration/webhook"
+
+    # Mock the OAuth token to enable OAuth mode
+    with (
+        patch.object(mock_jira_client, "is_oauth_enabled", return_value=True),
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+        patch.object(
+            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
+        ) as mock_permission,
+    ):
+        mock_permission.return_value = True
+        mock_request.side_effect = [
+            {"values": []},  # No existing webhooks
+            {"id": "new_webhook"},  # Creation response
+        ]
+
+        await mock_jira_client.create_webhooks(app_host)
+
+        # Verify webhook creation call
+        create_call = mock_request.call_args_list[1]
+        assert create_call[0][0] == "POST"
+        assert create_call[0][1] == mock_jira_client.webhooks_url
+        assert create_call[1]["json"]["url"] == webhook_url
+        assert create_call[1]["json"]["webhooks"][0]["events"] == OAUTH2_WEBHOOK_EVENTS
+        assert "jqlFilter" in create_call[1]["json"]["webhooks"][0]
+
+    # Test when webhook already exists
+    with (
+        patch.object(mock_jira_client, "is_oauth_enabled", return_value=True),
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+        patch.object(
+            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
+        ) as mock_permission,
+    ):
+        mock_permission.return_value = True
+        mock_request.return_value = {"values": [{"url": webhook_url}]}
 
         await mock_jira_client.create_webhooks(app_host)
         mock_request.assert_called_once()  # Only checks for existence
