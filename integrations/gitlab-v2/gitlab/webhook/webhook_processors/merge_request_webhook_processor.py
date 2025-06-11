@@ -10,6 +10,8 @@ from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
+from integration import GitlabMergeRequestResourceConfig
+from typing import cast
 
 
 class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
@@ -28,11 +30,11 @@ class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
         logger.info(
             f"Handling merge request webhook event for project {project_id} and merge request {merge_request_id} with state {state}"
         )
+        config = cast(GitlabMergeRequestResourceConfig, resource_config)
 
-        # Only process merge requests that match the configured state
-        if state != resource_config.selector.state:
+        if state != config.selector.state:
             logger.info(
-                f"Skipping merge request {merge_request_id} as state {state} does not match configured state {resource_config.selector.state}"
+                f"Skipping merge request {merge_request_id} as state {state} does not match configured state {config.selector.state}"
             )
             return WebhookEventRawResults(
                 updated_raw_results=[],

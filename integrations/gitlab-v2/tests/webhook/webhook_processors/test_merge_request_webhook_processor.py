@@ -77,11 +77,12 @@ class TestMergeRequestWebhookProcessor:
             ObjectKind.MERGE_REQUEST
         ]
 
-    async def test_handle_event(
+    async def test_handle_event_matching_state(
         self, processor: MergeRequestWebhookProcessor, mr_payload: dict[str, Any]
     ) -> None:
-        """Test handling a merge request event"""
+        """Test handling a merge request event when state matches"""
         resource_config = MagicMock()
+        resource_config.selector.state = "opened"  # Match the state in mr_payload
         project_id = mr_payload["project"]["id"]
         mr_id = mr_payload["object_attributes"]["id"]
         expected_mr = {
@@ -102,4 +103,20 @@ class TestMergeRequestWebhookProcessor:
         )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_mr
+        assert not result.deleted_raw_results
+
+    async def test_handle_event_non_matching_state(
+        self, processor: MergeRequestWebhookProcessor, mr_payload: dict[str, Any]
+    ) -> None:
+        """Test handling a merge request event when state doesn't match"""
+        resource_config = MagicMock()
+        resource_config.selector.state = "merged"  # Different from mr_payload state
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_merge_request = AsyncMock()
+
+        result = await processor.handle_event(mr_payload, resource_config)
+
+        processor._gitlab_webhook_client.get_merge_request.assert_not_called()
+        assert not result.updated_raw_results
         assert not result.deleted_raw_results

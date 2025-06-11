@@ -111,6 +111,18 @@ class GitlabFolderSelector(Selector):
     )
 
 
+class GitlabMergeRequestSelector(Selector):
+    state: str = Field(
+        alias="state",
+        description="Specify the state of the merge request to match",
+    )
+
+
+class GitlabMergeRequestResourceConfig(ResourceConfig):
+    selector: GitlabMergeRequestSelector
+    kind: Literal["merge-request"]
+
+
 class GitLabFoldersResourceConfig(ResourceConfig):
     selector: GitlabFolderSelector
     kind: Literal["folder"]
@@ -123,6 +135,7 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabMemberResourceConfig
         | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
+        | GitlabMergeRequestResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
