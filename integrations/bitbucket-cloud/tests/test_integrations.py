@@ -10,6 +10,10 @@ from integration import (
     BitbucketIntegration,
     GitManipulationHandler,
     BitbucketLiveEventsProcessorManager,
+    BitbucketGenericResourceConfig,
+    BitbucketPullRequestResourceConfig,
+    BitbucketGenericSelector,
+    BitbucketPullRequestSelector,
 )
 
 
@@ -82,3 +86,34 @@ async def test_bitbucket_webhook_manager_uses_gitmanipulation_handler(
         # Assert
         assert isinstance(manager, BitbucketLiveEventsProcessorManager)
         assert manager.EntityProcessorClass == GitManipulationHandler
+
+
+def test_bitbucket_generic_resource_config() -> None:
+    """Test that BitbucketGenericResourceConfig can be instantiated correctly"""
+    # Arrange & Act
+    selector = BitbucketGenericSelector(query="true")
+    config = BitbucketGenericResourceConfig(
+        kind="project",
+        selector=selector,
+        port={}
+    )
+    
+    # Assert
+    assert config.kind == "project"
+    assert config.selector.query == "true"
+
+
+def test_bitbucket_pull_request_resource_config() -> None:
+    """Test that BitbucketPullRequestResourceConfig can be instantiated correctly"""
+    # Arrange & Act
+    selector = BitbucketPullRequestSelector(query="true", state="OPEN")
+    config = BitbucketPullRequestResourceConfig(
+        kind="pull-request",
+        selector=selector,
+        port={}
+    )
+    
+    # Assert
+    assert config.kind == "pull-request"
+    assert config.selector.query == "true"
+    assert config.selector.state == "OPEN"

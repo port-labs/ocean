@@ -24,6 +24,10 @@ from integration import (
     BitbucketFolderSelector,
     BitbucketFileResourceConfig,
     BitbucketFileSelector,
+    BitbucketGenericResourceConfig,
+    BitbucketGenericSelector,
+    BitbucketPullRequestResourceConfig,
+    BitbucketPullRequestSelector,
 )
 from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
@@ -50,6 +54,9 @@ async def on_start() -> None:
 @ocean.on_resync(ObjectKind.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all projects in the workspace."""
+    config = cast(
+        Union[ResourceConfig, BitbucketGenericResourceConfig], event.resource_config
+    )
     client = init_client()
     async for projects in client.get_projects():
         yield projects
@@ -58,6 +65,9 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the workspace."""
+    config = cast(
+        Union[ResourceConfig, BitbucketGenericResourceConfig], event.resource_config
+    )
     client = init_client()
     async for repositories in client.get_repositories():
         yield repositories
@@ -66,6 +76,9 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests from all repositories."""
+    config = cast(
+        Union[ResourceConfig, BitbucketPullRequestResourceConfig], event.resource_config
+    )
     client = init_client()
     async for repositories in client.get_repositories():
         tasks = [

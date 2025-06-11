@@ -97,9 +97,34 @@ class BitbucketFileResourceConfig(ResourceConfig):
     selector: BitbucketFileSelector
 
 
+class BitbucketGenericSelector(Selector):
+    query: str = Field(default="true", description="JQ query string to filter resources")
+
+
+class BitbucketPullRequestSelector(BitbucketGenericSelector):
+    state: Literal["ALL", "OPEN", "MERGED", "DECLINED"] = Field(
+        default="OPEN",
+        description="State of pull requests to sync (ALL, OPEN, MERGED, DECLINED)",
+    )
+
+
+class BitbucketGenericResourceConfig(ResourceConfig):
+    selector: BitbucketGenericSelector
+    kind: Literal["project", "repository"]
+
+
+class BitbucketPullRequestResourceConfig(ResourceConfig):
+    selector: BitbucketPullRequestSelector
+    kind: Literal["pull-request"]
+
+
 class BitbucketAppConfig(PortAppConfig):
     resources: list[
-        BitbucketFolderResourceConfig | BitbucketFileResourceConfig | ResourceConfig
+        BitbucketFolderResourceConfig 
+        | BitbucketFileResourceConfig 
+        | BitbucketGenericResourceConfig
+        | BitbucketPullRequestResourceConfig
+        | ResourceConfig
     ] = Field(
         default_factory=list,
         alias="resources",
