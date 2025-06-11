@@ -1,4 +1,9 @@
 from typing import Dict
+from port_ocean.core.handlers.port_app_config.models import (
+    EntityMapping,
+    MappingsConfig,
+    PortResourceConfig,
+)
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -11,32 +16,9 @@ from github.webhook.webhook_processors.team_webhook_processor import (
 from github.webhook.events import TEAM_UPSERT_EVENTS, TEAM_DELETE_EVENTS
 from github.core.options import SingleTeamOptions
 
-from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-    Selector,
-    PortResourceConfig,
-    EntityMapping,
-    MappingsConfig,
-)
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import ObjectKind, GithubClientType
 
-
-@pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
-        kind=ObjectKind.TEAM,
-        selector=Selector(query="true"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".slug",
-                    title=".name",
-                    blueprint='"githubTeam"',
-                    properties={},
-                )
-            )
-        ),
-    )
+from integration import GithubTeamConfig, GithubTeamSector
 
 
 @pytest.fixture
@@ -84,18 +66,19 @@ class TestTeamWebhookProcessor:
         assert ObjectKind.TEAM in kinds
 
     @pytest.mark.parametrize(
-        "action,is_deletion,expected_updated,expected_deleted",
+        "action,is_deletion,include_members,expected_updated,expected_deleted",
         [
-            ("created", False, True, False),
-            ("deleted", True, False, True),
+            ("created", False, False, True, False),  # REST exporter
+            ("created", False, True, True, False),  # GraphQL exporter
+            ("deleted", True, False, False, True),  # Deletion, no exporter needed
         ],
     )
     async def test_handle_event_create_and_delete(
         self,
         team_webhook_processor: TeamWebhookProcessor,
-        resource_config: ResourceConfig,
         action: str,
         is_deletion: bool,
+        include_members: bool,
         expected_updated: bool,
         expected_deleted: bool,
     ) -> None:
@@ -106,34 +89,84 @@ class TestTeamWebhookProcessor:
             "description": "Test team",
         }
 
+        # Mocked GraphQL response structure
+        graphql_team_data = {
+            "data": {
+                "organization": {
+                    "team": {
+                        "id": 1,
+                        "name": "test-repo",
+                        "slug": "test-team",
+                        "description": "Test team",
+                        # In a real scenario, members data would be here
+                    }
+                }
+            }
+        }
+
         payload = {"action": action, "team": team_data}
+
+        # Create resource_config based on include_members
+        resource_config = GithubTeamConfig(
+            kind=ObjectKind.TEAM,
+            selector=GithubTeamSector(include_members=include_members, query="true"),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".slug",
+                        title=".name",
+                        blueprint='"githubTeam"',
+                        properties={},
+                    )
+                )
+            ),
+        )
 
         if is_deletion:
             result = await team_webhook_processor.handle_event(payload, resource_config)
         else:
-            # Mock the TeamExporter
             mock_exporter = AsyncMock()
-            mock_exporter.get_resource.return_value = team_data
+            if include_members:
+                mock_exporter.get_resource.return_value = graphql_team_data["data"][
+                    "organization"
+                ]["team"]
+                exporter_path = "github.webhook.webhook_processors.team_webhook_processor.GraphQLTeamExporter"
+                client_type = GithubClientType.GRAPHQL
+            else:
+                mock_exporter.get_resource.return_value = team_data
+                exporter_path = "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter"
+                client_type = GithubClientType.REST
 
-            with patch(
-                "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter",
-                return_value=mock_exporter,
+            with (
+                patch(exporter_path, return_value=mock_exporter),
+                patch(
+                    "github.webhook.webhook_processors.team_webhook_processor.create_github_client"
+                ) as mock_create_client,
             ):
                 result = await team_webhook_processor.handle_event(
                     payload, resource_config
                 )
 
-            # Verify exporter was called with correct team slug
-            mock_exporter.get_resource.assert_called_once_with(
-                SingleTeamOptions(slug="test-team")
-            )
+                # Verify create_github_client was called with correct type
+                mock_create_client.assert_called_once_with(client_type)
+
+                # Verify exporter was called with correct team slug
+                mock_exporter.get_resource.assert_called_once_with(
+                    SingleTeamOptions(slug="test-team")
+                )
 
         assert isinstance(result, WebhookEventRawResults)
         assert bool(result.updated_raw_results) is expected_updated
         assert bool(result.deleted_raw_results) is expected_deleted
 
         if expected_updated:
-            assert result.updated_raw_results == [team_data]
+            # If GraphQL, the result will be the extracted team data from the graphql_team_data mock
+            if include_members:
+                assert result.updated_raw_results == [
+                    graphql_team_data["data"]["organization"]["team"]
+                ]
+            else:
+                assert result.updated_raw_results == [team_data]
 
         if expected_deleted:
             assert result.deleted_raw_results == [team_data]

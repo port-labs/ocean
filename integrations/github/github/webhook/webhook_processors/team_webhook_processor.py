@@ -1,5 +1,8 @@
+from typing import Any, cast
 from loguru import logger
-from github.core.exporters.team_exporter import RestTeamExporter
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.core.exporters.graphql_team_exporter import GraphQLTeamExporter
+from github.core.exporters.rest_team_exporter import RestTeamExporter
 from github.core.options import SingleTeamOptions
 from github.webhook.events import TEAM_DELETE_EVENTS, TEAM_UPSERT_EVENTS
 from github.helpers.utils import GithubClientType, ObjectKind
@@ -13,6 +16,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
+
+from integration import GithubTeamConfig
 
 
 class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
@@ -43,8 +48,15 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[team]
             )
 
-        client = create_github_client(GithubClientType.REST)
-        exporter = RestTeamExporter(client)
+        config = cast(GithubTeamConfig, resource_config)
+        selector = config.selector
+        exporter: AbstractGithubExporter[Any]
+        if selector.include_members:
+            graphql_client = create_github_client(GithubClientType.GRAPHQL)
+            exporter = GraphQLTeamExporter(graphql_client)
+        else:
+            rest_client = create_github_client(GithubClientType.REST)
+            exporter = RestTeamExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
             SingleTeamOptions(slug=team["slug"])

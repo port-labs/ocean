@@ -11,14 +11,6 @@ class ListRepositoryOptions(TypedDict):
     type: str
 
 
-class SingleUserOptions(TypedDict):
-    login: Required[str]
-
-
-class SingleTeamOptions(TypedDict):
-    slug: Required[str]
-
-
 class RepositoryIdentifier(TypedDict):
     """Options for identifying a repository."""
 
@@ -47,3 +39,11 @@ class ListIssueOptions(RepositoryIdentifier):
     """Options for listing issues."""
 
     state: Required[str]
+
+
+class SingleUserOptions(TypedDict):
+    login: Required[str]
+
+
+class SingleTeamOptions(TypedDict):
+    slug: Required[str]

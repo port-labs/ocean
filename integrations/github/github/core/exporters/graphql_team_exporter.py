@@ -8,11 +8,11 @@ from github.helpers.gql_queries import (
 )
 
 
-class GraphqlTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    async def get_resource[ExporterOptionT: SingleTeamOptions](
-        self, options: ExporterOptionT
-    ) -> RAW_ITEM:
-        variables = {"slug": options["login"], "organization": self.client.organization}
+class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
+    async def get_resource[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> RAW_ITEM:
+        variables = {"slug": options["slug"], "organization": self.client.organization}
         payload = self.client.build_graphql_payload(
             FETCH_TEAM_WITH_MEMBERS_GQL, variables
         )

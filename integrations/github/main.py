@@ -1,4 +1,4 @@
-from typing import cast, TYPE_CHECKING
+from typing import Any, cast, TYPE_CHECKING
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -11,6 +11,7 @@ from github.clients.client_factory import (
     create_github_client,
 )
 from github.clients.utils import integration_config
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.repository_exporter import RestRepositoryExporter
@@ -31,7 +32,8 @@ from github.webhook.webhook_processors.pull_request_webhook_processor import (
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
-from github.core.exporters.team_exporter import RestTeamExporter
+from github.core.exporters.rest_team_exporter import RestTeamExporter
+from github.core.exporters.graphql_team_exporter import GraphQLTeamExporter
 from github.core.exporters.user_exporter import GraphQLUserExporter
 
 from github.webhook.webhook_processors.team_webhook_processor import (
@@ -40,6 +42,7 @@ from github.webhook.webhook_processors.team_webhook_processor import (
 from github.webhook.webhook_processors.user_webhook_processor import (
     UserWebhookProcessor,
 )
+from integration import GithubTeamConfig
 
 if TYPE_CHECKING:
     from integration import (
@@ -111,10 +114,18 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all teams in the organization."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    client = create_github_client()
-    exporter = RestTeamExporter(client)
+    config = cast(GithubTeamConfig, event.resource_config)
+    selector = config.selector
 
-    async for teams in exporter.get_paginated_resources():
+    exporter: AbstractGithubExporter[Any]
+    if selector.include_members:
+        graphql_client = create_github_client(GithubClientType.GRAPHQL)
+        exporter = GraphQLTeamExporter(graphql_client)
+    else:
+        rest_client = create_github_client(GithubClientType.REST)
+        exporter = RestTeamExporter(rest_client)
+
+    async for teams in exporter.get_paginated_resources(None):
         yield teams
 
 
