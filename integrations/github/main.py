@@ -14,7 +14,11 @@ from github.clients.utils import integration_config
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.repository_exporter import RestRepositoryExporter
-from github.core.options import ListIssueOptions, ListPullRequestOptions, ListRepositoryOptions
+from github.core.options import (
+    ListIssueOptions,
+    ListPullRequestOptions,
+    ListRepositoryOptions,
+)
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_client import GithubWebhookClient
@@ -29,7 +33,11 @@ from github.webhook.webhook_processors.repository_webhook_processor import (
 )
 
 if TYPE_CHECKING:
-    from integration import GithubIssueConfig, GithubPortAppConfig, GithubPullRequestConfig
+    from integration import (
+        GithubIssueConfig,
+        GithubPortAppConfig,
+        GithubPullRequestConfig,
+    )
 
 
 @ocean.on_start()
