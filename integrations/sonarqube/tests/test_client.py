@@ -1098,3 +1098,194 @@ async def test_sonarqube_client_normalizes_trailing_slashes(
     assert client_without_app_host.base_url == "https://sonarqube.com"
     assert client_without_app_host.app_host is None
     assert client_without_app_host.webhook_invoke_url == ""
+
+
+async def test_get_alm_bindings_success(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test successful ALM bindings retrieval"""
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    mock_binding_response = {
+        "alm": "gitlab",
+        "key": "gitlab-binding-key",
+        "repository": "group/project",
+        "url": "https://gitlab.example.com/group/project",
+    }
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [{"status_code": 200, "json": mock_binding_response}]  # type: ignore
+    )
+
+    result = await sonarqube_client.get_alm_bindings("project1")
+    assert result == mock_binding_response
+
+
+async def test_get_alm_bindings_not_found(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test ALM bindings retrieval when no bindings exist"""
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [{"status_code": 404, "json": {"errors": [{"msg": "Project not found"}]}}]  # type: ignore
+    )
+
+    result = await sonarqube_client.get_alm_bindings("project1")
+    assert result == {}
+
+
+async def test_get_alm_bindings_server_error(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test ALM bindings retrieval with server error"""
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [{"status_code": 500, "json": {"errors": [{"msg": "Internal server error"}]}}]  # type: ignore
+    )
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        await sonarqube_client.get_alm_bindings("project1")
+
+    assert exc_info.value.response.status_code == 500
+
+
+async def test_get_all_alm_bindings(
+    mock_ocean_context: Any,
+    mock_event_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test getting ALM bindings for all projects"""
+    async with event_context("test_event"):
+        sonarqube_client = SonarQubeClient(
+            "https://sonarqube.com",
+            "token",
+            "organization_id",
+            "app_host",
+            False,
+        )
+
+        # Mock projects response
+        mock_projects = [
+            {"key": "project1", "name": "Project 1"},
+            {"key": "project2", "name": "Project 2"},
+        ]
+
+        # Mock ALM bindings responses
+        mock_binding1 = {
+            "alm": "gitlab",
+            "key": "gitlab-binding-1",
+            "repository": "group/project1",
+            "url": "https://gitlab.example.com/group/project1",
+        }
+
+        mock_binding2 = {
+            "alm": "github",
+            "key": "github-binding-2",
+            "repository": "group/project2",
+            "url": "https://github.com/group/project2",
+        }
+
+        async def mock_paginated_generator(
+            *args: tuple[Any], **kwargs: dict[str, Any]
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield mock_projects
+
+        async def mock_get_alm_bindings(project_key: str) -> dict[str, Any]:
+            if project_key == "project1":
+                return mock_binding1
+            elif project_key == "project2":
+                return mock_binding2
+            return {}
+
+        monkeypatch.setattr(sonarqube_client, "get_projects", mock_paginated_generator)
+        monkeypatch.setattr(sonarqube_client, "get_alm_bindings", mock_get_alm_bindings)
+
+        results = []
+        async for bindings_batch in sonarqube_client.get_all_alm_bindings():
+            results.extend(bindings_batch)
+
+        assert len(results) == 2
+        assert results[0]["__projectKey"] == "project1"
+        assert results[0]["alm"] == "gitlab"
+        assert results[1]["__projectKey"] == "project2"
+        assert results[1]["alm"] == "github"
+
+
+async def test_get_all_alm_bindings_with_errors(
+    mock_ocean_context: Any,
+    mock_event_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test getting ALM bindings when some projects fail"""
+    async with event_context("test_event"):
+        sonarqube_client = SonarQubeClient(
+            "https://sonarqube.com",
+            "token",
+            "organization_id",
+            "app_host",
+            False,
+        )
+
+        # Mock projects response
+        mock_projects = [
+            {"key": "project1", "name": "Project 1"},
+            {"key": "project2", "name": "Project 2"},
+        ]
+
+        # Mock ALM bindings response - project1 succeeds, project2 fails
+        async def mock_get_alm_bindings(project_key: str) -> dict[str, Any]:
+            if project_key == "project1":
+                return {
+                    "alm": "gitlab",
+                    "key": "gitlab-binding-1",
+                    "repository": "group/project1",
+                }
+            elif project_key == "project2":
+                raise httpx.HTTPStatusError(
+                    "Error",
+                    request=httpx.Request("GET", "https://sonarqube.com"),
+                    response=httpx.Response(
+                        500, request=httpx.Request("GET", "https://sonarqube.com")
+                    ),
+                )
+            return {}
+
+        async def mock_paginated_generator(
+            *args: tuple[Any], **kwargs: dict[str, Any]
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield mock_projects
+
+        monkeypatch.setattr(sonarqube_client, "get_projects", mock_paginated_generator)
+        monkeypatch.setattr(sonarqube_client, "get_alm_bindings", mock_get_alm_bindings)
+
+        results = []
+        async for bindings_batch in sonarqube_client.get_all_alm_bindings():
+            results.extend(bindings_batch)
+
+        # Should only have one result (project1), project2 should be skipped due to error
+        assert len(results) == 1
+        assert results[0]["__projectKey"] == "project1"
+        assert results[0]["alm"] == "gitlab"

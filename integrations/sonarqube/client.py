@@ -40,6 +40,7 @@ class Endpoints:
     ANALYSIS = "activity_feed/list"
     PORTFOLIO_DETAILS = "views/show"
     PORTFOLIOS = "views/list"
+    ALM_SETTINGS_BINDING = "alm_settings/get_binding"
 
 
 PAGE_SIZE = 100
@@ -585,6 +586,60 @@ class SonarQubeClient:
                     logger.error(
                         f"Error occurred while fetching portfolio details: {e}"
                     )
+
+    async def get_alm_bindings(self, project_key: str) -> dict[str, Any]:
+        """
+        Retrieve ALM (Application Lifecycle Management) bindings for a specific project.
+
+        :param project_key: The key of the project to get ALM bindings for
+        :return: Dictionary containing ALM binding information
+        """
+        logger.info(f"Fetching ALM bindings for project: {project_key}")
+        try:
+            response = await self._send_api_request(
+                endpoint=Endpoints.ALM_SETTINGS_BINDING,
+                query_params={"project": project_key},
+            )
+            return response
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.info(f"No ALM bindings found for project: {project_key}")
+                return {}
+            logger.error(f"Error fetching ALM bindings for project {project_key}: {e}")
+            raise
+        except httpx.HTTPError as e:
+            logger.error(
+                f"HTTP error occurred while fetching ALM bindings for project {project_key}: {e}"
+            )
+            raise
+
+    async def get_all_alm_bindings(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Retrieve ALM bindings for all projects.
+
+        :return: AsyncGenerator yielding batches of ALM binding data
+        """
+        logger.info("Fetching ALM bindings for all projects")
+        async for projects in self.get_projects():
+            alm_bindings = []
+            for project in projects:
+                project_key = project.get("key")
+                if project_key:
+                    try:
+                        binding_data = await self.get_alm_bindings(project_key)
+                        if binding_data:
+                            # Enrich the binding data with project information
+                            binding_data["__project"] = project
+                            binding_data["__projectKey"] = project_key
+                            alm_bindings.append(binding_data)
+                    except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+                        logger.warning(
+                            f"Failed to fetch ALM bindings for project {project_key}: {e}"
+                        )
+                        continue
+
+            if alm_bindings:
+                yield alm_bindings
 
     def sanity_check(self) -> None:
         try:
