@@ -28,10 +28,12 @@ class ListPullRequestOptions(RepositoryIdentifier):
 
     state: Required[str]
 
+
 class SingleIssueOptions(RepositoryIdentifier):
     """Options for fetching a single issue."""
 
     issue_number: Required[int]
+
 
 class ListIssueOptions(RepositoryIdentifier):
     """Options for listing issues."""

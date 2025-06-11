@@ -7,6 +7,7 @@ features:
     resources:
       - kind: repository
       - kind: pull-request
+      - kind: issue
 configurations:
   - name: githubHost
     required: false

@@ -131,8 +131,8 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         tasks = [
             issue_exporter.get_paginated_resources(
                 ListIssueOptions(
-                    state=config.selector.state,
                     repo_name=repo["name"],
+                    state=config.selector.state,
                 )
             )
             for repo in repos
