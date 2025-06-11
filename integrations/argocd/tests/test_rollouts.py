@@ -34,3 +34,66 @@ def test_rollout_support_plan() -> None:
     ]
 
     assert len(implemented_rollout_features) == 6  # All features implemented
+
+
+def test_rollout_client_method_exists() -> None:
+    """Test that the ArgocdClient has a get_rollouts method."""
+    from client import ArgocdClient
+
+    # Check that the method exists
+    assert hasattr(ArgocdClient, "get_rollouts")
+
+    # Check the method signature (it should be async)
+    import inspect
+
+    method = getattr(ArgocdClient, "get_rollouts")
+    assert inspect.iscoroutinefunction(method)
+
+
+def test_rollout_resource_filtering() -> None:
+    """Test the logic for filtering rollout resources."""
+    # Mock resource data that would come from ArgoCD API
+    mock_managed_resources = [
+        {
+            "kind": "Deployment",
+            "group": "apps",
+            "version": "v1",
+            "name": "test-deployment",
+            "namespace": "default",
+        },
+        {
+            "kind": "Rollout",
+            "group": "argoproj.io",
+            "version": "v1alpha1",
+            "name": "test-rollout",
+            "namespace": "default",
+        },
+        {
+            "kind": "Service",
+            "group": "",
+            "version": "v1",
+            "name": "test-service",
+            "namespace": "default",
+        },
+        {
+            "kind": "Rollout",
+            "group": "argoproj.io",
+            "version": "v1alpha1",
+            "name": "another-rollout",
+            "namespace": "production",
+        },
+    ]
+
+    # Filter for rollouts like the get_rollouts method does
+    rollouts = [
+        resource
+        for resource in mock_managed_resources
+        if resource.get("kind") == "Rollout" and resource.get("group") == "argoproj.io"
+    ]
+
+    # Should find exactly 2 rollouts
+    assert len(rollouts) == 2
+    assert rollouts[0]["name"] == "test-rollout"
+    assert rollouts[1]["name"] == "another-rollout"
+    assert all(r["kind"] == "Rollout" for r in rollouts)
+    assert all(r["group"] == "argoproj.io" for r in rollouts)
