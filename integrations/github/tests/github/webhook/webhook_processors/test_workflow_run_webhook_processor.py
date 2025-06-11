@@ -133,7 +133,7 @@ class TestWorkflowRunWebhookProcessor:
 
             # Verify exporter was called with correct repo name
             mock_exporter.get_resource.assert_called_once_with(
-                {"repo": "test-repo", "resource_id": 1}
+                {"repo_name": "test-repo", "resource_id": 1}
             )
 
         assert isinstance(result, WebhookEventRawResults)

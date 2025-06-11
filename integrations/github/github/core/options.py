@@ -49,5 +49,9 @@ class SingleWorkflowOptions(ListWorkflowOptions):
     resource_id: Required[str]
 
 
-class SingleWorkflowRunOptions(RepositoryIdentifier):
+class ListWorkflowRunOptions(RepositoryIdentifier):
+    """Options for workflow runs"""
+
+
+class SingleWorkflowRunOptions(ListWorkflowRunOptions):
     resource_id: Required[str]

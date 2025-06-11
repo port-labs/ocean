@@ -43,7 +43,7 @@ class WorkflowRunWebhookProcessor(_GithubAbstractWebhookProcessor):
             )
         exporter = RestWorkflowRunExporter(create_github_client())
         options = SingleWorkflowOptions(
-            repo=repo["name"], resource_id=workflow_run["id"]
+            repo_name=repo["name"], resource_id=workflow_run["id"]
         )
 
         data_to_upsert = await exporter.get_resource(options)

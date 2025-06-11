@@ -46,7 +46,7 @@ TEST_DATA: dict[str, Any] = {
 @pytest.mark.asyncio
 async def test_single_resource(rest_client: GithubRestClient) -> None:
     exporter = RestWorkflowRunExporter(rest_client)
-    options: SingleWorkflowOptions = {"repo": "test", "resource_id": "12343"}
+    options: SingleWorkflowOptions = {"repo_name": "test", "resource_id": "12343"}
 
     # Create an async mock to return the test repos
     async def mock_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -59,13 +59,13 @@ async def test_single_resource(rest_client: GithubRestClient) -> None:
             wf = await exporter.get_resource(options)
             assert wf == TEST_DATA["workflow_runs"][0]
             mock_request.assert_called_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/{options['repo']}/actions/runs/{options['resource_id']}"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/{options['repo_name']}/actions/runs/{options['resource_id']}"
             )
 
 
 @pytest.mark.asyncio
 async def test_get_paginated_resources(rest_client: GithubRestClient) -> None:
-    options: ListWorkflowOptions = {"repo": "test"}
+    options: ListWorkflowOptions = {"repo_name": "test"}
     exporter = RestWorkflowRunExporter(rest_client)
 
     # Create an async mock to return the test repos
@@ -87,5 +87,5 @@ async def test_get_paginated_resources(rest_client: GithubRestClient) -> None:
             assert wf[0] == TEST_DATA["workflow_runs"]
 
         mock_request.assert_called_once_with(
-            f"{rest_client.base_url}/repos/{rest_client.organization}/{options['repo']}/actions/runs"
+            f"{rest_client.base_url}/repos/{rest_client.organization}/{options['repo_name']}/actions/runs"
         )
