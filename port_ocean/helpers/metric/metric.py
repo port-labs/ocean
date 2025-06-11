@@ -37,6 +37,7 @@ class MetricPhase:
 
     class ExtractResult:
         EXTRACTED = "raw_extracted"
+        FAILED = "failed"
 
     class DeletionResult:
         DELETED = "deleted"

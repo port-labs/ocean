@@ -1,9 +1,7 @@
-from typing import TypedDict
+from typing import Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
-    """Options for fetching a single repository."""
-
     name: str
 
 
@@ -13,27 +11,51 @@ class ListRepositoryOptions(TypedDict):
     type: str
 
 
-class SingleEnvironmentOptions(TypedDict):
+class RepositoryIdentifier(TypedDict):
+    """Options for identifying a repository."""
+
+    repo_name: Required[str]
+
+
+class SinglePullRequestOptions(RepositoryIdentifier):
+    """Options for fetching a single pull request."""
+
+    pr_number: Required[int]
+
+
+class ListPullRequestOptions(RepositoryIdentifier):
+    """Options for listing pull requests."""
+
+    state: Required[str]
+
+
+class SingleIssueOptions(RepositoryIdentifier):
+    """Options for fetching a single issue."""
+
+    issue_number: Required[int]
+
+
+class ListIssueOptions(RepositoryIdentifier):
+    """Options for listing issues."""
+
+    state: Required[str]
+
+
+class SingleEnvironmentOptions(RepositoryIdentifier):
     """Options for fetching a single environment."""
 
-    repo_name: str
     name: str
 
 
-class ListEnvironmentsOptions(TypedDict):
+class ListEnvironmentsOptions(RepositoryIdentifier):
     """Options for listing environments."""
 
-    repo_name: str
 
-
-class SingleDeploymentOptions(TypedDict):
+class SingleDeploymentOptions(RepositoryIdentifier):
     """Options for fetching a single deployment."""
 
-    repo_name: str
     id: str
 
 
-class ListDeploymentsOptions(TypedDict):
+class ListDeploymentsOptions(RepositoryIdentifier):
     """Options for listing deployments."""
-
-    repo_name: str

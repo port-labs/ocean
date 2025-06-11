@@ -6,8 +6,10 @@ features:
     section: Git
     resources:
       - kind: repository
-      - kind: deployment
+      - kind: pull-request
+      - kind: issue
       - kind: environment
+      - kind: deployment
 configurations:
   - name: githubHost
     required: false
