@@ -18,14 +18,14 @@ def mock_ocean_context() -> None:
             "jira_host": "https://getport.atlassian.net",
             "atlassian_user_email": "jira@atlassian.net",
             "atlassian_user_token": "asdf",
-            "atlassian_organisation_id": "asdf",
-            "oauth_access_token_file_path": None,
+            "atlassian_organisation_id": "asdf"
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
         mock_ocean_app.cache_provider = AsyncMock()
         mock_ocean_app.load_external_oauth_access_token = MagicMock(return_value=None)
         mock_ocean_app.cache_provider.get.return_value = None
+        mock_ocean_app.is_oauth_enabled = MagicMock(return_value=False)
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
         pass
