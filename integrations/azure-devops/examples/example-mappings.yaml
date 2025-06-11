@@ -136,3 +136,20 @@ resources:
             defaultBranch: .__repository.defaultBranch
           relations:
             project: .__repository.project.id | gsub(" "; "")
+  - kind: team
+    selector:
+      query: 'true'
+      includeMembers: true
+      expandNestedMembers: false  # Set to true to recursively expand nested groups
+    port:
+      entity:
+        mappings:
+          identifier: .id | gsub(" "; "")
+          title: .name
+          blueprint: '"team"'
+          properties:
+            description: .description
+            link: .webUrl
+            members: '.__members | map(.identity.displayName)'
+          relations:
+            project: .projectId | gsub(" "; "")
