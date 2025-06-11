@@ -134,7 +134,6 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitlabMergeRequestResourceConfig, event.resource_config).selector
     state = selector.state
-    logger.warning(f"state: {state}")
 
     async for groups_batch in client.get_groups():
         logger.info(
