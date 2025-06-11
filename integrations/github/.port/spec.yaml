@@ -6,6 +6,8 @@ features:
     section: Git
     resources:
       - kind: repository
+      - kind: user
+      - kind: team
       - kind: pull-request
       - kind: issue
 configurations:

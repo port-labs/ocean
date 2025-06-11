@@ -8,6 +8,8 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 
+from github.helpers.utils import ObjectKind
+
 
 class GithubPullRequestSelector(Selector):
     state: Literal["open", "closed", "all"] = Field(
@@ -33,9 +35,20 @@ class GithubIssueConfig(ResourceConfig):
     kind: Literal["issue"]
 
 
+class GithubTeamSector(Selector):
+    include_members: bool = Field(default=False)
+
+
+class GithubTeamConfig(ResourceConfig):
+    selector: GithubTeamSector
+    kind: Literal[ObjectKind.TEAM]
+
+
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
-    resources: list[GithubPullRequestConfig | GithubIssueConfig | ResourceConfig]
+    resources: list[
+        GithubPullRequestConfig | GithubIssueConfig | GithubTeamConfig | ResourceConfig
+    ]
 
 
 class GithubIntegration(BaseIntegration):

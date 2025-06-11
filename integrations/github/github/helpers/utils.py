@@ -9,6 +9,8 @@ class GithubClientType(StrEnum):
 
 class ObjectKind(StrEnum):
     REPOSITORY = "repository"
+    USER = "user"
+    TEAM = "team"
     PULL_REQUEST = "pull-request"
     ISSUE = "issue"
 
