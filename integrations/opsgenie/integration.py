@@ -110,11 +110,16 @@ class TeamResourceConfig(ResourceConfig):
     selector: TeamSelector
 
 
+class CommentResourceConfig(ResourceConfig):
+    kind: Literal["comment"]
+
+
 class OpsGeniePortAppConfig(PortAppConfig):
     resources: list[
         AlertAndIncidentResourceConfig
         | ScheduleResourceConfig
         | TeamResourceConfig
+        | CommentResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

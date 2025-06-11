@@ -128,3 +128,18 @@ resources:
           blueprint: '"opsGenieTeam"'
           properties:
             oncallUsers: .__currentOncalls.onCallRecipients
+  - kind: comment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .message
+          blueprint: '"opsGenieComment"'
+          properties:
+            source: .source
+            message: .message
+            createdAt: .createdAt
+          relations:
+            alert: .__alert
