@@ -3,7 +3,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListReleaseOptions, SingleReleaseOptions
 from github.clients.http.rest_client import GithubRestClient
-from github.helpers.utils import enrich_with_repository
+from github.helpers.utils import enrich_with_repository, extract_repo_params
 
 
 class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
@@ -11,11 +11,13 @@ class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionsT: SingleReleaseOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
-        repo_name = options["repo_name"]
-        release_id = options["release_id"]
+
+        repo_name, params = extract_repo_params(dict(options))
+        release_id = params["release_id"]
 
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/releases/{release_id}"
         response = await self.client.send_api_request(endpoint)
+
         logger.info(f"Fetched release with id: {release_id} for repo: {repo_name}")
 
         return enrich_with_repository(response, repo_name)
@@ -25,8 +27,7 @@ class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all releases in the repository with pagination."""
 
-        params = dict(options)
-        repo_name = str(params.pop("repo_name"))
+        repo_name, params = extract_repo_params(dict(options))
 
         async for releases in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/releases",

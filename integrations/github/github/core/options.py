@@ -40,6 +40,7 @@ class ListIssueOptions(RepositoryIdentifier):
 
     state: Required[str]
 
+
 class SingleReleaseOptions(RepositoryIdentifier):
     """Options for fetching a single release."""
 
@@ -48,8 +49,6 @@ class SingleReleaseOptions(RepositoryIdentifier):
 
 class ListReleaseOptions(RepositoryIdentifier):
     """Options for listing releases."""
-
-    repo_name: Required[str]
 
 
 class SingleTagOptions(RepositoryIdentifier):

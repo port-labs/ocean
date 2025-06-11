@@ -1,6 +1,7 @@
 from typing import cast, TYPE_CHECKING
 
 from loguru import logger
+from github.webhook.registry import register_live_events_webhooks
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -29,15 +30,6 @@ from github.core.options import (
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_client import GithubWebhookClient
-from github.webhook.webhook_processors.issue_webhook_processor import (
-    IssueWebhookProcessor,
-)
-from github.webhook.webhook_processors.pull_request_webhook_processor import (
-    PullRequestWebhookProcessor,
-)
-from github.webhook.webhook_processors.repository_webhook_processor import (
-    RepositoryWebhookProcessor,
-)
 
 if TYPE_CHECKING:
     from integration import (
@@ -222,6 +214,5 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield branches
 
 
-ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
-ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
-ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+# Register webhook processors
+register_live_events_webhooks()
