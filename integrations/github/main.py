@@ -19,8 +19,8 @@ from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.options import (
-    ListPullRequestOptions,
     ListIssueOptions,
+    ListPullRequestOptions,
     ListRepositoryOptions,
     ListWorkflowOptions,
 )
