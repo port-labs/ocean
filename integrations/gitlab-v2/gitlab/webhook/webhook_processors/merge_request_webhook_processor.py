@@ -24,9 +24,20 @@ class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         merge_request_id = payload["object_attributes"]["id"]
         project_id = payload["project"]["id"]
+        state = payload["object_attributes"]["state"]
         logger.info(
-            f"Handling merge request webhook event for project {project_id} and merge request {merge_request_id}"
+            f"Handling merge request webhook event for project {project_id} and merge request {merge_request_id} with state {state}"
         )
+
+        # Only process merge requests that match the configured state
+        if state != resource_config.selector.state:
+            logger.info(
+                f"Skipping merge request {merge_request_id} as state {state} does not match configured state {resource_config.selector.state}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
 
         merge_request = await self._gitlab_webhook_client.get_merge_request(
             project_id, merge_request_id

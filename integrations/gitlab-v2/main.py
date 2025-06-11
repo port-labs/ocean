@@ -16,6 +16,7 @@ from integration import (
     GitLabFoldersResourceConfig,
     GitlabGroupWithMembersResourceConfig,
     GitlabMemberResourceConfig,
+    GitlabMergeRequestResourceConfig,
 )
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
@@ -131,12 +132,15 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
+    selector = cast(GitlabMergeRequestResourceConfig, event.resource_config).selector
+    state = selector.state
+    logger.warning(f"state: {state}")
 
     async for groups_batch in client.get_groups():
         logger.info(
             f"Processing batch of {len(groups_batch)} groups for merge requests"
         )
-        params = {"state": "opened"}
+        params = {"state": state}
 
         async for merge_requests_batch in client.get_groups_resource(
             groups_batch, "merge_requests", params=params

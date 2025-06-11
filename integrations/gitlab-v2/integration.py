@@ -1,4 +1,4 @@
-from typing import Literal, Any, Type
+from typing import Literal, Any, Type, List
 from pydantic import BaseModel, Field
 
 from port_ocean.context.ocean import PortOceanContext
@@ -116,10 +116,24 @@ class GitLabFoldersResourceConfig(ResourceConfig):
     kind: Literal["folder"]
 
 
+class GitlabMergeRequestSelector(Selector):
+    state: Literal["opened", "closed", "merged"] = Field(
+        alias="state",
+        default="opened",
+        description="State to include for merge requests. Can be 'opened', 'closed', or 'merged'. Default is 'opened'",
+    )
+
+
+class GitlabMergeRequestResourceConfig(ResourceConfig):
+    kind: Literal["merge-request"]
+    selector: GitlabMergeRequestSelector
+
+
 class GitlabPortAppConfig(PortAppConfig):
     resources: list[
         ProjectResourceConfig
         | GitlabGroupWithMembersResourceConfig
+        | GitlabMergeRequestResourceConfig
         | GitlabMemberResourceConfig
         | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
