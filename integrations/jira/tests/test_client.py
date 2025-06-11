@@ -14,6 +14,8 @@ def mock_ocean_context() -> None:
     """Fixture to mock the Ocean context initialization."""
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.config = MagicMock()
+        mock_ocean_app.config.oauth_access_token_file_path = None
         mock_ocean_app.config.integration.config = {
             "jira_host": "https://getport.atlassian.net",
             "atlassian_user_email": "jira@atlassian.net",
@@ -44,6 +46,7 @@ def mock_jira_client() -> JiraClient:
 async def test_client_initialization(mock_jira_client: JiraClient) -> None:
     """Test the correct initialization of JiraClient."""
     assert mock_jira_client.jira_rest_url == "https://example.atlassian.net/rest"
+    assert mock_jira_client.is_oauth_enabled() is False
     assert isinstance(mock_jira_client.jira_api_auth, BasicAuth)
 
 
