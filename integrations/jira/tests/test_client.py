@@ -14,6 +14,8 @@ def mock_ocean_context() -> None:
     """Fixture to mock the Ocean context initialization."""
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.config = MagicMock()
+        mock_ocean_app.config.oauth_access_token_file_path = None
         mock_ocean_app.config.integration.config = {
             "jira_host": "https://getport.atlassian.net",
             "atlassian_user_email": "jira@atlassian.net",
@@ -25,7 +27,6 @@ def mock_ocean_context() -> None:
         mock_ocean_app.cache_provider = AsyncMock()
         mock_ocean_app.load_external_oauth_access_token = MagicMock(return_value=None)
         mock_ocean_app.cache_provider.get.return_value = None
-        mock_ocean_app.is_oauth_enabled = MagicMock(return_value=False)
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
         pass
