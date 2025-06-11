@@ -8,6 +8,8 @@ features:
       - kind: repository
       - kind: user
       - kind: team
+      - kind: pull-request
+      - kind: issue
 configurations:
   - name: githubHost
     required: false
