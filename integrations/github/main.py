@@ -1,39 +1,35 @@
-from typing import cast
+from typing import cast, TYPE_CHECKING
+
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+
 from github.clients.client_factory import (
     GitHubAuthenticatorFactory,
     create_github_client,
 )
 from github.clients.utils import integration_config
+from github.core.exporters.issue_exporter import RestIssueExporter
+from github.core.exporters.pull_request_exporter import RestPullRequestExporter
+from github.core.exporters.repository_exporter import RestRepositoryExporter
+from github.core.options import ListIssueOptions, ListPullRequestOptions, ListRepositoryOptions
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
-from github.webhook.webhook_processors.repository_webhook_processor import (
-    RepositoryWebhookProcessor,
-)
 from github.webhook.webhook_client import GithubWebhookClient
-from github.core.exporters.repository_exporter import RestRepositoryExporter
-from github.core.options import ListPullRequestOptions, ListRepositoryOptions
-from typing import TYPE_CHECKING
-from port_ocean.context.event import event
 from github.webhook.webhook_processors.issue_webhook_processor import (
     IssueWebhookProcessor,
 )
-from github.core.exporters.issue_exporter import RestIssueExporter
-from github.core.options import ListIssueOptions
-
-if TYPE_CHECKING:
-    from integration import GithubPortAppConfig, GithubIssueConfig
-from github.core.exporters.pull_request_exporter import RestPullRequestExporter
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from github.webhook.webhook_processors.pull_request_webhook_processor import (
     PullRequestWebhookProcessor,
 )
-
+from github.webhook.webhook_processors.repository_webhook_processor import (
+    RepositoryWebhookProcessor,
+)
 
 if TYPE_CHECKING:
-    from integration import GithubPortAppConfig, GithubPullRequestConfig
+    from integration import GithubIssueConfig, GithubPortAppConfig, GithubPullRequestConfig
 
 
 @ocean.on_start()
@@ -114,7 +110,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ISSUE)
 async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all issues from repositories."""
-    logger.info(f"Starting resync for kind: {kind}")
+    logger.info(f"Starting resync for kind {kind}")
 
     rest_client = create_github_client()
     repository_exporter = RestRepositoryExporter(rest_client)

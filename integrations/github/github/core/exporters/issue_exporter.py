@@ -17,7 +17,7 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/issues/{issue_number}"
         response = await self.client.send_api_request(endpoint)
 
-        logger.info(f"Fetched issue with identifier: {repo_name}/{issue_number}")
+        logger.info(f"Fetched issue: {issue_number} from {repo_name}")
 
         return enrich_with_repository(response, repo_name)
 
