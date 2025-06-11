@@ -28,12 +28,23 @@ WEBHOOK_EVENTS = [
     "user_created",
     "user_updated",
     "user_deleted",
+    # JSM specific events
+    "servicedesk_request_created",
+    "servicedesk_request_updated",
+    "servicedesk_request_deleted",
+    "incident_created",
+    "incident_updated",
+    "incident_deleted",
 ]
 
 OAUTH2_WEBHOOK_EVENTS = [
     "jira:issue_created",
     "jira:issue_updated",
     "jira:issue_deleted",
+    # JSM OAuth2 events
+    "servicedesk_request_created",
+    "servicedesk_request_updated",
+    "servicedesk_request_deleted",
 ]
 
 
@@ -66,6 +77,10 @@ class JiraClient(OAuthClient):
 
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.teams_base_url = f"{self.jira_url}/gateway/api/public/teams/v1/org"
+        # Jira Service Management API URLs
+        self.jsm_api_url = f"{self.jira_rest_url}/servicedeskapi"
+        self.jsm_insight_api_url = f"{self.jira_rest_url}/insight/1.0"
+        self.jsm_opsgenie_api_url = f"{self.jira_rest_url}/api/2/opsgenie"
 
         self.client = http_async_client
         self.client.auth = self.jira_api_auth
@@ -359,3 +374,97 @@ class JiraClient(OAuthClient):
             team["__members"] = members
 
         return teams
+
+    # Jira Service Management API methods
+    async def get_paginated_service_desks(
+        self, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get paginated service desks from JSM."""
+        logger.info("Getting service desks from Jira Service Management")
+        async for service_desks in self._get_paginated_data(
+            f"{self.jsm_api_url}/servicedesk", "values", initial_params=params
+        ):
+            yield service_desks
+
+    async def get_paginated_requests(
+        self, service_desk_id: str | None = None, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get paginated customer requests from JSM."""
+        logger.info("Getting customer requests from Jira Service Management")
+        url = f"{self.jsm_api_url}/request"
+        if service_desk_id:
+            url = f"{self.jsm_api_url}/servicedesk/{service_desk_id}/request"
+
+        async for requests in self._get_paginated_data(
+            url, "values", initial_params=params
+        ):
+            yield requests
+
+    async def get_paginated_incidents(
+        self, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get paginated incidents from JSM using OpsGenie API integration."""
+        logger.info("Getting incidents from Jira Service Management")
+        # JSM incidents are accessed through the OpsGenie integration API
+        async for incidents in self._get_paginated_data(
+            f"{self.jsm_opsgenie_api_url}/incidents", "data", initial_params=params
+        ):
+            yield incidents
+
+    async def get_paginated_assets(
+        self, schema_id: str | None = None, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get paginated assets from JSM Insight."""
+        logger.info("Getting assets from Jira Service Management Insight")
+        url = f"{self.jsm_insight_api_url}/object/navlist/aql"
+        if schema_id:
+            # Use AQL (Asset Query Language) to filter by schema
+            aql_query = f"objectSchema = {schema_id}"
+            params = params or {}
+            params["aql"] = aql_query
+
+        async for assets in self._get_paginated_data(
+            url, "objectEntries", initial_params=params
+        ):
+            yield assets
+
+    async def get_paginated_schedules(
+        self, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get paginated on-call schedules from JSM."""
+        logger.info("Getting schedules from Jira Service Management")
+        # JSM schedules are accessed through the OpsGenie integration API
+        async for schedules in self._get_paginated_data(
+            f"{self.jsm_opsgenie_api_url}/schedules", "data", initial_params=params
+        ):
+            yield schedules
+
+    async def get_single_service_desk(self, service_desk_id: str) -> dict[str, Any]:
+        """Get a single service desk by ID."""
+        return await self._send_api_request(
+            "GET", f"{self.jsm_api_url}/servicedesk/{service_desk_id}"
+        )
+
+    async def get_single_request(self, issue_id_or_key: str) -> dict[str, Any]:
+        """Get a single customer request by issue ID or key."""
+        return await self._send_api_request(
+            "GET", f"{self.jsm_api_url}/request/{issue_id_or_key}"
+        )
+
+    async def get_single_incident(self, incident_id: str) -> dict[str, Any]:
+        """Get a single incident by ID."""
+        return await self._send_api_request(
+            "GET", f"{self.jsm_opsgenie_api_url}/incidents/{incident_id}"
+        )
+
+    async def get_single_asset(self, object_id: str) -> dict[str, Any]:
+        """Get a single asset by object ID."""
+        return await self._send_api_request(
+            "GET", f"{self.jsm_insight_api_url}/object/{object_id}"
+        )
+
+    async def get_single_schedule(self, schedule_id: str) -> dict[str, Any]:
+        """Get a single schedule by ID."""
+        return await self._send_api_request(
+            "GET", f"{self.jsm_opsgenie_api_url}/schedules/{schedule_id}"
+        )
