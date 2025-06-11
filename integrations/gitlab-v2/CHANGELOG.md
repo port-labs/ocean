@@ -7,10 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.29 (2025-06-11)
+
+
+### Improvements
+
+- Changed job fetching to use pipeline context instead of project context to establish proper parent-child relationships between pipelines and jobs
+
+
 ## 0.1.28 (2025-06-11)
 
 
 ### Improvements
+
 
 - Bumped ocean version to ^0.24.8
 
