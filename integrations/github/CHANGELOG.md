@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.0-beta (2025-06-05)
+
+### Improvements
+
+- Implemented GitHub integration with webhooks support for teams, repos, issues, pull requests and workflows (actions) 
+
+
 ## 0.1.10-dev (2025-06-09)
 
 
@@ -93,7 +100,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Created GitHub Ocean integration with support for Repository
-- Added support for repository webhook event processor
-- Add Tests for client and base webhook processor
-- Added support for authenticating as a GitHub App
+- Implemented GitHub integration with webhooks support for teams, repos, issues, pull requests and workflows (actions) 

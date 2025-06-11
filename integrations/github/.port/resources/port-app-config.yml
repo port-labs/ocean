@@ -1,19 +1,90 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
-repositoryType: 'all'
 resources:
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '(.id|tostring)'
+          title: .name
+          blueprint: '"githubTeam"'
+          properties:
+            name: .name
+            url: .html_url
+            slug: .slug
+            description: .description
+
   - kind: repository
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .name
+          identifier: '(.id|tostring)'
           title: .name
           blueprint: '"githubRepository"'
           properties:
-            description: if .description then .description else "" end
-            visibility: if .private then "private" else "public" end
-            defaultBranch: .default_branch
+            name: .name
             url: .html_url
-            language: if .language then .language else "" end
+            language: .language
+            branch: .default_branch
+            description: .description
+            readme: file://README.md
+            creator: .owner.login
+            created_at: .created_at
+            updated_at: .updated_at
+
+  - kind: pull-request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '(.id|tostring)'
+          title: .title
+          blueprint: '"githubPullRequest"'
+          properties:
+            url: .html_url
+            state: .state
+            creator: .user.login
+            created_at: .created_at
+            updated_at: .updated_at
+            closed_at: .closed_at
+            merged_at: .merged_at
+          relations:
+            repository: '(.head.repo.id|tostring)'
+
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '(.id|tostring)'
+          title: .title
+          blueprint: '"githubIssue"'
+          properties:
+            title: .title
+            url: .html_url
+            state: .state
+            creator: .user.login
+            description: .body
+            created_at: .created_at
+            updated_at: .updated_at
+
+  - kind: workflow
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '(.id|tostring)'
+          title: .name
+          blueprint: '"githubWorkflow"'
+          properties:
+            name: .name
+            url: .html_url
+            created_at: .created_at
+            updated_at: .updated_at

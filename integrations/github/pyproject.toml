@@ -1,12 +1,14 @@
 [tool.poetry]
-name = "github-ocean"
-version = "0.1.10-dev"
-description = "This integration ingest data from github"
-authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <melodyogonna@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
+name = "github"
+version = "0.1.0-beta"
+description = "An integration used to import GitHub resources into Port"
+authors = ["Dennis Bilson <quabynahdennis@gmail.com>"]
+packages = [
+    { include = "github", from = "src" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 port_ocean = {version = "^0.24.6", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
@@ -85,8 +87,6 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
-target-version = "py311"
-
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

@@ -1,1 +1,1 @@
-include ../_infra/Makefile
+/Users/quabynah/.local/pipx/venvs/port-ocean/lib/python3.13/site-packages/port_ocean/cli/cookiecutter/../../../integrations/_infra/Makefile
