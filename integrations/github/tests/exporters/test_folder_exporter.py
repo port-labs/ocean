@@ -100,10 +100,10 @@ class TestRestFolderExporter:
     @pytest.mark.asyncio
     async def test_get_resource(self, rest_client: GithubRestClient) -> None:
         exporter = RestFolderExporter(rest_client)
-        item = await exporter.get_resource(
-            SingleFolderOptions(repo="test-repo", path="README.md")
-        )
-        assert item == {}
+        with pytest.raises(NotImplementedError):
+            await exporter.get_resource(
+                SingleFolderOptions(repo="test-repo", path="README.md")
+            )
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
