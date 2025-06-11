@@ -215,15 +215,14 @@ class JiraClient(OAuthClient):
 
     async def create_webhooks(self, app_host: str) -> None:
         """Create webhooks if the user has permission."""
-        if not await self.has_webhook_permission():
-            logger.warning(
-                f"Cannot create webhooks for {self.jira_url}: Ensure the token has Jira Administrator rights."
-            )
-            return
-
         if self.is_oauth_enabled():
             await self._create_events_webhook_oauth(app_host)
         else:
+            if not await self.has_webhook_permission():
+                logger.warning(
+                    f"Cannot create webhooks for {self.jira_url}: Ensure the token has Jira Administrator rights."
+                )
+                return
             await self._create_events_webhook(app_host)
 
     async def _create_events_webhook(self, app_host: str) -> None:
