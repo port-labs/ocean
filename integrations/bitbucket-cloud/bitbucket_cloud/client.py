@@ -130,10 +130,9 @@ class BitbucketClient:
             }
         while True:
             if self.token_manager:
-                rate_limiter = await self.token_manager.try_acquire_or_rotate()
-                current_token = await self.token_manager.get_current_token_safely()
-                self._update_authorization_header(current_token)
-                async with rate_limiter:
+                async with self.token_manager.try_acquire_or_rotate() as ctx:
+                    current_token = ctx.get_token()
+                    self._update_authorization_header(current_token)
                     response = await self._send_api_request(
                         url, params=params, method=method
                     )

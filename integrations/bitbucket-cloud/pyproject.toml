@@ -21,6 +21,7 @@ pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
 types-pyyaml = "^6.0.12.20250326"
+yamllint = "^1.37.1"
 
 [tool.towncrier]
 directory = "changelog"

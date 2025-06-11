@@ -347,14 +347,19 @@ async def test_fetch_with_token_rotation(mock_client: BitbucketClient) -> None:
             patch.object(
                 mock_client.token_manager,
                 "try_acquire_or_rotate",
-                new_callable=AsyncMock,
             ) as mock_acquire,
             patch.object(
                 mock_client, "_update_authorization_header"
             ) as mock_update_header,
         ):
             mock_request.return_value = mock_data
-            mock_acquire.return_value = mock_client.token_manager.current_rate_limiter
+
+            # Create a mock context manager
+            mock_context = MagicMock()
+            mock_context.get_token = MagicMock(return_value="token1")
+            mock_context.__aenter__ = AsyncMock(return_value=mock_context)
+            mock_context.__aexit__ = AsyncMock(return_value=None)
+            mock_acquire.return_value = mock_context
 
             batches = []
             async for batch in mock_client._fetch_paginated_api_with_rate_limiter(

@@ -1,8 +1,87 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Type
 import asyncio
 from loguru import logger
 from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
 from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
+
+
+class TokenRateLimiterContext:
+    """
+    Async context manager that handles token rotation and rate limiting atomically.
+
+    This context manager:
+    1. Finds an available token (rotating if necessary)
+    2. Acquires the rate limiter for that token
+    3. Provides access to both the rate limiter and the selected token
+    4. Ensures proper cleanup on exit
+    """
+
+    def __init__(self, token_manager: "TokenManager"):
+        self.token_manager = token_manager
+        self.selected_token: str = ""
+        self.rate_limiter: Optional[RollingWindowLimiter] = None
+
+    async def __aenter__(self) -> "TokenRateLimiterContext":
+        """Enter the context manager: find available token and acquire rate limiter."""
+        # Find available token (with rotation if needed)
+        async with self.token_manager._lock:
+            attempts = 0
+            start_index = self.token_manager.current_index
+
+            while attempts < len(self.token_manager.tokens):
+                current_token = self.token_manager.tokens[
+                    self.token_manager.current_index
+                ]
+                current_limiter = self.token_manager.rate_limiters[current_token]
+
+                # Check if we can acquire without consuming a slot
+                can_acquire = await current_limiter.can_acquire()
+
+                if can_acquire:
+                    logger.debug(
+                        f"Token {self.token_manager.current_index} has available rate limit quota"
+                    )
+                    self.selected_token = current_token
+                    self.rate_limiter = current_limiter
+                    break
+                else:
+                    logger.info(
+                        f"Rate limit exhausted for token index {self.token_manager.current_index}, rotating to next token"
+                    )
+                    self.token_manager._rotate_to_next_token()
+                    attempts += 1
+
+            # If all tokens are rate limited, use the first one and wait normally
+            if not self.selected_token:
+                logger.info(
+                    "All tokens are rate limited, returning to first token to wait normally"
+                )
+                self.token_manager.current_index = start_index
+                current_token = self.token_manager.tokens[
+                    self.token_manager.current_index
+                ]
+                self.selected_token = current_token
+                self.rate_limiter = self.token_manager.rate_limiters[current_token]
+
+        # Enter the rate limiter's context manager (this may wait if rate limited)
+        if self.rate_limiter:
+            await self.rate_limiter.__aenter__()
+
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[Any],
+    ) -> None:
+        """Exit the context manager: release the rate limiter."""
+        if self.rate_limiter:
+            await self.rate_limiter.__aexit__(exc_type, exc_val, exc_tb)
+
+    def get_token(self) -> str:
+        """Get the token selected by this context manager."""
+        return self.selected_token
 
 
 class TokenManager:
@@ -35,50 +114,22 @@ class TokenManager:
         """Get the rate limiter for the current token. Note: This can change during async operations."""
         return self.rate_limiters[self.current_token]
 
-    async def try_acquire_or_rotate(self) -> RollingWindowLimiter:
+    def try_acquire_or_rotate(self) -> TokenRateLimiterContext:
         """
-        Try to find an available token and return its rate limiter.
+        Return a context manager that handles token rotation and rate limiting atomically.
 
-        This method uses can_acquire() to check availability without consuming slots,
-        then rotates through tokens until finding an available one. If all tokens
-        are exhausted, it returns the first token's rate limiter to wait normally.
+        Usage:
+            async with token_manager.try_acquire_or_rotate() as ctx:
+                token = ctx.get_token()
+                # Use the token for API request
 
-        Returns the rate limiter to use for the request.
-        This method is thread-safe and prevents race conditions.
+        The context manager will:
+        1. Find an available token (rotating if necessary)
+        2. Acquire the rate limiter for that token
+        3. Provide access to the selected token
+        4. Automatically release the rate limiter on exit
         """
-        async with self._lock:
-            attempts = 0
-            start_index = self.current_index
-
-            while attempts < len(self.tokens):
-                current_token = self.tokens[self.current_index]
-                current_limiter = self.rate_limiters[current_token]
-
-                # Check if we can acquire without consuming a slot
-                can_acquire = await current_limiter.can_acquire()
-
-                if can_acquire:
-                    logger.debug(
-                        f"Token {self.current_index} has available rate limit quota"
-                    )
-                    return current_limiter
-                else:
-                    logger.info(
-                        f"Rate limit exhausted for token index {self.current_index}, rotating to next token"
-                    )
-                    self._rotate_to_next_token()
-                    attempts += 1
-
-                    if attempts >= len(self.tokens):
-                        logger.info(
-                            "All tokens are rate limited, returning to first token to wait normally"
-                        )
-                        self.current_index = start_index
-                        current_token = self.tokens[self.current_index]
-                        return self.rate_limiters[current_token]
-
-            current_token = self.tokens[self.current_index]
-            return self.rate_limiters[current_token]
+        return TokenRateLimiterContext(self)
 
     def _rotate_to_next_token(self) -> None:
         """
