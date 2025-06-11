@@ -20,7 +20,7 @@ def mock_ocean_context() -> None:
             "jira_host": "https://getport.atlassian.net",
             "atlassian_user_email": "jira@atlassian.net",
             "atlassian_user_token": "asdf",
-            "atlassian_organisation_id": "asdf"
+            "atlassian_organisation_id": "asdf",
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
