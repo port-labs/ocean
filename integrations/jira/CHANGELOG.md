@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Removed webhook permission check from oauth enabled integrations
+- Removed webhook permission check from OAuth enabled integrations to prevent unnecessary webhook permission validation for OAuth-based connections, as OAuth already handles appropriate permission scopes during authentication
 
 
 ## 0.4.22 (2025-06-09)
