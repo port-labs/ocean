@@ -120,8 +120,8 @@
         "icon": "Github",
         "schema": {
             "properties": {
-                "email": {
-                    "title": "Email",
+                "login": {
+                    "title": "Login",
                     "type": "string"
                 }
             },
@@ -166,6 +166,13 @@
         "mirrorProperties": {},
         "calculationProperties": {},
         "aggregationProperties": {},
-        "relations": {}
+        "relations": {
+            "github_user": {
+                "title": "github_user",
+                "target": "githubUser",
+                "required": false,
+                "many": true
+            }
+        }
     }
 ]

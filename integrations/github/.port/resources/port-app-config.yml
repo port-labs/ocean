@@ -25,6 +25,7 @@ resources:
         mappings:
           identifier: .login
           title: .login
+          login: .login
           blueprint: '"githubUser"'
   - kind: team
     selector:
