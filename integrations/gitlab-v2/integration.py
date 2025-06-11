@@ -112,9 +112,10 @@ class GitlabFolderSelector(Selector):
 
 
 class GitlabMergeRequestSelector(Selector):
-    state: str = Field(
+    state: Literal["opened", "closed", "merged"] = Field(
         alias="state",
         description="Specify the state of the merge request to match",
+        default="opened",
     )
 
 
