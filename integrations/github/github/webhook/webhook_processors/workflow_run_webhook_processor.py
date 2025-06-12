@@ -1,6 +1,6 @@
 from loguru import logger
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
-from github.core.options import SingleWorkflowOptions
+from github.core.options import SingleWorkflowRunOptions
 from github.webhook.events import WORKFLOW_DELETE_EVENTS, WORKFLOW_UPSERT_EVENTS
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
@@ -36,18 +36,18 @@ class WorkflowRunWebhookProcessor(_GithubAbstractWebhookProcessor):
         logger.info(f"Processing workflow run event: {action}")
 
         if action in WORKFLOW_DELETE_EVENTS:
-            logger.info(f"Workflow run: {workflow_run['name']} - was deleted")
+            logger.info(f"Workflow run {workflow_run['name']} was deleted")
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[workflow_run]
             )
         exporter = RestWorkflowRunExporter(create_github_client())
-        options = SingleWorkflowOptions(
-            repo_name=repo["name"], resource_id=workflow_run["id"]
+        options = SingleWorkflowRunOptions(
+            repo_name=repo["name"], run_id=workflow_run["id"]
         )
 
         data_to_upsert = await exporter.get_resource(options)
-        logger.info(f"Workflow run: {data_to_upsert['name']} - upserted")
+        logger.info(f"Workflow run {data_to_upsert['name']} was upserted")
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

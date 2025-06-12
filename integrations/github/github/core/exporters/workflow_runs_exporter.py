@@ -11,10 +11,12 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionsT: SingleWorkflowRunOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/runs/{options['resource_id']}"
+        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/runs/{options['run_id']}"
         response = await self.client.send_api_request(endpoint)
 
-        logger.info(f"Fetched workflow with identifier: {options['resource_id']}")
+        logger.info(
+            f"Fetched workflow run {options['run_id']} from {options['repo_name']}"
+        )
 
         return response
 
@@ -27,6 +29,6 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
         async for workflows in self.client.send_paginated_request(url):
             workflow_batch = cast(dict[str, Any], workflows)
             logger.info(
-                f"fetched batch of {workflow_batch['total_count']} workflow runs from repository - {options['repo_name']}"
+                f"fetched batch of {workflow_batch['total_count']} workflow runs from {options['repo_name']}"
             )
             yield workflow_batch["workflow_runs"]

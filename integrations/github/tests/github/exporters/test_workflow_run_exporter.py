@@ -4,8 +4,8 @@ from unittest.mock import patch
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.core.options import (
-    ListWorkflowOptions,
-    SingleWorkflowOptions,
+    ListWorkflowRunOptions,
+    SingleWorkflowRunOptions,
 )
 from port_ocean.context.event import event_context
 
@@ -46,7 +46,7 @@ TEST_DATA: dict[str, Any] = {
 @pytest.mark.asyncio
 async def test_single_resource(rest_client: GithubRestClient) -> None:
     exporter = RestWorkflowRunExporter(rest_client)
-    options: SingleWorkflowOptions = {"repo_name": "test", "resource_id": "12343"}
+    options: SingleWorkflowRunOptions = {"repo_name": "test", "run_id": "12343"}
 
     # Create an async mock to return the test repos
     async def mock_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -59,13 +59,13 @@ async def test_single_resource(rest_client: GithubRestClient) -> None:
             wf = await exporter.get_resource(options)
             assert wf == TEST_DATA["workflow_runs"][0]
             mock_request.assert_called_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/{options['repo_name']}/actions/runs/{options['resource_id']}"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/{options['repo_name']}/actions/runs/{options['run_id']}"
             )
 
 
 @pytest.mark.asyncio
 async def test_get_paginated_resources(rest_client: GithubRestClient) -> None:
-    options: ListWorkflowOptions = {"repo_name": "test"}
+    options: ListWorkflowRunOptions = {"repo_name": "test"}
     exporter = RestWorkflowRunExporter(rest_client)
 
     # Create an async mock to return the test repos

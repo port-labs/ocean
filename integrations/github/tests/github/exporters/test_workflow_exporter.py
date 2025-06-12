@@ -40,7 +40,7 @@ TEST_DATA: dict[str, Any] = {
 @pytest.mark.asyncio
 async def test_single_resource(rest_client: GithubRestClient) -> None:
     exporter = RestWorkflowExporter(rest_client)
-    options: SingleWorkflowOptions = {"repo_name": "test", "resource_id": "12343"}
+    options: SingleWorkflowOptions = {"repo_name": "test", "workflow_id": "12343"}
 
     # Create an async mock to return the test repos
     async def mock_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -53,7 +53,7 @@ async def test_single_resource(rest_client: GithubRestClient) -> None:
             wf = await exporter.get_resource(options)
             assert wf == TEST_DATA["workflows"][0]
             mock_request.assert_called_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/{options['repo_name']}/actions/workflows/{options['resource_id']}"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}"
             )
 
 
