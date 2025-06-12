@@ -19,7 +19,7 @@ PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 class GitLabClient:
     DEFAULT_MIN_ACCESS_LEVEL = 30
-    DEFAULT_PARAMS = {
+    DEFAULT_PARAMS: dict[str, Any] = {
         "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,  # Minimum access level to fetch groups
         "all_available": True,  # Fetch all groups accessible to the user
     }
@@ -83,14 +83,14 @@ class GitLabClient:
             yield enriched_batch
 
     async def get_groups(
-        self, top_level_only: bool = False
+        self, owned: bool = False
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user.
 
         Args:
-            top_level_only: If True, only fetch root groups
+            owned: If True, only fetch groups owned by the authenticated user
         """
-        params = {**self.DEFAULT_PARAMS, "top_level_only": top_level_only}
+        params = {**self.DEFAULT_PARAMS, "owned": owned}
         async for batch in self.rest.get_paginated_resource("groups", params=params):
             yield batch
 
@@ -190,6 +190,27 @@ class GitLabClient:
         response = await self.rest.send_api_request("GET", path, params=params)
         return bool(response)
 
+    async def get_parent_groups(
+        self, owned: bool = False
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        all_group_ids = set()
+        top_level_groups = []
+
+        async for group_batch in self.get_groups(owned=owned):
+            group_ids_in_batch = {group["id"] for group in group_batch}
+            for group in group_batch:
+                parent_id = group.get("parent_id")
+                if (
+                    parent_id not in all_group_ids
+                    and parent_id not in group_ids_in_batch
+                ):
+                    top_level_groups.append(group)
+                all_group_ids.add(group["id"])
+
+            if top_level_groups:
+                yield top_level_groups
+                top_level_groups = []
+
     async def search_files(
         self,
         scope: str,
@@ -209,11 +230,15 @@ class GitLabClient:
                 ):
                     yield batch
         else:
-            logger.info("Searching across all top-level groups")
-            async for groups_batch in self.get_groups(top_level_only=True):
-                logger.debug(f"Processing batch of {len(groups_batch)} groups")
-                for group in groups_batch:
+            logger.info("Searching across groups")
+            async for top_level_groups in self.get_parent_groups():
+                logger.info(
+                    f"Found {len(top_level_groups)} top-level searchable groups"
+                )
+
+                for group in top_level_groups:
                     group_id = str(group["id"])
+                    logger.debug(f"Processing group: {group_id}")
                     async for batch in self._search_files_in_group(
                         group_id, scope, search_query, skip_parsing
                     ):
