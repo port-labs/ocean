@@ -305,32 +305,6 @@ Here's how Jira implements these concepts:
 
         return has_permission
 
-    async def _create_events_webhook_oauth(self, app_host: str) -> None:
-        webhook_target_app_host = f"{app_host}/integration/webhook"
-        webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
-            "values"
-        )
-
-        if webhooks:
-            logger.info("Ocean real time reporting webhook already exists")
-            return
-
-        # We search a random project to get data from all projects
-        random_project = str(uuid.uuid4())
-
-        body = {
-            "url": webhook_target_app_host,
-            "webhooks": [
-                {
-                    "jqlFilter": f"project not in ({random_project})",
-                    "events": OAUTH2_WEBHOOK_EVENTS,
-                }
-            ],
-        }
-
-        await self._send_api_request("POST", self.webhooks_url, json=body)
-        logger.info("Ocean real time reporting webhook created")
-
     async def create_webhooks(self, app_host: str) -> None:
         """Create webhooks if the user has permission."""
         if not await self.has_webhook_permission():
@@ -339,10 +313,7 @@ Here's how Jira implements these concepts:
             )
             return
 
-        if self.is_oauth_host():
-            await self._create_events_webhook_oauth(app_host)
-        else:
-            await self._create_events_webhook(app_host)
+        await self._create_events_webhook(app_host)
 
     async def _create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"

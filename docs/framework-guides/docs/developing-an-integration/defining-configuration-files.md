@@ -461,8 +461,8 @@ Once an integration is running, changes to `blueprints.json` and `port-app-confi
    ocean defaults clean --force --destroy
    ```
 
-3. Or use the API:
+3. Or use the API decribe in the [docs](https://docs.port.io/api-reference/delete-an-integration):
    ```
-   DELETE /api/v1/integrations/{integration_id}/configurations
+   DELETE /v1/integration/:{identifier}
    ```
 

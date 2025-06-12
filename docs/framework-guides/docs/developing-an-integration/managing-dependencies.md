@@ -37,35 +37,118 @@ Here's an example of a `pyproject.toml` file:
 [tool.poetry]
 name = "jira"
 version = "0.1.0-beta"
-description = "Jira integration for Port Ocean"
-authors = ["Your Name <your.email@example.com>"]
+description = "Integration to bring information from Jira into Port"
+authors = ["Name Surname <name@domain.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-port-ocean = "^0.1.0"
-pydantic = "^2.0.0"
+python = "^3.12"
+port_ocean = {version = "^0.24.8", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.0.0"
-black = "^23.0.0"
-mypy = "^1.0.0"
-ruff = "^0.1.0"
+# uncomment this if you want to debug the ocean core together with your integration
+# port_ocean = { path = '../../', develop = true, extras = ['all'] }
+black = "^24.4.2"
+mypy = "^1.3.0"
+pylint = ">=2.17.4,<4.0.0"
+pytest = ">=8.2,<9.0"
+pytest-asyncio = ">=0.24.0"
+pytest-httpx = ">=0.30.0"
+pytest-xdist = "^3.6.1"
+ruff = "^0.6.3"
+towncrier = "^23.6.0"
+cryptography = "^44.0.1"
+
+[tool.towncrier]
+directory = "changelog"
+filename = "CHANGELOG.md"
+title_format = "## {version} ({project_date})"
+underlines = [""]
+
+  [[tool.towncrier.type]]
+  directory = "breaking"
+  name = "Breaking Changes"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "deprecation"
+  name = "Deprecations"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "feature"
+  name = "Features"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "improvement"
+  name = "Improvements"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "bugfix"
+  name = "Bug Fixes"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "doc"
+  name = "Improved Documentation"
+  showcontent = true
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.black]
-line-length = 100
-target-version = ['py39']
-
 [tool.mypy]
-python_version = "3.9"
-strict = true
+exclude = [
+    'venv',
+    '.venv',
+]
+plugins = [
+    "pydantic.mypy"
+]
+
+follow_imports = "silent"
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_reexport = true
+
+# for strict mypy: (this is the tricky one :-))
+disallow_untyped_defs = true
+
 
 [tool.ruff]
-line-length = 100
-target-version = "py39"
+# Never enforce `E501` (line length violations).
+ignore = ["E501"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+  \scripts
+  \.toml
+  |\.sh
+  |\.git
+  |\.ini
+  |Dockerfile
+  |\.venv
+)/
+'''
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-vv -n auto ./tests"
+
 ```
 
 ## Managing Dependencies with Poetry
