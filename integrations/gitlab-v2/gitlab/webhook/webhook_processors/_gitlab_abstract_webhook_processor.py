@@ -19,6 +19,9 @@ class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
+        from loguru import logger
+
+        logger.error(event.payload)
         event_identifier = (
             event.payload.get("event_name")
             or event.payload.get("event_type")

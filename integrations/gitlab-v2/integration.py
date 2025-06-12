@@ -17,7 +17,7 @@ from port_ocean.utils.signal import signal_handler
 
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
-
+from datetime import datetime, timedelta, timezone
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
@@ -117,6 +117,16 @@ class GitlabMergeRequestSelector(Selector):
         description="Specify the state of the merge request to match",
         default="opened",
     )
+    created_after: float = Field(
+        alias="createdAfter",
+        description="Specify the number of days to look back for merge requests (e.g. 90 for last 90 days)",
+        default=90,
+    )
+
+    @property
+    def created_after_datetime(self) -> datetime:
+        """Convert the created_after days to a timezone-aware datetime object."""
+        return datetime.now(timezone.utc) - timedelta(days=self.created_after)
 
 
 class GitlabMergeRequestResourceConfig(ResourceConfig):

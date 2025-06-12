@@ -14,6 +14,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from typing import Any
 
+from datetime import datetime, timezone
+
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
@@ -82,9 +84,13 @@ class TestMergeRequestWebhookProcessor:
     ) -> None:
         """Test handling a merge request event when state matches"""
         resource_config = MagicMock()
-        resource_config.selector.state = "opened"  # Match the state in mr_payload
+        resource_config.selector.state = "opened"
+        resource_config.selector.created_after_datetime = datetime(
+            2022, 1, 1, tzinfo=timezone.utc
+        )
+
         project_id = mr_payload["project"]["id"]
-        mr_id = mr_payload["object_attributes"]["id"]
+        mr_id = mr_payload["object_attributes"]["iid"]  # Use iid instead of id
         expected_mr = {
             "id": mr_id,
             "object_kind": "merge_request",
@@ -110,7 +116,11 @@ class TestMergeRequestWebhookProcessor:
     ) -> None:
         """Test handling a merge request event when state doesn't match"""
         resource_config = MagicMock()
-        resource_config.selector.state = "merged"  # Different from mr_payload state
+        resource_config.selector.state = "merged"
+
+        resource_config.selector.created_after_datetime = datetime(
+            2022, 1, 1, tzinfo=timezone.utc
+        )
 
         processor._gitlab_webhook_client = MagicMock()
         processor._gitlab_webhook_client.get_merge_request = AsyncMock()
