@@ -1,5 +1,4 @@
 from loguru import logger
-from typing import Any, Dict, List, Set, Tuple
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.options import SingleWorkflowOptions
 from github.helpers.utils import ObjectKind
@@ -13,7 +12,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.helpers.utils import fetch_commit_diff, _extract_changed_files
+from github.helpers.utils import fetch_commit_diff, extract_changed_files
 
 
 class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
@@ -29,8 +28,18 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
             return False
 
         # Check if any workflow files were changed
-        changed_workflow_files = _extract_changed_files(event.payload)
-        return len(changed_workflow_files) > 0
+        for commit in event.payload["commits"]:
+            for file in commit.get("modified", []):
+                if self._is_workflow_file(file):
+                    return True
+            for file in commit.get("added", []):
+                if self._is_workflow_file(file):
+                    return True
+            for file in commit.get("removed", []):
+                if self._is_workflow_file(file):
+                    return True
+
+        return False
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.WORKFLOW]
@@ -49,8 +58,8 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         commit_diff = await fetch_commit_diff(
             rest_client, repo_name, payload["before"], payload["after"]
         )
-        changed_workflow_files, deleted_workflow_files = (
-            self._extract_changed_workflow_files(commit_diff)
+        changed_workflow_files, deleted_workflow_files = extract_changed_files(
+            commit_diff["files"]
         )
 
         logger.info(
@@ -65,17 +74,13 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
             return WebhookEventRawResults(
                 updated_raw_results=[],
-                deleted_raw_results=[
-                    {"path": file["filename"]} for file in deleted_workflow_files
-                ],
+                deleted_raw_results=[{"path": file} for file in deleted_workflow_files],
             )
 
         exporter = RestWorkflowExporter(rest_client)
         workflows_to_upsert = []
         for workflow in changed_workflow_files:
-            options = SingleWorkflowOptions(
-                repo_name=repo_name, workflow_id=workflow["filename"]
-            )
+            options = SingleWorkflowOptions(repo_name=repo_name, workflow_id=workflow)
 
             workflow = await exporter.get_resource(options)
             workflows_to_upsert.append(workflow)
@@ -98,23 +103,6 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
             return False
 
         return True
-
-    def _extract_changed_workflow_files(
-        files: List[Dict[str, Any]]
-    ) -> Tuple[Set[Dict[str, Any]], Set[Dict[str, Any]]]:
-        """
-        Extract workflow files that were changed in the push event.
-        Returns a set of workflow file paths that were added, modified, or removed.
-        """
-        deleted_files: Set[Dict[str, Any]] = set()
-        updated_files: Set[Dict[str, Any]] = set()
-
-        for file in files:
-            (
-                deleted_files if file.get("status") == "removed" else updated_files
-            ).append(file)
-
-        return deleted_files, updated_files
 
     def _is_workflow_file(self, file_path: str) -> bool:
         """

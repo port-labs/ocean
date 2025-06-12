@@ -52,19 +52,19 @@ async def fetch_commit_diff(
     return response
 
 
-def _extract_changed_files(
-    files: List[Dict[str, Any]]
-) -> Tuple[Set[Dict[str, Any]], Set[Dict[str, Any]]]:
+def extract_changed_files(
+    files: List[Dict[str, Any]],
+) -> Tuple[Set[str], Set[str]]:
     """
     Extract files that were changed in the push event.
     Returns a set of file paths that were added, modified, or removed.
     """
-    deleted_files: Set[Dict[str, Any]] = set()
-    updated_files: Set[Dict[str, Any]] = set()
+    deleted_files: Set[str] = set()
+    updated_files: Set[str] = set()
 
     for file in files:
-        (deleted_files if file.get("status") == "removed" else updated_files).append(
-            file
+        (deleted_files if file.get("status") == "removed" else updated_files).add(
+            file["filename"]
         )
 
     return deleted_files, updated_files
