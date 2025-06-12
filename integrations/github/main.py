@@ -14,6 +14,9 @@ from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.webhook.webhook_processors.workflow_run_webhook_processor import (
     WorkflowRunWebhookProcessor,
 )
+from github.webhook.webhook_processors.workflow_webhook_processor import (
+    WorkflowWebhookProcessor,
+)
 from github.clients.utils import integration_config
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
@@ -199,3 +202,4 @@ ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", WorkflowRunWebhookProcessor)
+ocean.add_webhook_processor("/webhook", WorkflowWebhookProcessor)
