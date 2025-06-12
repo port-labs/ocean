@@ -14,6 +14,8 @@ def mock_ocean_context() -> None:
     """Fixture to mock the Ocean context initialization."""
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.config = MagicMock()
+        mock_ocean_app.config.oauth_access_token_file_path = None
         mock_ocean_app.config.integration.config = {
             "jira_host": "https://getport.atlassian.net",
             "atlassian_user_email": "jira@atlassian.net",
@@ -44,6 +46,7 @@ def mock_jira_client() -> JiraClient:
 async def test_client_initialization(mock_jira_client: JiraClient) -> None:
     """Test the correct initialization of JiraClient."""
     assert mock_jira_client.jira_rest_url == "https://example.atlassian.net/rest"
+    assert mock_jira_client.is_oauth_enabled() is False
     assert isinstance(mock_jira_client.jira_api_auth, BasicAuth)
 
 
@@ -361,11 +364,7 @@ async def test_create_events_webhook_oauth(mock_jira_client: JiraClient) -> None
         patch.object(
             mock_jira_client, "_send_api_request", new_callable=AsyncMock
         ) as mock_request,
-        patch.object(
-            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
-        ) as mock_permission,
     ):
-        mock_permission.return_value = True
         mock_request.return_value = {"values": [{"url": webhook_url}]}
 
         await mock_jira_client.create_webhooks(app_host)

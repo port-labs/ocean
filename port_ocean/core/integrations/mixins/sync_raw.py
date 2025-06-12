@@ -646,6 +646,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with resource_context(resource,index):
             resource_kind_id = f"{resource.kind}-{index}"
             ocean.metrics.sync_state = SyncState.SYNCING
+            await ocean.metrics.report_kind_sync_metrics(kind=resource_kind_id, blueprint=resource.port.entity.mappings.blueprint)
 
             task = asyncio.create_task(
                 self._register_in_batches(resource, user_agent_type)
