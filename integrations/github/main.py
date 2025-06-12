@@ -1,4 +1,4 @@
-from typing import cast, TYPE_CHECKING
+from typing import cast
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -15,7 +15,9 @@ from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.exporters.dependabot_exporter import RestDependabotAlertExporter
-from github.core.exporters.code_scanning_alert_exporter import RestCodeScanningAlertExporter
+from github.core.exporters.code_scanning_alert_exporter import (
+    RestCodeScanningAlertExporter,
+)
 from github.core.options import (
     ListIssueOptions,
     ListPullRequestOptions,
@@ -34,6 +36,12 @@ from github.webhook.webhook_processors.pull_request_webhook_processor import (
 )
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
+)
+from github.webhook.webhook_processors.dependabot_webhook_processor import (
+    DependabotAlertWebhookProcessor,
+)
+from github.webhook.webhook_processors.code_scanning_alert_webhook_processor import (
+    CodeScanningAlertWebhookProcessor,
 )
 
 from integration import (
@@ -206,7 +214,8 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield alerts
 
 
-
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", DependabotAlertWebhookProcessor)
+ocean.add_webhook_processor("/webhook", CodeScanningAlertWebhookProcessor)

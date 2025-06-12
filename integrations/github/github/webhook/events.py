@@ -85,7 +85,6 @@ CODE_SCANNING_ALERT_ACTION_TO_STATE = {
 }
 
 
-
 ALL_EVENTS = (
     REPOSITORY_UPSERT_EVENTS
     + REPOSITORY_DELETE_EVENTS
@@ -96,4 +95,10 @@ ALL_EVENTS = (
 )
 
 
-WEBHOOK_CREATE_EVENTS = ["repository", "pull_request", "issues", "dependabot_alert", "code_scanning_alert"]
+WEBHOOK_CREATE_EVENTS = [
+    "repository",
+    "pull_request",
+    "issues",
+    "dependabot_alert",
+    "code_scanning_alert",
+]

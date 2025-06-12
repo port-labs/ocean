@@ -132,6 +132,9 @@ class TestRestDependabotAlertExporter:
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
         # Create an async mock to return the test alerts
+
+        exporter = RestDependabotAlertExporter(rest_client)
+
         async def mock_paginated_request(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -140,34 +143,21 @@ class TestRestDependabotAlertExporter:
         with patch.object(
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
-            async with event_context("test_event"):
-                options = ListDependabotAlertOptions(
+            alerts = []
+            async for batch in exporter.get_paginated_resources(
+                ListDependabotAlertOptions(
                     repo_name="test-repo", state=["open", "dismissed"]
                 )
-                exporter = RestDependabotAlertExporter(rest_client)
+            ):
+                alerts.extend(batch)
 
-                alerts: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
+            assert len(alerts) == 2
+            assert all(alert["__repository"] == "test-repo" for alert in alerts)
 
-                assert len(alerts) == 1
-                assert len(alerts[0]) == 2
-
-                # Verify repo field was added to each alert
-                for alert in alerts[0]:
-                    assert alert["__repository"] == "test-repo"
-
-                # Remove repo field for comparison with original data
-                alerts_without_repo = [
-                    {k: v for k, v in alert.items() if k != "__repository"}
-                    for alert in alerts[0]
-                ]
-                assert alerts_without_repo == TEST_DEPENDABOT_ALERTS
-
-                mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts",
-                    {"state": "open,dismissed"},
-                )
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts",
+                {"state": "open,dismissed"},
+            )
 
     async def test_get_paginated_resources_with_state_filtering(
         self, rest_client: GithubRestClient

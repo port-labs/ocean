@@ -48,6 +48,10 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         current_states = CODE_SCANNING_ALERT_ACTION_TO_STATE[action]
 
         if not any(state in config.selector.state for state in current_states):
+            logger.info(
+                f"Code scanning alert {alert_number} in {repo_name} is not in the allowed states: {current_states}. Deleting resource."
+            )
+
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[alert]
             )

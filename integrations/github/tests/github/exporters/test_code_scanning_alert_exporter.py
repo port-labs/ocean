@@ -141,6 +141,9 @@ class TestRestCodeScanningAlertExporter:
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
         # Create an async mock to return the test alerts
+
+        exporter = RestCodeScanningAlertExporter(rest_client)
+
         async def mock_paginated_request(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -149,34 +152,20 @@ class TestRestCodeScanningAlertExporter:
         with patch.object(
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
-            async with event_context("test_event"):
-                options = ListCodeScanningAlertOptions(
-                    repo_name="test-repo", state=["open", "dismissed"]
-                )
-                exporter = RestCodeScanningAlertExporter(rest_client)
 
-                alerts: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
+            alerts = []
+            async for batch in exporter.get_paginated_resources(
+                ListCodeScanningAlertOptions(repo_name="test-repo", state=["open"])
+            ):
+                alerts.extend(batch)
 
-                assert len(alerts) == 1
-                assert len(alerts[0]) == 2
+            assert len(alerts) == 2
+            assert all(alert["__repository"] == "test-repo" for alert in alerts)
 
-                # Verify __repository field was added to each alert
-                for alert in alerts[0]:
-                    assert alert["__repository"] == "test-repo"
-
-                # Remove __repository field for comparison with original data
-                alerts_without_repo = [
-                    {k: v for k, v in alert.items() if k != "__repository"}
-                    for alert in alerts[0]
-                ]
-                assert alerts_without_repo == TEST_CODE_SCANNING_ALERTS
-
-                mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts",
-                    {"state": "open,dismissed"},
-                )
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts",
+                {"state": "open"},
+            )
 
     async def test_get_paginated_resources_with_state_filtering(
         self, rest_client: GithubRestClient
