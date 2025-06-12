@@ -85,7 +85,8 @@ class TestMergeRequestWebhookProcessor:
         """Test handling a merge request event when state matches"""
         resource_config = MagicMock()
         resource_config.selector.state = "opened"
-        resource_config.selector.created_after_datetime = datetime(
+        resource_config.selector.states = ["opened"]
+        resource_config.selector.updated_after_datetime = datetime(
             2022, 1, 1, tzinfo=timezone.utc
         )
 
@@ -117,8 +118,8 @@ class TestMergeRequestWebhookProcessor:
         """Test handling a merge request event when state doesn't match"""
         resource_config = MagicMock()
         resource_config.selector.state = "merged"
-
-        resource_config.selector.created_after_datetime = datetime(
+        resource_config.selector.states = ["merged"]
+        resource_config.selector.updated_after_datetime = datetime(
             2022, 1, 1, tzinfo=timezone.utc
         )
 

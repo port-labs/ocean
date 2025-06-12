@@ -36,7 +36,7 @@ class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
         merge_request_id = object_attrs["iid"]
         project_id = payload["project"]["id"]
         state = object_attrs["state"]
-        created_at = parser.parse(object_attrs["created_at"]).replace(
+        updated_at = parser.parse(object_attrs["updated_at"]).replace(
             tzinfo=timezone.utc
         )
 
@@ -55,18 +55,18 @@ class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        if state != config.selector.state:
+        if state not in config.selector.states:
             logger.info(
-                f"State {state} does not match configured state {config.selector.state} for merge request {merge_request_id}. Skipping."
+                f"State {state} does not match configured states {config.selector.states} for merge request {merge_request_id}. Skipping."
             )
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[],
             )
 
-        if created_at < config.selector.created_after_datetime:
+        if updated_at < config.selector.updated_after_datetime and state != "opened":
             logger.info(
-                f"Deleting merge request {merge_request_id} as created at {created_at} is before {config.selector.created_after_datetime}"
+                f"Deleting merge request {merge_request_id} as updated at {updated_at} is before {config.selector.updated_after_datetime}"
             )
             return WebhookEventRawResults(
                 updated_raw_results=[],

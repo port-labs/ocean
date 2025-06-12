@@ -134,19 +134,23 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitlabMergeRequestResourceConfig, event.resource_config).selector
 
-    state = selector.state
-    created_after = selector.created_after_datetime
+    states = selector.states
+    updated_after = selector.updated_after_datetime
 
     async for groups_batch in client.get_groups():
-        logger.info(
-            f"Processing batch of {len(groups_batch)} groups for {state} merge requests created after {created_after}"
-        )
-        params = {"state": state, "created_after": created_after}
+        for state in states:
+            logger.info(
+                f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
+                + (f" updated after {updated_after}" if state != "opened" else "")
+            )
+            params = {"state": state}
+            if state != "opened":
+                params["updated_after"] = updated_after
 
-        async for merge_requests_batch in client.get_groups_resource(
-            groups_batch, "merge_requests", params=params
-        ):
-            yield merge_requests_batch
+            async for merge_requests_batch in client.get_groups_resource(
+                groups_batch, "merge_requests", params=params
+            ):
+                yield merge_requests_batch
 
 
 @ocean.on_resync(ObjectKind.GROUP_WITH_MEMBERS)

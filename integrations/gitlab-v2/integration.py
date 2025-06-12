@@ -1,4 +1,4 @@
-from typing import Literal, Any, Type
+from typing import Literal, Any, Type, List
 from pydantic import BaseModel, Field
 
 from port_ocean.context.ocean import PortOceanContext
@@ -112,21 +112,21 @@ class GitlabFolderSelector(Selector):
 
 
 class GitlabMergeRequestSelector(Selector):
-    state: Literal["opened", "closed", "merged"] = Field(
+    states: List[Literal["opened", "closed", "merged"]] = Field(
         alias="state",
         description="Specify the state of the merge request to match",
-        default="opened",
+        default=["opened"],
     )
-    created_after: float = Field(
-        alias="createdAfter",
+    updated_after: float = Field(
+        alias="updatedAfter",
         description="Specify the number of days to look back for merge requests (e.g. 90 for last 90 days)",
         default=90,
     )
 
     @property
-    def created_after_datetime(self) -> datetime:
+    def updated_after_datetime(self) -> datetime:
         """Convert the created_after days to a timezone-aware datetime object."""
-        return datetime.now(timezone.utc) - timedelta(days=self.created_after)
+        return datetime.now(timezone.utc) - timedelta(days=self.updated_after)
 
 
 class GitlabMergeRequestResourceConfig(ResourceConfig):
