@@ -124,7 +124,7 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for projects_batch in client.get_projects():
         logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
-        async for jobs_batch in client.get_project_jobs(projects_batch):
+        async for jobs_batch in client.get_pipeline_jobs(projects_batch):
             yield jobs_batch
 
 

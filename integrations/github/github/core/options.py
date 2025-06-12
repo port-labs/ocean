@@ -2,8 +2,6 @@ from typing import Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
-    """Options for fetching a single repository."""
-
     name: str
 
 
@@ -13,29 +11,55 @@ class ListRepositoryOptions(TypedDict):
     type: str
 
 
-class SingleDependabotAlertOptions(TypedDict):
-    """Options for fetching a single Dependabot alert."""
+class RepositoryIdentifier(TypedDict):
+    """Options for identifying a repository."""
 
     repo_name: Required[str]
+
+
+class SinglePullRequestOptions(RepositoryIdentifier):
+    """Options for fetching a single pull request."""
+
+    pr_number: Required[int]
+
+
+class ListPullRequestOptions(RepositoryIdentifier):
+    """Options for listing pull requests."""
+
+    state: Required[str]
+
+
+class SingleIssueOptions(RepositoryIdentifier):
+    """Options for fetching a single issue."""
+
+    issue_number: Required[int]
+
+
+class ListIssueOptions(RepositoryIdentifier):
+    """Options for listing issues."""
+
+    state: Required[str]
+
+
+class SingleDependabotAlertOptions(RepositoryIdentifier):
+    """Options for fetching a single Dependabot alert."""
+
     alert_number: Required[str]
 
 
-class ListDependabotAlertOptions(TypedDict):
+class ListDependabotAlertOptions(RepositoryIdentifier):
     """Options for listing Dependabot alerts."""
 
-    repo_name: Required[str]
     state: Required[list[str]]
 
 
-class SingleCodeScanningAlertOptions(TypedDict):
+class SingleCodeScanningAlertOptions(RepositoryIdentifier):
     """Options for fetching a single code scanning alert."""
 
-    repo_name: Required[str]
     alert_number: Required[str]
 
 
-class ListCodeScanningAlertOptions(TypedDict):
+class ListCodeScanningAlertOptions(RepositoryIdentifier):
     """Options for listing code scanning alerts."""
 
-    repo_name: Required[str]
     state: Required[list[str]]
