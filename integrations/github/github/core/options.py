@@ -1,4 +1,4 @@
-from typing import Required, TypedDict
+from typing import NotRequired, Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -52,6 +52,9 @@ class SingleWorkflowOptions(ListWorkflowOptions):
 class ListWorkflowRunOptions(RepositoryIdentifier):
     """Options for workflow runs"""
 
+    workflow_id: Required[int]
+    max_runs: Required[int]
 
-class SingleWorkflowRunOptions(ListWorkflowRunOptions):
+
+class SingleWorkflowRunOptions(RepositoryIdentifier):
     run_id: Required[str]

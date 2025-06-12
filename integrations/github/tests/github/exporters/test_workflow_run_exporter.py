@@ -19,24 +19,14 @@ TEST_DATA: dict[str, Any] = {
             "node_id": "MDEyOldvcmtmbG93IFJ1bjI2OTI4OQ==",
             "path": ".github/workflows/build.yml@main",
             "run_number": 562,
-            "event": "push",
             "display_title": "Update README.md",
             "status": "queued",
-            "conclusion": None,
             "workflow_id": 159038,
             "url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433642",
-            "html_url": "https://github.com/octo-org/octo-repo/actions/runs/30433642",
-            "created_at": "2020-01-22T19:33:08Z",
-            "updated_at": "2020-01-22T19:33:08Z",
-            "run_started_at": "2020-01-22T19:33:08Z",
-            "workflow_url": "https://api.github.com/repos/octo-org/octo-repo/actions/workflows/159038",
             "repository": {
                 "id": 1296269,
-                "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
                 "name": "Hello-World",
                 "full_name": "octocat/Hello-World",
-                "events_url": "https://api.github.com/repos/octocat/Hello-World/events",
-                "forks_url": "https://api.github.com/repos/octocat/Hello-World/forks",
             },
         }
     ],
@@ -65,7 +55,7 @@ async def test_single_resource(rest_client: GithubRestClient) -> None:
 
 @pytest.mark.asyncio
 async def test_get_paginated_resources(rest_client: GithubRestClient) -> None:
-    options: ListWorkflowRunOptions = {"repo_name": "test"}
+    options: ListWorkflowRunOptions = {"repo_name": "test", "max_runs": 100}
     exporter = RestWorkflowRunExporter(rest_client)
 
     # Create an async mock to return the test repos

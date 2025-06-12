@@ -26,6 +26,7 @@ from github.core.options import (
     ListPullRequestOptions,
     ListRepositoryOptions,
     ListWorkflowOptions,
+    ListWorkflowRunOptions,
 )
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
@@ -123,19 +124,29 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_github_client()
     repo_exporter = RestRepositoryExporter(client)
     workflow_run_exporter = RestWorkflowRunExporter(client)
+    workflow_exporter = RestWorkflowExporter(client)
 
     port_app_config = cast("GithubPortAppConfig", event.port_app_config)
     options = ListRepositoryOptions(type=port_app_config.repository_type)
 
     async for repositories in repo_exporter.get_paginated_resources(options=options):
-        tasks = (
-            workflow_run_exporter.get_paginated_resources(
-                options=ListWorkflowOptions(repo_name=repo["name"])
-            )
-            for repo in repositories
-        )
-        async for runs in stream_async_iterators_tasks(*tasks):
-            yield runs
+        for repo in repositories:
+            workflow_options = ListWorkflowOptions(repo_name=repo["name"])
+            async for workflows in workflow_exporter.get_paginated_resources(
+                options=workflow_options
+            ):
+                tasks = (
+                    workflow_run_exporter.get_paginated_resources(
+                        options=ListWorkflowRunOptions(
+                            repo_name=repo["name"],
+                            workflow_id=workflow["id"],
+                            max_runs=100,
+                        )
+                    )
+                    for workflow in workflows
+                )
+                async for runs in stream_async_iterators_tasks(*tasks):
+                    yield runs
 
 
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
