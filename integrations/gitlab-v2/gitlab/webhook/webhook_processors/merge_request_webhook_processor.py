@@ -23,10 +23,6 @@ class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.MERGE_REQUEST]
 
-    def _is_valid_state(self, state: str) -> bool:
-        """Validate if the state is one of the allowed states."""
-        return state in ["opened", "closed", "merged"]
-
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
@@ -46,22 +42,13 @@ class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         config = cast(GitlabMergeRequestResourceConfig, resource_config)
 
-        if not self._is_valid_state(state):
-            logger.info(
-                f"Invalid state {state} for merge request {merge_request_id}. Skipping."
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
-
         if state not in config.selector.states:
             logger.info(
-                f"State {state} does not match configured states {config.selector.states} for merge request {merge_request_id}. Skipping."
+                f"Deleting merge request {merge_request_id} as current state {state} does not match configured states {config.selector.states}."
             )
             return WebhookEventRawResults(
                 updated_raw_results=[],
-                deleted_raw_results=[],
+                deleted_raw_results=[object_attrs],
             )
 
         if updated_at < config.selector.updated_after_datetime and state != "opened":

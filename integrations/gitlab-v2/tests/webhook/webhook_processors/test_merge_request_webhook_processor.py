@@ -84,7 +84,6 @@ class TestMergeRequestWebhookProcessor:
     ) -> None:
         """Test handling a merge request event when state matches"""
         resource_config = MagicMock()
-        resource_config.selector.state = "opened"
         resource_config.selector.states = ["opened"]
         resource_config.selector.updated_after_datetime = datetime(
             2022, 1, 1, tzinfo=timezone.utc
@@ -117,7 +116,6 @@ class TestMergeRequestWebhookProcessor:
     ) -> None:
         """Test handling a merge request event when state doesn't match"""
         resource_config = MagicMock()
-        resource_config.selector.state = "merged"
         resource_config.selector.states = ["merged"]
         resource_config.selector.updated_after_datetime = datetime(
             2022, 1, 1, tzinfo=timezone.utc
@@ -130,4 +128,4 @@ class TestMergeRequestWebhookProcessor:
 
         processor._gitlab_webhook_client.get_merge_request.assert_not_called()
         assert not result.updated_raw_results
-        assert not result.deleted_raw_results
+        assert result.deleted_raw_results
