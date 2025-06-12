@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.15-dev (2025-06-11)
+## 0.1.16-dev (2025-06-12)
 
 
 ### Features
@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Environment resources to track repository environments
 - Added support for Deployment resources with environment tracking
 - Implemented deployment and environment webhook processors for real-time updates
+
+
+## 0.1.15-dev (2025-06-12)
+
+
+### Features
+
+- Added support for Tag resources to track repository tags
+- Added support for Release resources with state-based filtering (created, edited, deleted)
+- Added support for Branch resources to track repository branches
+- Implemented tag, release, and branch webhook processors for real-time updates
 
 
 ## 0.1.14-dev (2025-06-11)

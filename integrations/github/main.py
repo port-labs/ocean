@@ -38,7 +38,6 @@ from github.webhook.webhook_client import GithubWebhookClient
 from integration import GithubIssueConfig, GithubPortAppConfig, GithubPullRequestConfig
 
 
-
 @ocean.on_start()
 async def on_start() -> None:
     """Initialize the integration and set up webhooks."""
