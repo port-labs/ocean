@@ -6,6 +6,8 @@ features:
     section: Git
     resources:
       - kind: repository
+      - kind: pull-request
+      - kind: issue
       - kind: file
 configurations:
   - name: githubHost

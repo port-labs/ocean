@@ -23,6 +23,30 @@ from port_ocean.utils.signal import signal_handler
 FILE_PROPERTY_PREFIX = "file://"
 
 
+class GithubPullRequestSelector(Selector):
+    state: Literal["open", "closed", "all"] = Field(
+        default="open",
+        description="Filter by pull request state (e.g., open, closed, all)",
+    )
+
+
+class GithubPullRequestConfig(ResourceConfig):
+    selector: GithubPullRequestSelector
+    kind: Literal["pull-request"]
+
+
+class GithubIssueSelector(Selector):
+    state: Literal["open", "closed", "all"] = Field(
+        default="open",
+        description="Filter by issue state (open, closed, all)",
+    )
+
+
+class GithubIssueConfig(ResourceConfig):
+    selector: GithubIssueSelector
+    kind: Literal["issue"]
+
+
 class GithubFilePattern(BaseModel):
     path: str = Field(
         alias="path",
@@ -60,7 +84,7 @@ class GithubFileResourceConfig(ResourceConfig):
 
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
-    resources: list[GithubFileResourceConfig | ResourceConfig]
+    resources: list[GithubPullRequestConfig | GithubIssueConfig | GithubFileResourceConfig, ResourceConfig]
 
 
 class GitManipulationHandler(JQEntityProcessor):

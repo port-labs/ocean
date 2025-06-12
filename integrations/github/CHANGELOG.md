@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.11-dev (2025-06-09)
+## 0.1.14-dev (2025-06-12)
 
 
 ### Improvements
@@ -16,6 +16,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented file webhook processor for push events
 - Added file search across repositories with GitHub Search API
 - Support for file reference resolution and size limit handling
+
+
+## 0.1.14-dev (2025-06-11)
+
+
+### Improvements
+
+- Added support for Issue resources with state-based filtering (open, closed, all)
+- Implemented issue webhook processor for real-time updates
+
+
+## 0.1.13-dev (2025-06-11)
+
+
+- Added support for Pull Request resources with state-based filtering (open, closed, all)
+- Implemented pull request webhook processor for real-time updates
+
+
+## 0.1.12-dev (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.8
+
+
+## 0.1.11-dev (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
 
 
 ## 0.1.10-dev (2025-06-09)
@@ -52,7 +84,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.6-dev (2025-06-04)
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.24.2
@@ -83,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.2-dev (2025-05-30)
+
 
 ### Bug Fixes
 
