@@ -56,4 +56,4 @@ ALL_EVENTS = (
 )
 
 
-WEBHOOK_CREATE_EVENTS = ["repository", "pull_request", "issues"]
+WEBHOOK_CREATE_EVENTS = ["repository", "pull_request", "issues", "push"]

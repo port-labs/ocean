@@ -11,7 +11,7 @@ class ObjectKind(StrEnum):
     REPOSITORY = "repository"
     PULL_REQUEST = "pull-request"
     ISSUE = "issue"
-
+    FILE = "file"
 
 def enrich_with_repository(
     response: Dict[str, Any], repo_name: str, key: str = "__repository"

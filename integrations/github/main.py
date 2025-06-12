@@ -14,10 +14,12 @@ from github.clients.utils import integration_config
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.repository_exporter import RestRepositoryExporter
+from github.core.exporters.file_exporter import RestFileExporter
 from github.core.options import (
     ListIssueOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
+    FileSearchOptions
 )
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
@@ -31,12 +33,16 @@ from github.webhook.webhook_processors.pull_request_webhook_processor import (
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
+from github.webhook.webhook_processors.file_webhook_processor import (
+    FileWebhookProcessor,
+)
 
 if TYPE_CHECKING:
     from integration import (
         GithubIssueConfig,
         GithubPortAppConfig,
         GithubPullRequestConfig,
+        GithubFileResourceConfig
     )
 
 
@@ -145,6 +151,53 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield issues
 
 
+@ocean.on_resync(ObjectKind.FILE)
+async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync files based on configuration using the file exporter."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    exporter = RestFileExporter(rest_client)
+
+    config = cast("GithubFileResourceConfig", event.resource_config)
+    file_pattern = config.selector.files
+
+    options = FileSearchOptions(
+        repos=file_pattern.repos,
+        path=file_pattern.path,
+        filenames=file_pattern.filenames,
+        skip_parsing=file_pattern.skip_parsing,
+        branch=file_pattern.branch,
+    )
+
+    async for file_results in exporter.get_paginated_resources(options):
+        yield file_results
+
+
+@ocean.on_resync(ObjectKind.FILE)
+async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync files based on configuration using the file exporter."""
+    logger.info(f"Starting resync for kind {kind}")
+
+    rest_client = create_github_client()
+    exporter = RestFileExporter(rest_client)
+
+    config = cast("GithubFileResourceConfig", event.resource_config)
+    file_pattern = config.selector.files
+
+    options = FileSearchOptions(
+        repos=file_pattern.repos,
+        path=file_pattern.path,
+        filenames=file_pattern.filenames,
+        skip_parsing=file_pattern.skip_parsing,
+        branch=file_pattern.branch,
+    )
+
+    async for file_results in exporter.get_paginated_resources(options):
+        yield file_results
+
+
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
