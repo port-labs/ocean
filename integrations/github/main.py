@@ -121,7 +121,7 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_exporter = RestRepositoryExporter(client)
     workflow_run_exporter = RestWorkflowRunExporter(client)
 
-    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
+    port_app_config = cast("GithubPortAppConfig", event.port_app_config)
     options = ListRepositoryOptions(type=port_app_config.repository_type)
 
     async for repositories in repo_exporter.get_paginated_resources(options=options):
