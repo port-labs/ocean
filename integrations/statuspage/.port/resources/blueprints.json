@@ -186,13 +186,15 @@
             "operational",
             "degraded_performance",
             "partial_outage",
-            "major_outage"
+            "major_outage",
+            "under_maintenance"
           ],
           "enumColors": {
             "operational": "green",
             "degraded_performance": "yellow",
             "partial_outage": "orange",
-            "major_outage": "red"
+            "major_outage": "red",
+            "under_maintenance": "blue"
           },
           "description": "The operational status of the component."
         },

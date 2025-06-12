@@ -117,26 +117,35 @@ class GitLabClient:
             if batch:
                 yield batch
 
-    async def get_project_jobs(
+    async def _get_pipeline_jobs(
+        self, project_id: int | str
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        # First get pipelines
+        async for pipeline_batch in self.rest.get_paginated_project_resource(
+            str(project_id),
+            "pipelines",
+        ):
+            # Then get jobs for each pipeline
+            for pipeline in pipeline_batch:
+                async for job_batch in self.rest.get_paginated_project_resource(
+                    str(project_id),
+                    f"pipelines/{pipeline['id']}/jobs",
+                    params={"per_page": 100},
+                ):
+                    yield job_batch
+                    break  # only yield first page of jobs per pipeline
+
+    async def get_pipeline_jobs(
         self, project_batch: list[dict[str, Any]], max_concurrent: int = 10
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch jobs for each project in the batch, limited to first page (<=100 jobs per project)."""
-
-        async def _get_jobs(
-            project: dict[str, Any]
-        ) -> AsyncIterator[list[dict[str, Any]]]:
-            async for batch in self.rest.get_paginated_project_resource(
-                str(project["id"]), "jobs", params={"per_page": 100}
-            ):
-                yield batch
-                break  # only yield first page
+        """Fetch jobs for each project in the batch, limited to first page (<=100 jobs per pipeline)."""
 
         semaphore = asyncio.Semaphore(max_concurrent)
 
         tasks = [
             semaphore_async_iterator(
                 semaphore,
-                partial(_get_jobs, project),
+                partial(self._get_pipeline_jobs, project["id"]),
             )
             for project in project_batch
         ]
