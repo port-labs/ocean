@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Any, Dict
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -143,7 +143,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
                 + (f" updated after {updated_after}" if state != "opened" else "")
             )
-            params = {"state": state}
+            params: Dict[str, Any] = {"state": state}
             if state != "opened":
                 params["updated_after"] = updated_after
 
