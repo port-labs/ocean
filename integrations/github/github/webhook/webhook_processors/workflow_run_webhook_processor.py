@@ -4,8 +4,8 @@ from github.core.options import SingleWorkflowRunOptions
 from github.webhook.events import WORKFLOW_DELETE_EVENTS, WORKFLOW_UPSERT_EVENTS
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
-from github.webhook.webhook_processors.github_abstract_webhook_processor import (
-    _GithubAbstractWebhookProcessor,
+from github.webhook.webhook_processors.base_repository_webhook_processor import (
+    BaseRepositoryWebhookProcessor,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -15,7 +15,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class WorkflowRunWebhookProcessor(_GithubAbstractWebhookProcessor):
+class WorkflowRunWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         if event.payload["action"] not in (
             WORKFLOW_DELETE_EVENTS + WORKFLOW_UPSERT_EVENTS
@@ -53,10 +53,8 @@ class WorkflowRunWebhookProcessor(_GithubAbstractWebhookProcessor):
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
 
-    async def validate_payload(self, payload: EventPayload) -> bool:
+    async def _validate_payload(self, payload: EventPayload) -> bool:
         if not {"action", "workflow_run"} <= payload.keys():
             return False
 
-        return bool(payload["repository"].get("name")) and bool(
-            payload["workflow_run"].get("id")
-        )
+        return bool(payload["workflow_run"].get("id"))

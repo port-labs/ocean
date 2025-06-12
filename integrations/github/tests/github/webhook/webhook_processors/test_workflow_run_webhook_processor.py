@@ -197,5 +197,5 @@ class TestWorkflowRunWebhookProcessor:
         payload: Dict[str, str],
         expected: bool,
     ) -> None:
-        result = await workflow_webhook_processor.validate_payload(payload)
+        result = await workflow_webhook_processor._validate_payload(payload)
         assert result is expected
