@@ -41,7 +41,13 @@ from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_client import GithubWebhookClient
 
-from integration import GithubIssueConfig, GithubPortAppConfig, GithubPullRequestConfig, GithubDependabotAlertConfig, GithubCodeScanningAlertConfig
+from integration import (
+    GithubIssueConfig,
+    GithubPortAppConfig,
+    GithubPullRequestConfig,
+    GithubDependabotAlertConfig,
+    GithubCodeScanningAlertConfig,
+)
 
 
 @ocean.on_start()
@@ -269,6 +275,7 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         async for deployments in stream_async_iterators_tasks(*tasks):
             yield deployments
+
 
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
 async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
