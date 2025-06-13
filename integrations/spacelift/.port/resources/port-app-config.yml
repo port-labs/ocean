@@ -1,0 +1,107 @@
+resources:
+  - kind: space
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"spaceliftSpace"'
+          properties:
+            name: .name
+            description: .description
+            labels: .labels
+            createdAt: .createdAt
+            parentSpaceId: .parentSpace
+            url: .url
+          relations:
+            parentSpace: .parentSpace
+
+  - kind: stack
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"spaceliftStack"'
+          properties:
+            name: .name
+            description: .description
+            administrative: .administrative
+            state: .state
+            repository: .repository
+            repositoryURL: .repositoryURL
+            provider: .provider
+            branch: .branch
+            namespace: .namespace
+            labels: .labels
+            createdAt: .createdAt
+            url: .url
+          relations:
+            space: .space
+
+  - kind: deployment
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '(.stack.name + " - " + (.id | tostring))'
+          blueprint: '"spaceliftDeployment"'
+          properties:
+            type: .type
+            state: .state
+            triggeredBy: .triggeredBy
+            branch: .branch
+            driftDetection: .driftDetection
+            commitHash: .commit.hash
+            commitMessage: .commit.message
+            commitAuthor: .commit.authorName
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            url: .url
+          relations:
+            stack: .stack.id
+
+  - kind: policy
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"spaceliftPolicy"'
+          properties:
+            name: .name
+            type: .type
+            body: .body
+            labels: .labels
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            url: .url
+          relations:
+            space: .space
+
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name // .username
+          blueprint: '"spaceliftUser"'
+          properties:
+            username: .username
+            name: .name
+            email: .email
+            isAdmin: .isAdmin
+            isSuspended: .isSuspended
+            createdAt: .createdAt
+            lastSeenAt: .lastSeenAt
+            url: .url

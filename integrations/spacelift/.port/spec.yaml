@@ -1,0 +1,35 @@
+description: Spacelift integration for Port Ocean
+icon: Spacelift
+features:
+  - type: exporter
+    section: Infrastructure as Code
+    resources:
+      - kind: space
+      - kind: stack
+      - kind: deployment
+      - kind: policy
+      - kind: user
+configurations:
+  - name: spacelift_api_endpoint
+    required: true
+    type: url
+    description: "Spacelift GraphQL API endpoint (e.g., https://mycompany.app.spacelift.io/graphql)"
+  - name: spacelift_api_key_id
+    required: true
+    type: string
+    sensitive: false
+    description: "Spacelift API key ID"
+  - name: spacelift_api_key_secret
+    required: true
+    type: string
+    sensitive: true
+    description: "Spacelift API key secret"
+  - name: spacelift_account_name
+    required: false
+    type: string
+    description: "Spacelift account name for generating resource URLs (optional)"
+  - name: spacelift_max_retries
+    required: false
+    type: integer
+    default: 2
+    description: "Maximum number of retries for failed API requests (default: 2)"
