@@ -10,6 +10,8 @@ REPOSITORY_UPSERT_EVENTS = [
 ]
 REPOSITORY_DELETE_EVENTS = ["archived", "deleted"]
 
+WORKFLOW_UPSERT_EVENTS = ["in_progress", "requested"]
+WORKFLOW_DELETE_EVENTS = ["completed"]
 
 # Pull request events
 PULL_REQUEST_EVENTS = [
@@ -54,6 +56,7 @@ RELEASE_UPSERT_EVENTS = [
 RELEASE_DELETE_EVENTS = ["deleted"]
 RELEASE_EVENTS = RELEASE_UPSERT_EVENTS + RELEASE_DELETE_EVENTS
 
+WORKFLOW_RUN_EVENTS = WORKFLOW_DELETE_EVENTS + WORKFLOW_UPSERT_EVENTS
 
 DEPENDABOT_ACTION_TO_STATE = {
     "created": "open",
@@ -85,6 +88,7 @@ ALL_EVENTS = (
     + PULL_REQUEST_EVENTS
     + ISSUE_EVENTS
     + RELEASE_EVENTS
+    + WORKFLOW_RUN_EVENTS
     + DEPENDABOT_ALERT_EVENTS
     + CODE_SCANNING_ALERT_EVENTS
 )
@@ -99,6 +103,7 @@ WEBHOOK_CREATE_EVENTS = [
     "push",
     "deployment",
     "deployment_status",
+    "workflow_run",
     "dependabot_alert",
     "code_scanning_alert",
 ]
