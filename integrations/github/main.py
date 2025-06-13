@@ -266,4 +266,4 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 # Register webhook processors
-register_live_events_webhooks()
+register_live_events_webhooks(path="/webhook")
