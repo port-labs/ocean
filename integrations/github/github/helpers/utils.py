@@ -8,12 +8,16 @@ class GithubClientType(StrEnum):
 
 
 class ObjectKind(StrEnum):
+    """Enum for GitHub resource kinds."""
+
     REPOSITORY = "repository"
     PULL_REQUEST = "pull-request"
     ISSUE = "issue"
     RELEASE = "release"
     TAG = "tag"
     BRANCH = "branch"
+    ENVIRONMENT = "environment"
+    DEPLOYMENT = "deployment"
 
 
 def enrich_with_repository(
