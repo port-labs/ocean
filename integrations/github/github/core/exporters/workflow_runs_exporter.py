@@ -38,5 +38,7 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
 
             fetched_batch = fetched_batch + workflow_batch["total_count"]
             if fetched_batch >= options["max_runs"]:
-                logger.info("batch limit reached for workflow runs, returning ...")
+                logger.info(
+                    f"Reached maximum limit of {options['max_runs']} workflow runs for workflow {options['workflow_id']} in {options['repo_name']}"
+                )
                 return
