@@ -20,6 +20,10 @@ from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.exporters.release_exporter import RestReleaseExporter
 from github.core.exporters.tag_exporter import RestTagExporter
+from github.core.exporters.dependabot_exporter import RestDependabotAlertExporter
+from github.core.exporters.code_scanning_alert_exporter import (
+    RestCodeScanningAlertExporter,
+)
 
 from github.core.options import (
     ListBranchOptions,
@@ -30,12 +34,20 @@ from github.core.options import (
     ListRepositoryOptions,
     ListReleaseOptions,
     ListTagOptions,
+    ListDependabotAlertOptions,
+    ListCodeScanningAlertOptions,
 )
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_client import GithubWebhookClient
 
-from integration import GithubIssueConfig, GithubPortAppConfig, GithubPullRequestConfig
+from integration import (
+    GithubIssueConfig,
+    GithubPortAppConfig,
+    GithubPullRequestConfig,
+    GithubDependabotAlertConfig,
+    GithubCodeScanningAlertConfig,
+)
 
 
 @ocean.on_start()
@@ -263,6 +275,62 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         async for deployments in stream_async_iterators_tasks(*tasks):
             yield deployments
+
+
+@ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
+async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all Dependabot alerts in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    dependabot_alert_exporter = RestDependabotAlertExporter(rest_client)
+
+    config = cast(GithubDependabotAlertConfig, event.resource_config)
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            dependabot_alert_exporter.get_paginated_resources(
+                ListDependabotAlertOptions(
+                    repo_name=repo["name"],
+                    state=list(config.selector.states),
+                )
+            )
+            for repo in repositories
+        ]
+        async for alerts in stream_async_iterators_tasks(*tasks):
+            yield alerts
+
+
+@ocean.on_resync(ObjectKind.CODE_SCANNING_ALERT)
+async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all code scanning alerts in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    code_scanning_alert_exporter = RestCodeScanningAlertExporter(rest_client)
+
+    config = cast(GithubCodeScanningAlertConfig, event.resource_config)
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            code_scanning_alert_exporter.get_paginated_resources(
+                ListCodeScanningAlertOptions(
+                    repo_name=repo["name"],
+                    state=config.selector.state,
+                )
+            )
+            for repo in repositories
+        ]
+        async for alerts in stream_async_iterators_tasks(*tasks):
+            yield alerts
 
 
 # Register webhook processors

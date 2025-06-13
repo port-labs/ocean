@@ -18,6 +18,8 @@ class ObjectKind(StrEnum):
     BRANCH = "branch"
     ENVIRONMENT = "environment"
     DEPLOYMENT = "deployment"
+    DEPENDABOT_ALERT = "dependabot-alert"
+    CODE_SCANNING_ALERT = "code-scanning-alerts"
 
 
 def enrich_with_repository(

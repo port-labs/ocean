@@ -13,6 +13,8 @@ features:
       - kind: branch
       - kind: environment
       - kind: deployment
+      - kind: dependabot-alert
+      - kind: code-scanning-alerts
 configurations:
   - name: githubHost
     required: false
