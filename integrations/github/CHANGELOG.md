@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Github workflows
 - Added support support for Github workflow runs
 - Implemented webhook processors for Workflow runs and workflows for real-time updates
+- Added support for Dependabot alerts and Code Scanning alerts with state-based filtering
+- Implemented Dependabot alert and Code Scanning alert webhook processor for real-time updates
 
 
 ## 0.1.16-dev (2025-06-13)

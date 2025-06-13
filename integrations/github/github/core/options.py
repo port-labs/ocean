@@ -108,3 +108,27 @@ class SingleDeploymentOptions(RepositoryIdentifier):
 
 class ListDeploymentsOptions(RepositoryIdentifier):
     """Options for listing deployments."""
+
+
+class SingleDependabotAlertOptions(RepositoryIdentifier):
+    """Options for fetching a single Dependabot alert."""
+
+    alert_number: Required[str]
+
+
+class ListDependabotAlertOptions(RepositoryIdentifier):
+    """Options for listing Dependabot alerts."""
+
+    state: Required[list[str]]
+
+
+class SingleCodeScanningAlertOptions(RepositoryIdentifier):
+    """Options for fetching a single code scanning alert."""
+
+    alert_number: Required[str]
+
+
+class ListCodeScanningAlertOptions(RepositoryIdentifier):
+    """Options for listing code scanning alerts."""
+
+    state: Required[str]
