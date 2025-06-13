@@ -16,12 +16,12 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}"
         response = await self.client.send_api_request(endpoint)
-
+        workflow = enrich_with_repository(response, options["repo_name"])
         logger.info(
             f"Fetched workflow {options['workflow_id']} from {options['repo_name']}"
         )
 
-        return response
+        return workflow
 
     async def get_paginated_resources[
         ExporterOptionsT: ListWorkflowOptions

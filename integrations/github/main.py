@@ -121,6 +121,7 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all workflow runs for specified Github repositories"""
     logger.info(f"Starting resync for kind: {kind}")
+
     client = create_github_client()
     repo_exporter = RestRepositoryExporter(client)
     workflow_run_exporter = RestWorkflowRunExporter(client)

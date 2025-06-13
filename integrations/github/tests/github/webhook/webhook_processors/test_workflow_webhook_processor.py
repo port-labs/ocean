@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List
 
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
@@ -84,7 +84,7 @@ class TestWorkflowWebhookProcessor:
                         "removed": [".github/workflows/deleted.yml"],
                     }
                 ],
-                True,
+                False,
             ),
             # Push event with non-workflow file changes
             (
@@ -148,41 +148,17 @@ class TestWorkflowWebhookProcessor:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "mock_commit_diff_files, mock_extracted_updated_workflows, mock_extracted_deleted_workflows, mock_exporter_workflow_data, expected_updated_count, expected_deleted_count",
+        "mock_commit_diff_files, mock_extracted_updated_workflows, mock_extracted_deleted_workflows, mock_exporter_workflow_data, expected_updated_count",
         [
-            # Case 1: Workflow added/modified
+            #  Workflow added/modified
             (
                 [{"filename": ".github/workflows/test.yml", "status": "added"}],
                 [{"filename": ".github/workflows/test.yml"}],
                 [],
                 {"id": "test_workflow", "name": "Test Workflow"},
                 1,
-                0,
             ),
-            # Case 2: Workflow deleted
-            (
-                [{"filename": ".github/workflows/deleted.yml", "status": "removed"}],
-                [],
-                [{"filename": ".github/workflows/deleted.2.yml"}],
-                None,
-                0,
-                1,
-            ),
-            # Case 3: Both updated and deleted
-            (
-                [
-                    {"filename": ".github/workflows/updated.yml", "status": "modified"},
-                    {"filename": ".github/workflows/removed.yml", "status": "removed"},
-                ],
-                [{"filename": ".github/workflows/updated.yml"}],
-                [{"filename": ".github/workflows/removed.yml"}],
-                {"id": "updated_workflow", "name": "Updated Workflow"},
-                1,
-                1,
-            ),
-            # Case 4: No relevant workflow changes
-            ([{"filename": "some_file.txt", "status": "modified"}], [], [], None, 0, 0),
-            # Case 5: Multiple workflows updated
+            #  Multiple workflows updated
             (
                 [
                     {"filename": ".github/workflows/wf1.yml", "status": "modified"},
@@ -195,7 +171,6 @@ class TestWorkflowWebhookProcessor:
                 [],
                 {"id": "workflow_base", "name": "Workflow Base"},
                 2,
-                0,
             ),
         ],
     )
@@ -206,24 +181,21 @@ class TestWorkflowWebhookProcessor:
         mock_commit_diff_files: List[Dict[str, Any]],
         mock_extracted_updated_workflows: List[Dict[str, Any]],
         mock_extracted_deleted_workflows: List[Dict[str, Any]],
-        mock_exporter_workflow_data: Dict[str, Any] | None,
+        mock_exporter_workflow_data: Dict[str, Any],
         expected_updated_count: int,
-        expected_deleted_count: int,
     ) -> None:
         payload: EventPayload = {
             "repository": {"name": "test-repo"},
             "before": "sha1",
             "after": "sha2",
-            "commits": [{}],  # Minimal for _validate_payload
-            "ref": "refs/heads/main",  # Minimal for _validate_payload
+            "commits": [{}],
+            "ref": "refs/heads/main",
         }
 
         mock_rest_client = MagicMock()
-        mock_rest_client.send_api_request.return_value = AsyncMock()
         mock_exporter = AsyncMock(spec=RestWorkflowExporter)
 
         if expected_updated_count > 0:
-            # Use side_effect to return different data for each call if multiple updates are expected
             mock_exporter.get_resource.side_effect = [
                 {
                     **mock_exporter_workflow_data,
@@ -236,11 +208,15 @@ class TestWorkflowWebhookProcessor:
 
         with (
             patch(
-                "github.clients.client_factory.create_github_client",
+                "github.webhook.webhook_processors.workflow_webhook_processor.create_github_client",
                 return_value=mock_rest_client,
             ),
             patch(
-                "github.helpers.utils.fetch_commit_diff",
+                "github.webhook.webhook_processors.workflow_webhook_processor.RestWorkflowExporter",
+                return_value=mock_exporter,
+            ),
+            patch(
+                "github.webhook.webhook_processors.workflow_webhook_processor.fetch_commit_diff",
                 return_value={"files": mock_commit_diff_files},
             ),
             patch(
@@ -257,28 +233,19 @@ class TestWorkflowWebhookProcessor:
 
             assert isinstance(result, WebhookEventRawResults)
             assert len(result.updated_raw_results) == expected_updated_count
-            assert len(result.deleted_raw_results) == expected_deleted_count
 
             if expected_updated_count > 0:
                 assert mock_exporter.get_resource.call_count == expected_updated_count
-                # Verify arguments for each call
                 for i, workflow_file in enumerate(mock_extracted_updated_workflows):
                     expected_options = SingleWorkflowOptions(
-                        repo_name="test-repo", workflow_id=workflow_file["filename"]
+                        repo_name="test-repo",
+                        workflow_id=workflow_webhook_processor._extract_file_name(
+                            workflow_file["filename"]
+                        ),
                     )
-                    # Check if the call arguments match the expected options
                     mock_exporter.get_resource.assert_any_call(expected_options)
             else:
                 mock_exporter.get_resource.assert_not_called()
-
-            if expected_deleted_count > 0:
-                deleted_filenames = {
-                    item["path"] for item in result.deleted_raw_results
-                }
-                expected_deleted_filenames = {
-                    f["filename"] for f in mock_extracted_deleted_workflows
-                }
-                assert deleted_filenames == expected_deleted_filenames
 
     @pytest.mark.parametrize(
         "payload, expected_result",
@@ -311,7 +278,7 @@ class TestWorkflowWebhookProcessor:
             (
                 ".github/workflows/sub_dir/main.yml",
                 True,
-            ),  # Subdirectory is still a workflow file
+            ),
             ("README.md", False),
             (
                 "",

@@ -24,18 +24,15 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Only process push events that contain workflow file changes."""
+
         if event.headers.get("x-github-event") != "push":
             return False
 
-        # Check if any workflow files were changed
         for commit in event.payload["commits"]:
             for file in commit.get("modified", []):
                 if self._is_workflow_file(file):
                     return True
             for file in commit.get("added", []):
-                if self._is_workflow_file(file):
-                    return True
-            for file in commit.get("removed", []):
                 if self._is_workflow_file(file):
                     return True
 
@@ -49,7 +46,7 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
     ) -> WebhookEventRawResults:
         """
         Handle push events that modify workflow files.
-        Fetches updated workflow data and returns it for upserting in Port.
+        Fetches updated workflow data and returns it for upserting into Port.
         """
         repo = payload["repository"]
         repo_name = repo["name"]
@@ -58,29 +55,21 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         commit_diff = await fetch_commit_diff(
             rest_client, repo_name, payload["before"], payload["after"]
         )
-        changed_workflow_files, deleted_workflow_files = extract_changed_files(
-            commit_diff["files"]
-        )
+        _, changed_workflow_files = extract_changed_files(commit_diff["files"])
 
         logger.info(
             f"Processing workflow changes in repository {repo_name}. "
             f"Changed workflow files: {list(changed_workflow_files)}"
-            f"Deleted workflow files: {list(deleted_workflow_files)}"
         )
 
-        if deleted_workflow_files:
-            logger.info(
-                f"Deleting workflows for deleted files: {list(deleted_workflow_files)}"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[{"path": file} for file in deleted_workflow_files],
-            )
-
-        exporter = RestWorkflowExporter(rest_client)
         workflows_to_upsert = []
-        for workflow in changed_workflow_files:
-            options = SingleWorkflowOptions(repo_name=repo_name, workflow_id=workflow)
+        exporter = RestWorkflowExporter(rest_client)
+
+        for changed_file in changed_workflow_files:
+            workflow_name = self._extract_file_name(changed_file)
+            options = SingleWorkflowOptions(
+                repo_name=repo_name, workflow_id=workflow_name
+            )
 
             workflow = await exporter.get_resource(options)
             workflows_to_upsert.append(workflow)
@@ -91,7 +80,8 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         return WebhookEventRawResults(
-            updated_raw_results=workflows_to_upsert, deleted_raw_results=[]
+            updated_raw_results=workflows_to_upsert,
+            deleted_raw_results=[],
         )
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
@@ -112,3 +102,8 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         return file_path.startswith(".github/workflows/") and (
             file_path.endswith(".yml") or file_path.endswith(".yaml")
         )
+
+    @staticmethod
+    def _extract_file_name(filepath: str) -> str:
+        parts = filepath.split("/")
+        return parts[len(parts) - 1]

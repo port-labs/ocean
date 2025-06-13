@@ -1,4 +1,4 @@
-from typing import NotRequired, Required, TypedDict
+from typing import Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):

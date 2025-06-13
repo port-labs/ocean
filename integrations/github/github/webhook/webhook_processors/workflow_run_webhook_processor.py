@@ -17,7 +17,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 class WorkflowRunWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        if event.payload["action"] not in (
+        if event.payload.get("action") and event.payload["action"] not in (
             WORKFLOW_DELETE_EVENTS + WORKFLOW_UPSERT_EVENTS
         ):
             return False
