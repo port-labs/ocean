@@ -8,6 +8,9 @@ features:
       - kind: repository
       - kind: pull-request
       - kind: issue
+      - kind: release
+      - kind: tag
+      - kind: branch
 configurations:
   - name: githubHost
     required: false
