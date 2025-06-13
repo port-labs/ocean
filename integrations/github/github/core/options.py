@@ -41,6 +41,56 @@ class ListIssueOptions(RepositoryIdentifier):
     state: Required[str]
 
 
+class SingleReleaseOptions(RepositoryIdentifier):
+    """Options for fetching a single release."""
+
+    release_id: Required[int]
+
+
+class ListReleaseOptions(RepositoryIdentifier):
+    """Options for listing releases."""
+
+
+class SingleTagOptions(RepositoryIdentifier):
+    """Options for fetching a single tag."""
+
+    tag_name: Required[str]
+
+
+class ListTagOptions(RepositoryIdentifier):
+    """Options for listing tags."""
+
+
+class SingleBranchOptions(RepositoryIdentifier):
+    """Options for fetching a single branch."""
+
+    branch_name: Required[str]
+
+
+class ListBranchOptions(RepositoryIdentifier):
+    """Options for listing branches."""
+
+
+class SingleEnvironmentOptions(RepositoryIdentifier):
+    """Options for fetching a single environment."""
+
+    name: str
+
+
+class ListEnvironmentsOptions(RepositoryIdentifier):
+    """Options for listing environments."""
+
+
+class SingleDeploymentOptions(RepositoryIdentifier):
+    """Options for fetching a single deployment."""
+
+    id: str
+
+
+class ListDeploymentsOptions(RepositoryIdentifier):
+    """Options for listing deployments."""
+
+
 class SingleDependabotAlertOptions(RepositoryIdentifier):
     """Options for fetching a single Dependabot alert."""
 

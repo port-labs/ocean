@@ -1,6 +1,7 @@
 from typing import cast
 
 from loguru import logger
+from github.webhook.registry import register_live_events_webhooks
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -11,46 +12,36 @@ from github.clients.client_factory import (
     create_github_client,
 )
 from github.clients.utils import integration_config
+from github.core.exporters.branch_exporter import RestBranchExporter
+from github.core.exporters.deployment_exporter import RestDeploymentExporter
+from github.core.exporters.environment_exporter import RestEnvironmentExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.repository_exporter import RestRepositoryExporter
+from github.core.exporters.release_exporter import RestReleaseExporter
+from github.core.exporters.tag_exporter import RestTagExporter
 from github.core.exporters.dependabot_exporter import RestDependabotAlertExporter
 from github.core.exporters.code_scanning_alert_exporter import (
     RestCodeScanningAlertExporter,
 )
+
 from github.core.options import (
+    ListBranchOptions,
+    ListDeploymentsOptions,
+    ListEnvironmentsOptions,
     ListIssueOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
+    ListReleaseOptions,
+    ListTagOptions,
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
 )
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_client import GithubWebhookClient
-from github.webhook.webhook_processors.issue_webhook_processor import (
-    IssueWebhookProcessor,
-)
-from github.webhook.webhook_processors.pull_request_webhook_processor import (
-    PullRequestWebhookProcessor,
-)
-from github.webhook.webhook_processors.repository_webhook_processor import (
-    RepositoryWebhookProcessor,
-)
-from github.webhook.webhook_processors.dependabot_webhook_processor import (
-    DependabotAlertWebhookProcessor,
-)
-from github.webhook.webhook_processors.code_scanning_alert_webhook_processor import (
-    CodeScanningAlertWebhookProcessor,
-)
 
-from integration import (
-    GithubIssueConfig,
-    GithubPortAppConfig,
-    GithubPullRequestConfig,
-    GithubDependabotAlertConfig,
-    GithubCodeScanningAlertConfig,
-)
+from integration import GithubIssueConfig, GithubPortAppConfig, GithubPullRequestConfig, GithubDependabotAlertConfig, GithubCodeScanningAlertConfig
 
 
 @ocean.on_start()
@@ -91,7 +82,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     exporter = RestRepositoryExporter(rest_client)
 
-    port_app_config = cast("GithubPortAppConfig", event.port_app_config)
+    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     options = ListRepositoryOptions(type=port_app_config.repository_type)
 
     async for repositories in exporter.get_paginated_resources(options):
@@ -106,10 +97,10 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     repository_exporter = RestRepositoryExporter(rest_client)
     pull_request_exporter = RestPullRequestExporter(rest_client)
-    config = cast("GithubPullRequestConfig", event.resource_config)
+    config = cast(GithubPullRequestConfig, event.resource_config)
 
     repo_options = ListRepositoryOptions(
-        type=cast("GithubPortAppConfig", event.port_app_config).repository_type
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
     )
 
     async for repos in repository_exporter.get_paginated_resources(
@@ -136,10 +127,10 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     repository_exporter = RestRepositoryExporter(rest_client)
     issue_exporter = RestIssueExporter(rest_client)
-    config = cast("GithubIssueConfig", event.resource_config)
+    config = cast(GithubIssueConfig, event.resource_config)
 
     repo_options = ListRepositoryOptions(
-        type=cast("GithubPortAppConfig", event.port_app_config).repository_type
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
     )
 
     async for repos in repository_exporter.get_paginated_resources(
@@ -158,6 +149,127 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield issues
 
 
+@ocean.on_resync(ObjectKind.RELEASE)
+async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all releases in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    release_exporter = RestReleaseExporter(rest_client)
+
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            release_exporter.get_paginated_resources(
+                ListReleaseOptions(repo_name=repo["name"])
+            )
+            for repo in repositories
+        ]
+        async for releases in stream_async_iterators_tasks(*tasks):
+            yield releases
+
+
+@ocean.on_resync(ObjectKind.TAG)
+async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all tags in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    tag_exporter = RestTagExporter(rest_client)
+
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            tag_exporter.get_paginated_resources(ListTagOptions(repo_name=repo["name"]))
+            for repo in repositories
+        ]
+        async for tags in stream_async_iterators_tasks(*tasks):
+            yield tags
+
+
+@ocean.on_resync(ObjectKind.BRANCH)
+async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all branches in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    branch_exporter = RestBranchExporter(rest_client)
+
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            branch_exporter.get_paginated_resources(
+                ListBranchOptions(repo_name=repo["name"])
+            )
+            for repo in repositories
+        ]
+        async for branches in stream_async_iterators_tasks(*tasks):
+            yield branches
+
+
+@ocean.on_resync(ObjectKind.ENVIRONMENT)
+async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all environments in the organization."""
+    logger.info(f"Starting resync for kind {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    environment_exporter = RestEnvironmentExporter(rest_client)
+
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            environment_exporter.get_paginated_resources(
+                ListEnvironmentsOptions(
+                    repo_name=repo["name"],
+                )
+            )
+            for repo in repositories
+        ]
+        async for environments in stream_async_iterators_tasks(*tasks):
+            yield environments
+
+
+@ocean.on_resync(ObjectKind.DEPLOYMENT)
+async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all deployments in the organization."""
+    logger.info(f"Starting resync for kind {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    deployment_exporter = RestDeploymentExporter(rest_client)
+
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            deployment_exporter.get_paginated_resources(
+                ListDeploymentsOptions(
+                    repo_name=repo["name"],
+                )
+            )
+            for repo in repositories
+        ]
+        async for deployments in stream_async_iterators_tasks(*tasks):
+            yield deployments
+
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
 async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all Dependabot alerts in the organization's repositories."""
@@ -169,7 +281,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     config = cast(GithubDependabotAlertConfig, event.resource_config)
     repo_options = ListRepositoryOptions(
-        type=cast("GithubPortAppConfig", event.port_app_config).repository_type
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
     )
 
     async for repositories in repository_exporter.get_paginated_resources(repo_options):
@@ -197,7 +309,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
     repo_options = ListRepositoryOptions(
-        type=cast("GithubPortAppConfig", event.port_app_config).repository_type
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
     )
 
     async for repositories in repository_exporter.get_paginated_resources(repo_options):
@@ -214,8 +326,5 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield alerts
 
 
-ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
-ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
-ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
-ocean.add_webhook_processor("/webhook", DependabotAlertWebhookProcessor)
-ocean.add_webhook_processor("/webhook", CodeScanningAlertWebhookProcessor)
+# Register webhook processors
+register_live_events_webhooks(path="/webhook")

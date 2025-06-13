@@ -8,6 +8,11 @@ features:
       - kind: repository
       - kind: pull-request
       - kind: issue
+      - kind: release
+      - kind: tag
+      - kind: branch
+      - kind: environment
+      - kind: deployment
       - kind: dependabot-alert
       - kind: code-scanning-alerts
 configurations:

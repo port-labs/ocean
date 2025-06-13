@@ -8,9 +8,16 @@ class GithubClientType(StrEnum):
 
 
 class ObjectKind(StrEnum):
+    """Enum for GitHub resource kinds."""
+
     REPOSITORY = "repository"
     PULL_REQUEST = "pull-request"
     ISSUE = "issue"
+    RELEASE = "release"
+    TAG = "tag"
+    BRANCH = "branch"
+    ENVIRONMENT = "environment"
+    DEPLOYMENT = "deployment"
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
 
@@ -34,3 +41,17 @@ def extract_repo_params(params: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     """Extract the repository name and other parameters from the options."""
     repo_name = params.pop("repo_name")
     return repo_name, params
+
+
+def enrich_with_tag_name(response: Dict[str, Any], tag_name: str) -> Dict[str, Any]:
+    """Helper function to enrich response with tag name information."""
+    response["name"] = tag_name
+    return response
+
+
+def enrich_with_commit(
+    response: Dict[str, Any], commit_object: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Helper function to enrich response with commit information."""
+    response["commit"] = commit_object
+    return response

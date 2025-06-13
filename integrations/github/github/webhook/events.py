@@ -47,6 +47,13 @@ ISSUE_UPSERT_EVENTS = [
 ISSUE_DELETE_EVENTS = ["deleted"]
 ISSUE_EVENTS = ISSUE_UPSERT_EVENTS + ISSUE_DELETE_EVENTS
 
+RELEASE_UPSERT_EVENTS = [
+    "created",
+    "edited",
+]
+RELEASE_DELETE_EVENTS = ["deleted"]
+RELEASE_EVENTS = RELEASE_UPSERT_EVENTS + RELEASE_DELETE_EVENTS
+
 
 DEPENDABOT_ALERT_EVENTS = [
     "auto_reopened",
@@ -90,15 +97,21 @@ ALL_EVENTS = (
     + REPOSITORY_DELETE_EVENTS
     + PULL_REQUEST_EVENTS
     + ISSUE_EVENTS
+    + RELEASE_EVENTS
     + DEPENDABOT_ALERT_EVENTS
     + CODE_SCANNING_ALERT_EVENTS
 )
-
 
 WEBHOOK_CREATE_EVENTS = [
     "repository",
     "pull_request",
     "issues",
+    "release",
+    "create",
+    "delete",
+    "push",
+    "deployment",
+    "deployment_status",
     "dependabot_alert",
     "code_scanning_alert",
 ]
