@@ -49,15 +49,33 @@ ISSUE_UPSERT_EVENTS = [
 ISSUE_DELETE_EVENTS = ["deleted"]
 ISSUE_EVENTS = ISSUE_UPSERT_EVENTS + ISSUE_DELETE_EVENTS
 
+RELEASE_UPSERT_EVENTS = [
+    "created",
+    "edited",
+]
+RELEASE_DELETE_EVENTS = ["deleted"]
+RELEASE_EVENTS = RELEASE_UPSERT_EVENTS + RELEASE_DELETE_EVENTS
+
+WORKFLOW_RUN_EVENTS = WORKFLOW_DELETE_EVENTS + WORKFLOW_UPSERT_EVENTS
 
 ALL_EVENTS = (
     REPOSITORY_UPSERT_EVENTS
     + REPOSITORY_DELETE_EVENTS
     + PULL_REQUEST_EVENTS
     + ISSUE_EVENTS
-    + WORKFLOW_DELETE_EVENTS
-    + WORKFLOW_UPSERT_EVENTS
+    + RELEASE_EVENTS
+    + WORKFLOW_RUN_EVENTS
 )
 
-
-WEBHOOK_CREATE_EVENTS = ["repository", "pull_request", "issues", "workflow_run", "push"]
+WEBHOOK_CREATE_EVENTS = [
+    "repository",
+    "pull_request",
+    "issues",
+    "release",
+    "create",
+    "delete",
+    "push",
+    "deployment",
+    "deployment_status",
+    "workflow_run",
+]

@@ -10,11 +10,18 @@ class GithubClientType(StrEnum):
 
 
 class ObjectKind(StrEnum):
+    """Enum for GitHub resource kinds."""
+
     REPOSITORY = "repository"
     WORKFLOW = "workflow"
     WORKFLOW_RUN = "workflow-run"
     PULL_REQUEST = "pull-request"
     ISSUE = "issue"
+    RELEASE = "release"
+    TAG = "tag"
+    BRANCH = "branch"
+    ENVIRONMENT = "environment"
+    DEPLOYMENT = "deployment"
 
 
 def enrich_with_repository(
@@ -68,3 +75,17 @@ def extract_changed_files(
         )
 
     return deleted_files, updated_files
+
+
+def enrich_with_tag_name(response: Dict[str, Any], tag_name: str) -> Dict[str, Any]:
+    """Helper function to enrich response with tag name information."""
+    response["name"] = tag_name
+    return response
+
+
+def enrich_with_commit(
+    response: Dict[str, Any], commit_object: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Helper function to enrich response with commit information."""
+    response["commit"] = commit_object
+    return response

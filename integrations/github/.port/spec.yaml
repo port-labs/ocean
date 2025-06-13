@@ -10,6 +10,11 @@ features:
       - kind: workflow-run
       - kind: pull-request
       - kind: issue
+      - kind: release
+      - kind: tag
+      - kind: branch
+      - kind: environment
+      - kind: deployment
 configurations:
   - name: githubHost
     required: false
