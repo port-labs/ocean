@@ -69,3 +69,23 @@ class SingleBranchOptions(RepositoryIdentifier):
 
 class ListBranchOptions(RepositoryIdentifier):
     """Options for listing branches."""
+
+
+class SingleEnvironmentOptions(RepositoryIdentifier):
+    """Options for fetching a single environment."""
+
+    name: str
+
+
+class ListEnvironmentsOptions(RepositoryIdentifier):
+    """Options for listing environments."""
+
+
+class SingleDeploymentOptions(RepositoryIdentifier):
+    """Options for fetching a single deployment."""
+
+    id: str
+
+
+class ListDeploymentsOptions(RepositoryIdentifier):
+    """Options for listing deployments."""

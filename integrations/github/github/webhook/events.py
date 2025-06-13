@@ -63,7 +63,6 @@ ALL_EVENTS = (
     + RELEASE_EVENTS
 )
 
-
 WEBHOOK_CREATE_EVENTS = [
     "repository",
     "pull_request",
@@ -72,4 +71,6 @@ WEBHOOK_CREATE_EVENTS = [
     "create",
     "delete",
     "push",
+    "deployment",
+    "deployment_status",
 ]
