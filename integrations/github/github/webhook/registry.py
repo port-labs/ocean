@@ -27,6 +27,7 @@ from github.webhook.webhook_processors.workflow_run_webhook_processor import (
 )
 from github.webhook.webhook_processors.workflow_webhook_processor import (
     WorkflowWebhookProcessor,
+)
 from github.webhook.webhook_processors.dependabot_webhook_processor import (
     DependabotAlertWebhookProcessor,
 )

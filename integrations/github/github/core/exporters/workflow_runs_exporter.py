@@ -31,7 +31,7 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
         async for workflows in self.client.send_paginated_request(url):
             workflow_batch = cast(dict[str, Any], workflows)
             logger.info(
-                f"fetched batch of {workflow_batch['total_count']} workflow runs from {options['repo_name']} "
+                f"Fetched batch of {workflow_batch['total_count']} workflow runs from {options['repo_name']} "
                 f"for workflow {options['workflow_id']}"
             )
             yield workflow_batch["workflow_runs"]
@@ -39,6 +39,7 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             fetched_batch = fetched_batch + workflow_batch["total_count"]
             if fetched_batch >= options["max_runs"]:
                 logger.info(
-                    f"Reached maximum limit of {options['max_runs']} workflow runs for workflow {options['workflow_id']} in {options['repo_name']}"
+                    f"Reached maximum limit of {options['max_runs']} workflow runs"
+                    f"for workflow {options['workflow_id']} in {options['repo_name']}"
                 )
                 return
