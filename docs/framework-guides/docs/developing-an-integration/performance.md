@@ -1,7 +1,7 @@
 ---
 title: Performance
 sidebar_label: 🏎️ Performance
-sidebar_position: 5
+sidebar_position: 15
 ---
 
 import HttpxExample from '../\_common/httpx-instead-of-requests.md'
