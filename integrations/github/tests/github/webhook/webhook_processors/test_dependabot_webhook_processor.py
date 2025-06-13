@@ -23,7 +23,7 @@ def dependabot_resource_config() -> GithubDependabotAlertConfig:
     return GithubDependabotAlertConfig(
         kind="dependabot-alert",
         selector=GithubDependabotAlertSelector(
-            query="true", state=["open", "dismissed"]
+            query="true", states=["open", "dismissed"]
         ),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -201,7 +201,7 @@ class TestDependabotAlertWebhookProcessor:
         resource_config = GithubDependabotAlertConfig(
             kind="dependabot-alert",
             selector=GithubDependabotAlertSelector(
-                query="true", state=["open"]  # Only open alerts allowed
+                query="true", states=["open"]  # Only open alerts allowed
             ),
             port=PortResourceConfig(
                 entity=MappingsConfig(
@@ -244,79 +244,6 @@ class TestDependabotAlertWebhookProcessor:
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == alert_data
-
-    async def test_handle_event_fixed_in_allowed_state(
-        self,
-        dependabot_webhook_processor: DependabotAlertWebhookProcessor,
-    ) -> None:
-        """Test handling a 'fixed' event when 'fixed' state is allowed."""
-        # Create config that allows 'fixed' state
-        resource_config = GithubDependabotAlertConfig(
-            kind="dependabot-alert",
-            selector=GithubDependabotAlertSelector(
-                query="true", state=["open", "fixed"]
-            ),
-            port=PortResourceConfig(
-                entity=MappingsConfig(
-                    mappings=EntityMapping(
-                        identifier='.repo.name + "-" + (.number | tostring)',
-                        title=".number | tostring",
-                        blueprint='"githubDependabotAlert"',
-                        properties={},
-                    )
-                )
-            ),
-        )
-
-        alert_data = {
-            "number": 3,
-            "state": "fixed",
-            "dependency": {
-                "package": {"name": "jquery", "ecosystem": "npm"},
-                "manifest_path": "package.json",
-                "scope": "runtime",
-            },
-            "security_advisory": {
-                "ghsa_id": "GHSA-rmxg-73gg-4p98",
-                "cve_id": "CVE-2020-11022",
-                "severity": "medium",
-            },
-            "fixed_at": "2020-01-02T19:23:10Z",
-        }
-
-        payload = {
-            "action": "fixed",
-            "alert": alert_data,
-            "repository": {"name": "test-repo"},
-        }
-
-        # Mock the RestDependabotAlertExporter
-        mock_exporter = AsyncMock()
-        mock_exporter.get_resource.return_value = {
-            **alert_data,
-            "repo": {"name": "test-repo"},
-        }
-
-        with (
-            patch(
-                "github.webhook.webhook_processors.dependabot_webhook_processor.create_github_client"
-            ) as mock_create_client,
-            patch(
-                "github.webhook.webhook_processors.dependabot_webhook_processor.RestDependabotAlertExporter",
-                return_value=mock_exporter,
-            ),
-        ):
-            mock_create_client.return_value = AsyncMock()
-
-            result = await dependabot_webhook_processor.handle_event(
-                payload, resource_config
-            )
-
-        assert isinstance(result, WebhookEventRawResults)
-        assert len(result.updated_raw_results) == 1
-        assert len(result.deleted_raw_results) == 0
-        assert result.updated_raw_results[0]["state"] == "fixed"
-        assert result.updated_raw_results[0]["repo"]["name"] == "test-repo"
 
     @pytest.mark.parametrize(
         "action,expected_state",

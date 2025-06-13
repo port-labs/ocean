@@ -112,4 +112,4 @@ class SingleCodeScanningAlertOptions(RepositoryIdentifier):
 class ListCodeScanningAlertOptions(RepositoryIdentifier):
     """Options for listing code scanning alerts."""
 
-    state: Required[list[str]]
+    state: Required[str]

@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Literal
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -22,9 +22,7 @@ from integration import GithubCodeScanningAlertConfig, GithubCodeScanningAlertSe
 def code_scanning_resource_config() -> GithubCodeScanningAlertConfig:
     return GithubCodeScanningAlertConfig(
         kind="code-scanning-alerts",
-        selector=GithubCodeScanningAlertSelector(
-            query="true", state=["open", "dismissed"]
-        ),
+        selector=GithubCodeScanningAlertSelector(query="true", state="open"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -130,132 +128,26 @@ class TestCodeScanningAlertWebhookProcessor:
         result = await code_scanning_webhook_processor._validate_payload(payload)
         assert result is expected
 
-    async def test_handle_event_created_in_allowed_state(
-        self,
-        code_scanning_webhook_processor: CodeScanningAlertWebhookProcessor,
-        code_scanning_resource_config: GithubCodeScanningAlertConfig,
-    ) -> None:
-        """Test handling a 'created' event when 'open' state is allowed."""
-        alert_data = {
-            "number": 42,
-            "state": "open",
-            "rule": {
-                "id": "js/unused-local-variable",
-                "name": "Unused variable, import, function or class",
-                "severity": "note",
-                "security_severity_level": None,
-                "description": "Unused variables may be a symptom of a bug.",
-                "tags": ["maintainability", "useless-code"],
-            },
-            "tool": {"name": "CodeQL", "guid": None, "version": "2.4.0"},
-            "created_at": "2020-06-19T11:21:34Z",
-            "updated_at": "2020-06-19T11:21:34Z",
-            "url": "https://api.github.com/repos/test-org/test-repo/code-scanning/alerts/42",
-            "html_url": "https://github.com/test-org/test-repo/security/code-scanning/42",
-        }
-
-        payload = {
-            "action": "created",
-            "alert": alert_data,
-            "repository": {"name": "test-repo"},
-        }
-
-        # Mock the RestCodeScanningAlertExporter
-        mock_exporter = AsyncMock()
-        mock_exporter.get_resource.return_value = {
-            **alert_data,
-            "__repository": "test-repo",
-        }
-
-        with (
-            patch(
-                "github.webhook.webhook_processors.code_scanning_alert_webhook_processor.create_github_client"
-            ) as mock_create_client,
-            patch(
-                "github.webhook.webhook_processors.code_scanning_alert_webhook_processor.RestCodeScanningAlertExporter",
-                return_value=mock_exporter,
-            ),
-        ):
-            mock_create_client.return_value = AsyncMock()
-
-            result = await code_scanning_webhook_processor.handle_event(
-                payload, code_scanning_resource_config
-            )
-
-            # Verify exporter was called with correct parameters
-            mock_exporter.get_resource.assert_called_once()
-            call_args = mock_exporter.get_resource.call_args[0][0]
-            assert call_args["repo_name"] == "test-repo"
-            assert call_args["alert_number"] == 42
-
-        assert isinstance(result, WebhookEventRawResults)
-        assert len(result.updated_raw_results) == 1
-        assert len(result.deleted_raw_results) == 0
-        assert result.updated_raw_results[0]["__repository"] == "test-repo"
-
-    async def test_handle_event_closed_by_user_not_in_allowed_state(
-        self,
-        code_scanning_webhook_processor: CodeScanningAlertWebhookProcessor,
-    ) -> None:
-        """Test handling a 'closed_by_user' event when 'dismissed' state is not allowed."""
-        # Create config that only allows 'open' state
-        resource_config = GithubCodeScanningAlertConfig(
-            kind="code-scanning-alerts",
-            selector=GithubCodeScanningAlertSelector(
-                query="true", state=["open"]  # Only open alerts allowed
-            ),
-            port=PortResourceConfig(
-                entity=MappingsConfig(
-                    mappings=EntityMapping(
-                        identifier='.repo + "-" + (.number | tostring)',
-                        title=".rule.name",
-                        blueprint='"code_scan_alerts"',
-                        properties={},
-                    )
-                )
-            ),
-        )
-
-        alert_data = {
-            "number": 43,
-            "state": "dismissed",
-            "rule": {
-                "id": "js/unused-local-variable",
-                "name": "Unused variable, import, function or class",
-                "severity": "warning",
-                "description": "Unused variables may be a symptom of a bug.",
-                "tags": ["maintainability", "useless-code"],
-            },
-            "dismissed_by": {"login": "test-user", "type": "User"},
-            "dismissed_reason": "used_in_tests",
-        }
-
-        payload = {
-            "action": "closed_by_user",
-            "alert": alert_data,
-            "repository": {"name": "test-repo"},
-        }
-
-        result = await code_scanning_webhook_processor.handle_event(
-            payload, resource_config
-        )
-
-        assert isinstance(result, WebhookEventRawResults)
-        assert len(result.updated_raw_results) == 0
-        assert len(result.deleted_raw_results) == 1
-        assert result.deleted_raw_results[0] == alert_data
-
+    @pytest.mark.parametrize(
+        "config_state,action",
+        [
+            ("open", "created"),
+            ("dismissed", "fixed"),
+            ("fixed", "fixed"),
+            ("closed", "closed_by_user"),
+        ],
+    )
     async def test_handle_event_fixed_in_allowed_state(
         self,
         code_scanning_webhook_processor: CodeScanningAlertWebhookProcessor,
+        config_state: Literal["open", "dismissed", "fixed", "closed"],
+        action: str,
     ) -> None:
         """Test handling a 'fixed' event when 'fixed' state is allowed."""
         # Create config that allows 'fixed' state
         resource_config = GithubCodeScanningAlertConfig(
             kind="code-scanning-alerts",
-            selector=GithubCodeScanningAlertSelector(
-                query="true", state=["open", "fixed"]
-            ),
+            selector=GithubCodeScanningAlertSelector(query="true", state=config_state),
             port=PortResourceConfig(
                 entity=MappingsConfig(
                     mappings=EntityMapping(
@@ -284,7 +176,7 @@ class TestCodeScanningAlertWebhookProcessor:
         }
 
         payload = {
-            "action": "fixed",
+            "action": action,
             "alert": alert_data,
             "repository": {"name": "test-repo"},
         }
@@ -317,93 +209,28 @@ class TestCodeScanningAlertWebhookProcessor:
         assert result.updated_raw_results[0]["state"] == "fixed"
         assert result.updated_raw_results[0]["__repository"] == "test-repo"
 
-    async def test_handle_event_appeared_in_branch_multiple_states(
-        self,
-        code_scanning_webhook_processor: CodeScanningAlertWebhookProcessor,
-        code_scanning_resource_config: GithubCodeScanningAlertConfig,
-    ) -> None:
-        """Test handling an 'appeared_in_branch' event which maps to 'open' state."""
-        alert_data = {
-            "number": 45,
-            "state": "open",
-            "rule": {
-                "id": "js/hardcoded-credentials",
-                "name": "Hard-coded credentials",
-                "severity": "error",
-                "security_severity_level": "high",
-                "description": "Credentials are hard-coded in the source code.",
-                "tags": ["security", "external/cwe/cwe-798"],
-            },
-            "tool": {"name": "CodeQL", "version": "2.4.0"},
-        }
-
-        payload = {
-            "action": "appeared_in_branch",
-            "alert": alert_data,
-            "repository": {"name": "test-repo"},
-        }
-
-        # Mock the RestCodeScanningAlertExporter
-        mock_exporter = AsyncMock()
-        mock_exporter.get_resource.return_value = {
-            **alert_data,
-            "__repository": "test-repo",
-        }
-
-        with (
-            patch(
-                "github.webhook.webhook_processors.code_scanning_alert_webhook_processor.create_github_client"
-            ) as mock_create_client,
-            patch(
-                "github.webhook.webhook_processors.code_scanning_alert_webhook_processor.RestCodeScanningAlertExporter",
-                return_value=mock_exporter,
-            ),
-        ):
-            mock_create_client.return_value = AsyncMock()
-
-            result = await code_scanning_webhook_processor.handle_event(
-                payload, code_scanning_resource_config
-            )
-
-        assert isinstance(result, WebhookEventRawResults)
-        assert len(result.updated_raw_results) == 1
-        assert len(result.deleted_raw_results) == 0
-        assert result.updated_raw_results[0]["rule"]["severity"] == "error"
-
     @pytest.mark.parametrize(
-        "action,expected_states",
+        "config_state,action",
         [
-            ("appeared_in_branch", ["open"]),
-            ("reopened_by_user", ["open"]),
-            ("reopened", ["open"]),
-            ("created", ["open"]),
-            ("fixed", ["fixed", "dismissed"]),
-            ("closed_by_user", ["dismissed"]),
+            ("open", "fixed"),  # fixed action not allowed for open state
+            ("dismissed", "created"),  # created action not allowed for dismissed state
+            (
+                "fixed",
+                "closed_by_user",
+            ),  # closed_by_user action not allowed for fixed state
+            ("closed", "reopened"),  # reopened action not allowed for closed state
         ],
     )
-    async def test_action_to_state_mapping(
+    async def test_handle_event_action_not_allowed(
         self,
         code_scanning_webhook_processor: CodeScanningAlertWebhookProcessor,
+        config_state: Literal["open", "dismissed", "fixed", "closed"],
         action: str,
-        expected_states: list[str],
     ) -> None:
-        """Test that actions are correctly mapped to states."""
-        # Import the mapping to verify it's correct
-        from github.webhook.events import CODE_SCANNING_ALERT_ACTION_TO_STATE
-
-        assert CODE_SCANNING_ALERT_ACTION_TO_STATE[action] == expected_states
-
-    async def test_handle_event_with_multiple_matching_states(
-        self,
-        code_scanning_webhook_processor: CodeScanningAlertWebhookProcessor,
-    ) -> None:
-        """Test handling a 'fixed' event where multiple states match the configuration."""
-        # Create config that allows both 'fixed' and 'dismissed' states
+        """Test handling events when the action is not allowed for the configured state."""
         resource_config = GithubCodeScanningAlertConfig(
             kind="code-scanning-alerts",
-            selector=GithubCodeScanningAlertSelector(
-                query="true", state=["open", "fixed", "dismissed"]
-            ),
+            selector=GithubCodeScanningAlertSelector(query="true", state=config_state),
             port=PortResourceConfig(
                 entity=MappingsConfig(
                     mappings=EntityMapping(
@@ -417,47 +244,30 @@ class TestCodeScanningAlertWebhookProcessor:
         )
 
         alert_data = {
-            "number": 46,
-            "state": "fixed",
+            "number": 45,
+            "state": config_state,
             "rule": {
-                "id": "js/xss",
-                "name": "Client-side cross-site scripting",
+                "id": "js/hardcoded-credentials",
+                "name": "Hard-coded credentials",
                 "severity": "error",
-                "security_severity_level": "medium",
-                "description": "Directly writing user input to the DOM.",
-                "tags": ["security", "external/cwe/cwe-079"],
+                "security_severity_level": "high",
+                "description": "Credentials are hard-coded in the source code.",
+                "tags": ["security", "external/cwe/cwe-798"],
             },
+            "tool": {"name": "CodeQL", "version": "2.4.0"},
         }
 
         payload = {
-            "action": "fixed",  # Maps to both "fixed" and "dismissed"
+            "action": action,
             "alert": alert_data,
             "repository": {"name": "test-repo"},
         }
 
-        # Mock the RestCodeScanningAlertExporter
-        mock_exporter = AsyncMock()
-        mock_exporter.get_resource.return_value = {
-            **alert_data,
-            "__repository": "test-repo",
-        }
+        result = await code_scanning_webhook_processor.handle_event(
+            payload, resource_config
+        )
 
-        with (
-            patch(
-                "github.webhook.webhook_processors.code_scanning_alert_webhook_processor.create_github_client"
-            ) as mock_create_client,
-            patch(
-                "github.webhook.webhook_processors.code_scanning_alert_webhook_processor.RestCodeScanningAlertExporter",
-                return_value=mock_exporter,
-            ),
-        ):
-            mock_create_client.return_value = AsyncMock()
-
-            result = await code_scanning_webhook_processor.handle_event(
-                payload, resource_config
-            )
-
-        # Should process the event because at least one of the mapped states is allowed
         assert isinstance(result, WebhookEventRawResults)
-        assert len(result.updated_raw_results) == 1
-        assert len(result.deleted_raw_results) == 0
+        assert len(result.updated_raw_results) == 0
+        assert len(result.deleted_raw_results) == 1
+        assert result.deleted_raw_results[0] == alert_data

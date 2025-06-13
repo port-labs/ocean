@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import Literal
 from pydantic import Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -34,9 +34,9 @@ class GithubIssueConfig(ResourceConfig):
 
 
 class GithubDependabotAlertSelector(Selector):
-    state: List[str] = Field(
+    states: list[Literal["auto_dismissed", "dismissed", "fixed", "open"]] = Field(
         default=["open"],
-        description="Filter alerts by state (open, closed, dismissed, fixed)",
+        description="Filter alerts by state (auto_dismissed, dismissed, fixed, open)",
     )
 
 
@@ -46,8 +46,8 @@ class GithubDependabotAlertConfig(ResourceConfig):
 
 
 class GithubCodeScanningAlertSelector(Selector):
-    state: List[str] = Field(
-        default=["open"],
+    state: Literal["open", "closed", "dismissed", "fixed"] = Field(
+        default="open",
         description="Filter alerts by state (open, closed, dismissed, fixed)",
     )
 

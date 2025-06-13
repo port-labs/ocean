@@ -33,7 +33,6 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all code scanning alerts in the repository with pagination."""
 
         repo_name, params = extract_repo_params(dict(options))
-        params["state"] = ",".join(params["state"])
 
         async for alerts in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/code-scanning/alerts",

@@ -3,7 +3,7 @@ from loguru import logger
 from github.webhook.events import (
     CODE_SCANNING_ALERT_ACTION_TO_STATE,
 )
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import ObjectKind, enrich_with_repository
 from github.clients.client_factory import create_github_client
 from integration import GithubCodeScanningAlertConfig
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
@@ -45,12 +45,22 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         config = cast(GithubCodeScanningAlertConfig, resource_config)
-        current_states = CODE_SCANNING_ALERT_ACTION_TO_STATE[action]
+        possible_states = CODE_SCANNING_ALERT_ACTION_TO_STATE.get(action, [])
 
-        if not any(state in config.selector.state for state in current_states):
+        if not possible_states:
             logger.info(
-                f"Code scanning alert {alert_number} in {repo_name} is not in the allowed states: {current_states}. Deleting resource."
+                f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name}. Skipping resource."
             )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        if config.selector.state not in possible_states:
+            logger.info(
+                f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name}. Deleting resource."
+            )
+
+            alert = enrich_with_repository(alert, repo_name)
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[alert]

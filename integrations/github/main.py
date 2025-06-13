@@ -296,7 +296,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             dependabot_alert_exporter.get_paginated_resources(
                 ListDependabotAlertOptions(
                     repo_name=repo["name"],
-                    state=config.selector.state,
+                    state=list(config.selector.states),
                 )
             )
             for repo in repositories

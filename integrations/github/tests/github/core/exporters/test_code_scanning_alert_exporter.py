@@ -155,7 +155,7 @@ class TestRestCodeScanningAlertExporter:
 
             alerts = []
             async for batch in exporter.get_paginated_resources(
-                ListCodeScanningAlertOptions(repo_name="test-repo", state=["open"])
+                ListCodeScanningAlertOptions(repo_name="test-repo", state="open")
             ):
                 alerts.extend(batch)
 
@@ -181,7 +181,7 @@ class TestRestCodeScanningAlertExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 options = ListCodeScanningAlertOptions(
-                    repo_name="test-repo", state=["open"]
+                    repo_name="test-repo", state="open"
                 )
                 exporter = RestCodeScanningAlertExporter(rest_client)
 
@@ -223,37 +223,3 @@ class TestRestCodeScanningAlertExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts/43"
             )
-
-    async def test_get_paginated_resources_with_multiple_states(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        # Test with multiple state options
-        async def mock_paginated_request(
-            *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield TEST_CODE_SCANNING_ALERTS
-
-        with patch.object(
-            rest_client, "send_paginated_request", side_effect=mock_paginated_request
-        ) as mock_request:
-            async with event_context("test_event"):
-                options = ListCodeScanningAlertOptions(
-                    repo_name="my-repo", state=["open", "dismissed", "fixed"]
-                )
-                exporter = RestCodeScanningAlertExporter(rest_client)
-
-                alerts: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
-
-                assert len(alerts) == 1
-                assert len(alerts[0]) == 2
-
-                # Verify repository field correctly set
-                for alert in alerts[0]:
-                    assert alert["__repository"] == "my-repo"
-
-                mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/my-repo/code-scanning/alerts",
-                    {"state": "open,dismissed,fixed"},
-                )

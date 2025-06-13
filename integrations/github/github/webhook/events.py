@@ -55,41 +55,28 @@ RELEASE_DELETE_EVENTS = ["deleted"]
 RELEASE_EVENTS = RELEASE_UPSERT_EVENTS + RELEASE_DELETE_EVENTS
 
 
-DEPENDABOT_ALERT_EVENTS = [
-    "auto_reopened",
-    "created",
-    "reopened",
-    "reintroduced",
-    "auto_dismissed",
-    "dismissed",
-    "fixed",
-]
-
 DEPENDABOT_ACTION_TO_STATE = {
     "created": "open",
     "reopened": "open",
     "auto_reopened": "open",
+    "reintroduced": "open",
     "dismissed": "dismissed",
     "auto_dismissed": "auto_dismissed",
     "fixed": "fixed",
 }
 
-CODE_SCANNING_ALERT_EVENTS = [
-    "appeared_in_branch",
-    "created",
-    "fixed",
-    "reopened",
-    "reopened_by_user",
-    "closed_by_user",
-]
+DEPENDABOT_ALERT_EVENTS = list(DEPENDABOT_ACTION_TO_STATE.keys())
+
+
 CODE_SCANNING_ALERT_ACTION_TO_STATE = {
     "appeared_in_branch": ["open"],
-    "reopened_by_user": ["open"],
     "reopened": ["open"],
     "created": ["open"],
     "fixed": ["fixed", "dismissed"],
-    "closed_by_user": ["dismissed"],
+    "closed_by_user": ["closed"],
 }
+
+CODE_SCANNING_ALERT_EVENTS = list(CODE_SCANNING_ALERT_ACTION_TO_STATE.keys())
 
 
 ALL_EVENTS = (
