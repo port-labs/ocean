@@ -48,6 +48,7 @@ def repository_webhook_processor(
 
 @pytest.mark.asyncio
 class TestRepositoryWebhookProcessor:
+
     @pytest.mark.parametrize(
         "github_event,result", [(ObjectKind.REPOSITORY, True), ("invalid", False)]
     )
