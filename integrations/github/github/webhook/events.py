@@ -55,12 +55,38 @@ RELEASE_DELETE_EVENTS = ["deleted"]
 RELEASE_EVENTS = RELEASE_UPSERT_EVENTS + RELEASE_DELETE_EVENTS
 
 
+DEPENDABOT_ACTION_TO_STATE = {
+    "created": "open",
+    "reopened": "open",
+    "auto_reopened": "open",
+    "reintroduced": "open",
+    "dismissed": "dismissed",
+    "auto_dismissed": "auto_dismissed",
+    "fixed": "fixed",
+}
+
+DEPENDABOT_ALERT_EVENTS = list(DEPENDABOT_ACTION_TO_STATE.keys())
+
+
+CODE_SCANNING_ALERT_ACTION_TO_STATE = {
+    "appeared_in_branch": ["open"],
+    "reopened": ["open"],
+    "created": ["open"],
+    "fixed": ["fixed", "dismissed"],
+    "closed_by_user": ["closed"],
+}
+
+CODE_SCANNING_ALERT_EVENTS = list(CODE_SCANNING_ALERT_ACTION_TO_STATE.keys())
+
+
 ALL_EVENTS = (
     REPOSITORY_UPSERT_EVENTS
     + REPOSITORY_DELETE_EVENTS
     + PULL_REQUEST_EVENTS
     + ISSUE_EVENTS
     + RELEASE_EVENTS
+    + DEPENDABOT_ALERT_EVENTS
+    + CODE_SCANNING_ALERT_EVENTS
 )
 
 WEBHOOK_CREATE_EVENTS = [
@@ -73,4 +99,6 @@ WEBHOOK_CREATE_EVENTS = [
     "push",
     "deployment",
     "deployment_status",
+    "dependabot_alert",
+    "code_scanning_alert",
 ]
