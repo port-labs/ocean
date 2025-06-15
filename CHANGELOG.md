@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.24.7 (2025-06-15)
+
+### Improvements
+- Added support for mapping as part of ocean integration mappings.
+
 ## 0.24.6 (2025-06-09)
 
 ### Improvements
