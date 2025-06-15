@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.30 (2025-06-09)
+
+
+### Improvements
+
+- Added support for ingesting merge requests in different states (opened, closed, merged) through a new state selector configuration, allowing users to specify which merge request states they want to track
+
+
+## 0.1.29 (2025-06-11)
+
+
+### Improvements
+
+- Changed job fetching to use pipeline context instead of project context to establish proper parent-child relationships between pipelines and jobs
+
+
+## 0.1.28 (2025-06-11)
+
+
+### Improvements
+
+
+- Bumped ocean version to ^0.24.8
+
+
+## 0.1.27 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
 ## 0.1.26 (2025-06-09)
 
 

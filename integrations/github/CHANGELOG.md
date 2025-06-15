@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0-dev (2025-06-13)
+
+
+### Features
+
+- Added support for Github workflows
+- Added support support for Github workflow runs
+- Implemented webhook processors for Workflow runs and workflows for real-time updates
+
+
+## 0.1.17-dev (2025-06-13)
+
+
+### Features
+
+- Added support for Dependabot alerts and Code Scanning alerts with state-based filtering
+- Implemented Dependabot alert and Code Scanning alert webhook processor for real-time updates
+
+
+## 0.1.16-dev (2025-06-13)
+
+
+### Features
+
+- Added support for Environment resources to track repository environments
+- Added support for Deployment resources with environment tracking
+- Implemented deployment and environment webhook processors for real-time updates
+
+
+## 0.1.15-dev (2025-06-12)
+
+
+### Features
+
+- Added support for Tag resources to track repository tags
+- Added support for Release resources with state-based filtering (created, edited, deleted)
+- Added support for Branch resources to track repository branches
+- Implemented tag, release, and branch webhook processors for real-time updates
+
+
+## 0.1.14-dev (2025-06-11)
+
+
+### Improvements
+
+- Added support for Issue resources with state-based filtering (open, closed, all)
+- Implemented issue webhook processor for real-time updates
+
+
+## 0.1.13-dev (2025-06-11)
+
+
+- Added support for Pull Request resources with state-based filtering (open, closed, all)
+- Implemented pull request webhook processor for real-time updates
+
+
+## 0.1.12-dev (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.8
+
+
+## 0.1.11-dev (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
 ## 0.1.10-dev (2025-06-09)
 
 
@@ -41,7 +113,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.6-dev (2025-06-04)
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.24.2
@@ -65,13 +136,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.3-dev (2025-06-01)
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.23.5
 
 
 ## 0.1.2-dev (2025-05-30)
+
 
 ### Bug Fixes
 
