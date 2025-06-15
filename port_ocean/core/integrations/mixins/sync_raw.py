@@ -257,14 +257,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.SKIPPED],
                             value=len(objects_diff[0].entity_selector_diff.passed) - len(changed_entities)
                         )
-                    upserted_entities = await self.entities_state_applier.upsert(
+                    await self.entities_state_applier.upsert(
                         changed_entities, user_agent_type
-                    )
-
-                    ocean.metrics.set_metric(
-                        name=MetricType.OBJECT_COUNT_NAME,
-                        labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.LOADED],
-                        value=len(upserted_entities)
                     )
 
                 else:
@@ -279,11 +273,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning(f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}")
                 modified_objects = await self.entities_state_applier.upsert(
                     objects_diff[0].entity_selector_diff.passed, user_agent_type
-                    )
-                ocean.metrics.set_metric(
-                        name=MetricType.OBJECT_COUNT_NAME,
-                        labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.LOADED],
-                        value=len(upserted_entities)
                     )
         else:
            modified_objects = await self.entities_state_applier.upsert(
