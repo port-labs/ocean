@@ -9,7 +9,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## 0.24.9 (2025-06-15)
 
 ### Improvements
-- Added support for mapping as part of ocean integration mappings.
+- Added support for mapping icons as part of ocean integration mappings.
 
 ## 0.24.8 (2025-06-11)
 
