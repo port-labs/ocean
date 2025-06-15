@@ -1,0 +1,42 @@
+resources:
+  - kind: resource
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '.resourceId | gsub(" ";"_")'
+          title: .name
+          blueprint: '"azureCloudResources"'
+          properties:
+            tags: .tags
+            type: .type
+            location: .location
+
+  - kind: resourceContainer
+    selector:
+      query: .type == "microsoft.resources/subscriptions"
+    port:
+      entity:
+        mappings:
+          identifier: '.resourceId | gsub(" ";"_")'
+          title: .name
+          blueprint: '"azureSubscription"'
+          properties:
+            subscriptionId: .subscriptionId
+            location: .location
+
+  - kind: resourceContainer
+    selector:
+      query: .type == "microsoft.resources/subscriptions/resourcegroups"
+    port:
+      entity:
+        mappings:
+          identifier: '.resourceId | gsub(" ";"_")'
+          title: .name
+          blueprint: '"azureResourceGroup"'
+          properties:
+            tags: .tags
+            location: .location
+          relations:
+            subscription: '("/subscriptions/" + .subscriptionId) | gsub(" ";"_")'
