@@ -15,7 +15,7 @@ Resource Mapping is an ETL layer built into the Ocean framework. Ocean integrati
 
 A resource mapping is a YAML configuration that can be applied to an integration in the following ways:
 
-- Via a [`port-app-config.yml`](../../develop-an-integration/integration-spec-and-default-resources.md#port-app-configyml-file) file that is part of the [`.port`](../../develop-an-integration/integration-spec-and-default-resources.md#port-folder) specification folder of the integration
+- Via a [`port-app-config.yml`](../../developing-an-integration/defining-configuration-files.md#the-port-app-configyml-file) file that is part of the [`.port`](../../developing-an-integration/defining-configuration-files.md#the-port-directory-structure) specification folder of the integration
 - By updating the integration configuration through Port's UI
 - By updating the integration configuration by making a PATCH request to Port's `https://api.getport.io/v1/integration/<INTEGRATION_IDENTIIFER>` route with the updated configuration
 
@@ -252,7 +252,7 @@ The following table specifies all of the fields that can be specified in the res
 | `deleteDependentEntities`               | bool  | `false` | Delete dependent entities when the parent entity is deleted.                                                                                                                                                                    |
 | `createMissingRelatedEntities`          | bool  | `false` | Create missing related entities when the child entity is created.                                                                                                                                                               |
 | `resources`                             | array | `[]`    | A list of resources to map.                                                                                                                                                                                                     |
-| `resources.[].kind`\*                   | str   |         | The kind name of the resource. (Should match one of the available kinds in the [integration specification](../../develop-an-integration/integration-spec-and-default-resources.md#features---integration-feature-specification)) |
+| `resources.[].kind`\*                   | str   |         | The kind name of the resource. (Should match one of the available kinds in the [integration specification](../../developing-an-integration/defining-configuration-files.md#features-specification)) |
 | `resources.[].selector.query`\*         | str   |         | A JQ expression that will be used to filter the raw data from the 3rd-party application.                                                                                                                                        |
 | `resources.[].port.itemsToParse`        | str   |         | A JQ expression that will be used to apply the mapping on the items of an array and generate multiple entities from the array items.                                                                                              |
 | `resources.[].port.entity.identifier`\* | str   |         | A JQ expression that will be used to extract the entity identifier.                                                                                                                                                             |
