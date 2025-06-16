@@ -134,7 +134,7 @@ class SessionManager:
         member_account_list = ocean.integration_config.get("member_accounts", [])
         member_accounts = []
         for account_id in member_account_list:
-            member_accounts.append({"Id": account_id, "Name": "No name found"})
+            member_accounts.append({"Id": f"{account_id}", "Name": "No name found"})
         return member_accounts
     
     async def _update_available_access_credentials_without_root(self) -> None:
