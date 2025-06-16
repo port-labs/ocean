@@ -1,5 +1,5 @@
-from typing import Any, AsyncGenerator, Optional, Generator
-from httpx import HTTPError, HTTPStatusError, Auth, Request, Response
+from typing import Any, AsyncGenerator, Optional
+from httpx import HTTPError, HTTPStatusError, Request
 from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.clients.auth.oauth_client import OAuthClient
@@ -16,17 +16,6 @@ PAGE_SIZE = 100
 RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
     limit=BitbucketRateLimiterConfig.LIMIT, window=BitbucketRateLimiterConfig.WINDOW
 )
-
-
-class BearerAuth(Auth):
-    """Bearer token authentication for OAuth2."""
-
-    def __init__(self, token: str):
-        self.token = token
-
-    def auth_flow(self, request: Request) -> Generator[Request, Response, None]:
-        request.headers["Authorization"] = f"Bearer {self.token}"
-        yield request
 
 
 class BitbucketClient(OAuthClient):

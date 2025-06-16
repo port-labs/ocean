@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Generator
-from bitbucket_cloud.client import BitbucketClient, BearerAuth
+from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -353,19 +353,6 @@ class TestBitbucketClient:
                     workspace="test-workspace",
                     host="https://api.bitbucket.org/2.0",
                 )
-
-    def test_bearer_auth_flow(self) -> None:
-        """Test BearerAuth auth flow."""
-        from httpx import Request
-
-        auth = BearerAuth("test-token")
-        request = Request("GET", "https://example.com")
-
-        # Get the updated request from auth flow
-        auth_flow = auth.auth_flow(request)
-        updated_request = next(auth_flow)
-
-        assert updated_request.headers["Authorization"] == "Bearer test-token"
 
     def test_oauth_fallback_to_workspace_token(self) -> None:
         """Test OAuth fallback to workspace token when external token is not available."""
