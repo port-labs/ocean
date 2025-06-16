@@ -6,17 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.24.9 (2025-06-12)
+
+## 0.24.11 (2025-06-16)
 
 ### Bug Fixes
 - Prevented unhandled exception when webhook event is received for resource types not present in mapping but can be handled by processors.
 
+## 0.24.10 (2025-06-15)
+
+### Bug Fixes
+- Fixed overwriting syncing state metrics reporting during resource processing
+
+## 0.24.9 (2025-06-15)
+
+### Improvements
+- Added support for mapping icons as part of ocean integration mappings.
 
 ## 0.24.8 (2025-06-11)
 
 ### Bug Fixes
 - Fixed missing syncing state metrics reporting during resource processing
-
 
 ## 0.24.7 (2025-06-11)
 
