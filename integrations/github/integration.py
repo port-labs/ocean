@@ -36,7 +36,7 @@ class GithubIssueConfig(ResourceConfig):
 
 
 class GithubTeamSector(Selector):
-    include_members: bool = Field(default=False)
+    include_members: bool = Field(default=True)
 
 
 class GithubTeamConfig(ResourceConfig):

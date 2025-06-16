@@ -70,7 +70,7 @@ query getTeamMembers($organization: String!, $first: Int = 25, $after: String){{
 
 FETCH_TEAM_WITH_MEMBERS_GQL = """
 query getTeam($organization: String!, $slug: String!){
-	organization(login: $org){
+	organization(login: $organization){
     team(slug:$slug){
 
         slug
@@ -92,4 +92,36 @@ query getTeam($organization: String!, $slug: String!){
 
   }
 }
+"""
+
+LIST_EXTERNAL_IDENTITIES_GQL = f"""
+    {PAGE_INFO_FRAGMENT}
+    query ($organization: String!, $first: Int = 25, $after: String) {{
+      organization(login: $organization) {{
+        samlIdentityProvider {{
+          ssoUrl
+          externalIdentities(first: $first, after: $after) {{
+            edges {{
+              node {{
+                guid
+                samlIdentity {{
+                  nameId
+                  emails {{
+                    primary
+                    type
+                    value
+                  }}
+                }}
+                user {{
+                  login
+                }}
+              }}
+            }}
+            pageInfo {{
+            ...PageInfoFields
+            }}
+          }}
+        }}
+      }}
+    }}
 """

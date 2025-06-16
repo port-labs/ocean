@@ -92,10 +92,10 @@ class GithubGraphQLClient(AbstractGithubClient):
 
     def _extract_nodes(self, data: Dict[str, Any], path: str) -> List[Dict[str, Any]]:
         keys = path.split(".")
-        current = data
+        current: Any = data
         for key in keys:
             current = current[key]
-        return current["nodes"]
+        return current
 
     def _extract_page_info(self, data: Dict[str, Any], path: str) -> Dict[str, Any]:
         keys = path.split(".")

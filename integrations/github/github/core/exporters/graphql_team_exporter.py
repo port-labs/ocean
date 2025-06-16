@@ -9,9 +9,9 @@ from github.helpers.gql_queries import (
 
 
 class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    async def get_resource[
-        ExporterOptionT: SingleTeamOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionT: SingleTeamOptions](
+        self, options: ExporterOptionT
+    ) -> RAW_ITEM:
         variables = {"slug": options["slug"], "organization": self.client.organization}
         payload = self.client.build_graphql_payload(
             FETCH_TEAM_WITH_MEMBERS_GQL, variables
@@ -27,9 +27,10 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         variables = {
             "organization": self.client.organization,
-            "__path": "organization.teams",
+            "__path": "organization.teams.nodes",
         }
         async for teams in self.client.send_paginated_request(
             LIST_TEAM_MEMBERS_GQL, variables
         ):
+            print(teams)
             yield teams

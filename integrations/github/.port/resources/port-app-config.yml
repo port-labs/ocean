@@ -30,6 +30,7 @@ resources:
   - kind: team
     selector:
       query: "true"
+      include_members: true
     port:
       entity:
         mappings:
@@ -39,10 +40,12 @@ resources:
           properties:
             slug: .slug
             description: .description
-            link: .html_url
+            link: .url
             permission: .permission
-            notification_setting: .notification_setting
-
+            notification_setting: .notificationsetting
+            members: '[.members.nodes[].login]'
+          reations:
+            github_user: '[.members.nodes[].login]'
   - kind: pull-request
     selector:
       query: 'true'
