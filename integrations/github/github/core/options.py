@@ -41,6 +41,25 @@ class ListIssueOptions(RepositoryIdentifier):
     state: Required[str]
 
 
+class ListWorkflowOptions(RepositoryIdentifier):
+    """Options for workflows"""
+
+
+class SingleWorkflowOptions(ListWorkflowOptions):
+    workflow_id: Required[str]
+
+
+class ListWorkflowRunOptions(RepositoryIdentifier):
+    """Options for workflow runs"""
+
+    workflow_id: Required[int]
+    max_runs: Required[int]
+
+
+class SingleWorkflowRunOptions(RepositoryIdentifier):
+    run_id: Required[str]
+
+
 class SingleReleaseOptions(RepositoryIdentifier):
     """Options for fetching a single release."""
 

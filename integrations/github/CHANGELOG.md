@@ -7,8 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.1-dev (2025-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.10
+
+
+## 0.2.0-dev (2025-06-13)
+
+
+### Features
+
+- Added support for Github workflows
+- Added support support for Github workflow runs
+- Implemented webhook processors for Workflow runs and workflows for real-time updates
+
+
 ## 0.1.17-dev (2025-06-13)
 
+
+### Features
 
 - Added support for Dependabot alerts and Code Scanning alerts with state-based filtering
 - Implemented Dependabot alert and Code Scanning alert webhook processor for real-time updates
@@ -123,7 +143,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.3-dev (2025-06-01)
-
 
 ### Improvements
 
