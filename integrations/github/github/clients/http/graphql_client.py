@@ -98,7 +98,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         return current
 
     def _extract_page_info(self, data: Dict[str, Any], path: str) -> Dict[str, Any]:
-        keys = path.split(".")
+        keys = path.split(".")[:-1]
         current = data
         for key in keys:
             current = current[key]

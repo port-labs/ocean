@@ -118,7 +118,7 @@ class TestGraphQLTeamExporter:
 
                 expected_variables = {
                     "organization": graphql_client.organization,
-                    "__path": "organization.teams",
+                    "__path": "organization.teams.nodes",
                 }
                 mock_request.assert_called_once_with(
                     LIST_TEAM_MEMBERS_GQL, expected_variables
