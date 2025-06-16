@@ -43,6 +43,10 @@ class SessionManager:
         if the application has access to the organization account,
         it will assume the role specified in the configuration to read all the organization accounts,
         and then assume the role in each account to get the credentials required to interact with AWS services.
+
+        if member accounts are specified in the configuration (no need to have access to organization account) for this,
+        it will assume the role specified in the configuration to read all the member accounts,
+        and then assume the role in each account to get the credentials required to interact with AWS services.
         """
         self._aws_accessible_accounts = []
         self._aws_credentials = []
@@ -58,6 +62,7 @@ class SessionManager:
 
         self._organization_reader = await self._get_organization_session()
         await self._update_available_access_credentials()
+        await self._update_available_access_credentials_without_root()
 
     def __get_default_keys(self) -> dict[str, Any]:
         return {
@@ -124,6 +129,45 @@ class SessionManager:
 
     def _get_account_read_role_name(self) -> str:
         return ocean.integration_config.get("account_read_role_name", "")
+    
+    def _get_member_accounts(self) -> list[dict[str, Any]]:
+        member_account_list = ocean.integration_config.get("member_accounts", [])
+        member_accounts = []
+        for account_id in member_account_list:
+            member_accounts.append({"Id": account_id, "Name": "No name found"})
+        return member_accounts
+    
+    async def _update_available_access_credentials_without_root(self) -> None:
+        logger.info("Updating AWS credentials")
+        async with (
+            typing.cast(aioboto3.Session, self._application_session).client(
+                "sts"
+            ) as sts_client
+        ):
+            try:
+                member_accounts = self._get_member_accounts()
+                tasks = []
+                for account in member_accounts:
+                    if account["Id"] == self._application_account_id:
+                        # Skip the current account as it is already added
+                        # Replace the Temp account details with the current account details
+                        self._aws_accessible_accounts[0] = account
+                        continue
+                    tasks.append(
+                        self._assume_role_and_update_credentials(
+                            sts_client, account
+                        )
+                    )
+                    if len(tasks) >= CONCURRENT_ACCOUNTS:
+                        await asyncio.gather(*tasks)
+                        tasks.clear()
+                if tasks:
+                    await asyncio.gather(*tasks)
+                    tasks.clear()
+            except Exception as e:
+                logger.error(f"Error fetching member accounts: {str(e)}")
+                raise
+        logger.info(f"Found {len(self._aws_credentials)} AWS accounts")
 
     async def _update_available_access_credentials(self) -> None:
         logger.info("Updating AWS credentials")
