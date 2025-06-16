@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.38 (2025-06-16)
+
+
+### Improvements
+
+- Added support for OAuth2 authentication in the integration
+
+
 ## 0.1.37 (2025-06-15)
 
 

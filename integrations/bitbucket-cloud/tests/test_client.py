@@ -3,8 +3,10 @@ from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Generator
-from bitbucket_cloud.client import BitbucketClient
+from bitbucket_cloud.client import BitbucketClient, BearerAuth
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
+from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 
 @pytest.fixture
@@ -52,8 +54,10 @@ async def test_client_init_with_token() -> None:
         new_callable=PropertyMock,
     ) as mock_config:
         mock_config.return_value = config
-        client = BitbucketClient.create_from_ocean_config()
-        assert "Bearer test_token" in client.headers["Authorization"]
+        with patch.object(BitbucketClient, "is_oauth_enabled", return_value=False):
+            client = BitbucketClient.create_from_ocean_config()
+            assert "Authorization" in client.headers
+            assert client.headers["Authorization"] == "Bearer test_token"
 
 
 @pytest.mark.asyncio
@@ -61,8 +65,10 @@ async def test_client_init_with_app_password(
     mock_integration_config: dict[str, str]
 ) -> None:
     """Test client initialization with app password auth."""
-    client = BitbucketClient.create_from_ocean_config()
-    assert "Basic" in client.headers["Authorization"]
+    with patch.object(BitbucketClient, "is_oauth_enabled", return_value=False):
+        client = BitbucketClient.create_from_ocean_config()
+        assert "Authorization" in client.headers
+        assert "Basic" in client.headers["Authorization"]
 
 
 @pytest.mark.asyncio
@@ -77,12 +83,13 @@ async def test_client_init_no_auth() -> None:
         new_callable=PropertyMock,
     ) as mock_config:
         mock_config.return_value = config
-        with pytest.raises(MissingIntegrationCredentialException) as exc_info:
-            BitbucketClient.create_from_ocean_config()
-        assert (
-            "Either workspace token or both username and app password must be provided"
-            in str(exc_info.value)
-        )
+        with patch.object(BitbucketClient, "is_oauth_enabled", return_value=False):
+            with pytest.raises(MissingIntegrationCredentialException) as exc_info:
+                BitbucketClient.create_from_ocean_config()
+            assert (
+                "Either workspace token or both username and app password must be provided"
+                in str(exc_info.value)
+            )
 
 
 @pytest.mark.asyncio
@@ -270,3 +277,156 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
                 params={"state": "OPEN", "pagelen": 50},
             )
+
+
+@pytest.fixture(autouse=True)
+def mock_ocean_context() -> None:
+    """Fixture to mock the Ocean context initialization."""
+    try:
+        mock_ocean_app = MagicMock()
+        mock_ocean_app.config = MagicMock()
+        mock_ocean_app.config.oauth_access_token_file_path = None
+        mock_ocean_app.config.integration.config = {
+            "bitbucket_workspace": "test-workspace",
+            "bitbucket_host_url": "https://api.bitbucket.org/2.0",
+            "bitbucket_username": "test-user",
+            "bitbucket_app_password": "test-password",
+            "bitbucket_workspace_token": "test-token",
+        }
+        mock_ocean_app.integration_router = MagicMock()
+        mock_ocean_app.port_client = MagicMock()
+        mock_ocean_app.cache_provider = AsyncMock()
+        mock_ocean_app.cache_provider.get.return_value = None
+        mock_ocean_app.load_external_oauth_access_token = MagicMock(return_value=None)
+        initialize_port_ocean_context(mock_ocean_app)
+    except PortOceanContextAlreadyInitializedError:
+        pass
+
+
+class TestBitbucketClient:
+    def test_client_initialization_with_workspace_token(self) -> None:
+        """Test BitbucketClient initialization with workspace token."""
+        with patch.object(BitbucketClient, "is_oauth_enabled", return_value=False):
+            client = BitbucketClient(
+                workspace="test-workspace",
+                host="https://api.bitbucket.org/2.0",
+                workspace_token="test-token",
+            )
+            assert client.workspace == "test-workspace"
+            assert client.base_url == "https://api.bitbucket.org/2.0"
+            assert "Authorization" in client.headers
+            assert client.headers["Authorization"] == "Bearer test-token"
+
+    def test_client_initialization_with_username_password(self) -> None:
+        """Test BitbucketClient initialization with username and app password."""
+        with patch.object(BitbucketClient, "is_oauth_enabled", return_value=False):
+            client = BitbucketClient(
+                workspace="test-workspace",
+                host="https://api.bitbucket.org/2.0",
+                username="test-user",
+                app_password="test-password",
+            )
+            assert client.workspace == "test-workspace"
+            assert client.base_url == "https://api.bitbucket.org/2.0"
+            assert "Authorization" in client.headers
+            assert client.headers["Authorization"].startswith("Basic ")
+
+    def test_client_initialization_oauth_enabled(self) -> None:
+        """Test BitbucketClient initialization with OAuth enabled."""
+        with (
+            patch.object(BitbucketClient, "is_oauth_enabled", return_value=True),
+            patch.object(BitbucketClient, "external_access_token", "oauth-token"),
+        ):
+            client = BitbucketClient(
+                workspace="test-workspace",
+                host="https://api.bitbucket.org/2.0",
+                workspace_token="test-token",
+            )
+            assert "Authorization" in client.headers
+            assert client.headers["Authorization"] == "Bearer oauth-token"
+
+    def test_client_initialization_missing_credentials(self) -> None:
+        """Test BitbucketClient initialization fails with missing credentials."""
+        with patch.object(BitbucketClient, "is_oauth_enabled", return_value=False):
+            with pytest.raises(MissingIntegrationCredentialException):
+                BitbucketClient(
+                    workspace="test-workspace",
+                    host="https://api.bitbucket.org/2.0",
+                )
+
+    def test_bearer_auth_flow(self) -> None:
+        """Test BearerAuth auth flow."""
+        from httpx import Request
+
+        auth = BearerAuth("test-token")
+        request = Request("GET", "https://example.com")
+
+        # Get the updated request from auth flow
+        auth_flow = auth.auth_flow(request)
+        updated_request = next(auth_flow)
+
+        assert updated_request.headers["Authorization"] == "Bearer test-token"
+
+    def test_oauth_fallback_to_workspace_token(self) -> None:
+        """Test OAuth fallback to workspace token when external token is not available."""
+        with (
+            patch.object(BitbucketClient, "is_oauth_enabled", return_value=True),
+            patch.object(
+                BitbucketClient,
+                "external_access_token",
+                new_callable=PropertyMock,
+                side_effect=ValueError("No external access token found"),
+            ),
+        ):
+            client = BitbucketClient(
+                workspace="test-workspace",
+                host="https://api.bitbucket.org/2.0",
+                workspace_token="workspace-token",
+            )
+            # Should fallback to workspace token
+            assert client.headers["Authorization"] == "Bearer workspace-token"
+
+    def test_refresh_request_auth_creds_oauth(self) -> None:
+        """Test refresh_request_auth_creds with OAuth enabled."""
+        from httpx import Request
+
+        with (
+            patch.object(BitbucketClient, "is_oauth_enabled", return_value=True),
+            patch.object(BitbucketClient, "external_access_token", "oauth-token"),
+        ):
+            client = BitbucketClient(
+                workspace="test-workspace",
+                host="https://api.bitbucket.org/2.0",
+                workspace_token="test-token",
+            )
+
+            request = Request("GET", "https://example.com")
+            refreshed_request = client.refresh_request_auth_creds(request)
+
+            assert refreshed_request.headers["Authorization"] == "Bearer oauth-token"
+
+    def test_refresh_request_auth_creds_no_oauth(self) -> None:
+        """Test refresh_request_auth_creds with OAuth disabled."""
+        from httpx import Request
+
+        with patch.object(BitbucketClient, "is_oauth_enabled", return_value=False):
+            client = BitbucketClient(
+                workspace="test-workspace",
+                host="https://api.bitbucket.org/2.0",
+                workspace_token="test-token",
+            )
+
+            original_request = Request("GET", "https://example.com")
+            refreshed_request = client.refresh_request_auth_creds(original_request)
+
+            # Should return the same request when OAuth is not enabled
+            assert refreshed_request == original_request
+
+    def test_create_from_ocean_config(self) -> None:
+        """Test create_from_ocean_config class method."""
+        from port_ocean.context.ocean import ocean
+
+        with patch.object(BitbucketClient, "is_oauth_enabled", return_value=False):
+            client = BitbucketClient.create_from_ocean_config()
+            assert client.workspace == ocean.integration_config["bitbucket_workspace"]
+            assert client.base_url == ocean.integration_config["bitbucket_host_url"]

@@ -57,11 +57,16 @@ class BitbucketWebhookClient(BitbucketClient):
 
         Workspace webhooks are fired for events from all repositories within the workspace.
 
-        :param webhook_url: The URL to which the webhook should send events.
+        :param app_host: The base URL for the webhook endpoint.
         """
         logger.info("Setting up Bitbucket webhooks for workspace: {}", self.workspace)
 
         webhook_url = f"{app_host}/integration/webhook"
+
+        # Check if OAuth is enabled for different webhook permissions/behavior
+        if self.is_oauth_enabled():
+            logger.info("Creating webhook with OAuth2 authentication")
+
         if await self._webhook_exist(webhook_url):
             logger.info(
                 "Webhook already exists for workspace {} (webhook URL: {}), skipping creation.",
