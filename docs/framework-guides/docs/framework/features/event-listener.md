@@ -51,7 +51,7 @@ When an integration is configured with the polling event listener, the resync/up
 
 ### Example
 
-To use the polling event listener, set the `type` field to `POLLING` in the [integration configuration](../../develop-an-integration/integration-configuration.md):
+To use the polling event listener, set the `type` field to `POLLING` in the [integration configuration](../../developing-an-integration/testing-the-integration.md#configuration-mapping):
 
 ```yaml showLineNumbers
 eventListener:
@@ -95,7 +95,7 @@ When an integration is configured with the Kafka event listener, the resync/upda
 
 ### Example
 
-To use the Kafka event listener, set the `type` field to `KAFKA` in the [integration configuration](../../develop-an-integration/integration-configuration.md):
+To use the Kafka event listener, set the `type` field to `KAFKA` in the [integration configuration](../../developing-an-integration/testing-the-integration.md#configuration-mapping):
 
 ```yaml showLineNumbers
 eventListener:
@@ -136,7 +136,7 @@ When an integration is configured with the webhook event listener, the resync/up
 
 ### Example
 
-To use the webhook event listener, set the `type` field to `WEBHOOK` and provide a the address used to contact the integration instance in the `appHost` field in the [integration configuration](../../develop-an-integration/integration-configuration.md):
+To use the webhook event listener, set the `type` field to `WEBHOOK` and provide a the address used to contact the integration instance in the `baseUrl` field in the [integration configuration](../../developing-an-integration/testing-the-integration.md#configuration-mapping):
 
 ```yaml showLineNumbers
 eventListener:

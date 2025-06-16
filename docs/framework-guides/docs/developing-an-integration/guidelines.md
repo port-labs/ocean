@@ -1,7 +1,7 @@
 ---
 title: Development Guidelines
 sidebar_label: 🚧 Development Guidelines
-sidebar_position: 6
+sidebar_position: 16
 ---
 
 # 🚧 Development Guidelines
@@ -33,7 +33,7 @@ To scaffold a new integration you can use the following options:
 ### Integration maturity
 
 Make sure that your integration passes linting and type checks as described in
-the [Publishing](../develop-an-integration/publish-an-integration.md#prerequisites) page.
+the [Publishing](../developing-an-integration/publishing-your-integration.md#prerequisites) page.
 
 Use `make lint` to run the linting locally
 
@@ -77,7 +77,7 @@ formatted to a CamelCase format.
 
 Make sure your integration is performant and does not block the event loop if possible.
 
-You can read more about possible performance enhancements in the [performance](../develop-an-integration/performance.md)
+You can read more about possible performance enhancements in the [performance](../developing-an-integration/performance.md)
 page
 
 ### Code Principles

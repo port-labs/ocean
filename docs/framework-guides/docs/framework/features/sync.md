@@ -63,7 +63,7 @@ def generic_resync(kind: str):
 ```
 
 :::tip
-As shown in the [Performance](../../develop-an-integration/performance.md#generators-in-the-ocean-framework) page, it is recommended to use the `@ocean.on_resync` decorator and return a generator with the results (using the `yield` keyword) to avoid blocking the event loop and improve integration performance.
+As shown in the [Performance](../../developing-an-integration/performance.md#generators-in-the-ocean-framework) page, it is recommended to use the `@ocean.on_resync` decorator and return a generator with the results (using the `yield` keyword) to avoid blocking the event loop and improve integration performance.
 
 For simplicity, the examples above show usage of the decorator using the `return` keyword.
 :::
