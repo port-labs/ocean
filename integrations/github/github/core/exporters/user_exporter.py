@@ -11,9 +11,9 @@ from github.helpers.gql_queries import (
 
 
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    async def get_resource[ExporterOptionT: SingleUserOptions](
-        self, options: ExporterOptionT
-    ) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionT: SingleUserOptions
+    ](self, options: ExporterOptionT) -> RAW_ITEM:
         variables = {"login": options["login"]}
         payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
         res = await self.client.send_api_request(
@@ -32,9 +32,13 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         async for users in self.client.send_paginated_request(
             LIST_ORG_MEMBER_GQL, variables
         ):
-            users_with_no_email = [
-                user for user in enumerate(users) if not user[1].get("email")
-            ]
+
+            users_with_no_email = {
+                (idx, user["login"]): user
+                for idx, user in enumerate(users)
+                if not user.get("email")
+            }
+
             if users_with_no_email:
                 await self._fetch_external_identities(users, users_with_no_email)
             yield users
@@ -42,27 +46,28 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     async def _fetch_external_identities(
         self,
         users: list[dict[str, Any]],
-        users_no_email: list[tuple[int, dict[str, Any]]],
+        users_no_email: dict[tuple[int, str], dict[str, Any]],
     ) -> None:
         variables = {
             "organization": self.client.organization,
             "first": 100,
             "__path": "organization.samlIdentityProvider.externalIdentities.edges",
         }
-        num_users_remaining = len(users_no_email)
+
+        remaining_users = set(users_no_email.keys())
+
         async for identity_batch in self.client.send_paginated_request(
             LIST_EXTERNAL_IDENTITIES_GQL, variables
         ):
-            saml_users: dict[str, Any] = {
-                user["node"]["user"]["login"]: user
+            saml_users = {
+                user["node"]["user"]["login"]: user["node"]["samlIdentity"]["nameId"]
                 for user in identity_batch
                 if user["node"].get("user")
             }
+            for (idx, login), user in users_no_email.items():
+                if login in saml_users:
+                    users[idx]["email"] = saml_users[login]
+                    remaining_users.remove((idx, login))
 
-            for idx, item in users_no_email:
-                if saml_user := saml_users.get(item["login"]):
-                    users[idx]["email"] = saml_user["node"]["samlIdentity"]["nameId"]
-                    num_users_remaining -= 1
-
-                if num_users_remaining < 1:
-                    return
+            if not remaining_users:
+                return

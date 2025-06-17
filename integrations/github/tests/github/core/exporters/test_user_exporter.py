@@ -165,7 +165,7 @@ class TestGraphQLUserExporter:
             {"login": "user1", "email": "johndoe@email.com"},
             {"login": "user2"},
         ]
-        users_no_email = [(1, initial_users[1])]
+        users_no_email = {(1, "user2"): initial_users[1]}
 
         mock_external_identities = [
             {
