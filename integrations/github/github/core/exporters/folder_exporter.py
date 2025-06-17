@@ -11,15 +11,15 @@ from github.helpers.glob import translate_glob
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[ExporterOptionsT: SingleFolderOptions](
-        self, options: ExporterOptionsT
-    ) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionsT: SingleFolderOptions
+    ](self, options: ExporterOptionsT) -> RAW_ITEM:
         raise NotImplementedError
 
     @cache_iterator_result()
-    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListFolderOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
@@ -60,7 +60,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     def _needs_recursive_search(path: str) -> bool:
         "Determines whether a give path requires recursive Github request param"
 
-        if "**" in path or re.match(r"\w+\/\w+", path):
+        if "*" in path or re.match(r"\w+\/\w+", path):
             return True
         return False
 

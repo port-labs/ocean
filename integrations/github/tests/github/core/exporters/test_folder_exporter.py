@@ -188,7 +188,8 @@ class TestRestFolderExporter:
         "path, expected_recursive",
         [
             ("", False),
-            ("*", False),
+            ("*", True),
+            ("src/*", True),
             ("src", False),
             ("src/components", True),
             ("src/**", True),
