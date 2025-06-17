@@ -678,11 +678,13 @@ async def test_get_issues_by_component_handles_404(
         ]
     )
 
-    with pytest.raises(httpx.HTTPStatusError) as exc_info:
-        async for _ in sonarqube_client.get_issues_by_component({"key": "nonexistent"}):
-            pass
+    # Collect results from the paginated request
+    results = []
+    async for batch in sonarqube_client.get_issues_by_component({"key": "nonexistent"}):
+        results.extend(batch)
 
-    assert exc_info.value.response.status_code == 404
+    # Verify that we got an empty list
+    assert len(results) == 0
 
 
 async def test_get_branches_main_branch_missing(
@@ -1098,3 +1100,106 @@ async def test_sonarqube_client_normalizes_trailing_slashes(
     assert client_without_app_host.base_url == "https://sonarqube.com"
     assert client_without_app_host.app_host is None
     assert client_without_app_host.webhook_invoke_url == ""
+
+
+async def test_send_paginated_request_handles_404(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test that _send_paginated_request yields an empty list when encountering a 404 error"""
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    mock_responses = [
+        {"status_code": 404, "json": {"errors": [{"msg": "Resource not found"}]}}
+    ]
+
+    sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
+
+    results = []
+    async for batch in sonarqube_client._send_paginated_request(
+        endpoint="test/endpoint",
+        data_key="items",
+    ):
+        results.append(batch)
+
+    assert len(results) == 1
+    assert results[0] == []
+
+
+async def test_send_paginated_request_handles_404_in_middle_of_pagination(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test that _send_paginated_request handles 404 errors in the middle of pagination"""
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    mock_responses = [
+        {
+            "status_code": 200,
+            "json": {
+                "paging": {"pageIndex": 1, "pageSize": 2, "total": 4},
+                "items": [{"id": 1}, {"id": 2}],
+            },
+        },
+        {"status_code": 404, "json": {"errors": [{"msg": "Resource not found"}]}},
+    ]
+
+    sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
+
+    results = []
+    async for batch in sonarqube_client._send_paginated_request(
+        endpoint="test/endpoint",
+        data_key="items",
+    ):
+        results.append(batch)
+
+    assert len(results) == 2
+    assert results[0] == [{"id": 1}, {"id": 2}]
+    assert results[1] == []
+
+
+async def test_send_paginated_request_handles_404_with_other_errors(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    """Test that _send_paginated_request handles 404 errors differently from other HTTP errors"""
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    mock_responses = [
+        {"status_code": 404, "json": {"errors": [{"msg": "Resource not found"}]}},
+        {"status_code": 500, "json": {"errors": [{"msg": "Internal server error"}]}},
+    ]
+
+    sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
+
+    results = []
+    try:
+        async for batch in sonarqube_client._send_paginated_request(
+            endpoint="test/endpoint",
+            data_key="items",
+        ):
+            results.append(batch)
+    except httpx.HTTPStatusError as e:
+        assert e.response.status_code == 500
+
+
+    assert len(results) == 1
+    assert results[0] == []

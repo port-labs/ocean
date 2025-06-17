@@ -187,7 +187,8 @@ class SonarQubeClient:
 
             if e.response.status_code == 404:
                 logger.error(f"Resource not found: {e.response.text}")
-
+                yield []
+                return
             raise
         except httpx.HTTPError as e:
             logger.error(f"HTTP occurred while fetching paginated data: {e}")
