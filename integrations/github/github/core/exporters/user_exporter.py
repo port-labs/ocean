@@ -11,9 +11,9 @@ from github.helpers.gql_queries import (
 
 
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    async def get_resource[
-        ExporterOptionT: SingleUserOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionT: SingleUserOptions](
+        self, options: ExporterOptionT
+    ) -> RAW_ITEM:
         variables = {"login": options["login"]}
         payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
         res = await self.client.send_api_request(
@@ -49,6 +49,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "first": 100,
             "__path": "organization.samlIdentityProvider.externalIdentities.edges",
         }
+        num_users_remaining = len(users_no_email)
         async for identity_batch in self.client.send_paginated_request(
             LIST_EXTERNAL_IDENTITIES_GQL, variables
         ):
@@ -61,7 +62,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             for idx, item in users_no_email:
                 if saml_user := saml_users.get(item["login"]):
                     users[idx]["email"] = saml_user["node"]["samlIdentity"]["nameId"]
-                    del saml_users[item["login"]]
+                    num_users_remaining -= 1
 
-                if not saml_users:
+                if num_users_remaining < 1:
                     return
