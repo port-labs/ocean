@@ -122,7 +122,9 @@ class SonarQubeClient:
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             if e.response.status_code == 404:
-                logger.warning(f"Resource not found: {e.response.text}")
+                logger.warning(
+                    f"Resource not found for endpoint {endpoint}: {e.response.text}"
+                )
                 return {}
             raise
 
