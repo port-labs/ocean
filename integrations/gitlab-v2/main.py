@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Any, Dict
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -16,6 +16,7 @@ from integration import (
     GitLabFoldersResourceConfig,
     GitlabGroupWithMembersResourceConfig,
     GitlabMemberResourceConfig,
+    GitlabMergeRequestResourceConfig,
 )
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
@@ -124,24 +125,32 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for projects_batch in client.get_projects():
         logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
-        async for jobs_batch in client.get_project_jobs(projects_batch):
+        async for jobs_batch in client.get_pipeline_jobs(projects_batch):
             yield jobs_batch
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
+    selector = cast(GitlabMergeRequestResourceConfig, event.resource_config).selector
+
+    states = selector.states
+    updated_after = selector.updated_after_datetime
 
     async for groups_batch in client.get_groups():
-        logger.info(
-            f"Processing batch of {len(groups_batch)} groups for merge requests"
-        )
-        params = {"state": "opened"}
+        for state in states:
+            logger.info(
+                f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
+                + (f" updated after {updated_after}" if state != "opened" else "")
+            )
+            params: Dict[str, Any] = {"state": state}
+            if state != "opened":
+                params["updated_after"] = updated_after
 
-        async for merge_requests_batch in client.get_groups_resource(
-            groups_batch, "merge_requests", params=params
-        ):
-            yield merge_requests_batch
+            async for merge_requests_batch in client.get_groups_resource(
+                groups_batch, "merge_requests", params=params
+            ):
+                yield merge_requests_batch
 
 
 @ocean.on_resync(ObjectKind.GROUP_WITH_MEMBERS)

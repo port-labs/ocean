@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.27 (2025-06-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.11
+
+
+## 0.4.26 (2025-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.10
+
+
+## 0.4.25 (2025-06-09)
+
+
+### Bug Fixes
+
+- Removed webhook permission check from OAuth enabled integrations to prevent unnecessary webhook permission validation for OAuth-based connections, as OAuth already handles appropriate permission scopes during authentication
+
+
+## 0.4.24 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.8
+
+
 ## 0.4.23 (2025-06-11)
 
 

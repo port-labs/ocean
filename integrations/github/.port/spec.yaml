@@ -7,6 +7,17 @@ features:
     resources:
       - kind: repository
       - kind: folder
+      - kind: workflow
+      - kind: workflow-run
+      - kind: pull-request
+      - kind: issue
+      - kind: release
+      - kind: tag
+      - kind: branch
+      - kind: environment
+      - kind: deployment
+      - kind: dependabot-alert
+      - kind: code-scanning-alerts
 configurations:
   - name: githubHost
     required: false
