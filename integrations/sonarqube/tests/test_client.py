@@ -22,7 +22,7 @@ class MockHttpxClient:
             httpx.Response(
                 status_code=response["status_code"],
                 json=response["json"],
-                request=httpx.Request("GET", "https://sonarqube.com"),
+                request=httpx.Request("GET", "https://myorg.atlassian.net"),
             )
             for response in responses
         ]
@@ -38,14 +38,6 @@ class MockHttpxClient:
 
         response = self.responses[self._current_response_index]
         self._current_response_index += 1
-
-        if response.status_code != 200:
-            raise httpx.HTTPStatusError(
-                f"Client error '{response.status_code}' for url '{response.request.url}'",
-                request=response.request,
-                response=response,
-            )
-
         return response
 
 
@@ -680,25 +672,17 @@ async def test_get_issues_by_component_handles_404(
         False,
     )
 
-    # Mock response that returns 404
-    mock_responses = [
-        {"status_code": 404, "json": {"errors": [{"msg": "Component not found"}]}}
-    ]
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {"status_code": 404, "json": {"errors": [{"msg": "Component not found"}]}}
+        ]
+    )
 
-    sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        async for _ in sonarqube_client.get_issues_by_component({"key": "nonexistent"}):
+            pass
 
-    # Collect results from the paginated request
-    results = []
-    try:
-        async for batch in sonarqube_client.get_issues_by_component(
-            {"key": "nonexistent"}
-        ):
-            results.extend(batch)
-    except httpx.HTTPStatusError as e:
-        assert e.response.status_code == 404
-
-    # Verify that we got an empty list
-    assert len(results) == 0
+    assert exc_info.value.response.status_code == 404
 
 
 async def test_get_branches_main_branch_missing(
@@ -1116,11 +1100,11 @@ async def test_sonarqube_client_normalizes_trailing_slashes(
     assert client_without_app_host.webhook_invoke_url == ""
 
 
-async def test_send_paginated_request_handles_404(
+async def test_get_single_project_handles_404(
     mock_ocean_context: Any,
     monkeypatch: Any,
 ) -> None:
-    """Test that _send_paginated_request yields an empty list when encountering a 404 error"""
+    """Test that get_single_project handles 404 errors gracefully by returning minimal project data"""
     sonarqube_client = SonarQubeClient(
         "https://sonarqube.com",
         "token",
@@ -1129,32 +1113,31 @@ async def test_send_paginated_request_handles_404(
         False,
     )
 
-    # Mock response that returns 404
+    # Mock responses for a project that will return 404
     mock_responses = [
-        {"status_code": 404, "json": {"errors": [{"msg": "Resource not found"}]}}
+        # First response for get_measures - returns 404
+        {"status_code": 404, "json": {"errors": [{"msg": "Component not found"}]}},
     ]
 
     sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
+    sonarqube_client.metrics = ["coverage", "bugs"]  # Set some metrics
 
-    results = []
-    try:
-        async for batch in sonarqube_client._send_paginated_request(
-            endpoint="test/endpoint",
-            data_key="items",
-        ):
-            results.append(batch)
-    except httpx.HTTPStatusError as e:
-        assert e.response.status_code == 404
+    project = {"key": "test-project"}
+    result = await sonarqube_client.get_single_project(project)
 
-    assert len(results) == 1
-    assert results[0] == []
+    # Verify the result contains minimal project data
+    assert result["key"] == "test-project"
+    assert result["__measures"] == []
+    assert result["__branches"] == []
+    assert result["__branch"] == {}
+    assert result["__link"] == "https://sonarqube.com/project/overview?id=test-project"
 
 
-async def test_send_paginated_request_handles_404_in_middle_of_pagination(
+async def test_get_components_continues_after_404(
     mock_ocean_context: Any,
     monkeypatch: Any,
 ) -> None:
-    """Test that _send_paginated_request handles 404 errors in the middle of pagination"""
+    """Test that get_components continues processing after encountering a 404 in a batch"""
     sonarqube_client = SonarQubeClient(
         "https://sonarqube.com",
         "token",
@@ -1163,31 +1146,73 @@ async def test_send_paginated_request_handles_404_in_middle_of_pagination(
         False,
     )
 
-    # Mock responses: first page succeeds, second page returns 404
+    # Mock responses for two batches of projects
     mock_responses = [
+        # First batch response
         {
             "status_code": 200,
             "json": {
                 "paging": {"pageIndex": 1, "pageSize": 2, "total": 4},
-                "items": [{"id": 1}, {"id": 2}],
+                "components": [
+                    {"key": "project1"},
+                    {"key": "project2"},
+                ],
             },
         },
-        {"status_code": 404, "json": {"errors": [{"msg": "Resource not found"}]}},
+        # Second batch response
+        {
+            "status_code": 200,
+            "json": {
+                "paging": {"pageIndex": 2, "pageSize": 2, "total": 4},
+                "components": [
+                    {"key": "project3"},
+                    {"key": "project4"},
+                ],
+            },
+        },
     ]
 
     sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
+    sonarqube_client.metrics = ["coverage", "bugs"]
 
-    results = []
-    try:
-        async for batch in sonarqube_client._send_paginated_request(
-            endpoint="test/endpoint",
-            data_key="items",
-        ):
-            results.append(batch)
-    except httpx.HTTPStatusError as e:
-        assert e.response.status_code == 404
+    # Mock get_single_project to simulate a 404 for project2
+    async def mock_get_single_project(project: dict[str, Any]) -> dict[str, Any]:
+        if project["key"] == "project2":
+            return {
+                "key": "project2",
+                "__measures": [],
+                "__branches": [],
+                "__branch": {},
+                "__link": "https://sonarqube.com/project/overview?id=project2",
+            }
+        return {
+            "key": project["key"],
+            "__measures": [{"metric": "coverage", "value": "80"}],
+            "__branches": [{"name": "main", "isMain": True}],
+            "__branch": {"name": "main", "isMain": True},
+            "__link": f"https://sonarqube.com/project/overview?id={project['key']}",
+        }
 
-    # Verify that we got the first batch and an empty list for the 404
-    assert len(results) == 2
-    assert results[0] == [{"id": 1}, {"id": 2}]
-    assert results[1] == []
+    monkeypatch.setattr(sonarqube_client, "get_single_project", mock_get_single_project)
+
+    # Collect all processed projects
+    processed_projects = []
+    async for projects in sonarqube_client.get_components():
+        processed_projects.extend(projects)
+
+    # Verify all projects were processed
+    assert len(processed_projects) == 4
+    assert [p["key"] for p in processed_projects] == ["project1", "project2", "project3", "project4"]
+
+    # Verify project2 has minimal data
+    project2 = next(p for p in processed_projects if p["key"] == "project2")
+    assert project2["__measures"] == []
+    assert project2["__branches"] == []
+    assert project2["__branch"] == {}
+
+    # Verify other projects have full data
+    for project in processed_projects:
+        if project["key"] != "project2":
+            assert project["__measures"] == [{"metric": "coverage", "value": "80"}]
+            assert project["__branches"] == [{"name": "main", "isMain": True}]
+            assert project["__branch"] == {"name": "main", "isMain": True}
