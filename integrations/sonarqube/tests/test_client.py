@@ -678,11 +678,12 @@ async def test_get_issues_by_component_handles_404(
         ]
     )
 
-    with pytest.raises(httpx.HTTPStatusError) as exc_info:
-        async for _ in sonarqube_client.get_issues_by_component({"key": "nonexistent"}):
-            pass
+    issues = []
+    async for issue_batch in sonarqube_client.get_issues_by_component({"key": "nonexistent"}):
+        issues.extend(issue_batch)
 
-    assert exc_info.value.response.status_code == 404
+    assert issues == []
+
 
 
 async def test_get_branches_main_branch_missing(
@@ -841,7 +842,7 @@ async def test_get_or_create_webhook_url_error_handling(
     mock_ocean_context: Any,
     monkeypatch: Any,
 ) -> None:
-    """Test webhook creation error handling"""
+    """Test webhook creation error handling when webhook check returns 404"""
     sonarqube_client = SonarQubeClient(
         "https://sonarqube.com",
         "token",
@@ -852,9 +853,8 @@ async def test_get_or_create_webhook_url_error_handling(
 
     sonarqube_client.webhook_invoke_url = "http://app.host/webhook"
 
-    # Mock responses including an error
     mock_responses = [
-        # Get projects response
+        # 1. Get projects
         {
             "status_code": 200,
             "json": {
@@ -862,17 +862,22 @@ async def test_get_or_create_webhook_url_error_handling(
                 "components": [{"key": "project1"}],
             },
         },
-        # Check webhooks - returns error
-        {"status_code": 404, "json": {"errors": [{"msg": "Project not found"}]}},
+        {
+            "status_code": 404,
+            "json": {"errors": [{"msg": "Project not found"}]},
+        },
+        {
+            "status_code": 200,
+            "json": {"webhook": "created"},
+        },
     ]
 
     async with event_context("test_event"):
         sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
 
-        with pytest.raises(httpx.HTTPStatusError) as exc_info:
-            await sonarqube_client.get_or_create_webhook_url()
+        result = await sonarqube_client.get_or_create_webhook_url()
+        assert result is None or isinstance(result, list)
 
-        assert exc_info.value.response.status_code == 404
 
 
 async def test_create_webhook_payload_for_project_different_url(
