@@ -1200,6 +1200,5 @@ async def test_send_paginated_request_handles_404_with_other_errors(
     except httpx.HTTPStatusError as e:
         assert e.response.status_code == 500
 
-
     assert len(results) == 1
     assert results[0] == []
