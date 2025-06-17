@@ -121,6 +121,9 @@ class SonarQubeClient:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
+            if e.response.status_code == 404:
+                logger.warning(f"Resource not found: {e.response.text}")
+                return {}
             raise
 
     async def _send_paginated_request(
@@ -187,7 +190,7 @@ class SonarQubeClient:
 
             if e.response.status_code == 404:
                 logger.error(f"Resource not found: {e.response.text}")
-                yield []
+
             raise
         except httpx.HTTPError as e:
             logger.error(f"HTTP occurred while fetching paginated data: {e}")
@@ -284,19 +287,37 @@ class SonarQubeClient:
         project_key = cast(str, project.get("key"))
         logger.info(f"Fetching all project information for: {project_key}")
 
-        project["__measures"] = await self.get_measures(project_key)
+        try:
+            project["__measures"] = await self.get_measures(project_key)
 
-        branches = await self.get_branches(project_key)
-        project["__branches"] = branches
-        main_branch = [branch for branch in branches if branch.get("isMain")]
-        project["__branch"] = main_branch[0]
+            branches = await self.get_branches(project_key)
+            project["__branches"] = branches
+            main_branch = [branch for branch in branches if branch.get("isMain")]
+            project["__branch"] = main_branch[0] if main_branch else {}
 
-        if self.is_onpremise:
-            project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
-        else:
-            project["__link"] = f"{self.base_url}/project/overview?id={project_key}"
+            if self.is_onpremise:
+                project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
+            else:
+                project["__link"] = f"{self.base_url}/project/overview?id={project_key}"
 
-        return project
+            return project
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(
+                    f"Project {project_key} not found or inaccessible, returning minimal project data"
+                )
+                # Return minimal project data with empty measures and branches
+                project["__measures"] = []
+                project["__branches"] = []
+                project["__branch"] = {}
+                if self.is_onpremise:
+                    project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
+                else:
+                    project["__link"] = (
+                        f"{self.base_url}/project/overview?id={project_key}"
+                    )
+                return project
+            raise
 
     async def get_custom_projects(
         self, params: dict[str, Any] = {}, enrich_project: bool = False
