@@ -28,7 +28,8 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
         if event.payload["action"] not in (TEAM_UPSERT_EVENTS + TEAM_DELETE_EVENTS):
             return False
 
-        return event.headers.get("x-github-event") == "team"
+        event_name = event.headers.get("x-github-event")
+        return event_name == "team" or event_name == "membership"
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.TEAM]

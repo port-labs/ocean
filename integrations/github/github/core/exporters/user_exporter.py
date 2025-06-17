@@ -32,7 +32,6 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         async for users in self.client.send_paginated_request(
             LIST_ORG_MEMBER_GQL, variables
         ):
-
             users_with_no_email = {
                 (idx, user["login"]): user
                 for idx, user in enumerate(users)

@@ -159,6 +159,10 @@
                 "notification_setting": {
                     "title": "Notification Setting",
                     "type": "string"
+                },
+                "members": {
+                    "title": "Members",
+                    "type": "array"
                 }
             },
             "required": []

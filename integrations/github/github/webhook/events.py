@@ -28,7 +28,7 @@ PULL_REQUEST_EVENTS = [
     "closed",
 ]
 
-TEAM_UPSERT_EVENTS = ["created", "edited"]
+TEAM_UPSERT_EVENTS = ["created", "edited", "added"]
 TEAM_DELETE_EVENTS = ["deleted"]
 
 
@@ -119,4 +119,5 @@ WEBHOOK_CREATE_EVENTS = [
     "code_scanning_alert",
     "organization",
     "team",
+    "membership",
 ]

@@ -36,6 +36,7 @@ class TestTeamWebhookProcessor:
             ("team", TEAM_UPSERT_EVENTS[0], True),
             ("team", TEAM_DELETE_EVENTS[0], True),
             ("team", "some_other_action", False),
+            ("membership", TEAM_UPSERT_EVENTS[0], True),
             ("invalid", TEAM_UPSERT_EVENTS[0], False),
             ("invalid", "some_other_action", False),
         ],
@@ -70,6 +71,7 @@ class TestTeamWebhookProcessor:
         [
             ("created", False, False, True, False),  # REST exporter
             ("created", False, True, True, False),  # GraphQL exporter
+            ("added", False, True, True, False),  # GraphQL exporter
             ("deleted", True, False, False, True),  # Deletion, no exporter needed
         ],
     )
