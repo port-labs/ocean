@@ -287,37 +287,19 @@ class SonarQubeClient:
         project_key = cast(str, project.get("key"))
         logger.info(f"Fetching all project information for: {project_key}")
 
-        try:
-            project["__measures"] = await self.get_measures(project_key)
+        project["__measures"] = await self.get_measures(project_key)
 
-            branches = await self.get_branches(project_key)
-            project["__branches"] = branches
-            main_branch = [branch for branch in branches if branch.get("isMain")]
-            project["__branch"] = main_branch[0] if main_branch else {}
+        branches = await self.get_branches(project_key)
+        project["__branches"] = branches
+        main_branch = [branch for branch in branches if branch.get("isMain")]
+        project["__branch"] = main_branch[0]
 
-            if self.is_onpremise:
-                project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
-            else:
-                project["__link"] = f"{self.base_url}/project/overview?id={project_key}"
+        if self.is_onpremise:
+            project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
+        else:
+            project["__link"] = f"{self.base_url}/project/overview?id={project_key}"
 
-            return project
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning(
-                    f"Project {project_key} not found or inaccessible, returning minimal project data"
-                )
-                # Return minimal project data with empty measures and branches
-                project["__measures"] = []
-                project["__branches"] = []
-                project["__branch"] = {}
-                if self.is_onpremise:
-                    project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
-                else:
-                    project["__link"] = (
-                        f"{self.base_url}/project/overview?id={project_key}"
-                    )
-                return project
-            raise
+        return project
 
     async def get_custom_projects(
         self, params: dict[str, Any] = {}, enrich_project: bool = False
