@@ -60,21 +60,27 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         remaining_users = set(users_no_email.keys())
 
-        async for identity_batch in self.client.send_paginated_request(
-            LIST_EXTERNAL_IDENTITIES_GQL, variables
-        ):
-            saml_users = {
-                user["node"]["user"]["login"]: user["node"]["samlIdentity"]["nameId"]
-                for user in identity_batch
-                if user["node"].get("user")
-            }
-            for (idx, login), user in users_no_email.items():
-                if login in saml_users:
-                    users[idx]["email"] = saml_users[login]
-                    remaining_users.remove((idx, login))
+        try:
+            async for identity_batch in self.client.send_paginated_request(
+                LIST_EXTERNAL_IDENTITIES_GQL, variables
+            ):
+                saml_users = {
+                    user["node"]["user"]["login"]: user["node"]["samlIdentity"][
+                        "nameId"
+                    ]
+                    for user in identity_batch
+                    if user["node"].get("user")
+                }
+                for (idx, login), user in users_no_email.items():
+                    if login in saml_users:
+                        users[idx]["email"] = saml_users[login]
+                        remaining_users.remove((idx, login))
 
-            if not remaining_users:
-                logger.info(
-                    "Successfully retrieved and updated email addresses for all identified users from external identity provider."
-                )
-                return
+                if not remaining_users:
+                    logger.info(
+                        "Successfully retrieved and updated email addresses for all identified users from external identity provider."
+                    )
+                    return
+        except TypeError:
+            logger.info("SAML not enabled for organization")
+            return
