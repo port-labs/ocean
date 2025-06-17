@@ -52,7 +52,7 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
         config = cast(GithubTeamConfig, resource_config)
         selector = config.selector
         exporter: AbstractGithubExporter[Any]
-        if selector.include_members:
+        if selector.members:
             graphql_client = create_github_client(GithubClientType.GRAPHQL)
             exporter = GraphQLTeamExporter(graphql_client)
         else:

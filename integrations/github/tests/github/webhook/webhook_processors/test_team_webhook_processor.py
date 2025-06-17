@@ -111,7 +111,7 @@ class TestTeamWebhookProcessor:
         # Create resource_config based on include_members
         resource_config = GithubTeamConfig(
             kind=ObjectKind.TEAM,
-            selector=GithubTeamSector(include_members=include_members, query="true"),
+            selector=GithubTeamSector(members=include_members, query="true"),
             port=PortResourceConfig(
                 entity=MappingsConfig(
                     mappings=EntityMapping(

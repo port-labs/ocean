@@ -125,7 +125,7 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = config.selector
 
     exporter: AbstractGithubExporter[Any]
-    if selector.include_members:
+    if selector.members:
         graphql_client = create_github_client(GithubClientType.GRAPHQL)
         exporter = GraphQLTeamExporter(graphql_client)
     else:

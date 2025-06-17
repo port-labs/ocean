@@ -1,4 +1,5 @@
 from typing import Any
+from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -39,6 +40,10 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             }
 
             if users_with_no_email:
+                logger.info(
+                    f"Found {len(users_with_no_email)} users without an email address."
+                    f"Attempting to fetch their emails from an external identity provider."
+                )
                 await self._fetch_external_identities(users, users_with_no_email)
             yield users
 
@@ -69,4 +74,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
                     remaining_users.remove((idx, login))
 
             if not remaining_users:
+                logger.info(
+                    "Successfully retrieved and updated email addresses for all identified users from external identity provider."
+                )
                 return

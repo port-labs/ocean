@@ -98,8 +98,27 @@ class GithubGraphQLClient(AbstractGithubClient):
         return current
 
     def _extract_page_info(self, data: Dict[str, Any], path: str) -> Dict[str, Any]:
+        """Extracts pagination information from a GraphQL response.
+
+        This function navigates a given GraphQL response `data` structure using a `path`
+        to locate and return the `pageInfo` object. It assumes that the `path` points
+        directly to a list of nodes (e.g., `data.nodes`). To retrieve `pageInfo`,
+        which is usually a sibling of this list (e.g., `data.pageInfo`), the function
+        traverses up one level from the specified `path`'s target.
+
+        Args:
+            data (Dict[str, Any]): The GraphQL response data dictionary.
+            path (str): The dot-separated key path (e.g., "viewer.repositories.nodes")
+                        to the list of nodes within the GraphQL response.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the pagination information,
+                            typically including keys like 'hasNextPage', 'endCursor', etc.
+        """
+
         keys = path.split(".")[:-1]
         current = data
         for key in keys:
             current = current[key]
+
         return current["pageInfo"]

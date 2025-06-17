@@ -32,5 +32,4 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
         async for teams in self.client.send_paginated_request(
             LIST_TEAM_MEMBERS_GQL, variables
         ):
-            print(teams)
             yield teams
