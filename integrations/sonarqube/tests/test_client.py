@@ -1177,7 +1177,6 @@ async def test_send_paginated_request_handles_404_in_middle_of_pagination(
 
     sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
 
-
     results = []
     try:
         async for batch in sonarqube_client._send_paginated_request(
