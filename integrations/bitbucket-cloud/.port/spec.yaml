@@ -46,6 +46,9 @@ saas:
       - name: bitbucketWorkspaceToken
         value: '.oauthData.accessToken'
         description: '"Access Token for Bitbucket OAuth2 integration"'
+      - name: bitbucketWorkspace
+        value: '.oauthData.workspace'
+        description: '"Workspace for Bitbucket OAuth2 integration"'
     valuesOverride:
       integrationSpec:
         bitbucketHostUrl: '"https://api.bitbucket.org/2.0"'
