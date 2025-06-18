@@ -7,7 +7,7 @@ from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
 from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
 from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
-from bitbucket_cloud.helpers.token_manager import TokenManager
+from bitbucket_cloud.helpers.token_manager import TokenManager, TokenRateLimiterContext
 import base64
 
 PULL_REQUEST_STATE = "OPEN"
@@ -130,7 +130,7 @@ class BitbucketClient:
             }
         while True:
             if self.token_manager:
-                async with self.token_manager.try_acquire_or_rotate() as ctx:
+                async with TokenRateLimiterContext(self.token_manager) as ctx:
                     current_token = ctx.get_token()
                     self._update_authorization_header(current_token)
                     response = await self._send_api_request(

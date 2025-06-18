@@ -12,7 +12,7 @@ class TokenRateLimiterContext:
     This context manager:
     1. Finds an available token (rotating if necessary)
     2. Acquires the rate limiter for that token
-    3. Provides access to both the rate limiter and the selected token
+    3. Provides access to the selected token
     4. Ensures proper cleanup on exit
     """
 
@@ -63,9 +63,9 @@ class TokenRateLimiterContext:
                 self.selected_token = current_token
                 self.rate_limiter = self.token_manager.rate_limiters[current_token]
 
-        # Enter the rate limiter's context manager (this may wait if rate limited)
+        # Acquire the rate limiter slot (this may wait if rate limited)
         if self.rate_limiter:
-            await self.rate_limiter.__aenter__()
+            await self.rate_limiter.acquire()
 
         return self
 
@@ -76,8 +76,13 @@ class TokenRateLimiterContext:
         exc_tb: Optional[Any],
     ) -> None:
         """Exit the context manager: release the rate limiter."""
-        if self.rate_limiter:
-            await self.rate_limiter.__aexit__(exc_type, exc_val, exc_tb)
+        self.release()
+
+    def release(self) -> None:
+        """Release any held resources. Since rate limiter uses rolling window, no explicit release needed."""
+        # The RollingWindowLimiter doesn't require explicit release
+        # as it tracks usage automatically via timestamps
+        pass
 
     def get_token(self) -> str:
         """Get the token selected by this context manager."""
@@ -113,23 +118,6 @@ class TokenManager:
     def current_rate_limiter(self) -> RollingWindowLimiter:
         """Get the rate limiter for the current token. Note: This can change during async operations."""
         return self.rate_limiters[self.current_token]
-
-    def try_acquire_or_rotate(self) -> TokenRateLimiterContext:
-        """
-        Return a context manager that handles token rotation and rate limiting atomically.
-
-        Usage:
-            async with token_manager.try_acquire_or_rotate() as ctx:
-                token = ctx.get_token()
-                # Use the token for API request
-
-        The context manager will:
-        1. Find an available token (rotating if necessary)
-        2. Acquire the rate limiter for that token
-        3. Provide access to the selected token
-        4. Automatically release the rate limiter on exit
-        """
-        return TokenRateLimiterContext(self)
 
     def _rotate_to_next_token(self) -> None:
         """

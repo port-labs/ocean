@@ -345,21 +345,10 @@ async def test_fetch_with_token_rotation(mock_client: BitbucketClient) -> None:
                 mock_client, "_send_api_request", new_callable=AsyncMock
             ) as mock_request,
             patch.object(
-                mock_client.token_manager,
-                "try_acquire_or_rotate",
-            ) as mock_acquire,
-            patch.object(
                 mock_client, "_update_authorization_header"
             ) as mock_update_header,
         ):
             mock_request.return_value = mock_data
-
-            # Create a mock context manager
-            mock_context = MagicMock()
-            mock_context.get_token = MagicMock(return_value="token1")
-            mock_context.__aenter__ = AsyncMock(return_value=mock_context)
-            mock_context.__aexit__ = AsyncMock(return_value=None)
-            mock_acquire.return_value = mock_context
 
             batches = []
             async for batch in mock_client._fetch_paginated_api_with_rate_limiter(
@@ -370,8 +359,7 @@ async def test_fetch_with_token_rotation(mock_client: BitbucketClient) -> None:
             assert len(batches) == 1
             assert batches[0] == [{"id": 1}, {"id": 2}]
 
-            # Verify that token rotation was attempted
-            mock_acquire.assert_called()
+            # Verify that authorization header was updated
             mock_update_header.assert_called_with("token1")
 
 
@@ -389,3 +377,24 @@ async def test_update_authorization_header(mock_client: BitbucketClient) -> None
 
         # Verify that the update method was called on the mock http client
         mock_update.assert_called_with(mock_client.headers)
+
+
+@pytest.mark.asyncio
+async def test_token_rate_limiter_context_direct_usage() -> None:
+    """Test that TokenRateLimiterContext can be used directly without wrapper method."""
+    from bitbucket_cloud.helpers.token_manager import TokenRateLimiterContext
+
+    tokens = ["token1", "token2", "token3"]
+    manager = TokenManager(tokens)
+
+    # Test direct instantiation and usage
+    async with TokenRateLimiterContext(manager) as ctx:
+        selected_token = ctx.get_token()
+        assert selected_token in tokens
+        assert isinstance(selected_token, str)
+        assert len(selected_token) > 0
+
+    # Verify context cleanup
+    assert (
+        ctx.selected_token == selected_token
+    )  # Token should still be available after exit
