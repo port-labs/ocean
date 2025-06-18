@@ -32,7 +32,6 @@ class EventListenerType(str, Enum):
     Since it extends str, it automatically accepts both enum values and string literals.
     """
 
-    WEBHOOK = "WEBHOOK"
     KAFKA = "KAFKA"
     POLLING = "POLLING"
     ONCE = "ONCE"

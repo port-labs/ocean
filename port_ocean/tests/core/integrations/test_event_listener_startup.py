@@ -120,19 +120,19 @@ class TestEventListenerStartup:
         """Test that only the correct startup function is called for each event listener type."""
         # Setup
         once_startup_called = False
-        webhook_startup_called = False
+        polling_startup_called = False
 
         async def once_startup():
             nonlocal once_startup_called
             once_startup_called = True
 
-        async def webhook_startup():
-            nonlocal webhook_startup_called
-            webhook_startup_called = True
+        async def polling_startup():
+            nonlocal polling_startup_called
+            polling_startup_called = True
 
         # Register startup functions for different event listener types
         integration.on_start(once_startup, event_listener="ONCE")
-        integration.on_start(webhook_startup, event_listener="WEBHOOK")
+        integration.on_start(polling_startup, event_listener="POLLING")
 
         # Mock the event listener factory
         mock_event_listener = AsyncMock()
@@ -149,7 +149,7 @@ class TestEventListenerStartup:
 
         # Verify
         assert once_startup_called is True, "ONCE startup should be called for ONCE event listener"
-        assert webhook_startup_called is False, "WEBHOOK startup should NOT be called for ONCE event listener"
+        assert polling_startup_called is False, "POLLING startup should NOT be called for ONCE event listener"
 
     async def test_no_startup_functions_registered(self, integration, mock_context):
         """Test that integration starts successfully even when no startup functions are registered."""
@@ -216,3 +216,51 @@ class TestEventListenerStartup:
         # Verify both functions are called (they should be treated as the same event listener type)
         assert enum_startup_called is True, "Enum-based startup should be called"
         assert string_startup_called is True, "String-based startup should be called"
+
+    async def test_multiple_decorators_same_function(self, integration, mock_context):
+        """Test that multiple decorators can be applied to the same function for different event listeners."""
+        # Setup
+        multi_startup_called = False
+
+        async def multi_startup():
+            nonlocal multi_startup_called
+            multi_startup_called = True
+
+                # Register same function for multiple event listener types
+        integration.on_start(multi_startup, event_listener=EventListenerType.KAFKA)
+        integration.on_start(multi_startup, event_listener=EventListenerType.POLLING)
+        integration.on_start(multi_startup, event_listener=EventListenerType.WEBHOOKS_ONLY)
+
+        # Mock the event listener factory for KAFKA type
+        mock_event_listener = AsyncMock()
+        integration.event_listener_factory.create_event_listener = AsyncMock(return_value=mock_event_listener)
+        mock_context.config.event_listener.type = "KAFKA"
+
+        # Execute
+        await integration.start()
+
+        # Allow async tasks to complete
+        await asyncio.sleep(0.1)
+
+        # Verify the function was called for KAFKA
+        assert multi_startup_called is True, "Multi-listener function should be called for KAFKA"
+
+        # Test that ONCE doesn't call this function
+        multi_startup_called = False
+        mock_context.config.event_listener.type = "ONCE"
+
+        # Create new integration instance for ONCE test
+        integration2 = BaseIntegration(mock_context)
+        integration2.initialize_handlers = AsyncMock()
+        integration2.on_start(multi_startup, event_listener=EventListenerType.KAFKA)
+        integration2.on_start(multi_startup, event_listener=EventListenerType.POLLING)
+        integration2.on_start(multi_startup, event_listener=EventListenerType.WEBHOOKS_ONLY)
+        # Note: NOT registered for ONCE
+
+        integration2.event_listener_factory.create_event_listener = AsyncMock(return_value=mock_event_listener)
+
+        await integration2.start()
+        await asyncio.sleep(0.1)
+
+        # Verify the function was NOT called for ONCE (since it's not registered for ONCE)
+        assert multi_startup_called is False, "Multi-listener function should NOT be called for ONCE when not registered"

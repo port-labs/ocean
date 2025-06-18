@@ -1,4 +1,4 @@
-from typing import Callable, TYPE_CHECKING, Any, Literal, Union
+from typing import Callable, TYPE_CHECKING, Any, Union
 
 from fastapi import APIRouter
 from port_ocean.helpers.metric.metric import Metrics
@@ -76,7 +76,7 @@ class PortOceanContext:
     @property
     def event_listener_type(
         self,
-    ) -> Literal["WEBHOOK", "KAFKA", "POLLING", "ONCE", "WEBHOOKS_ONLY"]:
+    ) -> EventListenerType:
         return self.app.config.event_listener.type
 
     def on_resync(

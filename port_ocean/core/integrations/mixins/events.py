@@ -57,15 +57,19 @@ class EventsMixin:
             async def on_start() -> None:
                 pass
 
-            # Event listener-specific startup using enum (recommended)
             @ocean.on_start(event_listener=EventListenerType.ONCE)
             async def on_start_once() -> None:
                 pass
 
-            # Event listener-specific startup using string (also works)
-            @ocean.on_start(event_listener="ONCE")
-            async def on_start_once() -> None:
-                pass
+            @ocean.on_start(event_listener=EventListenerType.WEBHOOK_ONLY)
+            @ocean.on_start(event_listener=EventListenerType.POLLING)
+            async def on_start_webhook_and_polling() -> None:
+                if is_webhook_exists():
+                    await verify_webhook_connection()
+                else:
+                    await setup_webhook()
+
+
         """
         def decorator(func: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
             if event_listener is not None:
