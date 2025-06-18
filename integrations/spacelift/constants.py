@@ -1,0 +1,1 @@
+GRAPHQL_URL_TEMPLATE = "https://{account}.app.spacelift.io/graphql"
