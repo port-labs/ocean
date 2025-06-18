@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+
+## 0.1.33 (2025-06-17)
+
+### Improvements
+
+
+- Added filtering for top-level groups in group search
+- Updated webhook creation to only fetch groups owned by the authenticated user
+
+
+## 0.1.32 (2025-06-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.11
+
+
 ## 0.1.31 (2025-06-15)
 
 

@@ -8,6 +8,7 @@ from port_ocean.context.event import EventType, event_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
+from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
 from .webhook_event import WebhookEvent, WebhookEventRawResults, LiveEventTimestamp
 from port_ocean.context.event import event
 
@@ -53,10 +54,12 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         """Find and extract the matching processor for an event"""
 
         created_processors: list[tuple[ResourceConfig, AbstractWebhookProcessor]] = []
+        event_processor_names = []
 
         for processor_class in self._processors_classes[path]:
             processor = processor_class(webhook_event.clone())
             if await processor.should_process_event(webhook_event):
+                event_processor_names.append(processor.__class__.__name__)
                 kinds = await processor.get_matching_kinds(webhook_event)
                 for kind in kinds:
                     for resource in event.port_app_config.resources:
@@ -64,7 +67,22 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                             created_processors.append((resource, processor))
 
         if not created_processors:
-            raise ValueError("No matching processors found")
+            if event_processor_names:
+                logger.info(
+                    "Webhook processors are available to handle this webhook event, but the corresponding kinds are not configured in the integration's mapping",
+                    processors_available=event_processor_names,
+                    webhook_path=path,
+                )
+                return []
+            else:
+                logger.warning(
+                    "Unknown webhook event type received",
+                    webhook_path=path,
+                    message="No processors registered to handle this webhook event type.",
+                )
+                raise WebhookEventNotSupportedError(
+                    "No matching processors found for webhook event"
+                )
 
         logger.info(
             "Found matching processors for webhook event",
