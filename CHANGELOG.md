@@ -12,6 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Features
 - Added event listener-specific startup functionality with `@ocean.on_start(event_listener=...)` decorator
 - Enhanced startup flexibility allowing different initialization logic for ONCE, POLLING, WEBHOOK, WEBHOOKS_ONLY, and KAFKA modes
+- Removed HTTP / WEBHOOK event listener as it wasn't used
 
 ## 0.24.11 (2025-06-16)
 
