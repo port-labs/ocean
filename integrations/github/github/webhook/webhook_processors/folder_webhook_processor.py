@@ -47,9 +47,9 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         for pattern in folder_selector:
             # Check if this pattern applies to the event's repo and branch
             matched_repo = False
-            for repo in pattern.repos:
-                if repo.name == repository["name"] and (
-                    repo.branch == "" or repo.branch == branch
+            for selector_repo in pattern.repos:
+                if selector_repo.name == repository["name"] and (
+                    selector_repo.branch == "" or selector_repo.branch == branch
                 ):
                     matched_repo = True
                     break
