@@ -398,3 +398,39 @@ async def test_token_rate_limiter_context_direct_usage() -> None:
     assert (
         ctx.selected_token == selected_token
     )  # Token should still be available after exit
+
+
+@pytest.mark.asyncio
+async def test_get_headers() -> None:
+    """Test the get_headers method with different authentication types."""
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        workspace_token="test_token",
+    )
+
+    # Test bearer token headers
+    bearer_headers = client.get_headers(bearer_token="test_bearer_token")
+    expected_bearer = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer test_bearer_token",
+    }
+    assert bearer_headers == expected_bearer
+
+    # Test basic auth headers
+    basic_headers = client.get_headers(basic_auth="encoded_credentials")
+    expected_basic = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Basic encoded_credentials",
+    }
+    assert basic_headers == expected_basic
+
+    # Test no auth headers
+    no_auth_headers = client.get_headers()
+    expected_no_auth = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    assert no_auth_headers == expected_no_auth

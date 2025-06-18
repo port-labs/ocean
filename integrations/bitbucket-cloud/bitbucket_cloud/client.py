@@ -41,31 +41,21 @@ class BitbucketClient:
 
             if len(tokens) > 1:
                 self.token_manager = TokenManager(tokens)
-                self.headers = {
-                    "Authorization": f"Bearer {self.token_manager.current_token}",
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                }
+                self.headers = self.get_headers(
+                    bearer_token=self.token_manager.current_token
+                )
                 logger.info(
                     f"Initialized BitbucketClient with {len(tokens)} tokens for rotation"
                 )
             else:
                 single_token = tokens[0] if tokens else workspace_token.strip()
-                self.headers = {
-                    "Authorization": f"Bearer {single_token}",
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                }
+                self.headers = self.get_headers(bearer_token=single_token)
                 logger.info("Initialized BitbucketClient with single token")
         elif app_password and username:
             self.encoded_credentials = base64.b64encode(
                 f"{username}:{app_password}".encode()
             ).decode()
-            self.headers = {
-                "Authorization": f"Basic {self.encoded_credentials}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            }
+            self.headers = self.get_headers(basic_auth=self.encoded_credentials)
             logger.info(
                 "Initialized BitbucketClient with username/password authentication"
             )
@@ -74,6 +64,21 @@ class BitbucketClient:
                 "Either workspace token or both username and app password must be provided"
             )
         self.client.headers.update(self.headers)
+
+    def get_headers(
+        self, bearer_token: Optional[str] = None, basic_auth: Optional[str] = None
+    ) -> dict[str, str]:
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+
+        if bearer_token:
+            headers["Authorization"] = f"Bearer {bearer_token}"
+        elif basic_auth:
+            headers["Authorization"] = f"Basic {basic_auth}"
+
+        return headers
 
     def _update_authorization_header(self, token: str) -> None:
         """Update the authorization header with a new token."""
