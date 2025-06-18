@@ -123,7 +123,7 @@ class SonarQubeClient:
             )
             if e.response.status_code == 404:
                 logger.warning(
-                    f"Resource not found for endpoint {endpoint}: {e.response.text}"
+                    f"Resource not found for endpoint {endpoint} with query params {query_params}: {e.response.text}"
                 )
                 return {}
             raise
