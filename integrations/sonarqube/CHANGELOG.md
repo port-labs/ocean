@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.196 (2025-06-17)
+
+
+### Bug fix
+
+- Gracefully handle 404 errors for project kind by not raising exceptions which leads to partial data insertion and instead returning an empty results
+
+
 ## 0.1.195 (2025-06-16)
 
 
@@ -281,7 +289,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Transitioned live events management to ocean’s `LiveEventProcessorManager` to streamline processing
+- Transitioned live events management to ocean's `LiveEventProcessorManager` to streamline processing
 
 
 ## 0.1.161 (2025-03-24)
