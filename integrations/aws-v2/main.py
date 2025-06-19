@@ -5,13 +5,16 @@ from aws.resync_factory import resync, CloudControlResyncHandler
 
 session_strategy = None
 
+
 async def resync_resources(kind: str) -> AsyncIterator[MaterializedResource]:
     async for account in session_strategy.get_accessible_accounts():
         async for session in session_strategy.create_session_for_each_region():
             handler = CloudControlResyncHandler(
                 kind=kind,
                 credentials=session_strategy,
-                use_get_resource_api=ocean.integration_config.get("use_get_resource_api", False),
+                use_get_resource_api=ocean.integration_config.get(
+                    "use_get_resource_api", False
+                ),
                 batch_size=ocean.integration_config.get("batch_size", 10),
             )
 

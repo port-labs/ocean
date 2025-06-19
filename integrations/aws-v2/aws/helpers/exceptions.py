@@ -1,3 +1,6 @@
+class CredentialsProviderError(Exception): ...
+
+
 def is_access_denied_exception(e: Exception) -> bool:
     access_denied_error_codes = [
         "AccessDenied",

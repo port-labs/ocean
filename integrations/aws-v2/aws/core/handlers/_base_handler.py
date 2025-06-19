@@ -42,7 +42,9 @@ class BaseResyncHandler(abc.ABC):
     async def __aiter__(self) -> AsyncIterator[list[dict[str, Any]]]:
         async with self._exit_stack:
             tasks = []
-            async for session in self._session_mgr._credentials.create_session_for_each_region():
+            async for (
+                session
+            ) in self._session_mgr._credentials.create_session_for_each_region():
                 context = self._ctx.with_region(session.region_name).with_account_id(
                     session.account_id
                 )

@@ -49,7 +49,7 @@ class CloudControlResyncHandler(BaseResyncHandler):
             "cloudcontrol",
             config=Boto3Config(
                 retries={"max_attempts": self._max_retries, "mode": "adaptive"}
-            )
+            ),
         )
         paginator = AsyncPaginator(
             cloudcontrol_client,
@@ -71,7 +71,7 @@ class CloudControlResyncHandler(BaseResyncHandler):
             "cloudcontrol",
             config=Boto3Config(
                 retries={"max_attempts": self._max_retries, "mode": "adaptive"}
-            )
+            ),
         )
 
         for attempt in range(self._max_retries):
@@ -81,10 +81,14 @@ class CloudControlResyncHandler(BaseResyncHandler):
                 )
                 identifier = response["ResourceDescription"]["Identifier"]
                 props = json.loads(response["ResourceDescription"]["Properties"])
-                return await self._default_materialise(identifier=identifier, properties=props)
+                return await self._default_materialise(
+                    identifier=identifier, properties=props
+                )
             except ClientError as e:
                 if attempt == self._max_retries - 1:
-                    logger.error(f"Failed to fetch resource {identifier} after {self._max_retries} attempts: {e}")
+                    logger.error(
+                        f"Failed to fetch resource {identifier} after {self._max_retries} attempts: {e}"
+                    )
                     raise
                 await asyncio.sleep(self._retry_delay * (attempt + 1))
 
@@ -106,7 +110,7 @@ class CloudControlResyncHandler(BaseResyncHandler):
             "cloudcontrol",
             config=Boto3Config(
                 retries={"max_attempts": self._max_retries, "mode": "adaptive"}
-            )
+            ),
         )
 
         for attempt in range(self._max_retries):
@@ -116,9 +120,13 @@ class CloudControlResyncHandler(BaseResyncHandler):
                 )
                 identifier = response["ResourceDescription"]["Identifier"]
                 props = json.loads(response["ResourceDescription"]["Properties"])
-                return await self._default_materialise(identifier=identifier, properties=props)
+                return await self._default_materialise(
+                    identifier=identifier, properties=props
+                )
             except ClientError as e:
                 if attempt == self._max_retries - 1:
-                    logger.error(f"Failed to materialize item after {self._max_retries} attempts: {e}")
+                    logger.error(
+                        f"Failed to materialize item after {self._max_retries} attempts: {e}"
+                    )
                     raise
                 await asyncio.sleep(self._retry_delay * (attempt + 1))
