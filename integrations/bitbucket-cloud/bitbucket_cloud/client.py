@@ -93,14 +93,16 @@ class BitbucketClient(OAuthClient):
                 return request
             except ValueError:
                 # OAuth token not available, return request as-is
-                pass
+                logger.error(
+                    "OAuth token not available, returning request without changing headers"
+                )
         return request
 
     @classmethod
     def create_from_ocean_config(cls) -> "BitbucketClient":
         return cls(
-            workspace=ocean.integration_config["bitbucket_workspace"],
-            host=ocean.integration_config["bitbucket_host_url"],
+            workspace=ocean.integration_config.get("bitbucket_workspace"),
+            host=ocean.integration_config.get("bitbucket_host_url"),
             username=ocean.integration_config.get("bitbucket_username"),
             app_password=ocean.integration_config.get("bitbucket_app_password"),
             workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
