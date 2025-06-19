@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2025-06-19)
+
+
+### Features
+
+- Added support for Project Webhook Processor, enabling handling of project creation and deletion events via webhooks in the GitLab integration.
+
+
 ## 0.1.32 (2025-06-16)
 
 

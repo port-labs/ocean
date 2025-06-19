@@ -11,6 +11,7 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
     _GitlabAbstractWebhookProcessor,
 )
 from typing import override, Dict, Any
+import re
 
 
 class ProjectWebhookProcessor(_GitlabAbstractWebhookProcessor):
@@ -27,6 +28,10 @@ class ProjectWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         if payload["event_name"] == "project_destroy":
             logger.info(f"Deleted project {payload}")
+            logger.info(
+                f"Deleted project Parsed: {self._parse_deleted_payload(payload)}"
+            )
+
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[self._parse_deleted_payload(payload)],
@@ -42,16 +47,19 @@ class ProjectWebhookProcessor(_GitlabAbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         return not ({"project_id"} - payload.keys())
 
+    def _strip_deleted_suffix(self, value: str) -> str:
+        # Remove -deleted-<digits> or -<digits> at the end of the string
+        return re.sub(r"(-deleted)?-\d+$", "", value)
+
     def _parse_deleted_payload(self, payload: EventPayload) -> Dict[str, Any]:
         """
         Parses the deleted payload to a map of the project's attributes.
         """
         return {
             "id": payload["project_id"],
-            "name": payload["name"].split("/")[-1],
-            "path": payload["path"].split("/")[-1],
-            "path_with_namespace": payload["path_with_namespace"].split("/")[-1],
+            "name": self._strip_deleted_suffix(payload["name"]),
+            "path": self._strip_deleted_suffix(payload["path"]),
+            "path_with_namespace": self._strip_deleted_suffix(
+                payload["path_with_namespace"]
+            ),
         }
-
-
-#
