@@ -23,8 +23,8 @@ class BitbucketClient(OAuthClient):
 
     def __init__(
         self,
-        workspace: str,
-        host: str,
+        workspace: Optional[str],
+        host: Optional[str],
         username: Optional[str] = None,
         app_password: Optional[str] = None,
         workspace_token: Optional[str] = None,
