@@ -1,7 +1,8 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from client import SonarQubeClient
 from integration import SonarQubeComponentProjectSelector
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 
 def produce_component_params(
@@ -24,3 +25,17 @@ def extract_metrics_from_payload(payload: Dict[str, Any]) -> list[str]:
         condition["metric"]
         for condition in payload.get("qualityGate", {}).get("conditions", [])
     ]
+
+def get_selector_metrics(resource_config: ResourceConfig) -> List[str]:
+    """
+    Extract metrics from a resource config selector if available.
+    Args:
+        resource_config: The resource configuration containing the selector
+
+    Returns:
+        List of metric strings, empty list if no metrics are configured
+    """
+
+    if hasattr(resource_config.selector, 'metrics'):
+        return resource_config.selector.metrics
+    return []

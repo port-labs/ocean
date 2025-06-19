@@ -185,7 +185,7 @@ def default_metrics() -> list[str]:
         "security_hotspots",
         "new_violations",
         "new_coverage",
-        "new_duplicated_lines_density",
+        "new_duplicated_lines_density"
     ]
 
 

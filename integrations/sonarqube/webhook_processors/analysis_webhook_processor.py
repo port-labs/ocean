@@ -1,5 +1,6 @@
 from initialize_client import init_sonar_client
 from utils import extract_metrics_from_payload
+from utils import get_selector_metrics
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
@@ -22,16 +23,23 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        metrics = [
+
+       # selector_metrics = resource_config.selector.
+        selector_metrics = get_selector_metrics(resource_config)
+
+        '''
+          metrics = [
             condition["metric"]
             for condition in payload.get("qualityGate", {}).get("conditions", [])
         ]
-        sonar_client = init_sonar_client(metrics)
+        '''
+        sonar_client = init_sonar_client(selector_metrics)
 
         analysis_data = []
 
         if ocean.integration_config["sonar_is_on_premise"]:
-            metrics = extract_metrics_from_payload(payload)
+            # is there a reason we are extracting metrics again
+            # metrics = extract_metrics_from_payload(payload)
             project = await sonar_client.get_single_component(payload["project"])
             analysis_data = await sonar_client.get_measures_for_all_pull_requests(
                 project["key"]
@@ -43,3 +51,10 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
             updated_raw_results=analysis_data,
             deleted_raw_results=[],
         )
+
+    async def validate_payload(self, payload: EventPayload) -> bool:
+
+        # require both project and trackId for analysis
+        return await super().validate_payload(payload) and "trackId" in payload
+
+
