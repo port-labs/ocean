@@ -415,5 +415,7 @@ class TestBitbucketClient:
 
         with patch.object(BitbucketClient, "is_oauth_enabled", return_value=False):
             client = BitbucketClient.create_from_ocean_config()
-            assert client.workspace == ocean.integration_config.get("bitbucket_workspace")
+            assert client.workspace == ocean.integration_config.get(
+                "bitbucket_workspace"
+            )
             assert client.base_url == ocean.integration_config.get("bitbucket_host_url")
