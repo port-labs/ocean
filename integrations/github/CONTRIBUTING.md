@@ -112,7 +112,7 @@ class GraphQLRepositoryExporter(AbstractGithubExporter[GithubGraphQLClient]):
         variables = {
             "organization": self.client.organization,
             "visibility": port_app_config.repository_type,
-            "__path": "organization.repositories",
+            "__path": "organization.repositories.nodes",
             **params,
         }
 

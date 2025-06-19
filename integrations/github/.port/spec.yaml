@@ -6,6 +6,8 @@ features:
     section: Git
     resources:
       - kind: repository
+      - kind: user
+      - kind: team
       - kind: workflow
       - kind: workflow-run
       - kind: pull-request

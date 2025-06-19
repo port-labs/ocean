@@ -10,6 +10,9 @@ REPOSITORY_UPSERT_EVENTS = [
 ]
 REPOSITORY_DELETE_EVENTS = ["archived", "deleted"]
 
+USER_UPSERT_EVENTS = ["member_added"]
+USER_DELETE_EVENTS = ["member_removed"]
+
 WORKFLOW_UPSERT_EVENTS = ["in_progress", "requested"]
 WORKFLOW_DELETE_EVENTS = ["completed"]
 
@@ -25,6 +28,12 @@ PULL_REQUEST_EVENTS = [
     "closed",
 ]
 
+TEAM_UPSERT_EVENTS = ["created", "edited", "added"]
+TEAM_DELETE_EVENTS = ["deleted"]
+
+
+TEAM_EVENTS = TEAM_UPSERT_EVENTS + TEAM_DELETE_EVENTS
+USER_EVENTS = USER_UPSERT_EVENTS + USER_DELETE_EVENTS
 
 # Issue events
 ISSUE_UPSERT_EVENTS = [
@@ -87,6 +96,8 @@ ALL_EVENTS = (
     + REPOSITORY_DELETE_EVENTS
     + PULL_REQUEST_EVENTS
     + ISSUE_EVENTS
+    + TEAM_EVENTS
+    + USER_EVENTS
     + RELEASE_EVENTS
     + WORKFLOW_RUN_EVENTS
     + DEPENDABOT_ALERT_EVENTS
@@ -106,4 +117,7 @@ WEBHOOK_CREATE_EVENTS = [
     "workflow_run",
     "dependabot_alert",
     "code_scanning_alert",
+    "organization",
+    "team",
+    "membership",
 ]

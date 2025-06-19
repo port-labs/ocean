@@ -17,7 +17,35 @@ resources:
             defaultBranch: .default_branch
             url: .html_url
             language: if .language then .language else "" end
-
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .login
+          title: .login
+          login: .login
+          blueprint: '"githubUser"'
+  - kind: team
+    selector:
+      query: "true"
+      include_members: true
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"githubTeam"'
+          properties:
+            slug: .slug
+            description: .description
+            link: .url
+            permission: .permission
+            notification_setting: .notificationsetting
+            members: '[.members.nodes[].login]'
+          reations:
+            github_user: '[.members.nodes[].login]'
   - kind: pull-request
     selector:
       query: 'true'
