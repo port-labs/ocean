@@ -1,7 +1,8 @@
 from typing import Any, AsyncGenerator, Optional
-from httpx import HTTPError, HTTPStatusError
+from httpx import HTTPError, HTTPStatusError, Request
 from loguru import logger
 from port_ocean.utils import http_async_client
+from port_ocean.clients.auth.oauth_client import OAuthClient
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
@@ -17,21 +18,52 @@ RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
 )
 
 
-class BitbucketClient:
+class BitbucketClient(OAuthClient):
     """Client for interacting with Bitbucket Cloud API v2.0."""
 
     def __init__(
         self,
-        workspace: str,
-        host: str,
+        workspace: Optional[str],
+        host: Optional[str],
         username: Optional[str] = None,
         app_password: Optional[str] = None,
         workspace_token: Optional[str] = None,
     ) -> None:
+        super().__init__()
         self.base_url = host
         self.workspace = workspace
         self.client = http_async_client
 
+        # Check if OAuth is enabled first
+        if self.is_oauth_enabled():
+            try:
+                # Use OAuth Bearer token
+                oauth_token = self.external_access_token
+                self.headers = {
+                    "Authorization": f"Bearer {oauth_token}",
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                }
+                logger.info("Using OAuth2 Bearer authentication for Bitbucket")
+            except ValueError:
+                # OAuth token not available, fall back to existing auth methods
+                logger.info(
+                    "OAuth token not available, falling back to existing authentication"
+                )
+                self._setup_traditional_auth(workspace_token, username, app_password)
+        else:
+            # Use existing authentication methods
+            self._setup_traditional_auth(workspace_token, username, app_password)
+
+        self.client.headers.update(self.headers)
+
+    def _setup_traditional_auth(
+        self,
+        workspace_token: Optional[str],
+        username: Optional[str],
+        app_password: Optional[str],
+    ) -> None:
+        """Set up traditional authentication methods (unchanged from original)."""
         if workspace_token:
             self.headers = {
                 "Authorization": f"Bearer {workspace_token}",
@@ -51,13 +83,26 @@ class BitbucketClient:
             raise MissingIntegrationCredentialException(
                 "Either workspace token or both username and app password must be provided"
             )
-        self.client.headers.update(self.headers)
+
+    def refresh_request_auth_creds(self, request: Request) -> Request:
+        """Refresh OAuth credentials for request retry."""
+        if self.is_oauth_enabled():
+            try:
+                oauth_token = self.external_access_token
+                request.headers["Authorization"] = f"Bearer {oauth_token}"
+                return request
+            except ValueError:
+                # OAuth token not available, return request as-is
+                logger.error(
+                    "OAuth token not available, returning request without changing headers"
+                )
+        return request
 
     @classmethod
     def create_from_ocean_config(cls) -> "BitbucketClient":
         return cls(
-            workspace=ocean.integration_config["bitbucket_workspace"],
-            host=ocean.integration_config["bitbucket_host_url"],
+            workspace=ocean.integration_config.get("bitbucket_workspace"),
+            host=ocean.integration_config.get("bitbucket_host_url"),
             username=ocean.integration_config.get("bitbucket_username"),
             app_password=ocean.integration_config.get("bitbucket_app_password"),
             workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
