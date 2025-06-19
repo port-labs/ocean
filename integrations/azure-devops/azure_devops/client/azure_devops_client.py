@@ -12,7 +12,11 @@ from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
 
 from azure_devops.client.base_client import HTTPBaseClient
-from azure_devops.misc import FolderPattern, RepositoryBranchMapping
+from azure_devops.misc import (
+    FolderPattern,
+    RepositoryBranchMapping,
+    extract_branch_name_from_ref,
+)
 from azure_devops.client.base_client import PAGE_SIZE
 
 from azure_devops.client.file_processing import (
@@ -210,6 +214,35 @@ class AzureDevopsClient(HTTPBaseClient):
                         for repo in repositories
                         if self._repository_is_healthy(repo)
                     ]
+
+    @cache_iterator_result()
+    async def generate_branches(
+        self, include_disabled_repositories: bool = True
+    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
+        async for repositories in self.generate_repositories(
+            include_disabled_repositories=include_disabled_repositories
+        ):
+            for repository in repositories:
+                refs_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/refs"
+                response = await self.send_request(
+                    "GET", refs_url, params={"filter": "heads/", **API_PARAMS}
+                )
+                if not response:
+                    continue
+                refs = response.json()["value"]
+                branches = []
+                for ref in refs:
+                    branch = {
+                        "name": extract_branch_name_from_ref(ref["name"]),
+                        "objectId": ref["objectId"],
+                        "creator": ref.get("creator"),
+                        "url": ref.get("url"),
+                        "_links": ref.get("_links"),
+                        "__repository": repository,
+                    }
+                    branches.append(branch)
+                if branches:
+                    yield branches
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
