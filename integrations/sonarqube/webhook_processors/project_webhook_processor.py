@@ -29,22 +29,6 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
 
-        logger.warning("Project webhook initiated")
-        """
-          metrics = extract_metrics_from_payload(payload)
-        sonar_client = init_sonar_client(metrics)
-
-        project = await sonar_client.get_single_component(payload["project"])
-        project_data = await sonar_client.get_single_project(project)
-
-        return WebhookEventRawResults(
-            updated_raw_results=[project_data],
-            deleted_raw_results=[],
-        )
-
-
-        """
-
         sonar_client = init_sonar_client()
 
         selector = cast(SonarQubeGAProjectResourceConfig, resource_config).selector
@@ -52,14 +36,9 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
 
         project = await sonar_client.get_single_component(payload["project"])
 
-        logger.warning(f'{project}')
-
         updated_project_results = []
 
         updated_project = await sonar_client.get_single_project(project)
-
-        #print("updated_project", updated_project);
-        logger.warning(f'{updated_project}')
 
         if updated_project:
             updated_project_results.append(updated_project)
@@ -70,7 +49,6 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
             )
             updated_project_results.append(payload)
 
-        logger.warning("Project webhook finished")
 
         return WebhookEventRawResults(
             updated_raw_results=updated_project_results,

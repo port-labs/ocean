@@ -30,41 +30,13 @@ class IssueWebhookProcessor(BaseSonarQubeWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
 
-        logger.warning("issues webhooks iniitiated")
-
-        """
-                        selector_metrics = []
-                if hasattr(resource_config.selector, 'metrics'):
-                    selector_metrics = resource_config.selector.metrics
-
-                sonar_client = init_sonar_client(selector_metrics)
-
-                print("payload", payload)
-
-                project = await sonar_client.get_single_component(payload["project"])
-
-                print("project", project)
-
-                issues = []
-
-                async for issues_batch in sonar_client.get_issues_by_component(project):
-                    print("issues_batch", issues_batch)
-                    issues.extend(issues_batch)
-
-                """
-
         sonar_client = init_sonar_client()
 
         selector = cast(SonarQubeIssueResourceConfig, resource_config).selector
         query_params = selector.generate_request_params()
-        project_query_params = (
-            selector.project_api_filters
-            and selector.project_api_filters.generate_request_params()
-        ) or {}
 
         project = await sonar_client.get_single_component(payload["project"])
 
-        logger.warning(f'{project}')
 
         updated_issue_results = []
 
@@ -78,8 +50,6 @@ class IssueWebhookProcessor(BaseSonarQubeWebhookProcessor):
                 "Could not fetch updated issue data. Using webhook payload"
             )
             updated_issue_results.append(payload)
-
-        logger.warning("issues webhooks finished")
 
         return WebhookEventRawResults(
             updated_raw_results=updated_issue_results,

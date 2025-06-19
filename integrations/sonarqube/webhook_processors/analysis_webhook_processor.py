@@ -11,7 +11,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from integration import ObjectKind
 from typing import cast
-from loguru import logger
 
 
 from integration import (
@@ -36,44 +35,35 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
 
-        logger.warning("this is analysis event handler")
-
         sonar_client = init_sonar_client()
 
-       # analysis_data = []
+        analysis_data = []
+
+        project = await sonar_client.get_single_component(payload["project"])
 
         if ocean.integration_config["sonar_is_on_premise"]:
-            # is there a reason we are extracting metrics again
-            # metrics = extract_metrics_from_payload(payload)
             selector = cast(
                 SonarQubeOnPremAnalysisResourceConfig, resource_config
             ).selector
             sonar_client.metrics = selector.metrics
 
-            project = await sonar_client.get_single_component(payload["project"])
             analysis_data = await sonar_client.get_measures_for_all_pull_requests(
                 project["key"]
             )
         else:
-            analysis_data = [await sonar_client.get_analysis_for_task(payload)]
 
+            async for updated_analysis in sonar_client.get_analysis_by_project(project):
+                if updated_analysis:
+                    analysis_data.extend(updated_analysis)
+            if not analysis_data:
+                analysis_data.append(payload)
 
-        logger.warning("analysis ended")
 
         return WebhookEventRawResults(
             updated_raw_results=analysis_data,
             deleted_raw_results=[],
         )
 
-    """
-       async def validate_payload(self, payload: EventPayload) -> bool:
-
-        # require both project and trackId for analysis
-        is_valid_base = await super().validate_payload(payload)
-        has_track_id = isinstance(payload, dict) and "trackId" in payload
-        return is_valid_base and has_track_id
-        #return await super().validate_payload(payload) and "trackId" in payload
-    """
 
 
 
