@@ -1,15 +1,14 @@
 from loguru import logger
 
 from port_ocean.context.ocean import PortOceanContext
+from port_ocean.core.ocean_types import EventListenerType
 from port_ocean.core.event_listener import (
-    HttpEventListener,
     KafkaEventListener,
     PollingEventListener,
     OnceEventListenerSettings,
     OnceEventListener,
 )
 from port_ocean.core.event_listener import (
-    HttpEventListenerSettings,
     KafkaEventListenerSettings,
     PollingEventListenerSettings,
 )
@@ -62,7 +61,7 @@ class EventListenerFactory:
         logger.info(f"Found event listener type: {_type}")
 
         match _type:
-            case "kafka":
+            case EventListenerType.KAFKA.lower():
                 assert isinstance(
                     config, KafkaEventListenerSettings
                 ), assert_message.format(type(config))
@@ -75,24 +74,18 @@ class EventListenerFactory:
                     self.context.config.integration.type,
                 )
 
-            case "webhook":
-                assert isinstance(
-                    config, HttpEventListenerSettings
-                ), assert_message.format(type(config))
-                event_listener = HttpEventListener(wrapped_events, config)
-
-            case "polling":
+            case EventListenerType.POLLING.lower():
                 assert isinstance(
                     config, PollingEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = PollingEventListener(wrapped_events, config)
 
-            case "once":
+            case EventListenerType.ONCE.lower():
                 assert isinstance(
                     config, OnceEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = OnceEventListener(wrapped_events, config)
-            case "webhooks_only":
+            case EventListenerType.WEBHOOKS_ONLY.lower():
                 assert isinstance(
                     config, WebhooksOnlyEventListenerSettings
                 ), assert_message.format(type(config))
