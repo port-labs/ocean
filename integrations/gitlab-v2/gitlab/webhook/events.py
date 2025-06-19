@@ -21,6 +21,7 @@ class GroupEvents(EventConfig):
     job_events: bool = True
     member_events: bool = True
     confidential_issues_events: bool = True
+    project_events: bool = True
 
     def to_dict(self) -> dict[str, bool]:
         return asdict(self)
