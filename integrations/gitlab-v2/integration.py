@@ -1,4 +1,4 @@
-from typing import Literal, Any, Type
+from typing import Literal, Any, Type, List
 from pydantic import BaseModel, Field
 
 from port_ocean.context.ocean import PortOceanContext
@@ -17,7 +17,7 @@ from port_ocean.utils.signal import signal_handler
 
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
-
+from datetime import datetime, timedelta, timezone
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
@@ -111,6 +111,29 @@ class GitlabFolderSelector(Selector):
     )
 
 
+class GitlabMergeRequestSelector(Selector):
+    states: List[Literal["opened", "closed", "merged"]] = Field(
+        alias="states",
+        description="Specify the state of the merge request to match. Allowed values: opened, closed, merged",
+        default=["opened"],
+    )
+    updated_after: float = Field(
+        alias="updatedAfter",
+        description="Specify the number of days to look back for merge requests (e.g. 90 for last 90 days)",
+        default=90,
+    )
+
+    @property
+    def updated_after_datetime(self) -> datetime:
+        """Convert the created_after days to a timezone-aware datetime object."""
+        return datetime.now(timezone.utc) - timedelta(days=self.updated_after)
+
+
+class GitlabMergeRequestResourceConfig(ResourceConfig):
+    selector: GitlabMergeRequestSelector
+    kind: Literal["merge-request"]
+
+
 class GitLabFoldersResourceConfig(ResourceConfig):
     selector: GitlabFolderSelector
     kind: Literal["folder"]
@@ -123,6 +146,7 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabMemberResourceConfig
         | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
+        | GitlabMergeRequestResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

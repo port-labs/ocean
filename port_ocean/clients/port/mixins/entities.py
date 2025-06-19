@@ -397,6 +397,15 @@ class EntityClientMixin:
                             self._reduce_entity(entity),
                         )
                         entities_results.append(failed_result)
+                        ocean.metrics.inc_metric(
+                            name=MetricType.OBJECT_COUNT_NAME,
+                            labels=[
+                                ocean.metrics.current_resource_kind(),
+                                MetricPhase.LOAD,
+                                MetricPhase.LoadResult.FAILED,
+                            ],
+                            value=1,
+                        )
             elif isinstance(bulk_result, list):
                 for status, entity in bulk_result:
                     if (
