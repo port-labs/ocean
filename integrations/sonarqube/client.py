@@ -458,10 +458,13 @@ class SonarQubeClient:
         :return (dict[str, Any]): A dictionary containing analysis data for the given project and ID.
         """
         ## Get the compute engine task that runs the analysis
+
+        """
         task_id = webhook_data.get("taskId")
         task_response = await self._send_api_request(
             endpoint="ce/task", query_params={"id": task_id}
         )
+        # /api/ce/component?component={projectKey}) #
         analysis_identifier = task_response.get("task", {}).get("analysisId")
 
         ## Now get all the analysis data for the given project and and filter by the analysisId
@@ -473,6 +476,9 @@ class SonarQubeClient:
                 if analysis_object.get("analysisId") == analysis_identifier:
                     return analysis_object
         return {}  ## when no data is found
+
+        """
+
 
     async def get_pull_requests_for_project(
         self, project_key: str

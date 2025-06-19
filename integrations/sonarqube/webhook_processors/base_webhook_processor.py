@@ -51,4 +51,5 @@ class BaseSonarQubeWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
+        print("payload", payload)
         return "project" in payload

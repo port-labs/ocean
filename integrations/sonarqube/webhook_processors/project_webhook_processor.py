@@ -7,7 +7,18 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from integration import ObjectKind
+from typing import cast
+
+
+from loguru import logger
+
+from integration import (
+    ObjectKind,
+    SonarQubeGAProjectResourceConfig,
+    SonarQubeIssueResourceConfig,
+    SonarQubeProjectResourceConfig,
+    SonarQubeOnPremAnalysisResourceConfig,
+)
 
 
 class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
@@ -17,7 +28,10 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        metrics = extract_metrics_from_payload(payload)
+
+        logger.warning("Project webhook initiated")
+        """
+          metrics = extract_metrics_from_payload(payload)
         sonar_client = init_sonar_client(metrics)
 
         project = await sonar_client.get_single_component(payload["project"])
@@ -27,3 +41,40 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
             updated_raw_results=[project_data],
             deleted_raw_results=[],
         )
+
+
+        """
+
+        sonar_client = init_sonar_client()
+
+        selector = cast(SonarQubeGAProjectResourceConfig, resource_config).selector
+        sonar_client.metrics = selector.metrics
+
+        project = await sonar_client.get_single_component(payload["project"])
+
+        logger.warning(f'{project}')
+
+        updated_project_results = []
+
+        updated_project = await sonar_client.get_single_project(project)
+
+        #print("updated_project", updated_project);
+        logger.warning(f'{updated_project}')
+
+        if updated_project:
+            updated_project_results.append(updated_project)
+
+        if not updated_project_results:
+            logger.info(
+                "Could not fetch updated project data. Using Webhook data"
+            )
+            updated_project_results.append(payload)
+
+        logger.warning("Project webhook finished")
+
+        return WebhookEventRawResults(
+            updated_raw_results=updated_project_results,
+            deleted_raw_results=[],
+        )
+
+
