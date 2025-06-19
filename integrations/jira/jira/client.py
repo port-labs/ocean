@@ -218,8 +218,7 @@ class JiraClient(OAuthClient):
             ],
         }
 
-        response = await self._send_api_request("POST", self.webhooks_url, json=body)
-        logger.info(f"Response: {response}")
+        await self._send_api_request("POST", self.webhooks_url, json=body)
         logger.info("Ocean real time reporting webhook created")
 
     async def create_webhooks(self, app_host: str) -> None:
