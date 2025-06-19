@@ -27,14 +27,12 @@ class ProjectWebhookProcessor(_GitlabAbstractWebhookProcessor):
         project_id = payload["project_id"]
 
         if payload["event_name"] == "project_destroy":
-            logger.info(f"Deleted project {payload}")
-            logger.info(
-                f"Deleted project Parsed: {self._parse_deleted_payload(payload)}"
-            )
+            deleted_project = self._parse_deleted_payload(payload)
+            logger.info(f"Deleting project {deleted_project['path_with_namespace']}")
 
             return WebhookEventRawResults(
                 updated_raw_results=[],
-                deleted_raw_results=[self._parse_deleted_payload(payload)],
+                deleted_raw_results=[deleted_project],
             )
 
         project = await self._gitlab_webhook_client.get_project(project_id)
