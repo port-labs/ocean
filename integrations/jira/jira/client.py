@@ -192,9 +192,17 @@ class JiraClient(OAuthClient):
         webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
             "values"
         )
-
-        if webhooks:
-            logger.info("Ocean real time reporting webhook already exists")
+        if len(webhooks) > 0:
+            existing_webhook_url = webhooks[0].get("url")
+            if existing_webhook_url == webhook_target_app_host:
+                logger.info("Ocean real time reporting webhook already exists")
+            else:
+                logger.warning(
+                    f"Ocean real time reporting webhook already exists: {existing_webhook_url} attempted to create webhook: {webhook_target_app_host}"
+                )
+                logger.warning(
+                    "If you'd like to use a different webhook, please contact support."
+                )
             return
 
         # We search a random project to get data from all projects
@@ -210,7 +218,8 @@ class JiraClient(OAuthClient):
             ],
         }
 
-        await self._send_api_request("POST", self.webhooks_url, json=body)
+        response = await self._send_api_request("POST", self.webhooks_url, json=body)
+        logger.info(f"Response: {response}")
         logger.info("Ocean real time reporting webhook created")
 
     async def create_webhooks(self, app_host: str) -> None:
