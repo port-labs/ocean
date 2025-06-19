@@ -1,7 +1,6 @@
 from typing import cast
 
 from loguru import logger
-from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.webhook.registry import register_live_events_webhooks
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -26,11 +25,14 @@ from github.core.exporters.dependabot_exporter import RestDependabotAlertExporte
 from github.core.exporters.code_scanning_alert_exporter import (
     RestCodeScanningAlertExporter,
 )
+from github.core.exporters.folder_exporter import RestFolderExporter
+from github.core.exporters.workflows_exporter import RestWorkflowExporter
 
 from github.core.options import (
     ListBranchOptions,
     ListDeploymentsOptions,
     ListEnvironmentsOptions,
+    ListFolderOptions,
     ListIssueOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
@@ -40,12 +42,14 @@ from github.core.options import (
     ListTagOptions,
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
+    SingleRepositoryOptions,
 )
 from github.helpers.utils import ObjectKind
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_client import GithubWebhookClient
 
 from integration import (
+    GithubFolderResourceConfig,
     GithubIssueConfig,
     GithubPortAppConfig,
     GithubPullRequestConfig,
@@ -97,6 +101,35 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories
+
+
+@ocean.on_resync(ObjectKind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all folders in specified repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    folder_exporter = RestFolderExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+
+    selector = cast(GithubFolderResourceConfig, event.resource_config).selector
+    if not hasattr(selector, "folders"):
+        logger.info("Folders to ingest not passed, returning ..")
+        return
+
+    for folder_config in selector.folders:
+        for repo in folder_config.repos:
+            repo_options = SingleRepositoryOptions(name=repo.name)
+            repository_object = await repo_exporter.get_resource(repo_options)
+
+            base_path = folder_config.path if folder_config.path != "*" else ""
+            folder_options = ListFolderOptions(
+                repo=repository_object, path=base_path, branch=repo.branch
+            )
+            async for folder_batch in folder_exporter.get_paginated_resources(
+                folder_options
+            ):
+                yield folder_batch
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW)

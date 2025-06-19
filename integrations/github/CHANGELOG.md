@@ -94,6 +94,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped ocean version to ^0.24.7
 
+### Features
+
+- Add support for Github folder kind
+
 
 ## 0.1.10-dev (2025-06-09)
 
@@ -174,7 +178,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.23.4
-
 
 ## 0.1.0-dev (2025-05-28)
 
