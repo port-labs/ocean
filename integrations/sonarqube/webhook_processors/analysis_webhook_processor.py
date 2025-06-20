@@ -1,6 +1,4 @@
 from initialize_client import init_sonar_client
-from utils import extract_metrics_from_payload
-from utils import get_selector_metrics
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
@@ -14,13 +12,8 @@ from typing import cast
 
 
 from integration import (
-    ObjectKind,
-    SonarQubeGAProjectResourceConfig,
-    SonarQubeIssueResourceConfig,
-    SonarQubeProjectResourceConfig,
     SonarQubeOnPremAnalysisResourceConfig,
 )
-
 
 
 class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
@@ -58,14 +51,7 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
             if not analysis_data:
                 analysis_data.append(payload)
 
-
         return WebhookEventRawResults(
             updated_raw_results=analysis_data,
             deleted_raw_results=[],
         )
-
-
-
-
-
-

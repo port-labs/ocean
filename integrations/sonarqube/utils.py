@@ -26,6 +26,7 @@ def extract_metrics_from_payload(payload: Dict[str, Any]) -> list[str]:
         for condition in payload.get("qualityGate", {}).get("conditions", [])
     ]
 
+
 def get_selector_metrics(resource_config: ResourceConfig) -> List[str]:
     """
     Extract metrics from a resource config selector if available.
@@ -36,6 +37,6 @@ def get_selector_metrics(resource_config: ResourceConfig) -> List[str]:
         List of metric strings, empty list if no metrics are configured
     """
 
-    if hasattr(resource_config.selector, 'metrics'):
+    if hasattr(resource_config.selector, "metrics"):
         return resource_config.selector.metrics
     return []

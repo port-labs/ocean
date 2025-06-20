@@ -128,7 +128,6 @@ async def on_start() -> None:
         await sonar_client.get_or_create_webhook_url()
 
 
-
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", AnalysisWebhookProcessor)

@@ -459,7 +459,6 @@ class SonarQubeClient:
         """
         ## Get the compute engine task that runs the analysis
 
-
         task_id = webhook_data.get("taskId")
         task_response = await self._send_api_request(
             endpoint="ce/task", query_params={"id": task_id}
@@ -476,8 +475,6 @@ class SonarQubeClient:
                 if analysis_object.get("analysisId") == analysis_identifier:
                     return analysis_object
         return {}  ## when no data is found
-
-
 
     async def get_pull_requests_for_project(
         self, project_key: str
