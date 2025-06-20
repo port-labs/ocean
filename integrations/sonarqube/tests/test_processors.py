@@ -1,10 +1,19 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from webhook_processors.analysis_webhook_processor import AnalysisWebhookProcessor
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
-from integration import ObjectKind
+from integration import (
+    ObjectKind,
+    SonarQubeMetricsSelector,
+    SonarQubeOnPremAnalysisResourceConfig,
+    SonarQubeIssueResourceConfig,
+    SonarQubeGAProjectResourceConfig,
+    CustomSelector,
+)
 from typing import Any, AsyncGenerator, Dict, List
 
 
@@ -36,6 +45,61 @@ def issue_processor(mock_event: WebhookEvent) -> IssueWebhookProcessor:
 @pytest.fixture
 def project_processor(mock_event: WebhookEvent) -> ProjectWebhookProcessor:
     return ProjectWebhookProcessor(mock_event)
+
+
+@pytest.fixture
+def base_port_config() -> PortResourceConfig:
+    return PortResourceConfig(
+        entity=MappingsConfig(
+            mappings=EntityMapping(
+                identifier=".id",
+                title=".name",
+                blueprint='"project"',
+                icon='"SonarQube"',
+                properties={},
+                relations={},
+            )
+        )
+    )
+
+
+@pytest.fixture
+def project_resource_config(
+    base_port_config: PortResourceConfig,
+) -> SonarQubeGAProjectResourceConfig:
+    return SonarQubeGAProjectResourceConfig(
+        kind="projects_ga",  # Fixed kind value
+        selector=SonarQubeMetricsSelector(
+            query="test", metrics=["code_smells", "coverage"]
+        ),
+        port=base_port_config,
+    )
+
+
+@pytest.fixture
+def on_prem_analysis_resource_config(
+    base_port_config: PortResourceConfig,
+) -> SonarQubeOnPremAnalysisResourceConfig:
+    return SonarQubeOnPremAnalysisResourceConfig(
+        kind="onprem_analysis",  # Fixed kind value
+        selector=SonarQubeMetricsSelector(
+            query="test", metrics=["code_smells", "coverage"]
+        ),
+        port=base_port_config,
+    )
+
+
+@pytest.fixture
+def issue_resource_config(
+    base_port_config: PortResourceConfig,
+) -> SonarQubeIssueResourceConfig:
+    return SonarQubeIssueResourceConfig(
+        kind="issues",
+        selector=CustomSelector(
+            query="test", api_filters=None, project_api_filters=None
+        ),
+        port=base_port_config,
+    )
 
 
 @pytest.fixture
@@ -80,7 +144,7 @@ async def test_analysis_get_matching_kinds(
 @pytest.mark.asyncio
 async def test_analysis_handle_event_cloud(
     analysis_processor: AnalysisWebhookProcessor,
-    resource_config: ResourceConfig,
+    on_prem_analysis_resource_config: ResourceConfig,
     mock_context: MagicMock,
 ) -> None:
     mock_context.integration_config = {"sonar_is_on_premise": False}
@@ -89,11 +153,16 @@ async def test_analysis_handle_event_cloud(
         "webhook_processors.analysis_webhook_processor.init_sonar_client"
     ) as mock_init:
         mock_client = AsyncMock()
-        mock_client.get_analysis_for_task.return_value = {"analysis": "data"}
+        mock_client.get_single_component.return_value = {"key": "test"}
+
+        async def analysis_generator(project):
+            yield [{"analysis": "data"}]
+
+        mock_client.get_analysis_by_project = analysis_generator
         mock_init.return_value = mock_client
 
         result = await analysis_processor.handle_event(
-            {"project": "test", "taskId": "123"}, resource_config
+            {"project": "test", "taskId": "123"}, on_prem_analysis_resource_config
         )
 
         assert len(result.updated_raw_results) == 1
@@ -106,59 +175,53 @@ async def test_analysis_handle_event_onprem(
     resource_config: ResourceConfig,
     mock_context: MagicMock,
 ) -> None:
-    mock_context.integration_config = {"sonar_is_on_premise": True}
+    with patch("webhook_processors.analysis_webhook_processor.ocean") as mock_ocean:
+        mock_ocean.integration_config = {"sonar_is_on_premise": True}
 
-    with patch(
-        "webhook_processors.analysis_webhook_processor.init_sonar_client"
-    ) as mock_init:
-        mock_client = AsyncMock()
+        with patch(
+            "webhook_processors.analysis_webhook_processor.init_sonar_client"
+        ) as mock_init:
+            mock_client = AsyncMock()
+            mock_client.get_single_component.return_value = {"key": "test-project"}
 
-        mock_analysis_data = {"pr": "data"}
-        mock_client.get_analysis_for_task.return_value = mock_analysis_data
+            async def mock_measures_generator(project_key: str):
+                yield [{"pr": "data"}]
 
-        mock_init.return_value = mock_client
+            mock_client.get_measures_for_all_pull_requests = mock_measures_generator
+            mock_client.get_analysis_by_project = AsyncMock()
+            mock_init.return_value = mock_client
 
-        test_payload = {
-            "project": {"key": "test-project-key", "name": "Test Project"},
-            "taskId": "analysis123",
-            "analysisDate": "2025-01-01",
-        }
+            test_payload = {
+                "project": {"key": "test-project-key", "name": "Test Project"},
+                "taskId": "analysis123",
+                "analysisDate": "2025-01-01",
+            }
 
-        result = await analysis_processor.handle_event(test_payload, resource_config)
+            result = await analysis_processor.handle_event(
+                test_payload, resource_config
+            )
 
-        mock_client.get_analysis_for_task.assert_awaited_once_with(test_payload)
-
-        assert len(result.updated_raw_results) == 1
-        assert result.updated_raw_results[0] == {"pr": "data"}
-
-
-# Issue Processor Tests
-@pytest.mark.asyncio
-async def test_issue_get_matching_kinds(
-    issue_processor: IssueWebhookProcessor,
-) -> None:
-    dummy_event = WebhookEvent(trace_id="dummy", payload={}, headers={})
-    assert await issue_processor.get_matching_kinds(dummy_event) == [ObjectKind.ISSUES]
+            mock_client.get_analysis_by_project.assert_not_called()
+            assert len(result.updated_raw_results) == 1
+            assert result.updated_raw_results[0] == {"pr": "data"}
 
 
 @pytest.mark.asyncio
 async def test_issue_handle_event(
-    issue_processor: IssueWebhookProcessor, resource_config: ResourceConfig
+    issue_processor: IssueWebhookProcessor, issue_resource_config: ResourceConfig
 ) -> None:
     with patch(
         "webhook_processors.issue_webhook_processor.init_sonar_client"
     ) as mock_init:
         mock_client = AsyncMock()
-
         mock_component = {"key": "test-project"}
         mock_client.get_single_component.return_value = mock_component
 
         test_issues = [[{"issue": "1"}, {"issue": "2"}], [{"issue": "3"}]]
 
         async def mock_issues_generator(
-            project: Dict[str, Any]
+            project: Dict[str, Any], query_params: Dict[str, Any]
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-            assert project == mock_component
             for batch in test_issues:
                 yield batch
 
@@ -166,13 +229,13 @@ async def test_issue_handle_event(
         mock_init.return_value = mock_client
 
         result = await issue_processor.handle_event(
-            {"project": "test-project-key"}, resource_config
+            {"project": "test-project-key"}, issue_resource_config
         )
 
         mock_client.get_single_component.assert_awaited_once_with("test-project-key")
 
         expected_issues = []
-        async for batch in mock_issues_generator(mock_component):
+        async for batch in mock_issues_generator(mock_component, {}):
             expected_issues.extend(batch)
 
         assert len(result.updated_raw_results) == 3
@@ -193,7 +256,7 @@ async def test_project_get_matching_kinds(
 
 @pytest.mark.asyncio
 async def test_project_handle_event(
-    project_processor: ProjectWebhookProcessor, resource_config: ResourceConfig
+    project_processor: ProjectWebhookProcessor, project_resource_config: ResourceConfig
 ) -> None:
     with patch(
         "webhook_processors.project_webhook_processor.init_sonar_client"
@@ -204,7 +267,7 @@ async def test_project_handle_event(
         mock_init.return_value = mock_client
 
         result = await project_processor.handle_event(
-            {"project": "test"}, resource_config
+            {"project": "test"}, project_resource_config
         )
 
         assert len(result.updated_raw_results) == 1

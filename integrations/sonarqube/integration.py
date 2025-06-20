@@ -247,7 +247,11 @@ class SonarQubeIssueResourceConfig(CustomResourceConfig):
     selector: SonarQubeIssueSelector
 
 
-class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector): ...
+class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector):
+    metrics: list[str] = Field(
+        default_factory=default_metrics,
+        description="List of metrics to retrieve",
+    )
 
 
 class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):

@@ -445,6 +445,7 @@ class SonarQubeClient:
                     analysis_data["__project"] = component_key
 
                     component_analysis_data.append(analysis_data)
+
             yield component_analysis_data
 
     async def get_analysis_for_task(

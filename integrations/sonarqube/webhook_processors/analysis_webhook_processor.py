@@ -8,12 +8,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from integration import ObjectKind
-from typing import cast
 
 
-from integration import (
-    SonarQubeOnPremAnalysisResourceConfig,
-)
 
 
 class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
@@ -35,16 +31,15 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
         project = await sonar_client.get_single_component(payload["project"])
 
         if ocean.integration_config["sonar_is_on_premise"]:
-            selector = cast(
-                SonarQubeOnPremAnalysisResourceConfig, resource_config
-            ).selector
-            sonar_client.metrics = selector.metrics
-
-            analysis_data = await sonar_client.get_measures_for_all_pull_requests(
-                project["key"]
-            )
+            print("I am here")
+            async for (
+                updated_on_prem_analysis
+            ) in sonar_client.get_measures_for_all_pull_requests(project["key"]):
+                if updated_on_prem_analysis:
+                    analysis_data.extend(updated_on_prem_analysis)
+            if not analysis_data:
+                analysis_data.append(payload)
         else:
-
             async for updated_analysis in sonar_client.get_analysis_by_project(project):
                 if updated_analysis:
                     analysis_data.extend(updated_analysis)
