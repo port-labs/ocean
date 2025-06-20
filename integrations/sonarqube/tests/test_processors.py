@@ -8,11 +8,12 @@ from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from integration import (
     ObjectKind,
-    SonarQubeMetricsSelector,
+    SonarQubeGAProjectSelector,
+    SonarQubeOnPremAnalysisSelector,
+    SonarQubeIssueSelector,
     SonarQubeOnPremAnalysisResourceConfig,
     SonarQubeIssueResourceConfig,
     SonarQubeGAProjectResourceConfig,
-    CustomSelector,
 )
 from typing import Any, AsyncGenerator, Dict, List
 
@@ -28,27 +29,27 @@ from port_ocean.core.handlers.port_app_config.models import (
 
 # Fixtures
 @pytest.fixture
-def mock_event() -> WebhookEvent:
+async def mock_event() -> WebhookEvent:
     return WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
 
 
 @pytest.fixture
-def analysis_processor(mock_event: WebhookEvent) -> AnalysisWebhookProcessor:
+async def analysis_processor(mock_event: WebhookEvent) -> AnalysisWebhookProcessor:
     return AnalysisWebhookProcessor(mock_event)
 
 
 @pytest.fixture
-def issue_processor(mock_event: WebhookEvent) -> IssueWebhookProcessor:
+async def issue_processor(mock_event: WebhookEvent) -> IssueWebhookProcessor:
     return IssueWebhookProcessor(mock_event)
 
 
 @pytest.fixture
-def project_processor(mock_event: WebhookEvent) -> ProjectWebhookProcessor:
+async def project_processor(mock_event: WebhookEvent) -> ProjectWebhookProcessor:
     return ProjectWebhookProcessor(mock_event)
 
 
 @pytest.fixture
-def base_port_config() -> PortResourceConfig:
+async def base_port_config() -> PortResourceConfig:
     return PortResourceConfig(
         entity=MappingsConfig(
             mappings=EntityMapping(
@@ -64,12 +65,12 @@ def base_port_config() -> PortResourceConfig:
 
 
 @pytest.fixture
-def project_resource_config(
+async def project_resource_config(
     base_port_config: PortResourceConfig,
 ) -> SonarQubeGAProjectResourceConfig:
     return SonarQubeGAProjectResourceConfig(
         kind="projects_ga",  # Fixed kind value
-        selector=SonarQubeMetricsSelector(
+        selector=SonarQubeGAProjectSelector(  # Fix: Changed to correct selector type
             query="test", metrics=["code_smells", "coverage"]
         ),
         port=base_port_config,
@@ -77,12 +78,12 @@ def project_resource_config(
 
 
 @pytest.fixture
-def on_prem_analysis_resource_config(
+async def on_prem_analysis_resource_config(
     base_port_config: PortResourceConfig,
 ) -> SonarQubeOnPremAnalysisResourceConfig:
     return SonarQubeOnPremAnalysisResourceConfig(
         kind="onprem_analysis",  # Fixed kind value
-        selector=SonarQubeMetricsSelector(
+        selector=SonarQubeOnPremAnalysisSelector(  # Fix: Changed to correct selector type
             query="test", metrics=["code_smells", "coverage"]
         ),
         port=base_port_config,
@@ -90,13 +91,13 @@ def on_prem_analysis_resource_config(
 
 
 @pytest.fixture
-def issue_resource_config(
+async def issue_resource_config(
     base_port_config: PortResourceConfig,
 ) -> SonarQubeIssueResourceConfig:
     return SonarQubeIssueResourceConfig(
         kind="issues",
-        selector=CustomSelector(
-            query="test", api_filters=None, project_api_filters=None
+        selector=SonarQubeIssueSelector(  # Fix: Changed to correct selector type
+            query="test"  # Fix: Removed incorrect parameters
         ),
         port=base_port_config,
     )
@@ -155,7 +156,9 @@ async def test_analysis_handle_event_cloud(
         mock_client = AsyncMock()
         mock_client.get_single_component.return_value = {"key": "test"}
 
-        async def analysis_generator(project):
+        async def analysis_generator(
+            project: str,
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [{"analysis": "data"}]
 
         mock_client.get_analysis_by_project = analysis_generator
