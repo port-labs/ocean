@@ -184,10 +184,9 @@ async def test_analysis_handle_event_onprem(
             mock_client = AsyncMock()
             mock_client.get_single_component.return_value = {"key": "test-project"}
 
-            async def mock_measures_generator(project_key: str):
-                yield [{"pr": "data"}]
-
-            mock_client.get_measures_for_all_pull_requests = mock_measures_generator
+            mock_client.get_measures_for_all_pull_requests.return_value = [
+                {"pr": "data"}
+            ]
             mock_client.get_analysis_by_project = AsyncMock()
             mock_init.return_value = mock_client
 

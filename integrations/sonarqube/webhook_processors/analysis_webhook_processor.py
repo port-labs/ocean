@@ -10,8 +10,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from integration import ObjectKind
 
 
-
-
 class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [
@@ -31,14 +29,10 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
         project = await sonar_client.get_single_component(payload["project"])
 
         if ocean.integration_config["sonar_is_on_premise"]:
-            print("I am here")
-            async for (
-                updated_on_prem_analysis
-            ) in sonar_client.get_measures_for_all_pull_requests(project["key"]):
-                if updated_on_prem_analysis:
-                    analysis_data.extend(updated_on_prem_analysis)
-            if not analysis_data:
-                analysis_data.append(payload)
+            project = await sonar_client.get_single_component(payload["project"])
+            analysis_data = await sonar_client.get_measures_for_all_pull_requests(
+                project["key"]
+            )
         else:
             async for updated_analysis in sonar_client.get_analysis_by_project(project):
                 if updated_analysis:
