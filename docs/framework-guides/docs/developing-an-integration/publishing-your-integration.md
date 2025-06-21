@@ -92,7 +92,7 @@ Commit your changes and push them to your fork. Then, open a pull request from y
 
 ### Version Management
 
-When updating your integration, remember to update the version number in the `pyproject.toml` file. This allows the CI to detect the new version and publish it to Port's image registry. 
+When updating your integration, remember to update the version number in the `pyproject.toml` file. This allows the CI to detect the new version and publish it to Port's image registry.
 
 ## Conclusion
 

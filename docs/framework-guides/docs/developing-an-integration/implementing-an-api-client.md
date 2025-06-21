@@ -64,7 +64,7 @@ Notice how each client handles authentication differently:
 
 When building an Ocean integration, we strongly recommend using `http_async_client` from Ocean's utils instead of creating your own HTTP client or using libraries like `requests` or `httpx` directly. Here's why:
 
-1. **Performance Optimization**: 
+1. **Performance Optimization**:
    - The client is pre-configured with optimal settings for Ocean integrations
    - Includes built-in connection pooling and keep-alive
    - Optimized for async operations
