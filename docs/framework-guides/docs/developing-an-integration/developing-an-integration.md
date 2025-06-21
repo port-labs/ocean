@@ -47,5 +47,3 @@ These steps do not follow a specific order. Some steps only become relevant near
 :::tip Integration Performance
 Be sure to review the integration [performance](./performance.md) and [code guidelines](./guidelines.md) to ensure your integration is efficient and well-written. Consider handling rate limiting, implementing pagination, using async code, supporting multi-account scenarios, managing webhook processing, and optimizing resync operations.
 :::
-
-

@@ -1,4 +1,4 @@
-from resources.stacks import StacksFetcher
+from integrations.spacelift.resources.stacks import StacksFetcher
 
 async def fetch_stacks():
     fetcher = StacksFetcher()

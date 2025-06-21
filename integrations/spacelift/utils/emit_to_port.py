@@ -1,7 +1,8 @@
+from integrations.spacelift.config import Config
 from port_ocean.utils import http_async_client
 from fastapi import HTTPException
-from utils.logger import logger
-from config import Config
+from integrations.spacelift.utils.logger import logger
+
 
 config = Config()
 

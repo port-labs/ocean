@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from .base import BaseFetcher
-from config import Config
-from utils.logger import logger
+
+from integrations.spacelift.utils.logger import logger
+from ..config import Config
 
 app_config = Config()
 

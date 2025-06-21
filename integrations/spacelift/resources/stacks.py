@@ -1,5 +1,5 @@
 from .base import BaseFetcher
-from utils.logger import logger
+from integrations.spacelift.utils.logger import logger
 
 STACKS_QUERY = """
 query {

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from gpl_client import SpaceliftGraphQLClient
-from utils.logger import logger
+
+from integrations.spacelift.gpl_client import SpaceliftGraphQLClient
+from integrations.spacelift.utils.logger import logger
 
 
 class BaseFetcher(ABC):

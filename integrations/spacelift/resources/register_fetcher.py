@@ -1,5 +1,5 @@
-from resources.base import BaseFetcher
-from utils.logger import logger
+from .base import BaseFetcher
+from integrations.spacelift.utils.logger import logger
 
 class RegistryFetcher:
     def __init__(self):

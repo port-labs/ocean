@@ -465,4 +465,3 @@ Once an integration is running, changes to `blueprints.json` and `port-app-confi
    ```
    DELETE /v1/integration/:{identifier}
    ```
-

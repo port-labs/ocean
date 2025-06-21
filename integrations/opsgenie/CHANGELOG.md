@@ -205,7 +205,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Added safeguard to OpsGenie client to respect maximum offset limit during pagination  
+- Added safeguard to OpsGenie client to respect maximum offset limit during pagination
 
 ### Improvements
 
