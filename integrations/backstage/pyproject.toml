@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "backstage"
-version = "0.1.89-beta"
+version = "0.1.90"
 description = "Importing resources from Backstage IDP"
 authors = ["Roi Talpaz <roi.t@getport.io>"]
 
