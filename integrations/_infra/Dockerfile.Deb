@@ -57,10 +57,13 @@ COPY --from=base /app/.venv /app/.venv
 
 COPY ./integrations/_infra/init.sh /app/init.sh
 
+USER root
 # Ensure that ocean is available for all in path
 RUN chmod a+x /app/.venv/bin/ocean
 
 RUN chmod a+x /app/init.sh
 RUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
+
+USER ocean
 # Run the application
 CMD ["bash", "/app/init.sh"]
