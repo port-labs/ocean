@@ -1,13 +1,11 @@
 import json
 import typing
-from typing import Optional, Iterable, Callable, Any, AsyncIterator
 
 from fastapi import Response, status
 import fastapi
 from starlette import responses
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
-from aws.aws_credentials import AwsCredentials
 from port_ocean.core.models import Entity
 
 from utils.resources import (
@@ -21,9 +19,9 @@ from utils.resources import (
 )
 
 from utils.aws import (
-    describe_accessible_accounts,
-    get_accounts,
     initialize_access_credentials,
+    get_accounts,
+    get_sessions,
     validate_request,
 )
 from port_ocean.context.ocean import ocean
@@ -37,136 +35,115 @@ from utils.misc import (
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
     is_server_error,
+    get_semaphore,
+    get_region_semaphore,
 )
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
+    semaphore_async_iterator,
 )
-
-from aioboto3 import Session
-
 import functools
 
-
-CONCURRENT_RESYNC_ACCOUNTS = 10
-CONCURRENT_RESYNC_REGIONS = 10
+semaphore = get_semaphore()
 
 
 async def _handle_global_resource_resync(
     kind: str,
-    credentials: AwsCredentials,
-    resync_func: Callable[[str, Session], ASYNC_GENERATOR_RESYNC_TYPE],
-    allowed_regions: Optional[Iterable[str]] = None,
+    aws_resource_config: AWSResourceConfig,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
-    async for session in credentials.create_session_for_each_region(allowed_regions):
+    """Handle global resource resync using v2 authentication."""
+    async for session, region in get_sessions():
         try:
-            async for batch in resync_func(kind, session):
+            async for batch in resync_cloudcontrol(
+                kind, session, region, aws_resource_config
+            ):
                 yield batch
             return
         except Exception as e:
             if is_access_denied_exception(e):
+                logger.info(
+                    f"Access denied for global resource {kind} in region {region}, trying next session"
+                )
                 continue
-            else:
-                raise e
+            logger.error(
+                f"Error processing global resource {kind} in region {region}: {e}"
+            )
+            raise e
+
+
+async def sync_account_region_resources(
+    kind: str,
+    session,
+    region: str,
+    aws_resource_config,
+    account_id: str,
+    errors: list,
+    error_regions: list,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    try:
+        async for batch in resync_cloudcontrol(
+            kind, session, region, aws_resource_config
+        ):
+            yield batch
+    except Exception as exc:
+        if is_access_denied_exception(exc):
+            logger.info(
+                f"Skipping access denied error in region {region} for account {account_id}"
+            )
+            return
+        logger.error(f"Error in region {region} for account {account_id}: {exc}")
+        errors.append(exc)
+        error_regions.append(region)
 
 
 async def resync_resources_for_account(
-    credentials: AwsCredentials,
-    kind: str,
-    resync_func: Callable[[str, Session], ASYNC_GENERATOR_RESYNC_TYPE],
+    account: dict, kind: str, aws_resource_config: AWSResourceConfig
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Fetch and yield batches of resources for a single AWS account.
-
-    Args:
-        credentials: AWS credentials for the account
-        kind: Type of resource to resync
-
-    Yields:
-        Batches of resources
-
-    Raises:
-        ExceptionGroup: If there are errors during resync for multiple regions
-    """
-    errors: list[Exception] = []
-    failed_regions: list[str] = []
-    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-
-    allowed_regions = list(
-        filter(
-            aws_resource_config.selector.is_region_allowed, credentials.enabled_regions
-        )
-    )
-
-    logger.info(
-        f"Starting resync of {kind} for account {credentials.account_id} "
-        f"across {len(allowed_regions)} allowed regions: {', '.join(allowed_regions)}"
-    )
+    """Fetch and yield batches of resources for a single AWS account."""
+    errors = []
+    error_regions = []
+    account_id = account.get("Id")
 
     if is_global_resource(kind):
-        logger.debug(
-            f"Processing global resource {kind} for account {credentials.account_id}"
-        )
-        async for batch in _handle_global_resource_resync(
-            kind, credentials, resync_func, allowed_regions
-        ):
+        logger.info(f"Handling global resource {kind} for account {account_id}")
+        async for batch in _handle_global_resource_resync(kind, aws_resource_config):
             yield batch
         return
 
-    # Process regional resources
-    tasks: list[AsyncIterator[list[dict[Any, Any]]]] = []
-    async for session in credentials.create_session_for_each_region(allowed_regions):
-        try:
-            tasks.append(resync_func(kind, session))
-            if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
-                async for batch in _process_tasks(
-                    tasks, failed_regions, errors, session.region_name
-                ):
-                    yield batch
+    logger.info(
+        f"Getting sessions for account {account_id} (parallelizing regions, limit 5)"
+    )
+    region_semaphore = get_region_semaphore()
 
-        except Exception as exc:
-            logger.error(
-                f"Failed to complete resync for {kind} in region {session.region_name}: {exc}",
-                exc_info=True,
-            )
-            failed_regions.append(session.region_name)
-            errors.append(exc)
+    region_tasks = [
+        semaphore_async_iterator(
+            region_semaphore,
+            functools.partial(
+                sync_account_region_resources,
+                kind,
+                session,
+                region,
+                aws_resource_config,
+                account_id,
+                errors,
+                error_regions,
+            ),
+        )
+        async for session, region in get_sessions(account_id=account_id)
+    ]
 
-    # Process any remaining tasks
-    if tasks:
-        async for batch in _process_tasks(
-            tasks, failed_regions, errors, session.region_name
-        ):
+    if region_tasks:
+        async for batch in stream_async_iterators_tasks(*region_tasks):
             yield batch
+
+    logger.info(f"Completed processing regions for account {account_id}")
 
     if errors:
-        error_msg = (
-            f"Failed to fetch {kind} in {len(failed_regions)} regions "
-            f"for account {credentials.account_id}. "
-            f"Failed regions: {', '.join(failed_regions)}"
+        message = (
+            f"Failed to fetch {kind} for these regions {error_regions} "
+            f"with {len(errors)} errors in account {account_id}"
         )
-        logger.error(error_msg)
-        raise ExceptionGroup(error_msg, errors)
-
-
-async def _process_tasks(
-    tasks: list[AsyncIterator[list[dict[Any, Any]]]],
-    failed_regions: list[str],
-    errors: list[Exception],
-    current_region: str,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Helper to process a batch of tasks and handle errors."""
-    try:
-        async for batch in stream_async_iterators_tasks(*tasks):
-            yield batch
-    except Exception as exc:
-        if not is_access_denied_exception(exc):
-            failed_regions.append(current_region)
-            errors.append(exc)
-        logger.warning(
-            f"Error processing batch in region {current_region}: {exc}", exc_info=True
-        )
-    finally:
-        tasks.clear()
+        raise ExceptionGroup(message, errors)
 
 
 @ocean.on_resync()
@@ -174,21 +151,16 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(ResourceKindsWithSpecialHandling):
         return
 
-    tasks = []
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    use_get_resource_api = aws_resource_config.selector.use_get_resource_api
-    resync_cloud_control_func = functools.partial(
-        resync_cloudcontrol, use_get_resource_api=use_get_resource_api
-    )
-    async for credentials in get_accounts():
-        tasks.append(
-            resync_resources_for_account(credentials, kind, resync_cloud_control_func)
+    tasks = [
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_resources_for_account, account, kind, aws_resource_config
+            ),
         )
-
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-            tasks.clear()
+        async for account in get_accounts()
+    ]
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
@@ -197,36 +169,30 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
 async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    for account in describe_accessible_accounts():
+    async for account in get_accounts():
         yield [fix_unserializable_date_properties(account)]
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER)
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
-    elasticache_resync_func = functools.partial(
-        resync_custom_kind,
-        service_name="elasticache",
-        describe_method="describe_cache_clusters",
-        list_param="CacheClusters",
-        marker_param="Marker",
-    )
-
-    tasks = []
-    async for credentials in get_accounts():
-        tasks.append(
-            resync_resources_for_account(
-                credentials=credentials,
-                kind=kind,
-                resync_func=elasticache_resync_func,
-            )
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    tasks = [
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                region,
+                "elasticache",
+                "describe_cache_clusters",
+                "CacheClusters",
+                "Marker",
+                aws_resource_config,
+            ),
         )
-
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-            tasks.clear()
-
+        async for session, region in get_sessions()
+    ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
@@ -234,29 +200,24 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER)
 async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    elbv2_resync_func = functools.partial(
-        resync_custom_kind,
-        service_name="elbv2",
-        describe_method="describe_load_balancers",
-        list_param="LoadBalancers",
-        marker_param="Marker",
-    )
-
-    tasks = []
-    async for credentials in get_accounts():
-        tasks.append(
-            resync_resources_for_account(
-                credentials=credentials,
-                kind=kind,
-                resync_func=elbv2_resync_func,
-            )
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    tasks = [
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                region,
+                "elbv2",
+                "describe_load_balancers",
+                "LoadBalancers",
+                "Marker",
+                aws_resource_config,
+            ),
         )
-
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-            tasks.clear()
-
+        async for session, region in get_sessions()
+    ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
@@ -264,29 +225,24 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM_CERTIFICATE)
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    acm_resync_func = functools.partial(
-        resync_custom_kind,
-        service_name="acm",
-        describe_method="list_certificates",
-        list_param="CertificateSummaryList",
-        marker_param="NextToken",
-    )
-
-    tasks = []
-    async for credentials in get_accounts():
-        tasks.append(
-            resync_resources_for_account(
-                credentials=credentials,
-                kind=kind,
-                resync_func=acm_resync_func,
-            )
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    tasks = [
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                region,
+                "acm",
+                "list_certificates",
+                "CertificateSummaryList",
+                "NextToken",
+                aws_resource_config,
+            ),
         )
-
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-            tasks.clear()
-
+        async for session, region in get_sessions()
+    ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
@@ -294,30 +250,25 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.AMI_IMAGE)
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    ami_resync_func = functools.partial(
-        resync_custom_kind,
-        service_name="ec2",
-        describe_method="describe_images",
-        list_param="Images",
-        marker_param="NextToken",
-        describe_method_params={"Owners": ["self"]},
-    )
-
-    tasks = []
-    async for credentials in get_accounts():
-        tasks.append(
-            resync_resources_for_account(
-                credentials=credentials,
-                kind=kind,
-                resync_func=ami_resync_func,
-            )
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    tasks = [
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                region,
+                "ec2",
+                "describe_images",
+                "Images",
+                "NextToken",
+                aws_resource_config,
+                {"Owners": ["self"]},
+            ),
         )
-
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-            tasks.clear()
-
+        async for session, region in get_sessions()
+    ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
@@ -325,29 +276,24 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    cloudformation_resync_func = functools.partial(
-        resync_custom_kind,
-        service_name="cloudformation",
-        describe_method="describe_stacks",
-        list_param="Stacks",
-        marker_param="NextToken",
-    )
-
-    tasks = []
-    async for credentials in get_accounts():
-        tasks.append(
-            resync_resources_for_account(
-                credentials=credentials,
-                kind=kind,
-                resync_func=cloudformation_resync_func,
-            )
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    tasks = [
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                region,
+                "cloudformation",
+                "describe_stacks",
+                "Stacks",
+                "NextToken",
+                aws_resource_config,
+            ),
         )
-
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-            tasks.clear()
-
+        async for session, region in get_sessions()
+    ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
@@ -355,21 +301,20 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.SQS_QUEUE)
 async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = []
-    async for credentials in get_accounts():
-        tasks.append(
-            resync_resources_for_account(
-                credentials=credentials,
-                kind=kind,
-                resync_func=resync_sqs_queue,
-            )
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    tasks = [
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_sqs_queue,
+                kind,
+                session,
+                region,
+                aws_resource_config,
+            ),
         )
-
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-            tasks.clear()
-
+        async for session, region in get_sessions()
+    ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
@@ -378,33 +323,31 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUP)
 async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    tasks = []
-
-    # Determine which resync function to use based on configuration
-    if not aws_resource_config.selector.list_group_resources:
-        logger.info("Resyncing resource groups with cloudcontrol")
-        use_get_resource_api = aws_resource_config.selector.use_get_resource_api
+    use_group_api = aws_resource_config.selector.list_group_resources
+    if use_group_api:
+        logger.info("Resyncing resource groups with resource groups api")
         resync_func = functools.partial(
-            resync_cloudcontrol, use_get_resource_api=use_get_resource_api
+            resync_resource_group,
+            kind,
         )
     else:
-        logger.info("Resyncing resource groups with resource groups api")
-        resync_func = resync_resource_group  # type: ignore
-
-    async for credentials in get_accounts():
-        tasks.append(
-            resync_resources_for_account(
-                credentials=credentials,
-                kind=kind,
-                resync_func=resync_func,
-            )
+        logger.info("Resyncing resource groups with cloudcontrol")
+        resync_func = functools.partial(
+            resync_cloudcontrol,
+            kind,
         )
 
-        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-            tasks.clear()
-
+    tasks = [
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_func,
+                session,
+                region,
+            ),
+        )
+        async for session, region in get_sessions()
+    ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
@@ -559,4 +502,7 @@ async def on_start() -> None:
             "Without setting up the webhook, the integration will not export live changes from AWS"
         )
 
-    await initialize_access_credentials()
+    success = await initialize_access_credentials()
+    if not success:
+        logger.error("Failed to initialize AWS v2 authentication system")
+        raise Exception("AWS authentication initialization failed")
