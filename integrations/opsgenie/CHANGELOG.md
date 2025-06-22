@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.98 (2025-06-22)
+
+
+### Improvements
+
+- Upgraded integration requests dependency (#1)
+
+
 ## 0.2.97 (2025-06-22)
 
 
@@ -229,7 +237,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Added safeguard to OpsGenie client to respect maximum offset limit during pagination  
+- Added safeguard to OpsGenie client to respect maximum offset limit during pagination
 
 ### Improvements
 

@@ -1,3 +1,11 @@
+## 0.1.42 (2025-06-22)
+
+
+### Improvements
+
+- Upgraded integration requests dependency (#1)
+
+
 ## 0.1.41 (2025-06-22)
 
 

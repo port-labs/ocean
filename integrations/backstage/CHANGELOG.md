@@ -1,3 +1,11 @@
+## 0.1.90 (2025-06-22)
+
+
+### Improvements
+
+- Upgraded integration requests dependency (#1)
+
+
 ## 0.1.89-beta (2025-06-22)
 
 
