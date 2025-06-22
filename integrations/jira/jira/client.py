@@ -193,6 +193,7 @@ class JiraClient(OAuthClient):
             "values"
         )
         if len(webhooks) > 0:
+            # jira allows for only one webhook per user per oauth app that is why we are always checking the first webhook
             existing_webhook_url = webhooks[0].get("url")
             if existing_webhook_url == webhook_target_app_host:
                 logger.info("Ocean real time reporting webhook already exists")
