@@ -21,7 +21,7 @@ FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
 
 RUN groupadd -r appgroup && useradd -r -g appgroup -m ocean
 
-RUN mkdir -p /tmp/ocean && chown -R ocean:appgroup /tmp/ocean && chmod -R 755 /tmp/ocean
+RUN mkdir -p /tmp/ocean
 
 ARG INTEGRATION_VERSION
 ARG BUILD_CONTEXT
@@ -31,6 +31,7 @@ ENV LIBRDKAFKA_VERSION=2.8.2 \
     PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR}
 
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
+RUN chown -R ocean:appgroup /tmp/ocean && chmod -R 755 /tmp/ocean
 
 RUN apt-get update \
     && apt-get install -y \
