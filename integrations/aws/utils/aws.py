@@ -1,71 +1,134 @@
-from typing import Any, AsyncIterator, Iterable, Optional, Union, TYPE_CHECKING
+from typing import Any, AsyncIterator, Optional, Union, cast
+import asyncio
 
-import aioboto3
-from starlette.requests import Request
-
+from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from starlette.requests import Request
+from aiobotocore.session import AioSession
 
-from aws.aws_credentials import AwsCredentials
-from aws.session_manager import SessionManager
-
-if TYPE_CHECKING:
-    from utils.overrides import AWSResourceConfig
+from aws.auth.account import SessionStrategyFactory
+from aws.auth.credentials_provider import StaticCredentialProvider
+from utils.overrides import AWSResourceConfig
 
 
-_session_manager: SessionManager = SessionManager()
+# Global session strategy and credentials with thread safety
+_session_strategy = None
+_validated_credentials = None
+_session_lock = asyncio.Lock()
 
 
 async def initialize_access_credentials() -> bool:
-    await _session_manager.reset()
-    return True
+    """Initialize the new v2 authentication system."""
+    global _session_strategy, _validated_credentials
+
+    logger.info("[AWS Init] Starting AWS authentication initialization")
+    async with _session_lock:
+        _validated_credentials = StaticCredentialProvider(
+            config=ocean.integration_config
+        )
+        temp_session = await _validated_credentials.get_session(None)
+        async with temp_session.create_client("sts") as sts:
+            identity = await sts.get_caller_identity()
+            logger.info(
+                "[AWS Init] Using AWS identity: arn=%s, account_id=%s",
+                identity["Arn"],
+                identity["Account"],
+            )
+
+        logger.info("[AWS Init] AWS authentication system initialized successfully")
+        return True
 
 
-def describe_accessible_accounts() -> list[dict[str, Any]]:
-    return _session_manager._aws_accessible_accounts
+async def get_accounts() -> AsyncIterator[dict]:
+    """Get accessible AWS accounts asynchronously."""
+    global _session_strategy
+
+    if _session_strategy is None:
+        if not await _create_session_strategy():
+            return
+
+    async for account in _session_strategy.get_accessible_accounts():
+        yield account
 
 
-def get_default_region_from_credentials(
-    credentials: AwsCredentials,
-) -> Union[str, None]:
-    return credentials.default_regions[0] if credentials.default_regions else None
+async def _create_session_strategy() -> bool:
+    """Create session strategy with available resource config."""
+    global _session_strategy
 
+    async with _session_lock:
+        if _session_strategy is not None:
+            return True
 
-async def get_accounts() -> AsyncIterator[AwsCredentials]:
-    """
-    Gets the AWS account IDs that the current IAM role can access.
-    """
+        # Get resource config from event context
+        resource_config = cast(AWSResourceConfig, event.resource_config)
+        logger.debug("Using resource config from event context")
 
-    for credentials in _session_manager._aws_credentials:
-        yield credentials
+        # Create session strategy using the factory's static method with validated credentials
+        _session_strategy = await SessionStrategyFactory.create(
+            resource_config=resource_config
+        )
+        logger.debug(
+            "Created session strategy successfully using validated credentials"
+        )
+        return True
 
 
 async def get_sessions(
-    custom_account_id: Optional[str] = None,
-    custom_region: Optional[str] = None,
-    aws_resource_config: Optional["AWSResourceConfig"] = None,
-) -> AsyncIterator[aioboto3.Session]:
-    """
-    Gets boto3 sessions for the AWS regions.
-    """
+    account_id: Optional[str] = None,
+) -> AsyncIterator[tuple[AioSession, str]]:
+    """Get AWS sessions for all accounts and regions."""
+    global _session_strategy
 
-    if custom_account_id:
-        credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
-        yield await credentials.create_session(custom_region)
+    if _session_strategy is None:
+        if not await _create_session_strategy():
+            return
+
+    if account_id:
+        async for session_region_tuple in _session_strategy.create_session_for_account(
+            account_id
+        ):
+            yield session_region_tuple
     else:
-        async for credentials in get_accounts():
-            allowed_regions: Iterable[str] = credentials.enabled_regions
-            if aws_resource_config:
-                allowed_regions = filter(
-                    aws_resource_config.selector.is_region_allowed,
-                    credentials.enabled_regions,
-                )
-            async for session in credentials.create_session_for_each_region(
-                allowed_regions
-            ):
-                yield session
+        async for (
+            session_region_tuple
+        ) in _session_strategy.create_session_for_each_region():
+            yield session_region_tuple
+
+
+async def get_session_for_account_and_region(
+    account_id: str, region: str
+) -> Optional[tuple[AioSession, str]]:
+    """Get a specific AWS session for a given account and region."""
+    global _session_strategy
+
+    if _session_strategy is None:
+        if not await _create_session_strategy():
+            return None
+
+    async for session, session_region in _session_strategy.create_session_for_account(
+        account_id
+    ):
+        if session_region == region:
+            return session, session_region
+    return None
+
+
+async def get_account_session(account_id: str) -> Optional[AioSession]:
+    """Get a single session for a specific account."""
+    global _session_strategy
+
+    # Create session strategy if not already created
+    if _session_strategy is None:
+        if not await _create_session_strategy():
+            return None
+
+    return await _session_strategy.get_account_session(account_id)
 
 
 def validate_request(request: Request) -> tuple[bool, str]:
+    """Validate incoming webhook requests."""
     api_key = request.headers.get("x-port-aws-ocean-api-key")
     if not api_key:
         return (False, "API key not found in request headers")
