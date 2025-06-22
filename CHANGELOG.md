@@ -17,11 +17,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 - Update packages.
 
-## 0.24.13 (2025-06-22)
-
-### Bug Fixes
-- Reduce bulk upserts concurrency.
-
 ## 0.24.11 (2025-06-16)
 
 ### Bug Fixes
