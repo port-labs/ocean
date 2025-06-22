@@ -380,7 +380,7 @@ class EntityClientMixin:
             ):
                 if should_raise:
                     raise bulk_result
-                # If should_raise is False, retry batch in sequential order as a fallback only for 413 errors
+                # If should_raise is False, retry bulk in sequential order as a fallback only for 413 errors
                 if (
                     isinstance(bulk_result, httpx.HTTPStatusError)
                     and bulk_result.response.status_code == 413
