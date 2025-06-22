@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.4.28 (2025-06-19)
+
+
+### Improvements
+
+- If webhook destination already exsits added warning message and suggestion to contact support if customer needs to change the destination.
+
+## 0.4.28 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
 
 ## 0.4.27 (2025-06-16)
 
