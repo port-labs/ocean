@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.24.12 (2025-06-22)
+
+### Improvements
+- Reduce bulk upserts concurrency.
+
+## 0.24.12 (2025-06-19)
+
+### Improvements
+- Update packages.
+
 ## 0.24.13 (2025-06-22)
 
 ### Bug Fixes
