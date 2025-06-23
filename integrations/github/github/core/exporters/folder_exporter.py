@@ -74,7 +74,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         if path == "" or path == "*":
             return just_trees
 
-        path_regex = translate_glob(path, recursive=True)
+        path_regex = translate_glob(path, recursive=True, include_hidden=True)
         return [
             item for item in just_trees if bool(re.fullmatch(path_regex, item["path"]))
         ]
