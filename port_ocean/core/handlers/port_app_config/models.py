@@ -21,6 +21,7 @@ class IngestSearchQuery(BaseModel):
 class EntityMapping(BaseModel):
     identifier: str | IngestSearchQuery
     title: str | None
+    icon: str | None
     blueprint: str
     team: str | IngestSearchQuery | None
     properties: dict[str, str] = Field(default_factory=dict)

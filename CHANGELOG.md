@@ -6,11 +6,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.24.17 (2025-06-23)
+
+### Bug Fixes
+- Update cache folder to be in /tmp.
+- Use root user in smoke test.
+
+## 0.24.16 (2025-06-22)
+
+### Improvements
+- Add ocean user to docker file.
+
+## 0.24.15 (2025-06-22)
+
+### Bug Fixes
+- Fixed metrics tracking for raw data processing.
+
+## 0.24.14 (2025-06-22)
+
+### Improvements
+- Reduce bulk upserts concurrency.
+
+## 0.24.13 (2025-06-22)
+
+### Improvements
+- Reduce bulk upserts concurrency.
+
+## 0.24.12 (2025-06-19)
+
+### Improvements
+- Update packages.
+
+## 0.24.11 (2025-06-16)
+
+### Bug Fixes
+- Prevented unhandled exception when webhook event is received for resource types not present in mapping but can be handled by processors.
+
+## 0.24.10 (2025-06-15)
+
+### Bug Fixes
+- Fixed overwriting syncing state metrics reporting during resource processing
+
+## 0.24.9 (2025-06-15)
+
+### Improvements
+- Added support for mapping icons as part of ocean integration mappings.
+
 ## 0.24.8 (2025-06-11)
 
 ### Bug Fixes
 - Fixed missing syncing state metrics reporting during resource processing
-
 
 ## 0.24.7 (2025-06-11)
 

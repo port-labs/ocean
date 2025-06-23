@@ -257,14 +257,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.SKIPPED],
                             value=len(objects_diff[0].entity_selector_diff.passed) - len(changed_entities)
                         )
-                    upserted_entities = await self.entities_state_applier.upsert(
+                    await self.entities_state_applier.upsert(
                         changed_entities, user_agent_type
-                    )
-
-                    ocean.metrics.set_metric(
-                        name=MetricType.OBJECT_COUNT_NAME,
-                        labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.LOADED],
-                        value=len(upserted_entities)
                     )
 
                 else:
@@ -279,11 +273,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning(f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}")
                 modified_objects = await self.entities_state_applier.upsert(
                     objects_diff[0].entity_selector_diff.passed, user_agent_type
-                    )
-                ocean.metrics.set_metric(
-                        name=MetricType.OBJECT_COUNT_NAME,
-                        labels=[ocean.metrics.current_resource_kind(), MetricPhase.LOAD, MetricPhase.LoadResult.LOADED],
-                        value=len(upserted_entities)
                     )
         else:
            modified_objects = await self.entities_state_applier.upsert(
@@ -336,7 +325,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         passed_entities = []
+        number_of_raw_results = 0
+        number_of_transformed_entities = 0
+
         if raw_results:
+            number_of_raw_results += len(raw_results)
             calculation_result = await self._register_resource_raw(
                 resource_config,
                 raw_results,
@@ -345,12 +338,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             errors.extend(calculation_result.errors)
             passed_entities = list(calculation_result.entity_selector_diff.passed)
+            number_of_transformed_entities += calculation_result.number_of_transformed_entities
             logger.info(
                 f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
             )
 
-        number_of_raw_results = 0
-        number_of_transformed_entities = 0
+
+
         for generator in async_generators:
             try:
                 async for items in generator:

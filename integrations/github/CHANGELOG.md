@@ -7,17 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.14-dev (2025-06-12)
-
-
-### Improvements
-
-- Added support for File kind with content fetching and parsing
-- Implemented file webhook processor for push events
-- Added file search across repositories with GitHub Search API
-- Support for file reference resolution and size limit handling
-
-
 ## 0.1.14-dev (2025-06-11)
 
 
@@ -106,7 +95,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.3-dev (2025-06-01)
-
 
 ### Improvements
 
