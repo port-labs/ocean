@@ -17,7 +17,14 @@ class LiveEventsMixin(HandlerMixin):
         """
         entities_to_create, entities_to_delete = await self._parse_raw_event_results_to_entities(webhook_events_raw_result)
         if entities_to_create:
-            await self.entities_state_applier.upsert(entities_to_create, UserAgentType.exporter)
+            blueprint_groups: dict[str, list[Entity]] = {}
+            for entity in entities_to_create:
+                if entity.blueprint not in blueprint_groups:
+                    blueprint_groups[entity.blueprint] = []
+                blueprint_groups[entity.blueprint].append(entity)
+            
+            for blueprint_entities in blueprint_groups.values():
+                await self.entities_state_applier.upsert(blueprint_entities, UserAgentType.exporter)
         if entities_to_delete:
             await self._delete_entities(entities_to_delete)
 
