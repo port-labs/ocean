@@ -1,4 +1,5 @@
 from aws.auth.credentials_provider import (
+    CredentialProvider,
     AssumeRoleProvider,
     StaticCredentialProvider,
 )
@@ -9,42 +10,71 @@ from aws.auth.account import (
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from typing import Any, Optional, Union
+
+from utils.overrides import AWSResourceConfig
+
+
+def normalize_arn_list(arn_input: Optional[Union[str, list[str]]]) -> list[str]:
+    """Normalize ARN input to a list of strings, filtering out empty values."""
+    if not arn_input:
+        return []
+
+    if isinstance(arn_input, str):
+        return [arn_input] if arn_input.strip() else []
+
+    if isinstance(arn_input, list):
+        return [
+            arn for arn in arn_input if arn and isinstance(arn, str) and arn.strip()
+        ]
 
 
 class SessionStrategyFactory:
-    def __init__(self, provider=None):
-        self.provider = provider
+    """Factory for creating appropriate AWS session strategies."""
 
-    @property
-    def _has_multi_account_config(self) -> bool:
-        org_role_arn = ocean.integration_config.get("organization_role_arn")
-        account_read_role = ocean.integration_config.get("account_read_role_name")
-        return org_role_arn and account_read_role
+    @staticmethod
+    async def create(
+        resource_config: AWSResourceConfig,
+        provider: Optional[CredentialProvider] = None,
+        config: Optional[dict[str, Any]] = None,
+    ) -> AWSSessionStrategy:
+        """Create and validate session strategy based on configuration."""
+        if config is None:
+            from port_ocean.context.ocean import ocean
 
-    async def __call__(self, **kwargs) -> AWSSessionStrategy:
-        # Use provided provider or create new one based on config
-        if self.provider is not None:
-            provider = self.provider
-            logger.debug("Using provided credentials provider")
-        else:
-            # Fallback to creating new provider (for backward compatibility)
-            provider = (
-                AssumeRoleProvider(config=ocean.integration_config)
-                if self._has_multi_account_config
-                else StaticCredentialProvider(config=ocean.integration_config)
-            )
-            logger.info("Created new credentials provider")
+            config = ocean.integration_config
 
-        if self._has_multi_account_config:
-            strategy = MultiAccountStrategy(provider=provider, **kwargs)
-            if await strategy.sanity_check():
-                return strategy
-            logger.warning("Multi-account denied. Falling back to single-account.")
+        if provider is None:
+            if config.get("organization_role_arn"):
+                logger.info(
+                    "[SessionStrategyFactory] Using AssumeRoleProvider for multi-account"
+                )
+                provider = AssumeRoleProvider(config=config)
+            else:
+                logger.info(
+                    "[SessionStrategyFactory] Using StaticCredentialProvider (no org role ARN found)"
+                )
+                provider = StaticCredentialProvider(config=config)
 
-        single_strategy = SingleAccountStrategy(provider=provider, **kwargs)
-        if await single_strategy.sanity_check():
-            return single_strategy
-        logger.error(
-            "Single account strategy sanity check failed. Unable to initialize AWS session strategy."
+        strategy_cls = (
+            MultiAccountStrategy
+            if config.get("account_read_role_name")
+            and config.get("organization_role_arn")
+            else SingleAccountStrategy
         )
-        raise RuntimeError("No valid AWS session strategy could be initialized.")
+
+        logger.info(f"Initializing {strategy_cls.__name__}")
+
+        if strategy_cls == MultiAccountStrategy:
+            org_role_arns = normalize_arn_list(config.get("organization_role_arn"))
+
+            logger.info(
+                f"Configuration: org_role_arns={org_role_arns}, "
+                f"account_read_role_name={config.get('account_read_role_name')}, "
+                f"target_account_ids={config.get('target_account_ids', [])}"
+            )
+
+        strategy = strategy_cls(provider=provider, resource_config=resource_config)
+
+        logger.info(f"Successfully initialized {strategy_cls.__name__}")
+        return strategy

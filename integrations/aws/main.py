@@ -43,6 +43,7 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
 )
 import functools
+from aiobotocore.session import AioSession
 
 semaphore = get_semaphore()
 
@@ -73,12 +74,12 @@ async def _handle_global_resource_resync(
 
 async def sync_account_region_resources(
     kind: str,
-    session,
+    session: AioSession,
     region: str,
-    aws_resource_config,
+    aws_resource_config: AWSResourceConfig,
     account_id: str,
-    errors: list,
-    error_regions: list,
+    errors: list[Exception],
+    error_regions: list[str],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     try:
         async for batch in resync_cloudcontrol(
@@ -97,12 +98,12 @@ async def sync_account_region_resources(
 
 
 async def resync_resources_for_account(
-    account: dict, kind: str, aws_resource_config: AWSResourceConfig
+    account: dict[str, typing.Any], kind: str, aws_resource_config: AWSResourceConfig
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Fetch and yield batches of resources for a single AWS account."""
-    errors = []
-    error_regions = []
-    account_id = account.get("Id")
+    errors: list[Exception] = []
+    error_regions: list[str] = []
+    account_id: str = account["Id"]
 
     if is_global_resource(kind):
         logger.info(f"Handling global resource {kind} for account {account_id}")
