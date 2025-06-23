@@ -72,6 +72,7 @@ class TestUserWebhookProcessor:
             headers={"x-github-event": github_event},
         )
         event._original_request = mock_request
+        assert await user_webhook_processor._should_process_event(event) is result
 
     async def test_get_matching_kinds(
         self, user_webhook_processor: UserWebhookProcessor
