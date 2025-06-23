@@ -325,7 +325,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         passed_entities = []
+        number_of_raw_results = 0
+        number_of_transformed_entities = 0
+
         if raw_results:
+            number_of_raw_results += len(raw_results)
             calculation_result = await self._register_resource_raw(
                 resource_config,
                 raw_results,
@@ -334,12 +338,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             errors.extend(calculation_result.errors)
             passed_entities = list(calculation_result.entity_selector_diff.passed)
+            number_of_transformed_entities += calculation_result.number_of_transformed_entities
             logger.info(
                 f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
             )
 
-        number_of_raw_results = 0
-        number_of_transformed_entities = 0
+
+
         for generator in async_generators:
             try:
                 async for items in generator:
