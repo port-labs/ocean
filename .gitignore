@@ -170,3 +170,4 @@ junit/*
 
 # Ocean Cache
 .ocean_cache/
+.aider*

@@ -63,7 +63,7 @@ def translate_glob(
         if os.path.altsep:
             seps = (os.path.sep, os.path.altsep)
         else:
-            seps = os.path.sep
+            seps = (os.path.sep,)
     escaped_seps = "".join(map(re.escape, seps))
     any_sep = f"[{escaped_seps}]" if len(seps) > 1 else escaped_seps
     not_sep = f"[^{escaped_seps}]"
