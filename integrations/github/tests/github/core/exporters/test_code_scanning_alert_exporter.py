@@ -114,7 +114,7 @@ def ignored_errors() -> list[IgnoredError]:
     return [
         IgnoredError(
             status=403,
-            message_prefix="Advanced Security must be enabled for this repository to use code scanning",
+            message_prefix="Advanced Security must be enabled for this repository to use code scanning.",
         )
     ]
 
