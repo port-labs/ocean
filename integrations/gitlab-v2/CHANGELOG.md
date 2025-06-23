@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Project Webhook Processor, enabling handling of project creation and deletion events via webhooks in the GitLab integration.
 
 
+## 0.1.39 (2025-06-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.17
+
+
 ## 0.1.38 (2025-06-22)
 
 
