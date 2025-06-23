@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 - Update cache folder to be in /tmp.
-- Add permissions to ocean user to /app in dock
+- Use root user in smoke test.
 
 ## 0.24.16 (2025-06-22)
 
