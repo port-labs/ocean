@@ -24,6 +24,7 @@ from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 ENTITIES_BULK_SAMPLES_SIZE = 10
 ENTITIES_BULK_ESTIMATED_SIZE_MULTIPLIER = 1.5
 ENTITIES_BULK_MINIMUM_BATCH_SIZE = 1
+ENTITIES_BULK_UPSERT_CONCURRENCY = 5
 
 
 class EntityClientMixin:
@@ -199,7 +200,8 @@ class EntityClientMixin:
         :return: httpx.HTTPStatusError if there was an HTTP error and should_raise is False
         """
         validation_only = request_options["validation_only"]
-        async with self.semaphore:
+        bulk_semaphore = asyncio.Semaphore(ENTITIES_BULK_UPSERT_CONCURRENCY)
+        async with bulk_semaphore:
             logger.debug(
                 f"{'Validating' if validation_only else 'Upserting'} {len(entities)} of blueprint: {blueprint}"
             )
@@ -378,7 +380,7 @@ class EntityClientMixin:
             ):
                 if should_raise:
                     raise bulk_result
-                # If should_raise is False, retry batch in sequential order as a fallback only for 413 errors
+                # If should_raise is False, retry bulk in sequential order as a fallback only for 413 errors
                 if (
                     isinstance(bulk_result, httpx.HTTPStatusError)
                     and bulk_result.response.status_code == 413
