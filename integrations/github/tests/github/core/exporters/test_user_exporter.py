@@ -146,7 +146,7 @@ class TestGraphQLUserExporter:
                     LIST_ORG_MEMBER_GQL,
                     {
                         "organization": graphql_client.organization,
-                        "__path": "organization.membersWithRole.nodes",
+                        "__path": "organization.membersWithRole",
                     },
                 )
                 mock_request.assert_any_call(
@@ -154,7 +154,8 @@ class TestGraphQLUserExporter:
                     {
                         "organization": graphql_client.organization,
                         "first": 100,
-                        "__path": "organization.samlIdentityProvider.externalIdentities.edges",
+                        "__path": "organization.samlIdentityProvider.externalIdentities",
+                        "__final_key": "edges",
                     },
                 )
 
@@ -201,6 +202,7 @@ class TestGraphQLUserExporter:
                 {
                     "organization": graphql_client.organization,
                     "first": 100,
-                    "__path": "organization.samlIdentityProvider.externalIdentities.edges",
+                    "__path": "organization.samlIdentityProvider.externalIdentities",
+                    "__final_key": "edges",
                 },
             )

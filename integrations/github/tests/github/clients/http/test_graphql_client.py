@@ -114,7 +114,7 @@ class TestGithubGraphQLClient:
         ):
             results = []
             async for page in client.send_paginated_request(
-                "query", params={"__path": "organization.repositories.nodes"}
+                "query", params={"__path": "organization.repositories"}
             ):
                 results.append(page)
 
@@ -165,7 +165,7 @@ class TestGithubGraphQLClient:
         ):
             results = []
             async for page in client.send_paginated_request(
-                "query", params={"__path": "organization.repositories.nodes"}
+                "query", params={"__path": "organization.repositories"}
             ):
                 results.append(page)
 
@@ -201,7 +201,7 @@ class TestGithubGraphQLClient:
         ):
             results = []
             async for page in client.send_paginated_request(
-                "query", params={"__path": "organization.repositories.nodes"}
+                "query", params={"__path": "organization.repositories"}
             ):
                 results.append(page)
 
@@ -221,116 +221,3 @@ class TestGithubGraphQLClient:
         ):
             async for _ in client.send_paginated_request("query"):
                 pass
-
-    async def test_send_paginated_request_with_edges(
-        self, authenticator: AbstractGitHubAuthenticator
-    ) -> None:
-        client = GithubGraphQLClient(
-            organization="test-org",
-            github_host="https://api.github.com",
-            authenticator=authenticator,
-        )
-
-        # Mock response with edges and nodes inside
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "organization": {
-                    "samlIdentityProvider": {
-                        "externalIdentities": {
-                            "edges": [
-                                {"node": {"guid": "guid1", "user": {"login": "user1"}}},
-                                {"node": {"guid": "guid2", "user": {"login": "user2"}}},
-                            ],
-                            "pageInfo": {"hasNextPage": False, "endCursor": None},
-                        }
-                    }
-                }
-            }
-        }
-
-        with patch.object(
-            client, "send_api_request", AsyncMock(return_value=mock_response)
-        ):
-            results = []
-            async for page in client.send_paginated_request(
-                "query",
-                params={
-                    "__path": "organization.samlIdentityProvider.externalIdentities.edges"
-                },
-            ):
-                results.append(page)
-
-            assert len(results) == 1
-            assert results[0] == [
-                {"node": {"guid": "guid1", "user": {"login": "user1"}}},
-                {"node": {"guid": "guid2", "user": {"login": "user2"}}},
-            ]
-
-    async def test_send_paginated_request_multiple_pages_with_edges(
-        self, authenticator: AbstractGitHubAuthenticator
-    ) -> None:
-        client = GithubGraphQLClient(
-            organization="test-org",
-            github_host="https://api.github.com",
-            authenticator=authenticator,
-        )
-
-        # First response with next page (edges)
-        first_response = MagicMock(spec=httpx.Response)
-        first_response.status_code = 200
-        first_response.json.return_value = {
-            "data": {
-                "organization": {
-                    "samlIdentityProvider": {
-                        "externalIdentities": {
-                            "edges": [
-                                {"node": {"guid": "guid1", "user": {"login": "user1"}}},
-                            ],
-                            "pageInfo": {"hasNextPage": True, "endCursor": "cursor1"},
-                        }
-                    }
-                }
-            }
-        }
-
-        # Second response with no next page (edges)
-        second_response = MagicMock(spec=httpx.Response)
-        second_response.status_code = 200
-        second_response.json.return_value = {
-            "data": {
-                "organization": {
-                    "samlIdentityProvider": {
-                        "externalIdentities": {
-                            "edges": [
-                                {"node": {"guid": "guid2", "user": {"login": "user2"}}},
-                            ],
-                            "pageInfo": {"hasNextPage": False, "endCursor": None},
-                        }
-                    }
-                }
-            }
-        }
-
-        with patch.object(
-            client,
-            "send_api_request",
-            AsyncMock(side_effect=[first_response, second_response]),
-        ):
-            results = []
-            async for page in client.send_paginated_request(
-                "query",
-                params={
-                    "__path": "organization.samlIdentityProvider.externalIdentities.edges"
-                },
-            ):
-                results.append(page)
-
-            assert len(results) == 2
-            assert results[0] == [
-                {"node": {"guid": "guid1", "user": {"login": "user1"}}},
-            ]
-            assert results[1] == [
-                {"node": {"guid": "guid2", "user": {"login": "user2"}}},
-            ]

@@ -64,6 +64,7 @@ class GithubGraphQLClient(AbstractGithubClient):
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         params = params or {}
         path = params.pop("__path", None)
+        final_key = params.pop("__final_key", "nodes")
         if not path:
             raise GraphQLClientError(
                 "GraphQL pagination requires a '__path' in params (e.g., 'organization.repositories')"
@@ -78,7 +79,7 @@ class GithubGraphQLClient(AbstractGithubClient):
                 self.base_url, method=method, json_data=payload
             )
             data = response.json()["data"]
-            nodes = self._extract_nodes(data, path)
+            nodes = self._extract_nodes(data, path, final_key)
             if not nodes:
                 return
 
@@ -90,33 +91,17 @@ class GithubGraphQLClient(AbstractGithubClient):
             cursor = page_info.get("endCursor")
             logger.debug(f"Next page cursor: {cursor}")
 
-    def _extract_nodes(self, data: Dict[str, Any], path: str) -> List[Dict[str, Any]]:
+    def _extract_nodes(
+        self, data: Dict[str, Any], path: str, final_key: str = "nodes"
+    ) -> List[Dict[str, Any]]:
         keys = path.split(".")
         current: Any = data
         for key in keys:
             current = current[key]
-        return current
+        return current[final_key]
 
     def _extract_page_info(self, data: Dict[str, Any], path: str) -> Dict[str, Any]:
-        """Extracts pagination information from a GraphQL response.
-
-        This function navigates a given GraphQL response `data` structure using a `path`
-        to locate and return the `pageInfo` object. It assumes that the `path` points
-        directly to a list of nodes (e.g., `data.nodes`). To retrieve `pageInfo`,
-        which is usually a sibling of this list (e.g., `data.pageInfo`), the function
-        traverses up one level from the specified `path`'s target.
-
-        Args:
-            data (Dict[str, Any]): The GraphQL response data dictionary.
-            path (str): The dot-separated key path (e.g., "viewer.repositories.nodes")
-                        to the list of nodes within the GraphQL response.
-
-        Returns:
-            Dict[str, Any]: A dictionary containing the pagination information,
-                            typically including keys like 'hasNextPage', 'endCursor', etc.
-        """
-
-        keys = path.split(".")[:-1]
+        keys = path.split(".")
         current = data
         for key in keys:
             current = current[key]

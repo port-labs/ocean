@@ -28,7 +28,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         variables = {
             "organization": self.client.organization,
-            "__path": "organization.membersWithRole.nodes",
+            "__path": "organization.membersWithRole",
         }
         async for users in self.client.send_paginated_request(
             LIST_ORG_MEMBER_GQL, variables
@@ -55,7 +55,8 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         variables = {
             "organization": self.client.organization,
             "first": 100,
-            "__path": "organization.samlIdentityProvider.externalIdentities.edges",
+            "__path": "organization.samlIdentityProvider.externalIdentities",
+            "__final_key": "edges",
         }
 
         remaining_users = set(users_no_email.keys())

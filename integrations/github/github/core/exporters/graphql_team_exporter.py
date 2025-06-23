@@ -27,7 +27,7 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         variables = {
             "organization": self.client.organization,
-            "__path": "organization.teams.nodes",
+            "__path": "organization.teams",
         }
         async for teams in self.client.send_paginated_request(
             LIST_TEAM_MEMBERS_GQL, variables
