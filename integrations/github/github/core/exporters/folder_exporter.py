@@ -60,7 +60,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     def _needs_recursive_search(path: str) -> bool:
         "Determines whether a give path requires recursive Github request param"
 
-        if "*" in path or re.match(r"\w+\/\w+", path):
+        if "*" in path or "/" in path:
             return True
         return False
 
