@@ -48,6 +48,8 @@ ENV PIP_ROOT_USER_ACTION=ignore
 
 WORKDIR /app
 
+USER ocean
+
 # Copy the application code
 COPY ./${BUILD_CONTEXT} /app
 
@@ -56,6 +58,7 @@ COPY --from=base /app/.venv /app/.venv
 
 COPY ./integrations/_infra/init.sh /app/init.sh
 
+USER root
 # Ensure that ocean is available for all in path
 RUN chmod a+x /app/.venv/bin/ocean
 
