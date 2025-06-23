@@ -95,7 +95,9 @@ async def test_resync_cloudcontrol(
 
     class CloudControlMockClient(MockClient):
         async def get_resource(self, **kwargs: Any) -> dict[str, Any]:
-            return {"ResourceDescription": {"Identifier": "test-id", "Properties": "{}"}}
+            return {
+                "ResourceDescription": {"Identifier": "test-id", "Properties": "{}"}
+            }
 
     def create_client(service_name: str, *a: Any, **kw: Any) -> Any:
         if service_name == "sts":
@@ -130,11 +132,18 @@ async def test_resync_resource_group(
     class ResourceGroupMockClient(MockClient, ResourceGroupsClientProtocol):
         def get_paginator(self, name: str) -> MockPaginator:
             class GroupMockPaginator(MockPaginator):
-                async def paginate(self, *args: Any, **kwargs: Any) -> AsyncGenerator[dict[str, Any], None]:
-                    yield {"Groups": [{"Name": "group1", "GroupArn": "arn:aws:rg:group1"}]}
+                async def paginate(
+                    self, *args: Any, **kwargs: Any
+                ) -> AsyncGenerator[dict[str, Any], None]:
+                    yield {
+                        "Groups": [{"Name": "group1", "GroupArn": "arn:aws:rg:group1"}]
+                    }
+
             return GroupMockPaginator()
+
         async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
             return []
+
         async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
             return []
 
@@ -168,11 +177,16 @@ async def test_enrich_group_with_resources(
     class EnrichMockClient(MockClient, ResourceGroupsClientProtocol):
         def get_paginator(self, name: str) -> MockPaginator:
             class EnrichMockPaginator(MockPaginator):
-                async def paginate(self, *args: Any, **kwargs: Any) -> AsyncGenerator[dict[str, Any], None]:
+                async def paginate(
+                    self, *args: Any, **kwargs: Any
+                ) -> AsyncGenerator[dict[str, Any], None]:
                     yield {"Resources": [{"ResourceArn": "arn:aws:ec2:instance/i-123"}]}
+
             return EnrichMockPaginator()
+
         async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
             return []
+
         async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
             return []
 
@@ -203,11 +217,16 @@ async def test_fetch_group_resources(
     class FetchMockClient(MockClient, ResourceGroupsClientProtocol):
         def get_paginator(self, name: str) -> MockPaginator:
             class FetchMockPaginator(MockPaginator):
-                async def paginate(self, *args: Any, **kwargs: Any) -> AsyncGenerator[dict[str, Any], None]:
+                async def paginate(
+                    self, *args: Any, **kwargs: Any
+                ) -> AsyncGenerator[dict[str, Any], None]:
                     yield {"ResourceDescriptions": [{"Identifier": "test-id"}]}
+
             return FetchMockPaginator()
+
         async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
             return []
+
         async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
             return []
 
@@ -232,12 +251,17 @@ async def test_fetch_group_resources_empty(
     class EmptyFetchMockClient(MockClient, ResourceGroupsClientProtocol):
         def get_paginator(self, name: str) -> MockPaginator:
             class EmptyFetchMockPaginator(MockPaginator):
-                async def paginate(self, *args: Any, **kwargs: Any) -> AsyncGenerator[dict[str, Any], None]:
+                async def paginate(
+                    self, *args: Any, **kwargs: Any
+                ) -> AsyncGenerator[dict[str, Any], None]:
                     if False:
                         yield  # never yields
+
             return EmptyFetchMockPaginator()
+
         async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
             return []
+
         async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
             return []
 

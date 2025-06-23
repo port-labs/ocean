@@ -72,12 +72,18 @@ async def test_integration_resync_cloudcontrol_deep(
                     async def paginate(self, *args: Any, **kwargs: Any) -> Any:
                         yield {
                             "ResourceDescriptions": [
-                                {"Identifier": "test-id", "Properties": '{"Name": "bucket1"}'}
+                                {
+                                    "Identifier": "test-id",
+                                    "Properties": '{"Name": "bucket1"}',
+                                }
                             ]
                         }
+
                 return CloudControlMockPaginator()
+
             async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
                 return []
+
             async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
                 return []
 
@@ -117,10 +123,17 @@ async def test_integration_resync_resource_group_deep(mock_account_id: str) -> N
             def get_paginator(self, name: str) -> MockPaginator:
                 class GroupMockPaginator(MockPaginator):
                     async def paginate(self, *args: Any, **kwargs: Any) -> Any:
-                        yield {"Groups": [{"Name": "group1", "GroupArn": "arn:aws:rg:group1"}]}
+                        yield {
+                            "Groups": [
+                                {"Name": "group1", "GroupArn": "arn:aws:rg:group1"}
+                            ]
+                        }
+
                 return GroupMockPaginator()
+
             async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
                 return []
+
             async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
                 return []
 
@@ -160,9 +173,12 @@ async def test_integration_enrich_group_with_resources_deep(
             class EnrichMockPaginator(MockPaginator):
                 async def paginate(self, *args: Any, **kwargs: Any) -> Any:
                     yield {"Resources": [{"ResourceArn": "arn:aws:ec2:instance/i-123"}]}
+
             return EnrichMockPaginator()
+
         async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
             return []
+
         async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
             return []
 
@@ -194,9 +210,12 @@ async def test_integration_fetch_group_resources_deep() -> None:
             class FetchMockPaginator(MockPaginator):
                 async def paginate(self, *args: Any, **kwargs: Any) -> Any:
                     yield {"Resources": [{"ResourceArn": "arn:aws:ec2:instance/i-123"}]}
+
             return FetchMockPaginator()
+
         async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
             return []
+
         async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
             return []
 

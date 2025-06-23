@@ -53,23 +53,13 @@ def mock_session() -> AsyncMock:
         def __init__(self) -> None:
             self.called = False
 
-        async def paginate(
-            self, *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[Dict[str, Any], None]:
+        async def paginate(self, TypeName: str) -> AsyncGenerator[Dict[str, Any], None]:
             self.called = True
             yield {"ResourceDescriptions": [{"Identifier": "test-id"}]}
 
     class MockClient(AsyncMock):
         def get_paginator(self, name: str) -> MockPaginator:
             return MockPaginator()
-
-        async def __aenter__(self) -> "MockClient":
-            return self
-
-        async def __aexit__(
-            self, exc_type: Optional[type], exc: Optional[Exception], tb: Optional[Any]
-        ) -> None:
-            pass
 
     @asynccontextmanager
     async def mock_client(
@@ -112,16 +102,23 @@ class MockSTSClient:
     async def __aenter__(self) -> "MockSTSClient":
         return self
 
-    async def __aexit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: Any) -> None:
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: Any
+    ) -> None:
         pass
 
+
 class MockPaginator:
-    async def paginate(self, *args: Any, **kwargs: Any) -> AsyncGenerator[dict[str, Any], None]:
+    async def paginate(self, TypeName: str) -> AsyncGenerator[dict[str, Any], None]:
         yield {"ResourceDescriptions": [{"Identifier": "test-id", "Properties": "{}"}]}
+
 
 class MockClient:
     async def describe_stacks(self, **kwargs: Any) -> dict[str, Any]:
-        return {"Stacks": [{"StackName": "test-stack", "Foo": "Bar"}], "NextToken": None}
+        return {
+            "Stacks": [{"StackName": "test-stack", "Foo": "Bar"}],
+            "NextToken": None,
+        }
 
     def get_paginator(self, name: str) -> MockPaginator:
         return MockPaginator()
@@ -129,11 +126,13 @@ class MockClient:
     async def __aenter__(self) -> "MockClient":
         return self
 
-    async def __aexit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: Any) -> None:
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: Any
+    ) -> None:
         pass
 
-    async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
+    async def list_group_resources(self, Group: str) -> Any:
         return []
 
-    async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
+    async def list_groups(self) -> Any:
         return []
