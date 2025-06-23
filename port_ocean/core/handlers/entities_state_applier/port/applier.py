@@ -126,13 +126,11 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     ) -> list[Entity]:
         logger.info(f"Upserting {len(entities)} entities")
         modified_entities: list[Entity] = []
-
-        # Group entities by blueprint to handle mixed blueprint scenarios from multiple processors
+        
         blueprint_groups: dict[str, list[Entity]] = defaultdict(list)
         for entity in entities:
             blueprint_groups[entity.blueprint].append(entity)
-
-        # Process each blueprint group separately
+        
         for blueprint_entities in blueprint_groups.values():
             upserted_entities = (
                 await self.context.port_client.upsert_entities_in_batches(
