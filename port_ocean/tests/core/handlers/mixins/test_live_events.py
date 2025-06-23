@@ -417,7 +417,7 @@ async def test_sync_raw_results_groups_entities_by_blueprint(
         properties={},
         relations={},
     )
-    
+
     deployment_entity = Entity(
         identifier="deployment-1",
         blueprint="deployment",
@@ -425,7 +425,7 @@ async def test_sync_raw_results_groups_entities_by_blueprint(
         properties={},
         relations={},
     )
-    
+
     another_service_entity = Entity(
         identifier="service-2",
         blueprint="service",
@@ -433,10 +433,10 @@ async def test_sync_raw_results_groups_entities_by_blueprint(
         properties={},
         relations={},
     )
-    
+
     # Mixed list of entities with different blueprints (as would come from multiple processors)
     mixed_entities = [service_entity, deployment_entity, another_service_entity]
-    
+
     mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(return_value=(mixed_entities, []))  # type: ignore
     mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
     mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
@@ -445,33 +445,45 @@ async def test_sync_raw_results_groups_entities_by_blueprint(
     await mock_live_events_mixin.sync_raw_results([])
 
     assert mock_live_events_mixin.entities_state_applier.upsert.call_count == 2
-    
+
     call_args_list = mock_live_events_mixin.entities_state_applier.upsert.call_args_list
-    
-    first_call_entities = call_args_list[0][0][0]  # First positional argument of first call
-    second_call_entities = call_args_list[1][0][0]  # First positional argument of second call
-    
+
+    first_call_entities = call_args_list[0][0][
+        0
+    ]  # First positional argument of first call
+    second_call_entities = call_args_list[1][0][
+        0
+    ]  # First positional argument of second call
+
     first_call_blueprints = {entity.blueprint for entity in first_call_entities}
     second_call_blueprints = {entity.blueprint for entity in second_call_entities}
-    
-    assert len(first_call_blueprints) == 1, "First call should contain entities from only one blueprint"
-    assert len(second_call_blueprints) == 1, "Second call should contain entities from only one blueprint"
-    
+
+    assert (
+        len(first_call_blueprints) == 1
+    ), "First call should contain entities from only one blueprint"
+    assert (
+        len(second_call_blueprints) == 1
+    ), "Second call should contain entities from only one blueprint"
+
     # Verify that all blueprints are represented
     all_processed_blueprints = first_call_blueprints.union(second_call_blueprints)
     assert all_processed_blueprints == {"service", "deployment"}
-    
+
     # Verify that all entities are processed
     all_processed_entities = first_call_entities + second_call_entities
     assert len(all_processed_entities) == 3
-    
+
     # Verify the service entities are grouped together
-    service_entities_processed = [e for e in all_processed_entities if e.blueprint == "service"]
-    deployment_entities_processed = [e for e in all_processed_entities if e.blueprint == "deployment"]
-    
+    service_entities_processed = [
+        e for e in all_processed_entities if e.blueprint == "service"
+    ]
+    deployment_entities_processed = [
+        e for e in all_processed_entities if e.blueprint == "deployment"
+    ]
+
     assert len(service_entities_processed) == 2
     assert len(deployment_entities_processed) == 1
-    
+
     # Verify that both calls use the correct UserAgentType
     for call_args in call_args_list:
         assert call_args[0][1] == UserAgentType.exporter  # Second positional argument
@@ -499,7 +511,7 @@ async def test_sync_raw_results_single_blueprint_unchanged_behavior(
             relations={},
         ),
     ]
-    
+
     # Setup mocks
     mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(return_value=(entities_same_blueprint, []))  # type: ignore
     mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
@@ -511,11 +523,11 @@ async def test_sync_raw_results_single_blueprint_unchanged_behavior(
 
     # Verify that upsert was called once (same as before when all entities have the same blueprint)
     mock_live_events_mixin.entities_state_applier.upsert.assert_called_once()
-    
+
     # Verify the call contains all entities
     call_args = mock_live_events_mixin.entities_state_applier.upsert.call_args
     processed_entities = call_args[0][0]  # First positional argument
-    
+
     assert len(processed_entities) == 2
     assert all(entity.blueprint == "service" for entity in processed_entities)
     assert call_args[0][1] == UserAgentType.exporter  # Second positional argument

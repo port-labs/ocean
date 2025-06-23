@@ -1,3 +1,4 @@
+from collections import defaultdict
 from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
@@ -17,10 +18,9 @@ class LiveEventsMixin(HandlerMixin):
         """
         entities_to_create, entities_to_delete = await self._parse_raw_event_results_to_entities(webhook_events_raw_result)
         if entities_to_create:
-            blueprint_groups: dict[str, list[Entity]] = {}
+            # Group entities by blueprint to handle mixed blueprint scenarios from multiple processors
+            blueprint_groups: dict[str, list[Entity]] = defaultdict(list)
             for entity in entities_to_create:
-                if entity.blueprint not in blueprint_groups:
-                    blueprint_groups[entity.blueprint] = []
                 blueprint_groups[entity.blueprint].append(entity)
             
             for blueprint_entities in blueprint_groups.values():
