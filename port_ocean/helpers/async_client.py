@@ -1,4 +1,4 @@
-from typing import Any, Callable, Type
+from typing import Any, Type
 
 import httpx
 from loguru import logger
@@ -26,11 +26,10 @@ class OceanAsyncClient(httpx.AsyncClient):
     def _init_transport(  # type: ignore[override]
         self,
         transport: httpx.AsyncBaseTransport | None = None,
-        app: Callable[..., Any] | None = None,
         **kwargs: Any,
     ) -> httpx.AsyncBaseTransport:
-        if transport is not None or app is not None:
-            return super()._init_transport(transport=transport, app=app, **kwargs)
+        if transport is not None:
+            return super()._init_transport(transport=transport, **kwargs)
 
         return self._transport_class(
             wrapped_transport=httpx.AsyncHTTPTransport(
