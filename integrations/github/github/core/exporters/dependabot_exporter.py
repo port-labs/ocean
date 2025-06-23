@@ -1,5 +1,9 @@
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.helpers.utils import enrich_with_repository, extract_repo_params
+from github.helpers.utils import (
+    IgnoredError,
+    enrich_with_repository,
+    extract_repo_params,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListDependabotAlertOptions, SingleDependabotAlertOptions
@@ -7,6 +11,14 @@ from github.clients.http.rest_client import GithubRestClient
 
 
 class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
+
+    def _get_ignored_errors(self) -> list[IgnoredError]:
+        return [
+            IgnoredError(
+                status=403,
+                message_prefix="Dependabot alerts are disabled for this repository",
+            ),
+        ]
 
     async def get_resource[
         ExporterOptionsT: SingleDependabotAlertOptions
@@ -16,7 +28,9 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
         alert_number = params["alert_number"]
 
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/dependabot/alerts/{alert_number}"
-        response = await self.client.send_api_request(endpoint)
+        response = await self.client.send_api_request(
+            endpoint, ignored_errors=self._get_ignored_errors()
+        )
 
         logger.info(
             f"Fetched Dependabot alert with number: {alert_number} for repo: {repo_name}"
@@ -35,6 +49,7 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
         async for alerts in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/dependabot/alerts",
             params,
+            ignored_errors=self._get_ignored_errors(),
         ):
             logger.info(
                 f"Fetched batch of {len(alerts)} Dependabot alerts from repository {repo_name}"

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.9 (2025-06-23)
+
+
+### Bug Fixes
+
+- Fixed error handling for repositories with Advanced Security or Dependabot disabled
+- Previously, 403 errors for disabled features would crash the integration
+- Now gracefully ignores these errors and returns empty results
+- Affects both code scanning alerts, Dependabot alerts exporters and webhook upsertion
+
+
+
 ## 0.2.8 (2025-06-23)
 
 

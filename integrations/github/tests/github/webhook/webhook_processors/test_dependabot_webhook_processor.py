@@ -163,7 +163,7 @@ class TestDependabotAlertWebhookProcessor:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = {
             **alert_data,
-            "repo": {"name": "test-repo"},
+            "__repository": "test-repo",
         }
 
         with (
@@ -190,7 +190,7 @@ class TestDependabotAlertWebhookProcessor:
         assert isinstance(result, WebhookEventRawResults)
         assert len(result.updated_raw_results) == 1
         assert len(result.deleted_raw_results) == 0
-        assert result.updated_raw_results[0]["repo"]["name"] == "test-repo"
+        assert result.updated_raw_results[0]["__repository"] == "test-repo"
 
     async def test_handle_event_dismissed_not_in_allowed_state(
         self,

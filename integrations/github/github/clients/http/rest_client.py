@@ -5,6 +5,8 @@ from loguru import logger
 import re
 from urllib.parse import urlparse, urlunparse
 
+from github.helpers.utils import IgnoredError
+
 
 PAGE_SIZE = 100
 
@@ -44,6 +46,7 @@ class GithubRestClient(AbstractGithubClient):
         resource: str,
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
+        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Handle GitHub's pagination for API requests."""
         if params is None:
@@ -55,7 +58,11 @@ class GithubRestClient(AbstractGithubClient):
 
         while True:
             response = await self.send_api_request(
-                resource, method=method, params=params, return_full_response=True
+                resource,
+                method=method,
+                params=params,
+                return_full_response=True,
+                ignored_errors=ignored_errors,
             )
 
             if not response or not (items := response.json()):

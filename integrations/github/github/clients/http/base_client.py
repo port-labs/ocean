@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 from loguru import logger
 import httpx
 
+from github.helpers.utils import IgnoredError
+
 if TYPE_CHECKING:
     from github.clients.auth.abstract_authenticator import (
         AbstractGitHubAuthenticator,
@@ -32,6 +34,25 @@ class AbstractGithubClient(ABC):
     @abstractmethod
     def base_url(self) -> str: ...
 
+    def _should_ignore_error(
+        self,
+        error: httpx.HTTPStatusError,
+        ignored_errors: List[IgnoredError],
+        identifier: str,
+    ) -> bool:
+        for ignored_error in ignored_errors:
+            if (
+                error.response.status_code == ignored_error.status
+                and error.response.json()
+                .get("message", "")
+                .startswith(ignored_error.message_prefix)
+            ):
+                logger.info(
+                    f"Ignoring error for {identifier}: {ignored_error.status} {ignored_error.message_prefix}"
+                )
+                return True
+        return False
+
     async def send_api_request(
         self,
         resource: str,
@@ -39,6 +60,7 @@ class AbstractGithubClient(ABC):
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
         return_full_response: bool = False,
+        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> Any:
         """Send request to GitHub API with error handling and rate limiting."""
 
@@ -56,6 +78,10 @@ class AbstractGithubClient(ABC):
             return response if return_full_response else response.json()
 
         except httpx.HTTPStatusError as e:
+            if ignored_errors and self._should_ignore_error(
+                e, ignored_errors, resource
+            ):
+                return {}
             if e.response.status_code == 404:
                 logger.debug(f"Resource not found at endpoint '{resource}'")
                 return {}

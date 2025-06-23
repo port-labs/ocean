@@ -1,4 +1,6 @@
 from typing import Any, Dict, List
+
+from httpx import HTTPStatusError
 from loguru import logger
 from github.clients.http.rest_client import GithubRestClient
 
@@ -60,38 +62,54 @@ class GithubWebhookClient(GithubRestClient):
 
         webhook_url = f"{base_url}/integration/webhook"
 
-        existing_webhook = await self._get_existing_webhook(webhook_url)
+        try:
+            existing_webhook = await self._get_existing_webhook(webhook_url)
 
-        # Create new webhook with events
-        if not existing_webhook:
-            logger.info("Creating new GitHub webhook")
-            webhook_data = {
-                "name": "web",
-                "active": True,
-                "events": webhook_events,
-                "config": self._build_webhook_config(webhook_url),
-            }
+            # Create new webhook with events
+            if not existing_webhook:
+                logger.info("Creating new GitHub webhook")
+                webhook_data = {
+                    "name": "web",
+                    "active": True,
+                    "events": webhook_events,
+                    "config": self._build_webhook_config(webhook_url),
+                }
 
-            await self.send_api_request(
-                f"{self.base_url}/orgs/{self.organization}/hooks",
-                method="POST",
-                json_data=webhook_data,
+                await self.send_api_request(
+                    f"{self.base_url}/orgs/{self.organization}/hooks",
+                    method="POST",
+                    json_data=webhook_data,
+                )
+                logger.info("Successfully created webhook")
+                return
+
+            existing_webhook_id = existing_webhook["id"]
+            existing_webhook_secret = existing_webhook["config"].get("secret")
+
+            logger.info(f"Found existing webhook with ID: {existing_webhook_id}")
+
+            # Check if patching is necessary
+            if bool(self.webhook_secret) ^ bool(existing_webhook_secret):
+                logger.info(f"Patching webhook {existing_webhook_id} to update secret")
+
+                config_data = self._build_webhook_config(webhook_url)
+
+                await self._patch_webhook(existing_webhook_id, config_data)
+                return
+
+            logger.info("Webhook already exists with appropriate configuration")
+
+        except HTTPStatusError as http_err:
+            logger.error(
+                "HTTP error occurred while creating webhook for organization {} with URL {}: {}",
+                self.organization,
+                webhook_url,
+                http_err,
             )
-            logger.info("Successfully created webhook")
-            return
-
-        existing_webhook_id = existing_webhook["id"]
-        existing_webhook_secret = existing_webhook["config"].get("secret")
-
-        logger.info(f"Found existing webhook with ID: {existing_webhook_id}")
-
-        # Check if patching is necessary
-        if bool(self.webhook_secret) ^ bool(existing_webhook_secret):
-            logger.info(f"Patching webhook {existing_webhook_id} to update secret")
-
-            config_data = self._build_webhook_config(webhook_url)
-
-            await self._patch_webhook(existing_webhook_id, config_data)
-            return
-
-        logger.info("Webhook already exists with appropriate configuration")
+        except Exception as err:
+            logger.error(
+                "Unexpected error occurred while creating webhook for organization {} with URL {}: {}",
+                self.organization,
+                webhook_url,
+                err,
+            )

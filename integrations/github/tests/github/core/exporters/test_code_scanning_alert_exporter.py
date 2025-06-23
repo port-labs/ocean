@@ -1,4 +1,5 @@
 from typing import Any, AsyncGenerator
+from github.helpers.utils import IgnoredError
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
@@ -108,9 +109,21 @@ TEST_CODE_SCANNING_ALERTS = [
 ]
 
 
+@pytest.fixture
+def ignored_errors() -> list[IgnoredError]:
+    return [
+        IgnoredError(
+            status=403,
+            message_prefix="Advanced Security must be enabled for this repository to use code scanning",
+        )
+    ]
+
+
 @pytest.mark.asyncio
 class TestRestCodeScanningAlertExporter:
-    async def test_get_resource(self, rest_client: GithubRestClient) -> None:
+    async def test_get_resource(
+        self, rest_client: GithubRestClient, ignored_errors: list[IgnoredError]
+    ) -> None:
         # Create a mock response
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
@@ -134,11 +147,15 @@ class TestRestCodeScanningAlertExporter:
             assert alert == expected_alert
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts/42"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts/42",
+                ignored_errors=ignored_errors,
             )
 
     async def test_get_paginated_resources(
-        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+        self,
+        rest_client: GithubRestClient,
+        mock_port_app_config: GithubPortAppConfig,
+        ignored_errors: list[IgnoredError],
     ) -> None:
         # Create an async mock to return the test alerts
 
@@ -165,10 +182,11 @@ class TestRestCodeScanningAlertExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts",
                 {"state": "open"},
+                ignored_errors=ignored_errors,
             )
 
     async def test_get_paginated_resources_with_state_filtering(
-        self, rest_client: GithubRestClient
+        self, rest_client: GithubRestClient, ignored_errors: list[IgnoredError]
     ) -> None:
         # Test with different state options
         async def mock_paginated_request(
@@ -197,10 +215,11 @@ class TestRestCodeScanningAlertExporter:
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts",
                     {"state": "open"},
+                    ignored_errors=ignored_errors,
                 )
 
     async def test_get_resource_with_different_alert_number(
-        self, rest_client: GithubRestClient
+        self, rest_client: GithubRestClient, ignored_errors: list[IgnoredError]
     ) -> None:
         exporter = RestCodeScanningAlertExporter(rest_client)
 
@@ -221,5 +240,67 @@ class TestRestCodeScanningAlertExporter:
             assert alert["dismissed_reason"] == "used_in_tests"
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts/43"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts/43",
+                ignored_errors=ignored_errors,
             )
+
+    async def test_handle_request_with_advanced_security_disabled_error(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Test that _handle_request properly handles Advanced Security disabled errors."""
+        exporter = RestCodeScanningAlertExporter(rest_client)
+
+        # Create a mock HTTP error that indicates Advanced Security is disabled
+        mock_error = httpx.HTTPStatusError(
+            "403 Forbidden",
+            request=MagicMock(),
+            response=MagicMock(
+                status_code=403,
+                text="Advanced Security must be enabled for this repository to use code scanning",
+            ),
+        )
+
+        # Mock the underlying HTTP client to raise the error
+        with patch.object(
+            rest_client.authenticator.client,
+            "request",
+            new_callable=AsyncMock,
+            side_effect=mock_error,
+        ):
+            result = await exporter.get_resource(
+                SingleCodeScanningAlertOptions(repo_name="test-repo", alert_number="43")
+            )
+            assert result == {"__repository": "test-repo"}
+
+    async def test_handle_request_paginated_with_advanced_security_disabled_error(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Test that _handle_request properly handles Advanced Security disabled errors for paginated requests."""
+        exporter = RestCodeScanningAlertExporter(rest_client)
+
+        # Create a mock HTTP error that indicates Advanced Security is disabled
+        mock_error = httpx.HTTPStatusError(
+            "403 Forbidden",
+            request=MagicMock(),
+            response=MagicMock(
+                status_code=403,
+                text="Advanced Security must be enabled for this repository to use code scanning",
+            ),
+        )
+
+        # Mock the underlying HTTP client to raise the error
+        with patch.object(
+            rest_client.authenticator.client,
+            "request",
+            new_callable=AsyncMock,
+            side_effect=mock_error,
+        ):
+            # Collect all results from the generator
+            results = []
+            async for batch in exporter.get_paginated_resources(
+                ListCodeScanningAlertOptions(repo_name="test-repo", state="open"),
+            ):
+                results.extend(batch)
+
+            # Should return no results when the error is ignored
+            assert results == []

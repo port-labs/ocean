@@ -6,6 +6,7 @@ from httpx import Response
 
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import GraphQLClientError
+from github.helpers.utils import IgnoredError
 
 PAGE_SIZE = 25
 
@@ -31,6 +32,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         method: str = "POST",
         json_data: Optional[Dict[str, Any]] = None,
         return_full_response: bool = True,
+        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> Any:
         response = await super().send_api_request(
             resource=resource,
@@ -38,6 +40,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             method=method,
             json_data=json_data,
             return_full_response=return_full_response,
+            ignored_errors=ignored_errors,
         )
         self._handle_graphql_errors(response)
         return response
@@ -61,6 +64,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         resource: str,
         params: Optional[Dict[str, Any]] = None,
         method: str = "POST",
+        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         params = params or {}
         path = params.pop("__path", None)
@@ -75,7 +79,10 @@ class GithubGraphQLClient(AbstractGithubClient):
         while True:
             payload = self.build_graphql_payload(resource, params, cursor=cursor)
             response = await self.send_api_request(
-                self.base_url, method=method, json_data=payload
+                self.base_url,
+                method=method,
+                json_data=payload,
+                ignored_errors=ignored_errors,
             )
             data = response.json()["data"]
             nodes = self._extract_nodes(data, path)
