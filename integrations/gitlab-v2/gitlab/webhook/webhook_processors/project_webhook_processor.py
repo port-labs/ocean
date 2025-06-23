@@ -43,7 +43,9 @@ class ProjectWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
     @override
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return not ({"project_id"} - payload.keys())
+        return not (
+            {"project_id", "name", "path", "path_with_namespace"} - payload.keys()
+        )
 
     def _strip_deleted_suffix(self, value: str) -> str:
         # Remove -deleted-<digits> or -<digits> at the end of the string

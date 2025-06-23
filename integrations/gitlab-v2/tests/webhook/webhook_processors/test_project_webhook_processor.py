@@ -115,7 +115,12 @@ class TestProjectWebhookProcessor:
         self, processor: ProjectWebhookProcessor
     ) -> None:
         """Test payload validation with valid payload"""
-        valid_payload = {"project_id": 12345, "name": "test-project"}
+        valid_payload = {
+            "project_id": 12345,
+            "name": "test-project",
+            "path": "test-project",
+            "path_with_namespace": "group/test-project",
+        }
         assert await processor.validate_payload(valid_payload) is True
 
     async def test_validate_payload_missing_project_id(
