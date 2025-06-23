@@ -41,11 +41,15 @@ class AbstractGithubClient(ABC):
         identifier: str,
     ) -> bool:
         for ignored_error in ignored_errors:
+            # Try to get message from JSON response, return False if JSON parsing fails
+            try:
+                message = error.response.json().get("message", "")
+            except (ValueError, TypeError):
+                return False
+
             if (
                 error.response.status_code == ignored_error.status
-                and error.response.json()
-                .get("message", "")
-                .startswith(ignored_error.message_prefix)
+                and message.startswith(ignored_error.message_prefix)
             ):
                 logger.info(
                     f"Ignoring error for {identifier}: {ignored_error.status} {ignored_error.message_prefix}"
