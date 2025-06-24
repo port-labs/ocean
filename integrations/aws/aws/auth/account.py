@@ -235,7 +235,11 @@ class MultiAccountStrategy(AWSSessionStrategy):
         for arn in arns:
             account_id = extract_account_from_arn(arn, arn_parser)
             if account_id:
-                account = {"Id": account_id, "Arn": arn, "Name": f"Account-{account_id}"}
+                account = {
+                    "Id": account_id,
+                    "Arn": arn,
+                    "Name": f"Account-{account_id}",
+                }
                 accounts.append(account)
                 yield account
             else:
@@ -254,6 +258,7 @@ class MultiAccountStrategy(AWSSessionStrategy):
         async for account in self.get_accessible_accounts():
             accessible_accounts.append(account)
         total_accounts = len(accessible_accounts)
+
         async def process_account_regions(
             account: dict[str, Any],
             account_index: int,
@@ -280,6 +285,7 @@ class MultiAccountStrategy(AWSSessionStrategy):
             )
             results = [(session, region) for region in region_list]
             return results
+
         tasks = [
             process_account_regions(account, idx)
             for idx, account in enumerate(accessible_accounts)
@@ -309,7 +315,9 @@ class MultiAccountStrategy(AWSSessionStrategy):
             logger.info(f"Creating session for account {account_id}")
             session = await self._get_account_session(account_id)
             if not regions:
-                logger.warning(f"No regions provided for account {account_id}. Skipping.")
+                logger.warning(
+                    f"No regions provided for account {account_id}. Skipping."
+                )
                 return
             region_list = sorted(list(regions))
             total_regions = len(region_list)

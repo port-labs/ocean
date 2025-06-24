@@ -58,7 +58,9 @@ async def get_sessions(
         ):
             yield session, region
     else:
-        async for session, region in _session_strategy.create_session_for_each_region(regions):
+        async for session, region in _session_strategy.create_session_for_each_region(
+            regions
+        ):
             yield session, region
 
 
@@ -69,7 +71,7 @@ async def get_session_for_account_and_region(
     # Get allowed regions from the resource config
     session = await get_credentials().get_session(region=None)
     regions = await get_allowed_regions(session, resource_config.selector)
-    
+
     async for session, session_region in _session_strategy.create_session_for_account(
         account_id, regions
     ):
@@ -97,12 +99,14 @@ def validate_request(request: Request) -> tuple[bool, str]:
 
 def get_credentials() -> StaticCredentialProvider:
     """Get the initialized AWS credentials provider.
-    
+
     Raises:
         RuntimeError: If credentials are not initialized (initialize_access_credentials() not called)
     """
     if _validated_credentials is None:
-        raise RuntimeError("AWS credentials not initialized. Call initialize_access_credentials() first.")
+        raise RuntimeError(
+            "AWS credentials not initialized. Call initialize_access_credentials() first."
+        )
     return _validated_credentials
 
 

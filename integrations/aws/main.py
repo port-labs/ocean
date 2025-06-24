@@ -51,6 +51,7 @@ from aws.auth.account import RegionResolver
 
 semaphore = get_semaphore()
 
+
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(ResourceKindsWithSpecialHandling):
@@ -435,6 +436,7 @@ async def on_start() -> None:
         )
 
     await initialize_access_credentials()
+
 
 async def _handle_global_resource_resync(
     kind: str,
