@@ -56,10 +56,11 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "__path": "organization.teams",
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
+        
+        teams_buffer = []
         async for teams_page_data in self.client.send_paginated_request(
             LIST_TEAM_MEMBERS_GQL, params=variables
         ):
-            processed_teams_page = []
             for team in teams_page_data:
                 members_data = team.get("members", {})
                 member_nodes = members_data.get("nodes", [])
@@ -77,8 +78,16 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 if "pageInfo" in team["members"]:
                     del team["members"]["pageInfo"]
 
-                processed_teams_page.append(team)
-            yield processed_teams_page
+                teams_buffer.append(team)
+                
+                # Yield when we have 10 teams
+                if len(teams_buffer) >= 10:
+                    yield teams_buffer
+                    teams_buffer = []
+        
+        # Yield any remaining teams
+        if teams_buffer:
+            yield teams_buffer
 
     async def fetch_other_members(
         self,
