@@ -23,13 +23,13 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         data = res.json()
         user = data["data"]["user"]
         if not user.get("email"):
-            user_to_update = [user]
-
+            # _fetch_external_identities expects a list of users and a dict mapping (index, login) to user.
+            # For a single user, we wrap it in a list and create the mapping accordingly.
             await self._fetch_external_identities(
-                user_to_update,
-                {(idx, user["login"]): user for idx, user in enumerate(user_to_update)},
+                [user],  # Pass the user dictionary as a single-element list
+                {(0, user["login"]): user}  # Construct the users_no_email dict for this single user
             )
-            return user_to_update[0]
+            # The 'user' dictionary is modified in-place by _fetch_external_identities
         return user
 
     async def get_paginated_resources(
