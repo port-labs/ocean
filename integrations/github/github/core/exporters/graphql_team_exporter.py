@@ -73,7 +73,8 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
                         member_page_size=self.MEMBER_PAGE_SIZE,
                     )
                     team["members"]["nodes"] = all_member_nodes_for_team
-                del team["members"]["pageInfo"]
+                if "pageInfo" in team["members"]:
+                    del team["members"]["pageInfo"]
 
                 processed_teams_page.append(team)
             yield processed_teams_page
