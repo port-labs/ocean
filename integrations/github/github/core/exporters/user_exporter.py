@@ -12,16 +12,25 @@ from github.helpers.gql_queries import (
 
 
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    async def get_resource[
-        ExporterOptionT: SingleUserOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionT: SingleUserOptions](
+        self, options: ExporterOptionT
+    ) -> RAW_ITEM:
         variables = {"login": options["login"]}
         payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
         res = await self.client.send_api_request(
             self.client.base_url, method="POST", json_data=payload
         )
         data = res.json()
-        return data["data"]["user"]
+        user = data["data"]["user"]
+        if not user.get("email"):
+            user_to_update = [user]
+
+            await self._fetch_external_identities(
+                user_to_update,
+                {(idx, user["login"]): user for idx, user in enumerate(user_to_update)},
+            )
+            return user_to_update[0]
+        return user
 
     async def get_paginated_resources(
         self, options: None = None
