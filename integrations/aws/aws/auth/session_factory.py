@@ -10,9 +10,7 @@ from aws.auth.account import (
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from typing import Any, Optional, Union
-
-from utils.overrides import AWSResourceConfig
+from typing import Optional, Union
 
 
 def normalize_arn_list(arn_input: Optional[Union[str, list[str]]]) -> list[str]:
@@ -35,14 +33,9 @@ class SessionStrategyFactory:
     @staticmethod
     async def create(
         provider: Optional[CredentialProvider] = None,
-        config: Optional[dict[str, Any]] = None,
     ) -> AWSSessionStrategy:
-        """Create and validate session strategy based on configuration."""
-        if config is None:
-            from port_ocean.context.ocean import ocean
-
-            config = ocean.integration_config
-
+        """Create and validate session strategy based on global configuration."""
+        config = ocean.integration_config
         if provider is None:
             if config.get("organization_role_arn"):
                 logger.info(
@@ -69,8 +62,7 @@ class SessionStrategyFactory:
 
             logger.info(
                 f"Configuration: org_role_arns={org_role_arns}, "
-                f"account_read_role_name={config.get('account_read_role_name')}, "
-                f"target_account_ids={config.get('target_account_ids', [])}"
+                f"account_read_role_name={config.get('account_read_role_name')}"
             )
 
         strategy = strategy_cls(provider=provider)

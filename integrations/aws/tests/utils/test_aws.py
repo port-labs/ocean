@@ -34,7 +34,7 @@ async def test_session_strategy_factory_single(
     monkeypatch.setattr(
         "aws.auth.account.SingleAccountStrategy.sanity_check", async_true
     )
-    strategy = await SessionStrategyFactory.create(resource_config)
+    strategy = await SessionStrategyFactory.create()
     assert isinstance(strategy, SingleAccountStrategy)
     assert await strategy.sanity_check() is True
 
@@ -61,7 +61,7 @@ async def test_session_strategy_factory_multi(
     monkeypatch.setattr(
         "aws.auth.account.MultiAccountStrategy.sanity_check", async_true
     )
-    strategy = await SessionStrategyFactory.create(resource_config, config=config)
+    strategy = await SessionStrategyFactory.create()
     assert isinstance(strategy, MultiAccountStrategy)
     assert await strategy.sanity_check() is True
 
