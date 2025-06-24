@@ -6,6 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
+import copy
 import pytest
 from unittest.mock import patch, MagicMock
 import httpx
@@ -97,8 +98,9 @@ class TestGraphQLUserExporter:
     ) -> None:
         mock_user_response = MagicMock(spec=httpx.Response)
         mock_user_response.status_code = 200
+        # Use a deep copy to prevent modification of the global constant
         mock_user_response.json.return_value = {
-            "data": {"user": TEST_USERS_NO_EMAIL_INITIAL[1]}
+            "data": {"user": copy.deepcopy(TEST_USERS_NO_EMAIL_INITIAL[1])}
         }
 
         async def mock_external_identities_request(
@@ -153,7 +155,9 @@ class TestGraphQLUserExporter:
         async def mock_paginated_request(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield TEST_USERS_NO_EMAIL_INITIAL
+            # Yield a deep copy to prevent modification of the global constant by other tests
+            # or by the code under test if it modifies the list in-place.
+            yield copy.deepcopy(TEST_USERS_NO_EMAIL_INITIAL)
 
         async def mock_paginated_request_with_external_identities(
             *args: Any, **kwargs: Any
