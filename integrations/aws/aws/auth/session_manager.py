@@ -53,19 +53,3 @@ class SessionManager:
                     raise
                 await asyncio.sleep(self._retry_delay * (attempt + 1))
         raise SessionCreationError("Failed to create AWS session after retries.")
-
-    async def get_client_cm(
-        self,
-        service_name: str,
-        region: Optional[str] = None,
-        role_arn: Optional[str] = None,
-        config: Optional[Boto3Config] = None,
-    ) -> AsyncContextManager[Any]:
-        """
-        Return an async context manager for the AWS client. Usage:
-            async with session_manager.get_client_cm("s3") as client:
-                ...
-        """
-        session = await self.get_session(region=region, role_arn=role_arn)
-        client_cm = session.create_client(service_name, region_name=region, config=config)  # type: ignore[call-overload]
-        return cast(AsyncContextManager[Any], client_cm)
