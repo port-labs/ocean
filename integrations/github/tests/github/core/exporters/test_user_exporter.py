@@ -84,17 +84,9 @@ class TestGraphQLUserExporter:
 
             assert user == TEST_USERS_NO_EMAIL_INITIAL[0]
 
-            expected_query = """
-        query ($login: String!) {
-            user(login: $login) {
-                login
-                email
-            }
-        }
-        """
             expected_variables = {"login": "user1"}
             expected_payload = graphql_client.build_graphql_payload(
-                query=expected_query, variables=expected_variables
+                query=FETCH_GITHUB_USER_GQL, variables=expected_variables
             )
             mock_request.assert_called_once_with(
                 graphql_client.base_url, method="POST", json_data=expected_payload
