@@ -1,3 +1,4 @@
+import copy
 from typing import Any, AsyncGenerator
 import httpx
 from port_ocean.core.handlers.port_app_config.models import (
@@ -176,12 +177,12 @@ class TestGraphQLTeamExporter:
                 MagicMock(
                     spec=httpx.Response,
                     status_code=200,
-                    json=lambda: GET_RESOURCE_TEAM_ALPHA_PAGE1_RESPONSE,
+                    json=lambda: copy.deepcopy(GET_RESOURCE_TEAM_ALPHA_PAGE1_RESPONSE),
                 ),
                 MagicMock(
                     spec=httpx.Response,
                     status_code=200,
-                    json=lambda: GET_RESOURCE_TEAM_ALPHA_PAGE2_RESPONSE,
+                    json=lambda: copy.deepcopy(GET_RESOURCE_TEAM_ALPHA_PAGE2_RESPONSE),
                 ),
             ]
         )
@@ -230,9 +231,9 @@ class TestGraphQLTeamExporter:
         # Team with no further member pages
         mock_response_beta = MagicMock(spec=httpx.Response)
         mock_response_beta.status_code = 200
-        mock_response_beta.json.return_value = {
-            "data": {"organization": {"team": TEAM_BETA_INITIAL}}
-        }
+        mock_response_beta.json.return_value = copy.deepcopy(
+            {"data": {"organization": {"team": TEAM_BETA_INITIAL}}}
+        )
 
         exporter = GraphQLTeamExporter(graphql_client)
         with patch.object(
@@ -250,12 +251,12 @@ class TestGraphQLTeamExporter:
         graphql_client: GithubGraphQLClient,
         mock_port_app_config: GithubPortAppConfig,
     ) -> None:
-        teams_to_yield = [TEAM_ALPHA_INITIAL, TEAM_BETA_INITIAL]
+        teams_to_yield_original = [TEAM_ALPHA_INITIAL, TEAM_BETA_INITIAL]
 
         async def mock_send_paginated_request_teams(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield teams_to_yield
+            yield copy.deepcopy(teams_to_yield_original)
 
         exporter = GraphQLTeamExporter(graphql_client)
 
