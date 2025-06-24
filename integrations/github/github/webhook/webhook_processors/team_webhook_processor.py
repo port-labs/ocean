@@ -1,8 +1,7 @@
 from typing import Any, cast
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.exporters.graphql_team_exporter import GraphQLTeamExporter
-from github.core.exporters.rest_team_exporter import RestTeamExporter
+from github.core.exporters.team_exporter import GraphQLTeamExporter, RestTeamExporter
 from github.core.options import SingleTeamOptions
 from github.webhook.events import TEAM_DELETE_EVENTS, TEAM_UPSERT_EVENTS
 from github.helpers.utils import GithubClientType, ObjectKind

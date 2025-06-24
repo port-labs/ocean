@@ -1,6 +1,9 @@
 from typing import Any
-from loguru import logger
+
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from loguru import logger
+
+from github.clients.http.rest_client import GithubRestClient
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleTeamOptions
@@ -10,8 +13,24 @@ from github.helpers.gql_queries import (
 )
 
 
+class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
+    async def get_resource[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> RAW_ITEM:
+        url = f"{self.client.base_url}/orgs/{self.client.organization}/teams/{options['slug']}"
+        data = await self.client.send_api_request(url)
+        return data
+
+    async def get_paginated_resources(
+        self, options: None = None
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        url = f"{self.client.base_url}/orgs/{self.client.organization}/teams"
+        async for teams in self.client.send_paginated_request(url):
+            yield teams
+
+
 class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    MEMBER_PAGE_SIZE = 50
+    MEMBER_PAGE_SIZE = 30
 
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
@@ -35,7 +54,7 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
         member_page_info = members_data.get("pageInfo", {})
 
         if member_page_info.get("hasNextPage"):
-            all_member_nodes_for_team = await self.fetch_other_members(
+            all_member_nodes_for_team = await self.get_paginated_members(
                 team_slug=team["slug"],
                 initial_members_page_info=member_page_info,
                 initial_member_nodes=member_nodes,
@@ -56,18 +75,18 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "__path": "organization.teams",
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
-        
+
         teams_buffer = []
         async for teams_page_data in self.client.send_paginated_request(
             LIST_TEAM_MEMBERS_GQL, params=variables
         ):
             for team in teams_page_data:
-                members_data = team.get("members", {})
-                member_nodes = members_data.get("nodes", [])
-                member_page_info = members_data.get("pageInfo", {})
+                members_data = team["members"]
+                member_nodes = members_data["nodes"]
+                member_page_info = members_data["pageInfo"]
 
                 if member_page_info.get("hasNextPage"):
-                    all_member_nodes_for_team = await self.fetch_other_members(
+                    all_member_nodes_for_team = await self.get_paginated_members(
                         team_slug=team["slug"],
                         initial_members_page_info=member_page_info,
                         initial_member_nodes=member_nodes,
@@ -75,21 +94,18 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
                     )
                     team["members"]["nodes"] = all_member_nodes_for_team
 
-                if "pageInfo" in team["members"]:
-                    del team["members"]["pageInfo"]
+                del team["members"]["pageInfo"]
 
                 teams_buffer.append(team)
-                
-                # Yield when we have 10 teams
+
                 if len(teams_buffer) >= 10:
                     yield teams_buffer
                     teams_buffer = []
-        
-        # Yield any remaining teams
+
         if teams_buffer:
             yield teams_buffer
 
-    async def fetch_other_members(
+    async def get_paginated_members(
         self,
         team_slug: str,
         initial_members_page_info: dict[str, Any],
@@ -129,9 +145,7 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
             )
             response_data = response.json()
 
-            team_data = (
-                response_data.get("data", {}).get("organization", {}).get("team")
-            )
+            team_data = response_data["data"]["organization"]["team"]
 
             new_members_data = team_data["members"]
             all_member_nodes.extend(new_members_data.get("nodes", []))

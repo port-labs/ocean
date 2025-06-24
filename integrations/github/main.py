@@ -1,8 +1,7 @@
 from typing import Any, cast
 
 from loguru import logger
-from github.core.exporters.graphql_team_exporter import GraphQLTeamExporter
-from github.core.exporters.rest_team_exporter import RestTeamExporter
+from github.core.exporters.team_exporter import GraphQLTeamExporter, RestTeamExporter
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.webhook.registry import register_live_events_webhooks
