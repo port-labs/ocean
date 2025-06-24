@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from aiobotocore.session import AioSession
 from botocore.utils import ArnParser
+from typing import Any
 
 from aws.auth.account import (
     normalize_arn_list,
@@ -20,7 +21,7 @@ from utils.overrides import AWSDescribeResourcesSelector
 
 
 # --- normalize_arn_list ---
-def test_normalize_arn_list():
+def test_normalize_arn_list() -> None:
     assert normalize_arn_list(None) == []
     assert normalize_arn_list("") == []
     assert normalize_arn_list([""]) == []
@@ -31,7 +32,7 @@ def test_normalize_arn_list():
 
 
 # --- extract_account_from_arn ---
-def test_extract_account_from_arn():
+def test_extract_account_from_arn() -> None:
     arn = "arn:aws:iam::123456789012:role/TestRole"
     parser = ArnParser()
     assert extract_account_from_arn(arn, parser) == "123456789012"
@@ -41,7 +42,7 @@ def test_extract_account_from_arn():
 
 # --- RegionResolver ---
 @pytest.mark.asyncio
-async def test_region_resolver_get_enabled_regions():
+async def test_region_resolver_get_enabled_regions() -> None:
     session = AsyncMock(spec=AioSession)
     selector = MagicMock(spec=AWSDescribeResourcesSelector)
     mock_client = AsyncMock()
@@ -59,7 +60,7 @@ async def test_region_resolver_get_enabled_regions():
 
 # --- StaticCredentialProvider ---
 @pytest.mark.asyncio
-async def test_static_credential_provider_success():
+async def test_static_credential_provider_success() -> None:
     config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
     provider = StaticCredentialProvider(config)
     creds = await provider.get_credentials(region=None)
@@ -70,7 +71,7 @@ async def test_static_credential_provider_success():
 
 
 @pytest.mark.asyncio
-async def test_static_credential_provider_missing():
+async def test_static_credential_provider_missing() -> None:
     provider = StaticCredentialProvider({})
     with pytest.raises(CredentialsProviderError):
         await provider.get_credentials(region=None)
@@ -78,7 +79,7 @@ async def test_static_credential_provider_missing():
 
 # --- AssumeRoleProvider ---
 @pytest.mark.asyncio
-async def test_assume_role_provider_missing_role_arn():
+async def test_assume_role_provider_missing_role_arn() -> None:
     config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
     provider = AssumeRoleProvider(config)
     with pytest.raises(CredentialsProviderError):
@@ -87,7 +88,7 @@ async def test_assume_role_provider_missing_role_arn():
 
 # --- SingleAccountStrategy ---
 @pytest.mark.asyncio
-async def test_single_account_strategy_get_accessible_accounts():
+async def test_single_account_strategy_get_accessible_accounts() -> None:
     config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
     provider = StaticCredentialProvider(config)
     strategy = SingleAccountStrategy(provider)
@@ -107,7 +108,7 @@ async def test_single_account_strategy_get_accessible_accounts():
 
 # --- MultiAccountStrategy ---
 @pytest.mark.asyncio
-async def test_multi_account_strategy_sanity_check_success():
+async def test_multi_account_strategy_sanity_check_success() -> None:
     config = {
         "aws_access_key_id": "x",
         "aws_secret_access_key": "y",
@@ -144,11 +145,11 @@ async def test_multi_account_strategy_sanity_check_success():
 
 # --- SessionStrategyFactory ---
 @pytest.mark.asyncio
-async def test_session_strategy_factory_single(monkeypatch, ocean_context):
+async def test_session_strategy_factory_single(monkeypatch: Any, ocean_context: Any) -> None:
     config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
     ocean_context(config)
 
-    async def async_true(self):
+    async def async_true(self: Any) -> bool:
         return True
 
     monkeypatch.setattr(
