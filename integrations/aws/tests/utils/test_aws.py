@@ -100,7 +100,7 @@ async def test_single_account_strategy_get_accessible_accounts(
     resource_config = MagicMock(spec=AWSResourceConfig)
     resource_config.selector = MagicMock()
     provider = StaticCredentialProvider(config)
-    strategy = SingleAccountStrategy(provider, resource_config)
+    strategy = SingleAccountStrategy(provider)
 
     session_mock = AsyncMock(spec=AioSession)
     sts_client_mock = AsyncMock()
@@ -126,7 +126,7 @@ async def test_single_account_strategy_sanity_check(
     resource_config = MagicMock(spec=AWSResourceConfig)
     resource_config.selector = MagicMock()
     provider = StaticCredentialProvider(config)
-    strategy = SingleAccountStrategy(provider, resource_config)
+    strategy = SingleAccountStrategy(provider)
 
     session_mock = AsyncMock(spec=AioSession)
     sts_client_mock = AsyncMock()
@@ -149,7 +149,7 @@ async def test_single_account_strategy_sanity_check_fail(
     resource_config = MagicMock(spec=AWSResourceConfig)
     resource_config.selector = MagicMock()
     provider = StaticCredentialProvider(config)
-    strategy = SingleAccountStrategy(provider, resource_config)
+    strategy = SingleAccountStrategy(provider)
 
     monkeypatch.setattr(
         provider, "get_session", AsyncMock(side_effect=Exception("fail"))

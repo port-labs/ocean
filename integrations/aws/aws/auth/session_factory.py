@@ -34,7 +34,6 @@ class SessionStrategyFactory:
 
     @staticmethod
     async def create(
-        resource_config: AWSResourceConfig,
         provider: Optional[CredentialProvider] = None,
         config: Optional[dict[str, Any]] = None,
     ) -> AWSSessionStrategy:
@@ -74,7 +73,7 @@ class SessionStrategyFactory:
                 f"target_account_ids={config.get('target_account_ids', [])}"
             )
 
-        strategy = strategy_cls(provider=provider, resource_config=resource_config)
+        strategy = strategy_cls(provider=provider)
 
         logger.info(f"Successfully initialized {strategy_cls.__name__}")
         return strategy

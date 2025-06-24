@@ -4,7 +4,7 @@ import typing
 from fastapi import Response, status
 import fastapi
 from starlette import responses
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 from port_ocean.core.models import Entity
 
@@ -53,7 +53,7 @@ async def _handle_global_resource_resync(
     aws_resource_config: AWSResourceConfig,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle global resource resync using v2 authentication."""
-    async for session, region in get_sessions():
+    async for session, region in get_sessions(aws_resource_config):
         try:
             async for batch in resync_cloudcontrol(
                 kind, session, region, aws_resource_config
@@ -130,7 +130,9 @@ async def resync_resources_for_account(
                 error_regions,
             ),
         )
-        async for session, region in get_sessions(account_id=account_id)
+        async for session, region in get_sessions(
+            aws_resource_config, account_id=account_id
+        )
     ]
 
     if region_tasks:
@@ -192,7 +194,7 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 aws_resource_config,
             ),
         )
-        async for session, region in get_sessions()
+        async for session, region in get_sessions(aws_resource_config)
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
@@ -217,7 +219,7 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 aws_resource_config,
             ),
         )
-        async for session, region in get_sessions()
+        async for session, region in get_sessions(aws_resource_config)
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
@@ -242,7 +244,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 aws_resource_config,
             ),
         )
-        async for session, region in get_sessions()
+        async for session, region in get_sessions(aws_resource_config)
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
@@ -268,7 +270,7 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 {"Owners": ["self"]},
             ),
         )
-        async for session, region in get_sessions()
+        async for session, region in get_sessions(aws_resource_config)
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
@@ -293,7 +295,7 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 aws_resource_config,
             ),
         )
-        async for session, region in get_sessions()
+        async for session, region in get_sessions(aws_resource_config)
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
@@ -314,7 +316,7 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 aws_resource_config,
             ),
         )
-        async for session, region in get_sessions()
+        async for session, region in get_sessions(aws_resource_config)
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
@@ -347,7 +349,7 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 region,
             ),
         )
-        async for session, region in get_sessions()
+        async for session, region in get_sessions(aws_resource_config)
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
@@ -433,8 +435,11 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
             )
 
             try:
+                aws_resource_config = typing.cast(
+                    AWSResourceConfig, event.resource_config
+                )
                 resource = await describe_single_resource(
-                    resource_type, identifier, account_id, region
+                    resource_type, identifier, aws_resource_config, account_id, region
                 )
             except Exception as e:
                 if is_access_denied_exception(e):

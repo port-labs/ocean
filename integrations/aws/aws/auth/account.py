@@ -81,12 +81,8 @@ class RegionResolver:
 class AWSSessionStrategy(ABC):
     """Base class for AWS session strategies."""
 
-    def __init__(
-        self, provider: CredentialProvider, resource_config: AWSResourceConfig
-    ):
+    def __init__(self, provider: CredentialProvider):
         self.provider = provider
-        self.resource_config = resource_config
-        self.region_selector = resource_config.selector
 
     @abstractmethod
     async def sanity_check(self) -> bool:
@@ -101,13 +97,14 @@ class AWSSessionStrategy(ABC):
     @abstractmethod
     async def create_session_for_each_region(
         self,
+        resource_config: AWSResourceConfig,
     ) -> AsyncIterator[tuple[AioSession, str]]:
         """Create a single session and yield it with each allowed region."""
         yield  # type: ignore [misc]
 
     @abstractmethod
     async def create_session_for_account(
-        self, account_id: str
+        self, account_id: str, resource_config: AWSResourceConfig
     ) -> AsyncIterator[tuple[AioSession, str]]:
         """Create a single session for a specific account with each allowed region."""
         yield  # type: ignore [misc]
@@ -165,13 +162,14 @@ class SingleAccountStrategy(AWSSessionStrategy):
 
     async def create_session_for_each_region(
         self,
+        resource_config: AWSResourceConfig,
     ) -> AsyncIterator[Tuple[AioSession, str]]:
         """Create a single session and yield it with each allowed region."""
         if not await self.sanity_check():
             return
         try:
             session = await self._get_base_session()
-            resolver = RegionResolver(session, self.region_selector)
+            resolver = RegionResolver(session, resource_config.selector)
             allowed_regions = await resolver.get_allowed_regions()
 
             for region in allowed_regions:
@@ -181,7 +179,7 @@ class SingleAccountStrategy(AWSSessionStrategy):
             logger.error(f"Failed to create sessions for regions: {str(e)}")
 
     async def create_session_for_account(
-        self, account_id: str
+        self, account_id: str, resource_config: AWSResourceConfig
     ) -> AsyncIterator[tuple[AioSession, str]]:
         """Create a single session for a specific account with each allowed region."""
         if not await self.sanity_check():
@@ -196,7 +194,9 @@ class SingleAccountStrategy(AWSSessionStrategy):
                     f"Requested account {account_id} does not match current account {current_account_id}"
                 )
                 return
-            async for session_region_tuple in self.create_session_for_each_region():
+            async for session_region_tuple in self.create_session_for_each_region(
+                resource_config
+            ):
                 yield session_region_tuple
         except Exception as e:
             logger.error(
@@ -247,6 +247,7 @@ class MultiAccountStrategy(AWSSessionStrategy):
 
     async def create_session_for_each_region(
         self,
+        resource_config: AWSResourceConfig,
     ) -> AsyncIterator[tuple[AioSession, str]]:
         """Create sessions for each account with their allowed regions."""
         if not await self.sanity_check():
@@ -281,7 +282,7 @@ class MultiAccountStrategy(AWSSessionStrategy):
                     return []
 
                 resolver = RegionResolver(
-                    session, self.region_selector, account_id=account["Id"]
+                    session, resource_config.selector, account_id=account["Id"]
                 )
                 allowed_regions = await resolver.get_allowed_regions()
                 region_list = sorted(list(allowed_regions))
@@ -311,7 +312,7 @@ class MultiAccountStrategy(AWSSessionStrategy):
                 logger.error(f"Account processing failed: {result}")
 
     async def create_session_for_account(
-        self, account_id: str
+        self, account_id: str, resource_config: AWSResourceConfig
     ) -> AsyncIterator[tuple[AioSession, str]]:
         """Create a single session for a specific account with each allowed region."""
         if not await self.sanity_check():
@@ -328,7 +329,7 @@ class MultiAccountStrategy(AWSSessionStrategy):
             logger.info(f"Creating session for account {account_id}")
             session = await self._get_account_session(account_id)
             resolver = RegionResolver(
-                session, self.region_selector, account_id=account_id
+                session, resource_config.selector, account_id=account_id
             )
             allowed_regions = await resolver.get_allowed_regions()
             region_list = sorted(list(allowed_regions))

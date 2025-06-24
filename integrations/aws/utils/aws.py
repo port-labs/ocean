@@ -38,12 +38,9 @@ async def initialize_access_credentials() -> bool:
                 identity["Account"],
             )
 
-        # Eagerly initialize session strategy
-        resource_config = cast(AWSResourceConfig, event.resource_config)
-        logger.debug("Using resource config from event context")
-        _session_strategy = await SessionStrategyFactory.create(
-            resource_config=resource_config
-        )
+        # Eagerly initialize session strategy (no resource_config needed)
+        logger.debug("Initializing session strategy without resource config")
+        _session_strategy = await SessionStrategyFactory.create()
         logger.debug(
             "Created session strategy successfully using validated credentials"
         )
@@ -58,27 +55,28 @@ async def get_accounts() -> AsyncIterator[dict[str, Any]]:
 
 
 async def get_sessions(
+    resource_config: AWSResourceConfig,
     account_id: Optional[str] = None,
 ) -> AsyncIterator[tuple[AioSession, str]]:
-    """Get AWS sessions for all accounts and regions."""
+    """Get AWS sessions for all accounts and regions for a given resource config."""
     if account_id:
         async for session_region_tuple in _session_strategy.create_session_for_account(
-            account_id
+            account_id, resource_config
         ):
             yield session_region_tuple
     else:
         async for (
             session_region_tuple
-        ) in _session_strategy.create_session_for_each_region():
+        ) in _session_strategy.create_session_for_each_region(resource_config):
             yield session_region_tuple
 
 
 async def get_session_for_account_and_region(
-    account_id: str, region: str
+    account_id: str, region: str, resource_config: AWSResourceConfig
 ) -> Optional[tuple[AioSession, str]]:
-    """Get a specific AWS session for a given account and region."""
+    """Get a specific AWS session for a given account and region for a given resource config."""
     async for session, session_region in _session_strategy.create_session_for_account(
-        account_id
+        account_id, resource_config
     ):
         if session_region == region:
             return session, session_region

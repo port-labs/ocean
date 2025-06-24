@@ -56,9 +56,15 @@ def fix_unserializable_date_properties(obj: Any) -> Any:
 
 
 async def describe_single_resource(
-    kind: str, identifier: str, account_id: str | None = None, region: str | None = None
+    kind: str,
+    identifier: str,
+    resource_config: AWSResourceConfig,
+    account_id: str | None = None,
+    region: str | None = None,
 ) -> dict[str, str]:
-    async for session, session_region in get_sessions(account_id=account_id):
+    async for session, session_region in get_sessions(
+        resource_config, account_id=account_id
+    ):
         current_region = session_region
         match kind:
             case ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER:
