@@ -90,7 +90,9 @@ class AssumeRoleProvider(CredentialProvider):
         role_session_name: str = "RoleSessionName",
     ) -> AioRefreshableCredentials:
         if not role_arn:
-            raise CredentialsProviderError("role_arn is required for AssumeRoleProvider")
+            raise CredentialsProviderError(
+                "role_arn is required for AssumeRoleProvider"
+            )
         async with self._session.create_client("sts", region_name=region) as sts:
             refresher = create_assume_role_refresher(
                 sts,
@@ -112,7 +114,9 @@ class AssumeRoleProvider(CredentialProvider):
         role_session_name: str = "RoleSessionName",
     ) -> AioSession:
         if not role_arn:
-            raise CredentialsProviderError("role_arn is required for AssumeRoleProvider")
+            raise CredentialsProviderError(
+                "role_arn is required for AssumeRoleProvider"
+            )
         credentials = await self.get_credentials(region, role_arn, role_session_name)
         session = AioSession()
         cast(Any, session)._credentials = credentials

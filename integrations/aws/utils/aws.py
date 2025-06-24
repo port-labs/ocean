@@ -1,10 +1,8 @@
-from typing import Any, AsyncIterator, Optional, Union, cast
+from typing import Any, AsyncIterator, Optional
 import asyncio
 
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from starlette.requests import Request
 from aiobotocore.session import AioSession
 
@@ -14,8 +12,7 @@ from utils.overrides import AWSResourceConfig
 from aws.auth.session_factory import SessionStrategyFactory
 
 
-# Global session strategy and credentials with thread safety
-_session_strategy: AWSSessionStrategy  # Eagerly initialized at startup
+_session_strategy: AWSSessionStrategy
 _validated_credentials = None
 _session_lock = asyncio.Lock()
 
@@ -29,22 +26,18 @@ async def initialize_access_credentials() -> bool:
         _validated_credentials = StaticCredentialProvider(
             config=ocean.integration_config
         )
-        temp_session = await _validated_credentials.get_session(None)
-        async with temp_session.create_client("sts") as sts:
+        validation_session = await _validated_credentials.get_session(None)
+        async with validation_session.create_client("sts") as sts:
             identity = await sts.get_caller_identity()
             logger.info(
-                "[AWS Init] Using AWS identity: arn=%s, account_id=%s",
-                identity["Arn"],
-                identity["Account"],
+                f"Using AWS identity: arn={identity['Arn']}, account_id={identity['Account']}"
             )
 
-        # Eagerly initialize session strategy (no resource_config needed)
-        logger.debug("Initializing session strategy without resource config")
         _session_strategy = await SessionStrategyFactory.create()
         logger.debug(
             "Created session strategy successfully using validated credentials"
         )
-        logger.info("[AWS Init] AWS authentication system initialized successfully")
+        logger.info("AWS authentication system initialized successfully")
         return True
 
 

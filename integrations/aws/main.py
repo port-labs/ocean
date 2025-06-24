@@ -508,7 +508,4 @@ async def on_start() -> None:
             "Without setting up the webhook, the integration will not export live changes from AWS"
         )
 
-    success = await initialize_access_credentials()
-    if not success:
-        logger.error("Failed to initialize AWS v2 authentication system")
-        raise Exception("AWS authentication initialization failed")
+    await initialize_access_credentials()
