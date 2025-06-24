@@ -40,9 +40,15 @@ FETCH_GITHUB_USER_GQL = """
 
 LIST_TEAM_MEMBERS_GQL = f"""
 {PAGE_INFO_FRAGMENT}
-query getTeamMembers($organization: String!, $first: Int = 25, $after: String){{
-	organization(login: $organization){{
-    teams(first:$first, after: $after){{
+query getTeamMembers(
+  $organization: String!,
+  $first: Int = 25,         # For team pagination (default handled by GraphQL client if not overridden)
+  $after: String,           # For team pagination
+  $memberFirst: Int = 50,   # For member pagination (matches exporter's default)
+  $memberAfter: String      # For member pagination
+) {{
+  organization(login: $organization){{
+    teams(first: $first, after: $after){{ # Team pagination
       nodes{{
         slug
         id
@@ -52,8 +58,7 @@ query getTeamMembers($organization: String!, $first: Int = 25, $after: String){{
         notificationSetting
         url
 
-        members(first: $first, after: $after){{
-
+        members(first: $memberFirst, after: $memberAfter){{ # Member pagination using dedicated variables
           nodes{{
             login
             isSiteAdmin
