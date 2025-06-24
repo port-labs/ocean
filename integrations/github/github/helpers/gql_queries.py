@@ -52,11 +52,16 @@ query getTeamMembers($organization: String!, $first: Int = 25, $after: String){{
         notificationSetting
         url
 
-        members{{
+        members(first: $first, after: $after){{
+
           nodes{{
             login
             isSiteAdmin
             email
+          }}
+
+          pageInfo{{
+            ...PageInfoFields
           }}
         }}
       }}
@@ -69,7 +74,7 @@ query getTeamMembers($organization: String!, $first: Int = 25, $after: String){{
 """
 
 FETCH_TEAM_WITH_MEMBERS_GQL = """
-query getTeam($organization: String!, $slug: String!){
+query getTeam($organization: String!, $slug: String!, $memberFirst:Int){
 	organization(login: $organization){
     team(slug:$slug){
 
