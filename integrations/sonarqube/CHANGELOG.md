@@ -48,9 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.12
 
 
-## 0.1.197 (2025-06-22)
-
-
 ## 0.1.197 (2025-06-20)
 
 ### Bug fix
