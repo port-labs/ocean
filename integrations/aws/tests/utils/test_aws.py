@@ -155,7 +155,8 @@ async def test_single_account_strategy_sanity_check_fail(
         provider, "get_session", AsyncMock(side_effect=Exception("fail"))
     )
 
-    assert await strategy.sanity_check() is False
+    with pytest.raises(Exception, match="fail"):
+        await strategy.sanity_check()
 
 
 @pytest.mark.asyncio
