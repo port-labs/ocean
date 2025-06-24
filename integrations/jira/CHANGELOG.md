@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.34 (2025-06-23)
+
+
+### Bug Fixes
+
+- Fixed pagination for teams list and team members API
+
+
 ## 0.4.33 (2025-06-23)
 
 
