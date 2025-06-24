@@ -1,4 +1,5 @@
 from typing import Any
+from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -10,14 +11,15 @@ from github.helpers.gql_queries import (
 
 
 class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
+    MEMBER_PAGE_SIZE = 50
+
     async def get_resource[ExporterOptionT: SingleTeamOptions](
         self, options: ExporterOptionT
     ) -> RAW_ITEM:
-        member_page_size = 50  # Or use a configurable value
         variables = {
             "slug": options["slug"],
             "organization": self.client.organization,
-            "memberFirst": member_page_size,
+            "memberFirst": self.MEMBER_PAGE_SIZE,
         }
         payload = self.client.build_graphql_payload(
             FETCH_TEAM_WITH_MEMBERS_GQL, variables
@@ -26,16 +28,7 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
             self.client.base_url, method="POST", json_data=payload
         )
         data = res.json()
-        # TODO: Add proper error handling for cases where the team or organization might not be found,
-        # or if the response structure is unexpected.
-        # For example, check if "data" and subsequent keys exist before accessing them.
-        team = data.get("data", {}).get("organization", {}).get("team")
-
-        if not team:
-            # Handle case where team is not found or response is malformed
-            # You might want to raise an exception or return None/empty dict
-            # For now, returning the potentially None or incomplete team object
-            return team
+        team = data["data"]["organization"]["team"]
 
         members_data = team.get("members", {})
         member_nodes = members_data.get("nodes", [])
@@ -46,24 +39,22 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 team_slug=team["slug"],
                 initial_members_page_info=member_page_info,
                 initial_member_nodes=member_nodes,
-                member_page_size=member_page_size,
+                member_page_size=self.MEMBER_PAGE_SIZE,
             )
             team["members"]["nodes"] = all_member_nodes_for_team
-            # Since all members are fetched, pageInfo for members is no longer relevant for the final object
-            if "pageInfo" in team["members"]:
-                del team["members"]["pageInfo"]
+
+        if "pageInfo" in team["members"]:
+            del team["members"]["pageInfo"]
 
         return team
 
     async def get_paginated_resources(
         self, options: None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        member_page_size = 50
-
         variables = {
             "organization": self.client.organization,
             "__path": "organization.teams",
-            "memberFirst": member_page_size,
+            "memberFirst": self.MEMBER_PAGE_SIZE,
         }
         async for teams_page_data in self.client.send_paginated_request(
             LIST_TEAM_MEMBERS_GQL, params=variables
@@ -79,10 +70,10 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
                         team_slug=team["slug"],
                         initial_members_page_info=member_page_info,
                         initial_member_nodes=member_nodes,
-                        member_page_size=member_page_size,
+                        member_page_size=self.MEMBER_PAGE_SIZE,
                     )
                     team["members"]["nodes"] = all_member_nodes_for_team
-                    del team["members"]["pageInfo"]
+                del team["members"]["pageInfo"]
 
                 processed_teams_page.append(team)
             yield processed_teams_page
@@ -90,9 +81,9 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
     async def fetch_other_members(
         self,
         team_slug: str,
-        initial_members_page_info: dict,
-        initial_member_nodes: list,
-        member_page_size: int = 25,
+        initial_members_page_info: dict[str, Any],
+        initial_member_nodes: list[dict[str, Any]],
+        member_page_size: int,
     ) -> list[dict[str, Any]]:
         """
         Fetches all subsequent pages of members for a given team.
@@ -104,8 +95,10 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
             member_page_size: The number of members to fetch per page.
 
         Returns:
-            A tuple containing the complete list of member nodes and the final pageInfo object.
+            A complete list of member nodes
         """
+        logger.info(f"Fetching additional team members. team_slug='{team_slug}'")
+
         all_member_nodes = list(initial_member_nodes)
         current_page_info = dict(initial_members_page_info)
 
@@ -133,4 +126,7 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
             all_member_nodes.extend(new_members_data.get("nodes", []))
             current_page_info = new_members_data.get("pageInfo", {})
 
+        logger.info(
+            f"Successfully fetched {len(all_member_nodes)} members for team '{team_slug}'"
+        )
         return all_member_nodes
