@@ -89,16 +89,16 @@ class AWSSessionStrategy(ABC):
     @abstractmethod
     async def create_session_for_each_region(
         self,
-        resource_config: AWSResourceConfig,
+        regions: list[str],
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        """Create a single session and yield it with each allowed region."""
+        """Create a single session and yield it with each region in the list."""
         yield  # type: ignore [misc]
 
     @abstractmethod
     async def create_session_for_account(
-        self, account_id: str, resource_config: AWSResourceConfig
+        self, account_id: str, regions: list[str]
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        """Create a single session for a specific account with each allowed region."""
+        """Create a single session for a specific account with each region in the list."""
         yield  # type: ignore [misc]
 
     @abstractmethod
@@ -152,26 +152,24 @@ class SingleAccountStrategy(AWSSessionStrategy):
 
     async def create_session_for_each_region(
         self,
-        resource_config: AWSResourceConfig,
-    ) -> AsyncIterator[Tuple[AioSession, str]]:
-        """Create a single session and yield it with each allowed region."""
+        regions: list[str],
+    ) -> AsyncIterator[tuple[AioSession, str]]:
+        """Create a single session and yield it with each region in the list."""
         if not await self.sanity_check():
             return
         session = await self._get_base_session()
-        resolver = RegionResolver(session, resource_config.selector)
-        allowed_regions = await resolver.get_allowed_regions()
-
-        if not allowed_regions:
-            logger.warning("No allowed regions found for account in SingleAccountStrategy. Skipping account.")
+        if not regions:
+            logger.warning(
+                "No regions provided for account in SingleAccountStrategy. Skipping account."
+            )
             return
-
-        for region in allowed_regions:
+        for region in regions:
             yield session, region
 
     async def create_session_for_account(
-        self, account_id: str, resource_config: AWSResourceConfig
+        self, account_id: str, regions: list[str]
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        """Create a single session for a specific account with each allowed region."""
+        """Create a single session for a specific account with each region in the list."""
         if not await self.sanity_check():
             return
         session = await self._get_base_session()
@@ -183,10 +181,8 @@ class SingleAccountStrategy(AWSSessionStrategy):
                 f"Requested account {account_id} does not match current account {current_account_id}"
             )
             return
-        async for session_region_tuple in self.create_session_for_each_region(
-            resource_config
-        ):
-            yield session_region_tuple
+        for region in regions:
+            yield session, region
 
     async def get_account_session(self, account_id: str) -> Optional[AioSession]:
         """Get a single session for a specific account."""
@@ -210,6 +206,7 @@ class MultiAccountStrategy(AWSSessionStrategy):
     def __init__(self, provider: CredentialProvider):
         super().__init__(provider)
         self.role_name: str = provider.config["account_read_role_name"]
+        self._cached_accounts: Optional[list[dict[str, Any]]] = None
 
     async def sanity_check(self) -> bool:
         logger.info(
@@ -218,6 +215,13 @@ class MultiAccountStrategy(AWSSessionStrategy):
         return True
 
     async def get_accessible_accounts(self) -> AsyncIterator[dict[str, Any]]:
+        # Use cached accounts if available
+        if self._cached_accounts is not None:
+            for account in self._cached_accounts:
+                yield account
+            return
+
+        # Parse and cache accounts
         org_role_arn = (
             self.provider.config["organization_role_arn"]
             if "organization_role_arn" in self.provider.config
@@ -226,27 +230,30 @@ class MultiAccountStrategy(AWSSessionStrategy):
         arn_parser = ArnParser()
 
         arns = normalize_arn_list(org_role_arn)
+        accounts = []
 
         for arn in arns:
             account_id = extract_account_from_arn(arn, arn_parser)
             if account_id:
-                yield {"Id": account_id, "Arn": arn, "Name": f"Account-{account_id}"}
+                account = {"Id": account_id, "Arn": arn, "Name": f"Account-{account_id}"}
+                accounts.append(account)
+                yield account
             else:
                 logger.warning(f"Could not parse account ID from ARN: {arn}")
 
+        # Cache the accounts for future calls
+        self._cached_accounts = accounts
+
     async def create_session_for_each_region(
         self,
-        resource_config: AWSResourceConfig,
+        regions: list[str],
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        """Create sessions for each account with their allowed regions."""
         if not await self.sanity_check():
             return
         accessible_accounts = []
         async for account in self.get_accessible_accounts():
             accessible_accounts.append(account)
-
         total_accounts = len(accessible_accounts)
-
         async def process_account_regions(
             account: dict[str, Any],
             account_index: int,
@@ -261,28 +268,23 @@ class MultiAccountStrategy(AWSSessionStrategy):
                     f"Session not created for account {account['Id']}. Skipping regions."
                 )
                 return []
-
-            resolver = RegionResolver(
-                session, resource_config.selector, account_id=account["Id"]
-            )
-            allowed_regions = await resolver.get_allowed_regions()
-            if not allowed_regions:
-                logger.warning(f"No allowed regions found for account {account['Id']}. Skipping account.")
+            if not regions:
+                logger.warning(
+                    f"No regions provided for account {account['Id']}. Skipping account."
+                )
                 return []
-            region_list = sorted(list(allowed_regions))
+            region_list = sorted(list(regions))
             total_regions = len(region_list)
             logger.info(
-                f"[Account {account['Id']}] Using session for allowed regions: {region_list} (total: {total_regions})"
+                f"[Account {account['Id']}] Using session for regions: {region_list} (total: {total_regions})"
             )
             results = [(session, region) for region in region_list]
             return results
-
         tasks = [
             process_account_regions(account, idx)
             for idx, account in enumerate(accessible_accounts)
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-
         for result in results:
             if isinstance(result, list):
                 for session_region_tuple in result:
@@ -291,9 +293,8 @@ class MultiAccountStrategy(AWSSessionStrategy):
                 logger.error(f"Account processing failed: {result}")
 
     async def create_session_for_account(
-        self, account_id: str, resource_config: AWSResourceConfig
+        self, account_id: str, regions: list[str]
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        """Create a single session for a specific account with each allowed region."""
         if not await self.sanity_check():
             return
         is_accessible = False
@@ -307,18 +308,16 @@ class MultiAccountStrategy(AWSSessionStrategy):
         try:
             logger.info(f"Creating session for account {account_id}")
             session = await self._get_account_session(account_id)
-            resolver = RegionResolver(
-                session, resource_config.selector, account_id=account_id
-            )
-            allowed_regions = await resolver.get_allowed_regions()
-            region_list = sorted(list(allowed_regions))
+            if not regions:
+                logger.warning(f"No regions provided for account {account_id}. Skipping.")
+                return
+            region_list = sorted(list(regions))
             total_regions = len(region_list)
             logger.info(
-                f"[Account {account_id}] Using session for allowed regions: {region_list} (total: {total_regions})"
+                f"[Account {account_id}] Using session for regions: {region_list} (total: {total_regions})"
             )
             for region in region_list:
                 yield session, region
-
         except Exception as e:
             logger.error(
                 f"Failed to create sessions for account {account_id}: {str(e)}"
