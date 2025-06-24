@@ -37,6 +37,7 @@ from utils.misc import (
     is_server_error,
     get_semaphore,
     get_region_semaphore,
+    get_account_semaphore,
 )
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -155,9 +156,10 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
 
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    account_semaphore = get_account_semaphore(limit=10)
     tasks = [
         semaphore_async_iterator(
-            semaphore,
+            account_semaphore,
             functools.partial(
                 resync_resources_for_account, account, kind, aws_resource_config
             ),

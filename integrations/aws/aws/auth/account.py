@@ -161,6 +161,10 @@ class SingleAccountStrategy(AWSSessionStrategy):
         resolver = RegionResolver(session, resource_config.selector)
         allowed_regions = await resolver.get_allowed_regions()
 
+        if not allowed_regions:
+            logger.warning("No allowed regions found for account in SingleAccountStrategy. Skipping account.")
+            return
+
         for region in allowed_regions:
             yield session, region
 
@@ -262,6 +266,9 @@ class MultiAccountStrategy(AWSSessionStrategy):
                 session, resource_config.selector, account_id=account["Id"]
             )
             allowed_regions = await resolver.get_allowed_regions()
+            if not allowed_regions:
+                logger.warning(f"No allowed regions found for account {account['Id']}. Skipping account.")
+                return []
             region_list = sorted(list(allowed_regions))
             total_regions = len(region_list)
             logger.info(
