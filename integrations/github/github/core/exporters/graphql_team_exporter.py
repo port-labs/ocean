@@ -13,7 +13,12 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
     async def get_resource[ExporterOptionT: SingleTeamOptions](
         self, options: ExporterOptionT
     ) -> RAW_ITEM:
-        variables = {"slug": options["slug"], "organization": self.client.organization}
+        member_page_size = 50  # Or use a configurable value
+        variables = {
+            "slug": options["slug"],
+            "organization": self.client.organization,
+            "memberFirst": member_page_size,
+        }
         payload = self.client.build_graphql_payload(
             FETCH_TEAM_WITH_MEMBERS_GQL, variables
         )
@@ -21,7 +26,32 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
             self.client.base_url, method="POST", json_data=payload
         )
         data = res.json()
-        team = data["data"]["organization"]["team"]
+        # TODO: Add proper error handling for cases where the team or organization might not be found,
+        # or if the response structure is unexpected.
+        # For example, check if "data" and subsequent keys exist before accessing them.
+        team = data.get("data", {}).get("organization", {}).get("team")
+
+        if not team:
+            # Handle case where team is not found or response is malformed
+            # You might want to raise an exception or return None/empty dict
+            # For now, returning the potentially None or incomplete team object
+            return team
+
+        members_data = team.get("members", {})
+        member_nodes = members_data.get("nodes", [])
+        member_page_info = members_data.get("pageInfo", {})
+
+        if member_page_info.get("hasNextPage"):
+            all_member_nodes_for_team = await self.fetch_other_members(
+                team_slug=team["slug"],
+                initial_members_page_info=member_page_info,
+                initial_member_nodes=member_nodes,
+                member_page_size=member_page_size,
+            )
+            team["members"]["nodes"] = all_member_nodes_for_team
+            # Since all members are fetched, pageInfo for members is no longer relevant for the final object
+            if "pageInfo" in team["members"]:
+                del team["members"]["pageInfo"]
 
         return team
 
