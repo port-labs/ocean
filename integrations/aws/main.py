@@ -468,9 +468,7 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                 aws_resource_config = typing.cast(
                     AWSResourceConfig, event.resource_config
                 )
-                session = await get_credentials().get_session(region=None)
-                resolver = RegionResolver(session, aws_resource_config.selector)
-                regions = await resolver.get_allowed_regions()
+
                 resource = await describe_single_resource(
                     resource_type, identifier, aws_resource_config, account_id, region
                 )

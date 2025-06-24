@@ -62,7 +62,7 @@ async def describe_single_resource(
     region: str | None = None,
 ) -> dict[str, str]:
     session = await get_credentials().get_session(region=None)
-    regions = await get_allowed_regions(session, resource_config.selector)
+    regions = await get_allowed_regions(session, resource_config.selector, region)
     async for session, session_region in get_sessions(regions, account_id=account_id):
         current_region = session_region
         match kind:

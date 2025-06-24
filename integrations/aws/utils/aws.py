@@ -110,8 +110,12 @@ def get_credentials() -> StaticCredentialProvider:
     return _validated_credentials
 
 
-async def get_allowed_regions(session: AioSession, selector: Any) -> list[str]:
+async def get_allowed_regions(
+    session: AioSession, selector: Any, region: str | None = None
+) -> list[str]:
     """Get allowed regions using an existing session."""
+    if region and selector.is_region_allowed(region):
+        return [region]
     resolver = RegionResolver(session, selector)
     regions = await resolver.get_allowed_regions()
     return list(regions)
