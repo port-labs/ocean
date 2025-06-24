@@ -118,7 +118,7 @@ class GitHubClient:
         data: Optional[dict[str, Any]] = None,
         ignore_status_code: Optional[list[int]] = None,
     ) -> httpx.Response | None:
-        url = f"{self.base_url}/{path}"
+        url = self._build_url(path)
         logger.debug(f"Sending {method} request to {url}")
 
         try:
@@ -158,6 +158,12 @@ class GitHubClient:
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
+
+    def _build_url(self, path: str) -> str:
+        base_url = self.base_url if not self.base_url.endswith("/") else self.base_url[:-1]
+        if path.startswith("/"):
+            path = path[1:]
+        return f"{base_url}/{path}"
 
     @staticmethod
     def _resolve_route_params(endpoint_template: str, params: dict[str, str]) -> str:
