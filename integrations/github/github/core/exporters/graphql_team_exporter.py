@@ -13,9 +13,9 @@ from github.helpers.gql_queries import (
 class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
     MEMBER_PAGE_SIZE = 50
 
-    async def get_resource[ExporterOptionT: SingleTeamOptions](
-        self, options: ExporterOptionT
-    ) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> RAW_ITEM:
         variables = {
             "slug": options["slug"],
             "organization": self.client.organization,
@@ -73,6 +73,7 @@ class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
                         member_page_size=self.MEMBER_PAGE_SIZE,
                     )
                     team["members"]["nodes"] = all_member_nodes_for_team
+
                 if "pageInfo" in team["members"]:
                     del team["members"]["pageInfo"]
 

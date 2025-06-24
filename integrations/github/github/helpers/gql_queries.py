@@ -58,7 +58,7 @@ query getTeamMembers(
         notificationSetting
         url
 
-        members(first: $memberFirst, after: $memberAfter){{ # Member pagination using dedicated variables
+        members(first: $memberFirst, after: $memberAfter){{
           nodes{{
             login
             isSiteAdmin

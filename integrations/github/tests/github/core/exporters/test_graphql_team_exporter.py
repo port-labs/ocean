@@ -1,5 +1,5 @@
 import copy
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Iterator
 import httpx
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
@@ -13,7 +13,6 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.graphql_team_exporter import GraphQLTeamExporter
 from integration import GithubPortAppConfig
-from port_ocean.context.event import event_context
 from github.core.options import SingleTeamOptions
 from github.helpers.gql_queries import (
     LIST_TEAM_MEMBERS_GQL,
@@ -163,7 +162,7 @@ def mock_port_app_config() -> GithubPortAppConfig:
 @pytest.mark.asyncio
 class TestGraphQLTeamExporter:
     @pytest.fixture(autouse=True)
-    def patch_page_size(self):
+    def patch_page_size(self) -> Iterator[None]:
         with patch.object(
             GraphQLTeamExporter, "MEMBER_PAGE_SIZE", MEMBER_PAGE_SIZE_IN_EXPORTER
         ):
@@ -228,7 +227,6 @@ class TestGraphQLTeamExporter:
     async def test_get_resource_no_member_pagination(
         self, graphql_client: GithubGraphQLClient
     ) -> None:
-        # Team with no further member pages
         mock_response_beta = MagicMock(spec=httpx.Response)
         mock_response_beta.status_code = 200
         mock_response_beta.json.return_value = copy.deepcopy(
@@ -243,13 +241,12 @@ class TestGraphQLTeamExporter:
         ) as mock_request:
             team = await exporter.get_resource(SingleTeamOptions(slug="team-beta"))
 
-            assert team == TEAM_BETA_RESOLVED  # pageInfo should be removed
-            mock_request.assert_called_once()  # fetch_other_members should not be called
+            assert team == TEAM_BETA_RESOLVED
+            mock_request.assert_called_once()
 
     async def test_get_paginated_resources_with_member_pagination(
         self,
         graphql_client: GithubGraphQLClient,
-        mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         teams_to_yield_original = [TEAM_ALPHA_INITIAL, TEAM_BETA_INITIAL]
 
