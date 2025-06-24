@@ -73,30 +73,36 @@ query getTeamMembers($organization: String!, $first: Int = 25, $after: String){{
 }}
 """
 
-FETCH_TEAM_WITH_MEMBERS_GQL = """
-query getTeam($organization: String!, $slug: String!, $memberFirst:Int){
-	organization(login: $organization){
-    team(slug:$slug){
-
-        slug
-        id
-        name
-        description
-        privacy
-        notificationSetting
-        url
-
-        members{
-          nodes{
-            login
-            isSiteAdmin
-            email
-          }
-        }
-      }
-
-  }
-}
+FETCH_TEAM_WITH_MEMBERS_GQL = f"""
+{PAGE_INFO_FRAGMENT}
+query getTeam(
+    $organization: String!,
+    $slug: String!,
+    $memberFirst: Int = 25,
+    $memberAfter: String
+) {{
+  organization(login: $organization) {{
+    team(slug: $slug) {{
+      slug
+      id
+      name
+      description
+      privacy
+      notificationSetting
+      url
+      members(first: $memberFirst, after: $memberAfter) {{
+        nodes {{
+          login
+          isSiteAdmin
+          email
+        }}
+        pageInfo {{
+          ...PageInfoFields
+        }}
+      }}
+    }}
+  }}
+}}
 """
 
 LIST_EXTERNAL_IDENTITIES_GQL = f"""
