@@ -275,3 +275,8 @@ def get_semaphore(limit: int = 10) -> asyncio.Semaphore:
 def get_region_semaphore(limit: int = 5) -> asyncio.Semaphore:
     """Return an asyncio.Semaphore for per-account region concurrency control."""
     return asyncio.Semaphore(limit)
+
+
+def get_account_semaphore(limit: int = 10) -> asyncio.Semaphore:
+    """Return an asyncio.Semaphore for global account concurrency control."""
+    return asyncio.Semaphore(limit)
