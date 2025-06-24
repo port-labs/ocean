@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, List, Set, Optional, Any, Tuple, Union
+from typing import AsyncIterator, List, Set, Optional, Any, Union
 import asyncio
 from loguru import logger
-import aioboto3
 from aiobotocore.session import AioSession
-import re
 from botocore.utils import ArnParser
 
 from aws.auth.credentials_provider import CredentialProvider
-from utils.overrides import AWSResourceConfig, AWSDescribeResourcesSelector
+from utils.overrides import AWSDescribeResourcesSelector
 
 
 def normalize_arn_list(arn_input: Optional[Union[str, List[str]]]) -> List[str]:

@@ -1,9 +1,7 @@
-from typing import Optional, Any, AsyncContextManager, cast
+from typing import Optional
 import asyncio
 from loguru import logger
-import aioboto3
 from aiobotocore.session import AioSession
-from botocore.config import Config as Boto3Config
 from botocore.exceptions import ClientError
 from aws.auth.account import AWSSessionStrategy
 

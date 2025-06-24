@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from typing import Any, Callable, Dict
 from aiobotocore.session import AioSession
 from aws.auth.account import (
@@ -13,9 +13,8 @@ from aws.auth.credentials_provider import (
     CredentialsProviderError,
 )
 from aws.auth.session_factory import SessionStrategyFactory
-from aws.auth.session_manager import SessionManager, SessionCreationError
+from aws.auth.session_manager import SessionManager
 from utils.overrides import AWSResourceConfig
-import port_ocean.context.ocean as ocean_mod
 
 
 @pytest.mark.asyncio

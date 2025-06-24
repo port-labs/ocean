@@ -3,7 +3,6 @@ import json
 from typing import Any, Literal, List, Dict, Callable
 import typing
 
-import aioboto3
 from aiobotocore.session import AioSession
 from loguru import logger
 from utils.misc import (
@@ -18,7 +17,6 @@ from utils.misc import (
     ResourceGroupsClientProtocol,
 )
 from utils.aws import get_sessions, get_credentials, get_allowed_regions
-from aws.auth.account import RegionResolver
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.overrides import AWSResourceConfig

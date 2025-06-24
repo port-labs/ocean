@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Callable, Dict, Optional, Generator
-from port_ocean.context.ocean import initialize_port_ocean_context, PortOceanContext
+from typing import Any, AsyncGenerator, Callable, Dict, Generator
+from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 import port_ocean.context.ocean as port_ocean_ctx
 from port_ocean.ocean import Ocean
