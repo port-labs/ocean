@@ -145,7 +145,9 @@ async def test_multi_account_strategy_sanity_check_success() -> None:
 
 # --- SessionStrategyFactory ---
 @pytest.mark.asyncio
-async def test_session_strategy_factory_single(monkeypatch: Any, ocean_context: Any) -> None:
+async def test_session_strategy_factory_single(
+    monkeypatch: Any, ocean_context: Any
+) -> None:
     config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
     ocean_context(config)
 
