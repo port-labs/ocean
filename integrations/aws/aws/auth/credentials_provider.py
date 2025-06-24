@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Any, Union, cast
+from typing import Any, Union, cast
 from aiobotocore.session import AioSession
 from aiobotocore.credentials import (
     AioRefreshableCredentials,
@@ -35,7 +35,6 @@ class StaticCredentialProvider(CredentialProvider):
         return False
 
     async def get_credentials(self, **kwargs: Any) -> AioCredentials:
-        region = kwargs.get("region")
         session = AioSession()
         creds = await session.get_credentials()
         if creds is not None:
@@ -104,8 +103,6 @@ class AssumeRoleProvider(CredentialProvider):
 
     async def get_session(self, **kwargs: Any) -> AioSession:
         role_arn = kwargs.get("role_arn")
-        role_session_name = kwargs.get("role_session_name", "RoleSessionName")
-        region = kwargs.get("region")
         if not role_arn:
             raise CredentialsProviderError(
                 "role_arn is required for AssumeRoleProvider"

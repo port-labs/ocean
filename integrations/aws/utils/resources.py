@@ -16,7 +16,7 @@ from utils.misc import (
     process_list_in_chunks,
     ResourceGroupsClientProtocol,
 )
-from utils.aws import get_sessions, get_allowed_regions
+from utils.aws import get_sessions
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.overrides import AWSResourceConfig

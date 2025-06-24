@@ -7,8 +7,7 @@ from starlette.requests import Request
 from aiobotocore.session import AioSession
 
 from aws.auth.account import AWSSessionStrategy, RegionResolver
-from aws.auth.credentials_provider import StaticCredentialProvider, AssumeRoleProvider
-from utils.overrides import AWSResourceConfig, AWSDescribeResourcesSelector
+from utils.overrides import AWSDescribeResourcesSelector
 from aws.auth.session_factory import SessionStrategyFactory
 
 

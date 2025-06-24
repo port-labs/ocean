@@ -5,7 +5,7 @@ from loguru import logger
 from aiobotocore.session import AioSession
 from botocore.utils import ArnParser
 
-from aws.auth.credentials_provider import CredentialProvider, AssumeRoleProvider
+from aws.auth.credentials_provider import CredentialProvider
 from utils.overrides import AWSDescribeResourcesSelector
 
 

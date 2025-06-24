@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from aiobotocore.session import AioSession
 from botocore.utils import ArnParser
-from botocore.exceptions import ClientError
 
 from aws.auth.account import (
     normalize_arn_list,

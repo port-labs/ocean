@@ -23,8 +23,6 @@ from utils.aws import (
     get_accounts,
     get_sessions,
     validate_request,
-    get_allowed_regions,
-    get_session_strategy,
     get_arn_for_account_id,
 )
 from port_ocean.context.ocean import ocean
@@ -48,7 +46,6 @@ from port_ocean.utils.async_iterators import (
 )
 import functools
 from aiobotocore.session import AioSession
-from aws.auth.account import RegionResolver
 
 semaphore = get_semaphore()
 
