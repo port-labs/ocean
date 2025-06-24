@@ -31,7 +31,7 @@ resources:
   - kind: team
     selector:
       query: "true"
-      include_members: true
+      members: true
     port:
       entity:
         mappings:
