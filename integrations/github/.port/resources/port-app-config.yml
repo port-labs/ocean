@@ -25,8 +25,9 @@ resources:
         mappings:
           identifier: .login
           title: .login
-          login: .login
           blueprint: '"githubUser"'
+          properties:
+            login: .login
   - kind: team
     selector:
       query: "true"
