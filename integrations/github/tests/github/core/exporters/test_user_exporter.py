@@ -14,7 +14,11 @@ from github.core.exporters.user_exporter import GraphQLUserExporter
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 from github.core.options import SingleUserOptions
-from github.helpers.gql_queries import LIST_ORG_MEMBER_GQL, LIST_EXTERNAL_IDENTITIES_GQL
+from github.helpers.gql_queries import (
+    LIST_ORG_MEMBER_GQL,
+    LIST_EXTERNAL_IDENTITIES_GQL,
+    FETCH_GITHUB_USER_GQL,
+)
 
 
 TEST_USERS_NO_EMAIL_INITIAL = [
@@ -94,6 +98,60 @@ class TestGraphQLUserExporter:
             )
             mock_request.assert_called_once_with(
                 graphql_client.base_url, method="POST", json_data=expected_payload
+            )
+
+    async def test_get_resource_no_email_fetches_external_identity(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        # Mock response for initial user fetch (user without email)
+        mock_user_response = MagicMock(spec=httpx.Response)
+        mock_user_response.status_code = 200
+        # Use TEST_USERS_NO_EMAIL_INITIAL[1] which is "user2" without an email
+        mock_user_response.json.return_value = {
+            "data": {"user": TEST_USERS_NO_EMAIL_INITIAL[1]}
+        }
+
+        # Mock response for external identities fetch
+        async def mock_external_identities_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield EXTERNAL_IDENTITIES_MOCK  # EXTERNAL_IDENTITIES_MOCK is for "user2"
+
+        exporter = GraphQLUserExporter(graphql_client)
+
+        with patch.object(
+            graphql_client, "send_api_request", return_value=mock_user_response
+        ) as mock_api_request, patch.object(
+            graphql_client,
+            "send_paginated_request",
+            side_effect=mock_external_identities_request,
+        ) as mock_paginated_request_identities:
+            user_options = SingleUserOptions(login="user2")
+            user = await exporter.get_resource(user_options)
+
+            expected_user = {
+                "login": "user2",
+                "email": "user2@email.com",  # Email fetched from external identity
+            }
+            assert user == expected_user
+
+            # Assert FETCH_GITHUB_USER_GQL call
+            fetch_user_query_payload = graphql_client.build_graphql_payload(
+                query=FETCH_GITHUB_USER_GQL, variables={"login": "user2"}
+            )
+            mock_api_request.assert_called_once_with(
+                graphql_client.base_url, method="POST", json_data=fetch_user_query_payload
+            )
+
+            # Assert LIST_EXTERNAL_IDENTITIES_GQL call by _fetch_external_identities
+            mock_paginated_request_identities.assert_called_once_with(
+                LIST_EXTERNAL_IDENTITIES_GQL,
+                {
+                    "organization": graphql_client.organization,
+                    "first": 100,
+                    "__path": "organization.samlIdentityProvider.externalIdentities",
+                    "__final_key": "edges",
+                },
             )
 
     async def test_get_paginated_resources(
