@@ -5,32 +5,23 @@ from loguru import logger
 from aiobotocore.session import AioSession
 from botocore.utils import ArnParser
 
-from aws.auth.credentials_provider import CredentialProvider
+from aws.auth.credentials_provider import CredentialProvider, AssumeRoleProvider
 from utils.overrides import AWSDescribeResourcesSelector
 
 
 def normalize_arn_list(arn_input: Optional[Union[str, List[str]]]) -> List[str]:
-    """Normalize ARN input to a list of strings, filtering out empty values."""
+    """Return a list of non-empty ARN strings from input (str, list, or None)."""
     if not arn_input:
         return []
-
     if isinstance(arn_input, str):
-        return [arn_input] if arn_input.strip() else []
-
-    if isinstance(arn_input, list):
-        return [
-            arn for arn in arn_input if arn and isinstance(arn, str) and arn.strip()
-        ]
+        arn_input = [arn_input]
+    return [arn.strip() for arn in arn_input if isinstance(arn, str) and arn.strip()]
 
 
-def extract_account_from_arn(arn: str, arn_parser: ArnParser) -> Optional[str]:
-    """Extract account ID from ARN with proper error handling."""
-    try:
-        arn_data = arn_parser.parse_arn(arn)
-        return arn_data.get("account")
-    except Exception as e:
-        logger.warning(f"Failed to parse ARN '{arn}': {e}")
-        return None
+def extract_account_from_arn(arn: str, arn_parser: ArnParser) -> str:
+    """Extract account ID from ARN. Raises if parsing fails."""
+    arn_data = arn_parser.parse_arn(arn)
+    return arn_data["account"]
 
 
 class RegionResolver:
@@ -85,23 +76,23 @@ class AWSSessionStrategy(ABC):
         yield  # type: ignore [misc]
 
     @abstractmethod
-    async def create_session_for_each_region(
+    async def create_session_for_each_account(
         self,
-        regions: list[str],
+        selector: AWSDescribeResourcesSelector,
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        """Create a single session and yield it with each region in the list."""
+        """For each account, discover allowed regions and yield (session, region)."""
         yield  # type: ignore [misc]
 
     @abstractmethod
     async def create_session_for_account(
-        self, account_id: str, regions: list[str]
+        self, arn: str, selector: AWSDescribeResourcesSelector
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        """Create a single session for a specific account with each region in the list."""
+        """For a specific ARN, discover allowed regions and yield (session, region)."""
         yield  # type: ignore [misc]
 
     @abstractmethod
-    async def get_account_session(self, account_id: str) -> Optional[AioSession]:
-        """Get a single session for a specific account."""
+    async def get_account_session(self, arn: str) -> Optional[AioSession]:
+        """Get a single session for a specific ARN."""
         pass
 
 
@@ -115,32 +106,10 @@ class SingleAccountStrategy(AWSSessionStrategy):
         logger.info(f"Validated single account: {identity['Account']}")
         return True
 
-    async def _get_role_arn(self, session: AioSession) -> Optional[str]:
-        # Preconditions: role_name is set and provider is refreshable
-        async with session.create_client("sts", region_name=None) as sts:
-            identity = await sts.get_caller_identity()
-            account_id: str = identity["Account"]
-        role_name: str = self.provider.config["account_read_role_name"]
-        return f"arn:aws:iam::{account_id}:role/{role_name}"
-
     async def _get_base_session(self) -> AioSession:
-        session = await self.provider.get_session(region=None)
-        role_name = (
-            self.provider.config["account_read_role_name"]
-            if "account_read_role_name" in self.provider.config
-            else None
-        )
-        if role_name and self.provider.is_refreshable:
-            role_arn = await self._get_role_arn(session)
-            if role_arn:
-                return await self.provider.get_session(
-                    region=None, role_arn=role_arn, role_session_name="RoleSessionName"
-                )
-        return session
+        return await self.provider.get_session(region=None)
 
     async def get_accessible_accounts(self) -> AsyncIterator[dict[str, Any]]:
-        if not await self.sanity_check():
-            return
         session = await self._get_base_session()
         async with session.create_client("sts", region_name=None) as sts:
             identity = await sts.get_caller_identity()
@@ -148,140 +117,138 @@ class SingleAccountStrategy(AWSSessionStrategy):
         logger.info(f"Accessing single account: {account_id}")
         yield {"Id": account_id, "Arn": identity["Arn"]}
 
-    async def create_session_for_each_region(
+    async def create_session_for_each_account(
         self,
-        regions: list[str],
+        selector: AWSDescribeResourcesSelector,
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        """Create a single session and yield it with each region in the list."""
-        if not await self.sanity_check():
-            return
         session = await self._get_base_session()
-        if not regions:
-            logger.warning(
-                "No regions provided for account in SingleAccountStrategy. Skipping account."
-            )
-            return
-        for region in regions:
+        resolver = RegionResolver(session, selector)
+        allowed_regions = list(await resolver.get_allowed_regions())
+        for region in allowed_regions:
             yield session, region
 
     async def create_session_for_account(
-        self, account_id: str, regions: list[str]
+        self, arn: str, selector: AWSDescribeResourcesSelector
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        """Create a single session for a specific account with each region in the list."""
-        if not await self.sanity_check():
-            return
         session = await self._get_base_session()
         async with session.create_client("sts", region_name=None) as sts:
             identity = await sts.get_caller_identity()
-            current_account_id: str = identity["Account"]
-        if current_account_id != account_id:
+            current_arn: str = identity["Arn"]
+        if current_arn != arn:
             logger.warning(
-                f"Requested account {account_id} does not match current account {current_account_id}"
+                f"Requested ARN {arn} does not match current ARN {current_arn}"
             )
             return
-        for region in regions:
+        resolver = RegionResolver(session, selector)
+        allowed_regions = list(await resolver.get_allowed_regions())
+        for region in allowed_regions:
             yield session, region
 
-    async def get_account_session(self, account_id: str) -> Optional[AioSession]:
-        """Get a single session for a specific account."""
-        if not await self.sanity_check():
-            return None
+    async def get_account_session(self, arn: str) -> Optional[AioSession]:
+        """Get a single session for a specific ARN (SingleAccountStrategy)."""
         session = await self._get_base_session()
         async with session.create_client("sts", region_name=None) as sts:
             identity = await sts.get_caller_identity()
-            current_account_id: str = identity["Account"]
-        if current_account_id != account_id:
+            current_arn: str = identity["Arn"]
+        if current_arn != arn:
             logger.warning(
-                f"Requested account {account_id} does not match current account {current_account_id}"
+                f"Requested ARN {arn} does not match current ARN {current_arn}"
             )
             return None
         return session
 
 
 class MultiAccountStrategy(AWSSessionStrategy):
-    """Strategy for handling multiple AWS accounts."""
+    """Strategy for handling multiple AWS accounts using explicit role ARNs."""
 
     def __init__(self, provider: CredentialProvider):
+
         super().__init__(provider)
-        self.role_name: str = provider.config["account_read_role_name"]
-        self._cached_accounts: Optional[list[dict[str, Any]]] = None
+        # No role_name needed; we use explicit ARNs
+        self._valid_arns: list[str] = []
 
     async def sanity_check(self) -> bool:
-        logger.info(
-            "[MultiAccountStrategy] Skipping org role sanity check (using provided ARNs)"
-        )
+        org_role_arn = self.provider.config.get("organization_role_arn")
+        arns = normalize_arn_list(org_role_arn)
+        if not arns:
+            logger.error("No organization_role_arn(s) provided for sanity check.")
+            return False
+
+        self._valid_arns = []
+        for arn in arns:
+            can_assume = await self._can_assume_role(arn)
+            if can_assume:
+                logger.info(f"Sanity check passed for ARN {arn}.")
+                self._valid_arns.append(arn)
+            else:
+                logger.error(f"Sanity check failed for ARN {arn}.")
+        if not self._valid_arns:
+            logger.error(
+                "Sanity check failed for all ARNs. No accounts are accessible."
+            )
+            return False
         return True
 
+    async def _can_assume_role(self, arn: str) -> bool:
+        try:
+            session = await self.provider.get_session(
+                region=None, role_arn=arn, role_session_name="SanityCheckSession"
+            )
+            async with session.create_client("sts", region_name=None) as sts:
+                identity = await sts.get_caller_identity()
+                logger.debug(
+                    f"Assumed role {arn} as {identity['Arn']} for sanity check."
+                )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to assume role for ARN {arn}: {e}")
+            return False
+
     async def get_accessible_accounts(self) -> AsyncIterator[dict[str, Any]]:
-        # Use cached accounts if available
-        if self._cached_accounts is not None:
-            for account in self._cached_accounts:
-                yield account
-            return
-
-        # Parse and cache accounts
-        org_role_arn = (
-            self.provider.config["organization_role_arn"]
-            if "organization_role_arn" in self.provider.config
-            else None
-        )
+        # Only use ARNs that passed sanity check
         arn_parser = ArnParser()
-
-        arns = normalize_arn_list(org_role_arn)
-        accounts = []
-
-        for arn in arns:
+        for arn in self._valid_arns:
             account_id = extract_account_from_arn(arn, arn_parser)
-            if account_id:
-                account = {
-                    "Id": account_id,
-                    "Arn": arn,
-                    "Name": f"Account-{account_id}",
-                }
-                accounts.append(account)
-                yield account
-            else:
-                logger.warning(f"Could not parse account ID from ARN: {arn}")
+            account = {
+                "Id": account_id,
+                "Arn": arn,
+                "Name": f"Account-{account_id}" if account_id else arn,
+            }
+            yield account
 
-        # Cache the accounts for future calls
-        self._cached_accounts = accounts
-
-    async def create_session_for_each_region(
+    async def create_session_for_each_account(
         self,
-        regions: list[str],
+        selector: AWSDescribeResourcesSelector,
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        if not await self.sanity_check():
-            return
         accessible_accounts = []
         async for account in self.get_accessible_accounts():
             accessible_accounts.append(account)
         total_accounts = len(accessible_accounts)
 
         async def process_account_regions(
-            account: dict[str, Any],
-            account_index: int,
+            account: dict[str, Any], account_index: int
         ) -> list[tuple[AioSession, str]]:
             logger.info(
-                f"[Account {account_index+1}/{total_accounts}] Creating session for account {account['Id']}"
+                f"[Account {account_index+1}/{total_accounts}] Creating session for ARN {account['Arn']}"
             )
             session: Optional[AioSession] = None
-            session = await self._get_account_session(account["Id"])
+            session = await self._get_account_session(account["Arn"])
             if session is None:
                 logger.warning(
-                    f"Session not created for account {account['Id']}. Skipping regions."
+                    f"Session not created for ARN {account['Arn']}. Skipping regions."
                 )
                 return []
-            if not regions:
+            resolver = RegionResolver(session, selector)
+            allowed_regions = list(await resolver.get_allowed_regions())
+            if not allowed_regions:
                 logger.warning(
-                    f"No regions provided for account {account['Id']}. Skipping account."
+                    f"No allowed regions for ARN {account['Arn']}. Skipping account."
                 )
                 return []
-            region_list = sorted(list(regions))
-            total_regions = len(region_list)
             logger.info(
-                f"[Account {account['Id']}] Using session for regions: {region_list} (total: {total_regions})"
+                f"[ARN {account['Arn']}] Using session for regions: {allowed_regions} (total: {len(allowed_regions)})"
             )
-            results = [(session, region) for region in region_list]
+            results = [(session, region) for region in allowed_regions]
             return results
 
         tasks = [
@@ -297,50 +264,43 @@ class MultiAccountStrategy(AWSSessionStrategy):
                 logger.error(f"Account processing failed: {result}")
 
     async def create_session_for_account(
-        self, account_id: str, regions: list[str]
+        self, arn: str, selector: AWSDescribeResourcesSelector
     ) -> AsyncIterator[tuple[AioSession, str]]:
-        if not await self.sanity_check():
-            return
-        is_accessible = False
-        async for account in self.get_accessible_accounts():
-            if account["Id"] == account_id:
-                is_accessible = True
-                break
-        if not is_accessible:
-            logger.warning(f"Account {account_id} not accessible")
+        # Only allow session creation for ARNs that passed sanity check
+        if arn not in self._valid_arns:
+            logger.warning(f"ARN {arn} did not pass sanity check and will be skipped.")
             return
         try:
-            logger.info(f"Creating session for account {account_id}")
-            session = await self._get_account_session(account_id)
-            if not regions:
-                logger.warning(
-                    f"No regions provided for account {account_id}. Skipping."
-                )
+            logger.info(f"Creating session for ARN {arn}")
+            session = await self._get_account_session(arn)
+            resolver = RegionResolver(session, selector)
+            allowed_regions = list(await resolver.get_allowed_regions())
+            if not allowed_regions:
+                logger.warning(f"No allowed regions for ARN {arn}. Skipping.")
                 return
-            region_list = sorted(list(regions))
-            total_regions = len(region_list)
             logger.info(
-                f"[Account {account_id}] Using session for regions: {region_list} (total: {total_regions})"
+                f"[ARN {arn}] Using session for regions: {allowed_regions} (total: {len(allowed_regions)})"
             )
-            for region in region_list:
+            for region in allowed_regions:
                 yield session, region
         except Exception as e:
-            logger.error(
-                f"Failed to create sessions for account {account_id}: {str(e)}"
-            )
+            logger.error(f"Failed to create sessions for ARN {arn}: {str(e)}")
 
-    async def get_account_session(self, account_id: str) -> Optional[AioSession]:
-        """Get a single session for a specific account."""
-        if not await self.sanity_check():
-            return None
+    async def get_account_session(self, arn: str) -> Optional[AioSession]:
+        """Get a single session for a specific ARN (MultiAccountStrategy)."""
         try:
-            return await self._get_account_session(account_id)
+            return await self._get_account_session(arn)
         except Exception as e:
-            logger.error(f"Failed to get session for account {account_id}: {str(e)}")
+            logger.error(f"Failed to get session for ARN {arn}: {str(e)}")
             return None
 
-    async def _get_account_session(self, account_id: str) -> AioSession:
-        role_arn = f"arn:aws:iam::{account_id}:role/{self.role_name}"
-        return await self.provider.get_session(
-            region=None, role_arn=role_arn, role_session_name="RoleSessionName"
+    async def _get_account_session(self, arn: str) -> AioSession:
+        # Use the provided ARN directly for AssumeRole
+        session = await self.provider.get_session(
+            region=None, role_arn=arn, role_session_name="RoleSessionName"
         )
+        # Log the assumed role identity
+        async with session.create_client("sts", region_name=None) as sts:
+            identity = await sts.get_caller_identity()
+            logger.info(f"Successfully assumed role: {arn} as {identity['Arn']}")
+        return session

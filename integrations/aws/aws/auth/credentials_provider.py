@@ -14,25 +14,15 @@ class CredentialsProviderError(Exception): ...
 
 
 class CredentialProvider(ABC):
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self._session = AioSession()
 
     @abstractmethod
-    async def get_credentials(
-        self,
-        region: Optional[str],
-        role_arn: Optional[str] = None,
-        role_session_name: str = "RoleSessionName",
-    ) -> AioCredentialsType: ...
+    async def get_credentials(self, **kwargs: Any) -> AioCredentialsType: ...
 
     @abstractmethod
-    async def get_session(
-        self,
-        region: Optional[str],
-        role_arn: Optional[str] = None,
-        role_session_name: str = "RoleSessionName",
-    ) -> AioSession: ...
+    async def get_session(self, **kwargs: Any) -> AioSession: ...
 
     @property
     @abstractmethod
@@ -44,56 +34,61 @@ class StaticCredentialProvider(CredentialProvider):
     def is_refreshable(self) -> bool:
         return False
 
-    async def get_credentials(
-        self,
-        region: Optional[str],
-        role_arn: Optional[str] = None,
-        role_session_name: str = "RoleSessionName",
-    ) -> AioCredentials:
+    async def get_credentials(self, **kwargs: Any) -> AioCredentials:
+        region = kwargs.get("region")
+        session = AioSession()
+        creds = await session.get_credentials()
+        if creds is not None:
+            return creds
+        # Fallback: try to use credentials from config
         access_key = self.config.get("aws_access_key_id")
         secret_key = self.config.get("aws_secret_access_key")
-        if not isinstance(access_key, str) or not isinstance(secret_key, str):
-            raise CredentialsProviderError("Missing AWS credentials")
-        return AioCredentials(access_key, secret_key, token=None)
+        if isinstance(access_key, str) and isinstance(secret_key, str):
+            return AioCredentials(access_key, secret_key, token=None)
+        raise CredentialsProviderError(
+            "Missing AWS credentials (no valid credentials in environment or config)"
+        )
 
-    async def get_session(
-        self,
-        region: Optional[str],
-        role_arn: Optional[str] = None,
-        role_session_name: str = "RoleSessionName",
-    ) -> AioSession:
-        creds = await self.get_credentials(region)
+    async def get_session(self, **kwargs: Any) -> AioSession:
+        creds = await self.get_credentials(**kwargs)
         session = AioSession()
         cast(Any, session)._credentials = creds
         return session
 
 
 class AssumeRoleProvider(CredentialProvider):
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        access_key = self.config.get("aws_access_key_id")
-        secret_key = self.config.get("aws_secret_access_key")
-
-        if access_key is not None and secret_key is not None:
-            cast(Any, self._session)._credentials = AioCredentials(
-                access_key, secret_key, token=None
-            )
+        # No credential injection here; fallback handled in get_credentials
 
     @property
     def is_refreshable(self) -> bool:
         return True
 
-    async def get_credentials(
-        self,
-        region: Optional[str],
-        role_arn: Optional[str] = None,
-        role_session_name: str = "RoleSessionName",
-    ) -> AioRefreshableCredentials:
+    async def get_credentials(self, **kwargs: Any) -> AioRefreshableCredentials:
+        region = kwargs.get("region")
+        role_arn = kwargs.get("role_arn")
+        role_session_name = kwargs.get("role_session_name", "RoleSessionName")
         if not role_arn:
             raise CredentialsProviderError(
                 "role_arn is required for AssumeRoleProvider"
             )
-        async with self._session.create_client("sts", region_name=region) as sts:
+        # Try default session first
+        session = self._session
+        creds = await session.get_credentials()
+        if creds is None:
+            # Fallback: try to use credentials from config
+            access_key = self.config.get("aws_access_key_id")
+            secret_key = self.config.get("aws_secret_access_key")
+            if isinstance(access_key, str) and isinstance(secret_key, str):
+                cast(Any, session)._credentials = AioCredentials(
+                    access_key, secret_key, token=None
+                )
+            else:
+                raise CredentialsProviderError(
+                    "Missing AWS credentials (no valid credentials in environment or config)"
+                )
+        async with session.create_client("sts", region_name=region) as sts:
             refresher = create_assume_role_refresher(
                 sts,
                 {
@@ -107,17 +102,15 @@ class AssumeRoleProvider(CredentialProvider):
             )
             return credentials
 
-    async def get_session(
-        self,
-        region: Optional[str],
-        role_arn: Optional[str] = None,
-        role_session_name: str = "RoleSessionName",
-    ) -> AioSession:
+    async def get_session(self, **kwargs: Any) -> AioSession:
+        role_arn = kwargs.get("role_arn")
+        role_session_name = kwargs.get("role_session_name", "RoleSessionName")
+        region = kwargs.get("region")
         if not role_arn:
             raise CredentialsProviderError(
                 "role_arn is required for AssumeRoleProvider"
             )
-        credentials = await self.get_credentials(region, role_arn, role_session_name)
+        credentials = await self.get_credentials(**kwargs)
         session = AioSession()
         cast(Any, session)._credentials = credentials
         return session

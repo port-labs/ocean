@@ -36,23 +36,19 @@ class SessionStrategyFactory:
     ) -> AWSSessionStrategy:
         """Create and validate session strategy based on global configuration."""
         config = ocean.integration_config
-        if provider is None:
-            if config.get("organization_role_arn"):
-                logger.info(
-                    "[SessionStrategyFactory] Using AssumeRoleProvider for multi-account"
-                )
-                provider = AssumeRoleProvider(config=config)
-            else:
-                logger.info(
-                    "[SessionStrategyFactory] Using StaticCredentialProvider (no org role ARN found)"
-                )
-                provider = StaticCredentialProvider(config=config)
-
-        strategy_cls = (
-            MultiAccountStrategy
-            if config.get("account_read_role_name")
-            and config.get("organization_role_arn")
-            else SingleAccountStrategy
+        is_multi_account = bool(config.get("organization_role_arn"))
+        if is_multi_account:
+            logger.info(
+                "[SessionStrategyFactory] Using AssumeRoleProvider for multi-account"
+            )
+            provider = AssumeRoleProvider(config=config)
+        else:
+            logger.info(
+                "[SessionStrategyFactory] Using StaticCredentialProvider (no org role ARN found)"
+            )
+            provider = StaticCredentialProvider(config=config)
+        strategy_cls: type[AWSSessionStrategy] = (
+            MultiAccountStrategy if is_multi_account else SingleAccountStrategy
         )
 
         logger.info(f"Initializing {strategy_cls.__name__}")
