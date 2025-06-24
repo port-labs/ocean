@@ -203,6 +203,10 @@ class SingleAccountStrategy(AWSSessionStrategy):
 class MultiAccountStrategy(AWSSessionStrategy):
     """Strategy for handling multiple AWS accounts."""
 
+    def __init__(self, provider: CredentialProvider):
+        super().__init__(provider)
+        self.role_name: str = provider.config["account_read_role_name"]
+
     async def sanity_check(self) -> bool:
         logger.info(
             "[MultiAccountStrategy] Skipping org role sanity check (using provided ARNs)"
@@ -324,15 +328,7 @@ class MultiAccountStrategy(AWSSessionStrategy):
             return None
 
     async def _get_account_session(self, account_id: str) -> AioSession:
-        role_name: Optional[str] = (
-            self.provider.config["account_read_role_name"]
-            if "account_read_role_name" in self.provider.config
-            else None
-        )
-        if not role_name:
-            logger.warning("No account_read_role_name configured")
-            return None
-        role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
+        role_arn = f"arn:aws:iam::{account_id}:role/{self.role_name}"
         return await self.provider.get_session(
             region=None, role_arn=role_arn, role_session_name="RoleSessionName"
         )

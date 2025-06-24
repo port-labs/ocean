@@ -86,27 +86,24 @@ class AssumeRoleProvider(CredentialProvider):
     async def get_credentials(
         self,
         region: Optional[str],
-        role_arn: Optional[str] = None,  # Changed to Optional[str]
+        role_arn: Optional[str] = None,
         role_session_name: str = "RoleSessionName",
     ) -> AioRefreshableCredentials:
         if not role_arn:
-            raise ValueError("role_arn is required for AssumeRoleProvider")
-        try:
-            async with self._session.create_client("sts", region_name=region) as sts:
-                refresher = create_assume_role_refresher(
-                    sts,
-                    {
-                        "RoleArn": role_arn,
-                        "RoleSessionName": role_session_name,
-                    },
-                )
-                metadata = await refresher()
-                credentials = AioRefreshableCredentials.create_from_metadata(
-                    metadata=metadata, refresh_using=refresher, method="sts-assume-role"
-                )
-                return credentials
-        except Exception as e:
-            raise RuntimeError(f"Failed to assume role: {e}")
+            raise CredentialsProviderError("role_arn is required for AssumeRoleProvider")
+        async with self._session.create_client("sts", region_name=region) as sts:
+            refresher = create_assume_role_refresher(
+                sts,
+                {
+                    "RoleArn": role_arn,
+                    "RoleSessionName": role_session_name,
+                },
+            )
+            metadata = await refresher()
+            credentials = AioRefreshableCredentials.create_from_metadata(
+                metadata=metadata, refresh_using=refresher, method="sts-assume-role"
+            )
+            return credentials
 
     async def get_session(
         self,
@@ -115,7 +112,7 @@ class AssumeRoleProvider(CredentialProvider):
         role_session_name: str = "RoleSessionName",
     ) -> AioSession:
         if not role_arn:
-            raise ValueError("role_arn is required for AssumeRoleProvider")
+            raise CredentialsProviderError("role_arn is required for AssumeRoleProvider")
         credentials = await self.get_credentials(region, role_arn, role_session_name)
         session = AioSession()
         cast(Any, session)._credentials = credentials

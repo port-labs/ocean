@@ -88,7 +88,7 @@ async def test_static_credential_provider_missing() -> None:
 async def test_assume_role_provider_missing_role_arn() -> None:
     config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
     provider = AssumeRoleProvider(config)
-    with pytest.raises(ValueError):
+    with pytest.raises(CredentialsProviderError):
         await provider.get_credentials(region=None, role_arn=None)
 
 
