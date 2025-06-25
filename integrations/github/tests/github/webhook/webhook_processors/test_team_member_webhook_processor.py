@@ -92,9 +92,9 @@ class TestTeamMemberWebhookProcessor:
             (
                 TEAM_MEMBERSHIP_EVENTS[0],
                 False,
-                1,
                 0,
-            ),  # "added", selector disabled (upsert still happens, selector only logs)
+                0,
+            ),  # "added", selector disabled (skips processing, no upsert)
         ],
     )
     async def test_handle_event(
