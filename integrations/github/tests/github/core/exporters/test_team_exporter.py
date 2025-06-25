@@ -14,7 +14,7 @@ from github.clients.http.graphql_client import GithubGraphQLClient
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.team_exporter import (
     RestTeamExporter,
-    GraphQLTeamMemberExporter,
+    GraphQLTeamWithMembersExporter,
 )
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
@@ -229,7 +229,9 @@ class TestGraphQLTeamExporter:
     @pytest.fixture(autouse=True)
     def patch_page_size(self) -> Iterator[None]:
         with patch.object(
-            GraphQLTeamMemberExporter, "MEMBER_PAGE_SIZE", MEMBER_PAGE_SIZE_IN_EXPORTER
+            GraphQLTeamWithMembersExporter,
+            "MEMBER_PAGE_SIZE",
+            MEMBER_PAGE_SIZE_IN_EXPORTER,
         ):
             yield
 
@@ -251,7 +253,7 @@ class TestGraphQLTeamExporter:
             ]
         )
 
-        exporter = GraphQLTeamMemberExporter(graphql_client)
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
 
         with patch.object(
             graphql_client, "send_api_request", new=mock_send_api_request
@@ -298,7 +300,7 @@ class TestGraphQLTeamExporter:
             {"data": {"organization": {"team": TEAM_BETA_INITIAL}}}
         )
 
-        exporter = GraphQLTeamMemberExporter(graphql_client)
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
         with patch.object(
             graphql_client,
             "send_api_request",
@@ -320,7 +322,7 @@ class TestGraphQLTeamExporter:
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
             yield copy.deepcopy(teams_to_yield_original)
 
-        exporter = GraphQLTeamMemberExporter(graphql_client)
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
 
         # Mock fetch_other_members for team-alpha
         mock_fetch_other_members = AsyncMock(

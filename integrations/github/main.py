@@ -2,7 +2,7 @@ from typing import Any, cast
 
 from loguru import logger
 from github.core.exporters.team_exporter import (
-    GraphQLTeamMemberExporter,
+    GraphQLTeamWithMembersExporter,
     RestTeamExporter,
 )
 from github.core.exporters.user_exporter import GraphQLUserExporter
@@ -129,7 +129,7 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter: AbstractGithubExporter[Any]
     if selector.members:
         graphql_client = create_github_client(GithubClientType.GRAPHQL)
-        exporter = GraphQLTeamMemberExporter(graphql_client)
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
     else:
         rest_client = create_github_client(GithubClientType.REST)
         exporter = RestTeamExporter(rest_client)

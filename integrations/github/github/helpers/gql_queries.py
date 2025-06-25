@@ -62,7 +62,6 @@ query getTeamMembers(
           nodes{{
             login
             isSiteAdmin
-            email
           }}
 
           pageInfo{{
@@ -99,7 +98,6 @@ query getTeam(
         nodes {{
           login
           isSiteAdmin
-          email
         }}
         pageInfo {{
           ...PageInfoFields

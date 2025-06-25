@@ -132,7 +132,7 @@ class TestTeamWebhookProcessor:
                 mock_exporter.get_resource.return_value = graphql_team_data["data"][
                     "organization"
                 ]["team"]
-                exporter_path = "github.webhook.webhook_processors.team_webhook_processor.GraphQLTeamMemberExporter"
+                exporter_path = "github.webhook.webhook_processors.team_webhook_processor.GraphQLTeamWithMembersExporter"
                 client_type = GithubClientType.GRAPHQL
             else:
                 mock_exporter.get_resource.return_value = team_data
