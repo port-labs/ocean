@@ -179,6 +179,22 @@ EXPECTED_RELEASES = [
     }
 ]
 
+EXPECTED_ITERATIONS = [
+    {
+        "id": "iteration1",
+        "name": "Sprint 1",
+        "path": "Project One\\Sprint 1",
+        "attributes": {
+            "startDate": "2023-01-01T00:00:00Z",
+            "finishDate": "2023-01-14T00:00:00Z",
+            "timeFrame": "current",
+        },
+        "url": "https://dev.azure.com/organization/proj1/_apis/work/iterations/iteration1",
+        "__projectId": "proj1",
+        "__project": {"id": "proj1", "name": "Project One"},
+    }
+]
+
 MOCK_FILE_CONTENT = b"file content"
 MOCK_FILE_PATH = "/path/to/file.txt"
 MOCK_REPOSITORY_ID = "repo123"
@@ -814,6 +830,34 @@ async def test_generate_releases_will_skip_404(
 
 
 @pytest.mark.asyncio
+async def test_generate_iterations_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            iterations: List[Dict[str, Any]] = []
+            async for iteration_batch in client.generate_iterations():
+                iterations.extend(iteration_batch)
+
+            assert not iterations
+
+
+@pytest.mark.asyncio
 async def test_generate_work_items_will_skip_404(mock_event_context: MagicMock) -> None:
     """
     Tests that if a 404 is encountered anywhere in the pipeline (e.g. retrieving the WIQL
@@ -1026,6 +1070,62 @@ async def test_generate_releases(mock_event_context: MagicMock) -> None:
 
                 # ASSERT
                 assert releases == EXPECTED_RELEASES
+
+
+@pytest.mark.asyncio
+async def test_generate_iterations(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "work/iterations" in url:
+            # Return iterations without the enrichment data for mocking
+            iterations_data = [
+                {
+                    "id": "iteration1",
+                    "name": "Sprint 1",
+                    "path": "Project One\\Sprint 1",
+                    "attributes": {
+                        "startDate": "2023-01-01T00:00:00Z",
+                        "finishDate": "2023-01-14T00:00:00Z",
+                        "timeFrame": "current",
+                    },
+                    "url": "https://dev.azure.com/organization/proj1/_apis/work/iterations/iteration1",
+                }
+            ]
+            yield iterations_data
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated_by_top_and_continuation_token,
+            ):
+                # ACT
+                iterations: List[Dict[str, Any]] = []
+                async for iteration_batch in client.generate_iterations():
+                    iterations.extend(iteration_batch)
+
+                # ASSERT
+                assert len(iterations) == 1
+                iteration = iterations[0]
+                assert iteration["id"] == "iteration1"
+                assert iteration["name"] == "Sprint 1"
+                assert iteration["__projectId"] == "proj1"
+                assert iteration["__project"]["id"] == "proj1"
+                assert iteration["__project"]["name"] == "Project One"
 
 
 @pytest.mark.asyncio

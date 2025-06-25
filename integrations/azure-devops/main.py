@@ -152,6 +152,14 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield releases
 
 
+@ocean.on_resync(Kind.ITERATION)
+async def resync_iterations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for iterations in azure_devops_client.generate_iterations():
+        logger.info(f"Resyncing {len(iterations)} iterations")
+        yield iterations
+
+
 @ocean.on_resync(Kind.FILE)
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
