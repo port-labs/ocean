@@ -25,11 +25,14 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         path = options["path"]
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
-        params = {"recursive": "true"} if self._needs_recursive_search(path) else {}
+        
+        # Determine if the API call needs to be recursive based on the path
+        is_recursive_api_call = self._needs_recursive_search(path)
+        params = {"recursive": "true"} if is_recursive_api_call else {}
         url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
 
-        if self._branch_is_cached(repo_name, branch_ref):
-            tree = self._get_cached_tree(repo_name, branch_ref)
+        if self._branch_is_cached(repo_name, branch_ref, is_recursive_api_call):
+            tree = self._get_cached_tree(repo_name, branch_ref, is_recursive_api_call)
             folders = self._retrieve_relevant_tree(tree, options)
             yield folders
         else:
@@ -38,7 +41,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             ):
                 content_cast = cast(dict[str, Any], contents)
                 tree = content_cast["tree"]
-                self._cache_tree(repo_name, branch_ref, tree)
+                self._cache_tree(repo_name, branch_ref, is_recursive_api_call, tree)
                 folders = self._retrieve_relevant_tree(tree, options)
                 yield folders
 
@@ -83,16 +86,16 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             item for item in just_trees if bool(re.fullmatch(path_regex, item["path"]))
         ]
 
-    def _branch_is_cached(self, repo_name: str, branch: str) -> bool:
-        return (repo_name, branch) in self._caches
+    def _branch_is_cached(self, repo_name: str, branch: str, is_recursive_fetch: bool) -> bool:
+        return (repo_name, branch, is_recursive_fetch) in self._caches
 
-    def _get_cached_tree(self, repo_name: str, branch: str) -> list[dict[str, Any]]:
-        return self._caches[(repo_name, branch)]
+    def _get_cached_tree(self, repo_name: str, branch: str, is_recursive_fetch: bool) -> list[dict[str, Any]]:
+        return self._caches[(repo_name, branch, is_recursive_fetch)]
 
     def _cache_tree(
-        self, repo_name: str, branch: str, tree: list[dict[str, Any]]
+        self, repo_name: str, branch: str, is_recursive_fetch: bool, tree: list[dict[str, Any]]
     ) -> None:
-        self._caches[(repo_name, branch)] = tree
+        self._caches[(repo_name, branch, is_recursive_fetch)] = tree
 
     def _retrieve_relevant_tree(
         self, tree: list[dict[str, Any]], options: ListFolderOptions
