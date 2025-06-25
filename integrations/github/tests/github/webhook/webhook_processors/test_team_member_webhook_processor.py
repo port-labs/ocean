@@ -10,10 +10,13 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.webhook.webhook_processors.team_webhook_processor import (
-    TeamWebhookProcessor,
+from github.webhook.webhook_processors.team_member_webhook_processor import (
+    TeamMemberWebhookProcessor,
 )
-from github.webhook.events import TEAM_UPSERT_EVENTS, TEAM_DELETE_EVENTS
+from github.webhook.events import (
+    TEAM_MEMBERSHIP_EVENTS,
+    MEMBERSHIP_DELETE_EVENTS,
+)
 from github.core.options import SingleTeamOptions
 
 from github.helpers.utils import ObjectKind, GithubClientType
@@ -22,100 +25,81 @@ from integration import GithubTeamConfig, GithubTeamSector
 
 
 @pytest.fixture
-def team_webhook_processor(
+def team_member_webhook_processor(
     mock_webhook_event: WebhookEvent,
-) -> TeamWebhookProcessor:
-    return TeamWebhookProcessor(event=mock_webhook_event)
+) -> TeamMemberWebhookProcessor:
+    return TeamMemberWebhookProcessor(event=mock_webhook_event)
 
 
 @pytest.mark.asyncio
-class TestTeamWebhookProcessor:
+class TestTeamMemberWebhookProcessor:
     @pytest.mark.parametrize(
         "github_event,action,result",
         [
-            ("team", TEAM_UPSERT_EVENTS[0], True),
-            ("team", TEAM_DELETE_EVENTS[0], True),
-            ("team", "some_other_action", False),
-            ("membership", TEAM_UPSERT_EVENTS[0], True),
-            ("invalid", TEAM_UPSERT_EVENTS[0], False),
-            ("invalid", "some_other_action", False),
+            ("membership", TEAM_MEMBERSHIP_EVENTS[0], True),  # e.g. "added"
+            ("membership", TEAM_MEMBERSHIP_EVENTS[1], True),  # e.g. "removed"
+            ("membership", "some_other_action", False), # Correct event, wrong action
+            ("team", TEAM_MEMBERSHIP_EVENTS[0], False),  # Wrong event, correct action
+            ("invalid", TEAM_MEMBERSHIP_EVENTS[0], False), # Invalid event
+            ("membership", None, False), # Action is None
+            ("invalid", "some_other_action", False), # Invalid event and action
         ],
     )
     async def test_should_process_event(
         self,
-        team_webhook_processor: TeamWebhookProcessor,
+        team_member_webhook_processor: TeamMemberWebhookProcessor,
         github_event: str,
-        action: str,
+        action: str | None,
         result: bool,
     ) -> None:
         mock_request = AsyncMock()
+        payload_dict: Dict[str, Any] = {"action": action} if action is not None else {}
         event = WebhookEvent(
             trace_id="test-trace-id",
-            payload={"action": action},
+            payload=payload_dict,
             headers={"x-github-event": github_event},
         )
         event._original_request = mock_request
 
-        assert await team_webhook_processor._should_process_event(event) is result
+        assert await team_member_webhook_processor._should_process_event(event) is result
 
     async def test_get_matching_kinds(
-        self, team_webhook_processor: TeamWebhookProcessor
+        self, team_member_webhook_processor: TeamMemberWebhookProcessor
     ) -> None:
-        kinds = await team_webhook_processor.get_matching_kinds(
-            team_webhook_processor.event
+        kinds = await team_member_webhook_processor.get_matching_kinds(
+            team_member_webhook_processor.event
         )
         assert ObjectKind.TEAM in kinds
 
     @pytest.mark.parametrize(
-        "action,is_deletion,include_members,expected_updated,expected_deleted",
+        "action, members_selector_setting, expected_updated_count, expected_deleted_count",
         [
-            ("created", False, False, True, False),  # REST exporter
-            ("created", False, True, True, False),  # GraphQL exporter
-            ("added", False, True, True, False),  # GraphQL exporter
-            ("deleted", True, False, False, True),  # Deletion, no exporter needed
+            (MEMBERSHIP_DELETE_EVENTS[0], True, 0, 1),  # "removed", selector enabled
+            (MEMBERSHIP_DELETE_EVENTS[0], False, 0, 1), # "removed", selector disabled (delete still happens)
+            (TEAM_MEMBERSHIP_EVENTS[0], True, 1, 0),    # "added", selector enabled (upsert happens)
+            (TEAM_MEMBERSHIP_EVENTS[0], False, 1, 0),   # "added", selector disabled (upsert still happens, selector only logs)
         ],
     )
-    async def test_handle_event_create_and_delete(
+    async def test_handle_event(
         self,
-        team_webhook_processor: TeamWebhookProcessor,
+        team_member_webhook_processor: TeamMemberWebhookProcessor,
         action: str,
-        is_deletion: bool,
-        include_members: bool,
-        expected_updated: bool,
-        expected_deleted: bool,
+        members_selector_setting: bool, 
+        expected_updated_count: int,
+        expected_deleted_count: int,
     ) -> None:
-        team_data = {
-            "id": 1,
-            "name": "test-repo",
-            "slug": "test-team",
-            "description": "Test team",
-        }
+        team_data = {"name": "test-team-name", "slug": "test-team-slug"}
+        member_data = {"login": "test-member"}
 
-        # Mocked GraphQL response structure
-        graphql_team_data = {
-            "data": {
-                "organization": {
-                    "team": {
-                        "id": 1,
-                        "name": "test-repo",
-                        "slug": "test-team",
-                        "description": "Test team",
-                        # In a real scenario, members data would be here
-                    }
-                }
-            }
-        }
+        payload = {"action": action, "team": team_data, "member": member_data}
 
-        payload = {"action": action, "team": team_data}
-
-        # Create resource_config based on include_members
         resource_config = GithubTeamConfig(
             kind=ObjectKind.TEAM,
-            selector=GithubTeamSector(members=include_members, query="true"),
+            selector=GithubTeamSector(members=members_selector_setting, query="true"),
             port=PortResourceConfig(
                 entity=MappingsConfig(
                     mappings=EntityMapping(
-                        identifier=".slug",
+                        identifier=".slug", # This is team's identifier
                         title=".name",
                         blueprint='"githubTeam"',
                         properties={},
@@ -124,85 +108,105 @@ class TestTeamWebhookProcessor:
             ),
         )
 
-        if is_deletion:
-            result = await team_webhook_processor.handle_event(payload, resource_config)
-        else:
-            mock_exporter = AsyncMock()
-            if include_members:
-                mock_exporter.get_resource.return_value = graphql_team_data["data"][
-                    "organization"
-                ]["team"]
-                exporter_path = "github.webhook.webhook_processors.team_webhook_processor.GraphQLTeamWithMembersExporter"
-                client_type = GithubClientType.GRAPHQL
-            else:
-                mock_exporter.get_resource.return_value = team_data
-                exporter_path = "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter"
-                client_type = GithubClientType.REST
+        mock_graphql_client = AsyncMock()
+        mock_exporter_instance = AsyncMock()
 
-            with (
-                patch(exporter_path, return_value=mock_exporter),
-                patch(
-                    "github.webhook.webhook_processors.team_webhook_processor.create_github_client"
-                ) as mock_create_client,
-            ):
-                result = await team_webhook_processor.handle_event(
+        full_team_export_data = {
+            "id": "team123", # Example additional field from exporter
+            "name": team_data["name"],
+            "slug": team_data["slug"],
+            "members": {
+                "nodes": [
+                    {"login": "other-member"},
+                    {"login": member_data["login"]}, 
+                ]
+            },
+        }
+
+        if action in MEMBERSHIP_DELETE_EVENTS:
+            result = await team_member_webhook_processor.handle_event(
+                payload, resource_config
+            )
+        else:  # "added" action
+            mock_exporter_instance.get_resource.return_value = full_team_export_data
+            exporter_class_path = "github.webhook.webhook_processors.team_member_webhook_processor.GraphQLTeamWithMembersExporter"
+            create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client"
+
+            with patch(create_client_path, return_value=mock_graphql_client) as mock_create_client, \
+                 patch(exporter_class_path, return_value=mock_exporter_instance) as mock_exporter_class_constructor:
+                result = await team_member_webhook_processor.handle_event(
                     payload, resource_config
                 )
 
-                # Verify create_github_client was called with correct type
-                mock_create_client.assert_called_once_with(client_type)
-
-                # Verify exporter was called with correct team slug
-                mock_exporter.get_resource.assert_called_once_with(
-                    SingleTeamOptions(slug="test-team")
+                mock_create_client.assert_called_once_with(GithubClientType.GRAPHQL)
+                mock_exporter_class_constructor.assert_called_once_with(mock_graphql_client)
+                mock_exporter_instance.get_resource.assert_called_once_with(
+                    SingleTeamOptions(slug=team_data["slug"])
                 )
 
         assert isinstance(result, WebhookEventRawResults)
-        assert bool(result.updated_raw_results) is expected_updated
-        assert bool(result.deleted_raw_results) is expected_deleted
+        assert len(result.updated_raw_results) == expected_updated_count
+        assert len(result.deleted_raw_results) == expected_deleted_count
 
-        if expected_updated:
-            # If GraphQL, the result will be the extracted team data from the graphql_team_data mock
-            if include_members:
-                assert result.updated_raw_results == [
-                    graphql_team_data["data"]["organization"]["team"]
-                ]
-            else:
-                assert result.updated_raw_results == [team_data]
+        if expected_updated_count > 0:
+            expected_filtered_team_data = {
+                **{k: v for k, v in full_team_export_data.items() if k != "members"},
+                "members": {"nodes": [member_data]},
+            }
+            assert result.updated_raw_results == [expected_filtered_team_data]
 
-        if expected_deleted:
-            assert result.deleted_raw_results == [team_data]
+        if expected_deleted_count > 0:
+            assert result.deleted_raw_results == [{"members": {"nodes": [member_data]}}]
 
     @pytest.mark.parametrize(
         "payload,expected",
         [
-            (
+            ( # Valid: action and team with name
                 {
-                    "action": TEAM_UPSERT_EVENTS[0],
-                    "team": {"slug": "team1"},
+                    "action": TEAM_MEMBERSHIP_EVENTS[0], # e.g. "added"
+                    "team": {"name": "team1", "slug": "team1-slug"}, # slug also present, name is validated
+                    "member": {"login": "user1"} 
                 },
                 True,
             ),
-            (
+            ( # Valid: action and team with name (member not strictly needed for this validation)
                 {
-                    "action": TEAM_DELETE_EVENTS[0],
-                    "team": {"slug": "team2"},
+                    "action": TEAM_MEMBERSHIP_EVENTS[1], # e.g. "removed"
+                    "team": {"name": "team2"},
                 },
                 True,
             ),
-            ({"action": TEAM_UPSERT_EVENTS[0]}, False),  # missing team
-            ({"team": {"slug": "team4"}}, False),  # missing action
-            (
-                {"action": TEAM_UPSERT_EVENTS[0], "team": {}},  # no slug
+            ({"action": TEAM_MEMBERSHIP_EVENTS[0], "member": {"login": "user1"}}, False),  # missing team
+            ({"team": {"name": "team4"}, "member": {"login": "user1"}}, False),  # missing action
+            ( 
+                {"action": TEAM_MEMBERSHIP_EVENTS[0], "team": {"slug": "team-slug-only"}}, # team present, but no 'name'
                 False,
             ),
+             ( # Missing action key
+                {
+                    "team": {"name": "team1"},
+                    "member": {"login": "user1"}
+                },
+                False,
+            ),
+            ( # Missing team key
+                {
+                    "action": TEAM_MEMBERSHIP_EVENTS[0],
+                    "member": {"login": "user1"}
+                },
+                False,
+            ),
+            ( # Empty payload
+                {},
+                False,
+            )
         ],
     )
     async def test_validate_payload(
         self,
-        team_webhook_processor: TeamWebhookProcessor,
-        payload: Dict[str, str],
+        team_member_webhook_processor: TeamMemberWebhookProcessor,
+        payload: Dict[str, Any], 
         expected: bool,
     ) -> None:
-        result = await team_webhook_processor.validate_payload(payload)
+        result = await team_member_webhook_processor.validate_payload(payload)
         assert result is expected
