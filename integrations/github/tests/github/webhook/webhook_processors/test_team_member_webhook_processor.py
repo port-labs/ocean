@@ -215,7 +215,7 @@ class TestTeamMemberWebhookProcessor:
                     "team": {"name": "team2"},
                     # "member" field is intentionally missing to test validation logic
                 },
-                False, # Expected False because 'member' is required and missing
+                False,  # Expected False because 'member' is required and missing
             ),
             (
                 {"action": TEAM_MEMBERSHIP_EVENTS[0], "member": {"login": "user1"}},
