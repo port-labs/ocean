@@ -70,13 +70,6 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
             SingleTeamOptions(slug=team["slug"])
         )
 
-        member_filter = [
-            user
-            for user in data_to_upsert["members"]["nodes"]
-            if user["login"] == member["login"]
-        ]
-        data_to_upsert["members"]["nodes"] = member_filter
-
         logger.info(
             f"Upserting team '{data_to_upsert['name']}' due to member '{member['login']}' being added."
         )
