@@ -26,7 +26,6 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
 
-        # Determine if the API call needs to be recursive based on the path
         is_recursive_api_call = self._needs_recursive_search(path)
         params = {"recursive": "true"} if is_recursive_api_call else {}
         url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
