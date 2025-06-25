@@ -28,76 +28,73 @@ class CredentialProvider(ABC):
 
 
 class StaticCredentialProvider(CredentialProvider):
+    """
+    A credential provider that provides static credentials.
+    The credentials are not refreshed.
+    """
+
     @property
     def is_refreshable(self) -> bool:
         return False
 
     async def get_credentials(self, **kwargs: Any) -> AioCredentials:
-        session = AioSession()
-        creds = await session.get_credentials()
-        if creds is not None:
-            return creds
-        # Fallback: try to use credentials from config
-        access_key = self.config.get("aws_access_key_id")
-        secret_key = self.config.get("aws_secret_access_key")
-        if isinstance(access_key, str) and isinstance(secret_key, str):
-            return AioCredentials(access_key, secret_key, token=None)
-        raise CredentialsProviderError(
-            "Missing AWS credentials (no valid credentials in environment or config)"
+        return AioCredentials(
+            self.config["aws_access_key_id"],
+            self.config["aws_secret_access_key"],
+            token=None,
         )
 
     async def get_session(self, **kwargs: Any) -> AioSession:
-        creds = await self.get_credentials(**kwargs)
+        creds = self.get_credentials(kwargs.get("region"), **kwargs)
         session = AioSession()
-        cast(Any, session)._credentials = creds
+        session._credentials = creds
         return session
 
 
 class AssumeRoleProvider(CredentialProvider):
-    def __init__(self, config: dict[str, Any]) -> None:
-        super().__init__(config)
-        # No credential injection here; fallback handled in get_credentials
+    """
+    A credential provider that provides temporary credentials for assuming a role.
+    The refresh process works like this:
+        When a session is created, it gets AioRefreshableCredentials
+        These credentials are stored in the session
+        When an AWS API call is made:
+        The session checks if it needs credentials
+        If needed, it calls get_frozen_credentials() from the AioRefreshableCredentials
+        If the credentials are expired or about to expire, the refresh function is called
+        The refreshed credentials are used for the API call
+    """
 
     @property
     def is_refreshable(self) -> bool:
         return True
 
     async def get_credentials(self, **kwargs: Any) -> AioRefreshableCredentials:
-        region = kwargs.get("region")
-        role_arn = kwargs.get("role_arn")
-        role_session_name = kwargs.get("role_session_name", "RoleSessionName")
-        if not role_arn:
-            raise CredentialsProviderError(
-                "role_arn is required for AssumeRoleProvider"
-            )
-        # Try default session first
-        session = self._session
-        creds = await session.get_credentials()
-        if creds is None:
-            # Fallback: try to use credentials from config
-            access_key = self.config.get("aws_access_key_id")
-            secret_key = self.config.get("aws_secret_access_key")
-            if isinstance(access_key, str) and isinstance(secret_key, str):
-                cast(Any, session)._credentials = AioCredentials(
-                    access_key, secret_key, token=None
-                )
-            else:
-                raise CredentialsProviderError(
-                    "Missing AWS credentials (no valid credentials in environment or config)"
-                )
-        async with session.create_client("sts", region_name=region) as sts:
-            refresher = create_assume_role_refresher(
-                sts,
-                {
+        try:
+            async with self._session.create_client(
+                "sts", region_name=kwargs.get("region")
+            ) as sts:
+                role_arn = kwargs["role_arn"]
+                assume_role_params = {
                     "RoleArn": role_arn,
-                    "RoleSessionName": role_session_name,
-                },
-            )
-            metadata = await refresher()
-            credentials = AioRefreshableCredentials.create_from_metadata(
-                metadata=metadata, refresh_using=refresher, method="sts-assume-role"
-            )
-            return credentials
+                    "RoleSessionName": kwargs.get(
+                        "role_session_name", "RoleSessionName"
+                    ),
+                }
+
+                # Add external ID if provided in kwargs
+                if "external_id" in kwargs:
+                    assume_role_params["ExternalId"] = kwargs["external_id"]
+
+                refresher = create_assume_role_refresher(
+                    sts,
+                    assume_role_params,
+                )
+                metadata = await refresher()
+                return AioRefreshableCredentials.create_from_metadata(
+                    metadata=metadata, refresh_using=refresher, method="sts-assume-role"
+                )
+        except Exception as e:
+            raise CredentialsProviderError(f"Failed to assume role: {e}")
 
     async def get_session(self, **kwargs: Any) -> AioSession:
         role_arn = kwargs.get("role_arn")
