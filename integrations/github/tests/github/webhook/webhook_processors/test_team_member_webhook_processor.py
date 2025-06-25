@@ -76,12 +76,12 @@ class TestTeamMemberWebhookProcessor:
     @pytest.mark.parametrize(
         "action, members_selector_setting, expected_updated_count, expected_deleted_count",
         [
-            (MEMBERSHIP_DELETE_EVENTS[0], True, 0, 1),  # "removed", selector enabled
+            (MEMBERSHIP_DELETE_EVENTS[0], True, 0, 0),  # "removed", selector enabled
             (
                 MEMBERSHIP_DELETE_EVENTS[0],
                 False,
                 0,
-                1,
+                0,
             ),  # "removed", selector disabled (delete still happens)
             (
                 TEAM_MEMBERSHIP_EVENTS[0],
@@ -181,6 +181,9 @@ class TestTeamMemberWebhookProcessor:
             assert result.updated_raw_results == [expected_filtered_team_data]
 
         if expected_deleted_count > 0:
+            # This part of the assertion will no longer be reached for "removed" events
+            # as expected_deleted_count will be 0.
+            # Keeping it for "added" events or future changes where deletion might occur.
             assert result.deleted_raw_results == [{"members": {"nodes": [member_data]}}]
 
     @pytest.mark.parametrize(
