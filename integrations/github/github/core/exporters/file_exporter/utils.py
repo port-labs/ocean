@@ -1,18 +1,14 @@
-import binascii
-import fnmatch
-from typing import Dict, List, Any, Optional, Tuple, TypedDict
-from pathlib import Path
 import base64
+import binascii
+from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING
 
 import yaml
 from loguru import logger
-from collections import defaultdict
+from wcmatch import glob
 
 from github.core.options import FileSearchOptions, ListFileSearchOptions
-
-
-from typing import TYPE_CHECKING
-
 from github.helpers.utils import GithubClientType
 
 if TYPE_CHECKING:
@@ -120,25 +116,10 @@ def build_repo_path_map(
 
 def match_file_entry(path: str, pattern: str) -> bool:
     """
-    Match file path against a glob pattern.
-    If the pattern includes '**/', also try matching with that prefix removed.
+    Match file path against a glob pattern using wcmatch's globmatch.
+    Supports ** and other extended glob syntax.
     """
-    path = path.replace("\\", "/")
-
-    if fnmatch.fnmatch(path, pattern):
-        return True
-
-    if pattern.startswith("**/"):
-        bare_pattern = pattern.replace("**/", "", 1)
-        if fnmatch.fnmatch(path, bare_pattern):
-            return True
-
-    if "/**/" in pattern:
-        simplified_pattern = pattern.replace("/**/", "/")
-        if fnmatch.fnmatch(path, simplified_pattern):
-            return True
-
-    return False
+    return glob.globmatch(path, pattern, flags=glob.GLOBSTAR)
 
 
 def classify_fetch_method(size: int) -> GithubClientType:

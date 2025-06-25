@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.15-dev (2025-06-25)
+
+
+### Features
+
+- Added file exporter functionality with support for file content fetching and processing
+- Implemented file webhook processor for real-time file change detection and processing
+- Added file entity processor for dynamic file content retrieval in entity mappings
+- Added support for file pattern matching with glob patterns and size-based routing (GraphQL vs REST)
+
+
 ## 0.1.14-dev (2025-06-11)
 
 
