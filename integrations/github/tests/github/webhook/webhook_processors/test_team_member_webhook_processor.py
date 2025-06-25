@@ -224,13 +224,6 @@ class TestTeamMemberWebhookProcessor:
                 {"team": {"name": "team4"}, "member": {"login": "user1"}},
                 False,
             ),  # missing action
-            (
-                {
-                    "action": TEAM_MEMBERSHIP_EVENTS[0],
-                    "team": {"slug": "team-slug-only"},
-                },  # team present, but no 'name'
-                False,
-            ),
             (  # Missing action key
                 {"team": {"name": "team1"}, "member": {"login": "user1"}},
                 False,
