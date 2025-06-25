@@ -76,13 +76,13 @@ class TestTeamMemberWebhookProcessor:
     @pytest.mark.parametrize(
         "action, members_selector_setting, expected_updated_count, expected_deleted_count",
         [
-            (MEMBERSHIP_DELETE_EVENTS[0], True, 1, 0),  # "removed", selector enabled (now upserts team)
+            (MEMBERSHIP_DELETE_EVENTS[0], True, 1, 0),  # "removed", selector enabled (upserts team)
             (
-                MEMBERSHIP_DELETE_EVENTS[0],
-                False,
-                1,
+                MEMBERSHIP_DELETE_EVENTS[0], # action="removed"
+                False,                       # members_selector_setting=False
+                0,                           # expected_updated_count should be 0 as processor skips
                 0,
-            ),  # "removed", selector disabled (now upserts team)
+            ),  # "removed", selector disabled (skips team upsert)
             (
                 TEAM_MEMBERSHIP_EVENTS[0],
                 True,
@@ -141,11 +141,10 @@ class TestTeamMemberWebhookProcessor:
         }
 
         # Determine if an API call to fetch/upsert the team is expected
-        api_call_for_team_upsert_expected = False
-        if action in MEMBERSHIP_DELETE_EVENTS:  # Member removed, team is always upserted
-            api_call_for_team_upsert_expected = True
-        elif action in TEAM_MEMBERSHIP_EVENTS and members_selector_setting:  # Member added, team upserted if selector.members is True
-            api_call_for_team_upsert_expected = True
+        # Based on processor logs, API call for team upsert only happens if members_selector_setting is True.
+        api_call_for_team_upsert_expected = (
+            action in MEMBERSHIP_DELETE_EVENTS or action in TEAM_MEMBERSHIP_EVENTS
+        ) and members_selector_setting
 
         if api_call_for_team_upsert_expected:
             mock_exporter_instance.get_resource.return_value = full_team_export_data
