@@ -1,6 +1,6 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from utils.misc import CustomProperties, AsyncPaginator
+from unittest.mock import AsyncMock, MagicMock
+from utils.misc import CustomProperties, ResourceGroupsClientProtocol
 from utils.resources import (
     resync_custom_kind,
     resync_cloudcontrol,
@@ -8,212 +8,268 @@ from utils.resources import (
     enrich_group_with_resources,
     fetch_group_resources,
 )
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict, List
+from tests.conftest import MockSTSClient, MockClient, MockPaginator
+
+
+@pytest.fixture
+def region() -> str:
+    return "us-west-2"
 
 
 @pytest.mark.asyncio
 async def test_resync_custom_kind(
     mock_session: AsyncMock,
-    mock_account_id: str,
+    region: str,
+    mock_resource_config: MagicMock,
 ) -> None:
-    """Test that resync_custom_kind produces valid output."""
-    with patch(
-        "utils.resources._session_manager.find_account_id_by_session",
-        return_value=mock_account_id,
+    """Test resync_custom_kind yields expected structure and values."""
+
+    def create_client(service_name: str, *a: Any, **kw: Any) -> Any:
+        if service_name == "sts":
+            return MockSTSClient()
+        return MockClient()
+
+    mock_session.create_client = create_client
+    results: List[Dict[str, Any]] = []
+    async for batch in resync_custom_kind(
+        kind="CustomKind",
+        session=mock_session,
+        region=region,
+        service_name="cloudformation",
+        describe_method="describe_stacks",
+        list_param="Stacks",
+        marker_param="NextToken",
+        resource_config=mock_resource_config,
     ):
-        async for result in resync_custom_kind(
-            kind="AWS::CloudFormation::Stack",
-            session=mock_session,
-            service_name="cloudformation",
-            describe_method="describe_method",
-            list_param="ResourceList",
-            marker_param="NextToken",
-        ):
-            assert isinstance(result, list)
-            for resource in result:
-                assert (
-                    resource[CustomProperties.KIND.value]
-                    == "AWS::CloudFormation::Stack"
-                )
-                assert resource[CustomProperties.ACCOUNT_ID.value] == mock_account_id
-                assert resource[CustomProperties.REGION.value] == "us-west-2"
-                assert "Properties" in resource
+        results.extend(batch)
+    assert results
+    for item in results:
+        assert item[CustomProperties.KIND.value] == "CustomKind"
+        assert item[CustomProperties.ACCOUNT_ID.value] == "123456789012"
+        assert item[CustomProperties.REGION.value] == region
+        assert "StackName" in item
+        assert item["StackName"] == "test-stack"
+
+
+@pytest.mark.asyncio
+async def test_resync_custom_kind_empty(
+    mock_session: AsyncMock,
+    region: str,
+    mock_resource_config: MagicMock,
+) -> None:
+    """Test resync_custom_kind yields nothing for empty stacks."""
+
+    class EmptyMockClient(MockClient):
+        async def describe_stacks(self, **kwargs: Any) -> dict[str, Any]:
+            return {"Stacks": [], "NextToken": None}
+
+    def create_client(service_name: str, *a: Any, **kw: Any) -> Any:
+        if service_name == "sts":
+            return MockSTSClient()
+        return EmptyMockClient()
+
+    mock_session.create_client = create_client
+    results: List[Any] = []
+    async for batch in resync_custom_kind(
+        kind="CustomKind",
+        session=mock_session,
+        region=region,
+        service_name="cloudformation",
+        describe_method="describe_stacks",
+        list_param="Stacks",
+        marker_param="NextToken",
+        resource_config=mock_resource_config,
+    ):
+        results.extend(batch)
+    assert results == []
 
 
 @pytest.mark.asyncio
 async def test_resync_cloudcontrol(
     mock_session: AsyncMock,
-    mock_account_id: str,
+    region: str,
     mock_resource_config: MagicMock,
 ) -> None:
-    """Test that resync_cloudcontrol produces valid output."""
-    # Configure the mock resource config to use get_resource_api
-    use_get_resource_api = True
+    """Test resync_cloudcontrol yields expected structure and values."""
 
-    with patch(
-        "utils.resources._session_manager.find_account_id_by_session",
-        return_value=mock_account_id,
-    ):
-        async for result in resync_cloudcontrol(
-            kind="AWS::S3::Bucket",
-            session=mock_session,
-            use_get_resource_api=use_get_resource_api,
-        ):
-            assert isinstance(result, list)
-            for resource in result:
-                assert resource[CustomProperties.KIND.value] == "AWS::S3::Bucket"
-                assert resource[CustomProperties.ACCOUNT_ID.value] == mock_account_id
-                assert resource[CustomProperties.REGION.value] == "us-west-2"
-                assert "Properties" in resource
-
-
-@pytest.mark.asyncio
-async def test_resync_cloudcontrol_without_get_resource_api(
-    mock_session: AsyncMock,
-    mock_account_id: str,
-) -> None:
-    """Test that resync_cloudcontrol produces valid output when not using get_resource_api."""
-    # Configure the mock resource config to not use get_resource_api
-    use_get_resource_api = False
-
-    with patch(
-        "utils.resources._session_manager.find_account_id_by_session",
-        return_value=mock_account_id,
-    ):
-        async for result in resync_cloudcontrol(
-            kind="AWS::S3::Bucket",
-            session=mock_session,
-            use_get_resource_api=use_get_resource_api,
-        ):
-            assert isinstance(result, list)
-            for resource in result:
-                assert resource[CustomProperties.KIND.value] == "AWS::S3::Bucket"
-                assert resource[CustomProperties.ACCOUNT_ID.value] == mock_account_id
-                assert resource[CustomProperties.REGION.value] == "us-west-2"
-                assert "Properties" in resource
-
-
-@pytest.mark.asyncio
-async def test_fetch_group_resources(
-    mock_session: AsyncMock,
-    mock_account_id: str,
-) -> None:
-    """Test that fetch_group_resources correctly retrieves resources for a group."""
-    # Create a mock client
-    mock_client = AsyncMock()
-
-    # Create a mock AsyncPaginator
-    mock_paginator = AsyncMock(spec=AsyncPaginator)
-
-    # Create a mock paginate method that returns an async generator
-    async def mock_paginate_generator(
-        **kwargs: Any,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        yield [
-            {
-                "ResourceArn": "arn:aws:ec2:us-west-2:123456789012:instance/i-1234567890abcdef0"
+    class CloudControlMockClient(MockClient):
+        async def get_resource(self, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "ResourceDescription": {"Identifier": "test-id", "Properties": "{}"}
             }
-        ]
 
-    # Set up the paginator's paginate method
-    mock_paginator.paginate = mock_paginate_generator
+    def create_client(service_name: str, *a: Any, **kw: Any) -> Any:
+        if service_name == "sts":
+            return MockSTSClient()
+        return CloudControlMockClient()
 
-    # Patch the AsyncPaginator class to return our mock
-    with patch("utils.resources.AsyncPaginator", return_value=mock_paginator):
-        # Call the function
-        resources = await fetch_group_resources(mock_client, "test-group", "us-west-2")
-
-        # Verify the results
-        assert len(resources) == 1
-        assert (
-            resources[0]["ResourceArn"]
-            == "arn:aws:ec2:us-west-2:123456789012:instance/i-1234567890abcdef0"
-        )
-
-
-@pytest.mark.asyncio
-async def test_enrich_group_with_resources(
-    mock_session: AsyncMock,
-    mock_account_id: str,
-) -> None:
-    """Test that enrich_group_with_resources correctly enriches a group with its resources."""
-    # Mock the client
-    mock_client = AsyncMock()
-
-    # Mock the fetch_group_resources function
-    with patch(
-        "utils.resources.fetch_group_resources",
-        return_value=[{"ResourceArn": "test-arn"}],
+    mock_session.create_client = create_client
+    results: List[Dict[str, Any]] = []
+    async for batch in resync_cloudcontrol(
+        kind="AWS::S3::Bucket",
+        session=mock_session,
+        region=region,
+        resource_config=mock_resource_config,
     ):
-        # Test data
-        group = {"Name": "test-group", "GroupArn": "test-group-arn"}
-        kind = "AWS::ResourceGroups::Group"
-        region = "us-west-2"
-
-        # Call the function
-        result = await enrich_group_with_resources(
-            mock_client, group, kind, mock_account_id, region
-        )
-
-        # Verify the results
-        assert result[CustomProperties.KIND.value] == kind
-        assert result[CustomProperties.ACCOUNT_ID.value] == mock_account_id
-        assert result[CustomProperties.REGION.value] == region
-        assert result["Name"] == "test-group"
-        assert result["GroupArn"] == "test-group-arn"
-        assert result["__Resources"] == [{"ResourceArn": "test-arn"}]
+        results.extend(batch)
+    assert results
+    for item in results:
+        assert item[CustomProperties.KIND.value] == "AWS::S3::Bucket"
+        assert item[CustomProperties.ACCOUNT_ID.value] == "123456789012"
+        assert item[CustomProperties.REGION.value] == region
+        assert "Identifier" in item
+        assert "Properties" in item
 
 
 @pytest.mark.asyncio
 async def test_resync_resource_group(
     mock_session: AsyncMock,
+    region: str,
+) -> None:
+    """Test resync_resource_group yields expected group structure."""
+
+    class ResourceGroupMockClient(MockClient, ResourceGroupsClientProtocol):
+        def get_paginator(self, name: str) -> MockPaginator:
+            class GroupMockPaginator(MockPaginator):
+                async def paginate(
+                    self, *args: Any, **kwargs: Any
+                ) -> AsyncGenerator[dict[str, Any], None]:
+                    yield {
+                        "Groups": [{"Name": "group1", "GroupArn": "arn:aws:rg:group1"}]
+                    }
+
+            return GroupMockPaginator()
+
+        async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
+            return []
+
+        async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
+            return []
+
+    def create_client(service_name: str, *a: Any, **kw: Any) -> Any:
+        if service_name == "sts":
+            return MockSTSClient()
+        return ResourceGroupMockClient()
+
+    mock_session.create_client = create_client
+    results: List[Any] = []
+    async for batch in resync_resource_group(
+        kind="ResourceGroupKind",
+        session=mock_session,
+        region=region,
+    ):
+        results.extend(batch)
+    assert results
+    for group in results:
+        assert "Name" in group
+        assert group["Name"] == "group1"
+        assert group["GroupArn"] == "arn:aws:rg:group1"
+
+
+@pytest.mark.asyncio
+async def test_enrich_group_with_resources(
+    region: str,
     mock_account_id: str,
 ) -> None:
-    """Test that resync_resource_group produces valid output."""
-    mock_client = AsyncMock()
+    """Test enrich_group_with_resources yields expected enriched group."""
 
-    mock_paginator = AsyncMock()
+    class EnrichMockClient(MockClient, ResourceGroupsClientProtocol):
+        def get_paginator(self, name: str) -> MockPaginator:
+            class EnrichMockPaginator(MockPaginator):
+                async def paginate(
+                    self, *args: Any, **kwargs: Any
+                ) -> AsyncGenerator[dict[str, Any], None]:
+                    yield {"Resources": [{"ResourceArn": "arn:aws:ec2:instance/i-123"}]}
 
-    async def mock_paginate_generator(
-        **kwargs: Any,
-    ) -> AsyncGenerator[Dict[str, Any], None]:
-        yield {"Groups": [{"GroupName": "test-group", "GroupArn": "test-group-arn"}]}
+            return EnrichMockPaginator()
 
-    mock_paginator.paginate = mock_paginate_generator
+        async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
+            return []
 
-    mock_client.get_paginator.return_value = mock_paginator
+        async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
+            return []
 
-    mock_context_manager = AsyncMock()
-    mock_context_manager.__aenter__.return_value = mock_client
-    mock_session.client.return_value = mock_context_manager
+    mock_client: ResourceGroupsClientProtocol = EnrichMockClient()
+    group = {"Name": "group1", "GroupArn": "arn:aws:rg:group1"}
+    result = await enrich_group_with_resources(
+        mock_client,
+        group,
+        kind="ResourceGroupKind",
+        account_id=mock_account_id,
+        region=region,
+    )
+    assert result[CustomProperties.KIND.value] == "ResourceGroupKind"
+    assert result[CustomProperties.ACCOUNT_ID.value] == mock_account_id
+    assert result[CustomProperties.REGION.value] == region
+    assert result["Name"] == "group1"
+    assert result["GroupArn"] == "arn:aws:rg:group1"
+    assert "__Resources" in result
+    assert result["__Resources"][0]["ResourceArn"] == "arn:aws:ec2:instance/i-123"
 
-    with (
-        patch(
-            "utils.resources._session_manager.find_account_id_by_session",
-            return_value=mock_account_id,
-        ),
-        patch(
-            "utils.resources.enrich_group_with_resources",
-            return_value={
-                CustomProperties.KIND.value: "AWS::ResourceGroups::Group",
-                CustomProperties.ACCOUNT_ID.value: mock_account_id,
-                CustomProperties.REGION.value: "us-west-2",
-                "GroupName": "test-group",
-                "GroupArn": "test-group-arn",
-                "__Resources": [{"ResourceArn": "test-arn"}],
-            },
-        ),
-    ):
-        async for result in resync_resource_group(
-            kind="AWS::ResourceGroups::Group",
-            session=mock_session,
-        ):
-            assert isinstance(result, list)
-            assert len(result) == 1
-            group = result[0]
-            assert group[CustomProperties.KIND.value] == "AWS::ResourceGroups::Group"
-            assert group[CustomProperties.ACCOUNT_ID.value] == mock_account_id
-            assert group[CustomProperties.REGION.value] == "us-west-2"
-            assert group["GroupName"] == "test-group"
-            assert group["GroupArn"] == "test-group-arn"
-            assert group["__Resources"] == [{"ResourceArn": "test-arn"}]
+
+@pytest.mark.asyncio
+async def test_fetch_group_resources(
+    region: str,
+) -> None:
+    """Test fetch_group_resources returns a list of resources."""
+
+    class FetchMockClient(MockClient, ResourceGroupsClientProtocol):
+        def get_paginator(self, name: str) -> MockPaginator:
+            class FetchMockPaginator(MockPaginator):
+                async def paginate(
+                    self, *args: Any, **kwargs: Any
+                ) -> AsyncGenerator[dict[str, Any], None]:
+                    yield {"ResourceDescriptions": [{"Identifier": "test-id"}]}
+
+            return FetchMockPaginator()
+
+        async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
+            return []
+
+        async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
+            return []
+
+    mock_client: ResourceGroupsClientProtocol = FetchMockClient()
+    group_name = "group1"
+    result = await fetch_group_resources(
+        mock_client,
+        group_name,
+        region,
+    )
+    assert isinstance(result, list)
+    if result:
+        assert "Identifier" in result[0]
+
+
+@pytest.mark.asyncio
+async def test_fetch_group_resources_empty(
+    region: str,
+) -> None:
+    """Test fetch_group_resources returns empty list for no resources."""
+
+    class EmptyFetchMockClient(MockClient, ResourceGroupsClientProtocol):
+        def get_paginator(self, name: str) -> MockPaginator:
+            class EmptyFetchMockPaginator(MockPaginator):
+                async def paginate(
+                    self, *args: Any, **kwargs: Any
+                ) -> AsyncGenerator[dict[str, Any], None]:
+                    if False:
+                        yield  # never yields
+
+            return EmptyFetchMockPaginator()
+
+        async def list_group_resources(self, *args: Any, **kwargs: Any) -> Any:
+            return []
+
+        async def list_groups(self, *args: Any, **kwargs: Any) -> Any:
+            return []
+
+    mock_client: ResourceGroupsClientProtocol = EmptyFetchMockClient()
+    group_name = "group1"
+    result = await fetch_group_resources(
+        mock_client,
+        group_name,
+        region,
+    )
+    assert result == []

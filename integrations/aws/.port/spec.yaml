@@ -24,9 +24,9 @@ configurations:
     description: The AWS User Secret Access Key used for authentication. For more information, see the <a href="https://docs.aws.amazon.com/singlesignon/latest/userguide/howtogetcredentials.html" target="_blank">AWS documentation</a>.
   - name: organizationRoleArn
     required: false
-    type: string
+    type: array
     sensitive: true
-    description: AWS Organization Role ARN, in case the account the integration is installed on is not the root account, used to read organization accounts for multi-account access.
+    description: AWS Organization Role ARNs (array), in case the account the integration is installed on is not the root account, used to read organization accounts for multi-account access. You can specify multiple role ARNs.
   - name: accountReadRoleName
     required: false
     type: string

@@ -1,96 +1,160 @@
-import unittest
-from unittest.mock import AsyncMock, patch, MagicMock
-from typing import List, Any
-from utils.aws import get_sessions
-from aws.aws_credentials import AwsCredentials
-from aws.session_manager import SessionManager
-from aioboto3 import Session
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+from aiobotocore.session import AioSession
+from botocore.utils import ArnParser
+from typing import Any
+
+from aws.auth.utils import normalize_arn_list, extract_account_from_arn
+from aws.auth.account import (
+    RegionResolver,
+    SingleAccountStrategy,
+    MultiAccountStrategy,
+)
+from aws.auth.credentials_provider import (
+    StaticCredentialProvider,
+    AssumeRoleProvider,
+)
+from aws.auth.utils import CredentialsProviderError
+from aws.auth.session_factory import SessionStrategyFactory
+from utils.overrides import AWSDescribeResourcesSelector
 
 
-class TestAwsSessions(unittest.IsolatedAsyncioTestCase):
-    def setUp(self) -> None:
-        self.session_manager_mock: AsyncMock = patch(
-            "utils.aws._session_manager", autospec=SessionManager
-        ).start()
+# --- normalize_arn_list ---
+def test_normalize_arn_list() -> None:
+    assert normalize_arn_list(None) == []
+    assert normalize_arn_list("") == []
+    assert normalize_arn_list([""]) == []
+    assert normalize_arn_list("arn:aws:iam::1:role/x") == ["arn:aws:iam::1:role/x"]
+    assert normalize_arn_list(["arn:aws:iam::1:role/x", ""]) == [
+        "arn:aws:iam::1:role/x"
+    ]
 
-        self.credentials_mock: AsyncMock = AsyncMock(spec=AwsCredentials)
-        self.session_mock: AsyncMock = AsyncMock(spec=Session)
 
-    def tearDown(self) -> None:
-        patch.stopall()
+# --- extract_account_from_arn ---
+def test_extract_account_from_arn() -> None:
+    arn = "arn:aws:iam::123456789012:role/TestRole"
+    parser = ArnParser()
+    assert extract_account_from_arn(arn, parser) == "123456789012"
+    with pytest.raises(Exception):
+        extract_account_from_arn("invalid-arn", parser)
 
-    async def test_get_sessions_with_custom_account_id(self) -> None:
-        """Test get_sessions with a custom account ID and region."""
-        self.credentials_mock.create_session = AsyncMock(return_value=self.session_mock)
 
-        self.session_manager_mock.find_credentials_by_account_id.return_value = (
-            self.credentials_mock
-        )
-
-        sessions: List[Session] = [
-            s
-            async for s in get_sessions(
-                custom_account_id="123456789", custom_region="us-west-2"
-            )
+# --- RegionResolver ---
+@pytest.mark.asyncio
+async def test_region_resolver_get_enabled_regions() -> None:
+    session = AsyncMock(spec=AioSession)
+    selector = MagicMock(spec=AWSDescribeResourcesSelector)
+    mock_client = AsyncMock()
+    mock_client.list_regions.return_value = {
+        "Regions": [
+            {"RegionName": "us-east-1", "RegionOptStatus": "ENABLED"},
+            {"RegionName": "us-west-2", "RegionOptStatus": "ENABLED"},
         ]
+    }
+    session.create_client.return_value.__aenter__.return_value = mock_client
+    resolver = RegionResolver(session, selector)
+    regions = await resolver.get_enabled_regions()
+    assert set(regions) == {"us-east-1", "us-west-2"}
 
-        self.credentials_mock.create_session.assert_called_once_with("us-west-2")
-        self.assertEqual(sessions[0], self.session_mock)
 
-    async def test_create_session_with_custom_region(self) -> None:
-        """Test create_session with custom region."""
-        self.credentials_mock.create_session = AsyncMock(return_value=self.session_mock)
+# --- StaticCredentialProvider ---
+@pytest.mark.asyncio
+async def test_static_credential_provider_success() -> None:
+    config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
+    provider = StaticCredentialProvider(config)
+    creds = await provider.get_credentials(region=None)
+    assert creds.access_key == "x"
+    assert creds.secret_key == "y"
+    session = await provider.get_session(region=None)
+    assert isinstance(session, AioSession)
 
-        # Test the create_session method directly on the credentials mock
-        session = await self.credentials_mock.create_session("us-east-1")
 
-        self.credentials_mock.create_session.assert_called_once_with("us-east-1")
-        self.assertEqual(session, self.session_mock)
+@pytest.mark.asyncio
+async def test_static_credential_provider_missing() -> None:
+    provider = StaticCredentialProvider({})
+    with pytest.raises(CredentialsProviderError):
+        await provider.get_credentials(region=None)
 
-    async def test_get_sessions_with_multiple_credentials(self) -> None:
-        """Test get_sessions with multiple AWS credentials."""
-        self.credentials_mock_1: AsyncMock = AsyncMock(spec=AwsCredentials)
-        self.credentials_mock_2: AsyncMock = AsyncMock(spec=AwsCredentials)
 
-        self.credentials_mock_1.default_regions = ["us-west-1"]
-        self.credentials_mock_2.default_regions = ["us-east-1"]
+# --- AssumeRoleProvider ---
+@pytest.mark.asyncio
+async def test_assume_role_provider_missing_role_arn() -> None:
+    config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
+    provider = AssumeRoleProvider(config)
+    with pytest.raises(CredentialsProviderError):
+        await provider.get_credentials(region=None, role_arn=None)
 
-        self.credentials_mock_1.enabled_regions = ["us-west-1"]
-        self.credentials_mock_2.enabled_regions = ["us-east-1"]
 
-        # Create proper async iterators for both credentials
-        async def async_iter_1() -> Any:
-            yield self.session_mock
+# --- SingleAccountStrategy ---
+@pytest.mark.asyncio
+async def test_single_account_strategy_get_accessible_accounts() -> None:
+    config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
+    provider = StaticCredentialProvider(config)
+    strategy = SingleAccountStrategy(provider)
+    session_mock = AsyncMock(spec=AioSession)
+    sts_client_mock = AsyncMock()
+    sts_client_mock.get_caller_identity.return_value = {
+        "Account": "123456789012",
+        "Arn": "arn:aws:iam::123456789012:user/test",
+    }
+    session_mock.create_client.return_value.__aenter__.return_value = sts_client_mock
+    with patch.object(provider, "get_session", return_value=session_mock):
+        accounts = []
+        async for account in strategy.get_accessible_accounts():
+            accounts.append(account)
+        assert accounts[0]["Id"] == "123456789012"
 
-        async def async_iter_2() -> Any:
-            yield self.session_mock
 
-        # Set up the create_session_for_each_region method to return the async iterators
-        self.credentials_mock_1.create_session_for_each_region = MagicMock(
-            return_value=async_iter_1()
-        )
-        self.credentials_mock_2.create_session_for_each_region = MagicMock(
-            return_value=async_iter_2()
-        )
+# --- MultiAccountStrategy ---
+@pytest.mark.asyncio
+async def test_multi_account_strategy_sanity_check_success() -> None:
+    config = {
+        "aws_access_key_id": "x",
+        "aws_secret_access_key": "y",
+        "organization_role_arn": [
+            "arn:aws:iam::123456789012:role/OrgRole1",
+            "arn:aws:iam::123456789012:role/OrgRole2",
+        ],
+    }
+    provider = AssumeRoleProvider(config)
+    strategy = MultiAccountStrategy(provider)
 
-        self.session_manager_mock._aws_credentials = [
-            self.credentials_mock_1,
-            self.credentials_mock_2,
-        ]
+    # Mock the STS client
+    mock_sts = AsyncMock()
+    mock_sts.get_caller_identity.return_value = {
+        "Account": "123456789012",
+        "Arn": "arn:aws:iam::123456789012:assumed-role/OrgRole1/TestSession",
+    }
 
-        # Create a mock resource config with a selector that allows all regions
-        mock_resource_config = AsyncMock()
-        mock_resource_config.selector.is_region_allowed = lambda region: True
+    # Mock the session
+    session_mock = AsyncMock(spec=AioSession)
 
-        sessions: List[Session] = [
-            session
-            async for session in get_sessions(aws_resource_config=mock_resource_config)
-        ]
+    # Mock the context manager for create_client
+    mock_client_ctx = AsyncMock()
+    mock_client_ctx.__aenter__.return_value = mock_sts
+    mock_client_ctx.__aexit__.return_value = None  # Ensure __aexit__ is properly mocked
+    session_mock.create_client.return_value = mock_client_ctx
 
-        # Verify create_session_for_each_region was called for both credentials
-        self.credentials_mock_1.create_session_for_each_region.assert_called_once()
-        self.credentials_mock_2.create_session_for_each_region.assert_called_once()
+    # Patch the get_session method to return the mocked session
+    with patch.object(provider, "get_session", return_value=session_mock):
+        result = await strategy.sanity_check()
+        assert result is True
+        assert len(strategy._valid_arns) == 2
 
-        self.assertEqual(len(sessions), 2)
-        self.assertEqual(sessions[0], self.session_mock)
-        self.assertEqual(sessions[1], self.session_mock)
+
+# --- SessionStrategyFactory ---
+@pytest.mark.asyncio
+async def test_session_strategy_factory_single(
+    monkeypatch: Any, ocean_context: Any
+) -> None:
+    config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
+    ocean_context(config)
+
+    async def async_true(self: Any) -> bool:
+        return True
+
+    monkeypatch.setattr(
+        "aws.auth.account.SingleAccountStrategy.sanity_check", async_true
+    )
+    strategy = await SessionStrategyFactory.create()
+    assert isinstance(strategy, SingleAccountStrategy)
