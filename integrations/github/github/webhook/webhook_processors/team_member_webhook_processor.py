@@ -59,9 +59,11 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
         if action in MEMBERSHIP_DELETE_EVENTS:
             logger.info(
                 f"Member '{member['login']}' was removed from team '{team['name']}'. "
-                f"Skipping explicit deletion as the user might still be a member of other teams. "
+                f"Explicit deletion will be skipped as the user might still be a member of other teams. "
             )
 
+        if not team.get("slug"):
+            logger.info("No slug in team payload, team is deleted, returning ...")
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[],
@@ -75,7 +77,7 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
         )
 
         logger.info(
-            f"Upserting team '{data_to_upsert.get('name', team['name'])}' due to member '{member['login']}' being added."
+            f"Upserting team '{data_to_upsert.get('name', team['name'])}' due to membership update"
         )
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

@@ -76,11 +76,16 @@ class TestTeamMemberWebhookProcessor:
     @pytest.mark.parametrize(
         "action, members_selector_setting, expected_updated_count, expected_deleted_count",
         [
-            (MEMBERSHIP_DELETE_EVENTS[0], True, 1, 0),  # "removed", selector enabled (upserts team)
             (
-                MEMBERSHIP_DELETE_EVENTS[0], # action="removed"
-                False,                       # members_selector_setting=False
-                0,                           # expected_updated_count should be 0 as processor skips
+                MEMBERSHIP_DELETE_EVENTS[0],
+                True,
+                1,
+                0,
+            ),  # "removed", selector enabled (upserts team)
+            (
+                MEMBERSHIP_DELETE_EVENTS[0],  # action="removed"
+                False,  # members_selector_setting=False
+                0,  # expected_updated_count should be 0 as processor skips
                 0,
             ),  # "removed", selector disabled (skips team upsert)
             (
@@ -152,19 +157,29 @@ class TestTeamMemberWebhookProcessor:
             create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client"
 
             with (
-                patch(create_client_path, return_value=mock_graphql_client) as mock_create_client,
-                patch(exporter_class_path, return_value=mock_exporter_instance) as mock_exporter_class_constructor,
+                patch(
+                    create_client_path, return_value=mock_graphql_client
+                ) as mock_create_client,
+                patch(
+                    exporter_class_path, return_value=mock_exporter_instance
+                ) as mock_exporter_class_constructor,
             ):
-                result = await team_member_webhook_processor.handle_event(payload, resource_config)
+                result = await team_member_webhook_processor.handle_event(
+                    payload, resource_config
+                )
 
                 mock_create_client.assert_called_once_with(GithubClientType.GRAPHQL)
-                mock_exporter_class_constructor.assert_called_once_with(mock_graphql_client)
+                mock_exporter_class_constructor.assert_called_once_with(
+                    mock_graphql_client
+                )
                 mock_exporter_instance.get_resource.assert_called_once_with(
                     SingleTeamOptions(slug=team_data["slug"])
                 )
         else:
             # No API call expected for team upsert (e.g., member added but selector.members is False)
-            result = await team_member_webhook_processor.handle_event(payload, resource_config)
+            result = await team_member_webhook_processor.handle_event(
+                payload, resource_config
+            )
 
         assert isinstance(result, WebhookEventRawResults)
         assert len(result.updated_raw_results) == expected_updated_count
@@ -252,11 +267,7 @@ class TestTeamMemberWebhookProcessor:
         action = MEMBERSHIP_DELETE_EVENTS[0]  # "removed"
         members_selector_setting = True  # Normally would trigger team upsert
 
-        team_data = {
-            "name": "test-team-name",
-            # "slug" is not present when team is deleted
-            "deleted": True,  # Key: team is marked as deleted
-        }
+        team_data = {"name": "test-team-name", "deleted": True}
         member_data = {"login": "test-member"}
         payload = {"action": action, "team": team_data, "member": member_data}
 
@@ -282,10 +293,16 @@ class TestTeamMemberWebhookProcessor:
         create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client"
 
         with (
-            patch(create_client_path, return_value=mock_graphql_client) as mock_create_client,
-            patch(exporter_class_path, return_value=mock_exporter_instance) as mock_exporter_class_constructor,
+            patch(
+                create_client_path, return_value=mock_graphql_client
+            ) as mock_create_client,
+            patch(
+                exporter_class_path, return_value=mock_exporter_instance
+            ) as mock_exporter_class_constructor,
         ):
-            result = await team_member_webhook_processor.handle_event(payload, resource_config)
+            result = await team_member_webhook_processor.handle_event(
+                payload, resource_config
+            )
 
             # Assert that client and exporter were NOT called because the team is deleted
             mock_create_client.assert_not_called()
