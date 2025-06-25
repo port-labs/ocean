@@ -1,4 +1,4 @@
-from typing import List, Required, TypedDict
+from typing import List, NotRequired, Optional, Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -139,7 +139,7 @@ class FileContentOptions(TypedDict):
 
     repo_name: Required[str]
     file_path: Required[str]
-    branch: Required[str]
+    branch: NotRequired[Optional[str]]
 
 
 class FileSearchOptions(TypedDict):

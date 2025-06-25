@@ -14,7 +14,7 @@ class FileEntityProcessor(JQEntityProcessor):
     prefix = FILE_PROPERTY_PREFIX
 
     async def _get_file_content(
-        self, repo_name: str, file_path: str, branch: str
+        self, repo_name: str, file_path: str, branch: Optional[str] = None
     ) -> Optional[Any]:
         """Helper method to fetch and process file content."""
 
@@ -25,8 +25,7 @@ class FileEntityProcessor(JQEntityProcessor):
             FileContentOptions(repo_name=repo_name, file_path=file_path, branch=branch)
         )
         decoded_content = file_content_response["content"]
-        if not decoded_content:
-            return f"[File too large: {file_content_response['size']} bytes]"
+        logger.debug(f"[File too large: {file_content_response['size']} bytes]")
         return decoded_content
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
@@ -48,7 +47,7 @@ class FileEntityProcessor(JQEntityProcessor):
         is_monorepo = "repository" in data
 
         repo_name = repo_data["name"]
-        ref = data["branch"] if is_monorepo else repo_data["default_branch"]
+        ref = data["branch"] if is_monorepo else repo_data.get("default_branch")
 
         base_pattern = pattern.replace(self.prefix, "")
         file_path = (

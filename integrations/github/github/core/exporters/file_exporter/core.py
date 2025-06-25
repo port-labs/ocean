@@ -51,7 +51,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         """
         repo_name = options["repo_name"]
         file_path = options["file_path"]
-        branch = options["branch"]
+        branch = options.get("branch")
 
         resource = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/contents/{quote(file_path)}"
         logger.info(f"Fetching file: {file_path} from {repo_name}@{branch}")
