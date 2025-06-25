@@ -15,7 +15,7 @@ from aws.auth.utils import normalize_arn_list
 
 
 class SessionStrategyFactory:
-    """Factory for creating appropriate AWS session strategies."""
+    """An access key pair is tied to a single IAM user in one AWS account"""
 
     @staticmethod
     async def create(
@@ -23,17 +23,19 @@ class SessionStrategyFactory:
     ) -> AWSSessionStrategy:
         """Create and validate session strategy based on global configuration."""
         config = ocean.integration_config
-        is_multi_account = bool(config.get("organization_role_arn"))
+        is_multi_account = bool(config.get("account_role_arn"))
         if is_multi_account:
             logger.info(
                 "[SessionStrategyFactory] Using AssumeRoleProvider for multi-account"
             )
-            provider = AssumeRoleProvider(config=config)
+            provider = AssumeRoleProvider()
         else:
             logger.info(
                 "[SessionStrategyFactory] Using StaticCredentialProvider (no org role ARN found)"
             )
-            provider = StaticCredentialProvider(config=config)
+            provider = (
+                StaticCredentialProvider()
+            )  # An access key pair is tied to a single IAM user in one AWS account
         strategy_cls: type[AWSSessionStrategy] = (
             MultiAccountStrategy if is_multi_account else SingleAccountStrategy
         )
@@ -41,14 +43,14 @@ class SessionStrategyFactory:
         logger.info(f"Initializing {strategy_cls.__name__}")
 
         if strategy_cls == MultiAccountStrategy:
-            org_role_arns = normalize_arn_list(config.get("organization_role_arn"))
+            org_role_arns = normalize_arn_list(config.get("account_role_arn"))
 
             logger.info(
                 f"Configuration: org_role_arns={org_role_arns}, "
                 f"account_read_role_name={config.get('account_read_role_name')}"
             )
 
-        strategy = strategy_cls(provider=provider)
+        strategy = strategy_cls(provider=provider, config=config)
 
         logger.info(f"Successfully initialized {strategy_cls.__name__}")
         return strategy

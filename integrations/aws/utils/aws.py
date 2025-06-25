@@ -9,7 +9,7 @@ from aiobotocore.session import AioSession
 from aws.auth.account import AWSSessionStrategy, RegionResolver
 from utils.overrides import AWSDescribeResourcesSelector
 from aws.auth.session_factory import SessionStrategyFactory
-from aws.auth.utils import CredentialsProviderError, AWSSessionError
+from aws.auth.utils import CredentialsProviderError
 
 
 # Private module-level state - using Union to be explicit about the uninitialized state
@@ -27,7 +27,7 @@ async def initialize_aws_credentials() -> bool:
         logger.debug(
             "Created session strategy successfully using validated credentials"
         )
-        sanity_ok = await strategy.sanity_check()
+        sanity_ok = await strategy.healthcheck()
         if not sanity_ok:
             logger.error("Sanity check failed during AWS authentication initialization")
             return False
@@ -47,8 +47,9 @@ async def get_credential_session() -> AWSSessionStrategy:
 async def get_accounts() -> AsyncIterator[dict[str, Any]]:
     """Get accessible AWS accounts asynchronously."""
     strategy = await get_credential_session()
-    async for account in strategy.get_accessible_accounts():
-        yield account
+    async for batch in strategy.get_accessible_accounts():
+        for account in batch:
+            yield account
 
 
 async def get_sessions(
