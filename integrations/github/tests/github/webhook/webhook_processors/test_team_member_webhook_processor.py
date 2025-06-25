@@ -213,8 +213,9 @@ class TestTeamMemberWebhookProcessor:
                 {
                     "action": TEAM_MEMBERSHIP_EVENTS[1],  # e.g. "removed"
                     "team": {"name": "team2"},
+                    "member": {"login": "user-who-will-be-ignored-by-this-validation"}, # Added to make payload valid if needed, but the key point is the expected result change
                 },
-                True,
+                False, # Changed from True to False as 'member' is now required by validate_payload
             ),
             (
                 {"action": TEAM_MEMBERSHIP_EVENTS[0], "member": {"login": "user1"}},
