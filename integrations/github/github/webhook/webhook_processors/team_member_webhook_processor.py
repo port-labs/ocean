@@ -86,5 +86,4 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         if not {"action", "team"} <= payload.keys():
             return False
-
-        return bool(payload["team"].get("name"))
+        return True
