@@ -692,7 +692,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 "Due to an error before the resync, the previous state of entities at Port is unknown."
                 " Skipping delete phase due to unknown initial state."
             )
-            return True
+            return False
 
         logger.info("Starting resync diff calculation")
         generated_entities, errors = zip_and_sum(creation_results) or [
