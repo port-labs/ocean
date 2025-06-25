@@ -53,10 +53,10 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
             logger.info("Member selector disabled, skipping ...")
 
         if action in MEMBERSHIP_DELETE_EVENTS:
-            # AI! make this log message better as well
             logger.info(
-                f"Member {member['login']} was removed from team {team['name']} "
-                f"Skipping deletion because user could be in other teams."
+                f"Member '{member['login']}' was removed from team '{team['name']}'. "
+                f"Skipping explicit deletion as the user might still be a member of other teams. "
+                f"Relying on full resync for comprehensive updates."
             )
 
             return WebhookEventRawResults(
