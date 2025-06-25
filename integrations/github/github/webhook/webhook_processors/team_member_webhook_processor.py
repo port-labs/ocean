@@ -1,12 +1,13 @@
-from typing import Any, cast
+from typing import cast
 from loguru import logger
-from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.team_exporter import (
     GraphQLTeamWithMembersExporter,
-    RestTeamExporter,
 )
 from github.core.options import SingleTeamOptions
-from github.webhook.events import TEAM_DELETE_EVENTS, TEAM_EVENTS
+from github.webhook.events import (
+    MEMBERSHIP_DELETE_EVENTS,
+    TEAM_MEMBERSHIP_EVENTS,
+)
 from github.helpers.utils import GithubClientType, ObjectKind
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
@@ -22,16 +23,16 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from integration import GithubTeamConfig
 
 
-class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
+class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         if not event.payload.get("action"):
             return False
 
-        if event.payload["action"] not in (TEAM_EVENTS):
+        if event.payload["action"] not in (TEAM_MEMBERSHIP_EVENTS):
             return False
 
         event_name = event.headers.get("x-github-event")
-        return event_name == "team"
+        return event_name == "membership"
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.TEAM]
@@ -41,33 +42,39 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         action = payload["action"]
         team = payload["team"]
+        member = payload["member"]
 
-        logger.info(f"Processing org event: {action}")
+        logger.info(f"Processing org event: {action} for team {team['name']}")
 
         config = cast(GithubTeamConfig, resource_config)
         selector = config.selector
 
-        if action in TEAM_DELETE_EVENTS:
-            if selector.members:
-                team["id"] = team["node_id"]
+        if not selector.members:
+            logger.info("Member selector disabled, skipping ...")
 
-            logger.info(f"Team {team['name']} was removed from org")
-
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[team]
+        if action in MEMBERSHIP_DELETE_EVENTS:
+            logger.info(
+                f"Member {member['login']} was removed from team {team['name']}"
             )
 
-        exporter: AbstractGithubExporter[Any]
-        if selector.members:
-            graphql_client = create_github_client(GithubClientType.GRAPHQL)
-            exporter = GraphQLTeamWithMembersExporter(graphql_client)
-        else:
-            rest_client = create_github_client(GithubClientType.REST)
-            exporter = RestTeamExporter(rest_client)
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[{"members": {"nodes": [member]}}],
+            )
+
+        graphql_client = create_github_client(GithubClientType.GRAPHQL)
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
 
         data_to_upsert = await exporter.get_resource(
             SingleTeamOptions(slug=team["slug"])
         )
+
+        member_filter = [
+            user
+            for user in data_to_upsert["members"]["nodes"]
+            if user["login"] == member["login"]
+        ]
+        data_to_upsert["members"]["nodes"] = member_filter
 
         logger.info(f"Team {data_to_upsert['name']} was upserted")
         return WebhookEventRawResults(
@@ -78,4 +85,4 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
         if not {"action", "team"} <= payload.keys():
             return False
 
-        return bool(payload["team"].get("slug"))
+        return bool(payload["team"].get("name"))

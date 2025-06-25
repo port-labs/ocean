@@ -38,11 +38,11 @@ class TestTeamMemberWebhookProcessor:
         [
             ("membership", TEAM_MEMBERSHIP_EVENTS[0], True),  # e.g. "added"
             ("membership", TEAM_MEMBERSHIP_EVENTS[1], True),  # e.g. "removed"
-            ("membership", "some_other_action", False), # Correct event, wrong action
+            ("membership", "some_other_action", False),  # Correct event, wrong action
             ("team", TEAM_MEMBERSHIP_EVENTS[0], False),  # Wrong event, correct action
-            ("invalid", TEAM_MEMBERSHIP_EVENTS[0], False), # Invalid event
-            ("membership", None, False), # Action is None
-            ("invalid", "some_other_action", False), # Invalid event and action
+            ("invalid", TEAM_MEMBERSHIP_EVENTS[0], False),  # Invalid event
+            ("membership", None, False),  # Action is None
+            ("invalid", "some_other_action", False),  # Invalid event and action
         ],
     )
     async def test_should_process_event(
@@ -61,7 +61,9 @@ class TestTeamMemberWebhookProcessor:
         )
         event._original_request = mock_request
 
-        assert await team_member_webhook_processor._should_process_event(event) is result
+        assert (
+            await team_member_webhook_processor._should_process_event(event) is result
+        )
 
     async def test_get_matching_kinds(
         self, team_member_webhook_processor: TeamMemberWebhookProcessor
@@ -75,16 +77,31 @@ class TestTeamMemberWebhookProcessor:
         "action, members_selector_setting, expected_updated_count, expected_deleted_count",
         [
             (MEMBERSHIP_DELETE_EVENTS[0], True, 0, 1),  # "removed", selector enabled
-            (MEMBERSHIP_DELETE_EVENTS[0], False, 0, 1), # "removed", selector disabled (delete still happens)
-            (TEAM_MEMBERSHIP_EVENTS[0], True, 1, 0),    # "added", selector enabled (upsert happens)
-            (TEAM_MEMBERSHIP_EVENTS[0], False, 1, 0),   # "added", selector disabled (upsert still happens, selector only logs)
+            (
+                MEMBERSHIP_DELETE_EVENTS[0],
+                False,
+                0,
+                1,
+            ),  # "removed", selector disabled (delete still happens)
+            (
+                TEAM_MEMBERSHIP_EVENTS[0],
+                True,
+                1,
+                0,
+            ),  # "added", selector enabled (upsert happens)
+            (
+                TEAM_MEMBERSHIP_EVENTS[0],
+                False,
+                1,
+                0,
+            ),  # "added", selector disabled (upsert still happens, selector only logs)
         ],
     )
     async def test_handle_event(
         self,
         team_member_webhook_processor: TeamMemberWebhookProcessor,
         action: str,
-        members_selector_setting: bool, 
+        members_selector_setting: bool,
         expected_updated_count: int,
         expected_deleted_count: int,
     ) -> None:
@@ -99,7 +116,7 @@ class TestTeamMemberWebhookProcessor:
             port=PortResourceConfig(
                 entity=MappingsConfig(
                     mappings=EntityMapping(
-                        identifier=".slug", # This is team's identifier
+                        identifier=".slug",  # This is team's identifier
                         title=".name",
                         blueprint='"githubTeam"',
                         properties={},
@@ -112,13 +129,13 @@ class TestTeamMemberWebhookProcessor:
         mock_exporter_instance = AsyncMock()
 
         full_team_export_data = {
-            "id": "team123", # Example additional field from exporter
+            "id": "team123",  # Example additional field from exporter
             "name": team_data["name"],
             "slug": team_data["slug"],
             "members": {
                 "nodes": [
                     {"login": "other-member"},
-                    {"login": member_data["login"]}, 
+                    {"login": member_data["login"]},
                 ]
             },
         }
@@ -132,14 +149,22 @@ class TestTeamMemberWebhookProcessor:
             exporter_class_path = "github.webhook.webhook_processors.team_member_webhook_processor.GraphQLTeamWithMembersExporter"
             create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client"
 
-            with patch(create_client_path, return_value=mock_graphql_client) as mock_create_client, \
-                 patch(exporter_class_path, return_value=mock_exporter_instance) as mock_exporter_class_constructor:
+            with (
+                patch(
+                    create_client_path, return_value=mock_graphql_client
+                ) as mock_create_client,
+                patch(
+                    exporter_class_path, return_value=mock_exporter_instance
+                ) as mock_exporter_class_constructor,
+            ):
                 result = await team_member_webhook_processor.handle_event(
                     payload, resource_config
                 )
 
                 mock_create_client.assert_called_once_with(GithubClientType.GRAPHQL)
-                mock_exporter_class_constructor.assert_called_once_with(mock_graphql_client)
+                mock_exporter_class_constructor.assert_called_once_with(
+                    mock_graphql_client
+                )
                 mock_exporter_instance.get_resource.assert_called_once_with(
                     SingleTeamOptions(slug=team_data["slug"])
                 )
@@ -161,51 +186,57 @@ class TestTeamMemberWebhookProcessor:
     @pytest.mark.parametrize(
         "payload,expected",
         [
-            ( # Valid: action and team with name
+            (  # Valid: action and team with name
                 {
-                    "action": TEAM_MEMBERSHIP_EVENTS[0], # e.g. "added"
-                    "team": {"name": "team1", "slug": "team1-slug"}, # slug also present, name is validated
-                    "member": {"login": "user1"} 
+                    "action": TEAM_MEMBERSHIP_EVENTS[0],  # e.g. "added"
+                    "team": {
+                        "name": "team1",
+                        "slug": "team1-slug",
+                    },  # slug also present, name is validated
+                    "member": {"login": "user1"},
                 },
                 True,
             ),
-            ( # Valid: action and team with name (member not strictly needed for this validation)
+            (  # Valid: action and team with name (member not strictly needed for this validation)
                 {
-                    "action": TEAM_MEMBERSHIP_EVENTS[1], # e.g. "removed"
+                    "action": TEAM_MEMBERSHIP_EVENTS[1],  # e.g. "removed"
                     "team": {"name": "team2"},
                 },
                 True,
             ),
-            ({"action": TEAM_MEMBERSHIP_EVENTS[0], "member": {"login": "user1"}}, False),  # missing team
-            ({"team": {"name": "team4"}, "member": {"login": "user1"}}, False),  # missing action
-            ( 
-                {"action": TEAM_MEMBERSHIP_EVENTS[0], "team": {"slug": "team-slug-only"}}, # team present, but no 'name'
+            (
+                {"action": TEAM_MEMBERSHIP_EVENTS[0], "member": {"login": "user1"}},
                 False,
-            ),
-             ( # Missing action key
-                {
-                    "team": {"name": "team1"},
-                    "member": {"login": "user1"}
-                },
+            ),  # missing team
+            (
+                {"team": {"name": "team4"}, "member": {"login": "user1"}},
                 False,
-            ),
-            ( # Missing team key
+            ),  # missing action
+            (
                 {
                     "action": TEAM_MEMBERSHIP_EVENTS[0],
-                    "member": {"login": "user1"}
-                },
+                    "team": {"slug": "team-slug-only"},
+                },  # team present, but no 'name'
                 False,
             ),
-            ( # Empty payload
+            (  # Missing action key
+                {"team": {"name": "team1"}, "member": {"login": "user1"}},
+                False,
+            ),
+            (  # Missing team key
+                {"action": TEAM_MEMBERSHIP_EVENTS[0], "member": {"login": "user1"}},
+                False,
+            ),
+            (  # Empty payload
                 {},
                 False,
-            )
+            ),
         ],
     )
     async def test_validate_payload(
         self,
         team_member_webhook_processor: TeamMemberWebhookProcessor,
-        payload: Dict[str, Any], 
+        payload: Dict[str, Any],
         expected: bool,
     ) -> None:
         result = await team_member_webhook_processor.validate_payload(payload)

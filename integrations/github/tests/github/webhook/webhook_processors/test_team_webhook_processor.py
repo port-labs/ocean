@@ -36,7 +36,6 @@ class TestTeamWebhookProcessor:
             ("team", TEAM_UPSERT_EVENTS[0], True),
             ("team", TEAM_DELETE_EVENTS[0], True),
             ("team", "some_other_action", False),
-            ("membership", TEAM_UPSERT_EVENTS[0], True),
             ("invalid", TEAM_UPSERT_EVENTS[0], False),
             ("invalid", "some_other_action", False),
         ],
