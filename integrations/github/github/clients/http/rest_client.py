@@ -3,6 +3,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from github.clients.http.base_client import AbstractGithubClient
 from loguru import logger
 import re
+from urllib.parse import parse_qs, urlparse, urlunparse
 
 
 PAGE_SIZE = 100
@@ -15,11 +16,29 @@ class GithubRestClient(AbstractGithubClient):
     def base_url(self) -> str:
         return self.github_host.rstrip("/")
 
-    def _has_next_page(self, link_header: str) -> bool:
+    def _get_next_link(self, link_header: str) -> Optional[Dict[str, Any]]:
         """
-        Check if there's a next page in the GitHub Link header.
+        Extracts the URL and parama from the 'next' link in a GitHub Link header.
         """
-        return bool(re.search(r'<([^>]+)>;\s*rel="next"', link_header))
+
+        match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
+        if not match:
+            return None
+
+        parsed_url = urlparse(match.group(1))
+        resource = urlunparse(
+            (
+                parsed_url.scheme,
+                parsed_url.netloc,
+                parsed_url.path,
+                "",
+                "",
+                "",
+            )
+        )
+        params = {k: v[0] if v else "" for k, v in parse_qs(parsed_url.query).items()}
+
+        return {"params": params, "resource": resource}
 
     async def send_paginated_request(
         self,
@@ -45,9 +64,10 @@ class GithubRestClient(AbstractGithubClient):
 
             yield items
 
-            if not (
-                link_header := response.headers.get("Link")
-            ) or not self._has_next_page(link_header):
+            if not (link_header := response.headers.get("Link")) or not (
+                next_resource := self._get_next_link(link_header)
+            ):
                 break
 
-            params["page"] = params.get("page", 1) + 1
+            params = next_resource["params"]
+            resource = next_resource["resource"]

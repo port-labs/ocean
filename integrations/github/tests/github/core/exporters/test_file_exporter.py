@@ -136,7 +136,7 @@ class TestRestFileExporter:
                 files=[
                     FileSearchOptions(path="*.txt", skip_parsing=False, branch="main"),
                     FileSearchOptions(path="*.yaml", skip_parsing=True, branch="main"),
-                ]
+                ],
             )
         ]
 
@@ -147,12 +147,16 @@ class TestRestFileExporter:
         async def mock_rest_generator() -> AsyncGenerator[list[str], None]:
             yield ["file3", "file4"]
 
-        with patch.object(
-            exporter, "collect_matched_files", AsyncMock(return_value=([], []))
-        ), patch.object(
-            exporter, "process_graphql_files", return_value=mock_graphql_generator()
-        ), patch.object(
-            exporter, "process_rest_api_files", return_value=mock_rest_generator()
+        with (
+            patch.object(
+                exporter, "collect_matched_files", AsyncMock(return_value=([], []))
+            ),
+            patch.object(
+                exporter, "process_graphql_files", return_value=mock_graphql_generator()
+            ),
+            patch.object(
+                exporter, "process_rest_api_files", return_value=mock_rest_generator()
+            ),
         ):
             async with event_context("test_event"):
                 results = []
@@ -162,18 +166,24 @@ class TestRestFileExporter:
                 assert len(results) == 4
                 assert results == ["file1", "file2", "file3", "file4"]
 
-    async def test_get_paginated_resources_multiple_repos(self, rest_client: GithubRestClient) -> None:
+    async def test_get_paginated_resources_multiple_repos(
+        self, rest_client: GithubRestClient
+    ) -> None:
         exporter = RestFileExporter(rest_client)
 
         options = [
             ListFileSearchOptions(
                 repo_name="repo1",
-                files=[FileSearchOptions(path="*.txt", skip_parsing=False, branch="main")]
+                files=[
+                    FileSearchOptions(path="*.txt", skip_parsing=False, branch="main")
+                ],
             ),
             ListFileSearchOptions(
                 repo_name="repo2",
-                files=[FileSearchOptions(path="*.yaml", skip_parsing=True, branch="main")]
-            )
+                files=[
+                    FileSearchOptions(path="*.yaml", skip_parsing=True, branch="main")
+                ],
+            ),
         ]
 
         # Create proper async generator mocks
@@ -183,12 +193,16 @@ class TestRestFileExporter:
         async def mock_rest_generator() -> AsyncGenerator[list[str], None]:
             yield ["file2"]
 
-        with patch.object(
-            exporter, "collect_matched_files", AsyncMock(return_value=([], []))
-        ), patch.object(
-            exporter, "process_graphql_files", return_value=mock_graphql_generator()
-        ), patch.object(
-            exporter, "process_rest_api_files", return_value=mock_rest_generator()
+        with (
+            patch.object(
+                exporter, "collect_matched_files", AsyncMock(return_value=([], []))
+            ),
+            patch.object(
+                exporter, "process_graphql_files", return_value=mock_graphql_generator()
+            ),
+            patch.object(
+                exporter, "process_rest_api_files", return_value=mock_rest_generator()
+            ),
         ):
             async with event_context("test_event"):
                 results = []
