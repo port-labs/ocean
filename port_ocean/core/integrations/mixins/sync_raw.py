@@ -692,7 +692,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 "Due to an error before the resync, the previous state of entities at Port is unknown."
                 " Skipping delete phase due to unknown initial state."
             )
-            return False
+            return True
 
         logger.info("Starting resync diff calculation")
         generated_entities, errors = zip_and_sum(creation_results) or [
@@ -710,7 +710,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 raise error_group
 
             logger.error(message, exc_info=error_group)
-            return False
+            return True
 
         logger.info(
             f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
@@ -734,6 +734,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 await resync_complete_fn()
 
             logger.info("Finished executing resync_complete hooks")
+
+        return True
 
 
     @TimeMetric(MetricPhase.RESYNC)
@@ -805,7 +807,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise
             else:
-                await self.resync_reconciliation(
+                success = await self.resync_reconciliation(
                     creation_results,
                     did_fetched_current_state,
                     user_agent_type,
@@ -813,6 +815,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     silent
                 )
                 await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+                return success
             finally:
                 await ocean.app.cache_provider.clear()
                 if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
