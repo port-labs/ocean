@@ -13,8 +13,8 @@ from aws.auth.account import (
 from aws.auth.credentials_provider import (
     StaticCredentialProvider,
     AssumeRoleProvider,
-    CredentialsProviderError,
 )
+from aws.auth.utils import CredentialsProviderError
 from aws.auth.session_factory import SessionStrategyFactory
 from utils.overrides import AWSDescribeResourcesSelector
 

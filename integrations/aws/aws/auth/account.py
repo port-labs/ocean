@@ -1,12 +1,17 @@
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, List, Set, Optional, Any, Union
+from typing import AsyncIterator, List, Set, Optional, Any
 import asyncio
 from loguru import logger
 from aiobotocore.session import AioSession
 from botocore.utils import ArnParser
 
 from aws.auth.credentials_provider import CredentialProvider
-from aws.auth.utils import normalize_arn_list, extract_account_from_arn, AWSSessionError, CredentialsProviderError
+from aws.auth.utils import (
+    normalize_arn_list,
+    extract_account_from_arn,
+    AWSSessionError,
+    CredentialsProviderError,
+)
 from utils.overrides import AWSDescribeResourcesSelector
 
 
@@ -187,10 +192,14 @@ class MultiAccountStrategy(AWSSessionStrategy):
                 )
             return True
         except CredentialsProviderError as e:
-            logger.error(f"Failed to assume role for ARN {arn} due to credentials error: {e}")
+            logger.error(
+                f"Failed to assume role for ARN {arn} due to credentials error: {e}"
+            )
             return False
         except Exception as e:
-            logger.error(f"Failed to assume role for ARN {arn} due to session error: {e}")
+            logger.error(
+                f"Failed to assume role for ARN {arn} due to session error: {e}"
+            )
             raise AWSSessionError(f"Session error for ARN {arn}: {e}") from e
 
     async def get_accessible_accounts(self) -> AsyncIterator[dict[str, Any]]:
@@ -214,7 +223,9 @@ class MultiAccountStrategy(AWSSessionStrategy):
             accessible_accounts.append(account)
         total_accounts = len(accessible_accounts)
 
-        async def process_account_regions(account_info: dict[str, Any], account_index: int) -> list[tuple[AioSession, str]]:
+        async def process_account_regions(
+            account_info: dict[str, Any], account_index: int
+        ) -> list[tuple[AioSession, str]]:
             logger.info(
                 f"[Account {account_index+1}/{total_accounts}] Creating session for ARN {account_info['Arn']}"
             )
@@ -266,9 +277,13 @@ class MultiAccountStrategy(AWSSessionStrategy):
             for region in allowed_regions:
                 yield session, region
         except CredentialsProviderError as e:
-            logger.error(f"Failed to create sessions for ARN {arn} due to credentials error: {e}")
+            logger.error(
+                f"Failed to create sessions for ARN {arn} due to credentials error: {e}"
+            )
         except Exception as e:
-            logger.error(f"Failed to create sessions for ARN {arn} due to session error: {e}")
+            logger.error(
+                f"Failed to create sessions for ARN {arn} due to session error: {e}"
+            )
             raise AWSSessionError(f"Session error for ARN {arn}: {e}") from e
 
     async def get_account_session(self, arn: str) -> Optional[AioSession]:
@@ -276,10 +291,14 @@ class MultiAccountStrategy(AWSSessionStrategy):
         try:
             return await self._get_account_session(arn)
         except CredentialsProviderError as e:
-            logger.error(f"Failed to get session for ARN {arn} due to credentials error: {e}")
+            logger.error(
+                f"Failed to get session for ARN {arn} due to credentials error: {e}"
+            )
             return None
         except Exception as e:
-            logger.error(f"Failed to get session for ARN {arn} due to session error: {e}")
+            logger.error(
+                f"Failed to get session for ARN {arn} due to session error: {e}"
+            )
             raise AWSSessionError(f"Session error for ARN {arn}: {e}") from e
 
     async def _get_account_session(self, arn: str) -> AioSession:

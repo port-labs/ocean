@@ -10,7 +10,7 @@ from aws.auth.account import (
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from typing import Optional, Union
+from typing import Optional
 from aws.auth.utils import normalize_arn_list
 
 
