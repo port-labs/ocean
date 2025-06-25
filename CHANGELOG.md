@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.24.19 (2025-06-25)
+
+### Bug Fixes
+- Fixed issue with resync function not retuning the success value
+
 ## 0.24.18 (2025-06-23)
 
 ### Bug Fixes
