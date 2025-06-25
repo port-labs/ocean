@@ -13,7 +13,6 @@ from typing import (
 )
 from collections import deque
 from loguru import logger
-import asyncio
 
 if TYPE_CHECKING:
     from aioboto3.client import AioBaseClient  # type: ignore
@@ -265,18 +264,3 @@ class AsyncPaginator:
                 f"Buffering the final {len(final_batch)} queried {self.service_name} resources fetched from page {page_count} for account {self.account_id} in {self.region_name}"
             )
             yield final_batch
-
-
-def get_semaphore(limit: int = 10) -> asyncio.Semaphore:
-    """Return an asyncio.Semaphore for concurrency control."""
-    return asyncio.Semaphore(limit)
-
-
-def get_region_semaphore(limit: int = 5) -> asyncio.Semaphore:
-    """Return an asyncio.Semaphore for per-account region concurrency control."""
-    return asyncio.Semaphore(limit)
-
-
-def get_account_semaphore(limit: int = 10) -> asyncio.Semaphore:
-    """Return an asyncio.Semaphore for global account concurrency control."""
-    return asyncio.Semaphore(limit)
