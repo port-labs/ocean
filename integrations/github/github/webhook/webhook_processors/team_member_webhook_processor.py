@@ -54,12 +54,13 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
 
         if action in MEMBERSHIP_DELETE_EVENTS:
             logger.info(
-                f"Member {member['login']} was removed from team {team['name']}"
+                f"Member {member['login']} was removed from team {team['name']} "
+                f"Skipping deletion because user could be in other teams."
             )
 
             return WebhookEventRawResults(
                 updated_raw_results=[],
-                deleted_raw_results=[{"members": {"nodes": [member]}}],
+                deleted_raw_results=[],
             )
 
         graphql_client = create_github_client(GithubClientType.GRAPHQL)
@@ -76,7 +77,10 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
         ]
         data_to_upsert["members"]["nodes"] = member_filter
 
-        logger.info(f"Team {data_to_upsert['name']} was upserted")
+        # AI! make this log message better
+        logger.info(
+            f"Team {data_to_upsert['name']} was upserted because new member {member['login']} was added"
+        )
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
