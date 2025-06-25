@@ -13,19 +13,19 @@ from github.helpers.glob import translate_glob
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     _caches = {}
 
-    async def get_resource[ExporterOptionsT: SingleFolderOptions](
-        self, options: ExporterOptionsT
-    ) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionsT: SingleFolderOptions
+    ](self, options: ExporterOptionsT) -> RAW_ITEM:
         raise NotImplementedError
 
     @cache_iterator_result()
-    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListFolderOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
-        
+
         # Determine if the API call needs to be recursive based on the path
         is_recursive_api_call = self._needs_recursive_search(path)
         params = {"recursive": "true"} if is_recursive_api_call else {}
@@ -86,14 +86,22 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             item for item in just_trees if bool(re.fullmatch(path_regex, item["path"]))
         ]
 
-    def _branch_is_cached(self, repo_name: str, branch: str, is_recursive_fetch: bool) -> bool:
+    def _branch_is_cached(
+        self, repo_name: str, branch: str, is_recursive_fetch: bool
+    ) -> bool:
         return (repo_name, branch, is_recursive_fetch) in self._caches
 
-    def _get_cached_tree(self, repo_name: str, branch: str, is_recursive_fetch: bool) -> list[dict[str, Any]]:
+    def _get_cached_tree(
+        self, repo_name: str, branch: str, is_recursive_fetch: bool
+    ) -> list[dict[str, Any]]:
         return self._caches[(repo_name, branch, is_recursive_fetch)]
 
     def _cache_tree(
-        self, repo_name: str, branch: str, is_recursive_fetch: bool, tree: list[dict[str, Any]]
+        self,
+        repo_name: str,
+        branch: str,
+        is_recursive_fetch: bool,
+        tree: list[dict[str, Any]],
     ) -> None:
         self._caches[(repo_name, branch, is_recursive_fetch)] = tree
 
