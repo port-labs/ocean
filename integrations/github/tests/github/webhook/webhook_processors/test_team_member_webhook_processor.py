@@ -209,13 +209,13 @@ class TestTeamMemberWebhookProcessor:
                 },
                 True,
             ),
-            (  # Valid: action and team with name (member not strictly needed for this validation)
+            (  # Test case for payload missing the 'member' field
                 {
                     "action": TEAM_MEMBERSHIP_EVENTS[1],  # e.g. "removed"
                     "team": {"name": "team2"},
-                    "member": {"login": "user-who-will-be-ignored-by-this-validation"}, # Added to make payload valid if needed, but the key point is the expected result change
+                    # "member" field is intentionally missing to test validation logic
                 },
-                False, # Changed from True to False as 'member' is now required by validate_payload
+                False, # Expected False because 'member' is required and missing
             ),
             (
                 {"action": TEAM_MEMBERSHIP_EVENTS[0], "member": {"login": "user1"}},
