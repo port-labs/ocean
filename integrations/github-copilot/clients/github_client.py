@@ -162,12 +162,14 @@ class GitHubClient:
         }
 
     def _build_url(self, path: str) -> str:
-        base_url = self.base_url if not self.base_url.endswith("/") else self.base_url[:-1]
+        base_url = (
+            self.base_url if not self.base_url.endswith("/") else self.base_url[:-1]
+        )
         if path.startswith("/"):
             path = path[1:]
         return f"{base_url}/{path}"
 
-    def _build_params(self, url: str) -> dict[str, str]:
+    def _build_params(self, url: str) -> dict[str, Any]:
         base_params = {"per_page": self.pagination_page_size_limit}
         parsed_url = urlparse(url)
         if parsed_url.query:
