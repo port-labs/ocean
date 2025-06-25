@@ -77,9 +77,8 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
         ]
         data_to_upsert["members"]["nodes"] = member_filter
 
-        # AI! make this log message better
         logger.info(
-            f"Team {data_to_upsert['name']} was upserted because new member {member['login']} was added"
+            f"Upserting team '{data_to_upsert['name']}' due to member '{member['login']}' being added."
         )
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
