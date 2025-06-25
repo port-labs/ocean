@@ -238,3 +238,60 @@ class TestTeamMemberWebhookProcessor:
     ) -> None:
         result = await team_member_webhook_processor.validate_payload(payload)
         assert result is expected
+
+    @pytest.mark.asyncio
+    async def test_handle_event_if_team_deleted_skips_upsert(
+        self,
+        team_member_webhook_processor: TeamMemberWebhookProcessor,
+    ) -> None:
+        """
+        Tests that if a member is removed from a team, but the team itself
+        is marked as deleted in the payload (no slug, "deleted": True),
+        the upsert operation for the team is skipped.
+        """
+        action = MEMBERSHIP_DELETE_EVENTS[0]  # "removed"
+        members_selector_setting = True  # Normally would trigger team upsert
+
+        team_data = {
+            "name": "test-team-name",
+            # "slug" is not present when team is deleted
+            "deleted": True,  # Key: team is marked as deleted
+        }
+        member_data = {"login": "test-member"}
+        payload = {"action": action, "team": team_data, "member": member_data}
+
+        resource_config = GithubTeamConfig(
+            kind=ObjectKind.TEAM,
+            selector=GithubTeamSector(members=members_selector_setting, query="true"),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".slug",  # General identifier, processor should handle missing slug for deleted team
+                        title=".name",
+                        blueprint='"githubTeam"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+
+        mock_graphql_client = AsyncMock()
+        mock_exporter_instance = AsyncMock()
+
+        exporter_class_path = "github.webhook.webhook_processors.team_member_webhook_processor.GraphQLTeamWithMembersExporter"
+        create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client"
+
+        with (
+            patch(create_client_path, return_value=mock_graphql_client) as mock_create_client,
+            patch(exporter_class_path, return_value=mock_exporter_instance) as mock_exporter_class_constructor,
+        ):
+            result = await team_member_webhook_processor.handle_event(payload, resource_config)
+
+            # Assert that client and exporter were NOT called because the team is deleted
+            mock_create_client.assert_not_called()
+            mock_exporter_class_constructor.assert_not_called()
+            mock_exporter_instance.get_resource.assert_not_called()
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert len(result.updated_raw_results) == 0
+        assert len(result.deleted_raw_results) == 0
