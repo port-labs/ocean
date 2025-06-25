@@ -41,7 +41,6 @@ from utils.misc import (
     get_account_semaphore,
 )
 from port_ocean.utils.async_iterators import (
-    stream_async_iterators_tasks,
     semaphore_async_iterator,
 )
 import functools
