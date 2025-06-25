@@ -220,11 +220,10 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     def _build_deleted_file_entity(
         self, repo_info: Dict[str, Any], changed_file: Dict[str, Any]
     ) -> Dict[str, Any]:
+        if "item" in changed_file:
+            changed_file["item"]["objectId"] = changed_file["item"]["originalObjectId"]
         return {
             "kind": Kind.FILE,
-            "file": {
-                "path": changed_file["item"]["path"],
-                "isDeleted": True,
-            },
+            "file": changed_file.get("item"),
             "repo": repo_info,
         }
