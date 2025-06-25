@@ -735,6 +735,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             logger.info("Finished executing resync_complete hooks")
 
+        return True
+
 
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
@@ -805,7 +807,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise
             else:
-                await self.resync_reconciliation(
+                success = await self.resync_reconciliation(
                     creation_results,
                     did_fetched_current_state,
                     user_agent_type,
@@ -813,6 +815,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     silent
                 )
                 await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+                return success
             finally:
                 await ocean.app.cache_provider.clear()
                 if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
