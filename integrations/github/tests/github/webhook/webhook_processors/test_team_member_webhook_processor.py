@@ -144,7 +144,8 @@ class TestTeamMemberWebhookProcessor:
             result = await team_member_webhook_processor.handle_event(
                 payload, resource_config
             )
-        else:  # "added" action
+        # "added" action
+        elif action in TEAM_MEMBERSHIP_EVENTS and members_selector_setting:
             mock_exporter_instance.get_resource.return_value = full_team_export_data
             exporter_class_path = "github.webhook.webhook_processors.team_member_webhook_processor.GraphQLTeamWithMembersExporter"
             create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client"
@@ -168,6 +169,10 @@ class TestTeamMemberWebhookProcessor:
                 mock_exporter_instance.get_resource.assert_called_once_with(
                     SingleTeamOptions(slug=team_data["slug"])
                 )
+        else:  # "added" action with members_selector_setting == False, or other unhandled cases
+            result = await team_member_webhook_processor.handle_event(
+                payload, resource_config
+            )
 
         assert isinstance(result, WebhookEventRawResults)
         assert len(result.updated_raw_results) == expected_updated_count
