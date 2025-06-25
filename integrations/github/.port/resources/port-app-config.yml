@@ -45,7 +45,7 @@ resources:
             permission: .permission
             notification_setting: .notificationsetting
             members: '[.members.nodes[].login]'
-          reations:
+          relations:
             github_user: '[.members.nodes[].login]'
   - kind: pull-request
     selector:
