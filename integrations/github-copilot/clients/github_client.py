@@ -4,6 +4,7 @@ import httpx
 import re
 from loguru import logger
 from port_ocean.utils import http_async_client
+from urllib.parse import parse_qs, urlparse
 
 from .github_endpoints import GithubEndpoints
 
@@ -76,10 +77,11 @@ class GitHubClient:
         ignore_status_code: Optional[list[int]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         while True:
+            params = self._build_params(url)
             response = await self._send_api_request(
                 method="get",
                 path=url,
-                params={"per_page": self.pagination_page_size_limit},
+                params=params,
                 ignore_status_code=ignore_status_code,
             )
             if not response:
@@ -164,6 +166,13 @@ class GitHubClient:
         if path.startswith("/"):
             path = path[1:]
         return f"{base_url}/{path}"
+
+    def _build_params(self, url: str) -> dict[str, str]:
+        base_params = {"per_page": self.pagination_page_size_limit}
+        parsed_url = urlparse(url)
+        if parsed_url.query:
+            return {**parse_qs(parsed_url.query), **base_params}
+        return base_params
 
     @staticmethod
     def _resolve_route_params(endpoint_template: str, params: dict[str, str]) -> str:
