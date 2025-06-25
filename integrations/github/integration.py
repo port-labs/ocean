@@ -41,6 +41,7 @@ class GithubIssueSelector(Selector):
         description="Filter by issue state (open, closed, all)",
     )
 
+
 class GithubDependabotAlertSelector(Selector):
     states: list[Literal["auto_dismissed", "dismissed", "fixed", "open"]] = Field(
         default=["open"],
@@ -80,7 +81,6 @@ class GithubFilePattern(BaseModel):
         description="Specify the branch to fetch files from",
     )
     repos: list[str] = Field(
-        default_factory=list,
         alias="repos",
         description="Specify the repositories to fetch files from",
     )
@@ -89,15 +89,10 @@ class GithubFilePattern(BaseModel):
         alias="skipParsing",
         description="Skip parsing the files and just return the raw file content",
     )
-    filenames: list[str] = Field(
-        default_factory=list,
-        alias="filenames",
-        description="Specify list of filenames to search and return",
-    )
 
 
 class GithubFileSelector(Selector):
-    files: GithubFilePattern
+    files: list[GithubFilePattern]
 
 
 class GithubFileResourceConfig(ResourceConfig):

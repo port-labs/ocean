@@ -1,4 +1,4 @@
-from typing import List, NotRequired, Optional, Required, TypedDict
+from typing import List, Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -134,19 +134,24 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
     state: Required[str]
 
 
-class FileSearchOptions(TypedDict):
-    """Options for searching files in repositories."""
-
-    repos: NotRequired[Optional[List[str]]]
-    path: Required[str]
-    filenames: Required[List[str]]
-    skip_parsing: Required[bool]
-    branch: Required[str]
-
-
 class FileContentOptions(TypedDict):
     """Options for fetching file content."""
 
     repo_name: Required[str]
     file_path: Required[str]
     branch: Required[str]
+
+
+class FileSearchOptions(TypedDict):
+    """Options for searching files in repositories."""
+
+    path: Required[str]
+    skip_parsing: Required[bool]
+    branch: Required[str]
+
+
+class ListFileSearchOptions(TypedDict):
+    """Map of repository names to file search options."""
+
+    repo_name: Required[str]
+    files: Required[List[FileSearchOptions]]

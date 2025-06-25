@@ -3,6 +3,7 @@ from typing import cast
 from loguru import logger
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.webhook.registry import register_live_events_webhooks
+from github.core.exporters.file_exporter.utils import build_repo_path_map
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -29,7 +30,6 @@ from github.core.exporters.code_scanning_alert_exporter import (
 )
 
 from github.core.options import (
-    FileSearchOptions,
     ListBranchOptions,
     ListDeploymentsOptions,
     ListEnvironmentsOptions,
@@ -394,6 +394,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for alerts in stream_async_iterators_tasks(*tasks):
             yield alerts
 
+
 @ocean.on_resync(ObjectKind.FILE)
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync files based on configuration using the file exporter."""
@@ -403,18 +404,13 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = RestFileExporter(rest_client)
 
     config = cast(GithubFileResourceConfig, event.resource_config)
-    file_pattern = config.selector.files
+    files_pattern = config.selector.files
 
-    options = FileSearchOptions(
-        repos=file_pattern.repos,
-        path=file_pattern.path,
-        filenames=file_pattern.filenames,
-        skip_parsing=file_pattern.skip_parsing,
-        branch=file_pattern.branch,
-    )
+    repo_path_map = build_repo_path_map(files_pattern)
 
-    async for file_results in exporter.get_paginated_resources(options):
+    async for file_results in exporter.get_paginated_resources(repo_path_map):
         yield file_results
+
 
 # Register webhook processors
 register_live_events_webhooks(path="/webhook")

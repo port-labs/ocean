@@ -1,16 +1,27 @@
 import binascii
-import json
-import os
+import fnmatch
 from typing import Dict, List, Any, Optional, Tuple, TypedDict
 from pathlib import Path
 import base64
 
 import yaml
 from loguru import logger
+from collections import defaultdict
 
+from github.core.options import FileSearchOptions, ListFileSearchOptions
+
+
+from typing import TYPE_CHECKING
+
+from github.helpers.utils import GithubClientType
+
+if TYPE_CHECKING:
+    from integration import GithubFilePattern
 
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
+MAX_FILE_SIZE = 1024 * 1024  # 1MB limit in bytes
+GRAPHQL_MAX_FILE_SIZE = 100_000
 
 
 class FileObject(TypedDict):
@@ -20,45 +31,6 @@ class FileObject(TypedDict):
     repository: Dict[str, Any]
     branch: str
     metadata: Dict[str, Any]
-
-
-def normalize_path(path: str) -> str:
-    dir_path = os.path.dirname(path)
-    return f"{os.path.normpath(dir_path)}/"
-
-
-def validate_file_match(full_path: str, filename: str, path: str) -> bool:
-    normalized_path = normalize_path(path)
-    expected_path = os.path.normpath(os.path.join(normalized_path, filename))
-
-    return full_path == expected_path
-
-
-def build_search_query(
-    filename: str, path: str, organization: str, repos: Optional[List[str]] = None
-) -> str:
-    """
-
-    Args:
-        filenames: List of filenames to search for (e.g., ["README.md", "config.yaml"]).
-        path: Directory path to search in (e.g., "src/").
-        repos: Optional list of repository names in "owner/repo" format.
-
-    Returns:
-        A formatted search query string.
-    """
-
-    search_terms = [f"filename:{filename}"]
-
-    if repos:
-        search_terms.append(" ".join(f"repo:{organization}/{repo}" for repo in repos))
-    else:
-        search_terms.append(f"org:{organization}")
-
-    normalized_path = normalize_path(path)
-    search_terms.append(f"path:/{normalized_path}")
-
-    return " ".join(search_terms)
 
 
 def decode_content(content: str, encoding: Optional[str] = None) -> str:
@@ -91,13 +63,10 @@ def decode_content(content: str, encoding: Optional[str] = None) -> str:
 def parse_content(content: str, file_path: str) -> Any:
     """Parse a file based on its extension."""
     try:
-        if file_path.endswith(JSON_FILE_SUFFIX):
-            loaded_file = json.loads(content)
-            content = loaded_file
-        elif file_path.endswith(YAML_FILE_SUFFIX):
-            loaded_file = yaml.safe_load(content)
-            content = loaded_file
-        return content
+        if file_path.endswith(JSON_FILE_SUFFIX) or file_path.endswith(YAML_FILE_SUFFIX):
+            return yaml.safe_load(content)
+        else:
+            return content
     except Exception as e:
         logger.error(f"Error parsing file: {e}")
         return content
@@ -121,3 +90,170 @@ def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
     """Check if any file in diff_stat_files matches the specified filenames."""
     filenames_set = set(filenames)
     return any(Path(file_info["filename"]).name in filenames_set for file_info in files)
+
+
+def build_repo_path_map(
+    files: List["GithubFilePattern"],
+) -> List[ListFileSearchOptions]:
+    repo_map: Dict[str, List[FileSearchOptions]] = defaultdict(list)
+
+    for file_selector in files:
+        path = file_selector.path
+        skip_parsing = file_selector.skip_parsing
+        repos = file_selector.repos
+        branch = file_selector.branch
+
+        for repo in repos:
+            repo_map[repo].append(
+                {
+                    "path": path,
+                    "skip_parsing": skip_parsing,
+                    "branch": branch,
+                }
+            )
+
+    return [
+        ListFileSearchOptions(repo_name=repo, files=files)
+        for repo, files in repo_map.items()
+    ]
+
+
+def match_file_entry(path: str, pattern: str) -> bool:
+    """
+    Match file path against a glob pattern.
+    If the pattern includes '**/', also try matching with that prefix removed.
+    """
+    path = path.replace("\\", "/")
+
+    if fnmatch.fnmatch(path, pattern):
+        return True
+
+    if pattern.startswith("**/"):
+        bare_pattern = pattern.replace("**/", "", 1)
+        if fnmatch.fnmatch(path, bare_pattern):
+            return True
+
+    if "/**/" in pattern:
+        simplified_pattern = pattern.replace("/**/", "/")
+        if fnmatch.fnmatch(path, simplified_pattern):
+            return True
+
+    return False
+
+
+def classify_fetch_method(size: int) -> GithubClientType:
+    return (
+        GithubClientType.GRAPHQL
+        if size <= GRAPHQL_MAX_FILE_SIZE
+        else GithubClientType.REST
+    )
+
+
+def match_files(tree: List[Dict[str, Any]], pattern: str) -> List[Dict[str, Any]]:
+    """Filter GitHub tree blobs by type and size."""
+
+    matched_files = []
+
+    for entry in tree:
+        type_ = entry["type"]
+        path = entry["path"]
+        size = entry.get("size", 0)
+
+        if (
+            type_ == "blob"
+            and size <= MAX_FILE_SIZE
+            and match_file_entry(path, pattern)
+        ):
+            fetch_method = classify_fetch_method(size)
+            matched_files.append(
+                {
+                    "path": path,
+                    "fetch_method": fetch_method,
+                }
+            )
+
+    return matched_files
+
+
+def get_graphql_file_metadata(
+    host: str, organization: str, repo_name: str, branch: str, file_path: str, size: int
+) -> Dict[str, Any]:
+    """
+    Get metadata for a file from the GraphQL API.
+    """
+    url = f"{host}/repos/{organization}/{repo_name}/contents/{file_path}?ref={branch}"
+    name = file_path.split("/")[-1]
+
+    return {
+        "url": url,
+        "name": name,
+        "path": file_path,
+        "size": size,
+    }
+
+
+def build_batch_file_query(
+    repo_name: str, owner: str, branch: str, file_paths: List[str]
+) -> Dict[str, Any]:
+    """
+    Build a GraphQL query to fetch multiple files from a repository.
+    """
+    objects = "\n".join(
+        f"""
+        f{i}: object(expression: "{branch}:{path}") {{
+            ... on Blob {{
+                text
+                byteSize
+            }}
+        }}
+        """
+        for i, path in enumerate(file_paths)
+    )
+
+    query = f"""
+    query {{
+      repository(owner: "{owner}", name: "{repo_name}") {{
+        id
+        name
+        nameWithOwner
+        description
+        url
+        homepageUrl
+        isPrivate
+        createdAt
+        updatedAt
+        pushedAt
+        defaultBranchRef {{
+            name
+        }}
+        languages(first: 1) {{
+            nodes {{
+                name
+            }}
+        }}
+        visibility
+
+        {objects}
+      }}
+    }}
+    """
+    return {"query": query}
+
+
+def get_matching_files(
+    files_to_process: List[Dict[str, Any]], matching_patterns: List["GithubFilePattern"]
+) -> List[Dict[str, Any]]:
+    matching_files = []
+    for file_info in files_to_process:
+        file_path = file_info["filename"]
+        matched_patterns = []
+
+        for pattern in matching_patterns:
+            if match_file_entry(file_path, pattern.path):
+                matched_patterns.append(pattern)
+
+        if matched_patterns:
+            file_info["patterns"] = matched_patterns
+            matching_files.append(file_info)
+
+    return matching_files
