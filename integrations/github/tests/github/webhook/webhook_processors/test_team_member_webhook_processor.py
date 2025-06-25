@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Any
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
