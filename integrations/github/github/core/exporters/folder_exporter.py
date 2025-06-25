@@ -11,32 +11,36 @@ from github.helpers.glob import translate_glob
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionsT: SingleFolderOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    _caches = {}
+
+    async def get_resource[ExporterOptionsT: SingleFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         raise NotImplementedError
 
     @cache_iterator_result()
-    async def get_paginated_resources[
-        ExporterOptionsT: ListFolderOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
         params = {"recursive": "true"} if self._needs_recursive_search(path) else {}
         url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
 
-        async for contents in self.client.send_paginated_request(url, params=params):
-            content_cast = cast(dict[str, Any], contents)
-            folders = self._filter_folder_contents(content_cast["tree"], path)
-            logger.info(f"fetched {len(folders)} folders from {repo_name}")
-            if folders:
-                formatted = self._enrich_folder_with_repository(
-                    folders, repo=options["repo"]
-                )
-                yield formatted
-            else:
-                yield []
+        if self._branch_is_cached(repo_name, branch_ref):
+            tree = self._get_cached_tree(repo_name, branch_ref)
+            folders = self._retrieve_relevant_tree(tree, options)
+            yield folders
+        else:
+            async for contents in self.client.send_paginated_request(
+                url, params=params
+            ):
+                content_cast = cast(dict[str, Any], contents)
+                tree = content_cast["tree"]
+                self._cache_tree(repo_name, branch_ref, tree)
+                folders = self._retrieve_relevant_tree(tree, options)
+                yield folders
 
     def _enrich_folder_with_repository(
         self, folders: list[dict[str, Any]], repo: dict[str, Any] | None = None
@@ -78,3 +82,27 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         return [
             item for item in just_trees if bool(re.fullmatch(path_regex, item["path"]))
         ]
+
+    def _branch_is_cached(self, repo_name: str, branch: str) -> bool:
+        return (repo_name, branch) in self._caches
+
+    def _get_cached_tree(self, repo_name: str, branch: str) -> list[dict[str, Any]]:
+        return self._caches[(repo_name, branch)]
+
+    def _cache_tree(
+        self, repo_name: str, branch: str, tree: list[dict[str, Any]]
+    ) -> None:
+        self._caches[(repo_name, branch)] = tree
+
+    def _retrieve_relevant_tree(
+        self, tree: list[dict[str, Any]], options: ListFolderOptions
+    ) -> list[dict[str, Any]]:
+        folders = self._filter_folder_contents(tree, options["path"])
+        logger.info(f"fetched {len(folders)} folders from {options['repo']['name']}")
+        if folders:
+            formatted = self._enrich_folder_with_repository(
+                folders, repo=options["repo"]
+            )
+            return formatted
+        else:
+            return []
