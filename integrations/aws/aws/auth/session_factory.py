@@ -11,20 +11,7 @@ from aws.auth.account import (
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from typing import Optional, Union
-
-
-def normalize_arn_list(arn_input: Optional[Union[str, list[str]]]) -> list[str]:
-    """Normalize ARN input to a list of strings, filtering out empty values."""
-    if not arn_input:
-        return []
-
-    if isinstance(arn_input, str):
-        return [arn_input] if arn_input.strip() else []
-
-    if isinstance(arn_input, list):
-        return [
-            arn for arn in arn_input if arn and isinstance(arn, str) and arn.strip()
-        ]
+from aws.auth.utils import normalize_arn_list
 
 
 class SessionStrategyFactory:

@@ -119,8 +119,8 @@ async def resync_resources_for_account(
     )
     region_semaphore = get_region_semaphore()
     selector = aws_resource_config.selector
-    region_tasks = [
-        semaphore_async_iterator(
+    async for session, region in get_sessions(selector, arn=account["Arn"]):
+        async for batch in semaphore_async_iterator(
             region_semaphore,
             functools.partial(
                 sync_account_region_resources,
@@ -132,12 +132,7 @@ async def resync_resources_for_account(
                 errors,
                 error_regions,
             ),
-        )
-        async for session, region in get_sessions(selector, arn=account["Arn"])
-    ]
-
-    if region_tasks:
-        async for batch in stream_async_iterators_tasks(*region_tasks):
+        ):
             yield batch
 
     logger.info(f"Completed processing regions for account {account_id}")
@@ -157,18 +152,13 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     account_semaphore = get_account_semaphore(limit=10)
-    tasks = [
-        semaphore_async_iterator(
+    async for account in get_accounts():
+        async for batch in semaphore_async_iterator(
             account_semaphore,
             functools.partial(
                 resync_resources_for_account, account, kind, aws_resource_config
             ),
-        )
-        async for account in get_accounts()
-    ]
-
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+        ):
             yield batch
 
 
@@ -182,8 +172,8 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
-    tasks = [
-        semaphore_async_iterator(
+    async for session, region in get_sessions(selector, None):
+        async for batch in semaphore_async_iterator(
             semaphore,
             functools.partial(
                 resync_custom_kind,
@@ -196,11 +186,7 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "Marker",
                 aws_resource_config,
             ),
-        )
-        async for session, region in get_sessions(selector, None)
-    ]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+        ):
             yield batch
 
 
@@ -208,8 +194,8 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
-    tasks = [
-        semaphore_async_iterator(
+    async for session, region in get_sessions(selector, None):
+        async for batch in semaphore_async_iterator(
             semaphore,
             functools.partial(
                 resync_custom_kind,
@@ -222,11 +208,7 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "Marker",
                 aws_resource_config,
             ),
-        )
-        async for session, region in get_sessions(selector, None)
-    ]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+        ):
             yield batch
 
 
@@ -234,8 +216,8 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
-    tasks = [
-        semaphore_async_iterator(
+    async for session, region in get_sessions(selector, None):
+        async for batch in semaphore_async_iterator(
             semaphore,
             functools.partial(
                 resync_custom_kind,
@@ -248,11 +230,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "NextToken",
                 aws_resource_config,
             ),
-        )
-        async for session, region in get_sessions(selector, None)
-    ]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+        ):
             yield batch
 
 
@@ -260,8 +238,8 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
-    tasks = [
-        semaphore_async_iterator(
+    async for session, region in get_sessions(selector, None):
+        async for batch in semaphore_async_iterator(
             semaphore,
             functools.partial(
                 resync_custom_kind,
@@ -275,11 +253,7 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 aws_resource_config,
                 {"Owners": ["self"]},
             ),
-        )
-        async for session, region in get_sessions(selector, None)
-    ]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+        ):
             yield batch
 
 
@@ -287,8 +261,8 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
-    tasks = [
-        semaphore_async_iterator(
+    async for session, region in get_sessions(selector, None):
+        async for batch in semaphore_async_iterator(
             semaphore,
             functools.partial(
                 resync_custom_kind,
@@ -301,11 +275,7 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "NextToken",
                 aws_resource_config,
             ),
-        )
-        async for session, region in get_sessions(selector, None)
-    ]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+        ):
             yield batch
 
 
@@ -313,8 +283,8 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
-    tasks = [
-        semaphore_async_iterator(
+    async for session, region in get_sessions(selector, None):
+        async for batch in semaphore_async_iterator(
             semaphore,
             functools.partial(
                 resync_sqs_queue,
@@ -323,11 +293,7 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 region,
                 aws_resource_config,
             ),
-        )
-        async for session, region in get_sessions(selector, None)
-    ]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+        ):
             yield batch
 
 
@@ -349,19 +315,15 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             kind,
         )
 
-    tasks = [
-        semaphore_async_iterator(
+    async for session, region in get_sessions(selector, None):
+        async for batch in semaphore_async_iterator(
             semaphore,
             functools.partial(
                 resync_func,
                 session,
                 region,
             ),
-        )
-        async for session, region in get_sessions(selector, None)
-    ]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
+        ):
             yield batch
 
 

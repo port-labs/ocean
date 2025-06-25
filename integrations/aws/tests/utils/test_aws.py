@@ -4,9 +4,8 @@ from aiobotocore.session import AioSession
 from botocore.utils import ArnParser
 from typing import Any
 
+from aws.auth.utils import normalize_arn_list, extract_account_from_arn
 from aws.auth.account import (
-    normalize_arn_list,
-    extract_account_from_arn,
     RegionResolver,
     SingleAccountStrategy,
     MultiAccountStrategy,

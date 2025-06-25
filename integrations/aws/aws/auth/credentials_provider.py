@@ -6,11 +6,9 @@ from aiobotocore.credentials import (
     AioCredentials,
     create_assume_role_refresher,
 )
+from aws.auth.utils import CredentialsProviderError
 
 AioCredentialsType = Union[AioCredentials, AioRefreshableCredentials]
-
-
-class CredentialsProviderError(Exception): ...
 
 
 class CredentialProvider(ABC):
