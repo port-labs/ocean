@@ -2,6 +2,11 @@ ARG BASE_PYTHON_IMAGE=debian:trixie-slim
 # debian:trixie-slim - Python 3.12
 FROM ${BASE_PYTHON_IMAGE}
 
+RUN groupadd -r appgroup && useradd -r -g appgroup -m ocean
+
+RUN mkdir -p /tmp/ocean && chown -R ocean:appgroup /tmp/ocean && chmod -R 755 /tmp/ocean
+
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends librdkafka-dev python3 \
     && apt-get clean
@@ -29,9 +34,13 @@ ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
 
 ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR}
 
+# Create /tmp/ocean directory and set permissions
+
+
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
 
 WORKDIR /app
+USER ocean
 
 COPY . .
 RUN rm -rf .venv-docker ${BUILD_CONTEXT}/.venv-docker

@@ -161,11 +161,14 @@ class JiraClient(OAuthClient):
 
             yield items
 
-            page_info = response_data.get("pageInfo", {})
-            cursor = page_info.get("endCursor")
-
-            if not page_info.get("hasNextPage", False):
-                break
+            if page_info := response_data.get("pageInfo", {}):
+                cursor = page_info.get("endCursor")
+                if not page_info.get("hasNextPage", False):
+                    break
+            else:
+                cursor = response_data.get("cursor")
+                if not cursor:
+                    break
 
     @staticmethod
     def _generate_base_req_params(
