@@ -56,7 +56,6 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
             logger.info(
                 f"Member '{member['login']}' was removed from team '{team['name']}'. "
                 f"Skipping explicit deletion as the user might still be a member of other teams. "
-                f"Relying on full resync for comprehensive updates."
             )
 
             return WebhookEventRawResults(
