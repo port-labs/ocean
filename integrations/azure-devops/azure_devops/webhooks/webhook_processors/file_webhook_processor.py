@@ -221,7 +221,9 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         self, repo_info: Dict[str, Any], changed_file: Dict[str, Any]
     ) -> Dict[str, Any]:
         if "item" in changed_file:
-            changed_file["item"]["objectId"] = changed_file["item"]["originalObjectId"]
+            changed_file["item"]["objectId"] = changed_file["item"].get(
+                "originalObjectId", ""
+            )
         return {
             "kind": Kind.FILE,
             "file": changed_file.get("item"),
