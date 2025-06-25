@@ -36,7 +36,7 @@ async def initialize_aws_credentials() -> bool:
         return True
 
 
-async def get_credential_session() -> AWSSessionStrategy:
+async def get_initialized_session_strategy() -> AWSSessionStrategy:
     if _session_strategy is None:
         await initialize_aws_credentials()
     if _session_strategy is None:
@@ -46,7 +46,7 @@ async def get_credential_session() -> AWSSessionStrategy:
 
 async def get_accounts() -> AsyncIterator[dict[str, Any]]:
     """Get accessible AWS accounts asynchronously."""
-    strategy = await get_credential_session()
+    strategy = await get_initialized_session_strategy()
     async for account in strategy.get_accessible_accounts():
         yield account
 
@@ -56,7 +56,7 @@ async def get_sessions(
     arn: Optional[str] = None,
 ) -> AsyncIterator[Tuple[AioSession, str]]:
     """Get AWS sessions for all accounts and allowed regions, or for a specific ARN if provided. Handles region discovery internally."""
-    strategy = await get_credential_session()
+    strategy = await get_initialized_session_strategy()
     if arn:
         async for session, region in strategy.create_session_for_account(arn, selector):
             yield session, region
@@ -67,7 +67,7 @@ async def get_sessions(
 
 async def get_account_session(arn: str) -> Optional[AioSession]:
     """Get a single session for a specific ARN."""
-    strategy = await get_credential_session()
+    strategy = await get_initialized_session_strategy()
     return await strategy.get_account_session(arn)
 
 
