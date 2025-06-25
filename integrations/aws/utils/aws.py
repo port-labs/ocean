@@ -9,6 +9,7 @@ from aiobotocore.session import AioSession
 from aws.auth.account import AWSSessionStrategy, RegionResolver
 from utils.overrides import AWSDescribeResourcesSelector
 from aws.auth.session_factory import SessionStrategyFactory
+from aws.auth.utils import CredentialsProviderError, AWSSessionError
 
 
 # Private module-level state - using Union to be explicit about the uninitialized state
@@ -16,15 +17,7 @@ _session_strategy: Union[AWSSessionStrategy, None] = None
 _session_lock = asyncio.Lock()
 
 
-def get_session_strategy() -> AWSSessionStrategy:
-    """Return the global session strategy. Must be called after initialization."""
-    assert (
-        _session_strategy is not None
-    ), "Session strategy not initialized. Call initialize_access_credentials() first."
-    return _session_strategy
-
-
-async def initialize_access_credentials() -> bool:
+async def initialize_aws_credentials() -> bool:
     """Initialize the new v2 authentication system."""
     global _session_strategy
 
@@ -43,9 +36,17 @@ async def initialize_access_credentials() -> bool:
         return True
 
 
+async def get_credential_session() -> AWSSessionStrategy:
+    if _session_strategy is None:
+        await initialize_aws_credentials()
+    if _session_strategy is None:
+        raise CredentialsProviderError("Failed to initialize AWS credentials/session.")
+    return _session_strategy
+
+
 async def get_accounts() -> AsyncIterator[dict[str, Any]]:
     """Get accessible AWS accounts asynchronously."""
-    strategy = get_session_strategy()
+    strategy = await get_credential_session()
     async for account in strategy.get_accessible_accounts():
         yield account
 
@@ -55,7 +56,7 @@ async def get_sessions(
     arn: Optional[str] = None,
 ) -> AsyncIterator[Tuple[AioSession, str]]:
     """Get AWS sessions for all accounts and allowed regions, or for a specific ARN if provided. Handles region discovery internally."""
-    strategy = get_session_strategy()
+    strategy = await get_credential_session()
     if arn:
         async for session, region in strategy.create_session_for_account(arn, selector):
             yield session, region
@@ -66,7 +67,7 @@ async def get_sessions(
 
 async def get_account_session(arn: str) -> Optional[AioSession]:
     """Get a single session for a specific ARN."""
-    strategy = get_session_strategy()
+    strategy = await get_credential_session()
     return await strategy.get_account_session(arn)
 
 
