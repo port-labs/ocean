@@ -25,7 +25,9 @@ class FileEntityProcessor(JQEntityProcessor):
             FileContentOptions(repo_name=repo_name, file_path=file_path, branch=branch)
         )
         decoded_content = file_content_response["content"]
-        logger.debug(f"[File too large: {file_content_response['size']} bytes]")
+        if not decoded_content:
+            logger.debug(f"[File too large: {file_content_response['size']} bytes]")
+            return None
         return decoded_content
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:

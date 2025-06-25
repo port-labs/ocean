@@ -123,7 +123,6 @@ class GitManipulationHandler(JQEntityProcessor):
 
 
 class GithubHandlerMixin(HandlerMixin):
-    logger.info("Initializing GithubHandlerMixin")
     EntityProcessorClass = GitManipulationHandler
 
 
@@ -133,6 +132,7 @@ class GithubLiveEventsProcessorManager(LiveEventsProcessorManager, GithubHandler
 
 class GithubIntegration(BaseIntegration, GithubHandlerMixin):
     def __init__(self, context: PortOceanContext):
+        logger.info("Initializing GithubIntegration")
         super().__init__(context)
 
         # Replace the Ocean's webhook manager with our custom one

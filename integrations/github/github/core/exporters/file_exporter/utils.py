@@ -2,6 +2,7 @@ import base64
 import binascii
 from collections import defaultdict
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING
 
 import yaml
@@ -18,6 +19,7 @@ JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
 MAX_FILE_SIZE = 1024 * 1024  # 1MB limit in bytes
 GRAPHQL_MAX_FILE_SIZE = 100_000
+FIELD_NAME_PATTERN = re.compile(r"^f(\d+)$")
 
 
 class FileObject(TypedDict):
@@ -238,3 +240,10 @@ def get_matching_files(
             matching_files.append(file_info)
 
     return matching_files
+
+
+def extract_file_index(field_name: str) -> Optional[int]:
+    match = FIELD_NAME_PATTERN.match(field_name)
+    if match:
+        return int(match.group(1))
+    return None

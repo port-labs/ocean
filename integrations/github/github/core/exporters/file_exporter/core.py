@@ -23,6 +23,7 @@ from github.core.exporters.file_exporter.utils import (
     FileObject,
     build_batch_file_query,
     decode_content,
+    extract_file_index,
     get_graphql_file_metadata,
     match_files,
     parse_content,
@@ -164,7 +165,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             )
 
             decoded_content = file_data.pop("content")
-            if not decoded_content:
+            if decoded_content is None:
                 logger.warning(f"File {file_path} has no content")
                 continue
 
@@ -216,11 +217,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.debug(f"Retrieved {len(retrieved_files)} files from GraphQL batch")
 
             for field_name, file_data in retrieved_files.items():
-
-                file_index = int(field_name[1:])
-                if file_index >= len(file_paths):
+                file_index = extract_file_index(field_name)
+                if file_index is None or file_index >= len(file_paths):
                     logger.warning(
-                        f"File index {file_index} out of bounds for {repo_name}@{branch}"
+                        f"Unexpected field name format: '{field_name}' in {repo_name}@{branch}"
                     )
                     continue
 
@@ -454,7 +454,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"Referenced file {file_path} is too large ({file_size} bytes)"
             )
-            return f"[File too large: {file_size} bytes]"
+            return ""
 
         return parse_content(decoded_content, file_path)
 

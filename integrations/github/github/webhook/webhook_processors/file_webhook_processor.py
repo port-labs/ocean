@@ -112,7 +112,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                     )
 
                     content = file_content_response.get("content")
-                    if not content:
+                    if content is None:
                         logger.warning(
                             f"File {file_path} has no content or is too large"
                         )
