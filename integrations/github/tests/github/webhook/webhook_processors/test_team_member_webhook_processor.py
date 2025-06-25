@@ -174,11 +174,8 @@ class TestTeamMemberWebhookProcessor:
         assert len(result.deleted_raw_results) == expected_deleted_count
 
         if expected_updated_count > 0:
-            expected_filtered_team_data = {
-                **{k: v for k, v in full_team_export_data.items() if k != "members"},
-                "members": {"nodes": [member_data]},
-            }
-            assert result.updated_raw_results == [expected_filtered_team_data]
+            # Now we expect the full_team_export_data as is, without filtering members
+            assert result.updated_raw_results == [full_team_export_data]
 
         if expected_deleted_count > 0:
             # This part of the assertion will no longer be reached for "removed" events

@@ -66,19 +66,9 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
         graphql_client = create_github_client(GithubClientType.GRAPHQL)
         exporter = GraphQLTeamWithMembersExporter(graphql_client)
 
-        # Fetch the full team data from the exporter
-        # This contains all team attributes, including potentially all members
-        full_team_data_from_exporter = await exporter.get_resource(
+        data_to_upsert = await exporter.get_resource(
             SingleTeamOptions(slug=team["slug"])
         )
-
-        # As per test expectations, the returned data should have team attributes
-        # but the 'members' field should only contain the member from the webhook payload.
-        data_to_upsert = {
-            k: v for k, v in full_team_data_from_exporter.items() if k != "members"
-        }
-        # 'member' is payload['member'] and contains information about the specific member triggering the event.
-        data_to_upsert["members"] = {"nodes": [member]}
 
         logger.info(
             f"Upserting team '{data_to_upsert.get('name', team['name'])}' due to member '{member['login']}' being added."
