@@ -29,7 +29,7 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
             yield teams
 
 
-class GraphQLTeamExporter(AbstractGithubExporter[GithubGraphQLClient]):
+class GraphQLTeamMemberExporter(AbstractGithubExporter[GithubGraphQLClient]):
     MEMBER_PAGE_SIZE = 30
 
     async def get_resource[

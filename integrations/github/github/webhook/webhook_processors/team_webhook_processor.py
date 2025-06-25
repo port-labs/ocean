@@ -1,7 +1,10 @@
 from typing import Any, cast
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.exporters.team_exporter import GraphQLTeamExporter, RestTeamExporter
+from github.core.exporters.team_exporter import (
+    GraphQLTeamMemberExporter,
+    RestTeamExporter,
+)
 from github.core.options import SingleTeamOptions
 from github.webhook.events import TEAM_DELETE_EVENTS, TEAM_UPSERT_EVENTS
 from github.helpers.utils import GithubClientType, ObjectKind
@@ -53,7 +56,7 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
         exporter: AbstractGithubExporter[Any]
         if selector.members:
             graphql_client = create_github_client(GithubClientType.GRAPHQL)
-            exporter = GraphQLTeamExporter(graphql_client)
+            exporter = GraphQLTeamMemberExporter(graphql_client)
         else:
             rest_client = create_github_client(GithubClientType.REST)
             exporter = RestTeamExporter(rest_client)
