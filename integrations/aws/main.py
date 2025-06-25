@@ -19,11 +19,11 @@ from utils.resources import (
 )
 
 from utils.aws import (
-    initialize_access_credentials,
     get_accounts,
     get_sessions,
     validate_request,
     get_arn_for_account_id,
+    initialize_aws_credentials,
 )
 from port_ocean.context.ocean import ocean
 from loguru import logger
@@ -45,6 +45,7 @@ from port_ocean.utils.async_iterators import (
 )
 import functools
 from aiobotocore.session import AioSession
+from aws.auth.utils import CredentialsProviderError, AWSSessionError
 
 semaphore = get_semaphore()
 
@@ -488,5 +489,8 @@ async def on_start() -> None:
             "No live events api key provided"
             "Without setting up the webhook, the integration will not export live changes from AWS"
         )
-
-    await initialize_access_credentials()
+    try:
+        await initialize_aws_credentials()
+    except (CredentialsProviderError, AWSSessionError) as e:
+        logger.error(f"Failed to initialize AWS credentials: {e}")
+        raise
