@@ -76,13 +76,13 @@ class TestTeamMemberWebhookProcessor:
     @pytest.mark.parametrize(
         "action, members_selector_setting, expected_updated_count, expected_deleted_count",
         [
-            (MEMBERSHIP_DELETE_EVENTS[0], True, 0, 0),  # "removed", selector enabled
+            (MEMBERSHIP_DELETE_EVENTS[0], True, 1, 0),  # "removed", selector enabled (now upserts team)
             (
                 MEMBERSHIP_DELETE_EVENTS[0],
                 False,
+                1,
                 0,
-                0,
-            ),  # "removed", selector disabled (delete still happens)
+            ),  # "removed", selector disabled (now upserts team)
             (
                 TEAM_MEMBERSHIP_EVENTS[0],
                 True,
@@ -140,39 +140,32 @@ class TestTeamMemberWebhookProcessor:
             },
         }
 
-        if action in MEMBERSHIP_DELETE_EVENTS:
-            result = await team_member_webhook_processor.handle_event(
-                payload, resource_config
-            )
-        # "added" action
-        elif action in TEAM_MEMBERSHIP_EVENTS and members_selector_setting:
+        # Determine if an API call to fetch/upsert the team is expected
+        api_call_for_team_upsert_expected = False
+        if action in MEMBERSHIP_DELETE_EVENTS:  # Member removed, team is always upserted
+            api_call_for_team_upsert_expected = True
+        elif action in TEAM_MEMBERSHIP_EVENTS and members_selector_setting:  # Member added, team upserted if selector.members is True
+            api_call_for_team_upsert_expected = True
+
+        if api_call_for_team_upsert_expected:
             mock_exporter_instance.get_resource.return_value = full_team_export_data
             exporter_class_path = "github.webhook.webhook_processors.team_member_webhook_processor.GraphQLTeamWithMembersExporter"
             create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client"
 
             with (
-                patch(
-                    create_client_path, return_value=mock_graphql_client
-                ) as mock_create_client,
-                patch(
-                    exporter_class_path, return_value=mock_exporter_instance
-                ) as mock_exporter_class_constructor,
+                patch(create_client_path, return_value=mock_graphql_client) as mock_create_client,
+                patch(exporter_class_path, return_value=mock_exporter_instance) as mock_exporter_class_constructor,
             ):
-                result = await team_member_webhook_processor.handle_event(
-                    payload, resource_config
-                )
+                result = await team_member_webhook_processor.handle_event(payload, resource_config)
 
                 mock_create_client.assert_called_once_with(GithubClientType.GRAPHQL)
-                mock_exporter_class_constructor.assert_called_once_with(
-                    mock_graphql_client
-                )
+                mock_exporter_class_constructor.assert_called_once_with(mock_graphql_client)
                 mock_exporter_instance.get_resource.assert_called_once_with(
                     SingleTeamOptions(slug=team_data["slug"])
                 )
-        else:  # "added" action with members_selector_setting == False, or other unhandled cases
-            result = await team_member_webhook_processor.handle_event(
-                payload, resource_config
-            )
+        else:
+            # No API call expected for team upsert (e.g., member added but selector.members is False)
+            result = await team_member_webhook_processor.handle_event(payload, resource_config)
 
         assert isinstance(result, WebhookEventRawResults)
         assert len(result.updated_raw_results) == expected_updated_count
