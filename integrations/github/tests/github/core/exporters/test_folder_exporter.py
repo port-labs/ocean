@@ -105,7 +105,7 @@ class TestRestFolderExporter:
                 SingleFolderOptions(repo="test-repo", path="README.md")
             )
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         # Clear the cache before each test method in this class
         # This is crucial if _caches is a class-level dictionary
         RestFolderExporter._caches.clear()
@@ -324,7 +324,7 @@ class TestRestFolderExporter:
 
         async def mock_api_call_effect(
             endpoint_url: str, params: dict[str, Any] | None = None, **kwargs: Any
-        ):
+        ) -> AsyncGenerator[dict[str, Any], None]:
             is_recursive = params and params.get("recursive") == "true"
             if "repo1" in endpoint_url and "/trees/main" in endpoint_url:
                 yield {

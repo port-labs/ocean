@@ -11,7 +11,7 @@ from github.helpers.glob import translate_glob
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
-    _caches = {}
+    _caches: dict[tuple[str, str, bool], list[dict[str, Any]]] = {}
 
     async def get_resource[
         ExporterOptionsT: SingleFolderOptions
