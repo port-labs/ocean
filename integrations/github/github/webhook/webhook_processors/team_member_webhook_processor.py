@@ -51,6 +51,10 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
 
         if not selector.members:
             logger.info("Member selector disabled, skipping ...")
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
 
         if action in MEMBERSHIP_DELETE_EVENTS:
             logger.info(
