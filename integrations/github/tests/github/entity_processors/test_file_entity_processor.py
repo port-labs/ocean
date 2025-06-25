@@ -153,11 +153,13 @@ async def test_file_entity_processor_search_missing_default_branch() -> None:
         result = await processor._search(data, pattern)
         assert result == expected_content
         # Should use None as branch when default_branch is missing
-        mock_exporter.get_resource.assert_called_once_with({
-            "repo_name": "test-repo",
-            "file_path": "config.json",
-            "branch": None,
-        })
+        mock_exporter.get_resource.assert_called_once_with(
+            {
+                "repo_name": "test-repo",
+                "file_path": "config.json",
+                "branch": None,
+            }
+        )
 
 
 @pytest.mark.asyncio
@@ -291,7 +293,7 @@ async def test_file_entity_processor_get_file_content_success() -> None:
 @pytest.mark.asyncio
 async def test_file_entity_processor_get_file_content_large_file() -> None:
     processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
-    
+
     mock_exporter = AsyncMock()
     mock_exporter.get_resource.return_value = {
         "content": None,  # File too large
@@ -302,7 +304,9 @@ async def test_file_entity_processor_get_file_content_large_file() -> None:
         "github.entity_processors.file_entity_processor.RestFileExporter",
         return_value=mock_exporter,
     ):
-        result = await processor._get_file_content("test-repo", "large-file.txt", "main")
+        result = await processor._get_file_content(
+            "test-repo", "large-file.txt", "main"
+        )
         # The actual implementation returns the content directly, even if it's None
         assert result is None
 
