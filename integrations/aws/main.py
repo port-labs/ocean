@@ -44,11 +44,10 @@ from port_ocean.utils.async_iterators import (
 )
 import functools
 from aiobotocore.session import AioSession
-from aws.auth.utils import CredentialsProviderError, AWSSessionError
 
 # --- Concurrency configuration ---
 ACCOUNT_CONCURRENCY_LIMIT = 8  # Number of accounts processed in parallel
-REGION_CONCURRENCY_LIMIT = 4   # Number of regions per account processed in parallel
+REGION_CONCURRENCY_LIMIT = 4  # Number of regions per account processed in parallel
 
 
 async def _handle_global_resource_resync(

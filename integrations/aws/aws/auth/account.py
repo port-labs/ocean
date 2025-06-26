@@ -182,7 +182,9 @@ class MultiAccountStrategy(AWSSessionStrategy):
             )
         return True
 
-    async def _create_and_log_session(self, arn: str, session_name: str = "OceanRoleSession") -> AioSession:
+    async def _create_and_log_session(
+        self, arn: str, session_name: str = "OceanRoleSession"
+    ) -> AioSession:
         session_kwargs = {
             "region": None,
             "role_arn": arn,
@@ -198,7 +200,9 @@ class MultiAccountStrategy(AWSSessionStrategy):
 
     async def _can_assume_role(self, arn: str) -> bool:
         try:
-            session = await self._create_and_log_session(arn, session_name="SanityCheckSession")
+            session = await self._create_and_log_session(
+                arn, session_name="SanityCheckSession"
+            )
             return True
         except CredentialsProviderError as e:
             logger.error(

@@ -70,7 +70,7 @@ class AssumeRoleProvider(CredentialProvider):
 
     async def get_credentials(self, **kwargs: Any) -> AioRefreshableCredentials:
         try:
-            async with self._integration_session.create_client(
+            async with AioSession().create_client(
                 "sts", region_name=kwargs.get("region")
             ) as sts:
                 role_arn = kwargs["role_arn"]

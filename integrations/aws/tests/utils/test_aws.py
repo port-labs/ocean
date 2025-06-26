@@ -15,7 +15,6 @@ from aws.auth.credentials_provider import (
     StaticCredentialProvider,
     AssumeRoleProvider,
 )
-from aws.auth.utils import CredentialsProviderError
 from aws.auth.session_factory import SessionStrategyFactory
 from utils.overrides import AWSDescribeResourcesSelector
 
@@ -62,12 +61,19 @@ async def test_region_resolver_get_enabled_regions() -> None:
 @pytest.mark.asyncio
 async def test_static_credential_provider_success() -> None:
     provider = StaticCredentialProvider()
-    with patch("aiobotocore.credentials.AioCredentials", return_value=AioCredentials("dummy_key", "dummy_secret", token=None)):
-        creds = await provider.get_credentials(aws_access_key_id="dummy_key", aws_secret_access_key="dummy_secret")
+    with patch(
+        "aiobotocore.credentials.AioCredentials",
+        return_value=AioCredentials("dummy_key", "dummy_secret", token=None),
+    ):
+        creds = await provider.get_credentials(
+            aws_access_key_id="dummy_key", aws_secret_access_key="dummy_secret"
+        )
         assert creds.access_key == "dummy_key"
         assert creds.secret_key == "dummy_secret"
         with patch.object(AioSession, "create_client", AsyncMock()):
-            session = await provider.get_session(aws_access_key_id="dummy_key", aws_secret_access_key="dummy_secret")
+            session = await provider.get_session(
+                aws_access_key_id="dummy_key", aws_secret_access_key="dummy_secret"
+            )
             assert isinstance(session, AioSession)
 
 
