@@ -1,6 +1,5 @@
 from initialize_client import init_sonar_client
 
-from integrations.sonarqube.integration import SonarQubeProjectResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -9,9 +8,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from typing import cast, Union
-from loguru import logger
 from integration import (
     ObjectKind,
+    SonarQubeProjectResourceConfig,
     SonarQubeGAProjectResourceConfig,
 )
 
@@ -26,8 +25,10 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
 
         sonar_client = init_sonar_client()
 
-        selector = cast(Union[SonarQubeProjectResourceConfig, SonarQubeGAProjectResourceConfig],
-                        resource_config).selector
+        selector = cast(
+            Union[SonarQubeProjectResourceConfig, SonarQubeGAProjectResourceConfig],
+            resource_config,
+        ).selector
         sonar_client.metrics = selector.metrics
 
         project = await sonar_client.get_single_component(payload["project"])

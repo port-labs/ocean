@@ -9,7 +9,8 @@ from integration import (
     ObjectKind,
     SonarQubeGAProjectResourceConfig,
     SonarQubeIssueResourceConfig,
-    SonarQubeProjectResourceConfig, SonarQubeOnPremAnalysisResourceConfig,
+    SonarQubeProjectResourceConfig,
+    SonarQubeOnPremAnalysisResourceConfig,
 )
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor

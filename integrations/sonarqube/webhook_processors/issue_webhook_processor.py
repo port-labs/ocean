@@ -2,7 +2,6 @@ from initialize_client import init_sonar_client
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from typing import cast
-from loguru import logger
 
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
