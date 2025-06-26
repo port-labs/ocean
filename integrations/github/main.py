@@ -1,17 +1,17 @@
 from typing import Any, cast
 
 from loguru import logger
+from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+
 from github.core.exporters.team_exporter import (
     GraphQLTeamWithMembersExporter,
     RestTeamExporter,
 )
 from github.core.exporters.user_exporter import GraphQLUserExporter
-from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.webhook.registry import register_live_events_webhooks
-from port_ocean.context.event import event
-from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from github.clients.client_factory import (
     GitHubAuthenticatorFactory,
