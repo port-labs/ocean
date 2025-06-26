@@ -139,9 +139,10 @@ async def test_sync_raw_mixin_self_dependency(
                 mock_order_by_entities_dependencies,
             ):
 
-                await mock_sync_raw_mixin.sync_raw_all(
+                res = await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
+                assert res is True
 
                 assert (
                     len(event.entity_topological_sorter.entities) == 1
@@ -276,9 +277,10 @@ async def test_sync_raw_mixin_circular_dependency(
                 mock_order_by_entities_dependencies,
             ):
 
-                await mock_sync_raw_mixin.sync_raw_all(
+                res = await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
+                assert res is True
 
                 assert (
                     len(event.entity_topological_sorter.entities) == 2
@@ -420,9 +422,10 @@ async def test_sync_raw_mixin_dependency(
                 mock_order_by_entities_dependencies,
             ):
 
-                await mock_sync_raw_mixin.sync_raw_all(
+                res = await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
+                assert res is True
 
                 assert event.entity_topological_sorter.register_entity.call_count == 5
                 assert (

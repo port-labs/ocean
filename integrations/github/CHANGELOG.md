@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.0 (2025-06-25)
+## 0.3.0 (2025-06-26)
 
 
 ### Bug Fixes
@@ -16,6 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Previously, 403 errors for disabled features would crash the integration
 - Now gracefully ignores these errors and returns empty results
 - Affects both code scanning alerts, Dependabot alerts exporters and webhook upsertion
+
+
+## 0.2.11 (2025-06-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+## 0.2.10 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
 
 
 ## 0.2.9 (2025-06-24)
