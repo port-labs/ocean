@@ -12,15 +12,15 @@ from wcmatch import glob
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     _caches: dict[tuple[str, str, bool], list[dict[str, Any]]] = {}
 
-    async def get_resource[
-        ExporterOptionsT: SingleFolderOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         raise NotImplementedError
 
     @cache_iterator_result()
-    async def get_paginated_resources[
-        ExporterOptionsT: ListFolderOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
@@ -82,7 +82,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         return [
             item
             for item in just_trees
-            if glob.globmatch(item["path"], path, flags=glob.GLOBSTAR)
+            if glob.globmatch(item["path"], path, flags=glob.GLOBSTAR | glob.DOTMATCH)
         ]
 
     def _branch_is_cached(
