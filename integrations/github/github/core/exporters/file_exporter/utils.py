@@ -31,7 +31,7 @@ class FileObject(TypedDict):
     metadata: Dict[str, Any]
 
 
-def decode_content(content: str, encoding: Optional[str] = None) -> str:
+def decode_content(content: str, encoding: str) -> str:
     """
     Parse the content of a file.
 
