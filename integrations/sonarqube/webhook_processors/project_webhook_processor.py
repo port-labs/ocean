@@ -33,8 +33,7 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
 
         updated_project = await sonar_client.get_single_project(project)
 
-        if updated_project:
-            updated_project_results.append(updated_project)
+        updated_project_results.append(updated_project)
 
         if not updated_project_results:
             logger.info("Could not fetch updated project data. Using Webhook data")

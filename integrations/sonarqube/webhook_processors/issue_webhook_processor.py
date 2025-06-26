@@ -36,9 +36,7 @@ class IssueWebhookProcessor(BaseSonarQubeWebhookProcessor):
         async for updated_issue in sonar_client.get_issues_by_component(
             project, query_params
         ):
-
-            if updated_issue:
-                updated_issue_results.extend(updated_issue)
+            updated_issue_results.extend(updated_issue)
 
         if not updated_issue_results:
             logger.warning("Could not fetch updated issue data. Using webhook payload")
