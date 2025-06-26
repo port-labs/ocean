@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.205 (2025-06-26)
 
+### Bug fix
+
+- Added metrics check to webhook processors
 
 ### Improvements
 
@@ -69,14 +72,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.24.12
-
-
-## 0.1.197 (2025-06-20)
-
-
-### Bug fix
-
-- Added metrics check to webhook processors
 
 
 ### Improvements
