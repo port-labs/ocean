@@ -25,6 +25,21 @@ class AbstractGithubClient(ABC):
         self.authenticator = authenticator
         self.kwargs = kwargs
 
+    _DEFAULT_IGNORED_ERRORS = [
+        IgnoredError(
+            status=401,
+            message="Unauthorized access to endpoint — authentication required or token invalid",
+        ),
+        IgnoredError(
+            status=403,
+            message="Forbidden access to endpoint — insufficient permissions",
+        ),
+        IgnoredError(
+            status=404,
+            message="Resource not found at endpoint",
+        ),
+    ]
+
     @property
     async def headers(self) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
@@ -40,34 +55,14 @@ class AbstractGithubClient(ABC):
         identifier: str,
         ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> bool:
-        """
-        Check if the error should be ignored based on the ignored errors list.
-        """
-        default_ignored_errors = [
-            IgnoredError(
-                status=401,
-                message="Unauthorized access to endpoint — authentication required or token invalid",
-            ),
-            IgnoredError(
-                status=403,
-                message="Forbidden access to endpoint — insufficient permissions",
-            ),
-            IgnoredError(
-                status=404,
-                message="Resource not found at endpoint",
-            ),
-        ]
 
-        if ignored_errors is None:
-            ignored_errors = []
-
-        all_ignored_errors = ignored_errors + default_ignored_errors
+        all_ignored_errors = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
+        status_code = error.response.status_code
 
         for ignored_error in all_ignored_errors:
-
-            if error.response.status_code == ignored_error.status:
+            if status_code == ignored_error.status:
                 logger.info(
-                    f"Ignoring error for {identifier}: {ignored_error.status} {ignored_error.message}"
+                    f"Ignoring HTTP {ignored_error.status} for {identifier} — {ignored_error.message}"
                 )
                 return True
         return False
@@ -79,7 +74,7 @@ class AbstractGithubClient(ABC):
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
         return_full_response: bool = False,
-        ignored_errors: Optional[List[IgnoredError]] = [],
+        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> Any:
         """Send request to GitHub API with error handling and rate limiting."""
 
