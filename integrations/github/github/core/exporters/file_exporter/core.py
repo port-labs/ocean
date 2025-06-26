@@ -42,7 +42,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         logger.info(f"Fetching metadata for repository: {repo_name}")
 
         response = await self.client.send_api_request(url)
-        print("***********************", "called_again")
         return response
 
     async def get_resource[
@@ -81,7 +80,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         graphql_files = []
         rest_files = []
-        batch_results = []
 
         for repo_options in options:
             data = dict(repo_options)
@@ -92,20 +90,15 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Processing repository {repo_name} with {len(files)} file patterns"
             )
 
-            repo_obj = await self.get_repository_metadata(repo_name)
-            branch = data.get("branch", repo_obj["default_branch"])
-
-            gql, rest = await self.collect_matched_files(repo_name, files, branch)
+            gql, rest = await self.collect_matched_files(repo_name, files)
             graphql_files.extend(gql)
             rest_files.extend(rest)
 
         async for result in self.process_graphql_files(graphql_files):
-            batch_results.extend(result)
+            yield result
 
         async for result in self.process_rest_api_files(rest_files):
-            batch_results.extend(result)
-
-        yield batch_results
+            yield result
 
     async def collect_matched_files(
         self, repo_name: str, file_patterns: List[FileSearchOptions]
@@ -116,7 +109,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         for spec in file_patterns:
             pattern = spec["path"]
             skip_parsing = spec["skip_parsing"]
-            branch = spec["branch"]
+
+            repo_obj = await self.get_repository_metadata(repo_name)
+            branch = spec.get("branch") or repo_obj["default_branch"]
 
             logger.debug(
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name}"
@@ -195,23 +190,19 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         async for batch_result in self.process_files_in_batches(files):
             repo_name = batch_result["repo"]
             branch = batch_result["branch"]
-            retrieved_files = batch_result["file_data"]
+            retrieved_files = batch_result["file_data"]["repository"]
             repository_obj = await self.get_repository_metadata(repo_name)
 
-            repo_branch_files = [
-                entry
-                for entry in files
-                if entry["repo_name"] == repo_name and entry["branch"] == branch
-            ]
-            file_paths = [entry["file_path"] for entry in repo_branch_files]
-            file_metadata = {
-                entry["file_path"]: entry["skip_parsing"] for entry in repo_branch_files
-            }
+            file_paths = []
+            file_metadata = {}
+            for entry in files:
+                file_path = entry["file_path"]
+                file_paths.append(file_path)
+                file_metadata[file_path] = entry["skip_parsing"]
 
             logger.debug(f"Retrieved {len(retrieved_files)} files from GraphQL batch")
 
             batch_files = []
-
             for field_name, file_data in retrieved_files.items():
                 file_index = extract_file_index(field_name)
                 if file_index is None or file_index >= len(file_paths):
@@ -251,8 +242,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     async def process_files_in_batches(
         self,
         matched_file_entries: List[Dict[str, Any]],
-        batch_size: int = 5,
+        batch_size: int = 7,
     ) -> AsyncGenerator[Dict[str, Any], None]:
+        # Using batch_size = 7 to balance throughput and response size.
+        # Each file blob can be up to 100KB; 7 files keeps payloads safely under ~700KB,
+        # reducing risk of GraphQL timeouts while improving efficiency over smaller batches.
 
         client = create_github_client(client_type=GithubClientType.GRAPHQL)
 

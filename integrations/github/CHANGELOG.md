@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.9 (2025-06-25)
+## 0.3.1-dev (2025-06-26)
 
 
 ### Features
@@ -16,6 +16,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented file webhook processor for real-time file change detection and processing
 - Added file entity processor for dynamic file content retrieval in entity mappings
 - Added support for file pattern matching with glob patterns and size-based routing (GraphQL vs REST)
+
+
+## 0.3.0-dev (2025-06-25)
+
+
+### Features
+
+- Added support for User kinds
+- Added support for Team kinds
+
+
+## 0.2.11 (2025-06-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+## 0.2.10 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
 
 
 ## 0.2.9 (2025-06-24)
@@ -95,10 +120,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added file exporter functionality with support for file content fetching and processing
-- Implemented file webhook processor for real-time file change detection and processing
-- Added file entity processor for dynamic file content retrieval in entity mappings
-- Added support for file pattern matching with glob patterns and size-based routing (GraphQL vs REST)
+- Added support for Github workflows
+- Added support support for Github workflow runs
+- Implemented webhook processors for Workflow runs and workflows for real-time updates
+
+
+## 0.1.17-dev (2025-06-13)
+
+
+### Features
+
+- Added support for Dependabot alerts and Code Scanning alerts with state-based filtering
+- Implemented Dependabot alert and Code Scanning alert webhook processor for real-time updates
+
+
+## 0.1.16-dev (2025-06-13)
+
+
+### Features
+
+- Added support for Environment resources to track repository environments
+- Added support for Deployment resources with environment tracking
+- Implemented deployment and environment webhook processors for real-time updates
+
+
+## 0.1.15-dev (2025-06-12)
+
+
+### Features
+
+- Added support for Tag resources to track repository tags
+- Added support for Release resources with state-based filtering (created, edited, deleted)
+- Added support for Branch resources to track repository branches
+- Implemented tag, release, and branch webhook processors for real-time updates
 
 
 ## 0.1.14-dev (2025-06-11)

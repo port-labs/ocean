@@ -59,7 +59,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         matching_patterns: list[GithubFilePattern] = []
         for pattern in file_patterns:
             # Check if any repo_branch_mapping matches the current repo and branch
-            for mapping in pattern.repo_branch_mapping:
+            for mapping in pattern.repos:
                 if mapping.repo == repo_name and mapping.branch == current_branch:
                     matching_patterns.append(pattern)
                     break

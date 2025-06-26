@@ -153,7 +153,9 @@ class TestRestFileExporter:
                 exporter, "collect_matched_files", AsyncMock(return_value=([], []))
             ),
             patch.object(
-                exporter, "get_repository_metadata", AsyncMock(return_value=TEST_REPO_METADATA)
+                exporter,
+                "get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
             ),
             patch.object(
                 exporter, "process_graphql_files", return_value=mock_graphql_generator()
@@ -202,7 +204,9 @@ class TestRestFileExporter:
                 exporter, "collect_matched_files", AsyncMock(return_value=([], []))
             ),
             patch.object(
-                exporter, "get_repository_metadata", AsyncMock(return_value=TEST_REPO_METADATA)
+                exporter,
+                "get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
             ),
             patch.object(
                 exporter, "process_graphql_files", return_value=mock_graphql_generator()
@@ -243,6 +247,11 @@ class TestRestFileExporter:
                 exporter,
                 "get_tree_recursive",
                 AsyncMock(return_value=TEST_TREE_ENTRIES),
+            ),
+            patch.object(
+                exporter,
+                "get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
             ),
         ):
             file_patterns = [
@@ -300,6 +309,11 @@ class TestRestFileExporter:
                 "get_tree_recursive",
                 AsyncMock(return_value=tree_entries_with_sizes),
             ),
+            patch.object(
+                exporter,
+                "get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
+            ),
         ):
             file_patterns = [
                 FileSearchOptions(path="*.txt", skip_parsing=False, branch="main"),
@@ -332,6 +346,11 @@ class TestRestFileExporter:
                 exporter,
                 "get_tree_recursive",
                 AsyncMock(return_value=TEST_TREE_ENTRIES),
+            ),
+            patch.object(
+                exporter,
+                "get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
             ),
         ):
             file_patterns = [

@@ -87,8 +87,8 @@ class GithubFilePattern(BaseModel):
         alias="path",
         description="Specify the path to match files from",
     )
-    repo_branch_mapping: list[GithubRepoBranchMapping] = Field(
-        alias="repoBranchMapping",
+    repos: list[GithubRepoBranchMapping] = Field(
+        alias="repos",
         description="Specify the repositories and branches to fetch files from",
     )
     skip_parsing: bool = Field(

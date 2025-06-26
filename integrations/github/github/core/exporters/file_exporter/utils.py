@@ -98,7 +98,7 @@ def build_repo_path_map(
     for file_selector in files:
         path = file_selector.path
         skip_parsing = file_selector.skip_parsing
-        repo_branch_mappings = file_selector.repo_branch_mapping
+        repo_branch_mappings = file_selector.repos
 
         for repo_branch_mapping in repo_branch_mappings:
             repo = repo_branch_mapping.repo
@@ -198,26 +198,6 @@ def build_batch_file_query(
     query = f"""
     query {{
       repository(owner: "{owner}", name: "{repo_name}") {{
-        id
-        name
-        nameWithOwner
-        description
-        url
-        homepageUrl
-        isPrivate
-        createdAt
-        updatedAt
-        pushedAt
-        defaultBranchRef {{
-            name
-        }}
-        languages(first: 1) {{
-            nodes {{
-                name
-            }}
-        }}
-        visibility
-
         {objects}
       }}
     }}

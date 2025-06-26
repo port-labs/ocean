@@ -9,7 +9,12 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
-from integration import GithubFilePattern, GithubFileResourceConfig, GithubFileSelector, GithubRepoBranchMapping
+from integration import (
+    GithubFilePattern,
+    GithubFileResourceConfig,
+    GithubFileSelector,
+    GithubRepoBranchMapping,
+)
 from github.webhook.webhook_processors.file_webhook_processor import (
     FileWebhookProcessor,
 )
@@ -26,12 +31,12 @@ def resource_config() -> GithubFileResourceConfig:
             files=[
                 GithubFilePattern(
                     path="*.yaml",
-                    repoBranchMapping=[GithubRepoBranchMapping(repo="test-repo", branch="main")],
+                    repos=[GithubRepoBranchMapping(repo="test-repo", branch="main")],
                     skipParsing=False,
                 ),
                 GithubFilePattern(
                     path="*.json",
-                    repoBranchMapping=[GithubRepoBranchMapping(repo="test-repo", branch="main")],
+                    repos=[GithubRepoBranchMapping(repo="test-repo", branch="main")],
                     skipParsing=True,
                 ),
             ],
