@@ -7,10 +7,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from typing import cast
-
-
 from loguru import logger
-
 from integration import (
     ObjectKind,
     SonarQubeGAProjectResourceConfig,
