@@ -68,32 +68,47 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        commit_before = payload.get("before")
-        ref = commit_before if commit_before and removed_files else payload["after"]
-        file_batch = [
-            {"project_id": str(project_id), "path": file_path, "ref": ref}
+        # Create separate batches for changed and removed files
+        changed_file_batch = [
+            {"project_id": str(project_id), "path": file_path, "ref": payload["after"]}
             for file_path in matching_files
+            if file_path in changed_files
+        ]
+        removed_file_batch = [
+            {"project_id": str(project_id), "path": file_path, "ref": payload["before"]}
+            for file_path in matching_files
+            if file_path in removed_files
         ]
 
-        processed_batch = await self._gitlab_webhook_client._process_file_batch(
-            file_batch,
-            context=f"project:{project_id}",
-            skip_parsing=selector.files.skip_parsing,
-        )
-        repo_enriched_files = (
-            await self._gitlab_webhook_client._enrich_files_with_repos(processed_batch)
-        )
+        # Process changed files with the latest reference
+        if changed_file_batch:
+            processed_changed_batch = (
+                await self._gitlab_webhook_client._process_file_batch(
+                    changed_file_batch,
+                    context=f"project:{project_id}",
+                    skip_parsing=selector.files.skip_parsing,
+                )
+            )
+            updated_results = (
+                await self._gitlab_webhook_client._enrich_files_with_repos(
+                    processed_changed_batch
+                )
+            )
 
-        updated_results = [
-            file
-            for file in repo_enriched_files
-            if file["file"]["file_path"] in changed_files
-        ]
-        deleted_results = [
-            file
-            for file in repo_enriched_files
-            if file["file"]["file_path"] in removed_files
-        ]
+        # Process removed files with the previous reference
+        if removed_file_batch:
+            processed_removed_batch = (
+                await self._gitlab_webhook_client._process_file_batch(
+                    removed_file_batch,
+                    context=f"project:{project_id}",
+                    skip_parsing=selector.files.skip_parsing,
+                )
+            )
+            deleted_results = (
+                await self._gitlab_webhook_client._enrich_files_with_repos(
+                    processed_removed_batch
+                )
+            )
 
         logger.info(
             f"Completed push event processing; updated {len(updated_results)} entities, deleted {len(deleted_results)} entities"
