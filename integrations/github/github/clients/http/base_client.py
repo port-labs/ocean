@@ -52,7 +52,7 @@ class AbstractGithubClient(ABC):
     def _should_ignore_error(
         self,
         error: httpx.HTTPStatusError,
-        identifier: str,
+        resource: str,
         ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> bool:
 
@@ -61,8 +61,8 @@ class AbstractGithubClient(ABC):
 
         for ignored_error in all_ignored_errors:
             if status_code == ignored_error.status:
-                logger.info(
-                    f"Ignoring HTTP {ignored_error.status} for {identifier} — {ignored_error.message}"
+                logger.warning(
+                    f"Failed to fetch resources at {resource} due to {ignored_error.message}"
                 )
                 return True
         return False
