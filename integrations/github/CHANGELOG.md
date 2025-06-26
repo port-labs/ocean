@@ -15,8 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Github folder kind
 
 
-## 0.3.0-dev (2025-06-25)
+## 0.3.0-dev (2025-06-26)
 
+
+### Improvements
+
+- Added dev suffix to version number
 
 ### Features
 
