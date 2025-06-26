@@ -63,11 +63,10 @@ def parse_content(content: str, file_path: str) -> Any:
     try:
         if file_path.endswith(JSON_FILE_SUFFIX) or file_path.endswith(YAML_FILE_SUFFIX):
             return yaml.safe_load(content)
-        else:
-            return content
     except Exception as e:
         logger.error(f"Error parsing file: {e}")
-        return content
+
+    return content
 
 
 def group_files_by_status(
@@ -93,6 +92,8 @@ def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
 def build_repo_path_map(
     files: List["GithubFilePattern"],
 ) -> List[ListFileSearchOptions]:
+    logger.info("Building repository path map.")
+
     repo_map: Dict[str, List[FileSearchOptions]] = defaultdict(list)
 
     for file_selector in files:
@@ -111,6 +112,8 @@ def build_repo_path_map(
                     "branch": branch,
                 }
             )
+
+    logger.info(f"Repository path map built for {len(repo_map)} repositories.")
 
     return [
         ListFileSearchOptions(repo_name=repo, files=files)
@@ -229,3 +232,17 @@ def extract_file_index(field_name: str) -> Optional[int]:
     if match:
         return int(match.group(1))
     return None
+
+
+def extract_file_paths_and_metadata(
+    files: List[Dict[str, Any]]
+) -> tuple[list[str], dict[str, bool]]:
+    file_paths = []
+    file_metadata = {}
+
+    for entry in files:
+        file_path = entry["file_path"]
+        file_paths.append(file_path)
+        file_metadata[file_path] = entry["skip_parsing"]
+
+    return file_paths, file_metadata

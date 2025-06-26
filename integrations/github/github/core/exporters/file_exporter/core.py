@@ -1,7 +1,5 @@
-from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
-from pathlib import Path
+from typing import AsyncGenerator, Dict, List, Any, Tuple, cast
 from urllib.parse import quote
-import asyncio
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client
 from github.helpers.utils import GithubClientType
@@ -20,21 +18,22 @@ from collections import defaultdict
 
 from github.core.exporters.file_exporter.utils import (
     MAX_FILE_SIZE,
-    FileObject,
     build_batch_file_query,
     decode_content,
     extract_file_index,
+    extract_file_paths_and_metadata,
     get_graphql_file_metadata,
     match_files,
-    parse_content,
 )
 from port_ocean.utils import cache
-
-
-FILE_REFERENCE_PREFIX = "file://"
+from github.core.exporters.file_exporter.file_processor import FileProcessor
 
 
 class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.file_processor = FileProcessor(self)
 
     @cache.cache_coroutine_result()
     async def get_repository_metadata(self, repo_name: str) -> Dict[str, Any]:
@@ -94,9 +93,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             graphql_files.extend(gql)
             rest_files.extend(rest)
 
+        logger.info(f"Processing {len(graphql_files)} GraphQL files")
         async for result in self.process_graphql_files(graphql_files):
             yield result
 
+        logger.info(f"Processing {len(rest_files)} REST API files")
         async for result in self.process_rest_api_files(rest_files):
             yield result
 
@@ -170,7 +171,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
             repository = await self.get_repository_metadata(repo_name)
 
-            file_obj = await self.process_file(
+            file_obj = await self.file_processor.process_file(
                 content=decoded_content,
                 repository=repository,
                 file_path=file_path,
@@ -191,51 +192,20 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             repo_name = batch_result["repo"]
             branch = batch_result["branch"]
             retrieved_files = batch_result["file_data"]["repository"]
-            repository_obj = await self.get_repository_metadata(repo_name)
-
-            file_paths = []
-            file_metadata = {}
-            for entry in files:
-                file_path = entry["file_path"]
-                file_paths.append(file_path)
-                file_metadata[file_path] = entry["skip_parsing"]
+            repository_metadata = await self.get_repository_metadata(repo_name)
 
             logger.debug(f"Retrieved {len(retrieved_files)} files from GraphQL batch")
 
-            batch_files = []
-            for field_name, file_data in retrieved_files.items():
-                file_index = extract_file_index(field_name)
-                if file_index is None or file_index >= len(file_paths):
-                    logger.warning(
-                        f"Unexpected field name format: '{field_name}' in {repo_name}@{branch}"
-                    )
-                    continue
+            file_paths, file_metadata = extract_file_paths_and_metadata(files)
 
-                file_path = file_paths[file_index]
-                content = file_data["text"]
-                size = file_data.get("byteSize", 0)
-                skip_parsing = file_metadata.get(file_path, False)
-
-                if not content:
-                    logger.warning(f"File {file_path} has no content")
-                    continue
-
-                file_obj = await self.process_file(
-                    content=content,
-                    repository=repository_obj,
-                    file_path=file_path,
-                    skip_parsing=skip_parsing,
-                    branch=branch,
-                    metadata=get_graphql_file_metadata(
-                        self.client.base_url,
-                        self.client.organization,
-                        repo_name,
-                        branch,
-                        file_path,
-                        size,
-                    ),
-                )
-                batch_files.append(dict(file_obj))
+            batch_files = await self._process_retrieved_graphql_files(
+                retrieved_files,
+                file_paths,
+                file_metadata,
+                repository_metadata,
+                repo_name,
+                branch,
+            )
 
             yield batch_files
 
@@ -279,168 +249,54 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     "file_data": data["data"],
                 }
 
-    async def process_file(
+    async def _process_retrieved_graphql_files(
         self,
-        repository: Dict[str, Any],
-        file_path: str,
-        skip_parsing: bool,
+        retrieved_files: Dict[str, Any],
+        file_paths: List[str],
+        file_metadata: Dict[str, bool],
+        repository_metadata: Dict[str, Any],
+        repo_name: str,
         branch: str,
-        content: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> FileObject:
-        """
-        Common content processor for GraphQL and REST paths.
-        """
+    ) -> List[Dict[str, Any]]:
+        batch_files = []
 
-        result = FileObject(
-            content=content,
-            repository=repository,
-            branch=branch,
-            metadata={"path": file_path, **(metadata or {})},
-        )
+        for field_name, file_data in retrieved_files.items():
+            file_index = extract_file_index(field_name)
 
-        if skip_parsing:
-            logger.debug(f"Skipped parsing for {file_path}")
-            return result
+            if file_index is None or file_index >= len(file_paths):
+                logger.warning(
+                    f"Unexpected field name format: '{field_name}' in {repo_name}@{branch}"
+                )
+                continue
 
-        parsed_content = parse_content(content, file_path)
-        return await self._resolve_file_references(
-            parsed_content,
-            str(Path(file_path).parent),
-            branch,
-            result["metadata"],
-            repository,
-        )
+            file_path = file_paths[file_index]
+            content = file_data["text"]
+            size = file_data.get("byteSize", 0)
+            skip_parsing = file_metadata.get(file_path, False)
 
-    async def _resolve_file_references(
-        self,
-        content: Any,
-        parent_dir: str,
-        branch: str,
-        file_metadata: Dict[str, Any],
-        repo_metadata: Dict[str, Any],
-    ) -> FileObject:
-        """
-        Process parsed content and resolve file references.
-        Returns processed FileObject with resolved references.
-        """
+            if not content:
+                logger.warning(f"File {file_path} has no content")
+                continue
 
-        match content:
-            case dict():
-                result = await self._process_dict_content(
-                    content,
-                    parent_dir,
+            file_obj = await self.file_processor.process_file(
+                content=content,
+                repository=repository_metadata,
+                file_path=file_path,
+                skip_parsing=skip_parsing,
+                branch=branch,
+                metadata=get_graphql_file_metadata(
+                    self.client.base_url,
+                    self.client.organization,
+                    repo_name,
                     branch,
-                    file_metadata,
-                    repo_metadata,
-                )
-            case list():
-                result = await self._process_list_content(
-                    content,
-                    parent_dir,
-                    branch,
-                    file_metadata,
-                    repo_metadata,
-                )
-            case _:
-                result = FileObject(
-                    content=content,
-                    repository=repo_metadata,
-                    branch=branch,
-                    metadata=file_metadata,
-                )
-
-        return result
-
-    async def _process_dict_content(
-        self,
-        data: Dict[str, Any],
-        parent_directory: str,
-        branch: str,
-        file_info: Dict[str, Any],
-        repo_info: Dict[str, Any],
-    ) -> FileObject:
-        """Process dictionary items and resolve file references."""
-        tasks = [
-            self._process_file_value(value, parent_directory, repo_info["name"], branch)
-            for value in data.values()
-        ]
-        processed_values = await asyncio.gather(*tasks)
-
-        result = dict(zip(data.keys(), processed_values))
-
-        return FileObject(
-            content=result,
-            repository=repo_info,
-            branch=branch,
-            metadata=file_info,
-        )
-
-    async def _process_list_content(
-        self,
-        data: List[Dict[str, Any]],
-        parent_directory: str,
-        branch: str,
-        file_info: Dict[str, Any],
-        repo_info: Dict[str, Any],
-    ) -> FileObject:
-        """Process each dict item in the list concurrently, resolving file references."""
-
-        async def process_item(item: Dict[str, Any]) -> Dict[str, Any]:
-            keys = list(item.keys())
-            values = await asyncio.gather(
-                *[
-                    self._process_file_value(
-                        v, parent_directory, repo_info["name"], branch
-                    )
-                    for v in item.values()
-                ]
+                    file_path,
+                    size,
+                ),
             )
-            return dict(zip(keys, values))
 
-        processed_items = await asyncio.gather(*[process_item(obj) for obj in data])
+            batch_files.append(dict(file_obj))
 
-        return FileObject(
-            content=processed_items,
-            repository=repo_info,
-            branch=branch,
-            metadata=file_info,
-        )
-
-    async def _process_file_value(
-        self,
-        value: Any,
-        parent_directory: str,
-        repository: str,
-        branch: str,
-    ) -> Any:
-        if not isinstance(value, str) or not value.startswith(FILE_REFERENCE_PREFIX):
-            return value
-
-        file_meta = Path(value.replace(FILE_REFERENCE_PREFIX, ""))
-        file_path = (
-            f"{parent_directory}/{file_meta}"
-            if parent_directory != "."
-            else str(file_meta)
-        )
-
-        logger.info(
-            f"Processing file reference: {value} -> {file_path} in {repository}@{branch}"
-        )
-
-        file_content_response = await self.get_resource(
-            FileContentOptions(repo_name=repository, file_path=file_path, branch=branch)
-        )
-        decoded_content = file_content_response["content"]
-        file_size = file_content_response["size"]
-
-        if not decoded_content:
-            logger.warning(
-                f"Referenced file {file_path} is too large ({file_size} bytes)"
-            )
-            return ""
-
-        return parse_content(decoded_content, file_path)
+        return batch_files
 
     async def fetch_commit_diff(
         self, repo_name: str, before_sha: str, after_sha: str

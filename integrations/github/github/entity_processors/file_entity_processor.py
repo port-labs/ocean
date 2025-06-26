@@ -26,8 +26,12 @@ class FileEntityProcessor(JQEntityProcessor):
         )
         decoded_content = file_content_response["content"]
         if not decoded_content:
-            logger.debug(f"[File too large: {file_content_response['size']} bytes]")
+            logger.info(f"File too large, size - {file_content_response['size']} bytes")
             return None
+
+        logger.info(
+            f"File content fetched, size - {file_content_response['size']} bytes"
+        )
         return decoded_content
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:

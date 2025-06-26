@@ -376,7 +376,9 @@ class TestRestFileExporter:
                 "get_repository_metadata",
                 AsyncMock(return_value=TEST_REPO_METADATA),
             ),
-            patch.object(exporter, "process_file", AsyncMock()) as mock_process,
+            patch.object(
+                exporter.file_processor, "process_file", AsyncMock()
+            ) as mock_process,
         ):
             mock_process.return_value = MagicMock()
 

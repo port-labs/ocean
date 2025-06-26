@@ -11,6 +11,8 @@ PAGE_SIZE = 100
 class GithubRestClient(AbstractGithubClient):
     """REST API implementation of GitHub client."""
 
+    NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
+
     @property
     def base_url(self) -> str:
         return self.github_host.rstrip("/")
@@ -19,7 +21,7 @@ class GithubRestClient(AbstractGithubClient):
         """
         Extracts the URL from the 'next' link in a GitHub Link header.
         """
-        match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
+        match = self.NEXT_PATTERN.search(link_header)
         return match.group(1) if match else None
 
     async def send_paginated_request(

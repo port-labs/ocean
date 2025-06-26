@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Any
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
@@ -61,56 +61,118 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
             f"Processing push event for file kind for repository {repo_name} with {len(file_patterns)} file patterns"
         )
 
-        matching_patterns: list[GithubFilePattern] = []
-        for pattern in file_patterns:
-            # Check if any repo_branch_mapping matches the current repo and branch
-            for mapping in pattern.repos:
-                if mapping.repo == repo_name and (
-                    mapping.branch == current_branch
-                    or (mapping.branch is None and current_branch == default_branch)
-                ):
-                    matching_patterns.append(pattern)
-                    break
+        matching_patterns = self._get_matching_patterns(
+            file_patterns, repo_name, current_branch, default_branch
+        )
 
         if not matching_patterns:
             logger.info(
                 f"Skipping push event for repository {repo_name} because no matching patterns found for branch {current_branch}"
             )
             return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
+                updated_raw_results=[], deleted_raw_results=[]
             )
 
-        rest_client = create_github_client()
-        exporter = RestFileExporter(rest_client)
+        updated_raw_results, deleted_raw_results = await self._process_matching_files(
+            repo_name,
+            before_sha,
+            after_sha,
+            matching_patterns,
+            repository,
+            current_branch,
+        )
 
+        return WebhookEventRawResults(
+            updated_raw_results=updated_raw_results,
+            deleted_raw_results=deleted_raw_results,
+        )
+
+    def _get_matching_patterns(
+        self,
+        file_patterns: list[GithubFilePattern],
+        repo_name: str,
+        current_branch: str,
+        default_branch: str,
+    ) -> list[GithubFilePattern]:
+        matching = [
+            pattern
+            for pattern in file_patterns
+            if self._is_pattern_applicable_to_branch(
+                pattern, repo_name, current_branch, default_branch
+            )
+        ]
+
+        logger.info(
+            f"Found {len(matching)} matching file patterns for repo '{repo_name}' on branch '{current_branch}'"
+        )
+        return matching
+
+    def _is_pattern_applicable_to_branch(
+        self,
+        pattern: GithubFilePattern,
+        repo_name: str,
+        current_branch: str,
+        default_branch: str,
+    ) -> bool:
+        for mapping in pattern.repos:
+            if mapping.repo == repo_name and (
+                mapping.branch == current_branch
+                or (mapping.branch is None and current_branch == default_branch)
+            ):
+                return True
+        return False
+
+    async def _process_matching_files(
+        self,
+        repo_name: str,
+        before_sha: str,
+        after_sha: str,
+        matching_patterns: list["GithubFilePattern"],
+        repository: dict[str, Any],
+        current_branch: str,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         logger.info(
             f"Fetching commit diff for repository {repo_name} from {before_sha} to {after_sha}"
         )
+        rest_client = create_github_client()
+        exporter = RestFileExporter(rest_client)
 
         diff_data = await exporter.fetch_commit_diff(repo_name, before_sha, after_sha)
         files_to_process = diff_data["files"]
-
         matching_files = get_matching_files(files_to_process, matching_patterns)
 
         if not matching_files:
             logger.info("No matching files found for any patterns, skipping processing")
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
+            return [], []
 
         deleted_files, updated_files = group_files_by_status(matching_files)
-
         logger.info(
             f"Found {len(deleted_files)} deleted files and {len(updated_files)} updated files"
         )
 
-        updated_raw_results = []
+        updated_raw_results = await self._process_updated_files(
+            updated_files, exporter, repository, repo_name, current_branch
+        )
+
+        deleted_raw_results = [
+            {"metadata": {"path": file["filename"]}} for file in deleted_files
+        ]
+
+        return updated_raw_results, deleted_raw_results
+
+    async def _process_updated_files(
+        self,
+        updated_files: list[dict[str, Any]],
+        exporter: "RestFileExporter",
+        repository: dict[str, Any],
+        repo_name: str,
+        current_branch: str,
+    ) -> list[dict[str, Any]]:
+        results = []
 
         for file_info in updated_files:
             file_path = file_info["filename"]
-            patterns: list[GithubFilePattern] = file_info["patterns"]
+            patterns: list["GithubFilePattern"] = file_info["patterns"]
 
             for pattern in patterns:
                 try:
@@ -129,7 +191,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                         )
                         continue
 
-                    file_obj = await exporter.process_file(
+                    file_obj = await exporter.file_processor.process_file(
                         content=content,
                         repository=repository,
                         file_path=file_path,
@@ -138,7 +200,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                         metadata=file_content_response,
                     )
 
-                    updated_raw_results.append(dict(file_obj))
+                    results.append(dict(file_obj))
                     logger.debug(
                         f"Successfully processed file {file_path} with pattern {pattern.path}"
                     )
@@ -148,12 +210,5 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                         f"Error processing file {file_path} with pattern {pattern.path}: {e}"
                     )
 
-        logger.info(f"Successfully processed {len(updated_raw_results)} file results")
-
-        deleted_raw_results = [
-            {"metadata": {"path": file["filename"]}} for file in deleted_files
-        ]
-        return WebhookEventRawResults(
-            updated_raw_results=updated_raw_results,
-            deleted_raw_results=deleted_raw_results,
-        )
+        logger.info(f"Successfully processed {len(results)} file results")
+        return results

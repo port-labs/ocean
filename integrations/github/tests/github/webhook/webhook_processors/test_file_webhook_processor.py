@@ -239,7 +239,7 @@ class TestFileWebhookProcessor:
             ]
         }
         mock_exporter.get_resource.return_value = file_content_response
-        mock_exporter.process_file.return_value = mock_file_obj
+        mock_exporter.file_processor.process_file.return_value = mock_file_obj
 
         with patch(
             "github.webhook.webhook_processors.file_webhook_processor.RestFileExporter",
@@ -262,7 +262,7 @@ class TestFileWebhookProcessor:
                     branch="main",
                 )
             )
-            mock_exporter.process_file.assert_called_once()
+            mock_exporter.file_processor.process_file.assert_called_once()
 
     async def test_handle_event_with_deleted_files(
         self,
@@ -356,7 +356,9 @@ class TestFileWebhookProcessor:
             ]
         }
         mock_exporter.get_resource.return_value = file_content_response
-        mock_exporter.process_file.side_effect = Exception("Processing error")
+        mock_exporter.file_processor.process_file.side_effect = Exception(
+            "Processing error"
+        )
 
         with patch(
             "github.webhook.webhook_processors.file_webhook_processor.RestFileExporter",
