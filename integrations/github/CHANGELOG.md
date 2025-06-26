@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for file pattern matching with glob patterns and size-based routing (GraphQL vs REST)
 
 
+## 0.3.0-dev (2025-06-26)
+
+
+### Improvements
+
+- Added dev suffix to version number
+
+
 ## 0.3.0-dev (2025-06-25)
 
 
