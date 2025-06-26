@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.27 (2025-06-26)
 
 
-### Bug Fix
+### Improvements
 
-- Fixed bug in file kind live event causing tracked file not getting deleted from port when file has been deleted from ADO repo.
+- Bumped ocean version to ^0.24.20
 
 
 ## 0.2.26 (2025-06-25)
