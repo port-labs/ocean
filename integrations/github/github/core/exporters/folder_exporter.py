@@ -1,4 +1,3 @@
-import re
 from typing import Any, cast
 
 from github.clients.http.rest_client import GithubRestClient
@@ -7,7 +6,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 from github.core.options import ListFolderOptions, SingleFolderOptions
-from github.helpers.glob import translate_glob
+from wcmatch import glob
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
@@ -80,9 +79,10 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         if path == "" or path == "*":
             return just_trees
 
-        path_regex = translate_glob(path, recursive=True, include_hidden=True)
         return [
-            item for item in just_trees if bool(re.fullmatch(path_regex, item["path"]))
+            item
+            for item in just_trees
+            if glob.globmatch(item["path"], path, flags=glob.GLOBSTAR)
         ]
 
     def _branch_is_cached(
