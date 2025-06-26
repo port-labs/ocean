@@ -38,10 +38,6 @@ class IssueWebhookProcessor(BaseSonarQubeWebhookProcessor):
         ):
             updated_issue_results.extend(updated_issue)
 
-        if not updated_issue_results:
-            logger.warning("Could not fetch updated issue data. Using webhook payload")
-            updated_issue_results.append(payload)
-
         return WebhookEventRawResults(
             updated_raw_results=updated_issue_results,
             deleted_raw_results=[],

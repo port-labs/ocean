@@ -37,8 +37,6 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
             async for updated_analysis in sonar_client.get_analysis_by_project(project):
                 if updated_analysis:
                     analysis_data.extend(updated_analysis)
-            if not analysis_data:
-                analysis_data.append(payload)
 
         return WebhookEventRawResults(
             updated_raw_results=analysis_data,

@@ -9,7 +9,7 @@ from integration import (
     ObjectKind,
     SonarQubeGAProjectResourceConfig,
     SonarQubeIssueResourceConfig,
-    SonarQubeProjectResourceConfig,
+    SonarQubeProjectResourceConfig, SonarQubeOnPremAnalysisResourceConfig,
 )
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
@@ -86,7 +86,9 @@ async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ONPREM_ANALYSIS)
 async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sonar_client = init_sonar_client()
-    selector = cast(SonarQubeGAProjectResourceConfig, event.resource_config).selector
+    selector = cast(
+        SonarQubeOnPremAnalysisResourceConfig, event.resource_config
+    ).selector
     sonar_client.metrics = selector.metrics
     if ocean.integration_config["sonar_is_on_premise"]:
         logger.info("Sonar is on-premise, processing on-premise SonarQube analysis")

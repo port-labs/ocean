@@ -1,4 +1,6 @@
 from initialize_client import init_sonar_client
+
+from integrations.sonarqube.integration import SonarQubeProjectResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -6,7 +8,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from typing import cast
+from typing import cast, Union
 from loguru import logger
 from integration import (
     ObjectKind,
@@ -24,7 +26,8 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
 
         sonar_client = init_sonar_client()
 
-        selector = cast(SonarQubeGAProjectResourceConfig, resource_config).selector
+        selector = cast(Union[SonarQubeProjectResourceConfig, SonarQubeGAProjectResourceConfig],
+                        resource_config).selector
         sonar_client.metrics = selector.metrics
 
         project = await sonar_client.get_single_component(payload["project"])
@@ -34,10 +37,6 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
         updated_project = await sonar_client.get_single_project(project)
 
         updated_project_results.append(updated_project)
-
-        if not updated_project_results:
-            logger.info("Could not fetch updated project data. Using Webhook data")
-            updated_project_results.append(payload)
 
         return WebhookEventRawResults(
             updated_raw_results=updated_project_results,
