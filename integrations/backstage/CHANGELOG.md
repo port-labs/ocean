@@ -1,3 +1,11 @@
+## 0.1.95-beta (2025-06-26)
+
+
+### Improvements
+
+- Added beta suffix to version number
+
+
 ## 0.1.95 (2025-06-26)
 
 
