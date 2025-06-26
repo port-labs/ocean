@@ -68,7 +68,7 @@ Remember to replace the placeholders for `THE_INTEGRATION_WANTED_IDENTIFIER` `WH
 ```yaml showLineNumbers
 initializePortResources: true
 integration:
-  identifier: THE_INTEGRATION_WANTED_IDENTIFIER 
+  identifier: THE_INTEGRATION_WANTED_IDENTIFIER
   type: WHICH_INTEGRATION_TO_DEPLOY
   eventListener:
     type: EVENT_LISTENER_TYPE
