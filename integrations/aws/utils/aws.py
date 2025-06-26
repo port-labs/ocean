@@ -47,9 +47,8 @@ async def get_initialized_session_strategy() -> AWSSessionStrategy:
 async def get_accounts() -> AsyncIterator[dict[str, Any]]:
     """Get accessible AWS accounts asynchronously."""
     strategy = await get_initialized_session_strategy()
-    async for batch in strategy.get_accessible_accounts():
-        for account in batch:
-            yield account
+    async for account in strategy.get_accessible_accounts():
+        yield account
 
 
 async def get_sessions(

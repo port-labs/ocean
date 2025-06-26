@@ -184,12 +184,17 @@ class MultiAccountStrategy(AWSSessionStrategy):
 
     async def _can_assume_role(self, arn: str) -> bool:
         try:
-            session = await self.provider.get_session(
-                region=None,
-                role_arn=arn,
-                role_session_name="SanityCheckSession",
-                external_id=self.config.get("external_id"),
-            )
+            session_kwargs = {
+                "region": None,
+                "role_arn": arn,
+                "role_session_name": "SanityCheckSession",
+            }
+            
+            # Only add external_id if it's configured
+            if self.config.get("external_id"):
+                session_kwargs["external_id"] = self.config.get("external_id")
+            
+            session = await self.provider.get_session(**session_kwargs)
             async with session.create_client("sts", region_name=None) as sts:
                 identity = await sts.get_caller_identity()
                 logger.debug(
@@ -202,26 +207,16 @@ class MultiAccountStrategy(AWSSessionStrategy):
             )
             return False
 
-    async def get_accessible_accounts(self) -> AsyncIterator[List[dict[str, Any]]]:
+    async def get_accessible_accounts(self) -> AsyncIterator[dict[str, Any]]:
         # Only use ARNs that passed healthcheck
         arn_parser = ArnParser()
-        batch = []
         for arn in self._valid_arns:
             account_id = extract_account_from_arn(arn, arn_parser)
-            account = {
+            yield {
                 "Id": account_id,
                 "Arn": arn,
                 "Name": f"Account-{account_id}" if account_id else arn,
             }
-            batch.append(account)
-
-            if len(batch) >= 100:
-                yield batch
-                batch.clear()
-
-        # Yield remaining accounts
-        if batch:
-            yield batch
 
     async def create_session_for_each_account(
         self,
@@ -229,7 +224,7 @@ class MultiAccountStrategy(AWSSessionStrategy):
     ) -> AsyncIterator[tuple[AioSession, str]]:
 
         async def process_account_regions(
-            account_info: dict[str, Any], account_index: int
+            account_info: dict[str, Any]
         ) -> list[tuple[AioSession, str]]:
 
             session = await self._get_account_session(account_info["Arn"])
@@ -247,9 +242,8 @@ class MultiAccountStrategy(AWSSessionStrategy):
             return results
 
         tasks = [
-            process_account_regions(account_info, account_index)
-            async for account_info_batch in self.get_accessible_accounts()
-            for account_index, account_info in enumerate(account_info_batch)
+            process_account_regions(account_info)
+            async for account_info in self.get_accessible_accounts()
         ]
 
         results = await asyncio.gather(*tasks)
@@ -295,13 +289,17 @@ class MultiAccountStrategy(AWSSessionStrategy):
 
     async def _get_account_session(self, arn: str) -> AioSession:
         # Use the provided ARN directly for AssumeRole
+        session_kwargs = {
+            "region": None,
+            "role_arn": arn,
+            "role_session_name": "RoleSessionName",
+        }
+        
+        # Only add external_id if it's configured
+        if self.config.get("external_id"):
+            session_kwargs["external_id"] = self.config.get("external_id")
 
-        session = await self.provider.get_session(
-            region=None,
-            role_arn=arn,
-            role_session_name="RoleSessionName",
-            external_id=self.config.get("external_id"),
-        )
+        session = await self.provider.get_session(**session_kwargs)
         # Log the assumed role identity
         async with session.create_client("sts", region_name=None) as sts:
             identity = await sts.get_caller_identity()
