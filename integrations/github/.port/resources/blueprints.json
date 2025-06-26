@@ -170,7 +170,7 @@
         "calculationProperties": {},
         "aggregationProperties": {},
         "relations": {
-            "github_user": {
+            "githubUser": {
                 "title": "Github User",
                 "target": "githubUser",
                 "required": false,
