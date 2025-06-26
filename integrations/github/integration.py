@@ -22,6 +22,8 @@ from port_ocean.utils.signal import signal_handler
 
 FILE_PROPERTY_PREFIX = "file://"
 
+from github.helpers.utils import ObjectKind
+
 
 class GithubPullRequestSelector(Selector):
     state: Literal["open", "closed", "all"] = Field(
@@ -40,6 +42,20 @@ class GithubIssueSelector(Selector):
         default="open",
         description="Filter by issue state (open, closed, all)",
     )
+
+
+class GithubIssueConfig(ResourceConfig):
+    selector: GithubIssueSelector
+    kind: Literal["issue"]
+
+
+class GithubTeamSector(Selector):
+    members: bool = Field(default=True)
+
+
+class GithubTeamConfig(ResourceConfig):
+    selector: GithubTeamSector
+    kind: Literal[ObjectKind.TEAM]
 
 
 class GithubDependabotAlertSelector(Selector):
@@ -114,6 +130,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubIssueConfig
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
+        | GithubTeamConfig
         | GithubFileResourceConfig
         | ResourceConfig
     ]
