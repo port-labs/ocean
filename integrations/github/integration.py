@@ -62,6 +62,15 @@ class GithubIssueConfig(ResourceConfig):
     kind: Literal["issue"]
 
 
+class GithubTeamSector(Selector):
+    members: bool = Field(default=True)
+
+
+class GithubTeamConfig(ResourceConfig):
+    selector: GithubTeamSector
+    kind: Literal[ObjectKind.TEAM]
+
+
 class GithubDependabotAlertSelector(Selector):
     states: list[Literal["auto_dismissed", "dismissed", "fixed", "open"]] = Field(
         default=["open"],
@@ -94,6 +103,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
         | GithubFolderResourceConfig
+        | GithubTeamConfig
         | ResourceConfig
     ]
 

@@ -7,6 +7,8 @@ features:
     resources:
       - kind: repository
       - kind: folder
+      - kind: user
+      - kind: team
       - kind: workflow
       - kind: workflow-run
       - kind: pull-request

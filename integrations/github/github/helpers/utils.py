@@ -14,6 +14,8 @@ class ObjectKind(StrEnum):
 
     REPOSITORY = "repository"
     FOLDER = "folder"
+    USER = "user"
+    TEAM = "team"
     WORKFLOW = "workflow"
     WORKFLOW_RUN = "workflow-run"
     PULL_REQUEST = "pull-request"

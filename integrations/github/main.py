@@ -1,6 +1,12 @@
-from typing import cast
+from typing import Any, cast
 
 from loguru import logger
+from github.core.exporters.team_exporter import (
+    GraphQLTeamWithMembersExporter,
+    RestTeamExporter,
+)
+from github.core.exporters.user_exporter import GraphQLUserExporter
+from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.webhook.registry import register_live_events_webhooks
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -13,6 +19,7 @@ from github.clients.client_factory import (
 )
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.clients.utils import integration_config
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
 from github.core.exporters.deployment_exporter import RestDeploymentExporter
 from github.core.exporters.environment_exporter import RestEnvironmentExporter
@@ -44,7 +51,7 @@ from github.core.options import (
     ListCodeScanningAlertOptions,
     SingleRepositoryOptions,
 )
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import ObjectKind, GithubClientType
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_client import GithubWebhookClient
 
@@ -55,6 +62,7 @@ from integration import (
     GithubPullRequestConfig,
     GithubDependabotAlertConfig,
     GithubCodeScanningAlertConfig,
+    GithubTeamConfig,
 )
 
 
@@ -130,6 +138,38 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 folder_options
             ):
                 yield folder_batch
+
+
+@ocean.on_resync(ObjectKind.USER)
+async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all users in the organization."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    graphql_client = create_github_client(GithubClientType.GRAPHQL)
+    exporter = GraphQLUserExporter(graphql_client)
+
+    async for users in exporter.get_paginated_resources():
+        yield users
+
+
+@ocean.on_resync(ObjectKind.TEAM)
+async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all teams in the organization."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    config = cast(GithubTeamConfig, event.resource_config)
+    selector = config.selector
+
+    exporter: AbstractGithubExporter[Any]
+    if selector.members:
+        graphql_client = create_github_client(GithubClientType.GRAPHQL)
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+    else:
+        rest_client = create_github_client(GithubClientType.REST)
+        exporter = RestTeamExporter(rest_client)
+
+    async for teams in exporter.get_paginated_resources(None):
+        yield teams
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW)
