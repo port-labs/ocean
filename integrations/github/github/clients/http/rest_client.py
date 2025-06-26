@@ -3,7 +3,6 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from github.clients.http.base_client import AbstractGithubClient
 from loguru import logger
 import re
-from urllib.parse import parse_qs, urlparse, urlunparse
 
 
 PAGE_SIZE = 100
@@ -16,29 +15,12 @@ class GithubRestClient(AbstractGithubClient):
     def base_url(self) -> str:
         return self.github_host.rstrip("/")
 
-    def _get_next_link(self, link_header: str) -> Optional[Dict[str, Any]]:
+    def _get_next_link(self, link_header: str) -> Optional[str]:
         """
-        Extracts the URL and parama from the 'next' link in a GitHub Link header.
+        Extracts the URL from the 'next' link in a GitHub Link header.
         """
-
         match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
-        if not match:
-            return None
-
-        parsed_url = urlparse(match.group(1))
-        resource = urlunparse(
-            (
-                parsed_url.scheme,
-                parsed_url.netloc,
-                parsed_url.path,
-                "",
-                "",
-                "",
-            )
-        )
-        params = {k: v[0] if v else "" for k, v in parse_qs(parsed_url.query).items()}
-
-        return {"params": params, "resource": resource}
+        return match.group(1) if match else None
 
     async def send_paginated_request(
         self,
@@ -69,5 +51,5 @@ class GithubRestClient(AbstractGithubClient):
             ):
                 break
 
-            params = next_resource["params"]
-            resource = next_resource["resource"]
+            params = None
+            resource = next_resource
