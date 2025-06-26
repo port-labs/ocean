@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.base_client import AbstractGithubClient
+from github.helpers.utils import IgnoredError
 
 
 # Create a concrete implementation of the abstract class for testing
@@ -14,9 +15,10 @@ class ConcreteGithubClient(AbstractGithubClient):
 
     async def send_paginated_request(
         self,
-        endpoint: str,
+        resource: str,
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
+        ignored_errors: Optional[list[IgnoredError]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         # Need to yield something to make it a valid generator
         if (
@@ -84,10 +86,10 @@ class TestAbstractGithubClient:
                 headers=await client.headers,
             )
 
-    async def test_send_api_request_404_error(
+    async def test_send_api_request_404_error_ignored(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
-        # Test 404 Not Found error handling
+        # Test 404 Not Found error handling - should be ignored by default
         client = ConcreteGithubClient(
             organization="test-org",
             github_host="https://api.github.com",
@@ -105,14 +107,14 @@ class TestAbstractGithubClient:
             "port_ocean.utils.http_async_client.request",
             AsyncMock(return_value=mock_response),
         ):
-            # Should return the response instead of raising for 404
+            # Should return empty dict for 404 (ignored error)
             response = await client.send_api_request("repos/test-org/nonexistent-repo")
             assert response == {}
 
-    async def test_send_api_request_403_error(
+    async def test_send_api_request_403_error_ignored(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
-        # Test other HTTP error (e.g., 403 Forbidden)
+        # Test 403 Forbidden error handling - should be ignored by default
         client = ConcreteGithubClient(
             organization="test-org",
             github_host="https://api.github.com",
@@ -122,8 +124,58 @@ class TestAbstractGithubClient:
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 403
         mock_response.text = "Forbidden"
-        http_error = httpx.HTTPStatusError(
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "403 Forbidden", request=MagicMock(), response=mock_response
+        )
+
+        with patch(
+            "port_ocean.utils.http_async_client.request",
+            AsyncMock(return_value=mock_response),
+        ):
+            # Should return empty dict for 403 (ignored error)
+            response = await client.send_api_request("orgs/forbidden-org/repos")
+            assert response == {}
+
+    async def test_send_api_request_401_error_ignored(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        # Test 401 Unauthorized error handling - should be ignored by default
+        client = ConcreteGithubClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 401
+        mock_response.text = "Unauthorized"
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "401 Unauthorized", request=MagicMock(), response=mock_response
+        )
+
+        with patch(
+            "port_ocean.utils.http_async_client.request",
+            AsyncMock(return_value=mock_response),
+        ):
+            # Should return empty dict for 401 (ignored error)
+            response = await client.send_api_request("orgs/unauthorized-org/repos")
+            assert response == {}
+
+    async def test_send_api_request_500_error_raised(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        # Test 500 Internal Server Error - should NOT be ignored by default
+        client = ConcreteGithubClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        http_error = httpx.HTTPStatusError(
+            "500 Internal Server Error", request=MagicMock(), response=mock_response
         )
         mock_response.raise_for_status.side_effect = http_error
 
@@ -132,11 +184,40 @@ class TestAbstractGithubClient:
             AsyncMock(return_value=mock_response),
         ):
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await client.send_api_request("orgs/forbidden-org/repos")
+                await client.send_api_request("orgs/test-org/repos")
 
-            assert exc_info.value.response.status_code == 403
+            assert exc_info.value.response.status_code == 500
 
-    async def test_send_api_request_network_error(
+    async def test_send_api_request_with_custom_ignored_errors(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        # Test with custom ignored errors
+        client = ConcreteGithubClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "500 Internal Server Error", request=MagicMock(), response=mock_response
+        )
+
+        custom_ignored_errors = [IgnoredError(status=500, message="Custom 500 error")]
+
+        with patch(
+            "port_ocean.utils.http_async_client.request",
+            AsyncMock(return_value=mock_response),
+        ):
+            # Should return empty dict for 500 (custom ignored error)
+            response = await client.send_api_request(
+                "orgs/test-org/repos", ignored_errors=custom_ignored_errors
+            )
+            assert response == {}
+
+    async def test_send_api_request_network_error_raised(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
         # Test network-level HTTP error
