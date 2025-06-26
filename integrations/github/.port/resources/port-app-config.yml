@@ -43,7 +43,7 @@ resources:
             description: .description
             link: .url
             permission: .permission
-            notification_setting: .notificationsetting
+            notification_setting: .notificationSetting
             members: '[.members.nodes[].login]'
           relations:
             githubUser: '[.members.nodes[].login]'

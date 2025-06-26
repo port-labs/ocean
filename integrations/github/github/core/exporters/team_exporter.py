@@ -147,8 +147,8 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             team_data = response_data["data"]["organization"]["team"]
 
             new_members_data = team_data["members"]
-            all_member_nodes.extend(new_members_data.get("nodes", []))
-            current_page_info = new_members_data.get("pageInfo", {})
+            all_member_nodes.extend(new_members_data["nodes"])
+            current_page_info = new_members_data["pageInfo"]
 
         logger.info(
             f"Successfully fetched {len(all_member_nodes)} members for team '{team_slug}'"
