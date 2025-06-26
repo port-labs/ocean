@@ -144,7 +144,7 @@ class TestGraphQLUserExporter:
                     "organization": graphql_client.organization,
                     "first": 100,
                     "__path": "organization.samlIdentityProvider.externalIdentities",
-                    "__final_key": "edges",
+                    "__node_key": "edges",
                 },
             )
 
@@ -206,7 +206,7 @@ class TestGraphQLUserExporter:
                         "organization": graphql_client.organization,
                         "first": 100,
                         "__path": "organization.samlIdentityProvider.externalIdentities",
-                        "__final_key": "edges",
+                        "__node_key": "edges",
                     },
                 )
 
@@ -254,6 +254,6 @@ class TestGraphQLUserExporter:
                     "organization": graphql_client.organization,
                     "first": 100,
                     "__path": "organization.samlIdentityProvider.externalIdentities",
-                    "__final_key": "edges",
+                    "__node_key": "edges",
                 },
             )
