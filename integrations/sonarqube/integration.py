@@ -247,7 +247,6 @@ class SonarQubeIssueResourceConfig(CustomResourceConfig):
     selector: SonarQubeIssueSelector
 
 
-
 class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector): ...
 
 
