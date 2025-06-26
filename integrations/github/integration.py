@@ -18,11 +18,10 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from typing import Any, Literal, Optional, Type
 from loguru import logger
 from port_ocean.utils.signal import signal_handler
+from github.helpers.utils import ObjectKind
 
 
 FILE_PROPERTY_PREFIX = "file://"
-
-from github.helpers.utils import ObjectKind
 
 
 class GithubPullRequestSelector(Selector):
@@ -80,11 +79,6 @@ class GithubCodeScanningAlertSelector(Selector):
 class GithubCodeScanningAlertConfig(ResourceConfig):
     selector: GithubCodeScanningAlertSelector
     kind: Literal["code-scanning-alerts"]
-
-
-class GithubIssueConfig(ResourceConfig):
-    selector: GithubIssueSelector
-    kind: Literal["issue"]
 
 
 class GithubRepoBranchMapping(BaseModel):

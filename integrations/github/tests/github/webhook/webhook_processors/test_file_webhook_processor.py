@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
+    EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
@@ -61,6 +62,17 @@ def file_webhook_processor(
     return FileWebhookProcessor(event=mock_webhook_event)
 
 
+@pytest.fixture
+def payload() -> EventPayload:
+    return {
+        "ref": "refs/heads/main",
+        "before": "abc123",
+        "after": "def456",
+        "commits": [],
+        "repository": {"name": "test-repo", "default_branch": "main"},
+    }
+
+
 @pytest.mark.asyncio
 class TestFileWebhookProcessor:
     async def test_should_process_event_valid_push(
@@ -99,15 +111,8 @@ class TestFileWebhookProcessor:
         assert kinds == [ObjectKind.FILE]
 
     async def test_validate_payload_valid(
-        self, file_webhook_processor: FileWebhookProcessor
+        self, file_webhook_processor: FileWebhookProcessor, payload: EventPayload
     ) -> None:
-        payload = {
-            "ref": "refs/heads/main",
-            "before": "abc123",
-            "after": "def456",
-            "commits": [],
-        }
-
         assert await file_webhook_processor._validate_payload(payload) is True
 
     async def test_validate_payload_invalid_missing_fields(
@@ -149,33 +154,36 @@ class TestFileWebhookProcessor:
         self,
         file_webhook_processor: FileWebhookProcessor,
         resource_config: GithubFileResourceConfig,
+        payload: EventPayload,
     ) -> None:
-        payload = {
-            "ref": "refs/heads/main",
-            "before": "abc123",
-            "after": "def456",
-            "commits": [],
-            "repository": {"name": "other-repo"},
+
+        # Mock the exporter to return no matching files
+        mock_exporter = AsyncMock()
+        mock_exporter.fetch_commit_diff.return_value = {
+            "files": [
+                {
+                    "filename": "README.md",
+                    "status": "modified",
+                }
+            ]
         }
 
-        result = await file_webhook_processor.handle_event(payload, resource_config)
+        with patch(
+            "github.webhook.webhook_processors.file_webhook_processor.RestFileExporter",
+            return_value=mock_exporter,
+        ):
+            result = await file_webhook_processor.handle_event(payload, resource_config)
 
-        assert isinstance(result, WebhookEventRawResults)
-        assert result.updated_raw_results == []
-        assert result.deleted_raw_results == []
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == []
 
     async def test_handle_event_no_matching_files(
         self,
         file_webhook_processor: FileWebhookProcessor,
         resource_config: GithubFileResourceConfig,
+        payload: EventPayload,
     ) -> None:
-        payload = {
-            "ref": "refs/heads/main",
-            "before": "abc123",
-            "after": "def456",
-            "commits": [],
-            "repository": {"name": "test-repo"},
-        }
 
         # Mock the exporter to return no matching files
         mock_exporter = AsyncMock()
@@ -202,14 +210,8 @@ class TestFileWebhookProcessor:
         self,
         file_webhook_processor: FileWebhookProcessor,
         resource_config: GithubFileResourceConfig,
+        payload: EventPayload,
     ) -> None:
-        payload = {
-            "ref": "refs/heads/main",
-            "before": "abc123",
-            "after": "def456",
-            "commits": [],
-            "repository": {"name": "test-repo"},
-        }
 
         # Mock file content response
         file_content_response = {
@@ -266,14 +268,8 @@ class TestFileWebhookProcessor:
         self,
         file_webhook_processor: FileWebhookProcessor,
         resource_config: GithubFileResourceConfig,
+        payload: EventPayload,
     ) -> None:
-        payload = {
-            "ref": "refs/heads/main",
-            "before": "abc123",
-            "after": "def456",
-            "commits": [],
-            "repository": {"name": "test-repo"},
-        }
 
         # Mock the exporter to return deleted files
         mock_exporter = AsyncMock()
@@ -301,14 +297,8 @@ class TestFileWebhookProcessor:
         self,
         file_webhook_processor: FileWebhookProcessor,
         resource_config: GithubFileResourceConfig,
+        payload: EventPayload,
     ) -> None:
-        payload = {
-            "ref": "refs/heads/main",
-            "before": "abc123",
-            "after": "def456",
-            "commits": [],
-            "repository": {"name": "test-repo"},
-        }
 
         # Mock file content response with no content
         file_content_response = {
@@ -344,14 +334,8 @@ class TestFileWebhookProcessor:
         self,
         file_webhook_processor: FileWebhookProcessor,
         resource_config: GithubFileResourceConfig,
+        payload: EventPayload,
     ) -> None:
-        payload = {
-            "ref": "refs/heads/main",
-            "before": "abc123",
-            "after": "def456",
-            "commits": [],
-            "repository": {"name": "test-repo"},
-        }
 
         # Mock file content response
         file_content_response = {

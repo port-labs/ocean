@@ -28,14 +28,12 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
         required_keys = {"ref", "before", "after", "commits"}
-        
-        return (
-            not (required_keys - payload.keys()) and
-            "default_branch" in payload.get("repository", {})
+
+        return not (required_keys - payload.keys()) and "default_branch" in payload.get(
+            "repository", {}
         )
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        print(event.payload)
         event_type = event.headers.get("x-github-event")
 
         return event_type == "push" and event.payload.get("ref", "").startswith(
@@ -67,12 +65,9 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         for pattern in file_patterns:
             # Check if any repo_branch_mapping matches the current repo and branch
             for mapping in pattern.repos:
-                if (
-                    mapping.repo == repo_name
-                    and (
-                        mapping.branch == current_branch
-                        or (mapping.branch is None and current_branch == default_branch)
-                    )
+                if mapping.repo == repo_name and (
+                    mapping.branch == current_branch
+                    or (mapping.branch is None and current_branch == default_branch)
                 ):
                     matching_patterns.append(pattern)
                     break
