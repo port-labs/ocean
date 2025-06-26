@@ -129,7 +129,7 @@ class TestGithubRestClient:
                 method="GET",
                 params=expected_params,
                 return_full_response=True,
-                ignored_errors=None,
+                ignored_errors=[],
             )
 
     @pytest.mark.parametrize(

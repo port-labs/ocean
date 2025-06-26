@@ -32,7 +32,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         method: str = "POST",
         json_data: Optional[Dict[str, Any]] = None,
         return_full_response: bool = True,
-        ignored_errors: Optional[List[IgnoredError]] = None,
+        ignored_errors: Optional[List[IgnoredError]] = [],
     ) -> Any:
         response = await super().send_api_request(
             resource=resource,
@@ -64,7 +64,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         resource: str,
         params: Optional[Dict[str, Any]] = None,
         method: str = "POST",
-        ignored_errors: Optional[List[IgnoredError]] = None,
+        ignored_errors: Optional[List[IgnoredError]] = [],
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         params = params or {}
         path = params.pop("__path", None)

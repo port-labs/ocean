@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, Dict, List, NamedTuple, Set, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Set, Tuple
 from loguru import logger
 from typing import TYPE_CHECKING
 
@@ -98,4 +98,4 @@ def enrich_with_commit(
 
 class IgnoredError(NamedTuple):
     status: int
-    message_prefix: str
+    message: Optional[str] = None

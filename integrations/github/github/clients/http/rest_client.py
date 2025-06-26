@@ -3,7 +3,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from github.clients.http.base_client import AbstractGithubClient
 from loguru import logger
 import re
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import parse_qs, urlparse, urlunparse
 
 from github.helpers.utils import IgnoredError
 
@@ -18,10 +18,9 @@ class GithubRestClient(AbstractGithubClient):
     def base_url(self) -> str:
         return self.github_host.rstrip("/")
 
-    def _get_next_link(self, link_header: str) -> Optional[str]:
+    def _get_next_link(self, link_header: str) -> Optional[Dict[str, Any]]:
         """
-        Extracts the path and query from the 'next' link in a GitHub Link header,
-        removing the leading slash.
+        Extracts the URL and parama from the 'next' link in a GitHub Link header.
         """
 
         match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
@@ -29,24 +28,26 @@ class GithubRestClient(AbstractGithubClient):
             return None
 
         parsed_url = urlparse(match.group(1))
-        path_and_query = urlunparse(
+        resource = urlunparse(
             (
                 parsed_url.scheme,
                 parsed_url.netloc,
                 parsed_url.path,
-                parsed_url.params,
-                parsed_url.query,
+                "",
+                "",
                 "",
             )
         )
-        return path_and_query
+        params = {k: v[0] if v else "" for k, v in parse_qs(parsed_url.query).items()}
+
+        return {"params": params, "resource": resource}
 
     async def send_paginated_request(
         self,
         resource: str,
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
-        ignored_errors: Optional[List[IgnoredError]] = None,
+        ignored_errors: Optional[List[IgnoredError]] = [],
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Handle GitHub's pagination for API requests."""
         if params is None:
@@ -66,7 +67,7 @@ class GithubRestClient(AbstractGithubClient):
             )
 
             if not response or not (items := response.json()):
-                return
+                break
 
             yield items
 
@@ -75,4 +76,5 @@ class GithubRestClient(AbstractGithubClient):
             ):
                 break
 
-            resource = next_resource
+            params = next_resource["params"]
+            resource = next_resource["resource"]

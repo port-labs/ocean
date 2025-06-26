@@ -109,20 +109,10 @@ TEST_CODE_SCANNING_ALERTS = [
 ]
 
 
-@pytest.fixture
-def ignored_errors() -> list[IgnoredError]:
-    return [
-        IgnoredError(
-            status=403,
-            message_prefix="Advanced Security must be enabled for this repository to use code scanning.",
-        )
-    ]
-
-
 @pytest.mark.asyncio
 class TestRestCodeScanningAlertExporter:
     async def test_get_resource(
-        self, rest_client: GithubRestClient, ignored_errors: list[IgnoredError]
+        self, rest_client: GithubRestClient
     ) -> None:
         # Create a mock response
         mock_response = MagicMock(spec=httpx.Response)
@@ -148,14 +138,12 @@ class TestRestCodeScanningAlertExporter:
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts/42",
-                ignored_errors=ignored_errors,
             )
 
     async def test_get_paginated_resources(
         self,
         rest_client: GithubRestClient,
         mock_port_app_config: GithubPortAppConfig,
-        ignored_errors: list[IgnoredError],
     ) -> None:
         # Create an async mock to return the test alerts
 
@@ -182,11 +170,10 @@ class TestRestCodeScanningAlertExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts",
                 {"state": "open"},
-                ignored_errors=ignored_errors,
             )
 
     async def test_get_paginated_resources_with_state_filtering(
-        self, rest_client: GithubRestClient, ignored_errors: list[IgnoredError]
+        self, rest_client: GithubRestClient
     ) -> None:
         # Test with different state options
         async def mock_paginated_request(
@@ -215,11 +202,10 @@ class TestRestCodeScanningAlertExporter:
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts",
                     {"state": "open"},
-                    ignored_errors=ignored_errors,
                 )
 
     async def test_get_resource_with_different_alert_number(
-        self, rest_client: GithubRestClient, ignored_errors: list[IgnoredError]
+        self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestCodeScanningAlertExporter(rest_client)
 
@@ -241,7 +227,6 @@ class TestRestCodeScanningAlertExporter:
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts/43",
-                ignored_errors=ignored_errors,
             )
 
     async def test_handle_request_with_advanced_security_disabled_error(

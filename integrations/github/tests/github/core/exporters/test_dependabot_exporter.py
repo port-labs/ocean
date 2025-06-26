@@ -100,20 +100,11 @@ TEST_DEPENDABOT_ALERTS = [
 ]
 
 
-@pytest.fixture
-def ignored_errors() -> list[IgnoredError]:
-    return [
-        IgnoredError(
-            status=403,
-            message_prefix="Dependabot alerts are disabled for this repository",
-        )
-    ]
-
 
 @pytest.mark.asyncio
 class TestRestDependabotAlertExporter:
     async def test_get_resource(
-        self, rest_client: GithubRestClient, ignored_errors: list[IgnoredError]
+        self, rest_client: GithubRestClient
     ) -> None:
         # Create a mock response
         mock_response = MagicMock(spec=httpx.Response)
@@ -139,14 +130,12 @@ class TestRestDependabotAlertExporter:
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts/1",
-                ignored_errors=ignored_errors,
             )
 
     async def test_get_paginated_resources(
         self,
         rest_client: GithubRestClient,
         mock_port_app_config: GithubPortAppConfig,
-        ignored_errors: list[IgnoredError],
     ) -> None:
         # Create an async mock to return the test alerts
 
@@ -174,11 +163,10 @@ class TestRestDependabotAlertExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts",
                 {"state": "open,dismissed"},
-                ignored_errors=ignored_errors,
             )
 
     async def test_get_paginated_resources_with_state_filtering(
-        self, rest_client: GithubRestClient, ignored_errors: list[IgnoredError]
+        self, rest_client: GithubRestClient
     ) -> None:
         # Test with different state options
         async def mock_paginated_request(
@@ -207,11 +195,10 @@ class TestRestDependabotAlertExporter:
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts",
                     {"state": "open"},
-                    ignored_errors=ignored_errors,
                 )
 
     async def test_get_resource_with_different_alert_number(
-        self, rest_client: GithubRestClient, ignored_errors: list[IgnoredError]
+        self, rest_client: GithubRestClient
     ) -> None:
 
         exporter = RestDependabotAlertExporter(rest_client)
@@ -234,7 +221,6 @@ class TestRestDependabotAlertExporter:
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts/2",
-                ignored_errors=ignored_errors,
             )
 
     async def test_handle_request_with_dependabot_disabled_error(
@@ -268,7 +254,7 @@ class TestRestDependabotAlertExporter:
             assert result == {"__repository": "test-repo"}
 
     async def test_handle_request_paginated_with_dependabot_disabled_error(
-        self, rest_client: GithubRestClient, ignored_errors: list[IgnoredError]
+        self, rest_client: GithubRestClient
     ) -> None:
         """Test that _handle_request properly handles Dependabot disabled errors for paginated requests."""
         exporter = RestDependabotAlertExporter(rest_client)

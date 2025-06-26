@@ -37,22 +37,37 @@ class AbstractGithubClient(ABC):
     def _should_ignore_error(
         self,
         error: httpx.HTTPStatusError,
-        ignored_errors: List[IgnoredError],
         identifier: str,
+        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> bool:
-        for ignored_error in ignored_errors:
-            # Try to get message from JSON response, return False if JSON parsing fails
-            try:
-                message = error.response.json().get("message", "")
-            except (ValueError, TypeError):
-                return False
+        """
+        Check if the error should be ignored based on the ignored errors list.
+        """
+        default_ignored_errors = [
+            IgnoredError(
+                status=401,
+                message="Unauthorized access to endpoint — authentication required or token invalid",
+            ),
+            IgnoredError(
+                status=403,
+                message="Forbidden access to endpoint — insufficient permissions",
+            ),
+            IgnoredError(
+                status=404,
+                message="Resource not found at endpoint",
+            ),
+        ]
 
-            if (
-                error.response.status_code == ignored_error.status
-                and message.startswith(ignored_error.message_prefix)
-            ):
+        if ignored_errors is None:
+            ignored_errors = []
+        
+        all_ignored_errors = ignored_errors + default_ignored_errors
+
+        for ignored_error in all_ignored_errors:
+
+            if error.response.status_code == ignored_error.status:
                 logger.info(
-                    f"Ignoring error for {identifier}: {ignored_error.status} {ignored_error.message_prefix}"
+                    f"Ignoring error for {identifier}: {ignored_error.status} {ignored_error.message}"
                 )
                 return True
         return False
@@ -64,7 +79,7 @@ class AbstractGithubClient(ABC):
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
         return_full_response: bool = False,
-        ignored_errors: Optional[List[IgnoredError]] = None,
+        ignored_errors: Optional[List[IgnoredError]] = [],
     ) -> Any:
         """Send request to GitHub API with error handling and rate limiting."""
 
@@ -82,13 +97,9 @@ class AbstractGithubClient(ABC):
             return response if return_full_response else response.json()
 
         except httpx.HTTPStatusError as e:
-            if ignored_errors and self._should_ignore_error(
-                e, ignored_errors, resource
-            ):
+            if self._should_ignore_error(e, resource, ignored_errors):
                 return {}
-            if e.response.status_code == 404:
-                logger.debug(f"Resource not found at endpoint '{resource}'")
-                return {}
+
             logger.error(
                 f"GitHub API error for endpoint '{resource}': Status {e.response.status_code}, "
                 f"Method: {method}, Response: {e.response.text}"
