@@ -58,7 +58,12 @@ class EventListenerFactory:
         config = self.context.config.event_listener
         _type = config.type.lower()
         assert_message = "Invalid event listener config, expected KafkaEventListenerSettings and got {0}"
-        logger.info(f"Found event listener type: {_type}")
+        logger.info(
+            "Creating event listener",
+            type=_type,
+            integration_id=self.installation_id,
+            integration_type=self.context.config.integration.type,
+        )
 
         match _type:
             case EventListenerType.KAFKA.lower():
@@ -73,23 +78,37 @@ class EventListenerFactory:
                     self.context.config.integration.identifier,
                     self.context.config.integration.type,
                 )
+                logger.info(
+                    "Initialized Kafka event listener with configuration",
+                    brokers=config.brokers,
+                    security_enabled=config.kafka_security_enabled,
+                )
 
             case EventListenerType.POLLING.lower():
                 assert isinstance(
                     config, PollingEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = PollingEventListener(wrapped_events, config)
+                logger.info(
+                    "Initialized Polling event listener with configuration",
+                    interval=config.interval,
+                    resync_on_start=config.resync_on_start,
+                )
 
             case EventListenerType.ONCE.lower():
                 assert isinstance(
                     config, OnceEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = OnceEventListener(wrapped_events, config)
+                logger.info("Initialized Once event listener")
+
             case EventListenerType.WEBHOOKS_ONLY.lower():
                 assert isinstance(
                     config, WebhooksOnlyEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = WebhooksOnlyEventListener(wrapped_events, config)
+                logger.info("Initialized Webhooks-only event listener")
+
             case _:
                 raise UnsupportedEventListenerTypeException(
                     f"Event listener {_type} not supported"
