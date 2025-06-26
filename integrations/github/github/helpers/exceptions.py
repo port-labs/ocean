@@ -15,11 +15,3 @@ class InvalidTokenException(AuthenticationException):
 
 class GraphQLClientError(Exception):
     """Exception raised for GraphQL API errors."""
-
-
-class AdvancedSecurityNotEnabledError(Exception):
-    """Exception raised when Advanced Security is not enabled for a repository."""
-
-
-class DependabotDisabledError(Exception):
-    """Exception raised when Dependabot is disabled for a repository."""

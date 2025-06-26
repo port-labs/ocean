@@ -1,8 +1,5 @@
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.helpers.utils import (
-    enrich_with_repository,
-    extract_repo_params,
-)
+from github.helpers.utils import enrich_with_repository, extract_repo_params
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import (
