@@ -34,6 +34,7 @@ echo "Found release ${TAR_FILE}, triggering fake integration with ID: '${INTEGRA
 
 # NOTE: Runs the fake integration with the modified blueprints and install the current core for a single sync
 docker run --rm -i \
+    --user root \
     --entrypoint 'bash' \
     -v "${TAR_FULL_PATH}:/opt/dist/${TAR_FILE}" \
     -v "${TEMP_RESOURCES_DIR}:/opt/port-resources" \
@@ -49,7 +50,6 @@ docker run --rm -i \
     -e OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS="${OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS:--1}" \
     -e OCEAN__METRICS="${OCEAN__METRICS:--1}" \
     -e OCEAN__RUNTIME_MODE="${OCEAN__RUNTIME_MODE:-single_process}" \
-    -e PROMETHEUS_MULTIPROC_DIR="/tmp" \
     -e OCEAN__RESOURCES_PATH="/opt/port-resources" \
     -e APPLICATION__LOG_LEVEL="DEBUG" \
     --name=ZOMG-TEST \

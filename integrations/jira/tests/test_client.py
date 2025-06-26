@@ -235,6 +235,45 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_paginated_teams_multiple_pages(mock_jira_client: JiraClient) -> None:
+    """Test get_paginated_teams method with multiple pages"""
+    # First page response with cursor
+    page1_response = {
+        "entities": [
+            {"teamId": "team1", "name": "Team 1"},
+            {"teamId": "team2", "name": "Team 2"},
+        ],
+        "cursor": "next_page_cursor",
+    }
+
+    # Second page response without cursor (end of pagination)
+    page2_response = {
+        "entities": [
+            {"teamId": "team3", "name": "Team 3"},
+        ],
+        "cursor": None,
+    }
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [page1_response, page2_response]
+
+        teams: list[dict[str, Any]] = []
+        async for team_batch in mock_jira_client.get_paginated_teams("test_org_id"):
+            teams.extend(team_batch)
+
+        assert len(teams) == 3
+        assert teams[0]["teamId"] == "team1"
+        assert teams[1]["teamId"] == "team2"
+        assert teams[2]["teamId"] == "team3"
+
+        # Verify the second call includes the cursor
+        second_call = mock_request.call_args_list[1]
+        assert second_call[1]["params"]["cursor"] == "next_page_cursor"
+
+
+@pytest.mark.asyncio
 async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
     """Test get_paginated_team_members with example API response format"""
     page1_response = {

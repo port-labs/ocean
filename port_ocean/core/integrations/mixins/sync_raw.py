@@ -325,7 +325,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         passed_entities = []
+        number_of_raw_results = 0
+        number_of_transformed_entities = 0
+
         if raw_results:
+            number_of_raw_results += len(raw_results)
             calculation_result = await self._register_resource_raw(
                 resource_config,
                 raw_results,
@@ -334,12 +338,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             errors.extend(calculation_result.errors)
             passed_entities = list(calculation_result.entity_selector_diff.passed)
+            number_of_transformed_entities += calculation_result.number_of_transformed_entities
             logger.info(
                 f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
             )
 
-        number_of_raw_results = 0
-        number_of_transformed_entities = 0
+
+
         for generator in async_generators:
             try:
                 async for items in generator:
@@ -612,22 +617,23 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(f"Process finished for {resource.kind} with index {index}")
 
     async def process_resource(self, resource: ResourceConfig, index: int, user_agent_type: UserAgentType) -> tuple[list[Entity], list[Exception]]:
-            if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
-                id = uuid.uuid4()
-                logger.info(f"Starting subprocess with id {id}")
-                file_ipc_map = {
-                    "process_resource": FileIPC(id, "process_resource",([],[IntegrationSubProcessFailedException(f"Subprocess failed for {resource.kind} with index {index}")])),
-                    "topological_entities": FileIPC(id, "topological_entities",[]),
-                }
-                process = ProcessWrapper(target=self.process_resource_in_subprocess, args=(file_ipc_map,resource,index,user_agent_type))
-                process.start()
-                await process.join_async()
+            with logger.contextualize(resource_kind=resource.kind, index=index):
+                if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
+                    id = uuid.uuid4()
+                    logger.info(f"Starting subprocess with id {id}")
+                    file_ipc_map = {
+                        "process_resource": FileIPC(id, "process_resource",([],[IntegrationSubProcessFailedException(f"Subprocess failed for {resource.kind} with index {index}")])),
+                        "topological_entities": FileIPC(id, "topological_entities",[]),
+                    }
+                    process = ProcessWrapper(target=self.process_resource_in_subprocess, args=(file_ipc_map,resource,index,user_agent_type))
+                    process.start()
+                    await process.join_async()
 
-                event.entity_topological_sorter.entities.extend(file_ipc_map["topological_entities"].load())
-                return file_ipc_map["process_resource"].load()
+                    event.entity_topological_sorter.entities.extend(file_ipc_map["topological_entities"].load())
+                    return file_ipc_map["process_resource"].load()
 
-            else:
-                return await self._process_resource(resource,index,user_agent_type)
+                else:
+                    return await self._process_resource(resource,index,user_agent_type)
 
     async def _process_resource(self,resource: ResourceConfig, index: int, user_agent_type: UserAgentType)-> tuple[list[Entity], list[Exception]]:
         # create resource context per resource kind, so resync method could have access to the resource
@@ -730,6 +736,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             logger.info("Finished executing resync_complete hooks")
 
+        return True
+
 
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
@@ -800,7 +808,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise
             else:
-                await self.resync_reconciliation(
+                success = await self.resync_reconciliation(
                     creation_results,
                     did_fetched_current_state,
                     user_agent_type,
@@ -808,6 +816,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     silent
                 )
                 await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+                return success
             finally:
                 await ocean.app.cache_provider.clear()
                 if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
