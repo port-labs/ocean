@@ -617,22 +617,23 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(f"Process finished for {resource.kind} with index {index}")
 
     async def process_resource(self, resource: ResourceConfig, index: int, user_agent_type: UserAgentType) -> tuple[list[Entity], list[Exception]]:
-            if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
-                id = uuid.uuid4()
-                logger.info(f"Starting subprocess with id {id}")
-                file_ipc_map = {
-                    "process_resource": FileIPC(id, "process_resource",([],[IntegrationSubProcessFailedException(f"Subprocess failed for {resource.kind} with index {index}")])),
-                    "topological_entities": FileIPC(id, "topological_entities",[]),
-                }
-                process = ProcessWrapper(target=self.process_resource_in_subprocess, args=(file_ipc_map,resource,index,user_agent_type))
-                process.start()
-                await process.join_async()
+            with logger.contextualize(resource_kind=resource.kind, index=index):
+                if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
+                    id = uuid.uuid4()
+                    logger.info(f"Starting subprocess with id {id}")
+                    file_ipc_map = {
+                        "process_resource": FileIPC(id, "process_resource",([],[IntegrationSubProcessFailedException(f"Subprocess failed for {resource.kind} with index {index}")])),
+                        "topological_entities": FileIPC(id, "topological_entities",[]),
+                    }
+                    process = ProcessWrapper(target=self.process_resource_in_subprocess, args=(file_ipc_map,resource,index,user_agent_type))
+                    process.start()
+                    await process.join_async()
 
-                event.entity_topological_sorter.entities.extend(file_ipc_map["topological_entities"].load())
-                return file_ipc_map["process_resource"].load()
+                    event.entity_topological_sorter.entities.extend(file_ipc_map["topological_entities"].load())
+                    return file_ipc_map["process_resource"].load()
 
-            else:
-                return await self._process_resource(resource,index,user_agent_type)
+                else:
+                    return await self._process_resource(resource,index,user_agent_type)
 
     async def _process_resource(self,resource: ResourceConfig, index: int, user_agent_type: UserAgentType)-> tuple[list[Entity], list[Exception]]:
         # create resource context per resource kind, so resync method could have access to the resource
