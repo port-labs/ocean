@@ -43,19 +43,21 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        added_files = set()
-        modified_files = set()
+        changed_files = set()
         removed_files = set()
 
         for commit in payload.get("commits", []):
-            added_files.update(commit.get("added", []))
-            modified_files.update(commit.get("modified", []))
+            changed_files.update(commit.get("added", []))
+            changed_files.update(commit.get("modified", []))
             removed_files.update(commit.get("removed", []))
 
-        # Process added, modified files and deleted files
-        changed_files = added_files | modified_files | removed_files
+        # Process changed and deleted files
         matching_files = sorted(
-            [path for path in changed_files if fnmatch.fnmatch(path, search_path)]
+            [
+                path
+                for path in changed_files | removed_files
+                if fnmatch.fnmatch(path, search_path)
+            ]
         )
 
         updated_results = []
@@ -85,8 +87,7 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         updated_results = [
             file
             for file in repo_enriched_files
-            if file["file"]["file_path"] in added_files
-            or file["file"]["file_path"] in modified_files
+            if file["file"]["file_path"] in changed_files
         ]
         deleted_results = [
             file
