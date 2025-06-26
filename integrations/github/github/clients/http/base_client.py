@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
-from loguru import logger
 import httpx
+from loguru import logger
 
 from github.helpers.utils import IgnoredError
 
