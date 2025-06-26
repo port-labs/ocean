@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added dev suffix to version number
 
 
-## 0.1.102 (2025-06-26)
+## 0.1.102-dev (2025-06-26)
 
 
 ### Improvements
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.20
 
 
-## 0.1.101 (2025-06-25)
+## 0.1.101-dev (2025-06-25)
 
 
 ### Improvements
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.19
 
 
-## 0.1.100 (2025-06-24)
+## 0.1.100-dev (2025-06-24)
 
 
 ### Improvements
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.18
 
 
-## 0.1.99 (2025-06-23)
+## 0.1.99-dev (2025-06-23)
 
 
 ### Improvements
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.17
 
 
-## 0.1.98 (2025-06-22)
+## 0.1.98-dev (2025-06-22)
 
 
 ### Improvements
@@ -53,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.16
 
 
-## 0.1.97 (2025-06-22)
+## 0.1.97-dev (2025-06-22)
 
 
 ### Improvements

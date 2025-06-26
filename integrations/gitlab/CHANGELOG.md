@@ -15,7 +15,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Bumped ocean version to ^0.24.20
 
 
-0.2.92 (2025-06-25)
+0.2.92-post1 (2025-06-25)
 ===================
 
 ### Improvements
@@ -23,7 +23,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Bumped ocean version to ^0.24.19
 
 
-0.2.91 (2025-06-24)
+0.2.91-post1 (2025-06-24)
 ===================
 
 ### Improvements
@@ -31,7 +31,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Bumped ocean version to ^0.24.18
 
 
-0.2.90 (2025-06-23)
+0.2.90-post1 (2025-06-23)
 ===================
 
 ### Improvements
@@ -39,7 +39,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Bumped ocean version to ^0.24.17
 
 
-0.2.89 (2025-06-22)
+0.2.89-post1 (2025-06-22)
 ===================
 
 ### Improvements
@@ -47,7 +47,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Bumped ocean version to ^0.24.16
 
 
-0.2.88 (2025-06-22)
+0.2.88-post1 (2025-06-22)
 ===================
 
 ### Improvements
