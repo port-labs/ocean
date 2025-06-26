@@ -24,7 +24,7 @@ from utils.aws import (
     get_sessions,
     validate_request,
     get_arn_for_account_id,
-    initialize_aws_credentials
+    initialize_aws_credentials,
 )
 from port_ocean.context.ocean import ocean
 from loguru import logger
@@ -500,6 +500,5 @@ async def on_start() -> None:
             "No live events api key provided"
             "Without setting up the webhook, the integration will not export live changes from AWS"
         )
-        
-        await initialize_aws_credentials()
 
+        await initialize_aws_credentials()
