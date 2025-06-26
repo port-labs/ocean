@@ -16,6 +16,8 @@ class ObjectKind(StrEnum):
     """Enum for GitHub resource kinds."""
 
     REPOSITORY = "repository"
+    USER = "user"
+    TEAM = "team"
     WORKFLOW = "workflow"
     WORKFLOW_RUN = "workflow-run"
     PULL_REQUEST = "pull-request"
