@@ -154,6 +154,11 @@ class TeamSelector(Selector):
         default=False,
         description="Whether to include the members of the team, defaults to false",
     )
+    expand_nested_members: bool = Field(
+        alias="expandNestedMembers",
+        default=False,
+        description="Whether to recursively expand nested group members (Azure DevOps groups and Entra groups), defaults to false",
+    )
 
 
 class AzureDevopsTeamResourceConfig(ResourceConfig):
