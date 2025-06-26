@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Bumped ocean version to ^0.24.19
+- Bumped ocean version to ^0.24.20
 
 
 ## 0.2.26 (2025-06-25)
