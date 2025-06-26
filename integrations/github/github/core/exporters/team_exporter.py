@@ -14,9 +14,9 @@ from github.helpers.gql_queries import (
 
 
 class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[ExporterOptionT: SingleTeamOptions](
-        self, options: ExporterOptionT
-    ) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> RAW_ITEM:
         url = f"{self.client.base_url}/orgs/{self.client.organization}/teams/{options['slug']}"
         data = await self.client.send_api_request(url)
         return data
@@ -32,9 +32,9 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
 class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]):
     MEMBER_PAGE_SIZE = 30
 
-    async def get_resource[ExporterOptionT: SingleTeamOptions](
-        self, options: ExporterOptionT
-    ) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> RAW_ITEM:
         variables = {
             "slug": options["slug"],
             "organization": self.client.organization,
