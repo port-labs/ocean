@@ -102,3 +102,24 @@ resources:
           relations:
             application: .__application.metadata.uid
             image: 'if .kind == "Deployment" then .liveState | fromjson | .spec.template.spec.containers[0].image else null end'
+  - kind: rollout
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .__application.metadata.uid + "-" + .kind + "-" + .name
+          title: .__application.metadata.name + "-" + .kind + "-" + .name
+          blueprint: '"argocdRollout"'
+          properties:
+            strategy: '.liveState | fromjson | .spec.strategy | keys[0]'
+            replicas: '.liveState | fromjson | .spec.replicas'
+            namespace: .namespace
+            status: '.liveState | fromjson | .status.phase // "Unknown"'
+            syncStatus: .syncPhase
+            healthStatus: .health.status
+            labels: '.liveState | fromjson | .metadata.labels'
+            annotations: '.liveState | fromjson | .metadata.annotations'
+          relations:
+            application: .__application.metadata.uid
+            namespace: '.namespace + "-" + .__application.spec.destination.name'

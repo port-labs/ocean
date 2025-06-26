@@ -12,6 +12,7 @@ features:
       - kind: deployment-history
       - kind: kubernetes-resource
       - kind: managed-resource
+      - kind: rollout
 saas:
   enabled: false
 configurations:
