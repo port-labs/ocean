@@ -46,7 +46,7 @@ resources:
             notification_setting: .notificationsetting
             members: '[.members.nodes[].login]'
           relations:
-            github_user: '[.members.nodes[].login]'
+            githubUser: '[.members.nodes[].login]'
   - kind: pull-request
     selector:
       query: 'true'

@@ -27,7 +27,7 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
         if not event.payload.get("action"):
             return False
 
-        if event.payload["action"] not in (TEAM_EVENTS):
+        if event.payload["action"] not in TEAM_EVENTS:
             return False
 
         event_name = event.headers.get("x-github-event")

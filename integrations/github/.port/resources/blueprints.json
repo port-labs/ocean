@@ -171,7 +171,7 @@
         "aggregationProperties": {},
         "relations": {
             "github_user": {
-                "title": "github_user",
+                "title": "Github User",
                 "target": "githubUser",
                 "required": false,
                 "many": true

@@ -14,9 +14,9 @@ from github.helpers.gql_queries import (
 
 
 class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionT: SingleTeamOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionT: SingleTeamOptions](
+        self, options: ExporterOptionT
+    ) -> RAW_ITEM:
         url = f"{self.client.base_url}/orgs/{self.client.organization}/teams/{options['slug']}"
         data = await self.client.send_api_request(url)
         return data
@@ -32,9 +32,9 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
 class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]):
     MEMBER_PAGE_SIZE = 30
 
-    async def get_resource[
-        ExporterOptionT: SingleTeamOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionT: SingleTeamOptions](
+        self, options: ExporterOptionT
+    ) -> RAW_ITEM:
         variables = {
             "slug": options["slug"],
             "organization": self.client.organization,
@@ -49,9 +49,9 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
         data = res.json()
         team = data["data"]["organization"]["team"]
 
-        members_data = team.get("members", {})
-        member_nodes = members_data.get("nodes", [])
-        member_page_info = members_data.get("pageInfo", {})
+        members_data = team["members"]
+        member_nodes = members_data["nodes"]
+        member_page_info = members_data["pageInfo"]
 
         if member_page_info.get("hasNextPage"):
             all_member_nodes_for_team = await self.get_paginated_members(
@@ -62,8 +62,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             )
             team["members"]["nodes"] = all_member_nodes_for_team
 
-        if "pageInfo" in team["members"]:
-            del team["members"]["pageInfo"]
+        del team["members"]["pageInfo"]
 
         return team
 

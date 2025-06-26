@@ -44,7 +44,7 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
         team = payload["team"]
         member = payload["member"]
 
-        logger.info(f"Processing org event: {action} for team {team['name']}")
+        logger.info(f"Processing {action} event for team {team['name']}")
 
         config = cast(GithubTeamConfig, resource_config)
         selector = config.selector
@@ -76,14 +76,11 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
             SingleTeamOptions(slug=team["slug"])
         )
 
-        logger.info(
-            f"Upserting team '{data_to_upsert.get('name', team['name'])}' due to membership update"
-        )
+        logger.info(f"Upserting team '{data_to_upsert.get('name', team['name'])}'")
+
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        if not {"action", "team", "member"} <= payload.keys():
-            return False
-        return True
+        return {"action", "team", "member"} <= payload.keys()

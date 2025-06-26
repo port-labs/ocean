@@ -64,7 +64,7 @@ class GithubGraphQLClient(AbstractGithubClient):
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         params = params or {}
         path = params.pop("__path", None)
-        final_key = params.pop("__final_key", "nodes")
+        node_key = params.pop("__node_key", "nodes")
         if not path:
             raise GraphQLClientError(
                 "GraphQL pagination requires a '__path' in params (e.g., 'organization.repositories')"
@@ -79,7 +79,7 @@ class GithubGraphQLClient(AbstractGithubClient):
                 self.base_url, method=method, json_data=payload
             )
             data = response.json()["data"]
-            nodes = self._extract_nodes(data, path, final_key)
+            nodes = self._extract_nodes(data, path, node_key)
             if not nodes:
                 return
 
@@ -92,13 +92,13 @@ class GithubGraphQLClient(AbstractGithubClient):
             logger.debug(f"Next page cursor: {cursor}")
 
     def _extract_nodes(
-        self, data: Dict[str, Any], path: str, final_key: str = "nodes"
+        self, data: Dict[str, Any], path: str, node_key: str = "nodes"
     ) -> List[Dict[str, Any]]:
         keys = path.split(".")
-        current: Any = data
+        current: dict[str, Any] = data
         for key in keys:
             current = current[key]
-        return current[final_key]
+        return current[node_key]
 
     def _extract_page_info(self, data: Dict[str, Any], path: str) -> Dict[str, Any]:
         keys = path.split(".")
