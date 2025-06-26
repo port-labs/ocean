@@ -43,21 +43,33 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        changed_files = set()
-        for commit in payload.get("commits", []):
-            changed_files.update(commit.get("modified", []))
-            changed_files.update(commit.get("added", []))
+        added_files = set()
+        modified_files = set()
+        removed_files = set()
 
+        for commit in payload.get("commits", []):
+            added_files.update(commit.get("added", []))
+            modified_files.update(commit.get("modified", []))
+            removed_files.update(commit.get("removed", []))
+
+        # Process added, modified files and deleted files
+        changed_files = added_files | modified_files | removed_files
         matching_files = sorted(
             [path for path in changed_files if fnmatch.fnmatch(path, search_path)]
         )
+
+        updated_results = []
+        deleted_results = []
+
         if not matching_files:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
+        commit_before = payload.get("before")
+        ref = commit_before if commit_before and removed_files else payload["after"]
         file_batch = [
-            {"project_id": str(project_id), "path": file_path, "ref": payload["after"]}
+            {"project_id": str(project_id), "path": file_path, "ref": ref}
             for file_path in matching_files
         ]
 
@@ -66,13 +78,25 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             context=f"project:{project_id}",
             skip_parsing=selector.files.skip_parsing,
         )
-        updated_results = await self._gitlab_webhook_client._enrich_files_with_repos(
-            processed_batch
+        repo_enriched_files = (
+            await self._gitlab_webhook_client._enrich_files_with_repos(processed_batch)
         )
 
+        updated_results = [
+            file
+            for file in repo_enriched_files
+            if file["file"]["file_path"] in added_files
+            or file["file"]["file_path"] in modified_files
+        ]
+        deleted_results = [
+            file
+            for file in repo_enriched_files
+            if file["file"]["file_path"] in removed_files
+        ]
+
         logger.info(
-            f"Completed push event processing; updated {len(updated_results)} entities"
+            f"Completed push event processing; updated {len(updated_results)} entities, deleted {len(deleted_results)} entities"
         )
         return WebhookEventRawResults(
-            updated_raw_results=updated_results, deleted_raw_results=[]
+            updated_raw_results=updated_results, deleted_raw_results=deleted_results
         )
