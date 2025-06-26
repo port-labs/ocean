@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Team kinds
 
 
-## 0.2.11 (2025-06-26)
+## 0.2.11-dev (2025-06-26)
 
 
 ### Improvements
@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.20
 
 
-## 0.2.10 (2025-06-25)
+## 0.2.10-dev (2025-06-25)
 
 
 ### Improvements
@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.19
 
 
-## 0.2.9 (2025-06-24)
+## 0.2.9-dev (2025-06-24)
 
 
 ### Improvements
@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.18
 
 
-## 0.2.8 (2025-06-23)
+## 0.2.8-dev (2025-06-23)
 
 
 ### Improvements
@@ -57,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.17
 
 
-## 0.2.7 (2025-06-22)
+## 0.2.7-dev (2025-06-22)
 
 
 ### Improvements
@@ -65,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.16
 
 
-## 0.2.6 (2025-06-22)
+## 0.2.6-dev (2025-06-22)
 
 
 ### Improvements
