@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+
+## 0.3.0-dev (2025-06-26)
+
+
+### Improvements
+
+- Added dev suffix to version number
+
+
+## 0.3.0-dev (2025-06-25)
+
+
+### Features
+
+- Added support for User kinds
+- Added support for Team kinds
+
+
+## 0.2.11 (2025-06-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+## 0.2.10 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
 ## 0.2.9 (2025-06-24)
 
 
