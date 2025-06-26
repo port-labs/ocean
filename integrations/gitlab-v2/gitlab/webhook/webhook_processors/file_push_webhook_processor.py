@@ -68,7 +68,6 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        # Create separate batches for changed and removed files
         changed_file_batch = [
             {"project_id": str(project_id), "path": file_path, "ref": payload["after"]}
             for file_path in matching_files
@@ -80,7 +79,6 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             if file_path in removed_files
         ]
 
-        # Process changed files with the latest reference
         if changed_file_batch:
             processed_changed_batch = (
                 await self._gitlab_webhook_client._process_file_batch(
@@ -95,7 +93,6 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 )
             )
 
-        # Process removed files with the previous reference
         if removed_file_batch:
             processed_removed_batch = (
                 await self._gitlab_webhook_client._process_file_batch(
