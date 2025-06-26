@@ -1,6 +1,5 @@
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import (
-    IgnoredError,
     enrich_with_repository,
     extract_repo_params,
 )

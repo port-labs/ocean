@@ -1,5 +1,4 @@
 from typing import Any, AsyncGenerator
-from github.helpers.utils import IgnoredError
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
@@ -100,12 +99,9 @@ TEST_DEPENDABOT_ALERTS = [
 ]
 
 
-
 @pytest.mark.asyncio
 class TestRestDependabotAlertExporter:
-    async def test_get_resource(
-        self, rest_client: GithubRestClient
-    ) -> None:
+    async def test_get_resource(self, rest_client: GithubRestClient) -> None:
         # Create a mock response
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200

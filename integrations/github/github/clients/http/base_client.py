@@ -60,7 +60,7 @@ class AbstractGithubClient(ABC):
 
         if ignored_errors is None:
             ignored_errors = []
-        
+
         all_ignored_errors = ignored_errors + default_ignored_errors
 
         for ignored_error in all_ignored_errors:
