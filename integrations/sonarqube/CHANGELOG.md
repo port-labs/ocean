@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.197 (2025-06-20)
 
+
 ### Bug fix
 
 - Added metrics check to webhook processors
