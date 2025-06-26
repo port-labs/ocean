@@ -1964,6 +1964,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Breaking Changes
 
 - Changed the mergeRequest kind to merge-request (PORT-4327)
+- Fixed a bug that caused the gitops parsing to fail (#1)
 
 ### Bug Fixes
 
