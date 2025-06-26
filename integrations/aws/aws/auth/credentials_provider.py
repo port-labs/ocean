@@ -17,8 +17,6 @@ class CredentialProvider(ABC):
     Base class for credential providers.
     """
 
-    _integration_session = AioSession()
-
     @abstractmethod
     async def get_credentials(self, **kwargs: Any) -> AioCredentialsType: ...
 
@@ -48,8 +46,9 @@ class StaticCredentialProvider(CredentialProvider):
 
     async def get_session(self, **kwargs: Any) -> AioSession:
         credentials = await self.get_credentials(**kwargs)
-        setattr(self._integration_session, "_credentials", credentials)
-        return self._integration_session
+        session = AioSession()
+        setattr(session, "_credentials", credentials)
+        return session
 
 
 class AssumeRoleProvider(CredentialProvider):

@@ -182,24 +182,23 @@ class MultiAccountStrategy(AWSSessionStrategy):
             )
         return True
 
+    async def _create_and_log_session(self, arn: str, session_name: str = "OceanRoleSession") -> AioSession:
+        session_kwargs = {
+            "region": None,
+            "role_arn": arn,
+            "role_session_name": session_name,
+        }
+        if self.config.get("external_id"):
+            session_kwargs["external_id"] = self.config.get("external_id")
+        session = await self.provider.get_session(**session_kwargs)
+        async with session.create_client("sts", region_name=None) as sts:
+            identity = await sts.get_caller_identity()
+            logger.info(f"Successfully assumed role: {arn} as {identity['Arn']}")
+        return session
+
     async def _can_assume_role(self, arn: str) -> bool:
         try:
-            session_kwargs = {
-                "region": None,
-                "role_arn": arn,
-                "role_session_name": "SanityCheckSession",
-            }
-            
-            # Only add external_id if it's configured
-            if self.config.get("external_id"):
-                session_kwargs["external_id"] = self.config.get("external_id")
-            
-            session = await self.provider.get_session(**session_kwargs)
-            async with session.create_client("sts", region_name=None) as sts:
-                identity = await sts.get_caller_identity()
-                logger.debug(
-                    f"Assumed role {arn} as {identity['Arn']} for healthcheck."
-                )
+            session = await self._create_and_log_session(arn, session_name="SanityCheckSession")
             return True
         except CredentialsProviderError as e:
             logger.error(
@@ -288,20 +287,4 @@ class MultiAccountStrategy(AWSSessionStrategy):
             raise AWSSessionError(f"Session error for ARN {arn}: {e}") from e
 
     async def _get_account_session(self, arn: str) -> AioSession:
-        # Use the provided ARN directly for AssumeRole
-        session_kwargs = {
-            "region": None,
-            "role_arn": arn,
-            "role_session_name": "RoleSessionName",
-        }
-        
-        # Only add external_id if it's configured
-        if self.config.get("external_id"):
-            session_kwargs["external_id"] = self.config.get("external_id")
-
-        session = await self.provider.get_session(**session_kwargs)
-        # Log the assumed role identity
-        async with session.create_client("sts", region_name=None) as sts:
-            identity = await sts.get_caller_identity()
-            logger.info(f"Successfully assumed role: {arn} as {identity['Arn']}")
-        return session
+        return await self._create_and_log_session(arn, session_name="OceanRoleSession")

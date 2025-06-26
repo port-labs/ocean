@@ -40,10 +40,15 @@ from utils.misc import (
 )
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
+    stream_async_iterators_tasks,
 )
 import functools
 from aiobotocore.session import AioSession
 from aws.auth.utils import CredentialsProviderError, AWSSessionError
+
+# --- Concurrency configuration ---
+ACCOUNT_CONCURRENCY_LIMIT = 8  # Number of accounts processed in parallel
+REGION_CONCURRENCY_LIMIT = 4   # Number of regions per account processed in parallel
 
 
 async def _handle_global_resource_resync(
@@ -111,25 +116,29 @@ async def resync_resources_for_account(
         return
 
     logger.info(
-        f"Getting sessions for account {account_id} (parallelizing regions, limit 5)"
+        f"Getting sessions for account {account_id} (parallelizing regions, limit {REGION_CONCURRENCY_LIMIT})"
     )
-    region_semaphore = asyncio.Semaphore(5)
+    region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
     selector = aws_resource_config.selector
+    region_tasks = []
     async for session, region in get_sessions(selector, arn=account["Arn"]):
-        async for batch in semaphore_async_iterator(
-            region_semaphore,
-            functools.partial(
-                sync_account_region_resources,
-                kind,
-                session,
-                region,
-                aws_resource_config,
-                account_id,
-                errors,
-                error_regions,
-            ),
-        ):
-            yield batch
+        region_tasks.append(
+            semaphore_async_iterator(
+                region_semaphore,
+                functools.partial(
+                    sync_account_region_resources,
+                    kind,
+                    session,
+                    region,
+                    aws_resource_config,
+                    account_id,
+                    errors,
+                    error_regions,
+                ),
+            )
+        )
+    async for batch in stream_async_iterators_tasks(*region_tasks):
+        yield batch
 
     logger.info(f"Completed processing regions for account {account_id}")
 
@@ -143,19 +152,26 @@ async def resync_resources_for_account(
 
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind in iter(ResourceKindsWithSpecialHandling):
+    if kind in list(ResourceKindsWithSpecialHandling):
         return
 
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    account_semaphore = asyncio.Semaphore(10)
+    account_semaphore = asyncio.Semaphore(ACCOUNT_CONCURRENCY_LIMIT)
+    account_tasks = []
     async for account in get_accounts():
-        async for batch in semaphore_async_iterator(
-            account_semaphore,
-            functools.partial(
-                resync_resources_for_account, account, kind, aws_resource_config
-            ),
-        ):
-            yield batch
+        account_tasks.append(
+            semaphore_async_iterator(
+                account_semaphore,
+                functools.partial(
+                    resync_resources_for_account,
+                    account,
+                    kind,
+                    aws_resource_config,
+                ),
+            )
+        )
+    async for batch in stream_async_iterators_tasks(*account_tasks):
+        yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
