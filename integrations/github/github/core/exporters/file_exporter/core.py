@@ -42,6 +42,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         logger.info(f"Fetching metadata for repository: {repo_name}")
 
         response = await self.client.send_api_request(url)
+        print("***********************", "called_again")
         return response
 
     async def get_resource[
@@ -91,7 +92,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Processing repository {repo_name} with {len(files)} file patterns"
             )
 
-            gql, rest = await self.collect_matched_files(repo_name, files)
+            repo_obj = await self.get_repository_metadata(repo_name)
+            branch = data.get("branch", repo_obj["default_branch"])
+
+            gql, rest = await self.collect_matched_files(repo_name, files, branch)
             graphql_files.extend(gql)
             rest_files.extend(rest)
 
@@ -191,8 +195,8 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         async for batch_result in self.process_files_in_batches(files):
             repo_name = batch_result["repo"]
             branch = batch_result["branch"]
-            repository_data = batch_result["file_data"]
-            repository_obj = repository_data["repository"]
+            retrieved_files = batch_result["file_data"]
+            repository_obj = await self.get_repository_metadata(repo_name)
 
             repo_branch_files = [
                 entry
@@ -204,17 +208,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 entry["file_path"]: entry["skip_parsing"] for entry in repo_branch_files
             }
 
-            batch_files = []
-            retrieved_files = {}
-
-            for field_name, file_data in repository_obj.items():
-                try:
-                    content = file_data["text"]
-                    retrieved_files[field_name] = file_data
-                except (KeyError, TypeError):
-                    repository_obj[field_name] = file_data
-
             logger.debug(f"Retrieved {len(retrieved_files)} files from GraphQL batch")
+
+            batch_files = []
 
             for field_name, file_data in retrieved_files.items():
                 file_index = extract_file_index(field_name)
@@ -320,17 +316,15 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             branch,
             result["metadata"],
             repository,
-            branch,
         )
 
     async def _resolve_file_references(
         self,
         content: Any,
         parent_dir: str,
-        ref: str,
+        branch: str,
         file_metadata: Dict[str, Any],
         repo_metadata: Dict[str, Any],
-        branch: str,
     ) -> FileObject:
         """
         Process parsed content and resolve file references.
@@ -342,19 +336,17 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 result = await self._process_dict_content(
                     content,
                     parent_dir,
-                    ref,
+                    branch,
                     file_metadata,
                     repo_metadata,
-                    branch,
                 )
             case list():
                 result = await self._process_list_content(
                     content,
                     parent_dir,
-                    ref,
+                    branch,
                     file_metadata,
                     repo_metadata,
-                    branch,
                 )
             case _:
                 result = FileObject(
@@ -373,7 +365,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         branch: str,
         file_info: Dict[str, Any],
         repo_info: Dict[str, Any],
-        branch_name: str,
     ) -> FileObject:
         """Process dictionary items and resolve file references."""
         tasks = [
@@ -387,7 +378,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         return FileObject(
             content=result,
             repository=repo_info,
-            branch=branch_name,
+            branch=branch,
             metadata=file_info,
         )
 
@@ -398,7 +389,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         branch: str,
         file_info: Dict[str, Any],
         repo_info: Dict[str, Any],
-        branch_name: str,
     ) -> FileObject:
         """Process each dict item in the list concurrently, resolving file references."""
 
@@ -419,7 +409,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         return FileObject(
             content=processed_items,
             repository=repo_info,
-            branch=branch_name,
+            branch=branch,
             metadata=file_info,
         )
 

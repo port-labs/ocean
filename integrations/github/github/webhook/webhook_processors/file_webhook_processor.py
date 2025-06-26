@@ -58,8 +58,11 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         matching_patterns: list[GithubFilePattern] = []
         for pattern in file_patterns:
-            if repo_name in pattern.repos and pattern.branch == current_branch:
-                matching_patterns.append(pattern)
+            # Check if any repo_branch_mapping matches the current repo and branch
+            for mapping in pattern.repo_branch_mapping:
+                if mapping.repo == repo_name and mapping.branch == current_branch:
+                    matching_patterns.append(pattern)
+                    break
 
         if not matching_patterns:
             logger.info(
@@ -107,7 +110,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                         FileContentOptions(
                             repo_name=repo_name,
                             file_path=file_path,
-                            branch=pattern.branch,
+                            branch=current_branch,
                         )
                     )
 
@@ -123,7 +126,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                         repository=repository,
                         file_path=file_path,
                         skip_parsing=pattern.skip_parsing,
-                        branch=pattern.branch,
+                        branch=current_branch,
                         metadata=file_content_response,
                     )
 

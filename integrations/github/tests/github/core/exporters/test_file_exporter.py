@@ -48,6 +48,7 @@ TEST_REPO_METADATA = {
     "description": "Test repository",
     "private": False,
     "html_url": "https://github.com/test-org/repo1",
+    "default_branch": "main",
 }
 
 TEST_TREE_ENTRIES: List[Dict[str, Any]] = [
@@ -152,6 +153,9 @@ class TestRestFileExporter:
                 exporter, "collect_matched_files", AsyncMock(return_value=([], []))
             ),
             patch.object(
+                exporter, "get_repository_metadata", AsyncMock(return_value=TEST_REPO_METADATA)
+            ),
+            patch.object(
                 exporter, "process_graphql_files", return_value=mock_graphql_generator()
             ),
             patch.object(
@@ -196,6 +200,9 @@ class TestRestFileExporter:
         with (
             patch.object(
                 exporter, "collect_matched_files", AsyncMock(return_value=([], []))
+            ),
+            patch.object(
+                exporter, "get_repository_metadata", AsyncMock(return_value=TEST_REPO_METADATA)
             ),
             patch.object(
                 exporter, "process_graphql_files", return_value=mock_graphql_generator()

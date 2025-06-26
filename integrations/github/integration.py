@@ -15,7 +15,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from typing import Any, Literal, Type
+from typing import Any, Literal, Optional, Type
 from loguru import logger
 from port_ocean.utils.signal import signal_handler
 
@@ -71,18 +71,25 @@ class GithubIssueConfig(ResourceConfig):
     kind: Literal["issue"]
 
 
+class GithubRepoBranchMapping(BaseModel):
+    repo: str = Field(
+        alias="repo",
+        description="Specify the repository to fetch files from",
+    )
+    branch: Optional[str] = Field(
+        default=None,
+        description="Specify the branch to fetch files from",
+    )
+
+
 class GithubFilePattern(BaseModel):
     path: str = Field(
         alias="path",
         description="Specify the path to match files from",
     )
-    branch: str = Field(
-        alias="branch",
-        description="Specify the branch to fetch files from",
-    )
-    repos: list[str] = Field(
-        alias="repos",
-        description="Specify the repositories to fetch files from",
+    repo_branch_mapping: list[GithubRepoBranchMapping] = Field(
+        alias="repoBranchMapping",
+        description="Specify the repositories and branches to fetch files from",
     )
     skip_parsing: bool = Field(
         default=False,

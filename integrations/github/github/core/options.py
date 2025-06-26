@@ -147,7 +147,7 @@ class FileSearchOptions(TypedDict):
 
     path: Required[str]
     skip_parsing: Required[bool]
-    branch: Required[str]
+    branch: NotRequired[Optional[str]]
 
 
 class ListFileSearchOptions(TypedDict):

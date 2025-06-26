@@ -98,10 +98,12 @@ def build_repo_path_map(
     for file_selector in files:
         path = file_selector.path
         skip_parsing = file_selector.skip_parsing
-        repos = file_selector.repos
-        branch = file_selector.branch
+        repo_branch_mappings = file_selector.repo_branch_mapping
 
-        for repo in repos:
+        for repo_branch_mapping in repo_branch_mappings:
+            repo = repo_branch_mapping.repo
+            branch = repo_branch_mapping.branch
+
             repo_map[repo].append(
                 {
                     "path": path,
