@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.26 (2025-06-25)
+## 0.2.26 (2025-06-26)
 
 
 ### Bug Fix
 
 - Fixed bug in file kind live event causing tracked file not getting deleted from port when file has been deleted from ADO repo.
+
+
+## 0.2.26 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
 
 
 ## 0.2.25 (2025-06-24)
