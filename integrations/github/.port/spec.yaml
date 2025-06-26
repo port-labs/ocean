@@ -19,6 +19,7 @@ features:
       - kind: deployment
       - kind: dependabot-alert
       - kind: code-scanning-alerts
+      - kind: file
 configurations:
   - name: githubHost
     required: false

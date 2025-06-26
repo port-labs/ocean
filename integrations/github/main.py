@@ -8,6 +8,7 @@ from github.core.exporters.team_exporter import (
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.webhook.registry import register_live_events_webhooks
+from github.core.exporters.file_exporter.utils import build_repo_path_map
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -23,6 +24,7 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
 from github.core.exporters.deployment_exporter import RestDeploymentExporter
 from github.core.exporters.environment_exporter import RestEnvironmentExporter
+from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.repository_exporter import RestRepositoryExporter
@@ -58,6 +60,7 @@ from integration import (
     GithubDependabotAlertConfig,
     GithubCodeScanningAlertConfig,
     GithubTeamConfig,
+    GithubFileResourceConfig,
 )
 
 
@@ -429,6 +432,23 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         async for alerts in stream_async_iterators_tasks(*tasks):
             yield alerts
+
+
+@ocean.on_resync(ObjectKind.FILE)
+async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync files based on configuration using the file exporter."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    exporter = RestFileExporter(rest_client)
+
+    config = cast(GithubFileResourceConfig, event.resource_config)
+    files_pattern = config.selector.files
+
+    repo_path_map = build_repo_path_map(files_pattern)
+
+    async for file_results in exporter.get_paginated_resources(repo_path_map):
+        yield file_results
 
 
 # Register webhook processors

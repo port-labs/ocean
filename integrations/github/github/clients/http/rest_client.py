@@ -3,7 +3,6 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from github.clients.http.base_client import AbstractGithubClient
 from loguru import logger
 import re
-from urllib.parse import urlparse, urlunparse
 
 
 PAGE_SIZE = 100
@@ -12,32 +11,18 @@ PAGE_SIZE = 100
 class GithubRestClient(AbstractGithubClient):
     """REST API implementation of GitHub client."""
 
+    NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
+
     @property
     def base_url(self) -> str:
         return self.github_host.rstrip("/")
 
     def _get_next_link(self, link_header: str) -> Optional[str]:
         """
-        Extracts the path and query from the 'next' link in a GitHub Link header,
-        removing the leading slash.
+        Extracts the URL from the 'next' link in a GitHub Link header.
         """
-
-        match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
-        if not match:
-            return None
-
-        parsed_url = urlparse(match.group(1))
-        path_and_query = urlunparse(
-            (
-                parsed_url.scheme,
-                parsed_url.netloc,
-                parsed_url.path,
-                parsed_url.params,
-                parsed_url.query,
-                "",
-            )
-        )
-        return path_and_query
+        match = self.NEXT_PATTERN.search(link_header)
+        return match.group(1) if match else None
 
     async def send_paginated_request(
         self,
@@ -59,7 +44,7 @@ class GithubRestClient(AbstractGithubClient):
             )
 
             if not response or not (items := response.json()):
-                return
+                break
 
             yield items
 
@@ -68,4 +53,5 @@ class GithubRestClient(AbstractGithubClient):
             ):
                 break
 
+            params = None
             resource = next_resource
