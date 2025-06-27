@@ -21,7 +21,6 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         tree = await self.client.send_api_request(url, params=params)
         return tree.get("tree", [])
 
-    @cache_iterator_result()
     async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
