@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added dev suffix to version number
 
+
+## 0.3.0-dev (2025-06-25)
+
+
 ### Features
 
 - Added support for User kinds
@@ -268,6 +272,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.23.4
+
 
 ## 0.1.0-dev (2025-05-28)
 
