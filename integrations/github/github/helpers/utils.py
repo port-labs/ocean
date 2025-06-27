@@ -13,6 +13,7 @@ class ObjectKind(StrEnum):
     """Enum for GitHub resource kinds."""
 
     REPOSITORY = "repository"
+    FOLDER = "folder"
     USER = "user"
     TEAM = "team"
     WORKFLOW = "workflow"

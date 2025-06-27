@@ -1,4 +1,7 @@
 from port_ocean.context.ocean import ocean
+from github.webhook.webhook_processors.folder_webhook_processor import (
+    FolderWebhookProcessor,
+)
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
@@ -59,6 +62,7 @@ def register_live_events_webhooks(path: str = "/webhook") -> None:
     ocean.add_webhook_processor(path, WorkflowWebhookProcessor)
     ocean.add_webhook_processor(path, DependabotAlertWebhookProcessor)
     ocean.add_webhook_processor(path, CodeScanningAlertWebhookProcessor)
+    ocean.add_webhook_processor(path, FolderWebhookProcessor)
     ocean.add_webhook_processor(path, TeamWebhookProcessor)
     ocean.add_webhook_processor(path, TeamMemberWebhookProcessor)
     ocean.add_webhook_processor(path, UserWebhookProcessor)
