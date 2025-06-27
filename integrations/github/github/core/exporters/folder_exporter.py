@@ -3,28 +3,27 @@ from typing import Any
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
+from port_ocean.utils.cache import cache_coroutine_result
 from loguru import logger
 from github.core.options import ListFolderOptions, SingleFolderOptions
 from wcmatch import glob
 
 
-@cache_coroutine_result()
-async def _get_tree(client: GithubRestClient, url: str, recursive: bool) -> list[dict[str, Any]]:
-    params = {"recursive": "true"} if recursive else {}
-    tree = await client.send_api_request(url, params=params)
-    return tree.get("tree", [])
-
-
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[ExporterOptionsT: SingleFolderOptions](
-        self, options: ExporterOptionsT
-    ) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionsT: SingleFolderOptions
+    ](self, options: ExporterOptionsT) -> RAW_ITEM:
         raise NotImplementedError
 
-    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    @cache_coroutine_result()
+    async def _get_tree(self, url: str, recursive: bool) -> list[dict[str, Any]]:
+        params = {"recursive": "true"} if recursive else {}
+        tree = await self.client.send_api_request(url, params=params)
+        return tree.get("tree", [])
+
+    async def get_paginated_resources[
+        ExporterOptionsT: ListFolderOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
@@ -32,7 +31,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         is_recursive_api_call = self._needs_recursive_search(path)
         url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
 
-        tree = await _get_tree(self.client, url, recursive=is_recursive_api_call)
+        tree = await self._get_tree(url, recursive=is_recursive_api_call)
         folders = self._retrieve_relevant_tree(tree, options)
         yield folders
 
