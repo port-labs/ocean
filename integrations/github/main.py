@@ -122,7 +122,9 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
     if not selector.folders:
-        logger.info("Skipping folder kind resync because required selectors are missing")
+        logger.info(
+            "Skipping folder kind resync because required selectors are missing"
+        )
         return
 
     for folder_config in selector.folders:

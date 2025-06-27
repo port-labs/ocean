@@ -25,7 +25,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: ListFolderOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
-        branch_ref = options["branch"] or options["repo"]["default_branch"]
+        branch_ref = options.get("branch") or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
 
         is_recursive_api_call = self._needs_recursive_search(path)
