@@ -16,7 +16,8 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         raise NotImplementedError
 
     @cache_coroutine_result()
-    async def _get_tree(self, url: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+    async def _get_tree(self, url: str, recursive: bool) -> list[dict[str, Any]]:
+        params = {"recursive": "true"} if recursive else {}
         tree = await self.client.send_api_request(url, params=params)
         return tree.get("tree", [])
 
@@ -29,10 +30,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name = options["repo"]["name"]
 
         is_recursive_api_call = self._needs_recursive_search(path)
-        params = {"recursive": "true"} if is_recursive_api_call else {}
         url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
 
-        tree = await self._get_tree(url, params=params)
+        tree = await self._get_tree(url, recursive=is_recursive_api_call)
         folders = self._retrieve_relevant_tree(tree, options)
         yield folders
 
