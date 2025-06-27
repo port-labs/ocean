@@ -89,6 +89,41 @@ EXPECTED_REPOSITORIES = [
     },
 ]
 
+EXPECTED_BRANCHES = [
+    {
+        "name": "main",
+        "objectId": "abc123456789",
+        "creator": {"displayName": "John Doe", "id": "user1"},
+        "url": "https://dev.azure.com/org/project/_apis/git/repositories/repo1/refs/heads/main",
+        "_links": {
+            "self": {
+                "href": "https://dev.azure.com/org/project/_apis/git/repositories/repo1/refs/heads/main"
+            }
+        },
+        "__repository": {
+            "id": "repo1",
+            "name": "Repo One",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    },
+    {
+        "name": "develop",
+        "objectId": "def987654321",
+        "creator": {"displayName": "Jane Smith", "id": "user2"},
+        "url": "https://dev.azure.com/org/project/_apis/git/repositories/repo1/refs/heads/develop",
+        "_links": {
+            "self": {
+                "href": "https://dev.azure.com/org/project/_apis/git/repositories/repo1/refs/heads/develop"
+            }
+        },
+        "__repository": {
+            "id": "repo1",
+            "name": "Repo One",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    },
+]
+
 EXPECTED_PULL_REQUESTS = [
     {
         "pullRequestId": "pr1",
@@ -534,6 +569,70 @@ async def test_generate_repositories(mock_event_context: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_branches(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": "repo1",
+                "name": "Repo One",
+                "project": {"id": "proj1", "name": "Project One"},
+            }
+        ]
+
+    with patch.object(
+        client, "generate_repositories", side_effect=mock_generate_repositories
+    ):
+        with patch.object(client, "send_request") as mock_send_request:
+            mock_send_request.return_value = Response(
+                status_code=200,
+                json={
+                    "value": [
+                        {
+                            "name": "refs/heads/main",
+                            "objectId": "abc123456789",
+                            "creator": {"displayName": "John Doe", "id": "user1"},
+                            "url": "https://dev.azure.com/org/project/_apis/git/repositories/repo1/refs/heads/main",
+                            "_links": {
+                                "self": {
+                                    "href": "https://dev.azure.com/org/project/_apis/git/repositories/repo1/refs/heads/main"
+                                }
+                            },
+                        },
+                        {
+                            "name": "refs/heads/develop",
+                            "objectId": "def987654321",
+                            "creator": {"displayName": "Jane Smith", "id": "user2"},
+                            "url": "https://dev.azure.com/org/project/_apis/git/repositories/repo1/refs/heads/develop",
+                            "_links": {
+                                "self": {
+                                    "href": "https://dev.azure.com/org/project/_apis/git/repositories/repo1/refs/heads/develop"
+                                }
+                            },
+                        },
+                    ]
+                },
+            )
+
+            async with event_context("test_event"):
+                # ACT
+                branches: List[Dict[str, Any]] = []
+                async for branch_batch in client.generate_branches(
+                    include_disabled_repositories=False
+                ):
+                    branches.extend(branch_batch)
+
+                # ASSERT
+                assert branches == EXPECTED_BRANCHES
+
+
+@pytest.mark.asyncio
 async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
@@ -636,6 +735,39 @@ async def test_generate_repositories_will_skip_404(
                 async for repo_batch in client.generate_repositories():
                     repositories.extend(repo_batch)
                 assert not repositories
+
+
+@pytest.mark.asyncio
+async def test_generate_branches_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": "repo1",
+                "name": "Repo One",
+                "project": {"id": "proj1", "name": "Project One"},
+            }
+        ]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_repositories", side_effect=mock_generate_repositories
+        ):
+            with patch.object(client._client, "request", side_effect=mock_make_request):
+                branches: List[Dict[str, Any]] = []
+                async for branch_batch in client.generate_branches():
+                    branches.extend(branch_batch)
+                assert not branches
 
 
 @pytest.mark.asyncio
