@@ -1,26 +1,29 @@
-from typing import Any, cast
+from typing import Any
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from loguru import logger
 from github.core.options import ListFolderOptions, SingleFolderOptions
 from wcmatch import glob
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
-    _caches: dict[tuple[str, str, bool], list[dict[str, Any]]] = {}
-
-    async def get_resource[
-        ExporterOptionsT: SingleFolderOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         raise NotImplementedError
 
+    @cache_coroutine_result()
+    async def _get_tree(self, url: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+        tree = await self.client.send_api_request(url, params=params)
+        return tree.get("tree", [])
+
     @cache_iterator_result()
-    async def get_paginated_resources[
-        ExporterOptionsT: ListFolderOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
         branch_ref = options["branch"] or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
@@ -29,19 +32,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         params = {"recursive": "true"} if is_recursive_api_call else {}
         url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
 
-        if self._branch_is_cached(repo_name, branch_ref, is_recursive_api_call):
-            tree = self._get_cached_tree(repo_name, branch_ref, is_recursive_api_call)
-            folders = self._retrieve_relevant_tree(tree, options)
-            yield folders
-        else:
-            async for contents in self.client.send_paginated_request(
-                url, params=params
-            ):
-                content_cast = cast(dict[str, Any], contents)
-                tree = content_cast["tree"]
-                self._cache_tree(repo_name, branch_ref, is_recursive_api_call, tree)
-                folders = self._retrieve_relevant_tree(tree, options)
-                yield folders
+        tree = await self._get_tree(url, params=params)
+        folders = self._retrieve_relevant_tree(tree, options)
+        yield folders
 
     def _enrich_folder_with_repository(
         self, folders: list[dict[str, Any]], repo: dict[str, Any] | None = None
@@ -84,25 +77,6 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             for item in just_trees
             if glob.globmatch(item["path"], path, flags=glob.GLOBSTAR | glob.DOTMATCH)
         ]
-
-    def _branch_is_cached(
-        self, repo_name: str, branch: str, is_recursive_fetch: bool
-    ) -> bool:
-        return (repo_name, branch, is_recursive_fetch) in self._caches
-
-    def _get_cached_tree(
-        self, repo_name: str, branch: str, is_recursive_fetch: bool
-    ) -> list[dict[str, Any]]:
-        return self._caches[(repo_name, branch, is_recursive_fetch)]
-
-    def _cache_tree(
-        self,
-        repo_name: str,
-        branch: str,
-        is_recursive_fetch: bool,
-        tree: list[dict[str, Any]],
-    ) -> None:
-        self._caches[(repo_name, branch, is_recursive_fetch)] = tree
 
     def _retrieve_relevant_tree(
         self, tree: list[dict[str, Any]], options: ListFolderOptions
