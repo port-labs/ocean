@@ -9,17 +9,18 @@ from github.core.options import ListFolderOptions, SingleFolderOptions
 from wcmatch import glob
 
 
+@cache_coroutine_result()
+async def _get_tree(client: GithubRestClient, url: str, recursive: bool) -> list[dict[str, Any]]:
+    params = {"recursive": "true"} if recursive else {}
+    tree = await client.send_api_request(url, params=params)
+    return tree.get("tree", [])
+
+
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[ExporterOptionsT: SingleFolderOptions](
         self, options: ExporterOptionsT
     ) -> RAW_ITEM:
         raise NotImplementedError
-
-    @cache_coroutine_result()
-    async def _get_tree(self, url: str, recursive: bool) -> list[dict[str, Any]]:
-        params = {"recursive": "true"} if recursive else {}
-        tree = await self.client.send_api_request(url, params=params)
-        return tree.get("tree", [])
 
     async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
         self, options: ExporterOptionsT
@@ -31,7 +32,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         is_recursive_api_call = self._needs_recursive_search(path)
         url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
 
-        tree = await self._get_tree(url, recursive=is_recursive_api_call)
+        tree = await _get_tree(self.client, url, recursive=is_recursive_api_call)
         folders = self._retrieve_relevant_tree(tree, options)
         yield folders
 
