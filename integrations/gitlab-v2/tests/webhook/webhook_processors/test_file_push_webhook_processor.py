@@ -278,13 +278,13 @@ class TestFilePushWebhookProcessor:
         deleted_file_data = [
             {
                 "project_id": str(project_id),
-                "file_path": "old-config.json",
+                "path": "old-config.json",
                 "ref": push_payload["before"],
                 "content": {"old": "config"},
             },
             {
                 "project_id": str(project_id),
-                "file_path": "deprecated/data.json",
+                "path": "deprecated/data.json",
                 "ref": push_payload["before"],
                 "content": {"deprecated": "data"},
             },
