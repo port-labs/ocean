@@ -169,13 +169,13 @@ class TestFilePushWebhookProcessor:
         file_data = [
             {
                 "project_id": str(project_id),
-                "file_path": "package.json",
+                "path": "package.json",
                 "ref": push_payload["after"],
                 "content": {"name": "my-app", "version": "1.0.0"},
             },
             {
                 "project_id": str(project_id),
-                "file_path": "src/data.json",
+                "path": "src/data.json",
                 "ref": push_payload["after"],
                 "content": {"key": "value"},
             },
