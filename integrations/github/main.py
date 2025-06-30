@@ -8,7 +8,9 @@ from github.core.exporters.team_exporter import (
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.webhook.registry import register_live_events_webhooks
-from github.core.exporters.file_exporter.utils import build_repo_path_map
+from github.core.exporters.file_exporter.utils import (
+    group_file_patterns_by_repositories_in_selector,
+)
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -445,7 +447,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubFileResourceConfig, event.resource_config)
     files_pattern = config.selector.files
 
-    repo_path_map = build_repo_path_map(files_pattern)
+    repo_path_map = group_file_patterns_by_repositories_in_selector(files_pattern)
 
     async for file_results in exporter.get_paginated_resources(repo_path_map):
         yield file_results

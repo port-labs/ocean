@@ -19,7 +19,7 @@ JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
 MAX_FILE_SIZE = 1024 * 1024  # 1MB limit in bytes
 GRAPHQL_MAX_FILE_SIZE = 100_000
-FIELD_NAME_PATTERN = re.compile(r"^f(\d+)$")
+FIELD_NAME_PATTERN = re.compile(r"^file_(\d+)$")
 
 
 class FileObject(TypedDict):
@@ -76,9 +76,10 @@ def group_files_by_status(
     updated_files: List[Dict[str, Any]] = []
 
     for file in files:
-        (deleted_files if file.get("status") == "removed" else updated_files).append(
-            file
-        )
+        if file.get("status") == "removed":
+            deleted_files.append(file)
+        else:
+            updated_files.append(file)
 
     return deleted_files, updated_files
 
@@ -86,13 +87,25 @@ def group_files_by_status(
 def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
     """Check if any file in diff_stat_files matches the specified filenames."""
     filenames_set = set(filenames)
-    return any(Path(file_info["filename"]).name in filenames_set for file_info in files)
+
+    for file_info in files:
+        file_name = Path(file_info["filename"]).name
+        if file_name in filenames_set:
+            return True
+
+    return False
 
 
-def build_repo_path_map(
+def group_file_patterns_by_repositories_in_selector(
     files: List["GithubFilePattern"],
 ) -> List[ListFileSearchOptions]:
-    logger.info("Building repository path map.")
+    """
+    Group file patterns by repository to enable batch processing.
+
+    Takes a list of file patterns with repository mappings and organizes them
+    by repository name for efficient batch file fetching.
+    """
+    logger.info("Grouping file patterns by repository for batch processing.")
 
     repo_map: Dict[str, List[FileSearchOptions]] = defaultdict(list)
 
@@ -121,7 +134,7 @@ def build_repo_path_map(
     ]
 
 
-def match_file_entry(path: str, pattern: str) -> bool:
+def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
     """
     Match file path against a glob pattern using wcmatch's globmatch.
     Supports ** and other extended glob syntax.
@@ -129,7 +142,7 @@ def match_file_entry(path: str, pattern: str) -> bool:
     return glob.globmatch(path, pattern, flags=glob.GLOBSTAR)
 
 
-def classify_fetch_method(size: int) -> GithubClientType:
+def determine_api_client_type_by_file_size(size: int) -> GithubClientType:
     return (
         GithubClientType.GRAPHQL
         if size <= GRAPHQL_MAX_FILE_SIZE
@@ -137,7 +150,9 @@ def classify_fetch_method(size: int) -> GithubClientType:
     )
 
 
-def match_files(tree: List[Dict[str, Any]], pattern: str) -> List[Dict[str, Any]]:
+def filter_github_tree_entries_by_pattern(
+    tree: List[Dict[str, Any]], pattern: str
+) -> List[Dict[str, Any]]:
     """Filter GitHub tree blobs by type and size."""
 
     matched_files = []
@@ -150,9 +165,9 @@ def match_files(tree: List[Dict[str, Any]], pattern: str) -> List[Dict[str, Any]
         if (
             type_ == "blob"
             and size <= MAX_FILE_SIZE
-            and match_file_entry(path, pattern)
+            and match_file_path_against_glob_pattern(path, pattern)
         ):
-            fetch_method = classify_fetch_method(size)
+            fetch_method = determine_api_client_type_by_file_size(size)
             matched_files.append(
                 {
                     "path": path,
@@ -188,7 +203,7 @@ def build_batch_file_query(
     """
     objects = "\n".join(
         f"""
-        f{i}: object(expression: "{branch}:{path}") {{
+        file_{i}: object(expression: "{branch}:{path}") {{
             ... on Blob {{
                 text
                 byteSize
@@ -217,7 +232,7 @@ def get_matching_files(
         matched_patterns = []
 
         for pattern in matching_patterns:
-            if match_file_entry(file_path, pattern.path):
+            if match_file_path_against_glob_pattern(file_path, pattern.path):
                 matched_patterns.append(pattern)
 
         if matched_patterns:
@@ -240,9 +255,9 @@ def extract_file_paths_and_metadata(
     file_paths = []
     file_metadata = {}
 
-    for entry in files:
-        file_path = entry["file_path"]
+    for file in files:
+        file_path = file["file_path"]
         file_paths.append(file_path)
-        file_metadata[file_path] = entry["skip_parsing"]
+        file_metadata[file_path] = file["skip_parsing"]
 
     return file_paths, file_metadata

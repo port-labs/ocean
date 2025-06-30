@@ -22,8 +22,8 @@ from github.core.exporters.file_exporter.utils import (
     decode_content,
     extract_file_index,
     extract_file_paths_and_metadata,
+    filter_github_tree_entries_by_pattern,
     get_graphql_file_metadata,
-    match_files,
 )
 from port_ocean.utils import cache
 from github.core.exporters.file_exporter.file_processor import FileProcessor
@@ -120,7 +120,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             tree_sha = await self.get_branch_tree_sha(repo_name, branch)
             tree = await self.get_tree_recursive(repo_name, tree_sha)
 
-            matched = match_files(tree, pattern)
+            matched = filter_github_tree_entries_by_pattern(tree, pattern)
 
             logger.info(
                 f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}'"

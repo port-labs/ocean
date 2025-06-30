@@ -150,10 +150,14 @@ class GithubLiveEventsProcessorManager(LiveEventsProcessorManager, GithubHandler
 
 class GithubIntegration(BaseIntegration, GithubHandlerMixin):
     def __init__(self, context: PortOceanContext):
-        logger.info("Initializing GithubIntegration")
+        logger.info("Initializing Github Integration")
         super().__init__(context)
 
-        # Replace the Ocean's webhook manager with our custom one
+        # Override the Ocean's default webhook manager with our custom one
+        # This is necessary because we need GithubHandlerMixin which provides
+        # GitManipulationHandler to handle file:// prefixed properties and enable
+        # dynamic switching between JQEntityProcessor and FileEntityProcessor
+        # for GitHub-specific file content processing.
         self.context.app.webhook_manager = GithubLiveEventsProcessorManager(
             self.context.app.integration_router,
             signal_handler,

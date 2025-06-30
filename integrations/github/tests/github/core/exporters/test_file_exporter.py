@@ -6,11 +6,11 @@ from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import (
     decode_content,
     parse_content,
-    match_files,
-    classify_fetch_method,
+    filter_github_tree_entries_by_pattern,
+    determine_api_client_type_by_file_size,
     get_graphql_file_metadata,
     build_batch_file_query,
-    match_file_entry,
+    match_file_path_against_glob_pattern,
     MAX_FILE_SIZE,
     GRAPHQL_MAX_FILE_SIZE,
 )
@@ -526,49 +526,69 @@ class TestFileExporterUtils:
         content = parse_content("invalid: yaml: content:", "config.yaml")
         assert content == "invalid: yaml: content:"
 
-    def test_match_file_entry_exact(self) -> None:
-        assert match_file_entry("test.txt", "test.txt") is True
+    def test_match_file_path_against_glob_pattern_exact(self) -> None:
+        assert match_file_path_against_glob_pattern("test.txt", "test.txt") is True
 
-    def test_match_file_entry_glob(self) -> None:
-        assert match_file_entry("test.txt", "*.txt") is True
-        assert match_file_entry("config.yaml", "*.yaml") is True
-        assert match_file_entry("test.txt", "*.yaml") is False
+    def test_match_file_path_against_glob_pattern_glob(self) -> None:
+        assert match_file_path_against_glob_pattern("test.txt", "*.txt") is True
+        assert match_file_path_against_glob_pattern("config.yaml", "*.yaml") is True
+        assert match_file_path_against_glob_pattern("test.txt", "*.yaml") is False
 
-    def test_match_file_entry_recursive(self) -> None:
-        assert match_file_entry("src/test.txt", "**/*.txt") is True
-        assert match_file_entry("src/nested/test.txt", "**/*.txt") is True
+    def test_match_file_path_against_glob_pattern_recursive(self) -> None:
+        assert match_file_path_against_glob_pattern("src/test.txt", "**/*.txt") is True
+        assert (
+            match_file_path_against_glob_pattern("src/nested/test.txt", "**/*.txt")
+            is True
+        )
 
-    def test_match_file_entry_complex_patterns(self) -> None:
-        assert match_file_entry("src/config.yaml", "src/*.yaml") is True
-        assert match_file_entry("src/nested/config.yaml", "src/*.yaml") is False
-        assert match_file_entry("src/nested/config.yaml", "src/**/*.yaml") is True
+    def test_match_file_path_against_glob_pattern_complex_patterns(self) -> None:
+        assert (
+            match_file_path_against_glob_pattern("src/config.yaml", "src/*.yaml")
+            is True
+        )
+        assert (
+            match_file_path_against_glob_pattern("src/nested/config.yaml", "src/*.yaml")
+            is False
+        )
+        assert (
+            match_file_path_against_glob_pattern(
+                "src/nested/config.yaml", "src/**/*.yaml"
+            )
+            is True
+        )
 
-    def test_classify_fetch_method(self) -> None:
-        assert classify_fetch_method(GRAPHQL_MAX_FILE_SIZE) == GithubClientType.GRAPHQL
-        assert classify_fetch_method(GRAPHQL_MAX_FILE_SIZE + 1) == GithubClientType.REST
-        assert classify_fetch_method(0) == GithubClientType.GRAPHQL
+    def test_determine_api_client_type_by_file_size(self) -> None:
+        assert (
+            determine_api_client_type_by_file_size(GRAPHQL_MAX_FILE_SIZE)
+            == GithubClientType.GRAPHQL
+        )
+        assert (
+            determine_api_client_type_by_file_size(GRAPHQL_MAX_FILE_SIZE + 1)
+            == GithubClientType.REST
+        )
+        assert determine_api_client_type_by_file_size(0) == GithubClientType.GRAPHQL
 
-    def test_match_files(self) -> None:
-        matched = match_files(TEST_TREE_ENTRIES, "*.txt")
+    def test_filter_github_tree_entries_by_pattern(self) -> None:
+        matched = filter_github_tree_entries_by_pattern(TEST_TREE_ENTRIES, "*.txt")
 
         # Should match test.txt (blob, small size)
         assert len(matched) == 1
         assert matched[0]["path"] == "test.txt"
         assert matched[0]["fetch_method"] == GithubClientType.GRAPHQL
 
-    def test_match_files_no_matches(self) -> None:
-        matched = match_files(TEST_TREE_ENTRIES, "*.py")
+    def test_filter_github_tree_entries_by_pattern_no_matches(self) -> None:
+        matched = filter_github_tree_entries_by_pattern(TEST_TREE_ENTRIES, "*.py")
         assert len(matched) == 0
 
-    def test_match_files_excludes_large_files(self) -> None:
-        matched = match_files(TEST_TREE_ENTRIES, "*")
+    def test_filter_github_tree_entries_by_pattern_excludes_large_files(self) -> None:
+        matched = filter_github_tree_entries_by_pattern(TEST_TREE_ENTRIES, "*")
         # Should not include large-file.txt due to size limit
         assert len(matched) == 2
         paths = [m["path"] for m in matched]
         assert "large-file.txt" not in paths
 
-    def test_match_files_excludes_trees(self) -> None:
-        matched = match_files(TEST_TREE_ENTRIES, "*")
+    def test_filter_github_tree_entries_by_pattern_excludes_trees(self) -> None:
+        matched = filter_github_tree_entries_by_pattern(TEST_TREE_ENTRIES, "*")
         # Should not include src directory (tree type)
         paths = [m["path"] for m in matched]
         assert "src" not in paths
@@ -601,8 +621,8 @@ class TestFileExporterUtils:
 
         assert "query" in query
         assert 'repository(owner: "test-org", name: "repo1")' in query["query"]
-        assert 'f0: object(expression: "main:test1.txt")' in query["query"]
-        assert 'f1: object(expression: "main:test2.txt")' in query["query"]
+        assert 'file_0: object(expression: "main:test1.txt")' in query["query"]
+        assert 'file_1: object(expression: "main:test2.txt")' in query["query"]
 
     def test_build_batch_file_query_empty_list(self) -> None:
         query = build_batch_file_query(
@@ -615,4 +635,4 @@ class TestFileExporterUtils:
         assert "query" in query
         assert 'repository(owner: "test-org", name: "repo1")' in query["query"]
         # Should not contain any file objects
-        assert "f0: object" not in query["query"]
+        assert "file_0: object" not in query["query"]
