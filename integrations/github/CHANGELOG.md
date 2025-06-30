@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Github folder kind
 
 
+## 0.3.1-dev (2025-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
 ## 0.3.0-dev (2025-06-26)
 
 
