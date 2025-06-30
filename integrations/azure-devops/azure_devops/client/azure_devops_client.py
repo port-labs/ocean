@@ -43,6 +43,8 @@ MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
 MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
+MAX_CONCURRENT_BRANCH_REQUESTS = 5
+
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -219,7 +221,85 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_branches(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
+
+        async def process_branches(repo: dict[str, Any]) -> AsyncGenerator[list[dict[str, Any]], None]:
+            refs_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/repositories/{repo['id']}/refs"
+            branches = []
+
+            try:
+                async for refs_page in self._get_paginated_by_top_and_skip(
+                        refs_url,
+                        params = {"filter": "heads/", "$top": PAGE_SIZE, **API_PARAMS}
+                ):
+                    for ref in refs_page:
+                        branch = {
+                            "name": extract_branch_name_from_ref(ref["name"]),
+                            "objectId": ref["objectId"],
+                            "creator": ref.get("creator"),
+                            "url": ref.get("url"),
+                            "_links": ref.get("_links"),
+                            "__repository": repository,
+                        }
+                        branches.append(branch)
+
+                        if len(branches) >= PAGE_SIZE:
+                            yield branches
+                            branches = []
+
+                    if branches:
+                        yield branches
+                        branches = []
+            except Exception as error:
+                logger.error(f"Failed to get branches for {repository['name']}: {error}")
+                raise
+
+        async def fetch_repository_branches(repo: dict[str, Any]) -> list[dict[str, Any]]:
+            branches = []
+            async for batch in process_branches(repo):
+                branches.extend(batch)
+            return branches
+
+
         async for repositories in self.generate_repositories(
+            include_disabled_repositories=include_disabled_repositories
+        ):
+            tasks = []
+            for repository in repositories:
+                if len(tasks) >= MAX_CONCURRENT_BRANCH_REQUESTS:
+                    completed_tasks, tasks = await asyncio.wait(
+                        tasks, return_when=asyncio.FIRST_COMPLETED
+                    )
+                    for task in completed_tasks:
+                        try:
+                            branch_batch = await task
+                            if branch_batch:
+                                yield branch_batch
+                        except Exception as e:
+                            logger.error(f"Error Processing Branch Task: {str(e)}: {e}")
+                            continue
+                task = asyncio.create_task(fetch_repository_branches(repository))
+                tasks.append(task)
+
+            if tasks:
+                for task in asyncio.as_completed(tasks):
+                    try:
+                        branch_batch = await task
+                        if branch_batch:
+                            yield branch_batch
+                    except Exception as e:
+                        logger.error(f"Error processing remaining branch task: {str(e)}")
+                        continue
+
+
+
+
+        '''
+        Args:
+            include_disabled_repositories:
+
+        Returns:
+
+                async for repositories in self.generate_repositories(
             include_disabled_repositories=include_disabled_repositories
         ):
             for repository in repositories:
@@ -243,6 +323,8 @@ class AzureDevopsClient(HTTPBaseClient):
                     branches.append(branch)
                 if branches:
                     yield branches
+        '''
+
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
