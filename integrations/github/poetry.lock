@@ -1851,4 +1851,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "4ab200ca6016ef9740738fbc56f4c49afe8763a51737e45b35fa74541aefd828"
+content-hash = "a7d31e5d8c7232c4d9cf05d2316435513fb6321008259f630d37e2d819c98a3c"
