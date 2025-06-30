@@ -203,14 +203,14 @@ def build_batch_file_query(
     """
     objects = "\n".join(
         f"""
-        file_{i}: object(expression: "{branch}:{path}") {{
+        file_{file_index}: object(expression: "{branch}:{path}") {{
             ... on Blob {{
                 text
                 byteSize
             }}
         }}
         """
-        for i, path in enumerate(file_paths)
+        for file_index, path in enumerate(file_paths)
     )
 
     query = f"""
