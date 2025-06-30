@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.93-post1 (2025-06-26)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+0.2.92 (2025-06-25)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
+0.2.91 (2025-06-24)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.18
+
+
 0.2.90 (2025-06-23)
 ===================
 
@@ -1940,6 +1964,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Breaking Changes
 
 - Changed the mergeRequest kind to merge-request (PORT-4327)
+- Fixed a bug that caused the gitops parsing to fail (#1)
 
 ### Bug Fixes
 
