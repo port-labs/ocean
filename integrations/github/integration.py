@@ -13,7 +13,6 @@ from github.helpers.utils import ObjectKind
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
-        default="",
         alias="name",
         description="Specify the repository name",
     )
