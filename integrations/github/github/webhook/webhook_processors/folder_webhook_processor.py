@@ -5,7 +5,7 @@ from loguru import logger
 from github.clients.client_factory import create_github_client
 from github.core.exporters.folder_exporter import RestFolderExporter
 from github.core.options import ListFolderOptions
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import ObjectKind, extract_changed_files, fetch_commit_diff
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
@@ -39,7 +39,9 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         )
 
         config = cast(GithubFolderResourceConfig, resource_config)
-        folders = await self._fetch_folders(config.selector.folders, repository, branch)
+        folders = await self._fetch_folders(
+            config.selector.folders, repository, branch, payload
+        )
 
         if not folders:
             logger.info(
@@ -70,15 +72,53 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
                 return True
         return False
 
+    def _filter_changed_folders(
+        self,
+        folders: list[dict[str, Any]],
+        changed_file_paths: list[str],
+        processed_folder_paths: set[str],
+    ) -> list[dict[str, Any]]:
+        changed_folders = []
+        for folder in folders:
+            folder_path = folder["path"]
+            if folder_path in processed_folder_paths:
+                continue
+
+            if any(
+                (
+                    changed_file == folder_path
+                    or changed_file.startswith(f"{folder_path}/")
+                )
+                for changed_file in changed_file_paths
+            ):
+                changed_folders.append(folder)
+                processed_folder_paths.add(folder_path)
+        return changed_folders
+
     async def _fetch_folders(
         self,
         folder_selector: list[FolderSelector],
         repository: dict[str, Any],
         branch: str,
+        event_payload: EventPayload,
     ) -> list[dict[str, Any]]:
         client = create_github_client()
+        commit_diff = await fetch_commit_diff(
+            client,
+            repository["name"],
+            event_payload["before"],
+            event_payload["after"],
+        )
+        _, changed_file_paths = extract_changed_files(commit_diff.get("files", []))
+
+        if not changed_file_paths:
+            logger.info("No changed files detected in the push event.")
+            return []
+
         exporter = RestFolderExporter(client)
-        folders = []
+        changed_folders = []
+        processed_folder_paths: set[str] = set()
+
         for pattern in folder_selector:
             if not self._has_matched_repo(pattern, repository, branch):
                 continue
@@ -89,5 +129,13 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             async for folder_batch in exporter.get_paginated_resources(
                 ListFolderOptions(repo=repository, path=pattern.path, branch=branch)
             ):
-                folders.extend(folder_batch)
-        return folders
+                changed_folders.extend(
+                    self._filter_changed_folders(
+                        folder_batch,
+                        list(changed_file_paths),
+                        processed_folder_paths,
+                    )
+                )
+
+        logger.info(f"Found {len(changed_folders)} changed folders")
+        return changed_folders

@@ -1,12 +1,10 @@
 from typing import Any
 import pytest
-from unittest.mock import patch
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
 )
-from port_ocean.context.event import event_context
-from github.core.options import SingleFolderOptions, ListFolderOptions
+from github.core.options import SingleFolderOptions
 
 TEST_FILE = {
     "path": "README.md",

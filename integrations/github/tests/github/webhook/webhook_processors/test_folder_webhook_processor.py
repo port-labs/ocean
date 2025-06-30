@@ -1,27 +1,27 @@
 from typing import Any, AsyncGenerator
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from github.core.options import ListFolderOptions
+from github.helpers.utils import ObjectKind
+from github.webhook.webhook_processors.folder_webhook_processor import (
+    FolderWebhookProcessor,
+)
+from integration import (
+    FolderSelector,
+    GithubFolderResourceConfig,
+    GithubFolderSelector,
+    RepositoryBranchMapping,
+)
+from port_ocean.core.handlers.port_app_config.models import (
+    EntityMapping,
+    MappingsConfig,
+    PortResourceConfig,
+)
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.webhook.webhook_processors.folder_webhook_processor import (
-    FolderWebhookProcessor,
-)
-from github.core.options import ListFolderOptions
-from integration import (
-    GithubFolderResourceConfig,
-    RepositoryBranchMapping,
-    FolderSelector,
-    GithubFolderSelector,
-)
-
-from port_ocean.core.handlers.port_app_config.models import (
-    PortResourceConfig,
-    EntityMapping,
-    MappingsConfig,
-)
-from github.helpers.utils import ObjectKind
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.fixture
@@ -112,22 +112,41 @@ class TestFolderWebhookProcessor:
         )
         assert ObjectKind.FOLDER in kinds
 
-    async def test_handle_push_event(
+    @patch(
+        "github.webhook.webhook_processors.folder_webhook_processor.create_github_client"
+    )
+    @patch(
+        "github.webhook.webhook_processors.folder_webhook_processor.fetch_commit_diff",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "github.webhook.webhook_processors.folder_webhook_processor.extract_changed_files"
+    )
+    @patch(
+        "github.webhook.webhook_processors.folder_webhook_processor.RestFolderExporter"
+    )
+    async def test_handle_event_with_changed_folders(
         self,
+        mock_exporter_class: MagicMock,
+        mock_extract_changed_files: MagicMock,
+        mock_fetch_commit_diff: AsyncMock,
+        mock_create_client: MagicMock,
         folder_webhook_processor: FolderWebhookProcessor,
         folder_resource_config: GithubFolderResourceConfig,
     ) -> None:
         repo_name = "test-repo"
         branch_name = "main"
-        ref_sha = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+        ref_sha_after = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+        ref_sha_before = "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0a1"
 
-        payload = {
+        payload: dict[str, Any] = {
             "repository": {"name": repo_name},
             "ref": f"refs/heads/{branch_name}",
-            "after": ref_sha,
+            "after": ref_sha_after,
+            "before": ref_sha_before,
         }
 
-        expected_folders_from_exporter = [
+        all_folders_from_exporter = [
             {
                 "path": "folder1/subfolder1",
                 "name": "subfolder1",
@@ -147,34 +166,108 @@ class TestFolderWebhookProcessor:
                 "branch": branch_name,
             },
         ]
+        changed_files = [
+            "folder1/subfolder1/file.txt",
+            "folder2/subfolderA/another_file.log",
+        ]
+        expected_folders = [
+            all_folders_from_exporter[0],
+            all_folders_from_exporter[2],
+        ]
 
-        async def async_generator() -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield [expected_folders_from_exporter[0], expected_folders_from_exporter[1]]
-            yield [expected_folders_from_exporter[2]]
+        mock_client = MagicMock()
+        mock_create_client.return_value = mock_client
+        mock_fetch_commit_diff.return_value = {"files": [{"filename": "dummy"}]}
+        mock_extract_changed_files.return_value = ([], changed_files)
 
-        mock_exporter = MagicMock()
-        mock_exporter.get_paginated_resources.return_value = async_generator()
-
-        with patch(
-            "github.webhook.webhook_processors.folder_webhook_processor.RestFolderExporter",
-            return_value=mock_exporter,
+        async def async_generator_for_exporter() -> (
+            AsyncGenerator[list[dict[str, Any]], None]
         ):
-            result = await folder_webhook_processor.handle_event(
-                payload, folder_resource_config
-            )
+            yield [all_folders_from_exporter[0], all_folders_from_exporter[1]]
+            yield [all_folders_from_exporter[2]]
+
+        mock_exporter_instance = MagicMock()
+        mock_exporter_instance.get_paginated_resources.return_value = (
+            async_generator_for_exporter()
+        )
+        mock_exporter_class.return_value = mock_exporter_instance
+
+        result = await folder_webhook_processor.handle_event(
+            payload, folder_resource_config
+        )
 
         assert isinstance(result, WebhookEventRawResults)
-        assert result.updated_raw_results == expected_folders_from_exporter
-        assert result.deleted_raw_results == []
+        assert result.updated_raw_results == expected_folders
+        assert not result.deleted_raw_results
 
-        mock_exporter.get_paginated_resources.assert_any_call(
+        mock_fetch_commit_diff.assert_called_once_with(
+            mock_client, repo_name, ref_sha_before, ref_sha_after
+        )
+        mock_extract_changed_files.assert_called_once_with([{"filename": "dummy"}])
+
+        mock_exporter_instance.get_paginated_resources.assert_any_call(
             ListFolderOptions(
-                repo={"name": repo_name}, path="folder1/*", branch=branch_name
+                repo=dict(payload["repository"]), path="folder1/*", branch=branch_name
             )
         )
-        mock_exporter.get_paginated_resources.assert_any_call(
+        mock_exporter_instance.get_paginated_resources.assert_any_call(
             ListFolderOptions(
-                repo={"name": repo_name}, path="folder2/*", branch=branch_name
+                repo=dict(payload["repository"]), path="folder2/*", branch=branch_name
             )
         )
-        assert mock_exporter.get_paginated_resources.call_count == 2
+        assert mock_exporter_instance.get_paginated_resources.call_count == 2
+
+    @patch(
+        "github.webhook.webhook_processors.folder_webhook_processor.create_github_client"
+    )
+    @patch(
+        "github.webhook.webhook_processors.folder_webhook_processor.fetch_commit_diff",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "github.webhook.webhook_processors.folder_webhook_processor.extract_changed_files"
+    )
+    @patch(
+        "github.webhook.webhook_processors.folder_webhook_processor.RestFolderExporter"
+    )
+    async def test_handle_event_no_changed_files(
+        self,
+        mock_exporter_class: MagicMock,
+        mock_extract_changed_files: MagicMock,
+        mock_fetch_commit_diff: AsyncMock,
+        mock_create_client: MagicMock,
+        folder_webhook_processor: FolderWebhookProcessor,
+        folder_resource_config: GithubFolderResourceConfig,
+    ) -> None:
+        repo_name = "test-repo"
+        branch_name = "main"
+        ref_sha_after = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+        ref_sha_before = "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0a1"
+
+        payload: dict[str, Any] = {
+            "repository": {"name": repo_name},
+            "ref": f"refs/heads/{branch_name}",
+            "after": ref_sha_after,
+            "before": ref_sha_before,
+        }
+
+        mock_client = MagicMock()
+        mock_create_client.return_value = mock_client
+        mock_fetch_commit_diff.return_value = {"files": []}
+        mock_extract_changed_files.return_value = ([], [])
+        mock_exporter_instance = MagicMock()
+        mock_exporter_class.return_value = mock_exporter_instance
+
+        result = await folder_webhook_processor.handle_event(
+            payload, folder_resource_config
+        )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert not result.updated_raw_results
+        assert not result.deleted_raw_results
+
+        mock_fetch_commit_diff.assert_called_once_with(
+            mock_client, repo_name, ref_sha_before, ref_sha_after
+        )
+        mock_extract_changed_files.assert_called_once_with([])
+        mock_exporter_instance.get_paginated_resources.assert_not_called()
