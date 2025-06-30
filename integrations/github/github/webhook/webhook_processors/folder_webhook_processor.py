@@ -80,7 +80,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
     ) -> list[dict[str, Any]]:
         changed_folders = []
         for folder in folders:
-            folder_path = folder["path"]
+            folder_path = folder["folder"]["path"]
             if folder_path in processed_folder_paths:
                 continue
 

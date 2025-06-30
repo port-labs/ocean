@@ -148,22 +148,28 @@ class TestFolderWebhookProcessor:
 
         all_folders_from_exporter = [
             {
-                "path": "folder1/subfolder1",
-                "name": "subfolder1",
-                "repo": repo_name,
-                "branch": branch_name,
+                "folder": {
+                    "path": "folder1/subfolder1",
+                    "name": "subfolder1",
+                    "repo": repo_name,
+                    "branch": branch_name,
+                }
             },
             {
-                "path": "folder1/subfolder2",
-                "name": "subfolder2",
-                "repo": repo_name,
-                "branch": branch_name,
+                "folder": {
+                    "path": "folder1/subfolder2",
+                    "name": "subfolder2",
+                    "repo": repo_name,
+                    "branch": branch_name,
+                }
             },
             {
-                "path": "folder2/subfolderA",
-                "name": "subfolderA",
-                "repo": repo_name,
-                "branch": branch_name,
+                "folder": {
+                    "path": "folder2/subfolderA",
+                    "name": "subfolderA",
+                    "repo": repo_name,
+                    "branch": branch_name,
+                }
             },
         ]
         changed_files = [
