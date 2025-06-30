@@ -222,7 +222,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         client = create_github_client(client_type=GithubClientType.GRAPHQL)
 
-        grouped: Dict[Tuple[str, str], List[str]] = defaultdict(list)
+        grouped: Dict[Tuple[str, str], List[Dict[str, Any]]] = defaultdict(list)
         for entry in matched_file_entries:
             key = (entry["repo_name"], entry["branch"])
             grouped[key].append(entry)
