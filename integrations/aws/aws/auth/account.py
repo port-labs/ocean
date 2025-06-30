@@ -164,14 +164,14 @@ class MultiAccountStrategy(AWSSessionStrategy):
         for arn, result in zip(arns, results):
             if isinstance(result, Exception):
                 logger.error(
-                    f"Sanity check failed for ARN {arn} due to exception: {result}"
+                    f"Health check failed for ARN {arn} due to exception: {result}"
                 )
                 continue
             if result:
-                logger.info(f"Sanity check passed for ARN {arn}.")
+                logger.info(f"Health check passed for ARN {arn}.")
                 self._valid_arns.append(arn)
             else:
-                logger.warning(f"Sanity check failed for ARN {arn}.")
+                logger.warning(f"Health check failed for ARN {arn}.")
 
         if not self._valid_arns:
             logger.error(
@@ -200,8 +200,8 @@ class MultiAccountStrategy(AWSSessionStrategy):
 
     async def _can_assume_role(self, arn: str) -> bool:
         try:
-            session = await self._create_and_log_session(
-                arn, session_name="SanityCheckSession"
+            _ = await self._create_and_log_session(
+                arn, session_name="HealthCheckSession"
             )
             return True
         except CredentialsProviderError as e:
