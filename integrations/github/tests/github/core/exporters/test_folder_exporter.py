@@ -49,7 +49,6 @@ TEST_FOLDERS_ROOT = [
     {
         "folder": {
             "path": "src",
-            "name": "src",
             "type": "tree",
             "size": 0,
             "url": "https://api.github.com/repos/test-org/test-repo/contents/src",
@@ -59,7 +58,6 @@ TEST_FOLDERS_ROOT = [
     {
         "folder": {
             "path": "docs",
-            "name": "docs",
             "type": "tree",
             "size": 0,
             "url": "https://api.github.com/repos/test-org/test-repo/contents/docs",
@@ -72,7 +70,6 @@ TEST_FOLDERS_SRC = [
     {
         "folder": {
             "path": "src/components",
-            "name": "components",
             "type": "tree",
             "size": 0,
             "url": "https://api.github.com/repos/test-org/test-repo/contents/src/components",
@@ -82,7 +79,6 @@ TEST_FOLDERS_SRC = [
     {
         "folder": {
             "path": "src/hooks",
-            "name": "hooks",
             "type": "tree",
             "size": 0,
             "url": "https://api.github.com/repos/test-org/test-repo/contents/src/hooks",
@@ -102,20 +98,6 @@ class TestRestFolderExporter:
             await exporter.get_resource(
                 SingleFolderOptions(repo="test-repo", path="README.md")
             )
-
-    @pytest.mark.parametrize(
-        "folder_path, expected_name",
-        [
-            ("src", "src"),
-            ("src/components", "components"),
-            ("root/sub/folder", "folder"),
-            ("file.txt", "file.txt"),
-            ("", ""),
-            ("/", ""),
-        ],
-    )
-    def test_get_folder_name(self, folder_path: str, expected_name: str) -> None:
-        assert RestFolderExporter._get_folder_name(folder_path) == expected_name
 
     @pytest.mark.parametrize(
         "path, expected_recursive",

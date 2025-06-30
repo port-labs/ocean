@@ -41,18 +41,12 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> list[dict[str, Any]]:
         formatted_folders = [
             {
-                "folder": {**folder, "name": self._get_folder_name(folder["path"])},
+                "folder": folder,
                 "__repository": repo,
             }
             for folder in folders
         ]
         return formatted_folders
-
-    @staticmethod
-    def _get_folder_name(folder_path: str) -> str:
-        path_split = folder_path.split("/")
-        name = path_split[len(path_split) - 1]
-        return name
 
     @staticmethod
     def _needs_recursive_search(path: str) -> bool:
