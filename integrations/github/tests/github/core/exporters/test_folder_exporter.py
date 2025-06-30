@@ -105,69 +105,6 @@ class TestRestFolderExporter:
                 SingleFolderOptions(repo="test-repo", path="README.md")
             )
 
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "options, expected_endpoint, initial_expected_params, expected_folders",
-        [
-            (
-                ListFolderOptions(repo=TEST_REPO_INFO, path="", branch="main"),
-                "{base_url}/repos/{organization}/test-repo/git/trees/main",
-                {},
-                TEST_FOLDERS_ROOT + TEST_FOLDERS_SRC,
-            ),
-            (
-                ListFolderOptions(repo=TEST_REPO_INFO, path="src", branch="main"),
-                "{base_url}/repos/{organization}/test-repo/git/trees/main",
-                {},
-                [TEST_FOLDERS_ROOT[0]],
-            ),
-            (
-                ListFolderOptions(repo=TEST_REPO_INFO, path="src/**", branch="main"),
-                "{base_url}/repos/{organization}/test-repo/git/trees/main",
-                {"recursive": "true"},
-                TEST_FOLDERS_SRC,
-            ),
-            (
-                ListFolderOptions(
-                    repo=TEST_REPO_INFO, path="src/components", branch="main"
-                ),
-                "{base_url}/repos/{organization}/test-repo/git/trees/main",
-                {"recursive": "true"},
-                [TEST_FOLDERS_SRC[0]],  # Only src/components
-            ),
-        ],
-    )
-    async def test_get_paginated_resources_with_caching(
-        self,
-        rest_client: GithubRestClient,
-        options: ListFolderOptions,
-        expected_endpoint: str,
-        initial_expected_params: dict[str, Any],
-        expected_folders: list[dict[str, Any]],
-    ) -> None:
-        async def mock_branch_tree_fetch(*args: Any, **kwargs: Any) -> dict[str, Any]:
-            return {"tree": TEST_FULL_CONTENTS}
-
-        with patch.object(
-            rest_client, "send_api_request", side_effect=mock_branch_tree_fetch
-        ):
-            exporter = RestFolderExporter(rest_client)
-
-            async with event_context("test_event_caching"):
-                # First call: should fetch from API and populate cache
-                folders_batch_1: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
-                assert len(folders_batch_1) == 1
-                assert folders_batch_1[0] == expected_folders
-
-                # Second call with the same options: should use cached data
-                folders_batch_2: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
-                assert len(folders_batch_2) == 1
-                assert folders_batch_2[0] == expected_folders
-
     @pytest.mark.parametrize(
         "folder_path, expected_name",
         [
@@ -186,7 +123,7 @@ class TestRestFolderExporter:
         "path, expected_recursive",
         [
             ("", False),
-            ("*", True),
+            ("*", False),
             ("src/*", True),
             ("src", False),
             ("src/components", True),

@@ -1,19 +1,21 @@
-from typing import cast
+from typing import Any, cast
+
 from loguru import logger
-from github.core.exporters.folder_exporter import RestFolderExporter
-from github.helpers.utils import ObjectKind
+
 from github.clients.client_factory import create_github_client
+from github.core.exporters.folder_exporter import RestFolderExporter
+from github.core.options import ListFolderOptions
+from github.helpers.utils import ObjectKind
+from github.webhook.webhook_processors.github_abstract_webhook_processor import (
+    _GithubAbstractWebhookProcessor,
+)
+from integration import FolderSelector, GithubFolderResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.webhook.webhook_processors.github_abstract_webhook_processor import (
-    _GithubAbstractWebhookProcessor,
-)
-from github.core.options import ListFolderOptions
-from integration import GithubFolderResourceConfig
 
 
 class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
@@ -37,32 +39,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         )
 
         config = cast(GithubFolderResourceConfig, resource_config)
-        selector = config.selector
-        folder_selector = selector.folders
-
-        client = create_github_client()
-        exporter = RestFolderExporter(client)
-
-        folders = []
-        for pattern in folder_selector:
-            # Check if this pattern applies to the event's repo and branch
-            matched_repo = False
-            for selector_repo in pattern.repos:
-                if selector_repo.name == repository["name"] and (
-                    selector_repo.branch == "" or selector_repo.branch == branch
-                ):
-                    matched_repo = True
-                    break
-            if not matched_repo:
-                continue
-
-            logger.debug(
-                f"Fetching folders for path '{pattern.path}' in {repository['name']} on branch {branch}"
-            )
-            async for folder_batch in exporter.get_paginated_resources(
-                ListFolderOptions(repo=repository, path=pattern.path, branch=branch)
-            ):
-                folders.extend(folder_batch)
+        folders = await self._fetch_folders(config.selector.folders, repository, branch)
 
         if not folders:
             logger.info(
@@ -76,3 +53,41 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=folders, deleted_raw_results=[]
         )
+
+    def _has_matched_repo(
+        self,
+        pattern: FolderSelector,
+        repository: dict[str, Any],
+        branch: str,
+    ) -> bool:
+        """
+        Checks if the provided repository and branch match the conditions specified in the pattern.
+        """
+        for selector_repo in pattern.repos:
+            if selector_repo.name == repository["name"] and (
+                not selector_repo.branch or selector_repo.branch == branch
+            ):
+                return True
+        return False
+
+    async def _fetch_folders(
+        self,
+        folder_selector: list[FolderSelector],
+        repository: dict[str, Any],
+        branch: str,
+    ) -> list[dict[str, Any]]:
+        client = create_github_client()
+        exporter = RestFolderExporter(client)
+        folders = []
+        for pattern in folder_selector:
+            if not self._has_matched_repo(pattern, repository, branch):
+                continue
+
+            logger.debug(
+                f"Fetching folders for path '{pattern.path}' in {repository['name']} on branch {branch}"
+            )
+            async for folder_batch in exporter.get_paginated_resources(
+                ListFolderOptions(repo=repository, path=pattern.path, branch=branch)
+            ):
+                folders.extend(folder_batch)
+        return folders

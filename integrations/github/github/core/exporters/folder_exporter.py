@@ -17,6 +17,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
 
     @cache_coroutine_result()
     async def _get_tree(self, url: str, recursive: bool) -> list[dict[str, Any]]:
+        logger.info("Fetching repository tree")
         params = {"recursive": "true"} if recursive else {}
         tree = await self.client.send_api_request(url, params=params)
         return tree.get("tree", [])
@@ -55,10 +56,14 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
 
     @staticmethod
     def _needs_recursive_search(path: str) -> bool:
-        "Determines whether a give path requires recursive Github request param"
+        "Determines whether a give path requires recursive Github request param. one glob star or empty path doesn't require recursive search"
+
+        if path == "" or path == "*":
+            return False
 
         if "*" in path or "/" in path:
             return True
+
         return False
 
     @staticmethod

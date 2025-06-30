@@ -129,17 +129,17 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     for folder_config in selector.folders:
         for repo in folder_config.repos:
+            logger.info(f"fetching folders for {repo.name}")
             repo_options = SingleRepositoryOptions(name=repo.name)
-            repository_object = await repo_exporter.get_resource(repo_options)
+            repository = await repo_exporter.get_resource(repo_options)
 
-            base_path = folder_config.path if folder_config.path != "*" else ""
             folder_options = ListFolderOptions(
-                repo=repository_object, path=base_path, branch=repo.branch
+                repo=repository, path=folder_config.path, branch=repo.branch
             )
-            async for folder_batch in folder_exporter.get_paginated_resources(
+            async for folders in folder_exporter.get_paginated_resources(
                 folder_options
             ):
-                yield folder_batch
+                yield folders
 
 
 @ocean.on_resync(ObjectKind.USER)
