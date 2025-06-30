@@ -13,12 +13,10 @@ from github.helpers.utils import ObjectKind
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
-        alias="name",
         description="Specify the repository name",
     )
     branch: str = Field(
         default="",
-        alias="branch",
         description="Specify the branch to bring the folders from, repo's default branch will be used if none is passed",
     )
 
