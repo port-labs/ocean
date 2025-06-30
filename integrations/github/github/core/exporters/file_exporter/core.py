@@ -196,7 +196,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
             logger.debug(f"Retrieved {len(retrieved_files)} files from GraphQL batch")
 
-            file_paths, file_metadata = extract_file_paths_and_metadata(files)
+            file_paths, file_metadata = extract_file_paths_and_metadata(
+                batch_result["batch_files"]
+            )
 
             batch_files = await self._process_retrieved_graphql_files(
                 retrieved_files,
@@ -223,17 +225,19 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         grouped: Dict[Tuple[str, str], List[str]] = defaultdict(list)
         for entry in matched_file_entries:
             key = (entry["repo_name"], entry["branch"])
-            grouped[key].append(entry["file_path"])
+            grouped[key].append(entry)
 
-        for (repo_name, branch), paths in grouped.items():
-            for i in range(0, len(paths), batch_size):
-                batch = paths[i : i + batch_size]
+        for (repo_name, branch), entries in grouped.items():
+            for i in range(0, len(entries), batch_size):
+                batch_files = entries[i : i + batch_size]
                 logger.debug(
-                    f"Processing batch of {len(batch)} files for {repo_name}@{branch}"
+                    f"Processing batch of {len(batch_files)} files for {repo_name}@{branch}"
                 )
 
+                batch_file_paths = [entry["file_path"] for entry in batch_files]
+
                 query_payload = build_batch_file_query(
-                    repo_name, client.organization, branch, batch
+                    repo_name, client.organization, branch, batch_file_paths
                 )
 
                 response = await client.send_api_request(
@@ -241,12 +245,15 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 )
 
                 data = response.json()
-                logger.info(f"Fetched {len(batch)} files from {repo_name}:{branch}")
+                logger.info(
+                    f"Fetched {len(batch_files)} files from {repo_name}:{branch}"
+                )
 
                 yield {
                     "repo": repo_name,
                     "branch": branch,
                     "file_data": data["data"],
+                    "batch_files": batch_files,
                 }
 
     async def _process_retrieved_graphql_files(

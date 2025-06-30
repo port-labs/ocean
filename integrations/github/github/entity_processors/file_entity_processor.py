@@ -57,7 +57,9 @@ class FileEntityProcessor(JQEntityProcessor):
 
         base_pattern = pattern.replace(self.prefix, "")
         file_path = (
-            f"{os.path.dirname(data['metadata']['path'])}/{base_pattern}"
+            os.path.join(
+                os.path.dirname(data["metadata"]["path"]), base_pattern
+            ).replace(os.sep, "/")
             if is_monorepo
             else base_pattern
         )
