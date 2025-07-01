@@ -1,4 +1,4 @@
-from typing import List, NotRequired, Optional, Required, TypedDict
+from typing import List, NotRequired, Optional, Required, TypedDict, Any
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -9,6 +9,17 @@ class ListRepositoryOptions(TypedDict):
     """Options for listing repositories."""
 
     type: str
+
+
+class SingleFolderOptions(TypedDict):
+    repo: str
+    path: str
+
+
+class ListFolderOptions(TypedDict):
+    repo: Required[dict[str, Any]]
+    path: Required[str]
+    branch: NotRequired[Optional[str]]
 
 
 class RepositoryIdentifier(TypedDict):

@@ -115,7 +115,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         default_branch: str,
     ) -> bool:
         for mapping in pattern.repos:
-            if mapping.repo == repo_name and (
+            if mapping.name == repo_name and (
                 mapping.branch == current_branch
                 or (mapping.branch is None and current_branch == default_branch)
             ):

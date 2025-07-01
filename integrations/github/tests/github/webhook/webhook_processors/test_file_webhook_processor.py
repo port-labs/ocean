@@ -14,7 +14,7 @@ from integration import (
     GithubFilePattern,
     GithubFileResourceConfig,
     GithubFileSelector,
-    GithubRepoBranchMapping,
+    RepositoryBranchMapping,
 )
 from github.webhook.webhook_processors.file_webhook_processor import (
     FileWebhookProcessor,
@@ -32,12 +32,12 @@ def resource_config() -> GithubFileResourceConfig:
             files=[
                 GithubFilePattern(
                     path="*.yaml",
-                    repos=[GithubRepoBranchMapping(repo="test-repo", branch="main")],
+                    repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                     skipParsing=False,
                 ),
                 GithubFilePattern(
                     path="*.json",
-                    repos=[GithubRepoBranchMapping(repo="test-repo", branch="main")],
+                    repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                     skipParsing=True,
                 ),
             ],

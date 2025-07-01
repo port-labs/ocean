@@ -1,4 +1,5 @@
-from pydantic import Field, BaseModel
+from typing import Literal
+from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -22,6 +23,29 @@ from github.helpers.utils import ObjectKind
 
 
 FILE_PROPERTY_PREFIX = "file://"
+
+class RepositoryBranchMapping(BaseModel):
+    name: str = Field(
+        description="Specify the repository name",
+    )
+    branch: Optional[str] = Field(
+        default=None,
+        description="Specify the branch to bring the folders from, repo's default branch will be used if none is passed",
+    )
+
+
+class FolderSelector(BaseModel):
+    path: str = Field(default="*")
+    repos: list[RepositoryBranchMapping]
+
+
+class GithubFolderSelector(Selector):
+    folders: list[FolderSelector]
+
+
+class GithubFolderResourceConfig(ResourceConfig):
+    selector: GithubFolderSelector
+    kind: Literal[ObjectKind.FOLDER]
 
 
 class GithubPullRequestSelector(Selector):
@@ -81,23 +105,12 @@ class GithubCodeScanningAlertConfig(ResourceConfig):
     kind: Literal["code-scanning-alerts"]
 
 
-class GithubRepoBranchMapping(BaseModel):
-    repo: str = Field(
-        alias="repo",
-        description="Specify the repository to fetch files from",
-    )
-    branch: Optional[str] = Field(
-        default=None,
-        description="Specify the branch to fetch files from",
-    )
-
-
 class GithubFilePattern(BaseModel):
     path: str = Field(
         alias="path",
         description="Specify the path to match files from",
     )
-    repos: list[GithubRepoBranchMapping] = Field(
+    repos: list[RepositoryBranchMapping] = Field(
         alias="repos",
         description="Specify the repositories and branches to fetch files from",
     )
@@ -124,6 +137,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubIssueConfig
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
+        | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
         | ResourceConfig

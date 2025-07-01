@@ -120,7 +120,7 @@ def group_file_patterns_by_repositories_in_selector(
         repo_branch_mappings = file_selector.repos
 
         for repo_branch_mapping in repo_branch_mappings:
-            repo = repo_branch_mapping.repo
+            repo = repo_branch_mapping.name
             branch = repo_branch_mapping.branch
 
             repo_map[repo].append(

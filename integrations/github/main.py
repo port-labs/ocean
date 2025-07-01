@@ -1,21 +1,20 @@
 from typing import Any, cast
 
 from loguru import logger
-from github.core.exporters.team_exporter import (
-    GraphQLTeamWithMembersExporter,
-    RestTeamExporter,
-)
-from github.core.exporters.user_exporter import GraphQLUserExporter
-from github.core.exporters.workflows_exporter import RestWorkflowExporter
-from github.webhook.registry import register_live_events_webhooks
-from github.core.exporters.file_exporter.utils import (
-    group_file_patterns_by_repositories_in_selector,
-)
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
+from github.core.exporters.team_exporter import (
+    GraphQLTeamWithMembersExporter,
+    RestTeamExporter,
+)
+from github.core.exporters.user_exporter import GraphQLUserExporter
+from github.webhook.registry import register_live_events_webhooks
+from github.core.exporters.file_exporter.utils import (
+    group_file_patterns_by_repositories_in_selector,
+)
 from github.clients.client_factory import (
     GitHubAuthenticatorFactory,
     create_github_client,
@@ -36,11 +35,14 @@ from github.core.exporters.dependabot_exporter import RestDependabotAlertExporte
 from github.core.exporters.code_scanning_alert_exporter import (
     RestCodeScanningAlertExporter,
 )
+from github.core.exporters.folder_exporter import RestFolderExporter
+from github.core.exporters.workflows_exporter import RestWorkflowExporter
 
 from github.core.options import (
     ListBranchOptions,
     ListDeploymentsOptions,
     ListEnvironmentsOptions,
+    ListFolderOptions,
     ListIssueOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
@@ -50,12 +52,14 @@ from github.core.options import (
     ListTagOptions,
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
+    SingleRepositoryOptions,
 )
 from github.helpers.utils import ObjectKind, GithubClientType
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_client import GithubWebhookClient
 
 from integration import (
+    GithubFolderResourceConfig,
     GithubIssueConfig,
     GithubPortAppConfig,
     GithubPullRequestConfig,
@@ -434,6 +438,37 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         async for alerts in stream_async_iterators_tasks(*tasks):
             yield alerts
+
+
+@ocean.on_resync(ObjectKind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all folders in specified repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    folder_exporter = RestFolderExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+
+    selector = cast(GithubFolderResourceConfig, event.resource_config).selector
+    if not selector.folders:
+        logger.info(
+            "Skipping folder kind resync because required selectors are missing"
+        )
+        return
+
+    for folder_config in selector.folders:
+        for repo in folder_config.repos:
+            logger.info(f"fetching folders for {repo.name}")
+            repo_options = SingleRepositoryOptions(name=repo.name)
+            repository = await repo_exporter.get_resource(repo_options)
+
+            folder_options = ListFolderOptions(
+                repo=repository, path=folder_config.path, branch=repo.branch
+            )
+            async for folders in folder_exporter.get_paginated_resources(
+                folder_options
+            ):
+                yield folders
 
 
 @ocean.on_resync(ObjectKind.FILE)
