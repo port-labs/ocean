@@ -1,6 +1,7 @@
 import base64
 import binascii
 from collections import defaultdict
+import json
 from pathlib import Path
 import re
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING
@@ -61,7 +62,9 @@ def decode_content(content: str, encoding: str) -> str:
 def parse_content(content: str, file_path: str) -> Any:
     """Parse a file based on its extension."""
     try:
-        if file_path.endswith(JSON_FILE_SUFFIX) or file_path.endswith(YAML_FILE_SUFFIX):
+        if file_path.endswith(JSON_FILE_SUFFIX):
+            return json.loads(content)
+        elif file_path.endswith(YAML_FILE_SUFFIX):
             return yaml.safe_load(content)
     except Exception as e:
         logger.error(f"Error parsing file: {e}")
