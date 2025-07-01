@@ -11,10 +11,6 @@ from aws.auth.region_resolver import RegionResolver
 from utils.overrides import AWSDescribeResourcesSelector
 from aws.auth.session_factory import SessionStrategyFactory
 from aws.auth.utils import CredentialsProviderError
-from port_ocean.utils.async_iterators import (
-    semaphore_async_iterator,
-    stream_async_iterators_tasks,
-)
 
 
 # Private module-level state - using Union to be explicit about the uninitialized state
