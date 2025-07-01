@@ -6,7 +6,8 @@ from port_ocean.context.ocean import ocean
 from starlette.requests import Request
 from aiobotocore.session import AioSession
 
-from aws.auth.account import AWSSessionStrategy, RegionResolver
+from aws.auth.strategies.base import AWSSessionStrategy
+from aws.auth.region_resolver import RegionResolver
 from utils.overrides import AWSDescribeResourcesSelector
 from aws.auth.session_factory import SessionStrategyFactory
 from aws.auth.utils import CredentialsProviderError

@@ -6,15 +6,11 @@ from typing import Any
 from aiobotocore.credentials import AioCredentials
 
 from aws.auth.utils import normalize_arn_list, extract_account_from_arn
-from aws.auth.account import (
-    RegionResolver,
-    SingleAccountStrategy,
-    MultiAccountStrategy,
-)
-from aws.auth.credentials_provider import (
-    StaticCredentialProvider,
-    AssumeRoleProvider,
-)
+from aws.auth.region_resolver import RegionResolver
+from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
+from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
+from aws.auth.providers.static_provider import StaticCredentialProvider
+from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.session_factory import SessionStrategyFactory
 from utils.overrides import AWSDescribeResourcesSelector
 
@@ -154,7 +150,7 @@ async def test_session_strategy_factory_single(
         return True
 
     monkeypatch.setattr(
-        "aws.auth.account.SingleAccountStrategy.healthcheck", async_true
+        "aws.auth.strategies.single_account_strategy.SingleAccountStrategy.healthcheck", async_true
     )
     strategy = await SessionStrategyFactory.create()
     assert isinstance(strategy, SingleAccountStrategy)

@@ -1,55 +1,9 @@
-from abc import ABC, abstractmethod
-from typing import Any, Union
+from aws.auth.providers.base import CredentialProvider, AioCredentialsType
 from aiobotocore.session import AioSession
-from aiobotocore.credentials import (
-    AioRefreshableCredentials,
-    AioCredentials,
-    create_assume_role_refresher,
-)
+from aiobotocore.credentials import AioRefreshableCredentials, create_assume_role_refresher
 from aws.auth.utils import CredentialsProviderError
 from loguru import logger
-
-AioCredentialsType = Union[AioCredentials, AioRefreshableCredentials]
-
-
-class CredentialProvider(ABC):
-    """
-    Base class for credential providers.
-    """
-
-    @abstractmethod
-    async def get_credentials(self, **kwargs: Any) -> AioCredentialsType: ...
-
-    @abstractmethod
-    async def get_session(self, **kwargs: Any) -> AioSession: ...
-
-    @property
-    @abstractmethod
-    def is_refreshable(self) -> bool: ...
-
-
-class StaticCredentialProvider(CredentialProvider):
-    """
-    Note: Static credentials (IAM User) should not be used for multi-account setups
-    """
-
-    @property
-    def is_refreshable(self) -> bool:
-        return False
-
-    async def get_credentials(self, **kwargs: Any) -> AioCredentials:
-        return AioCredentials(
-            kwargs["aws_access_key_id"],
-            kwargs["aws_secret_access_key"],
-            token=None,
-        )
-
-    async def get_session(self, **kwargs: Any) -> AioSession:
-        credentials = await self.get_credentials(**kwargs)
-        session = AioSession()
-        setattr(session, "_credentials", credentials)
-        return session
-
+from typing import Any
 
 class AssumeRoleProvider(CredentialProvider):
     """
@@ -63,7 +17,6 @@ class AssumeRoleProvider(CredentialProvider):
         If the credentials are expired or about to expire, the refresh function is called
         The refreshed credentials are used for the API call
     """
-
     @property
     def is_refreshable(self) -> bool:
         return True
@@ -80,11 +33,8 @@ class AssumeRoleProvider(CredentialProvider):
                         "role_session_name", "OceanRoleSession"
                     ),
                 }
-
-                # Add external ID if provided in kwargs
                 if "external_id" in kwargs:
                     assume_role_params["ExternalId"] = kwargs["external_id"]
-
                 refresher = create_assume_role_refresher(
                     sts,
                     assume_role_params,
@@ -106,4 +56,4 @@ class AssumeRoleProvider(CredentialProvider):
         credentials = await self.get_credentials(**kwargs)
         session = AioSession()
         setattr(session, "_credentials", credentials)
-        return session
+        return session 
