@@ -29,12 +29,16 @@ class FileProcessor:
         """
         Common content processor for GraphQL and REST paths.
         """
+        file_name = Path(file_path).name
+        file_parent_dir = str(Path(file_path).parent)
 
         result = FileObject(
             content=content,
             repository=repository,
             branch=branch,
-            metadata={"path": file_path, **(metadata or {})},
+            path=file_path,
+            name=file_name,
+            metadata=metadata or {},
         )
 
         if skip_parsing:
@@ -47,7 +51,9 @@ class FileProcessor:
 
         return await self._resolve_file_references(
             parsed_content,
-            str(Path(file_path).parent),
+            file_parent_dir,
+            file_path,
+            file_name,
             branch,
             result["metadata"],
             repository,
@@ -57,6 +63,8 @@ class FileProcessor:
         self,
         content: Any,
         parent_dir: str,
+        file_path: str,
+        file_name: str,
         branch: str,
         file_metadata: Dict[str, Any],
         repo_metadata: Dict[str, Any],
@@ -72,6 +80,8 @@ class FileProcessor:
                 result = await self._process_dict_content(
                     content,
                     parent_dir,
+                    file_path,
+                    file_name,
                     branch,
                     file_metadata,
                     repo_metadata,
@@ -81,6 +91,8 @@ class FileProcessor:
                 result = await self._process_list_content(
                     content,
                     parent_dir,
+                    file_path,
+                    file_name,
                     branch,
                     file_metadata,
                     repo_metadata,
@@ -91,6 +103,8 @@ class FileProcessor:
                     content=content,
                     repository=repo_metadata,
                     branch=branch,
+                    path=file_path,
+                    name=file_name,
                     metadata=file_metadata,
                 )
 
@@ -100,6 +114,8 @@ class FileProcessor:
         self,
         data: Dict[str, Any],
         parent_directory: str,
+        file_path: str,
+        file_name: str,
         branch: str,
         file_info: Dict[str, Any],
         repo_info: Dict[str, Any],
@@ -117,6 +133,8 @@ class FileProcessor:
             content=result,
             repository=repo_info,
             branch=branch,
+            path=file_path,
+            name=file_name,
             metadata=file_info,
         )
 
@@ -124,6 +142,8 @@ class FileProcessor:
         self,
         data: List[Dict[str, Any]],
         parent_directory: str,
+        file_path: str,
+        file_name: str,
         branch: str,
         file_info: Dict[str, Any],
         repo_info: Dict[str, Any],
@@ -148,6 +168,8 @@ class FileProcessor:
             content=processed_items,
             repository=repo_info,
             branch=branch,
+            path=file_path,
+            name=file_name,
             metadata=file_info,
         )
 

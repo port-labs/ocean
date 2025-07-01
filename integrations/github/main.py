@@ -450,6 +450,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_path_map = group_file_patterns_by_repositories_in_selector(files_pattern)
 
     async for file_results in exporter.get_paginated_resources(repo_path_map):
+        print(file_results)
         yield file_results
 
 

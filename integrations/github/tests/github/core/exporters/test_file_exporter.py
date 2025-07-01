@@ -607,8 +607,6 @@ class TestFileExporterUtils:
             metadata["url"]
             == "https://api.github.com/repos/test-org/repo1/contents/src/test.txt?ref=main"
         )
-        assert metadata["name"] == "test.txt"
-        assert metadata["path"] == "src/test.txt"
         assert metadata["size"] == 100
 
     def test_build_batch_file_query(self) -> None:

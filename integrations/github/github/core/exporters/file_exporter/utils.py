@@ -29,6 +29,8 @@ class FileObject(TypedDict):
     content: Any
     repository: Dict[str, Any]
     branch: str
+    path: str
+    name: str
     metadata: Dict[str, Any]
 
 
@@ -188,11 +190,9 @@ def get_graphql_file_metadata(
     Get metadata for a file from the GraphQL API.
     """
     url = f"{host}/repos/{organization}/{repo_name}/contents/{file_path}?ref={branch}"
-    name = file_path.split("/")[-1]
 
     return {
         "url": url,
-        "name": name,
         "path": file_path,
         "size": size,
     }
