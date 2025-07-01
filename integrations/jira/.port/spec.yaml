@@ -17,7 +17,7 @@ configurations:
     description: "This field is deprecated. Please use the OCEAN__BASE_URL field instead."
   - name: jiraHost
     required: true
-    type: string
+    type: url
     description: "The URL of your Jira, for example: https://example.atlassian.net"
   - name: atlassianUserEmail
     required: true
