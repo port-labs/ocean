@@ -89,7 +89,7 @@ class TestFolderWebhookProcessor:
     @pytest.mark.parametrize(
         "payload,expected",
         [
-            ({"ref": "refs/heads/main", "repository": {"name": "test"}}, True),
+            ({"ref": "refs/heads/main", "repository": {"name": "test"}, "before": "ldl", "after": "jdj"}, True),
             ({"ref": "refs/heads/main"}, False),
             ({"repository": {"name": "test"}}, False),
             ({}, False),

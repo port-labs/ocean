@@ -26,7 +26,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         return [ObjectKind.FOLDER]
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return "ref" in payload and "repository" in payload
+        return {"ref", "repository", "before", "after"} <= payload.keys()
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
