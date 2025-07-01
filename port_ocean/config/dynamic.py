@@ -2,10 +2,27 @@ import json
 from typing import Type, Any, Optional
 
 from humps import decamelize
-from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as, validator
+from pydantic import (
+    BaseConfig,
+    BaseModel,
+    AnyUrl,
+    create_model,
+    Extra,
+    parse_obj_as,
+    validator,
+)
 from pydantic.fields import ModelField, Field
 
 from port_ocean.config.base import BaseOceanModel
+
+
+class NoTrailSlashUrl(AnyUrl):
+    @classmethod
+    def validate(
+        cls, value: Any, field: "ModelField", config: "BaseConfig"
+    ) -> "AnyUrl":
+        value = value.rstrip("/")
+        return super().validate(value, field, config)
 
 
 class Configuration(BaseModel, extra=Extra.allow):
@@ -39,7 +56,7 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
             case "object":
                 field_type = dict
             case "url":
-                field_type = AnyUrl
+                field_type = NoTrailSlashUrl
             case "string":
                 field_type = str
             case "integer":
