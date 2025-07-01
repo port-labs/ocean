@@ -1,4 +1,3 @@
-from typing import Literal
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -16,13 +15,14 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from typing import Any, Literal, Optional, Type
+from typing import Any, Optional, Type, Literal
 from loguru import logger
 from port_ocean.utils.signal import signal_handler
 from github.helpers.utils import ObjectKind
 
 
 FILE_PROPERTY_PREFIX = "file://"
+
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
