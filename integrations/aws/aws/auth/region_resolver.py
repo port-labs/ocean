@@ -3,8 +3,10 @@ from typing import List, Set, Optional
 from loguru import logger
 from utils.overrides import AWSDescribeResourcesSelector
 
+
 class RegionResolver:
     """Handles AWS region discovery and filtering."""
+
     def __init__(
         self,
         session: AioSession,
@@ -31,4 +33,4 @@ class RegionResolver:
             for region in enabled_regions
             if self.selector.is_region_allowed(region)
         }
-        return allowed_regions 
+        return allowed_regions

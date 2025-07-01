@@ -3,10 +3,12 @@ from aiobotocore.session import AioSession
 from aiobotocore.credentials import AioCredentials
 from typing import Any
 
+
 class StaticCredentialProvider(CredentialProvider):
     """
     Note: Static credentials (IAM User) should not be used for multi-account setups
     """
+
     @property
     def is_refreshable(self) -> bool:
         return False
@@ -22,4 +24,4 @@ class StaticCredentialProvider(CredentialProvider):
         credentials = await self.get_credentials(**kwargs)
         session = AioSession()
         setattr(session, "_credentials", credentials)
-        return session 
+        return session

@@ -3,8 +3,10 @@ from aiobotocore.session import AioSession
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, Optional, Any
 
+
 class AWSSessionStrategy(ABC):
     """Base class for AWS session strategies."""
+
     def __init__(self, provider: CredentialProvider, config: dict[str, Any]):
         self.provider = provider
         self.config = config
@@ -19,4 +21,4 @@ class AWSSessionStrategy(ABC):
 
     @abstractmethod
     async def get_account_session(self, arn: str) -> Optional[AioSession]:
-        pass 
+        pass

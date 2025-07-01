@@ -477,7 +477,12 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                 )
                 await ocean.unregister(
                     [
-                        Entity(blueprint=blueprint, identifier=identifier, icon=None, title=None)
+                        Entity(
+                            blueprint=blueprint,
+                            identifier=identifier,
+                            icon=None,
+                            title=None,
+                        )
                         for blueprints in disallowed_configs.values()
                         for blueprint in blueprints
                     ]
@@ -537,7 +542,12 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                     logger.info("Resource not found in AWS, un-registering from port")
                     await ocean.unregister(
                         [
-                            Entity(blueprint=blueprint, identifier=identifier, icon=None, title=None)
+                            Entity(
+                                blueprint=blueprint,
+                                identifier=identifier,
+                                icon=None,
+                                title=None,
+                            )
                             for blueprint in blueprints
                         ]
                     )

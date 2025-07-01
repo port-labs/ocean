@@ -3,8 +3,10 @@ from aiobotocore.session import AioSession
 from loguru import logger
 from typing import Any, AsyncIterator, Optional, Dict
 
+
 class SingleAccountStrategy(AWSSessionStrategy):
     """Strategy for handling a single AWS account."""
+
     async def healthcheck(self) -> bool:
         session = await self.provider.get_session(region=None)
         async with session.create_client("sts", region_name=None) as sts:
@@ -30,4 +32,4 @@ class SingleAccountStrategy(AWSSessionStrategy):
                 f"Requested ARN {arn} does not match current ARN {current_arn}"
             )
             return None
-        return session 
+        return session

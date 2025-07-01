@@ -11,8 +11,10 @@ from loguru import logger
 import asyncio
 from typing import Any, AsyncIterator, Optional, Dict
 
+
 class MultiAccountStrategy(AWSSessionStrategy):
     """Strategy for handling multiple AWS accounts using explicit role ARNs."""
+
     async def healthcheck(self) -> bool:
         account_role_arns = self.config.get("account_role_arn")
         arns = normalize_arn_list(account_role_arns)
@@ -95,4 +97,4 @@ class MultiAccountStrategy(AWSSessionStrategy):
             raise AWSSessionError(f"Session error for ARN {arn}: {e}") from e
 
     async def _get_account_session(self, arn: str) -> AioSession:
-        return await self._create_and_log_session(arn, session_name="OceanRoleSession") 
+        return await self._create_and_log_session(arn, session_name="OceanRoleSession")

@@ -91,7 +91,9 @@ async def get_arn_for_account_id(account_id: str) -> Optional[str]:
     return None
 
 
-async def get_all_account_sessions(selector: AWSDescribeResourcesSelector) -> list[tuple[dict[str, Any], AioSession]]:
+async def get_all_account_sessions(
+    selector: AWSDescribeResourcesSelector,
+) -> list[tuple[dict[str, Any], AioSession]]:
     """Get a list of (account, session) tuples for all accessible AWS accounts."""
     strategy = await get_initialized_session_strategy()
     sessions = []

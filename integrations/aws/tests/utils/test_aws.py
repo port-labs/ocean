@@ -150,7 +150,8 @@ async def test_session_strategy_factory_single(
         return True
 
     monkeypatch.setattr(
-        "aws.auth.strategies.single_account_strategy.SingleAccountStrategy.healthcheck", async_true
+        "aws.auth.strategies.single_account_strategy.SingleAccountStrategy.healthcheck",
+        async_true,
     )
     strategy = await SessionStrategyFactory.create()
     assert isinstance(strategy, SingleAccountStrategy)
