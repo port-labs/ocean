@@ -14,6 +14,8 @@ def mock_ocean_context() -> None:
     """Fixture to mock the Ocean context initialization."""
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.config = MagicMock()
+        mock_ocean_app.config.oauth_access_token_file_path = None
         mock_ocean_app.config.integration.config = {
             "jira_host": "https://getport.atlassian.net",
             "atlassian_user_email": "jira@atlassian.net",
@@ -44,6 +46,7 @@ def mock_jira_client() -> JiraClient:
 async def test_client_initialization(mock_jira_client: JiraClient) -> None:
     """Test the correct initialization of JiraClient."""
     assert mock_jira_client.jira_rest_url == "https://example.atlassian.net/rest"
+    assert mock_jira_client.is_oauth_enabled() is False
     assert isinstance(mock_jira_client.jira_api_auth, BasicAuth)
 
 
@@ -232,6 +235,45 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_paginated_teams_multiple_pages(mock_jira_client: JiraClient) -> None:
+    """Test get_paginated_teams method with multiple pages"""
+    # First page response with cursor
+    page1_response = {
+        "entities": [
+            {"teamId": "team1", "name": "Team 1"},
+            {"teamId": "team2", "name": "Team 2"},
+        ],
+        "cursor": "next_page_cursor",
+    }
+
+    # Second page response without cursor (end of pagination)
+    page2_response = {
+        "entities": [
+            {"teamId": "team3", "name": "Team 3"},
+        ],
+        "cursor": None,
+    }
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [page1_response, page2_response]
+
+        teams: list[dict[str, Any]] = []
+        async for team_batch in mock_jira_client.get_paginated_teams("test_org_id"):
+            teams.extend(team_batch)
+
+        assert len(teams) == 3
+        assert teams[0]["teamId"] == "team1"
+        assert teams[1]["teamId"] == "team2"
+        assert teams[2]["teamId"] == "team3"
+
+        # Verify the second call includes the cursor
+        second_call = mock_request.call_args_list[1]
+        assert second_call[1]["params"]["cursor"] == "next_page_cursor"
+
+
+@pytest.mark.asyncio
 async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
     """Test get_paginated_team_members with example API response format"""
     page1_response = {
@@ -361,11 +403,7 @@ async def test_create_events_webhook_oauth(mock_jira_client: JiraClient) -> None
         patch.object(
             mock_jira_client, "_send_api_request", new_callable=AsyncMock
         ) as mock_request,
-        patch.object(
-            mock_jira_client, "has_webhook_permission", new_callable=AsyncMock
-        ) as mock_permission,
     ):
-        mock_permission.return_value = True
         mock_request.return_value = {"values": [{"url": webhook_url}]}
 
         await mock_jira_client.create_webhooks(app_host)

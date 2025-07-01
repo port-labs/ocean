@@ -7,6 +7,153 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.4 (2025-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
+## 0.2.3 (2025-06-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+## 0.2.2 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
+## 0.2.1 (2025-06-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.18
+
+
+## 0.2.0 (2025-06-23)
+
+
+### Features
+
+- Added support for Project Webhook Processor, enabling handling of project creation and deletion events via webhooks in the GitLab integration.
+
+
+## 0.1.39 (2025-06-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.17
+
+
+## 0.1.38 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.16
+
+
+## 0.1.37 (2025-06-22)
+
+
+### Improvements
+
+- Upgraded integration requests dependency (#1)
+
+
+## 0.1.36 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.15
+
+
+## 0.1.35 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+## 0.1.34 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+## 0.1.33 (2025-06-17)
+
+
+### Improvements
+
+
+- Added filtering for top-level groups in group search
+- Updated webhook creation to only fetch groups owned by the authenticated user
+
+
+## 0.1.32 (2025-06-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.11
+
+
+## 0.1.31 (2025-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.10
+
+
+## 0.1.30 (2025-06-09)
+
+
+### Improvements
+
+- Added support for ingesting merge requests in different states (opened, closed, merged) through a new state selector configuration, allowing users to specify which merge request states they want to track
+
+
+## 0.1.29 (2025-06-11)
+
+
+### Improvements
+
+- Changed job fetching to use pipeline context instead of project context to establish proper parent-child relationships between pipelines and jobs
+
+
+## 0.1.28 (2025-06-11)
+
+
+### Improvements
+
+
+- Bumped ocean version to ^0.24.8
+
+
+## 0.1.27 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
 ## 0.1.26 (2025-06-09)
 
 

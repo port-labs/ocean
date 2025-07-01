@@ -1,3 +1,115 @@
+## 0.1.48 (2025-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
+## 0.1.47 (2025-06-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+## 0.1.46 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
+## 0.1.45 (2025-06-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.18
+
+
+## 0.1.44 (2025-06-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.17
+
+
+## 0.1.43 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.16
+
+
+## 0.1.42 (2025-06-22)
+
+
+### Improvements
+
+- Upgraded integration requests dependency (#1)
+
+
+## 0.1.41 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.15
+
+
+## 0.1.40 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+## 0.1.39 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+## 0.1.38 (2025-06-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.11
+
+
+## 0.1.37 (2025-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.10
+
+
+## 0.1.36 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.8
+
+
+## 0.1.35 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
 ## 0.1.34 (2025-06-09)
 
 

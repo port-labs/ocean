@@ -7,6 +7,126 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.206 (2025-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
+## 0.1.205 (2025-06-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+## 0.1.204 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
+## 0.1.203 (2025-06-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.18
+
+
+## 0.1.202 (2025-06-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.17
+
+
+## 0.1.201 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.16
+
+
+## 0.1.200 (2025-06-22)
+
+
+### Improvements
+
+- Upgraded integration requests dependency (#1)
+
+
+## 0.1.199 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.15
+
+
+## 0.1.198 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+## 0.1.197 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+## 0.1.196 (2025-06-17)
+
+
+### Bug fix
+
+- Gracefully handle 404 errors for project kind by not raising exceptions which leads to partial data insertion and instead returning an empty results
+
+
+## 0.1.195 (2025-06-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.11
+
+
+## 0.1.194 (2025-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.10
+
+
+## 0.1.193 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.8
+
+
+## 0.1.192 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
 ## 0.1.191 (2025-06-09)
 
 
@@ -249,7 +369,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Transitioned live events management to ocean’s `LiveEventProcessorManager` to streamline processing
+- Transitioned live events management to ocean's `LiveEventProcessorManager` to streamline processing
 
 
 ## 0.1.161 (2025-03-24)

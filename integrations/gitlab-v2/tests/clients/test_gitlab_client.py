@@ -101,15 +101,15 @@ class TestGitLabClient:
                 params={
                     "min_access_level": 30,
                     "all_available": True,
-                    "top_level_only": False,
+                    "owned": False,
                 },
             )
 
-    async def test_get_groups_top_level_only(self, client: GitLabClient) -> None:
-        """Test group fetching with top level only"""
+    async def test_get_groups_owned(self, client: GitLabClient) -> None:
+        """Test group fetching with owned parameter"""
         # Arrange
         mock_groups: list[dict[str, Any]] = [
-            {"id": 1, "name": "Test Group", "parent_id": None},
+            {"id": 1, "name": "Test Group"},
         ]
 
         # Use a context manager for patching
@@ -120,18 +120,17 @@ class TestGitLabClient:
         ) as mock_get_resource:
             # Act
             results: list[dict[str, Any]] = []
-            async for batch in client.get_groups(top_level_only=True):
+            async for batch in client.get_groups(owned=True):
                 results.extend(batch)
 
             # Assert
             assert len(results) == 1
             assert results[0]["name"] == "Test Group"
-            assert results[0]["parent_id"] is None
             mock_get_resource.assert_called_once_with(
                 "groups",
                 params={
                     "min_access_level": 30,
-                    "top_level_only": True,
+                    "owned": True,
                     "all_available": True,
                 },
             )
@@ -386,9 +385,10 @@ class TestGitLabClient:
         ]
         scope = "blobs"
         query = "test.yaml"
+
         with patch.object(
             client, "get_groups", return_value=async_mock_generator([mock_groups])
-        ):
+        ) as mock_get_groups:
             with patch.object(
                 client,
                 "_search_files_in_group",
@@ -402,9 +402,12 @@ class TestGitLabClient:
                         scope, query, skip_parsing=False
                     ):
                         results.extend(batch)
+
                     assert len(results) == 1
                     assert results[0]["path"] == "test.yaml"
                     assert results[0]["content"] == {"key": "value"}
+
+                    mock_get_groups.assert_called_once_with(owned=False)
                     mock_search_group.assert_called_once_with(
                         "1", "blobs", "path:test.yaml", False
                     )
@@ -597,26 +600,33 @@ class TestGitLabClient:
                 "123", "other_file.txt", "main"
             )
 
-    async def test_get_project_jobs(self, client: GitLabClient) -> None:
-        """Test fetching project jobs"""
+    async def test_get_pipeline_jobs(self, client: GitLabClient) -> None:
+        """Test fetching jobs through pipelines"""
         # Arrange
         mock_projects = [{"id": 1, "name": "Test Project"}]
+        mock_pipelines = [{"id": 1, "name": "Test Pipeline"}]
         mock_jobs = [{"id": 1, "name": "Test Job"}]
 
         with patch.object(
             client.rest,
             "get_paginated_project_resource",
-            return_value=async_mock_generator([mock_jobs]),
+            side_effect=[
+                async_mock_generator([mock_pipelines]),  # First call for pipelines
+                async_mock_generator([mock_jobs]),  # Second call for jobs
+            ],
         ) as mock_get_paginated:
             results = []
-            async for batch in client.get_project_jobs(mock_projects):
+            async for batch in client.get_pipeline_jobs(mock_projects):
                 results.extend(batch)
 
             assert len(results) == 1
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Job"
-            mock_get_paginated.assert_called_once_with(
-                "1", "jobs", params={"per_page": 100}
+            # Verify both pipeline and job API calls
+            assert mock_get_paginated.call_count == 2
+            mock_get_paginated.assert_any_call("1", "pipelines")
+            mock_get_paginated.assert_any_call(
+                "1", "pipelines/1/jobs", params={"per_page": 100}
             )
 
     async def test_project_resource(self, client: GitLabClient) -> None:

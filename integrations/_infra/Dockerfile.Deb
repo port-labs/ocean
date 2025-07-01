@@ -19,6 +19,10 @@ RUN poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
 FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
 
+RUN groupadd -r appgroup && useradd -r -g appgroup -m ocean
+
+RUN mkdir -p /tmp/ocean
+
 ARG INTEGRATION_VERSION
 ARG BUILD_CONTEXT
 ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
@@ -27,6 +31,7 @@ ENV LIBRDKAFKA_VERSION=2.8.2 \
     PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR}
 
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
+RUN chown -R ocean:appgroup /tmp/ocean && chmod -R 755 /tmp/ocean
 
 RUN apt-get update \
     && apt-get install -y \
@@ -43,6 +48,8 @@ ENV PIP_ROOT_USER_ACTION=ignore
 
 WORKDIR /app
 
+USER ocean
+
 # Copy the application code
 COPY ./${BUILD_CONTEXT} /app
 
@@ -51,10 +58,13 @@ COPY --from=base /app/.venv /app/.venv
 
 COPY ./integrations/_infra/init.sh /app/init.sh
 
+USER root
 # Ensure that ocean is available for all in path
 RUN chmod a+x /app/.venv/bin/ocean
 
 RUN chmod a+x /app/init.sh
 RUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
+
+USER ocean
 # Run the application
 CMD ["bash", "/app/init.sh"]
