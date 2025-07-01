@@ -89,7 +89,15 @@ class TestFolderWebhookProcessor:
     @pytest.mark.parametrize(
         "payload,expected",
         [
-            ({"ref": "refs/heads/main", "repository": {"name": "test"}, "before": "ldl", "after": "jdj"}, True),
+            (
+                {
+                    "ref": "refs/heads/main",
+                    "repository": {"name": "test"},
+                    "before": "ldl",
+                    "after": "jdj",
+                },
+                True,
+            ),
             ({"ref": "refs/heads/main"}, False),
             ({"repository": {"name": "test"}}, False),
             ({}, False),
@@ -182,6 +190,7 @@ class TestFolderWebhookProcessor:
         ]
 
         mock_client = MagicMock()
+        mock_client.send_api_request = AsyncMock(return_value={"name": repo_name})
         mock_create_client.return_value = mock_client
         mock_fetch_commit_diff.return_value = {"files": [{"filename": "dummy"}]}
         mock_extract_changed_files.return_value = ([], changed_files)

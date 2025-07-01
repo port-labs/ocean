@@ -4,12 +4,13 @@ from loguru import logger
 
 from github.clients.client_factory import create_github_client
 from github.core.exporters.folder_exporter import RestFolderExporter
-from github.core.options import ListFolderOptions
+from github.core.options import ListFolderOptions, SingleRepositoryOptions
 from github.helpers.utils import ObjectKind, extract_changed_files, fetch_commit_diff
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
 from integration import FolderSelector, GithubFolderResourceConfig
+from github.core.exporters.repository_exporter import RestRepositoryExporter
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -116,8 +117,13 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             return []
 
         exporter = RestFolderExporter(client)
+        repo_exporter = RestRepositoryExporter(client)
+
         changed_folders = []
         processed_folder_paths: set[str] = set()
+
+        repo_options = SingleRepositoryOptions(name=repository["name"])
+        repository = await repo_exporter.get_resource(repo_options)
 
         for pattern in folder_selector:
             if not self._has_matched_repo(pattern, repository, branch):
