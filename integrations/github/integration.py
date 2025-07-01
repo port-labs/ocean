@@ -23,6 +23,7 @@ from github.helpers.utils import ObjectKind
 
 FILE_PROPERTY_PREFIX = "file://"
 
+
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
         description="Specify the repository name",
