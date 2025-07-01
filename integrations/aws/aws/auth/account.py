@@ -68,21 +68,6 @@ class AWSSessionStrategy(ABC):
         yield  # type: ignore [misc]
 
     @abstractmethod
-    async def create_session_for_each_account(
-        self,
-        selector: AWSDescribeResourcesSelector,
-    ) -> AsyncIterator[tuple[AioSession, str]]:
-        """For each account, discover allowed regions and yield (session, region)."""
-        yield  # type: ignore [misc]
-
-    @abstractmethod
-    async def create_session_for_account(
-        self, arn: str, selector: AWSDescribeResourcesSelector
-    ) -> AsyncIterator[tuple[AioSession, str]]:
-        """For a specific ARN, discover allowed regions and yield (session, region)."""
-        yield  # type: ignore [misc]
-
-    @abstractmethod
     async def get_account_session(self, arn: str) -> Optional[AioSession]:
         """Get a single session for a specific ARN."""
         pass
@@ -105,33 +90,6 @@ class SingleAccountStrategy(AWSSessionStrategy):
             account_id: str = identity["Account"]
         logger.info(f"Accessing single account: {account_id}")
         yield {"Id": account_id, "Arn": identity["Arn"]}
-
-    async def create_session_for_each_account(
-        self,
-        selector: AWSDescribeResourcesSelector,
-    ) -> AsyncIterator[tuple[AioSession, str]]:
-        session = await self.provider.get_session(region=None)
-        resolver = RegionResolver(session, selector)
-        allowed_regions = list(await resolver.get_allowed_regions())
-        for region in allowed_regions:
-            yield session, region
-
-    async def create_session_for_account(
-        self, arn: str, selector: AWSDescribeResourcesSelector
-    ) -> AsyncIterator[tuple[AioSession, str]]:
-        session = await self.provider.get_session(region=None)
-        async with session.create_client("sts", region_name=None) as sts:
-            identity = await sts.get_caller_identity()
-            current_arn: str = identity["Arn"]
-        if current_arn != arn:
-            logger.warning(
-                f"Requested ARN {arn} does not match current ARN {current_arn}"
-            )
-            return
-        resolver = RegionResolver(session, selector)
-        allowed_regions = list(await resolver.get_allowed_regions())
-        for region in allowed_regions:
-            yield session, region
 
     async def get_account_session(self, arn: str) -> Optional[AioSession]:
         """Get a single session for a specific ARN (SingleAccountStrategy)."""
@@ -220,60 +178,6 @@ class MultiAccountStrategy(AWSSessionStrategy):
                 "Arn": arn,
                 "Name": f"Account-{account_id}" if account_id else arn,
             }
-
-    async def create_session_for_each_account(
-        self,
-        selector: AWSDescribeResourcesSelector,
-    ) -> AsyncIterator[tuple[AioSession, str]]:
-
-        async def process_account_regions(
-            account_info: dict[str, Any]
-        ) -> list[tuple[AioSession, str]]:
-
-            session = await self._get_account_session(account_info["Arn"])
-            resolver = RegionResolver(session, selector)
-            allowed_regions = await resolver.get_allowed_regions()
-            if not allowed_regions:
-                logger.warning(
-                    f"No allowed regions for ARN {account_info['Arn']}. Skipping account."
-                )
-                return []
-            logger.info(
-                f"[ARN {account_info['Arn']}] Using session for regions: {allowed_regions} (total: {len(allowed_regions)})"
-            )
-            results = [(session, region) for region in allowed_regions]
-            return results
-
-        tasks = [
-            process_account_regions(account_info)
-            async for account_info in self.get_accessible_accounts()
-        ]
-
-        results = await asyncio.gather(*tasks)
-        for result in results:
-            for session, region in result:
-                yield session, region
-
-    async def create_session_for_account(
-        self, arn: str, selector: AWSDescribeResourcesSelector
-    ) -> AsyncIterator[tuple[AioSession, str]]:
-        # Only allow session creation for ARNs that passed health check
-        if arn not in self._valid_arns:
-            logger.warning(f"ARN {arn} did not pass health check, skipping...")
-            return
-
-        logger.info(f"Creating session for ARN {arn}")
-        session = await self._get_account_session(arn)
-        resolver = RegionResolver(session, selector)
-        allowed_regions = list(await resolver.get_allowed_regions())
-        if not allowed_regions:
-            logger.warning(f"No allowed regions for ARN {arn}. Skipping.")
-            return
-        logger.info(
-            f"[ARN {arn}] Using session for regions: {allowed_regions} (total: {len(allowed_regions)})"
-        )
-        for region in allowed_regions:
-            yield session, region
 
     async def get_account_session(self, arn: str) -> Optional[AioSession]:
         """Get a single session for a specific ARN (MultiAccountStrategy)."""

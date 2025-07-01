@@ -16,7 +16,7 @@ from utils.misc import (
     process_list_in_chunks,
     ResourceGroupsClientProtocol,
 )
-from utils.aws import get_sessions
+from utils.aws import get_account_session, get_allowed_regions
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.overrides import AWSResourceConfig
@@ -58,13 +58,17 @@ async def describe_single_resource(
     kind: str,
     identifier: str,
     resource_config: AWSResourceConfig,
-    account_id: str | None = None,
     account_arn: str | None = None,
     region: str | None = None,
 ) -> dict[str, str]:
     selector = resource_config.selector
-    async for session, session_region in get_sessions(selector, arn=account_arn):
-        current_region = session_region
+    if not account_arn:
+        return {}
+    session = await get_account_session(account_arn)
+    if not session:
+        return {}
+    regions = [region] if region else await get_allowed_regions(session, selector)
+    for current_region in regions:
         match kind:
             case ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER:
                 async with session.create_client(

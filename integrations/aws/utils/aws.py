@@ -51,20 +51,6 @@ async def get_accounts() -> AsyncIterator[dict[str, Any]]:
         yield account
 
 
-async def get_sessions(
-    selector: AWSDescribeResourcesSelector,
-    arn: Optional[str] = None,
-) -> AsyncIterator[Tuple[AioSession, str]]:
-    """Get AWS sessions for all accounts and allowed regions, or for a specific ARN if provided. Handles region discovery internally."""
-    strategy = await get_initialized_session_strategy()
-    if arn:
-        async for session, region in strategy.create_session_for_account(arn, selector):
-            yield session, region
-    else:
-        async for session, region in strategy.create_session_for_each_account(selector):
-            yield session, region
-
-
 async def get_account_session(arn: str) -> Optional[AioSession]:
     """Get a single session for a specific ARN."""
     strategy = await get_initialized_session_strategy()
@@ -102,3 +88,14 @@ async def get_arn_for_account_id(account_id: str) -> Optional[str]:
         if account["Id"] == account_id:
             return account["Arn"]
     return None
+
+
+async def get_all_account_sessions(selector: AWSDescribeResourcesSelector) -> list[tuple[dict[str, Any], AioSession]]:
+    """Get a list of (account, session) tuples for all accessible AWS accounts."""
+    strategy = await get_initialized_session_strategy()
+    sessions = []
+    async for account in strategy.get_accessible_accounts():
+        session = await strategy.get_account_session(account["Arn"])
+        if session is not None:
+            sessions.append((account, session))
+    return sessions
