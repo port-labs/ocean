@@ -43,6 +43,9 @@ from github.webhook.webhook_processors.dependabot_webhook_processor import (
 from github.webhook.webhook_processors.code_scanning_alert_webhook_processor import (
     CodeScanningAlertWebhookProcessor,
 )
+from github.webhook.webhook_processors.collaborator_webhook_processor import (
+    CollaboratorWebhookProcessor,
+)
 
 
 def register_live_events_webhooks(path: str = "/webhook") -> None:
@@ -62,3 +65,4 @@ def register_live_events_webhooks(path: str = "/webhook") -> None:
     ocean.add_webhook_processor(path, TeamWebhookProcessor)
     ocean.add_webhook_processor(path, TeamMemberWebhookProcessor)
     ocean.add_webhook_processor(path, UserWebhookProcessor)
+    ocean.add_webhook_processor(path, CollaboratorWebhookProcessor)

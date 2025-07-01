@@ -140,3 +140,13 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
     """Options for listing code scanning alerts."""
 
     state: Required[str]
+
+
+class SingleCollaboratorOptions(RepositoryIdentifier):
+    """Options for fetching a single collaborator."""
+
+    username: Required[str]
+
+
+class ListCollaboratorOptions(RepositoryIdentifier):
+    """Options for listing collaborators."""

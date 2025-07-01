@@ -19,6 +19,7 @@ features:
       - kind: deployment
       - kind: dependabot-alert
       - kind: code-scanning-alerts
+      - kind: collaborator
 configurations:
   - name: githubHost
     required: false

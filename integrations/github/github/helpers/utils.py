@@ -26,6 +26,7 @@ class ObjectKind(StrEnum):
     DEPLOYMENT = "deployment"
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
+    COLLABORATOR = "collaborator"
 
 
 def enrich_with_repository(

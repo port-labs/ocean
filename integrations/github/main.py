@@ -32,6 +32,7 @@ from github.core.exporters.dependabot_exporter import RestDependabotAlertExporte
 from github.core.exporters.code_scanning_alert_exporter import (
     RestCodeScanningAlertExporter,
 )
+from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
 
 from github.core.options import (
     ListBranchOptions,
@@ -46,6 +47,7 @@ from github.core.options import (
     ListTagOptions,
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
+    ListCollaboratorOptions,
 )
 from github.helpers.utils import ObjectKind, GithubClientType
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
@@ -429,6 +431,30 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         async for alerts in stream_async_iterators_tasks(*tasks):
             yield alerts
+
+
+@ocean.on_resync(ObjectKind.COLLABORATOR)
+async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all collaborators in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    collaborator_exporter = RestCollaboratorExporter(rest_client)
+
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            collaborator_exporter.get_paginated_resources(
+                ListCollaboratorOptions(repo_name=repo["name"])
+            )
+            for repo in repositories
+        ]
+        async for collaborators in stream_async_iterators_tasks(*tasks):
+            yield collaborators
 
 
 # Register webhook processors
