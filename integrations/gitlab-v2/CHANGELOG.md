@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.4 (2025-06-26)
+## 0.2.5 (2025-06-26)
 
 
 ### Improvements
@@ -15,8 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented entity delete in port for file kind live events
 
 
-## 0.2.3 (2025-06-26)
+## 0.2.4 (2025-06-30)
 
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
+## 0.2.3 (2025-06-26)
 
 ### Improvements
 
