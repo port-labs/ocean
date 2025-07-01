@@ -12,7 +12,9 @@ from github.core.exporters.team_exporter import (
 )
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.webhook.registry import register_live_events_webhooks
-
+from github.core.exporters.file_exporter.utils import (
+    group_file_patterns_by_repositories_in_selector,
+)
 from github.clients.client_factory import (
     GitHubAuthenticatorFactory,
     create_github_client,
@@ -23,6 +25,7 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
 from github.core.exporters.deployment_exporter import RestDeploymentExporter
 from github.core.exporters.environment_exporter import RestEnvironmentExporter
+from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.repository_exporter import RestRepositoryExporter
@@ -63,6 +66,7 @@ from integration import (
     GithubDependabotAlertConfig,
     GithubCodeScanningAlertConfig,
     GithubTeamConfig,
+    GithubFileResourceConfig,
 )
 
 
@@ -109,37 +113,6 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories
-
-
-@ocean.on_resync(ObjectKind.FOLDER)
-async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all folders in specified repositories."""
-    logger.info(f"Starting resync for kind: {kind}")
-
-    rest_client = create_github_client()
-    folder_exporter = RestFolderExporter(rest_client)
-    repo_exporter = RestRepositoryExporter(rest_client)
-
-    selector = cast(GithubFolderResourceConfig, event.resource_config).selector
-    if not selector.folders:
-        logger.info(
-            "Skipping folder kind resync because required selectors are missing"
-        )
-        return
-
-    for folder_config in selector.folders:
-        for repo in folder_config.repos:
-            logger.info(f"fetching folders for {repo.name}")
-            repo_options = SingleRepositoryOptions(name=repo.name)
-            repository = await repo_exporter.get_resource(repo_options)
-
-            folder_options = ListFolderOptions(
-                repo=repository, path=folder_config.path, branch=repo.branch
-            )
-            async for folders in folder_exporter.get_paginated_resources(
-                folder_options
-            ):
-                yield folders
 
 
 @ocean.on_resync(ObjectKind.USER)
@@ -465,6 +438,54 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         async for alerts in stream_async_iterators_tasks(*tasks):
             yield alerts
+
+
+@ocean.on_resync(ObjectKind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all folders in specified repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    folder_exporter = RestFolderExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+
+    selector = cast(GithubFolderResourceConfig, event.resource_config).selector
+    if not selector.folders:
+        logger.info(
+            "Skipping folder kind resync because required selectors are missing"
+        )
+        return
+
+    for folder_config in selector.folders:
+        for repo in folder_config.repos:
+            logger.info(f"fetching folders for {repo.name}")
+            repo_options = SingleRepositoryOptions(name=repo.name)
+            repository = await repo_exporter.get_resource(repo_options)
+
+            folder_options = ListFolderOptions(
+                repo=repository, path=folder_config.path, branch=repo.branch
+            )
+            async for folders in folder_exporter.get_paginated_resources(
+                folder_options
+            ):
+                yield folders
+
+
+@ocean.on_resync(ObjectKind.FILE)
+async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync files based on configuration using the file exporter."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    exporter = RestFileExporter(rest_client)
+
+    config = cast(GithubFileResourceConfig, event.resource_config)
+    files_pattern = config.selector.files
+
+    repo_path_map = group_file_patterns_by_repositories_in_selector(files_pattern)
+
+    async for file_results in exporter.get_paginated_resources(repo_path_map):
+        yield file_results
 
 
 # Register webhook processors
