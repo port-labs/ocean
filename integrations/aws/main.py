@@ -58,8 +58,7 @@ async def _handle_global_resource_resync(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle global resource resync using v2 authentication for all accounts (ARNs)."""
     selector = aws_resource_config.selector
-    sessions = await get_all_account_sessions(selector)
-    for account, session in sessions:
+    async for account, session in get_all_account_sessions():
         logger.info(
             f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
         )
@@ -88,28 +87,26 @@ async def sync_account_region_resources(
     session: AioSession,
     aws_resource_config: AWSResourceConfig,
     account: dict[str, typing.Any],
+    region: str,
     errors: list[Exception],
     error_regions: list[str],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    selector = aws_resource_config.selector
-    regions = await get_allowed_regions(session, selector)
-    for region in regions:
-        try:
-            async for batch in resync_cloudcontrol(
-                kind, session, region, aws_resource_config
-            ):
-                yield batch
-        except Exception as exc:
-            if is_access_denied_exception(exc):
-                logger.info(
-                    f"Skipping access denied error in region {region} for account {account.get('Id', 'unknown')}"
-                )
-                continue
-            logger.error(
-                f"Error in region {region} for account {account.get('Id', 'unknown')}: {exc}"
+    try:
+        async for batch in resync_cloudcontrol(
+            kind, session, region, aws_resource_config
+        ):
+            yield batch
+    except Exception as exc:
+        if is_access_denied_exception(exc):
+            logger.info(
+                f"Skipping access denied error in region {region} for account {account.get('Id', 'unknown')}"
             )
-            errors.append(exc)
-            error_regions.append(region)
+            return
+        logger.error(
+            f"Error in region {region} for account {account.get('Id', 'unknown')}: {exc}"
+        )
+        errors.append(exc)
+        error_regions.append(region)
 
 
 async def resync_resources_for_account(
@@ -148,6 +145,7 @@ async def resync_resources_for_account(
                     session,
                     aws_resource_config,
                     account,
+                    region,
                     errors,
                     error_regions,
                 ),
@@ -212,8 +210,7 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    sessions = await get_all_account_sessions(selector)
-    for account, session in sessions:
+    async for account, session in get_all_account_sessions():
         logger.info(
             f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
         )
@@ -241,8 +238,7 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    sessions = await get_all_account_sessions(selector)
-    for account, session in sessions:
+    async for account, session in get_all_account_sessions():
         logger.info(
             f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
         )
@@ -270,8 +266,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    sessions = await get_all_account_sessions(selector)
-    for account, session in sessions:
+    async for account, session in get_all_account_sessions():
         logger.info(
             f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
         )
@@ -299,8 +294,7 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    sessions = await get_all_account_sessions(selector)
-    for account, session in sessions:
+    async for account, session in get_all_account_sessions():
         logger.info(
             f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
         )
@@ -329,8 +323,7 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    sessions = await get_all_account_sessions(selector)
-    for account, session in sessions:
+    async for account, session in get_all_account_sessions():
         logger.info(
             f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
         )
@@ -358,8 +351,7 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    sessions = await get_all_account_sessions(selector)
-    for account, session in sessions:
+    async for account, session in get_all_account_sessions():
         logger.info(
             f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
         )
@@ -397,8 +389,7 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
 
     region_semaphore = asyncio.Semaphore(5)
-    sessions = await get_all_account_sessions(selector)
-    for account, session in sessions:
+    async for account, session in get_all_account_sessions():
         logger.info(
             f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
         )

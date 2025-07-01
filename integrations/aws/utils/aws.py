@@ -11,6 +11,10 @@ from aws.auth.region_resolver import RegionResolver
 from utils.overrides import AWSDescribeResourcesSelector
 from aws.auth.session_factory import SessionStrategyFactory
 from aws.auth.utils import CredentialsProviderError
+from port_ocean.utils.async_iterators import (
+    semaphore_async_iterator,
+    stream_async_iterators_tasks,
+)
 
 
 # Private module-level state - using Union to be explicit about the uninitialized state
@@ -91,14 +95,29 @@ async def get_arn_for_account_id(account_id: str) -> Optional[str]:
     return None
 
 
+async def _fetch_account_session_with_semaphore(
+    account: dict[str, Any], semaphore: asyncio.Semaphore
+) -> Optional[tuple[dict[str, Any], AioSession]]:
+    async with semaphore:
+        session = await get_account_session(account["Arn"])
+        if session:
+            return (account, session)
+    return None
+
+
 async def get_all_account_sessions(
-    selector: AWSDescribeResourcesSelector,
-) -> list[tuple[dict[str, Any], AioSession]]:
-    """Get a list of (account, session) tuples for all accessible AWS accounts."""
-    strategy = await get_initialized_session_strategy()
-    sessions = []
-    async for account in strategy.get_accessible_accounts():
-        session = await strategy.get_account_session(account["Arn"])
-        if session is not None:
-            sessions.append((account, session))
-    return sessions
+    concurrency: int = 10,
+) -> AsyncIterator[tuple[dict[str, Any], AioSession]]:
+    """Yield (account, session) tuples for all accessible AWS accounts concurrently, with controlled concurrency."""
+    semaphore = asyncio.Semaphore(concurrency)
+    tasks = []
+    async for account in get_accounts():
+        tasks.append(
+            asyncio.create_task(
+                _fetch_account_session_with_semaphore(account, semaphore)
+            )
+        )
+    for task in asyncio.as_completed(tasks):
+        result = await task
+        if result:
+            yield result
