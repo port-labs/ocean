@@ -643,8 +643,7 @@ class SonarQubeClient:
                         )
                         continue
 
-            if alm_bindings:
-                yield alm_bindings
+            yield alm_bindings
 
     def sanity_check(self) -> None:
         try:
