@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "snyk"
-version = "0.2.46"
+version = "0.2.47"
 description = "Snyk integration powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
