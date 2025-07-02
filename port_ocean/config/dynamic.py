@@ -16,16 +16,23 @@ from pydantic.fields import ModelField, Field
 from port_ocean.config.base import BaseOceanModel
 
 
-class NoTrailSlashUrl(AnyUrl):
+class NoTrailingSlashUrl(AnyUrl):
     @classmethod
-    def validate(
-        cls, value: Any, field: "ModelField", config: "BaseConfig"
-    ) -> "AnyUrl":
+    def validate(cls, value: Any, field: ModelField, config: BaseConfig) -> "AnyUrl":
+        if value is None:
+            return value
+
         if isinstance(value, (bytes, bytearray)):
-            value = value.decode()
+            try:
+                value = value.decode()
+            except UnicodeDecodeError as exc:
+                raise ValueError("URL bytes must be valid UTF-8") from exc
         else:
             value = str(value)
-        value = value.rstrip("/")
+
+        if value != "/":
+            value = value.rstrip("/")
+
         return super().validate(value, field, config)
 
 
@@ -60,7 +67,7 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
             case "object":
                 field_type = dict
             case "url":
-                field_type = NoTrailSlashUrl
+                field_type = NoTrailingSlashUrl
             case "string":
                 field_type = str
             case "integer":
