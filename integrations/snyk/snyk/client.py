@@ -69,6 +69,11 @@ class SnykClient:
                 return response.json()
 
             except httpx.HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    logger.warning(
+                        f"Resource not found for url: {e.response.url}; Error message: {e.response.text}"
+                    )
+                    return {}
                 logger.error(
                     f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
                     f"version: {version}, json: {json_data}. "
