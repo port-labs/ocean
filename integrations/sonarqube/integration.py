@@ -258,7 +258,7 @@ class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):
 
 
 class SonarQubeAlmSettingsSelector(CustomSelector):
-    query: str = "true"  # Default query since ALM settings don't need filtering
+    query: str = Field(default="true", description="Query filter for ALM settings")
 
 
 class SonarQubeAlmSettingsResourceConfig(CustomResourceConfig):
