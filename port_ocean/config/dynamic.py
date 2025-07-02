@@ -20,7 +20,7 @@ class NoTrailSlashUrl(AnyUrl):
     @classmethod
     def validate(
         cls, value: Any, field: "ModelField", config: "BaseConfig"
-    ) -> "NoTrailSlashUrl":
+    ) -> "AnyUrl":
         if isinstance(value, (bytes, bytearray)):
             value = value.decode()
         else:
