@@ -7,8 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.153 (2025-06-26)
+## 0.2.154 (2025-07-02)
 
+### Improvements
+
+- Major refactor of AWS integration to support fully asynchronous, multi-account, and multi-region synchronization.
+- Introduced modular authentication and session management system with support for both static credentials and assume-role (multi-account) flows.
+- All AWS API interactions are now async, leveraging aiobotocore for non-blocking I/O and improved throughput.
+- AWS clients are now always created with explicit region and account context, ensuring correct and secure access for every operation.
+- Enhanced error handling: errors encountered during resource sync are now aggregated and reported as a group for improved observability and debuggability.
+- Improved concurrency controls for account and region processing, increasing scalability and performance.
+- Updated configuration schema to support arrays of role ARNs and external IDs for multi-account access.
+- Added comprehensive unit tests for new authentication/session logic, including edge cases and error scenarios.
+
+### Breaking Changes
+
+- Deprecated the 'organization_role_arn' configuration property. Use 'account_role_arn' (array of ARNs) instead for multi-account support.
+- Users must update their integration configuration to use the new multi-account support (arrays of role ARNs and optional external IDs).
+
+## 0.2.153 (2025-06-26)
 
 ### Improvements
 

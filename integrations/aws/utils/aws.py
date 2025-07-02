@@ -19,7 +19,6 @@ _session_lock = asyncio.Lock()
 
 
 async def initialize_aws_credentials() -> bool:
-    """Initialize the new v2 authentication system."""
     global _session_strategy
 
     logger.info("[AWS Init] Starting AWS authentication initialization")
@@ -28,8 +27,8 @@ async def initialize_aws_credentials() -> bool:
         logger.debug(
             "Created session strategy successfully using validated credentials"
         )
-        sanity_ok = await strategy.healthcheck()
-        if not sanity_ok:
+        health_ok = await strategy.healthcheck()
+        if not health_ok:
             logger.error("Sanity check failed during AWS authentication initialization")
             return False
         _session_strategy = strategy
