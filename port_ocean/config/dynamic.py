@@ -19,20 +19,17 @@ from port_ocean.config.base import BaseOceanModel
 class NoTrailingSlashUrl(AnyUrl):
     @classmethod
     def validate(cls, value: Any, field: ModelField, config: BaseConfig) -> "AnyUrl":
-        if value is None:
-            return value
+        if value is not None:
+            if isinstance(value, (bytes, bytearray)):
+                try:
+                    value = value.decode()
+                except UnicodeDecodeError as exc:
+                    raise ValueError("URL bytes must be valid UTF-8") from exc
+            else:
+                value = str(value)
 
-        if isinstance(value, (bytes, bytearray)):
-            try:
-                value = value.decode()
-            except UnicodeDecodeError as exc:
-                raise ValueError("URL bytes must be valid UTF-8") from exc
-        else:
-            value = str(value)
-
-        if value != "/":
-            value = value.rstrip("/")
-
+            if value != "/":
+                value = value.rstrip("/")
         return super().validate(value, field, config)
 
 
