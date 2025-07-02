@@ -57,6 +57,32 @@ class GithubWebhookClient(GithubRestClient):
             config["secret"] = self.webhook_secret
         return config
 
+    async def _create_new_github_webhook(
+        self, webhook_url: str, webhook_events: List[str]
+    ) -> None:
+        logger.info("Creating new GitHub webhook")
+        webhook_data = {
+            "name": "web",
+            "active": True,
+            "events": webhook_events,
+            "config": self._build_webhook_config(webhook_url),
+        }
+
+        await self.send_api_request(
+            f"{self.base_url}/orgs/{self.organization}/hooks",
+            method="POST",
+            json_data=webhook_data,
+        )
+
+    async def _patch_webhook_secret_if_needed(
+        self, webhook_id: str, webhook_url: str
+    ) -> None:
+        logger.info(f"Patching webhook {webhook_id} to update secret")
+
+        config_data = self._build_webhook_config(webhook_url)
+
+        await self._patch_webhook(webhook_id, config_data)
+
     async def upsert_webhook(self, base_url: str, webhook_events: List[str]) -> None:
         """Create or update GitHub organization webhook with secret handling."""
 
@@ -67,20 +93,7 @@ class GithubWebhookClient(GithubRestClient):
 
             # Create new webhook with events
             if not existing_webhook:
-                logger.info("Creating new GitHub webhook")
-                webhook_data = {
-                    "name": "web",
-                    "active": True,
-                    "events": webhook_events,
-                    "config": self._build_webhook_config(webhook_url),
-                }
-
-                await self.send_api_request(
-                    f"{self.base_url}/orgs/{self.organization}/hooks",
-                    method="POST",
-                    json_data=webhook_data,
-                )
-                logger.info("Successfully created webhook")
+                await self._create_new_github_webhook(webhook_url, webhook_events)
                 return
 
             existing_webhook_id = existing_webhook["id"]
@@ -90,11 +103,9 @@ class GithubWebhookClient(GithubRestClient):
 
             # Check if patching is necessary
             if bool(self.webhook_secret) ^ bool(existing_webhook_secret):
-                logger.info(f"Patching webhook {existing_webhook_id} to update secret")
-
-                config_data = self._build_webhook_config(webhook_url)
-
-                await self._patch_webhook(existing_webhook_id, config_data)
+                await self._patch_webhook_secret_if_needed(
+                    existing_webhook_id, webhook_url
+                )
                 return
 
             logger.info("Webhook already exists with appropriate configuration")

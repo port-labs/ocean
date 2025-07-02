@@ -6,7 +6,6 @@ from loguru import logger
 import re
 
 
-
 PAGE_SIZE = 100
 
 
