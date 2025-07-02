@@ -13,6 +13,7 @@ class ObjectKind(StrEnum):
     """Enum for GitHub resource kinds."""
 
     REPOSITORY = "repository"
+    FOLDER = "folder"
     USER = "user"
     TEAM = "team"
     WORKFLOW = "workflow"
@@ -26,6 +27,7 @@ class ObjectKind(StrEnum):
     DEPLOYMENT = "deployment"
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
+    FILE = "file"
 
 
 def enrich_with_repository(
