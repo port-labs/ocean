@@ -62,6 +62,7 @@ async def test_get_paginated_by_top_and_continuation_token_multiple_pages(
             "GET", "test_url", params={"$top": 50, "continuationToken": "token123"}
         )
 
+
 @pytest.mark.asyncio
 async def test_get_paginated_by_top_and_continuation_token_with_custom_data_key(
     mock_client: HTTPBaseClient,
