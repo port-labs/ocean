@@ -23,7 +23,7 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched environment with identifier {name} from repository {repo_name}"
         )
 
-        return enrich_with_repository(response, repo_name)
+        return enrich_with_repository(response.json(), repo_name)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListEnvironmentsOptions

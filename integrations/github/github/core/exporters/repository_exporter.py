@@ -15,7 +15,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         )
         response = await self.client.send_api_request(endpoint)
         logger.info(f"Fetched repository with identifier: {options['name']}")
-        return response
+        return response.json()
 
     @cache_iterator_result()
     async def get_paginated_resources[

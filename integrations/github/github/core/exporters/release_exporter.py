@@ -20,7 +20,7 @@ class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
 
         logger.info(f"Fetched release with id: {release_id} for repo: {repo_name}")
 
-        return enrich_with_repository(response, repo_name)
+        return enrich_with_repository(response.json(), repo_name)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListReleaseOptions

@@ -19,7 +19,7 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
 
         logger.info(f"Fetched issue {issue_number} from {repo_name}")
 
-        return enrich_with_repository(response, repo_name)
+        return enrich_with_repository(response.json(), repo_name)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListIssueOptions

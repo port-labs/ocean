@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Any, Dict, List, NamedTuple, Optional, Set, Tuple
 from loguru import logger
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
@@ -61,7 +61,7 @@ async def fetch_commit_diff(
     Fetch the commit comparison data from GitHub API.
     """
     resource = f"{client.base_url}/repos/{client.organization}/{repo_name}/compare/{before_sha}...{after_sha}"
-    response = await client.send_api_request(resource)
+    response = cast(Dict[str, Any], await client.send_api_request(resource))
 
     logger.info(f"Found {len(response['files'])} files in commit diff")
 
@@ -101,5 +101,6 @@ def enrich_with_commit(
 
 
 class IgnoredError(NamedTuple):
-    status: int
+    status: int | str
     message: Optional[str] = None
+    type: Optional[str] = None

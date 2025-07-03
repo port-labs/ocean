@@ -20,7 +20,8 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         logger.info("Fetching repository tree")
         params = {"recursive": "true"} if recursive else {}
         tree = await self.client.send_api_request(url, params=params)
-        return tree.get("tree", [])
+        tree_json = tree.json()
+        return tree_json.get("tree", [])
 
     async def get_paginated_resources[
         ExporterOptionsT: ListFolderOptions

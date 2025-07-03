@@ -19,7 +19,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
         logger.debug(f"Fetched pull request with identifier: {repo_name}/{pr_number}")
 
-        return enrich_with_repository(response, repo_name)
+        return enrich_with_repository(response.json(), repo_name)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListPullRequestOptions

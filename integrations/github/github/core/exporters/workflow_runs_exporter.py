@@ -18,7 +18,7 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched workflow run {options['run_id']} from {options['repo_name']}"
         )
 
-        return response
+        return response.json()
 
     async def get_paginated_resources[
         ExporterOptionsT: ListWorkflowRunOptions

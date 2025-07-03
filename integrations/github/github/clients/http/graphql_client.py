@@ -18,12 +18,32 @@ class GithubGraphQLClient(AbstractGithubClient):
     def base_url(self) -> str:
         return urljoin(self.github_host, "/graphql")
 
-    def _handle_graphql_errors(self, response: Response) -> None:
-        result = response.json()
-        if "errors" in result:
-            errors = result["errors"]
-            exceptions = [GraphQLClientError(error) for error in errors]
-            raise ExceptionGroup("GraphQL errors occurred.", exceptions)
+    def _handle_graphql_errors(
+        self,
+        response: Response,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+    ) -> Response:
+        response_json = response.json()
+
+        if "errors" not in response_json:
+            return response
+
+        ignored_errors = ignored_errors or []
+        ignored_types = {e.type: e.message for e in ignored_errors}
+
+        non_ignored_exceptions = []
+
+        for error in response_json["errors"]:
+            error_type = error.get("type")
+            if error_type in ignored_types:
+                logger.warning(ignored_types[error_type])
+                continue
+            non_ignored_exceptions.append(GraphQLClientError(error["message"]))
+
+        if non_ignored_exceptions:
+            raise ExceptionGroup("GraphQL errors occurred.", non_ignored_exceptions)
+
+        return response
 
     async def send_api_request(
         self,
@@ -31,18 +51,16 @@ class GithubGraphQLClient(AbstractGithubClient):
         params: Optional[Dict[str, Any]] = None,
         method: str = "POST",
         json_data: Optional[Dict[str, Any]] = None,
-        return_full_response: bool = True,
         ignored_errors: Optional[List[IgnoredError]] = None,
-    ) -> Any:
+    ) -> Response:
+        ignored_errors = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
         response = await super().send_api_request(
             resource=resource,
             params=params,
             method=method,
             json_data=json_data,
-            return_full_response=return_full_response,
-            ignored_errors=ignored_errors,
         )
-        self._handle_graphql_errors(response)
+        response = self._handle_graphql_errors(response, ignored_errors)
         return response
 
     def build_graphql_payload(
@@ -85,7 +103,10 @@ class GithubGraphQLClient(AbstractGithubClient):
                 json_data=payload,
                 ignored_errors=ignored_errors,
             )
-            data = response.json()["data"]
+            if not (response_json := response.json()):
+                break
+
+            data = response_json["data"]
             nodes = self._extract_nodes(data, path, node_key)
             if not nodes:
                 return

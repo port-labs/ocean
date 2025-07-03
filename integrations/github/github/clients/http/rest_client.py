@@ -45,7 +45,6 @@ class GithubRestClient(AbstractGithubClient):
                 resource,
                 method=method,
                 params=params,
-                return_full_response=True,
                 ignored_errors=ignored_errors,
             )
 

@@ -33,7 +33,7 @@ class RestTagExporter(AbstractGithubExporter[GithubRestClient]):
         response = await self.client.send_api_request(endpoint)
         logger.info(f"Fetched tag: {tag_name} for repo: {repo_name}")
 
-        return self._enrich_tag(response, repo_name, tag_name)
+        return self._enrich_tag(response.json(), repo_name, tag_name)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListTagOptions

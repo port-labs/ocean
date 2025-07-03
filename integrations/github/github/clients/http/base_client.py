@@ -2,9 +2,13 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
+from httpx import Response
+
+
 from loguru import logger
 
 from github.helpers.utils import IgnoredError
+
 
 if TYPE_CHECKING:
     from github.clients.auth.abstract_authenticator import (
@@ -29,10 +33,12 @@ class AbstractGithubClient(ABC):
         IgnoredError(
             status=401,
             message="Unauthorized access to endpoint — authentication required or token invalid",
+            type="UNAUTHORIZED",
         ),
         IgnoredError(
             status=403,
             message="Forbidden access to endpoint — insufficient permissions",
+            type="FORBIDDEN",
         ),
         IgnoredError(
             status=404,
@@ -60,7 +66,7 @@ class AbstractGithubClient(ABC):
         status_code = error.response.status_code
 
         for ignored_error in all_ignored_errors:
-            if status_code == ignored_error.status:
+            if str(status_code) == str(ignored_error.status):
                 logger.warning(
                     f"Failed to fetch resources at {resource} due to {ignored_error.message}"
                 )
@@ -73,9 +79,8 @@ class AbstractGithubClient(ABC):
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
-        return_full_response: bool = False,
         ignored_errors: Optional[List[IgnoredError]] = None,
-    ) -> Any:
+    ) -> Response:
         """Send request to GitHub API with error handling and rate limiting."""
 
         try:
@@ -89,11 +94,11 @@ class AbstractGithubClient(ABC):
             response.raise_for_status()
 
             logger.debug(f"Successfully fetched {method} {resource}")
-            return response if return_full_response else response.json()
+            return response
 
         except httpx.HTTPStatusError as e:
             if self._should_ignore_error(e, resource, ignored_errors):
-                return {}
+                return Response(200, content=b"{}")
 
             logger.error(
                 f"GitHub API error for endpoint '{resource}': Status {e.response.status_code}, "
@@ -110,6 +115,7 @@ class AbstractGithubClient(ABC):
         resource: str,
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
+        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Send a paginated request to GitHub API and yield results.
 

@@ -25,7 +25,7 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched code scanning alert with number: {alert_number} for repo: {repo_name}"
         )
 
-        return enrich_with_repository(response, repo_name)
+        return enrich_with_repository(response.json(), repo_name)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListCodeScanningAlertOptions
