@@ -73,7 +73,7 @@ class AbstractGithubClient(ABC):
                 return True
         return False
 
-    async def send_api_request(
+    async def make_request(
         self,
         resource: str,
         params: Optional[Dict[str, Any]] = None,
@@ -81,7 +81,7 @@ class AbstractGithubClient(ABC):
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> Response:
-        """Send request to GitHub API with error handling and rate limiting."""
+        """Make a request to the GitHub API with error handling and rate limiting."""
 
         try:
             response = await self.authenticator.client.request(
@@ -108,6 +108,21 @@ class AbstractGithubClient(ABC):
         except httpx.HTTPError as e:
             logger.error(f"HTTP error for endpoint '{resource}': {str(e)}")
             raise
+
+    async def send_api_request(
+        self,
+        resource: str,
+        params: Optional[Dict[str, Any]] = None,
+        method: str = "GET",
+        json_data: Optional[Dict[str, Any]] = None,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+    ) -> Dict[str, Any]:
+        """Send request to GitHub API with error handling and rate limiting."""
+
+        response = await self.make_request(
+            resource, params, method, json_data, ignored_errors
+        )
+        return response.json()
 
     @abstractmethod
     def send_paginated_request(

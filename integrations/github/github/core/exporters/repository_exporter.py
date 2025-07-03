@@ -10,12 +10,13 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionsT: SingleRepositoryOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
-        endpoint = (
-            f"{self.client.base_url}/repos/{self.client.organization}/{options['name']}"
-        )
+        name = options["name"]
+
+        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{name}"
         response = await self.client.send_api_request(endpoint)
-        logger.info(f"Fetched repository with identifier: {options['name']}")
-        return response.json()
+
+        logger.info(f"Fetched repository with identifier: {name}")
+        return response
 
     @cache_iterator_result()
     async def get_paginated_resources[

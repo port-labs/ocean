@@ -40,8 +40,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}"
         logger.info(f"Fetching metadata for repository: {repo_name}")
 
-        response = cast(Dict[str, Any], await self.client.send_api_request(url))
-        return response
+        return await self.client.send_api_request(url)
 
     async def get_resource[
         ExporterOptionsT: FileContentOptions
@@ -56,10 +55,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         resource = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/contents/{quote(file_path)}"
         logger.info(f"Fetching file: {file_path} from {repo_name}@{branch}")
 
-        response = cast(
-            Dict[str, Any],
-            await self.client.send_api_request(resource, params={"ref": branch}),
-        )
+        response = await self.client.send_api_request(resource, params={"ref": branch})
 
         response_size = response["size"]
         content = None
@@ -247,7 +243,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     client.base_url, method="POST", json_data=query_payload
                 )
 
-                data = response.json()
                 logger.info(
                     f"Fetched {len(batch_files)} files from {repo_name}:{branch}"
                 )
@@ -255,7 +250,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 yield {
                     "repo": repo_name,
                     "branch": branch,
-                    "file_data": data["data"],
+                    "file_data": response["data"],
                     "batch_files": batch_files,
                 }
 
@@ -318,16 +313,16 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         resource = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/compare/{before_sha}...{after_sha}"
         response = await self.client.send_api_request(resource)
 
-        logger.info(f"Found {len(response.json()['files'])} files in commit diff")
+        logger.info(f"Found {len(response['files'])} files in commit diff")
 
-        return response.json()
+        return response
 
     async def get_branch_tree_sha(self, repo: str, branch: str) -> str:
         """Retrieve the full recursive tree for a given branch."""
         commit_url = f"{self.client.base_url}/repos/{self.client.organization}/{repo}/commits/{branch}"
         response = await self.client.send_api_request(commit_url)
 
-        tree_sha = response.json()["commit"]["tree"]["sha"]
+        tree_sha = response["commit"]["tree"]["sha"]
         logger.info(f"Retrieved branch tree sha for {repo}@{branch}: {tree_sha[:8]}")
 
         return tree_sha
@@ -337,7 +332,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         tree_url = f"{self.client.base_url}/repos/{self.client.organization}/{repo}/git/trees/{sha}?recursive=1"
         response = await self.client.send_api_request(tree_url)
 
-        tree_items = response.json()["tree"]
+        tree_items = response["tree"]
         logger.info(f"Retrieved tree for {repo}@{sha[:8]}: {len(tree_items)} items")
 
         return tree_items

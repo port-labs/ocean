@@ -2,7 +2,6 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from urllib.parse import urljoin
 
 from loguru import logger
-from httpx import Response
 
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import GraphQLClientError
@@ -20,12 +19,11 @@ class GithubGraphQLClient(AbstractGithubClient):
 
     def _handle_graphql_errors(
         self,
-        response: Response,
+        response: Dict[str, Any],
         ignored_errors: Optional[List[IgnoredError]] = None,
-    ) -> Response:
-        response_json = response.json()
+    ) -> Dict[str, Any]:
 
-        if "errors" not in response_json:
+        if "errors" not in response:
             return response
 
         ignored_errors = ignored_errors or []
@@ -33,7 +31,7 @@ class GithubGraphQLClient(AbstractGithubClient):
 
         non_ignored_exceptions = []
 
-        for error in response_json["errors"]:
+        for error in response["errors"]:
             error_type = error.get("type")
             if error_type in ignored_types:
                 logger.warning(ignored_types[error_type])
@@ -52,13 +50,13 @@ class GithubGraphQLClient(AbstractGithubClient):
         method: str = "POST",
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
-    ) -> Response:
-        ignored_errors = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
+    ) -> Dict[str, Any]:
         response = await super().send_api_request(
             resource=resource,
             params=params,
             method=method,
             json_data=json_data,
+            ignored_errors=ignored_errors,
         )
         response = self._handle_graphql_errors(response, ignored_errors)
         return response
@@ -103,10 +101,10 @@ class GithubGraphQLClient(AbstractGithubClient):
                 json_data=payload,
                 ignored_errors=ignored_errors,
             )
-            if not (response_json := response.json()):
+            if not response:
                 break
 
-            data = response_json["data"]
+            data = response["data"]
             nodes = self._extract_nodes(data, path, node_key)
             if not nodes:
                 return

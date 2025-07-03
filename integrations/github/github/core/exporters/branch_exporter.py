@@ -20,7 +20,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
         logger.info(f"Fetched branch: {branch_name} for repo: {repo_name}")
 
-        return enrich_with_repository(response.json(), repo_name)
+        return enrich_with_repository(response, repo_name)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListBranchOptions

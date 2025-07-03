@@ -22,7 +22,7 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched deployment with identifier {id} from repository {repo_name}"
         )
 
-        return enrich_with_repository(response.json(), repo_name)
+        return enrich_with_repository(response, repo_name)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListDeploymentsOptions

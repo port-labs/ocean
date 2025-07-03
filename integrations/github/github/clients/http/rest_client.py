@@ -41,7 +41,7 @@ class GithubRestClient(AbstractGithubClient):
         logger.info(f"Starting pagination for {method} {resource}")
 
         while True:
-            response = await self.send_api_request(
+            response = await self.make_request(
                 resource,
                 method=method,
                 params=params,

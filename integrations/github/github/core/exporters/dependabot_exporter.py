@@ -22,7 +22,7 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched Dependabot alert with number: {alert_number} for repo: {repo_name}"
         )
 
-        return enrich_with_repository(response.json(), repo_name)
+        return enrich_with_repository(response, repo_name)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListDependabotAlertOptions
