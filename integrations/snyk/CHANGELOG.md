@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.47 (2025-07-02)
 
 
-### Bug Fixes
+### Improvements
 
-- Fixed pagination issue in Snyk client
+- Bumped ocean version to ^0.24.22
 
 
 ## 0.2.46 (2025-06-30)
