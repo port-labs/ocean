@@ -79,9 +79,14 @@ class HTTPBaseClient:
                 f"Found {len(items)} objects in url {url} with params: {params}"
             )
             yield items
-            if CONTINUATION_TOKEN_HEADER not in response.headers:
+            continuation_token = response.headers.get(
+                CONTINUATION_TOKEN_HEADER
+            ) or response_json.get("continuationToken")
+            if not continuation_token:
+                logger.info(
+                    f"No continuation token found, pagination complete for {url}"
+                )
                 break
-            continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)
 
     async def _get_paginated_by_top_and_skip(
         self, url: str, params: Optional[dict[str, Any]] = None
