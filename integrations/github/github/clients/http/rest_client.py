@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from github.clients.http.base_client import AbstractGithubClient
+from github.helpers.utils import IgnoredError
 from loguru import logger
 import re
 
@@ -29,6 +30,7 @@ class GithubRestClient(AbstractGithubClient):
         resource: str,
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
+        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Handle GitHub's pagination for API requests."""
         if params is None:
@@ -39,8 +41,11 @@ class GithubRestClient(AbstractGithubClient):
         logger.info(f"Starting pagination for {method} {resource}")
 
         while True:
-            response = await self.send_api_request(
-                resource, method=method, params=params, return_full_response=True
+            response = await self.make_request(
+                resource,
+                method=method,
+                params=params,
+                ignored_errors=ignored_errors,
             )
 
             if not response or not (items := response.json()):
