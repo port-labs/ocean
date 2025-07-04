@@ -1,54 +1,12 @@
-from abc import ABC, abstractmethod
-from typing import Any, Union
+from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from aiobotocore.credentials import (
     AioRefreshableCredentials,
-    AioCredentials,
     create_assume_role_refresher,
 )
 from aws.auth.utils import CredentialsProviderError
 from loguru import logger
-
-AioCredentialsType = Union[AioCredentials, AioRefreshableCredentials]
-
-
-class CredentialProvider(ABC):
-    """
-    Base class for credential providers.
-    """
-
-    @abstractmethod
-    async def get_credentials(self, **kwargs: Any) -> AioCredentialsType: ...
-
-    @abstractmethod
-    async def get_session(self, **kwargs: Any) -> AioSession: ...
-
-    @property
-    @abstractmethod
-    def is_refreshable(self) -> bool: ...
-
-
-class StaticCredentialProvider(CredentialProvider):
-    """
-    Note: Static credentials (IAM User) should not be used for multi-account setups
-    """
-
-    @property
-    def is_refreshable(self) -> bool:
-        return False
-
-    async def get_credentials(self, **kwargs: Any) -> AioCredentials:
-        return AioCredentials(
-            kwargs["aws_access_key_id"],
-            kwargs["aws_secret_access_key"],
-            token=None,
-        )
-
-    async def get_session(self, **kwargs: Any) -> AioSession:
-        credentials = await self.get_credentials(**kwargs)
-        session = AioSession()
-        setattr(session, "_credentials", credentials)
-        return session
+from typing import Any
 
 
 class AssumeRoleProvider(CredentialProvider):
@@ -70,9 +28,9 @@ class AssumeRoleProvider(CredentialProvider):
 
     async def get_credentials(self, **kwargs: Any) -> AioRefreshableCredentials:
         try:
-            async with AioSession().create_client(
+            async with self.aws_client_factory_session.create_client(
                 "sts", region_name=kwargs.get("region")
-            ) as sts:
+            ) as sts_client:
                 role_arn = kwargs["role_arn"]
                 assume_role_params = {
                     "RoleArn": role_arn,
@@ -86,13 +44,18 @@ class AssumeRoleProvider(CredentialProvider):
                     assume_role_params["ExternalId"] = kwargs["external_id"]
 
                 refresher = create_assume_role_refresher(
-                    sts,
+                    sts_client,
                     assume_role_params,
                 )
                 metadata = await refresher()
-                return AioRefreshableCredentials.create_from_metadata(
-                    metadata=metadata, refresh_using=refresher, method="sts-assume-role"
+                assumed_role_credentials = (
+                    AioRefreshableCredentials.create_from_metadata(
+                        metadata=metadata,
+                        refresh_using=refresher,
+                        method="sts-assume-role",
+                    )
                 )
+                return assumed_role_credentials
         except Exception as e:
             logger.error(f"Failed to assume role: {e}")
             raise CredentialsProviderError(f"Failed to assume role: {e}") from e
@@ -103,7 +66,8 @@ class AssumeRoleProvider(CredentialProvider):
             raise CredentialsProviderError(
                 "role_arn is required for AssumeRoleProvider"
             )
-        credentials = await self.get_credentials(**kwargs)
-        session = AioSession()
-        setattr(session, "_credentials", credentials)
-        return session
+        assumed_role_credentials = await self.get_credentials(**kwargs)
+        # Create a new session for the assumed role, do not overwrite the factory session
+        assumed_session = AioSession()
+        setattr(assumed_session, "_credentials", assumed_role_credentials)
+        return assumed_session

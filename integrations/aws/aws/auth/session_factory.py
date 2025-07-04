@@ -1,13 +1,9 @@
-from aws.auth.credentials_provider import (
-    CredentialProvider,
-    AssumeRoleProvider,
-    StaticCredentialProvider,
-)
-from aws.auth.account import (
-    MultiAccountStrategy,
-    SingleAccountStrategy,
-    AWSSessionStrategy,
-)
+from aws.auth.providers.base import CredentialProvider
+from aws.auth.providers.assume_role_provider import AssumeRoleProvider
+from aws.auth.providers.static_provider import StaticCredentialProvider
+from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
+from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
+from aws.auth.strategies.base import AWSSessionStrategy
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from typing import Optional

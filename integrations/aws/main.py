@@ -21,10 +21,12 @@ from utils.resources import (
 
 from utils.aws import (
     get_accounts,
-    get_sessions,
     validate_request,
     get_arn_for_account_id,
     initialize_aws_credentials,
+    get_all_account_sessions,
+    get_allowed_regions,
+    get_account_session,
 )
 from port_ocean.context.ocean import ocean
 from loguru import logger
@@ -47,7 +49,7 @@ from aiobotocore.session import AioSession
 
 # --- Concurrency configuration ---
 ACCOUNT_CONCURRENCY_LIMIT = 8  # Number of accounts processed in parallel
-REGION_CONCURRENCY_LIMIT = 4  # Number of regions per account processed in parallel
+REGION_CONCURRENCY_LIMIT = 10  # Number of regions per account processed in parallel
 
 
 async def _handle_global_resource_resync(
@@ -56,31 +58,36 @@ async def _handle_global_resource_resync(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle global resource resync using v2 authentication for all accounts (ARNs)."""
     selector = aws_resource_config.selector
-    async for session, region in get_sessions(selector, None):
-        try:
-            async for batch in resync_cloudcontrol(
-                kind, session, region, aws_resource_config
-            ):
-                yield batch
-            return
-        except Exception as e:
-            if is_access_denied_exception(e):
-                logger.info(
-                    f"Access denied for global resource {kind} in region {region}, trying next session"
+    async for account, session in get_all_account_sessions():
+        logger.info(
+            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
+        )
+        regions = await get_allowed_regions(session, selector)
+        for region in regions:
+            try:
+                async for batch in resync_cloudcontrol(
+                    kind, session, region, aws_resource_config
+                ):
+                    yield batch
+                return
+            except Exception as e:
+                if is_access_denied_exception(e):
+                    logger.info(
+                        f"Access denied for global resource {kind} in region {region}, trying next session"
+                    )
+                    continue
+                logger.error(
+                    f"Error processing global resource {kind} in region {region}: {e}"
                 )
-                continue
-            logger.error(
-                f"Error processing global resource {kind} in region {region}: {e}"
-            )
-            raise e
+                raise e
 
 
 async def sync_account_region_resources(
     kind: str,
     session: AioSession,
-    region: str,
     aws_resource_config: AWSResourceConfig,
-    account_id: str,
+    account: dict[str, typing.Any],
+    region: str,
     errors: list[Exception],
     error_regions: list[str],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -92,10 +99,12 @@ async def sync_account_region_resources(
     except Exception as exc:
         if is_access_denied_exception(exc):
             logger.info(
-                f"Skipping access denied error in region {region} for account {account_id}"
+                f"Skipping access denied error in region {region} for account {account.get('Id', 'unknown')}"
             )
             return
-        logger.error(f"Error in region {region} for account {account_id}: {exc}")
+        logger.error(
+            f"Error in region {region} for account {account.get('Id', 'unknown')}: {exc}"
+        )
         errors.append(exc)
         error_regions.append(region)
 
@@ -115,12 +124,18 @@ async def resync_resources_for_account(
         return
 
     logger.info(
-        f"Getting sessions for account {account_id} (parallelizing regions, limit {REGION_CONCURRENCY_LIMIT})"
+        f"Getting session for account {account_id} (parallelizing regions, limit {REGION_CONCURRENCY_LIMIT})"
     )
     region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
     selector = aws_resource_config.selector
+    # Get session for this account
+    session = await get_account_session(account["Arn"])
+    if session is None:
+        logger.error(f"Could not get session for account {account['Arn']}")
+        return
+    regions = await get_allowed_regions(session, selector)
     region_tasks = []
-    async for session, region in get_sessions(selector, arn=account["Arn"]):
+    for region in regions:
         region_tasks.append(
             semaphore_async_iterator(
                 region_semaphore,
@@ -128,9 +143,9 @@ async def resync_resources_for_account(
                     sync_account_region_resources,
                     kind,
                     session,
-                    region,
                     aws_resource_config,
-                    account_id,
+                    account,
+                    region,
                     errors,
                     error_regions,
                 ),
@@ -178,6 +193,9 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     account_semaphore = asyncio.Semaphore(10)
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     async for account in get_accounts():
+        logger.info(
+            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
+        )
         async for batch in semaphore_async_iterator(
             account_semaphore,
             functools.partial(
@@ -192,22 +210,27 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    async for session, region in get_sessions(selector, None):
-        async for batch in semaphore_async_iterator(
-            region_semaphore,
-            functools.partial(
-                resync_custom_kind,
-                kind,
-                session,
-                region,
-                "elasticache",
-                "describe_cache_clusters",
-                "CacheClusters",
-                "Marker",
-                aws_resource_config,
-            ),
-        ):
-            yield batch
+    async for account, session in get_all_account_sessions():
+        logger.info(
+            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
+        )
+        regions = await get_allowed_regions(session, selector)
+        for region in regions:
+            async for batch in semaphore_async_iterator(
+                region_semaphore,
+                functools.partial(
+                    resync_custom_kind,
+                    kind,
+                    session,
+                    region,
+                    "elasticache",
+                    "describe_cache_clusters",
+                    "CacheClusters",
+                    "Marker",
+                    aws_resource_config,
+                ),
+            ):
+                yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER)
@@ -215,22 +238,27 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    async for session, region in get_sessions(selector, None):
-        async for batch in semaphore_async_iterator(
-            region_semaphore,
-            functools.partial(
-                resync_custom_kind,
-                kind,
-                session,
-                region,
-                "elbv2",
-                "describe_load_balancers",
-                "LoadBalancers",
-                "Marker",
-                aws_resource_config,
-            ),
-        ):
-            yield batch
+    async for account, session in get_all_account_sessions():
+        logger.info(
+            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
+        )
+        regions = await get_allowed_regions(session, selector)
+        for region in regions:
+            async for batch in semaphore_async_iterator(
+                region_semaphore,
+                functools.partial(
+                    resync_custom_kind,
+                    kind,
+                    session,
+                    region,
+                    "elbv2",
+                    "describe_load_balancers",
+                    "LoadBalancers",
+                    "Marker",
+                    aws_resource_config,
+                ),
+            ):
+                yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM_CERTIFICATE)
@@ -238,22 +266,27 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    async for session, region in get_sessions(selector, None):
-        async for batch in semaphore_async_iterator(
-            region_semaphore,
-            functools.partial(
-                resync_custom_kind,
-                kind,
-                session,
-                region,
-                "acm",
-                "list_certificates",
-                "CertificateSummaryList",
-                "NextToken",
-                aws_resource_config,
-            ),
-        ):
-            yield batch
+    async for account, session in get_all_account_sessions():
+        logger.info(
+            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
+        )
+        regions = await get_allowed_regions(session, selector)
+        for region in regions:
+            async for batch in semaphore_async_iterator(
+                region_semaphore,
+                functools.partial(
+                    resync_custom_kind,
+                    kind,
+                    session,
+                    region,
+                    "acm",
+                    "list_certificates",
+                    "CertificateSummaryList",
+                    "NextToken",
+                    aws_resource_config,
+                ),
+            ):
+                yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.AMI_IMAGE)
@@ -261,23 +294,28 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    async for session, region in get_sessions(selector, None):
-        async for batch in semaphore_async_iterator(
-            region_semaphore,
-            functools.partial(
-                resync_custom_kind,
-                kind,
-                session,
-                region,
-                "ec2",
-                "describe_images",
-                "Images",
-                "NextToken",
-                aws_resource_config,
-                {"Owners": ["self"]},
-            ),
-        ):
-            yield batch
+    async for account, session in get_all_account_sessions():
+        logger.info(
+            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
+        )
+        regions = await get_allowed_regions(session, selector)
+        for region in regions:
+            async for batch in semaphore_async_iterator(
+                region_semaphore,
+                functools.partial(
+                    resync_custom_kind,
+                    kind,
+                    session,
+                    region,
+                    "ec2",
+                    "describe_images",
+                    "Images",
+                    "NextToken",
+                    aws_resource_config,
+                    {"Owners": ["self"]},
+                ),
+            ):
+                yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK)
@@ -285,22 +323,27 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    async for session, region in get_sessions(selector, None):
-        async for batch in semaphore_async_iterator(
-            region_semaphore,
-            functools.partial(
-                resync_custom_kind,
-                kind,
-                session,
-                region,
-                "cloudformation",
-                "describe_stacks",
-                "Stacks",
-                "NextToken",
-                aws_resource_config,
-            ),
-        ):
-            yield batch
+    async for account, session in get_all_account_sessions():
+        logger.info(
+            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
+        )
+        regions = await get_allowed_regions(session, selector)
+        for region in regions:
+            async for batch in semaphore_async_iterator(
+                region_semaphore,
+                functools.partial(
+                    resync_custom_kind,
+                    kind,
+                    session,
+                    region,
+                    "cloudformation",
+                    "describe_stacks",
+                    "Stacks",
+                    "NextToken",
+                    aws_resource_config,
+                ),
+            ):
+                yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.SQS_QUEUE)
@@ -308,18 +351,23 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(5)
-    async for session, region in get_sessions(selector, None):
-        async for batch in semaphore_async_iterator(
-            region_semaphore,
-            functools.partial(
-                resync_sqs_queue,
-                kind,
-                session,
-                region,
-                aws_resource_config,
-            ),
-        ):
-            yield batch
+    async for account, session in get_all_account_sessions():
+        logger.info(
+            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
+        )
+        regions = await get_allowed_regions(session, selector)
+        for region in regions:
+            async for batch in semaphore_async_iterator(
+                region_semaphore,
+                functools.partial(
+                    resync_sqs_queue,
+                    kind,
+                    session,
+                    region,
+                    aws_resource_config,
+                ),
+            ):
+                yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUP)
@@ -341,16 +389,21 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
 
     region_semaphore = asyncio.Semaphore(5)
-    async for session, region in get_sessions(selector, None):
-        async for batch in semaphore_async_iterator(
-            region_semaphore,
-            functools.partial(
-                resync_func,
-                session,
-                region,
-            ),
-        ):
-            yield batch
+    async for account, session in get_all_account_sessions():
+        logger.info(
+            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
+        )
+        regions = await get_allowed_regions(session, selector)
+        for region in regions:
+            async for batch in semaphore_async_iterator(
+                region_semaphore,
+                functools.partial(
+                    resync_func,
+                    session,
+                    region,
+                ),
+            ):
+                yield batch
 
 
 @ocean.app.fast_api_app.middleware("aws_cloud_event")
@@ -415,7 +468,12 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                 )
                 await ocean.unregister(
                     [
-                        Entity(blueprint=blueprint, identifier=identifier)
+                        Entity(
+                            blueprint=blueprint,
+                            identifier=identifier,
+                            icon=None,
+                            title=None,
+                        )
                         for blueprints in disallowed_configs.values()
                         for blueprint in blueprints
                     ]
@@ -445,7 +503,6 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                     resource_type,
                     identifier,
                     aws_resource_config,
-                    account_id,
                     account_arn,
                     region,
                 )
@@ -476,7 +533,12 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                     logger.info("Resource not found in AWS, un-registering from port")
                     await ocean.unregister(
                         [
-                            Entity(blueprint=blueprint, identifier=identifier)
+                            Entity(
+                                blueprint=blueprint,
+                                identifier=identifier,
+                                icon=None,
+                                title=None,
+                            )
                             for blueprint in blueprints
                         ]
                     )
