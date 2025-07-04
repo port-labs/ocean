@@ -1,7 +1,10 @@
 from enum import StrEnum
-from typing import Any, Dict, List, Set, Tuple
-from github.clients.http.base_client import AbstractGithubClient
+from typing import Any, Dict, List, NamedTuple, Optional, Set, Tuple
 from loguru import logger
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from github.clients.http.base_client import AbstractGithubClient
 
 
 class GithubClientType(StrEnum):
@@ -52,7 +55,7 @@ def extract_repo_params(params: dict[str, Any]) -> tuple[str, dict[str, Any]]:
 
 
 async def fetch_commit_diff(
-    client: AbstractGithubClient, repo_name: str, before_sha: str, after_sha: str
+    client: "AbstractGithubClient", repo_name: str, before_sha: str, after_sha: str
 ) -> Dict[str, Any]:
     """
     Fetch the commit comparison data from GitHub API.
@@ -95,3 +98,9 @@ def enrich_with_commit(
     """Helper function to enrich response with commit information."""
     response["commit"] = commit_object
     return response
+
+
+class IgnoredError(NamedTuple):
+    status: int | str
+    message: Optional[str] = None
+    type: Optional[str] = None
