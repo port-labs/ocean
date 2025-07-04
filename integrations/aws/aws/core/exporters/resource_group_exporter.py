@@ -1,10 +1,8 @@
-import asyncio
 from typing import Any, AsyncGenerator, TypeAlias
 from asyncio import TaskGroup, Semaphore
 
 from loguru import logger
 from aws.core.exporters.abstract_exporter import AbstractResourceExporter
-from utils.misc import AsyncPaginator
 from aws.core.options import (
     SingleResourceGroupExporterOptions,
     ListResourceGroupExporterOptions,
