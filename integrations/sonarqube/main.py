@@ -107,6 +107,14 @@ async def on_portfolio_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield portfolio_list
 
 
+@ocean.on_resync(ObjectKind.ALM_SETTINGS)
+async def on_alm_settings_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sonar_client = init_sonar_client()
+    async for alm_bindings_list in sonar_client.get_all_alm_bindings():
+        logger.info(f"Received ALM bindings batch of size: {len(alm_bindings_list)}")
+        yield alm_bindings_list
+
+
 @ocean.on_start()
 async def on_start() -> None:
     if not ocean.integration_config.get("sonar_organization_id"):
