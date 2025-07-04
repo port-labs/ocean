@@ -3,23 +3,22 @@ from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
-from aws.auth.strategies.base import AWSSessionStrategy
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from typing import Optional
-from aws.auth.utils import normalize_arn_list
+
+StrategyType = SingleAccountStrategy | MultiAccountStrategy
 
 
-class SessionStrategyFactory:
-    """An access key pair is tied to a single IAM user in one AWS account"""
+class ResyncStrategyFactory:
+    """A factory for creating resync strategies based on the global configuration."""
 
     @staticmethod
-    async def create(
-        provider: Optional[CredentialProvider] = None,
-    ) -> AWSSessionStrategy:
+    async def create() -> StrategyType:
         """Create and validate session strategy based on global configuration."""
         config = ocean.integration_config
         is_multi_account = bool(config.get("account_role_arn"))
+        provider: CredentialProvider
+
         if is_multi_account:
             logger.info(
                 "[SessionStrategyFactory] Using AssumeRoleProvider for multi-account"
@@ -32,21 +31,14 @@ class SessionStrategyFactory:
             provider = (
                 StaticCredentialProvider()
             )  # An access key pair is tied to a single IAM user in one AWS account
-        strategy_cls: type[AWSSessionStrategy] = (
+        strategy_cls: type[SingleAccountStrategy | MultiAccountStrategy] = (
             MultiAccountStrategy if is_multi_account else SingleAccountStrategy
         )
 
         logger.info(f"Initializing {strategy_cls.__name__}")
 
-        if strategy_cls == MultiAccountStrategy:
-            org_role_arns = normalize_arn_list(config.get("account_role_arn"))
-
-            logger.info(
-                f"Configuration: org_role_arns={org_role_arns}, "
-                f"account_read_role_name={config.get('account_read_role_name')}"
-            )
-
         strategy = strategy_cls(provider=provider, config=config)
+        _ = await strategy.healthcheck()
 
         logger.info(f"Successfully initialized {strategy_cls.__name__}")
         return strategy

@@ -19,7 +19,7 @@ def normalize_arn_list(arn_input: Optional[Union[str, List[str]]]) -> List[str]:
     return [arn.strip() for arn in arn_input if isinstance(arn, str) and arn.strip()]
 
 
-def extract_account_from_arn(arn: str, arn_parser: ArnParser) -> str:
+def extract_account_from_arn(arn: str, arn_parser: ArnParser = ArnParser()) -> str:
     """Extract account ID from ARN. Raises if parsing fails."""
     arn_data = arn_parser.parse_arn(arn)
     return arn_data["account"]

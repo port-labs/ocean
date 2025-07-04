@@ -47,6 +47,8 @@ from port_ocean.utils.async_iterators import (
 import functools
 from aiobotocore.session import AioSession
 
+from aws.auth import ResyncStrategyFactory
+
 # --- Concurrency configuration ---
 ACCOUNT_CONCURRENCY_LIMIT = 8  # Number of accounts processed in parallel
 REGION_CONCURRENCY_LIMIT = 10  # Number of regions per account processed in parallel
@@ -355,6 +357,30 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(
             f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
         )
+        regions = await get_allowed_regions(session, selector)
+        for region in regions:
+            async for batch in semaphore_async_iterator(
+                region_semaphore,
+                functools.partial(
+                    resync_sqs_queue,
+                    kind,
+                    session,
+                    region,
+                    aws_resource_config,
+                ),
+            ):
+                yield batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.SQS_QUEUE)
+async def resync_sqs_v2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    selector = aws_resource_config.selector
+    region_semaphore = asyncio.Semaphore(5)
+    strategy = await ResyncStrategyFactory.create()
+    async for session in strategy.create_session_for_each_account():
+        account_id = getattr(session, "account_id", None)
+        logger.info(f"Processing SQS queue for account {account_id}")
         regions = await get_allowed_regions(session, selector)
         for region in regions:
             async for batch in semaphore_async_iterator(

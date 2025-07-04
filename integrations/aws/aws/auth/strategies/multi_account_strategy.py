@@ -1,28 +1,39 @@
-from aws.auth.strategies.base import AWSSessionStrategy
-from aiobotocore.session import AioSession
-from botocore.utils import ArnParser
+from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
 from aws.auth.utils import (
     normalize_arn_list,
-    extract_account_from_arn,
     AWSSessionError,
     CredentialsProviderError,
 )
+from aiobotocore.session import AioSession
 from loguru import logger
 import asyncio
-from typing import Any, AsyncIterator, Optional, Dict
+from typing import Any, AsyncIterator, Dict, List, Callable, Awaitable
+from aws.auth.utils import extract_account_from_arn
 
 
-class MultiAccountStrategy(AWSSessionStrategy):
-    """Strategy for handling multiple AWS accounts using explicit role ARNs."""
+class MultiAccountHealthCheckMixin(HealthCheckMixin):
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        session_creator: Callable[
+            [str, str], Awaitable[AioSession]
+        ],  # (arn, session_name) -> AioSession
+    ):
+        self.config = config
+        self._create_session = session_creator
+        self._valid_arns: List[str] = []
+
+    @property
+    def valid_arns(self) -> List[str]:
+        return self._valid_arns
 
     async def healthcheck(self) -> bool:
         account_role_arns = self.config.get("account_role_arn")
         arns = normalize_arn_list(account_role_arns)
         if not arns:
-            logger.error("No organization_role_arn(s) provided for healthcheck.")
+            logger.error("No account_role_arn(s) provided for healthcheck.")
             return False
 
-        self._valid_arns = []
         batch_size = 10
         for i in range(0, len(arns), batch_size):
             batch = arns[i : i + batch_size]
@@ -30,75 +41,63 @@ class MultiAccountStrategy(AWSSessionStrategy):
             results = await asyncio.gather(*tasks, return_exceptions=True)
             for arn, result in zip(batch, results):
                 if isinstance(result, Exception):
-                    logger.error(
-                        f"Health check failed for ARN {arn} due to exception: {result}"
-                    )
+                    logger.error(f"Health check failed for ARN {arn}: {result}")
                     continue
                 if result:
-                    logger.info(f"Health check passed for ARN {arn}.")
+                    logger.info(f"Health check passed for ARN {arn}")
                     self._valid_arns.append(arn)
                 else:
-                    logger.warning(f"Health check failed for ARN {arn}.")
-        if not self._valid_arns:
-            logger.error(
-                "Health check failed for all ARNs. No accounts are accessible."
-            )
-            raise AWSSessionError(
-                "Health check failed for all ARNs. No accounts are accessible."
-            )
-        return True
+                    logger.warning(f"Health check failed for ARN {arn}")
 
-    async def _create_and_log_session(
-        self, arn: str, session_name: str = "OceanRoleSession"
-    ) -> AioSession:
-        session_kwargs = {
-            "region": None,
-            "role_arn": arn,
-            "role_session_name": session_name,
-        }
-        if self.config.get("external_id"):
-            session_kwargs["external_id"] = self.config.get("external_id")
-        session = await self.provider.get_session(**session_kwargs)
-        async with session.create_client("sts", region_name=None) as sts:
-            identity = await sts.get_caller_identity()
-            logger.info(f"Successfully assumed role: {arn} as {identity['Arn']}")
-        return session
+        if not self._valid_arns:
+            logger.error("Health check failed for all ARNs.")
+            raise AWSSessionError("No accounts are accessible after health check.")
+
+        return True
 
     async def _can_assume_role(self, arn: str) -> bool:
         try:
-            _ = await self._create_and_log_session(
-                arn, session_name="HealthCheckSession"
-            )
+            await self._create_session(arn, "HealthCheckSession")
             return True
         except CredentialsProviderError as e:
-            logger.error(
-                f"Failed to assume role for ARN {arn} due to credentials error: {e}"
-            )
+            logger.error(f"Credentials error for ARN {arn}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"General error for ARN {arn}: {e}")
             return False
 
-    async def get_accessible_accounts(self) -> AsyncIterator[Dict[str, Any]]:
-        arn_parser = ArnParser()
-        for arn in self._valid_arns:
-            account_id = extract_account_from_arn(arn, arn_parser)
-            yield {
-                "Id": account_id,
-                "Arn": arn,
-                "Name": f"Account-{account_id}" if account_id else arn,
-            }
 
-    async def get_account_session(self, arn: str) -> Optional[AioSession]:
+class MultiAccountStrategy(AWSSessionStrategy, MultiAccountHealthCheckMixin):
+    """Strategy for handling multiple AWS accounts using explicit role ARNs."""
+
+    async def create_session(self, **kwargs: Any) -> AioSession:
         try:
-            return await self._get_account_session(arn)
+
+            arn = kwargs["arn"]
+            session_kwargs = {
+                "region": kwargs.get(
+                    "region", None
+                ),  # if region is not provided, an account session is created
+                "role_arn": arn,
+                "role_session_name": kwargs.get("session_name", "OceanRoleSession"),
+            }
+            if self.config.get("external_id"):
+                session_kwargs["external_id"] = self.config["external_id"]
+
+            session = await self.provider.get_session(**session_kwargs)
+            setattr(session, "account_id", extract_account_from_arn(arn))
+            return session
+
         except CredentialsProviderError as e:
-            logger.error(
-                f"Failed to get session for ARN {arn} due to credentials error: {e}"
-            )
-            return None
+            logger.error(f"Credentials error for ARN {arn}: {e}")
+            raise AWSSessionError(f"Credentials error for ARN {arn}: {e}") from e
+
         except Exception as e:
-            logger.error(
-                f"Failed to get session for ARN {arn} due to session error: {e}"
-            )
+            logger.error(f"Session error for ARN {arn}: {e}")
             raise AWSSessionError(f"Session error for ARN {arn}: {e}") from e
 
-    async def _get_account_session(self, arn: str) -> AioSession:
-        return await self._create_and_log_session(arn, session_name="OceanRoleSession")
+    async def create_session_for_each_account(
+        self, **kwargs: Any
+    ) -> AsyncIterator[AioSession]:
+        for arn in self.valid_arns:
+            yield await self.create_session(arn=arn, **kwargs)

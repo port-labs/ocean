@@ -9,7 +9,7 @@ from aiobotocore.session import AioSession
 from aws.auth.strategies.base import AWSSessionStrategy
 from aws.auth.region_resolver import RegionResolver
 from utils.overrides import AWSDescribeResourcesSelector
-from aws.auth.session_factory import SessionStrategyFactory
+from aws.auth.session_factory import ResyncStrategyFactory
 from aws.auth.utils import CredentialsProviderError
 
 
@@ -26,7 +26,7 @@ async def initialize_aws_credentials() -> bool:
         if _session_strategy is not None:
             logger.info("[AWS Init] Already initialized, skipping.")
             return True
-        strategy = await SessionStrategyFactory.create()
+        strategy = await ResyncStrategyFactory.create()
         _session_strategy = strategy
         logger.debug(
             "Created session strategy successfully using validated credentials"
@@ -51,14 +51,14 @@ async def get_initialized_session_strategy() -> AWSSessionStrategy:
 async def get_accounts() -> AsyncIterator[dict[str, Any]]:
     """Get accessible AWS accounts asynchronously."""
     strategy = await get_initialized_session_strategy()
-    async for account in strategy.get_accessible_accounts():
-        yield account
+    async for session in strategy.create_session_for_each_account():
+        yield session
 
 
 async def get_account_session(arn: str) -> Optional[AioSession]:
     """Get a single session for a specific ARN."""
     strategy = await get_initialized_session_strategy()
-    return await strategy.get_account_session(arn)
+    return await strategy.create_session(arn=arn)
 
 
 def validate_request(request: Request) -> Tuple[bool, str]:

@@ -1,7 +1,7 @@
 from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, Optional, Any
+from typing import AsyncIterator, Any
 
 
 class AWSSessionStrategy(ABC):
@@ -12,13 +12,17 @@ class AWSSessionStrategy(ABC):
         self.config = config
 
     @abstractmethod
-    async def healthcheck(self) -> bool:
+    async def create_session(self, **kwargs: Any) -> AioSession:
         pass
 
     @abstractmethod
-    async def get_accessible_accounts(self) -> AsyncIterator[dict[str, Any]]:
-        yield  # type: ignore [misc]
+    def create_session_for_each_account(
+        self, **kwargs: Any
+    ) -> AsyncIterator[AioSession]:
+        pass
 
+
+class HealthCheckMixin(ABC):
     @abstractmethod
-    async def get_account_session(self, arn: str) -> Optional[AioSession]:
+    async def healthcheck(self) -> bool:
         pass

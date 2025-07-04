@@ -1,7 +1,7 @@
 from aws.auth.providers.base import CredentialProvider, AioCredentialsType
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
-from aws.auth.session_factory import SessionStrategyFactory
+from aws.auth.session_factory import ResyncStrategyFactory
 from aws.auth.strategies.base import AWSSessionStrategy
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
@@ -14,7 +14,7 @@ __all__ = [
     "StaticCredentialProvider",
     "AssumeRoleProvider",
     "CredentialsProviderError",
-    "SessionStrategyFactory",
+    "ResyncStrategyFactory",
     "AWSSessionStrategy",
     "SingleAccountStrategy",
     "MultiAccountStrategy",
