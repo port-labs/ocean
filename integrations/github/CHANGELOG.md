@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.0.0-beta (2025-07-04)
+
+
+### Release
+
+- Bumped integration from dev to beta release
+
+
+## 0.5.2-dev (2025-07-03)
+
+
+### Bug Fixes
+
+- Fixed error handling for repositories with Advanced Security or Dependabot disabled
+- Previously, 403 errors for disabled features would crash the integration
+- Now gracefully ignores these errors and returns empty results
+- Affects both code scanning alerts, Dependabot alerts exporters and webhook upsertion
+
+
+## 0.5.1-dev (2025-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.22
+
+
+## 0.5.0-dev (2025-07-01)
+
+
+### Features
+
+- Added file exporter functionality with support for file content fetching and processing
+- Implemented file webhook processor for real-time file change detection and processing
+- Added file entity processor for dynamic file content retrieval in entity mappings
+- Added support for file pattern matching with glob patterns and size-based routing (GraphQL vs REST)
+
+
+## 0.4.0-dev (2025-06-26)
+
+
+### Features
+
+- Added support for Github folder kind
+
+
 ## 0.3.1-dev (2025-06-30)
 
 

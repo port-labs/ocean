@@ -36,8 +36,8 @@ def get_file_paths(diff_stat: dict[str, Any]) -> tuple[str, str]:
     """
     Extract file paths from diff statistics.
     """
-    old = diff_stat.get("old", {})
-    new = diff_stat.get("new", {})
+    old = diff_stat.get("old") or {}
+    new = diff_stat.get("new") or {}
     return old.get("path", ""), new.get("path", "")
 
 
@@ -230,30 +230,39 @@ async def process_file_changes(
                     )
                     continue
 
-                raw_data = await webhook_client.get_repository_files(
-                    repository, old_hash if is_deleted else new_hash, file_path
-                )
-
-                if not skip_parsing:
-                    raw_data = parse_file(raw_data, file_path)
-                    directory_path = Path(file_path).parent
-                    full_raw_data = await check_and_load_file_prefix(
-                        raw_data,
-                        str(directory_path),
-                        repository,
-                        old_hash if is_deleted else new_hash,
-                        diff_stat,
-                        repo,
-                        branch,
-                    )
-                else:
-                    full_raw_data = {
-                        "content": raw_data,
-                        "metadata": diff_stat,
+                if is_deleted:
+                    deleted_entity = {
                         "repo": repo,
                         "branch": branch,
+                        "metadata": diff_stat,
                     }
-                updated_raw_results.append(dict(full_raw_data))
+                    deleted_raw_results.append(deleted_entity)
+                else:
+                    raw_data = await webhook_client.get_repository_files(
+                        repository, new_hash, file_path
+                    )
+
+                    if not skip_parsing:
+                        raw_data = parse_file(raw_data, file_path)
+                        directory_path = Path(file_path).parent
+                        full_raw_data = await check_and_load_file_prefix(
+                            raw_data,
+                            str(directory_path),
+                            repository,
+                            new_hash,
+                            diff_stat,
+                            repo,
+                            branch,
+                        )
+                    else:
+                        full_raw_data = {
+                            "content": raw_data,
+                            "metadata": diff_stat,
+                            "repo": repo,
+                            "branch": branch,
+                        }
+                    updated_raw_results.append(dict(full_raw_data))
+
     return updated_raw_results, deleted_raw_results
 
 

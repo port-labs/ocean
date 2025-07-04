@@ -6,6 +6,7 @@ features:
     section: Git
     resources:
       - kind: repository
+      - kind: folder
       - kind: user
       - kind: team
       - kind: workflow
@@ -19,6 +20,7 @@ features:
       - kind: deployment
       - kind: dependabot-alert
       - kind: code-scanning-alerts
+      - kind: file
       - kind: collaborator
 configurations:
   - name: githubHost
