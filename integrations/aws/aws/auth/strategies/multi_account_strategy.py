@@ -21,20 +21,24 @@ class MultiAccountStrategy(AWSSessionStrategy):
         if not arns:
             logger.error("No organization_role_arn(s) provided for healthcheck.")
             return False
-        tasks = [self._can_assume_role(arn) for arn in arns]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+
         self._valid_arns = []
-        for arn, result in zip(arns, results):
-            if isinstance(result, Exception):
-                logger.error(
-                    f"Health check failed for ARN {arn} due to exception: {result}"
-                )
-                continue
-            if result:
-                logger.info(f"Health check passed for ARN {arn}.")
-                self._valid_arns.append(arn)
-            else:
-                logger.warning(f"Health check failed for ARN {arn}.")
+        batch_size = 10
+        for i in range(0, len(arns), batch_size):
+            batch = arns[i : i + batch_size]
+            tasks = [self._can_assume_role(arn) for arn in batch]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for arn, result in zip(batch, results):
+                if isinstance(result, Exception):
+                    logger.error(
+                        f"Health check failed for ARN {arn} due to exception: {result}"
+                    )
+                    continue
+                if result:
+                    logger.info(f"Health check passed for ARN {arn}.")
+                    self._valid_arns.append(arn)
+                else:
+                    logger.warning(f"Health check failed for ARN {arn}.")
         if not self._valid_arns:
             logger.error(
                 "Health check failed for all ARNs. No accounts are accessible."
