@@ -255,6 +255,18 @@ class AzureDevopsClient(HTTPBaseClient):
                 ):
                     yield releases
 
+    async def generate_iterations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                iterations_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/work/iterations"
+                async for (
+                    iterations
+                ) in self._get_paginated_by_top_and_continuation_token(iterations_url):
+                    for iteration in iterations:
+                        iteration["__projectId"] = project["id"]
+                        iteration["__project"] = project
+                    yield iterations
+
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
