@@ -1,15 +1,20 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal, Optional, TypeAlias
 
 
 class ExporterOptions(BaseModel):
-    region: str
-    max_results: Optional[int] = 100
+    region: str = Field(..., description="The AWS region to export resources from")
+    method: str = Field(..., description="The method to export resources from")
+    max_results: Optional[int] = Field(
+        default=100,
+        ge=10,
+        le=1000,
+        description="The maximum number of results to return",
+    )
 
 
-class SingleSQSQueueOptions(ExporterOptions):
-    queue_url: str
-    method_name: str = "get_queue_attributes"
+class SingleSQSQueueExporterOptions(ExporterOptions):
+    queue_url: str = Field(..., description="The URL of the SQS queue to export")
     attribute_names: list[
         Literal[
             "All",
@@ -25,25 +30,42 @@ class SingleSQSQueueOptions(ExporterOptions):
             "ReceiveMessageWaitTimeSeconds",
             "VisibilityTimeout",
         ]
-    ] = ["All"]
+    ] = Field(default=["All"], description="The attributes to export")
 
 
-class ListSQSOptions(ExporterOptions):
-    list_param: str = "QueueUrls"
-    method_name: str = "list_queues"
-    queue_name_prefix: Optional[str]
+class ListSQSExporterOptions(ExporterOptions):
+    queue_name_prefix: Optional[str] = Field(
+        default=None, description="The prefix of the queue name to export"
+    )
 
 
-class SingleResourceGroupOptions(ExporterOptions):
-    group_name: str
-    method_name: str = "get_group"
-    include_resources: bool = True
+class ListGroupResourcesEnricherOptions(ExporterOptions):
+    group: str = Field(
+        ...,
+        description="The name or the Amazon resource name (ARN) of the resource group.",
+    )
 
 
-class ListResourceGroupOptions(ExporterOptions):
-    list_param: str = "Groups"
-    method_name: str = "list_groups"
-    include_resources: bool = True
+class SingleResourceGroupExporterOptions(ExporterOptions):
+    group: str = Field(..., description="The name of the resource group to export")
+    include: Optional[ListGroupResourcesEnricherOptions] = Field(
+        default=None,
+        description="The resources to include in the export",
+    )
 
 
-SupportedServices: TypeAlias = Literal["sqs", "resource-groups"]
+class ListResourceGroupExporterOptions(ExporterOptions):
+    include: Literal["resources"] = Field(
+        default="resources",
+        description="The resources to include in the export",
+    )
+
+
+class ListS3BucketsExporterOptions(ExporterOptions): ...
+
+
+class SingleS3BucketExporterOptions(ExporterOptions):
+    bucket: str = Field(..., description="The name of the S3 bucket to export")
+
+
+SupportedServices: TypeAlias = Literal["sqs", "resource-groups", "s3"]
