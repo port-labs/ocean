@@ -23,15 +23,19 @@ async def initialize_aws_credentials() -> bool:
 
     logger.info("[AWS Init] Starting AWS authentication initialization")
     async with _session_lock:
+        if _session_strategy is not None:
+            logger.info("[AWS Init] Already initialized, skipping.")
+            return True
         strategy = await SessionStrategyFactory.create()
+        _session_strategy = strategy
         logger.debug(
             "Created session strategy successfully using validated credentials"
         )
         health_ok = await strategy.healthcheck()
         if not health_ok:
             logger.error("Sanity check failed during AWS authentication initialization")
+            _session_strategy = None
             return False
-        _session_strategy = strategy
         logger.info("AWS authentication system initialized successfully")
         return True
 
