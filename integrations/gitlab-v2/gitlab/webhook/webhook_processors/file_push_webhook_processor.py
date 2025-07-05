@@ -44,35 +44,72 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             )
 
         changed_files = set()
-        for commit in payload.get("commits", []):
-            changed_files.update(commit.get("modified", []))
-            changed_files.update(commit.get("added", []))
+        removed_files = set()
 
+        for commit in payload.get("commits", []):
+            changed_files.update(commit.get("added", []))
+            changed_files.update(commit.get("modified", []))
+            removed_files.update(commit.get("removed", []))
+
+        # Process changed and deleted files
         matching_files = sorted(
-            [path for path in changed_files if fnmatch.fnmatch(path, search_path)]
+            [
+                path
+                for path in changed_files | removed_files
+                if fnmatch.fnmatch(path, search_path)
+            ]
         )
+
+        updated_results = []
+        deleted_results = []
+
         if not matching_files:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        file_batch = [
+        changed_file_batch = [
             {"project_id": str(project_id), "path": file_path, "ref": payload["after"]}
             for file_path in matching_files
+            if file_path in changed_files
+        ]
+        removed_file_batch = [
+            {"project_id": str(project_id), "path": file_path, "ref": payload["before"]}
+            for file_path in matching_files
+            if file_path in removed_files
         ]
 
-        processed_batch = await self._gitlab_webhook_client._process_file_batch(
-            file_batch,
-            context=f"project:{project_id}",
-            skip_parsing=selector.files.skip_parsing,
-        )
-        updated_results = await self._gitlab_webhook_client._enrich_files_with_repos(
-            processed_batch
-        )
+        if changed_file_batch:
+            processed_changed_batch = (
+                await self._gitlab_webhook_client._process_file_batch(
+                    changed_file_batch,
+                    context=f"project:{project_id}",
+                    skip_parsing=selector.files.skip_parsing,
+                )
+            )
+            updated_results = (
+                await self._gitlab_webhook_client._enrich_files_with_repos(
+                    processed_changed_batch
+                )
+            )
+
+        if removed_file_batch:
+            processed_removed_batch = (
+                await self._gitlab_webhook_client._process_file_batch(
+                    removed_file_batch,
+                    context=f"project:{project_id}",
+                    skip_parsing=selector.files.skip_parsing,
+                )
+            )
+            deleted_results = (
+                await self._gitlab_webhook_client._enrich_files_with_repos(
+                    processed_removed_batch
+                )
+            )
 
         logger.info(
-            f"Completed push event processing; updated {len(updated_results)} entities"
+            f"Completed push event processing; updated {len(updated_results)} entities, deleted {len(deleted_results)} entities"
         )
         return WebhookEventRawResults(
-            updated_raw_results=updated_results, deleted_raw_results=[]
+            updated_raw_results=updated_results, deleted_raw_results=deleted_results
         )

@@ -2,7 +2,7 @@ from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 
 import httpx
-from httpx import Timeout
+from httpx import URL, Timeout
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
@@ -69,6 +69,11 @@ class SnykClient:
                 return response.json()
 
             except httpx.HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    logger.warning(
+                        f"Resource not found for url: {e.response.url}; Error message: {e.response.text}"
+                    )
+                    return {}
                 logger.error(
                     f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
                     f"version: {version}, json: {json_data}. "
@@ -93,8 +98,14 @@ class SnykClient:
                 yield data.get("data", [])
 
                 # Check if there is a "next" URL in the links object
-                url_path = data.get("links", {}).get("next", "").replace("/rest", "")
-                query_params = {}  # Reset query params for the next iteration
+                next_url = data.get("links", {}).get("next", "")
+                if next_url:
+                    parsed_url = URL(next_url)
+                    url_path = parsed_url.raw_path.decode().replace("/rest", "")
+                    query_params = dict(parsed_url.params)
+                else:
+                    url_path = ""
+                    query_params = {}
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"

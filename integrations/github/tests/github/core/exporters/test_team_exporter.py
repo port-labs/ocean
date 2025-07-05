@@ -1,6 +1,5 @@
 import copy
 from typing import Any, AsyncGenerator, Iterator
-import httpx
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
@@ -9,7 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.team_exporter import (
@@ -240,16 +239,8 @@ class TestGraphQLTeamExporter:
     ) -> None:
         mock_send_api_request = AsyncMock(
             side_effect=[
-                MagicMock(
-                    spec=httpx.Response,
-                    status_code=200,
-                    json=lambda: copy.deepcopy(GET_RESOURCE_TEAM_ALPHA_PAGE1_RESPONSE),
-                ),
-                MagicMock(
-                    spec=httpx.Response,
-                    status_code=200,
-                    json=lambda: copy.deepcopy(GET_RESOURCE_TEAM_ALPHA_PAGE2_RESPONSE),
-                ),
+                copy.deepcopy(GET_RESOURCE_TEAM_ALPHA_PAGE1_RESPONSE),
+                copy.deepcopy(GET_RESOURCE_TEAM_ALPHA_PAGE2_RESPONSE),
             ]
         )
 
@@ -294,9 +285,8 @@ class TestGraphQLTeamExporter:
     async def test_get_resource_no_member_pagination(
         self, graphql_client: GithubGraphQLClient
     ) -> None:
-        mock_response_beta = MagicMock(spec=httpx.Response)
-        mock_response_beta.status_code = 200
-        mock_response_beta.json.return_value = copy.deepcopy(
+
+        mock_response_data = copy.deepcopy(
             {"data": {"organization": {"team": TEAM_BETA_INITIAL}}}
         )
 
@@ -304,7 +294,7 @@ class TestGraphQLTeamExporter:
         with patch.object(
             graphql_client,
             "send_api_request",
-            new=AsyncMock(return_value=mock_response_beta),
+            new=AsyncMock(return_value=mock_response_data),
         ) as mock_request:
             team = await exporter.get_resource(SingleTeamOptions(slug="team-beta"))
 

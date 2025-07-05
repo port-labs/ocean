@@ -257,3 +257,79 @@ class TestFilePushWebhookProcessor:
         processor._gitlab_webhook_client._enrich_files_with_repos.assert_not_called()
         assert not result.updated_raw_results
         assert not result.deleted_raw_results
+
+    async def test_handle_event_with_deleted_files(
+        self,
+        processor: FilePushWebhookProcessor,
+        push_payload: dict[str, Any],
+        resource_config: ResourceConfig,
+    ) -> None:
+        """Test handling a push event with deleted files"""
+
+        push_payload["commits"][0]["added"] = []
+        push_payload["commits"][0]["modified"] = []
+        push_payload["commits"][0]["removed"] = [
+            "old-config.json",
+            "deprecated/data.json",
+        ]
+
+        project_id = push_payload["project_id"]
+
+        deleted_file_data = [
+            {
+                "project_id": str(project_id),
+                "path": "old-config.json",
+                "ref": push_payload["before"],
+                "content": {"old": "config"},
+            },
+            {
+                "project_id": str(project_id),
+                "path": "deprecated/data.json",
+                "ref": push_payload["before"],
+                "content": {"deprecated": "data"},
+            },
+        ]
+
+        enriched_deleted_data = [
+            {"file": deleted_file_data[0], "repo": push_payload["project"]},
+            {"file": deleted_file_data[1], "repo": push_payload["project"]},
+        ]
+
+        processor._gitlab_webhook_client = MagicMock()
+
+        processor._gitlab_webhook_client._process_file_batch = AsyncMock(
+            return_value=deleted_file_data
+        )
+        processor._gitlab_webhook_client._enrich_files_with_repos = AsyncMock(
+            return_value=enriched_deleted_data
+        )
+
+        result = await processor.handle_event(push_payload, resource_config)
+
+        expected_removed_file_batch = [
+            {
+                "project_id": str(project_id),
+                "path": "deprecated/data.json",
+                "ref": push_payload["before"],
+            },
+            {
+                "project_id": str(project_id),
+                "path": "old-config.json",
+                "ref": push_payload["before"],
+            },
+        ]
+        processor._gitlab_webhook_client._process_file_batch.assert_called_once_with(
+            expected_removed_file_batch,
+            context=f"project:{project_id}",
+            skip_parsing=False,
+        )
+
+        # Verify _enrich_files_with_repos was called with processed batch
+        processor._gitlab_webhook_client._enrich_files_with_repos.assert_called_once_with(
+            deleted_file_data
+        )
+
+        # Verify results
+        assert len(result.deleted_raw_results) == 2
+        assert result.deleted_raw_results == enriched_deleted_data
+        assert not result.updated_raw_results

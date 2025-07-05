@@ -17,11 +17,10 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ](self, options: ExporterOptionT) -> RAW_ITEM:
         variables = {"login": options["login"]}
         payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
-        res = await self.client.send_api_request(
+        response = await self.client.send_api_request(
             self.client.base_url, method="POST", json_data=payload
         )
-        data = res.json()
-        user = data["data"]["user"]
+        user = response["data"]["user"]
         if not user.get("email"):
             await self._fetch_external_identities([user], {(0, user["login"]): user})
         return user

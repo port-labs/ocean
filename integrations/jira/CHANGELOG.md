@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.40 (2025-07-02)
+
+
+### Bug Fixes
+
+-  Fix `JIRA_HOST` from str type to url 
+## 0.4.39 (2025-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.22
+
+
+## 0.4.38 (2025-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
 ## 0.4.37 (2025-06-26)
 
 
