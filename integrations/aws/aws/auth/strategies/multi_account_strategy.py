@@ -76,7 +76,7 @@ class MultiAccountStrategy(AWSSessionStrategy, MultiAccountHealthCheckMixin):
             arn = kwargs["arn"]
             session_kwargs = {
                 "region": kwargs.get(
-                    "region", None
+                    "region"
                 ),  # if region is not provided, an account session is created
                 "role_arn": arn,
                 "role_session_name": kwargs.get("session_name", "OceanRoleSession"),
@@ -85,7 +85,6 @@ class MultiAccountStrategy(AWSSessionStrategy, MultiAccountHealthCheckMixin):
                 session_kwargs["external_id"] = self.config["external_id"]
 
             session = await self.provider.get_session(**session_kwargs)
-            setattr(session, "account_id", extract_account_from_arn(arn))
             return session
 
         except CredentialsProviderError as e:
@@ -100,4 +99,8 @@ class MultiAccountStrategy(AWSSessionStrategy, MultiAccountHealthCheckMixin):
         self, **kwargs: Any
     ) -> AsyncIterator[AioSession]:
         for arn in self.valid_arns:
-            yield await self.create_session(arn=arn, **kwargs)
+            session = await self.create_session(arn=arn, **kwargs)
+            setattr(
+                session, "_AccountId", extract_account_from_arn(arn)
+            )  # hack to faciliate logging
+            yield session
