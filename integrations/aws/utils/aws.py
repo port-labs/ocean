@@ -1,4 +1,4 @@
-from typing import Any, AsyncIterator, Optional, Tuple, Union
+from typing import Any, AsyncIterator, Optional, Tuple, Union, TypedDict
 import asyncio
 
 from loguru import logger
@@ -11,6 +11,14 @@ from aws.auth.region_resolver import RegionResolver
 from utils.overrides import AWSDescribeResourcesSelector
 from aws.auth.session_factory import ResyncStrategyFactory
 from aws.auth.utils import CredentialsProviderError
+
+
+class AccountInfo(TypedDict):
+    """Type definition for AWS account information."""
+
+    Id: str
+    Arn: str
+    Name: str
 
 
 # Private module-level state - using Union to be explicit about the uninitialized state
@@ -43,13 +51,13 @@ async def get_initialized_session_strategy() -> AWSSessionStrategy:
     return _session_strategy
 
 
-async def get_accounts() -> AsyncIterator[dict[str, Any]]:
+async def get_accounts() -> AsyncIterator[AccountInfo]:
     """Get accessible AWS accounts asynchronously."""
     strategy = await get_initialized_session_strategy()
     async for session in strategy.create_session_for_each_account():
         # Extract account information from the session
         account_id = getattr(session, "_AccountId", "unknown")
-        account_info = {
+        account_info: AccountInfo = {
             "Id": account_id,
             "Arn": getattr(session, "_RoleArn", "unknown"),
             "Name": f"Account {account_id}",
@@ -97,8 +105,8 @@ async def get_arn_for_account_id(account_id: str) -> Optional[str]:
 
 
 async def _fetch_account_session_with_semaphore(
-    account: dict[str, Any], semaphore: asyncio.Semaphore
-) -> Optional[tuple[dict[str, Any], AioSession]]:
+    account: AccountInfo, semaphore: asyncio.Semaphore
+) -> Optional[tuple[AccountInfo, AioSession]]:
     async with semaphore:
         session = await get_account_session(account["Arn"])
         if session:
@@ -108,7 +116,7 @@ async def _fetch_account_session_with_semaphore(
 
 async def get_all_account_sessions(
     concurrency: int = 10,
-) -> AsyncIterator[tuple[dict[str, Any], AioSession]]:
+) -> AsyncIterator[tuple[AccountInfo, AioSession]]:
     """Yield (account, session) tuples for all accessible AWS accounts with controlled concurrency."""
     semaphore = asyncio.Semaphore(concurrency)
 
@@ -129,7 +137,7 @@ async def get_all_account_sessions(
         tasks = []
         for account in batch:
             tasks.append(_fetch_account_session_with_semaphore(account, semaphore))
-        
+
         # Handle each task result individually to avoid mixed types
         for account, task in zip(batch, tasks):
             try:
@@ -138,5 +146,5 @@ async def get_all_account_sessions(
                     yield result
             except Exception as e:
                 logger.error(
-                    f"Failed to create session for account {account.get('Id', 'unknown')}: {e}"
+                    f"Failed to create session for account {account['Id']}: {e}"
                 )

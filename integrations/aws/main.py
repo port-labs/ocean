@@ -25,6 +25,7 @@ from utils.aws import (
     initialize_aws_credentials,
     get_all_account_sessions,
     get_allowed_regions,
+    AccountInfo,
 )
 from port_ocean.context.ocean import ocean
 from loguru import logger
@@ -60,8 +61,8 @@ async def _handle_global_resource_resync(
     logger.info(f"Starting global resource resync for {kind}")
 
     async for account, session in get_all_account_sessions():
-        account_id = account.get("Id", "unknown")
-        account_name = account.get("Name", "no name")
+        account_id = account["Id"]
+        account_name = account["Name"]
         logger.info(
             f"Processing global resource {kind} for account {account_id} ({account_name})"
         )
@@ -95,7 +96,7 @@ async def sync_account_region_resources(
     kind: str,
     session: AioSession,
     aws_resource_config: AWSResourceConfig,
-    account: dict[str, typing.Any],
+    account: AccountInfo,
     region: str,
     errors: list[Exception],
     error_regions: list[str],
@@ -108,18 +109,16 @@ async def sync_account_region_resources(
     except Exception as exc:
         if is_access_denied_exception(exc):
             logger.info(
-                f"Skipping access denied error in region {region} for account {account.get('Id', 'unknown')}"
+                f"Skipping access denied error in region {region} for account {account['Id']}"
             )
             return
-        logger.error(
-            f"Error in region {region} for account {account.get('Id', 'unknown')}: {exc}"
-        )
+        logger.error(f"Error in region {region} for account {account['Id']}: {exc}")
         errors.append(exc)
         error_regions.append(region)
 
 
 async def resync_resources_for_account_with_session(
-    account: dict[str, typing.Any],
+    account: AccountInfo,
     session: AioSession,
     kind: str,
     aws_resource_config: AWSResourceConfig,
@@ -227,11 +226,8 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
 
-    # Process accounts sequentially to avoid holding multiple sessions in memory
     async for account, session in get_all_account_sessions():
-        logger.info(
-            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
-        )
+        logger.info(f"Processing account: {account['Id']} ({account['Name']})")
         regions = await get_allowed_regions(session, selector)
         for region in regions:
             async for batch in semaphore_async_iterator(
@@ -257,11 +253,8 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
 
-    # Process accounts sequentially to avoid holding multiple sessions in memory
     async for account, session in get_all_account_sessions():
-        logger.info(
-            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
-        )
+        logger.info(f"Processing account: {account['Id']} ({account['Name']})")
         regions = await get_allowed_regions(session, selector)
         for region in regions:
             async for batch in semaphore_async_iterator(
@@ -288,9 +281,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
 
     async for account, session in get_all_account_sessions():
-        logger.info(
-            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
-        )
+        logger.info(f"Processing account: {account['Id']} ({account['Name']})")
         regions = await get_allowed_regions(session, selector)
         for region in regions:
             async for batch in semaphore_async_iterator(
@@ -317,9 +308,7 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
 
     async for account, session in get_all_account_sessions():
-        logger.info(
-            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
-        )
+        logger.info(f"Processing account: {account['Id']} ({account['Name']})")
         regions = await get_allowed_regions(session, selector)
         for region in regions:
             async for batch in semaphore_async_iterator(
@@ -347,9 +336,7 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
 
     async for account, session in get_all_account_sessions():
-        logger.info(
-            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
-        )
+        logger.info(f"Processing account: {account['Id']} ({account['Name']})")
         regions = await get_allowed_regions(session, selector)
         for region in regions:
             async for batch in semaphore_async_iterator(
@@ -375,11 +362,8 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = aws_resource_config.selector
     region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
 
-    # Process accounts sequentially to avoid holding multiple sessions in memory
     async for account, session in get_all_account_sessions():
-        logger.info(
-            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
-        )
+        logger.info(f"Processing account: {account['Id']} ({account['Name']})")
         regions = await get_allowed_regions(session, selector)
         for region in regions:
             async for batch in semaphore_async_iterator(
@@ -402,7 +386,7 @@ async def resync_sqs_v2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
 
     async for account, session in get_all_account_sessions():
-        account_id = account.get("Id", "unknown")
+        account_id = account["Id"]
         logger.info(f"Processing SQS queue for account {account_id}")
         regions = await get_allowed_regions(session, selector)
         for region in regions:
@@ -440,9 +424,7 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
 
     async for account, session in get_all_account_sessions():
-        logger.info(
-            f"Processing account: {account.get('Id', 'unknown')} ({account.get('Name', 'no name')})"
-        )
+        logger.info(f"Processing account: {account['Id']} ({account['Name']})")
         regions = await get_allowed_regions(session, selector)
         for region in regions:
             async for batch in semaphore_async_iterator(

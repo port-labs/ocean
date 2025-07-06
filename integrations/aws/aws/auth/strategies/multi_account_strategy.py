@@ -68,7 +68,7 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             )
 
             tasks = [check_arn(arn) for arn in batch]
-            
+
             successful = 0
             for arn, task in zip(batch, tasks):
                 try:
