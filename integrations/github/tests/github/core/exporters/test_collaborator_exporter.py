@@ -31,11 +31,7 @@ TEST_COLLABORATORS = [
         "received_events_url": "https://api.github.com/users/user1/received_events",
         "type": "User",
         "site_admin": False,
-        "permissions": {
-            "pull": True,
-            "push": True,
-            "admin": False
-        }
+        "permissions": {"pull": True, "push": True, "admin": False},
     },
     {
         "login": "user2",
@@ -56,11 +52,7 @@ TEST_COLLABORATORS = [
         "received_events_url": "https://api.github.com/users/user2/received_events",
         "type": "User",
         "site_admin": False,
-        "permissions": {
-            "pull": True,
-            "push": False,
-            "admin": False
-        }
+        "permissions": {"pull": True, "push": False, "admin": False},
     },
 ]
 
@@ -102,10 +94,7 @@ class TestRestCollaboratorExporter:
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
             async with event_context("test_event"):
-                options = ListCollaboratorOptions(
-                    repo_name="test-repo",
-                    affiliation="all"
-                )
+                options = ListCollaboratorOptions(repo_name="test-repo")
                 exporter = RestCollaboratorExporter(rest_client)
 
                 collaborators: list[list[dict[str, Any]]] = [
@@ -119,4 +108,4 @@ class TestRestCollaboratorExporter:
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/collaborators",
                     {"affiliation": "all"},
-                ) 
+                )

@@ -11,6 +11,26 @@ class ListRepositoryOptions(TypedDict):
     type: str
 
 
+class GraphQLRepositorySelectorOptions(TypedDict):
+    collaborators: bool
+    teams: bool
+    custom_properties: bool
+
+
+class GraphQLRepositorySelectorBaseOptions(TypedDict):
+    selector: Required[GraphQLRepositorySelectorOptions]
+
+
+class SingleGraphQLRepositoryOptions(GraphQLRepositorySelectorBaseOptions):
+    name: str
+
+
+class ListGraphQLRepositoryOptions(GraphQLRepositorySelectorBaseOptions):
+    """Options for listing repositories."""
+
+    type: str
+
+
 class SingleFolderOptions(TypedDict):
     repo: str
     path: str
@@ -175,10 +195,12 @@ class ListFileSearchOptions(TypedDict):
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
 
+
 class SingleCollaboratorOptions(RepositoryIdentifier):
     """Options for fetching a single collaborator."""
 
     username: Required[str]
+
 
 class ListCollaboratorOptions(RepositoryIdentifier):
     """Options for listing collaborators."""

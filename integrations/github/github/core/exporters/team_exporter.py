@@ -33,6 +33,14 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
         async for teams in self.client.send_paginated_request(url):
             yield teams
 
+    async def get_team_repositories_by_slug[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        url = f"{self.client.base_url}/orgs/{self.client.organization}/teams/{options['slug']}/repos"
+        async for repos in self.client.send_paginated_request(url):
+            logger.info(f"Fetched {len(repos)} repos for team {options['slug']}")
+            yield repos
+
 
 class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]):
     MEMBER_PAGE_SIZE = 30

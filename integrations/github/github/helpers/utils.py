@@ -105,3 +105,16 @@ class IgnoredError(NamedTuple):
     status: int | str
     message: Optional[str] = None
     type: Optional[str] = None
+
+
+def enrich_collaborators_with_repositories(
+    response: Dict[str, Any], repositories: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """Helper function to enrich response with repository information."""
+    list_of_collaborators = []
+    for repository in repositories:
+        list_of_collaborators.append(
+            enrich_with_repository(response, repository["name"])
+        )
+
+    return list_of_collaborators

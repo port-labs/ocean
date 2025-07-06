@@ -139,3 +139,85 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
       }}
     }}
 """
+
+REPOSITORY_FRAGMENT = """
+fragment RepositoryFields on Repository {
+  id
+  name
+  nameWithOwner
+  description
+  url
+  homepageUrl
+  isPrivate
+  createdAt
+  updatedAt
+  pushedAt
+  defaultBranchRef { name }
+  primaryLanguage { name }
+  visibility
+}
+"""
+
+COLLABORATORS_FIELD = """
+collaborators(first: 25) {
+  nodes {
+    login
+    name
+    email
+    url
+  }
+  pageInfo {
+    ...PageInfoFields
+  }
+}
+"""
+
+
+def build_single_repository_gql(
+    additional_fragments: str = "", additional_fields: str = ""
+) -> str:
+    """Build a GraphQL query for fetching a single repository with optional additional fields."""
+    return f"""
+{PAGE_INFO_FRAGMENT}
+{REPOSITORY_FRAGMENT}
+{additional_fragments}
+query getRepository(
+  $organization: String!,
+  $repositoryName: String!,
+) {{
+  organization(login: $organization) {{
+    repository(name: $repositoryName) {{
+      ...RepositoryFields
+      {additional_fields}
+    }}
+  }}
+}}
+"""
+
+
+def build_list_repositories_gql(
+    additional_fragments: str = "", additional_fields: str = ""
+) -> str:
+    return f"""
+{PAGE_INFO_FRAGMENT}
+{REPOSITORY_FRAGMENT}
+{additional_fragments}
+query listOrgRepositories(
+  $organization: String!,
+  $first: Int = 25,
+  $after: String,
+  $repositoryVisibility: RepositoryVisibility
+) {{
+  organization(login: $organization) {{
+    repositories(first: $first, after: $after, visibility: $repositoryVisibility) {{
+      nodes {{
+        ...RepositoryFields
+        {additional_fields}
+      }}
+      pageInfo {{
+        ...PageInfoFields
+      }}
+    }}
+  }}
+}}
+"""

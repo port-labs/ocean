@@ -24,6 +24,25 @@ from github.helpers.utils import ObjectKind
 FILE_PROPERTY_PREFIX = "file://"
 
 
+class GithubRepositorySelector(Selector):
+    collaborators: bool = Field(
+        default=False, description="Whether to include collaborators in the repository"
+    )
+    teams: bool = Field(
+        default=False, description="Whether to include teams in the repository"
+    )
+    custom_properties: bool = Field(
+        alias="customProperties",
+        default=False,
+        description="Whether to include custom properties in the repository",
+    )
+
+
+class GithubRepositoryConfig(ResourceConfig):
+    selector: GithubRepositorySelector
+    kind: Literal["repository"]
+
+
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
         description="Specify the repository name",
@@ -133,7 +152,8 @@ class GithubFileResourceConfig(ResourceConfig):
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
-        GithubPullRequestConfig
+        GithubRepositoryConfig
+        | GithubPullRequestConfig
         | GithubIssueConfig
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig

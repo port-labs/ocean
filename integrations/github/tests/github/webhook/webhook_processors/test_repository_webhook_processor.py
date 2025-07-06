@@ -13,19 +13,19 @@ from github.core.options import SingleRepositoryOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
+from integration import GithubRepositorySelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
     return ResourceConfig(
         kind=ObjectKind.REPOSITORY,
-        selector=Selector(query="true"),
+        selector=GithubRepositorySelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
