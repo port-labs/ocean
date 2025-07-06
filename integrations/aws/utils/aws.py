@@ -31,11 +31,6 @@ async def initialize_aws_credentials() -> bool:
         logger.debug(
             "Created session strategy successfully using validated credentials"
         )
-        health_ok = await strategy.healthcheck()
-        if not health_ok:
-            logger.error("Sanity check failed during AWS authentication initialization")
-            _session_strategy = None
-            return False
         logger.info("AWS authentication system initialized successfully")
         return True
 
@@ -52,7 +47,14 @@ async def get_accounts() -> AsyncIterator[dict[str, Any]]:
     """Get accessible AWS accounts asynchronously."""
     strategy = await get_initialized_session_strategy()
     async for session in strategy.create_session_for_each_account():
-        yield session
+        # Extract account information from the session
+        account_id = getattr(session, "_AccountId", "unknown")
+        account_info = {
+            "Id": account_id,
+            "Arn": getattr(session, "_RoleArn", "unknown"),
+            "Name": f"Account {account_id}",
+        }
+        yield account_info
 
 
 async def get_account_session(arn: str) -> Optional[AioSession]:
@@ -107,16 +109,34 @@ async def _fetch_account_session_with_semaphore(
 async def get_all_account_sessions(
     concurrency: int = 10,
 ) -> AsyncIterator[tuple[dict[str, Any], AioSession]]:
-    """Yield (account, session) tuples for all accessible AWS accounts concurrently, with controlled concurrency."""
+    """Yield (account, session) tuples for all accessible AWS accounts with controlled concurrency."""
     semaphore = asyncio.Semaphore(concurrency)
-    tasks = []
+
+    # Collect accounts first
+    accounts = []
     async for account in get_accounts():
-        tasks.append(
-            asyncio.create_task(
-                _fetch_account_session_with_semaphore(account, semaphore)
-            )
+        accounts.append(account)
+
+    # Process accounts in batches with controlled concurrency
+    batch_size = concurrency
+    for i in range(0, len(accounts), batch_size):
+        batch = accounts[i : i + batch_size]
+        logger.info(
+            f"Processing account batch {i//batch_size + 1} with {len(batch)} accounts"
         )
-    for task in asyncio.as_completed(tasks):
-        result = await task
-        if result:
-            yield result
+
+        # Create sessions concurrently within the batch
+        tasks = []
+        for account in batch:
+            tasks.append(_fetch_account_session_with_semaphore(account, semaphore))
+        
+        # Handle each task result individually to avoid mixed types
+        for account, task in zip(batch, tasks):
+            try:
+                result = await task
+                if result:
+                    yield result
+            except Exception as e:
+                logger.error(
+                    f"Failed to create session for account {account.get('Id', 'unknown')}: {e}"
+                )

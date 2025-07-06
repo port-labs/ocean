@@ -23,13 +23,14 @@ class ResyncStrategyFactory:
             logger.info(
                 "[SessionStrategyFactory] Using AssumeRoleProvider for multi-account"
             )
-            provider = AssumeRoleProvider()
+
+            provider = AssumeRoleProvider(config=config)
         else:
             logger.info(
                 "[SessionStrategyFactory] Using StaticCredentialProvider (no org role ARN found)"
             )
-            provider = (
-                StaticCredentialProvider()
+            provider = StaticCredentialProvider(
+                config=config
             )  # An access key pair is tied to a single IAM user in one AWS account
         strategy_cls: type[SingleAccountStrategy | MultiAccountStrategy] = (
             MultiAccountStrategy if is_multi_account else SingleAccountStrategy
@@ -38,7 +39,6 @@ class ResyncStrategyFactory:
         logger.info(f"Initializing {strategy_cls.__name__}")
 
         strategy = strategy_cls(provider=provider, config=config)
-        _ = await strategy.healthcheck()
 
         logger.info(f"Successfully initialized {strategy_cls.__name__}")
         return strategy

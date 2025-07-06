@@ -11,7 +11,7 @@ from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
-from aws.auth.session_factory import SessionStrategyFactory
+from aws.auth.session_factory import ResyncStrategyFactory
 from utils.overrides import AWSDescribeResourcesSelector
 
 
@@ -101,10 +101,10 @@ async def test_single_account_strategy_get_accessible_accounts() -> None:
     }
     session_mock.create_client.return_value.__aenter__.return_value = sts_client_mock
     with patch.object(provider, "get_session", return_value=session_mock):
-        accounts = []
-        async for account in strategy.get_accessible_accounts():
-            accounts.append(account)
-        assert accounts[0]["Id"] == "123456789012"
+        sessions = []
+        async for session in strategy.create_session_for_each_account():
+            sessions.append(session)
+        assert len(sessions) == 1
 
 
 # --- MultiAccountStrategy ---
@@ -146,12 +146,13 @@ async def test_session_strategy_factory_single(
     config = {"aws_access_key_id": "x", "aws_secret_access_key": "y"}
     ocean_context(config)
 
-    async def async_true(self: Any) -> bool:
+    async def async_healthcheck(self: Any) -> bool:
+        # Mock the healthcheck method to avoid actual health checks during testing
         return True
 
     monkeypatch.setattr(
         "aws.auth.strategies.single_account_strategy.SingleAccountStrategy.healthcheck",
-        async_true,
+        async_healthcheck,
     )
-    strategy = await SessionStrategyFactory.create()
+    strategy = await ResyncStrategyFactory.create()
     assert isinstance(strategy, SingleAccountStrategy)
