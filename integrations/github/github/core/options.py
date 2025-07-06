@@ -1,4 +1,4 @@
-from typing import Required, TypedDict
+from typing import List, NotRequired, Optional, Required, TypedDict, Any
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -9,6 +9,17 @@ class ListRepositoryOptions(TypedDict):
     """Options for listing repositories."""
 
     type: str
+
+
+class SingleFolderOptions(TypedDict):
+    repo: str
+    path: str
+
+
+class ListFolderOptions(TypedDict):
+    repo: Required[dict[str, Any]]
+    path: Required[str]
+    branch: NotRequired[Optional[str]]
 
 
 class RepositoryIdentifier(TypedDict):
@@ -140,3 +151,26 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
     """Options for listing code scanning alerts."""
 
     state: Required[str]
+
+
+class FileContentOptions(TypedDict):
+    """Options for fetching file content."""
+
+    repo_name: Required[str]
+    file_path: Required[str]
+    branch: NotRequired[Optional[str]]
+
+
+class FileSearchOptions(TypedDict):
+    """Options for searching files in repositories."""
+
+    path: Required[str]
+    skip_parsing: Required[bool]
+    branch: NotRequired[Optional[str]]
+
+
+class ListFileSearchOptions(TypedDict):
+    """Map of repository names to file search options."""
+
+    repo_name: Required[str]
+    files: Required[List[FileSearchOptions]]

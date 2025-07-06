@@ -8,8 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 import copy
 import pytest
-from unittest.mock import patch, MagicMock
-import httpx
+from unittest.mock import patch
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from integration import GithubPortAppConfig
@@ -69,17 +68,13 @@ def mock_port_app_config() -> GithubPortAppConfig:
 @pytest.mark.asyncio
 class TestGraphQLUserExporter:
     async def test_get_resource(self, graphql_client: GithubGraphQLClient) -> None:
-        # Create a mock response
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {"user": TEST_USERS_NO_EMAIL_INITIAL[0]}
-        }
+        # Create a mock response data
+        mock_response_data = {"data": {"user": TEST_USERS_NO_EMAIL_INITIAL[0]}}
 
         exporter = GraphQLUserExporter(graphql_client)
 
         with patch.object(
-            graphql_client, "send_api_request", return_value=mock_response
+            graphql_client, "send_api_request", return_value=mock_response_data
         ) as mock_request:
             user = await exporter.get_resource(SingleUserOptions(login="user1"))
 
@@ -96,10 +91,7 @@ class TestGraphQLUserExporter:
     async def test_get_resource_no_email_fetches_external_identity(
         self, graphql_client: GithubGraphQLClient
     ) -> None:
-        mock_user_response = MagicMock(spec=httpx.Response)
-        mock_user_response.status_code = 200
-        # Use a deep copy to prevent modification of the global constant
-        mock_user_response.json.return_value = {
+        mock_user_response_data = {
             "data": {"user": copy.deepcopy(TEST_USERS_NO_EMAIL_INITIAL[1])}
         }
 
@@ -112,7 +104,7 @@ class TestGraphQLUserExporter:
 
         with (
             patch.object(
-                graphql_client, "send_api_request", return_value=mock_user_response
+                graphql_client, "send_api_request", return_value=mock_user_response_data
             ) as mock_api_request,
             patch.object(
                 graphql_client,

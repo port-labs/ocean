@@ -107,6 +107,7 @@ ALL_EVENTS = (
     + CODE_SCANNING_ALERT_EVENTS
 )
 
+
 WEBHOOK_CREATE_EVENTS = [
     "repository",
     "pull_request",
