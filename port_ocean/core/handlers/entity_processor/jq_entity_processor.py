@@ -24,15 +24,12 @@ from port_ocean.exceptions.core import EntityProcessorException
 from port_ocean.utils.queue_utils import process_in_queue
 
 
-from itertools import islice, chain
-
-
 class ExampleStates:
-    __succeed: list
-    __errors: list
+    __succeed: list[dict[str, Any]]
+    __errors: list[dict[str, Any]]
     __max_size: int
 
-    def __init__(self, max_size=0):
+    def __init__(self, max_size: int = 0) -> None:
         """
         Store two sequences:
           - succeed: items that succeeded
@@ -42,7 +39,7 @@ class ExampleStates:
         self.__errors = []
         self.__max_size = max_size
 
-    def add(self, succeed: bool, item: object):
+    def add(self, succeed: bool, item: dict[str, Any]) -> None:
         if succeed:
             self.__succeed.append(item)
         else:
@@ -54,7 +51,7 @@ class ExampleStates:
         """
         return len(self.__succeed) + len(self.__errors)
 
-    def take(self, n: int = 0):
+    def take(self, n: int = 0) -> list[dict[str, Any]]:
         """
         Return a list of up to n items, taking successes first,
         """
@@ -68,12 +65,6 @@ class ExampleStates:
         if e_count > 0:
             result.extend(self.__errors[:e_count])
         return result
-
-    def take_iter(self, n: int):
-        """
-        Lazy version: return an iterator over up to n items
-        """
-        return islice(chain(self.__succeed, self.__errors), n)
 
 
 @dataclass
