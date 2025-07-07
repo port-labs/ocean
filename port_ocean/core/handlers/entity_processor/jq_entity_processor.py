@@ -38,7 +38,7 @@ class ExampleStates:
           - succeed: items that succeeded
           - errors:  items that failed
         """
-        self._succeed = []
+        self.__succeed = []
         self.__errors = []
         self.__max_size = max_size
 
@@ -52,7 +52,7 @@ class ExampleStates:
         """
         Total number of items (successes + errors).
         """
-        return len(self._succeed) + len(self.__errors)
+        return len(self.__succeed) + len(self.__errors)
 
     def take(self, n: int = 0):
         """
@@ -61,8 +61,8 @@ class ExampleStates:
         if n <= 0:
             n = self.__max_size
         # how many from succeed?
-        s_count = min(n, len(self._succeed))
-        result = list(self._succeed[:s_count])
+        s_count = min(n, len(self.__succeed))
+        result = list(self.__succeed[:s_count])
         # how many more from errors?
         e_count = n - s_count
         if e_count > 0:
@@ -73,7 +73,7 @@ class ExampleStates:
         """
         Lazy version: return an iterator over up to n items
         """
-        return islice(chain(self._succeed, self.__errors), n)
+        return islice(chain(self.__succeed, self.__errors), n)
 
 
 @dataclass
