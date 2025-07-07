@@ -1,6 +1,7 @@
+from typing import cast
 from loguru import logger
 from github.webhook.events import REPOSITORY_DELETE_EVENTS, REPOSITORY_UPSERT_EVENTS
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import GithubClientType, ObjectKind
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
@@ -11,8 +12,16 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.core.options import SingleRepositoryOptions
-from github.core.exporters.repository_exporter import RestRepositoryExporter
+from integration import GithubRepositoryConfig
+from github.core.options import (
+    GraphQLRepositorySelectorOptions,
+    SingleGraphQLRepositoryOptions,
+    SingleRepositoryOptions,
+)
+from github.core.exporters.repository_exporter import (
+    GraphQLRepositoryExporter,
+    RestRepositoryExporter,
+)
 
 
 class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
@@ -44,10 +53,35 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[repo]
             )
 
-        rest_client = create_github_client()
-        exporter = RestRepositoryExporter(rest_client)
+        config = cast(GithubRepositoryConfig, resource_config)
+        graphql_required_selectors = [
+            config.selector.collaborators,
+            config.selector.teams,
+            config.selector.custom_properties,
+        ]
 
-        data_to_upsert = await exporter.get_resource(SingleRepositoryOptions(name=name))
+        if any(graphql_required_selectors):
+            logger.info(
+                "Using GraphQL client with collaborators exporter for handling repository webhook"
+            )
+            graphql_client = create_github_client(GithubClientType.GRAPHQL)
+            graphql_exporter = GraphQLRepositoryExporter(graphql_client)
+            graphql_options = SingleGraphQLRepositoryOptions(
+                name=name,
+                selector=cast(
+                    GraphQLRepositorySelectorOptions,
+                    config.selector.dict(exclude_unset=True),
+                ),
+            )
+            data_to_upsert = await graphql_exporter.get_resource(graphql_options)
+        else:
+            logger.info(
+                "Using REST client with repository exporter for handling repository webhook"
+            )
+            rest_client = create_github_client()
+            rest_exporter = RestRepositoryExporter(rest_client)
+            rest_options = SingleRepositoryOptions(name=name)
+            data_to_upsert = await rest_exporter.get_resource(rest_options)
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
