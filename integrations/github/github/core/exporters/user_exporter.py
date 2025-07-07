@@ -12,9 +12,9 @@ from github.helpers.gql_queries import (
 
 
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    async def get_resource[
-        ExporterOptionT: SingleUserOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionT: SingleUserOptions](
+        self, options: ExporterOptionT
+    ) -> RAW_ITEM:
         variables = {"login": options["login"]}
         payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
         response = await self.client.send_api_request(
@@ -87,3 +87,9 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         except TypeError:
             logger.info("SAML not enabled for organization")
             return
+        # AI! I added an exception handler here, create a new test case in test_user_exporter.py that factors for when graphql API request fails.
+        except ExceptionGroup as e:
+            for exception in e.exceptions:
+                logger.warning(
+                    f"Error while fetching external saml identity: {exception}"
+                )
