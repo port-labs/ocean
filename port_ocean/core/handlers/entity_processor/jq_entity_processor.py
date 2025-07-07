@@ -1,6 +1,7 @@
 import asyncio
 from asyncio import Task
 from dataclasses import dataclass, field
+
 from functools import lru_cache
 from typing import Any, Optional
 import jq  # type: ignore
@@ -21,6 +22,58 @@ from port_ocean.core.utils.utils import (
 )
 from port_ocean.exceptions.core import EntityProcessorException
 from port_ocean.utils.queue_utils import process_in_queue
+
+
+from itertools import islice, chain
+
+
+class ExampleStates:
+    __succeed: list
+    __errors: list
+    __max_size: int
+
+    def __init__(self, max_size=0):
+        """
+        Store two sequences:
+          - succeed: items that succeeded
+          - errors:  items that failed
+        """
+        self.__succeed = []
+        self.__errors = []
+        self.__max_size = max_size
+
+    def add(self, succeed: bool, item: object):
+        if succeed:
+            self.__succeed.append(item)
+        else:
+            self.__errors.append(item)
+
+    def __len__(self) -> int:
+        """
+        Total number of items (successes + errors).
+        """
+        return len(self.__succeed) + len(self.__errors)
+
+    def take(self, n: int = 0):
+        """
+        Return a list of up to n items, taking successes first,
+        """
+        if n <= 0:
+            n = self.__max_size
+        # how many from succeed?
+        s_count = min(n, len(self.__succeed))
+        result = list(self.__succeed[:s_count])
+        # how many more from errors?
+        e_count = n - s_count
+        if e_count > 0:
+            result.extend(self._errors[:e_count])
+        return result
+
+    def take_iter(self, n: int):
+        """
+        Lazy version: return an iterator over up to n items
+        """
+        return islice(chain(self.__succeed, self._errors), n)
 
 
 @dataclass
@@ -264,11 +317,10 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         passed_entities = []
         failed_entities = []
-        examples_to_send: list[dict[str, Any]] = []
+        examples_to_send = ExampleStates(send_raw_data_examples_amount)
         entity_misconfigurations: dict[str, str] = {}
         missing_required_fields: bool = False
         entity_mapping_fault_counter: int = 0
-
         for result in calculated_entities_results:
             if len(result.misconfigurations) > 0:
                 entity_misconfigurations |= result.misconfigurations
@@ -277,7 +329,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                 len(examples_to_send) < send_raw_data_examples_amount
                 and result.raw_data is not None
             ):
-                examples_to_send.append(result.raw_data)
+                examples_to_send.add(result.did_entity_pass_selector, result.raw_data)
 
             if result.entity.get("identifier") and result.entity.get("blueprint"):
                 parsed_entity = Entity.parse_obj(result.entity)
@@ -295,17 +347,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             entity_mapping_fault_counter,
         )
 
-        if (
-            not calculated_entities_results
-            and raw_results
-            and send_raw_data_examples_amount > 0
-        ):
-            logger.warning(
-                f"No entities were parsed from {len(raw_results)} raw results, sending raw data examples"
-            )
-            examples_to_send = raw_results[:send_raw_data_examples_amount]
-
-        await self._send_examples(examples_to_send, mapping.kind)
+        await self._send_examples(examples_to_send.take(), mapping.kind)
 
         return CalculationResult(
             EntitySelectorDiff(passed=passed_entities, failed=failed_entities),
