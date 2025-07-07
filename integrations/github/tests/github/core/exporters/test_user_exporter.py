@@ -260,15 +260,18 @@ class TestGraphQLUserExporter:
         users_no_email = {(1, "user2"): initial_users[1]}
         original_users = copy.deepcopy(initial_users)
 
-        with patch.object(
-            graphql_client,
-            "send_paginated_request",
-            side_effect=ExceptionGroup(
-                "GraphQL Error", [Exception("API call failed")]
-            ),
-        ) as mock_request, patch(
-            "github.core.exporters.user_exporter.logger.warning"
-        ) as mock_logger_warning:
+        with (
+            patch.object(
+                graphql_client,
+                "send_paginated_request",
+                side_effect=ExceptionGroup(
+                    "GraphQL Error", [Exception("API call failed")]
+                ),
+            ) as mock_request,
+            patch(
+                "github.core.exporters.user_exporter.logger.warning"
+            ) as mock_logger_warning,
+        ):
             exporter = GraphQLUserExporter(graphql_client)
             await exporter._fetch_external_identities(initial_users, users_no_email)
 
