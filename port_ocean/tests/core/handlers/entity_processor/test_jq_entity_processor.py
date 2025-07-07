@@ -333,15 +333,15 @@ class TestJQEntityProcessor:
             {"foo": "identifierMapped", "bar": ""},
         ]
         result = await mocked_processor._parse_items(mapping, raw_results)
-        assert "identifier" not in result.misonfigured_entity_keys
-        assert "blueprint" not in result.misonfigured_entity_keys
+        assert "identifier" not in result.misconfigured_entity_keys
+        assert "blueprint" not in result.misconfigured_entity_keys
 
         raw_results = [
             {"foo": "identifierMapped", "bar": None},
             {"foo": None, "bar": ""},
         ]
         result = await mocked_processor._parse_items(mapping, raw_results)
-        assert result.misonfigured_entity_keys == {
+        assert result.misconfigured_entity_keys == {
             "identifier": ".foo",
             "blueprint": ".bar",
         }
