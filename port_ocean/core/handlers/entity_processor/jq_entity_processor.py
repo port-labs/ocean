@@ -66,7 +66,7 @@ class ExampleStates:
         # how many more from errors?
         e_count = n - s_count
         if e_count > 0:
-            result.extend(self._errors[:e_count])
+            result.extend(self.__errors[:e_count])
         return result
 
     def take_iter(self, n: int):
