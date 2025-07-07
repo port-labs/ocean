@@ -38,21 +38,21 @@ class ExampleStates:
           - succeed: items that succeeded
           - errors:  items that failed
         """
-        self.__succeed = []
-        self.__errors = []
+        self._succeed = []
+        self._errors = []
         self.__max_size = max_size
 
     def add(self, succeed: bool, item: object):
         if succeed:
             self.__succeed.append(item)
-        else:
-            self.__errors.append(item)
+
+        self.__errors.append(item)
 
     def __len__(self) -> int:
         """
         Total number of items (successes + errors).
         """
-        return len(self.__succeed) + len(self.__errors)
+        return len(self._succeed) + len(self._errors)
 
     def take(self, n: int = 0):
         """
@@ -61,19 +61,19 @@ class ExampleStates:
         if n <= 0:
             n = self.__max_size
         # how many from succeed?
-        s_count = min(n, len(self.__succeed))
-        result = list(self.__succeed[:s_count])
+        s_count = min(n, len(self._succeed))
+        result = list(self._succeed[:s_count])
         # how many more from errors?
         e_count = n - s_count
         if e_count > 0:
-            result.extend(self.__errors[:e_count])
+            result.extend(self._errors[:e_count])
         return result
 
     def take_iter(self, n: int):
         """
         Lazy version: return an iterator over up to n items
         """
-        return islice(chain(self.__succeed, self._errors), n)
+        return islice(chain(self._succeed, self._errors), n)
 
 
 @dataclass
@@ -317,7 +317,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         passed_entities = []
         failed_entities = []
-        examples_to_send = ExampleStates(send_raw_data_examples_amount)
+        examples_to_send = ExampleStates()
         entity_misconfigurations: dict[str, str] = {}
         missing_required_fields: bool = False
         entity_mapping_fault_counter: int = 0
@@ -352,5 +352,5 @@ class JQEntityProcessor(BaseEntityProcessor):
         return CalculationResult(
             EntitySelectorDiff(passed=passed_entities, failed=failed_entities),
             errors,
-            misonfigured_entity_keys=entity_misconfigurations,
+            misconfigured_entity_keys=entity_misconfigurations,
         )
