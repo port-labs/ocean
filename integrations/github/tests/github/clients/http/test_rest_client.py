@@ -37,7 +37,7 @@ class TestGithubRestClient:
         mock_response.headers = {"Link": ""}
 
         with patch.object(
-            client, "send_api_request", AsyncMock(return_value=mock_response)
+            client, "make_request", AsyncMock(return_value=mock_response)
         ):
             results = []
             async for page in client.send_paginated_request("orgs/test-org/repos"):
@@ -68,7 +68,7 @@ class TestGithubRestClient:
 
         with patch.object(
             client,
-            "send_api_request",
+            "make_request",
             AsyncMock(side_effect=[first_response, second_response]),
         ):
             results = []
@@ -92,7 +92,7 @@ class TestGithubRestClient:
         mock_response.headers = {"Link": ""}
 
         with patch.object(
-            client, "send_api_request", AsyncMock(return_value=mock_response)
+            client, "make_request", AsyncMock(return_value=mock_response)
         ):
             results = []
             async for page in client.send_paginated_request("orgs/test-org/repos"):
@@ -114,7 +114,7 @@ class TestGithubRestClient:
         mock_response.headers = {"Link": ""}
 
         with patch.object(
-            client, "send_api_request", AsyncMock(return_value=mock_response)
+            client, "make_request", AsyncMock(return_value=mock_response)
         ) as mock_send:
             results = []
             async for page in client.send_paginated_request(
@@ -128,7 +128,7 @@ class TestGithubRestClient:
                 "orgs/test-org/repos",
                 method="GET",
                 params=expected_params,
-                return_full_response=True,
+                ignored_errors=None,
             )
 
     @pytest.mark.parametrize(
@@ -146,9 +146,9 @@ class TestGithubRestClient:
         mock_response.headers = {}
         mock_response.json.return_value = response_data
 
-        # Mock send_api_request to return our mock response
+        # Mock make_request to return our mock response
         with patch.object(
-            rest_client, "send_api_request", new=AsyncMock(return_value=mock_response)
+            rest_client, "make_request", new=AsyncMock(return_value=mock_response)
         ):
             # Collect all items from the paginated request
             items = []
@@ -175,10 +175,10 @@ class TestGithubRestClient:
         mock_response2.json.return_value = [{"id": 3}, {"id": 4}]
         mock_response2.headers = {}
 
-        # Mock send_api_request to return different responses for each call
+        # Mock make_request to return different responses for each call
         with patch.object(
             rest_client,
-            "send_api_request",
+            "make_request",
             AsyncMock(side_effect=[mock_response1, mock_response2]),
         ) as mock_send:
             # Collect all items from the paginated request
@@ -189,7 +189,7 @@ class TestGithubRestClient:
             # Verify we got all items from both pages
             assert items == [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]
 
-            # Verify send_api_request was called twice
+            # Verify make_request was called twice
             assert mock_send.call_count == 2
 
     async def test_send_paginated_request_with_empty_page(
@@ -200,9 +200,9 @@ class TestGithubRestClient:
         mock_response.json.return_value = []
         mock_response.headers = {}
 
-        # Mock send_api_request
+        # Mock make_request
         with patch.object(
-            rest_client, "send_api_request", AsyncMock(return_value=mock_response)
+            rest_client, "make_request", AsyncMock(return_value=mock_response)
         ) as mock_send:
             # Collect all items from the paginated request
             items = []
@@ -212,7 +212,7 @@ class TestGithubRestClient:
             # Verify we got no items
             assert items == []
 
-            # Verify send_api_request was called once
+            # Verify make_request was called once
             mock_send.assert_called_once()
 
     async def test_send_paginated_request_with_single_empty_dict(
@@ -223,9 +223,9 @@ class TestGithubRestClient:
         mock_response.json.return_value = []
         mock_response.headers = {}
 
-        # Mock send_api_request
+        # Mock make_request
         with patch.object(
-            rest_client, "send_api_request", AsyncMock(return_value=mock_response)
+            rest_client, "make_request", AsyncMock(return_value=mock_response)
         ) as mock_send:
             items = []
             async for page in rest_client.send_paginated_request("test/resource"):
@@ -234,5 +234,5 @@ class TestGithubRestClient:
             # Verify we got no items (empty dict page should be skipped)
             assert items == []
 
-            # Verify send_api_request was called once
+            # Verify make_request was called once
             mock_send.assert_called_once()
