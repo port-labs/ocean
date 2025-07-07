@@ -249,3 +249,40 @@ class TestGraphQLUserExporter:
                     "__node_key": "edges",
                 },
             )
+
+    async def test_fetch_external_identities_graphql_error(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        initial_users = [
+            {"login": "user1", "email": "johndoe@email.com"},
+            {"login": "user2"},
+        ]
+        users_no_email = {(1, "user2"): initial_users[1]}
+        original_users = copy.deepcopy(initial_users)
+
+        with patch.object(
+            graphql_client,
+            "send_paginated_request",
+            side_effect=ExceptionGroup(
+                "GraphQL Error", [Exception("API call failed")]
+            ),
+        ) as mock_request, patch(
+            "github.core.exporters.user_exporter.logger.warning"
+        ) as mock_logger_warning:
+            exporter = GraphQLUserExporter(graphql_client)
+            await exporter._fetch_external_identities(initial_users, users_no_email)
+
+            assert initial_users == original_users
+
+            mock_request.assert_called_once_with(
+                LIST_EXTERNAL_IDENTITIES_GQL,
+                {
+                    "organization": graphql_client.organization,
+                    "first": 100,
+                    "__path": "organization.samlIdentityProvider.externalIdentities",
+                    "__node_key": "edges",
+                },
+            )
+            mock_logger_warning.assert_called_once_with(
+                "Error while fetching external saml identity: API call failed"
+            )

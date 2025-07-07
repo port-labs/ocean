@@ -87,7 +87,6 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         except TypeError:
             logger.info("SAML not enabled for organization")
             return
-        # AI! I added an exception handler here, create a new test case in test_user_exporter.py that factors for when graphql API request fails.
         except ExceptionGroup as e:
             for exception in e.exceptions:
                 logger.warning(
