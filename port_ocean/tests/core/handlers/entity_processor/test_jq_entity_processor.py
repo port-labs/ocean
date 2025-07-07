@@ -10,6 +10,7 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
 )
 from port_ocean.core.ocean_types import CalculationResult
 from port_ocean.exceptions.core import EntityProcessorException
+from unittest.mock import patch
 
 
 @pytest.mark.asyncio
@@ -296,15 +297,19 @@ class TestJQEntityProcessor:
             },
             {"foo": "bar", "baz": "bazbar", "bar": {"foobar": "foobar"}},
         ]
-        result = await mocked_processor._parse_items(mapping, raw_results)
-        assert len(result.misonfigured_entity_keys) > 0
-        assert len(result.misonfigured_entity_keys) == 4
-        assert result.misonfigured_entity_keys == {
-            "identifier": ".ark",
-            "description": ".bazbar",
-            "url": ".foobar",
-            "defaultBranch": ".bar.baz",
-        }
+        with patch(
+            "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor._send_examples"
+        ) as mock_send_examples:
+            result = await mocked_processor._parse_items(mapping, raw_results)
+            assert len(result.misonfigured_entity_keys) > 0
+            assert len(result.misonfigured_entity_keys) == 4
+            assert result.misonfigured_entity_keys == {
+                "identifier": ".ark",
+                "description": ".bazbar",
+                "url": ".foobar",
+                "defaultBranch": ".bar.baz",
+            }
+            mock_send_examples.assert_called()
 
     async def test_parse_items_empty_required(
         self, mocked_processor: JQEntityProcessor

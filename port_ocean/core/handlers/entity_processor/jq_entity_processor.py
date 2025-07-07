@@ -275,13 +275,13 @@ class JQEntityProcessor(BaseEntityProcessor):
 
             if result.entity.get("identifier") and result.entity.get("blueprint"):
                 parsed_entity = Entity.parse_obj(result.entity)
+                if (
+                    len(examples_to_send) < send_raw_data_examples_amount
+                    and result.raw_data is not None
+                ):
+                    examples_to_send.append(result.raw_data)
                 if result.did_entity_pass_selector:
                     passed_entities.append(parsed_entity)
-                    if (
-                        len(examples_to_send) < send_raw_data_examples_amount
-                        and result.raw_data is not None
-                    ):
-                        examples_to_send.append(result.raw_data)
                 else:
                     failed_entities.append(parsed_entity)
             else:
