@@ -45,8 +45,8 @@ class ExampleStates:
     def add(self, succeed: bool, item: object):
         if succeed:
             self.__succeed.append(item)
-
-        self.__errors.append(item)
+        else:
+            self.__errors.append(item)
 
     def __len__(self) -> int:
         """
