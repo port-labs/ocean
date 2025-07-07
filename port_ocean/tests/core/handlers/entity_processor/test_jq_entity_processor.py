@@ -300,7 +300,9 @@ class TestJQEntityProcessor:
         with patch(
             "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor._send_examples"
         ) as mock_send_examples:
-            result = await mocked_processor._parse_items(mapping, raw_results)
+            result = await mocked_processor._parse_items(
+                mapping, raw_results, send_raw_data_examples_amount=1
+            )
             assert len(result.misonfigured_entity_keys) > 0
             assert len(result.misonfigured_entity_keys) == 4
             assert result.misonfigured_entity_keys == {
@@ -309,7 +311,7 @@ class TestJQEntityProcessor:
                 "url": ".foobar",
                 "defaultBranch": ".bar.baz",
             }
-            mock_send_examples.assert_called()
+            assert len(mock_send_examples.await_args[0][0]) > 0
 
     async def test_parse_items_empty_required(
         self, mocked_processor: JQEntityProcessor

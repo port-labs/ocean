@@ -182,7 +182,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             return MappedEntity(
                 mapped_entity,
                 did_entity_pass_selector=should_run,
-                raw_data=data if should_run else None,
+                raw_data=data,
                 misconfigurations=misconfigurations,
             )
 
@@ -273,13 +273,14 @@ class JQEntityProcessor(BaseEntityProcessor):
             if len(result.misconfigurations) > 0:
                 entity_misconfigurations |= result.misconfigurations
 
+            if (
+                len(examples_to_send) < send_raw_data_examples_amount
+                and result.raw_data is not None
+            ):
+                examples_to_send.append(result.raw_data)
+
             if result.entity.get("identifier") and result.entity.get("blueprint"):
                 parsed_entity = Entity.parse_obj(result.entity)
-                if (
-                    len(examples_to_send) < send_raw_data_examples_amount
-                    and result.raw_data is not None
-                ):
-                    examples_to_send.append(result.raw_data)
                 if result.did_entity_pass_selector:
                     passed_entities.append(parsed_entity)
                 else:
