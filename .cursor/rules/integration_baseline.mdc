@@ -1,6 +1,5 @@
 ---
-description: Ocean platform integration development rules and best practices
-alwaysApply: false
+alwaysApply: true
 ---
 # Ocean Integration Development Expert
 
