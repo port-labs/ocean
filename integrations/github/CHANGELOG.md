@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.1.0-beta (2025-07-07)
+
+
+### Features
+
+- Added support for Collaborator resources to track repository collaborators
+- Added support for adding collaborators, team and custom properties relationships to repository kind
+- Implemented collaborator webhook processor for real-time updates
+
+
 ## 1.0.0-beta (2025-07-04)
 
 
