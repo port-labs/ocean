@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.0.1-beta (2025-07-04)
+## 1.0.2-beta (2025-07-04)
 
 
 ### Bugfix
 
 - Gracefully handle failure while fetching from saml identity provider
+
+
+## 1.0.1-beta (2025-07-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
 
 
 ## 1.0.0-beta (2025-07-04)
