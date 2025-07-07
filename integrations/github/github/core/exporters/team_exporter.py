@@ -10,6 +10,7 @@ from github.core.options import SingleTeamOptions
 from github.helpers.gql_queries import (
     FETCH_TEAM_WITH_MEMBERS_GQL,
     LIST_TEAM_MEMBERS_GQL,
+    SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
 )
 
 
@@ -53,6 +54,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             "organization": self.client.organization,
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
+
         payload = self.client.build_graphql_payload(
             FETCH_TEAM_WITH_MEMBERS_GQL, variables
         )
@@ -166,3 +168,22 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             f"Successfully fetched {len(all_member_nodes)} members for team '{team_slug}'"
         )
         return all_member_nodes
+
+    async def get_team_member_repositories(self, team_slug: str) -> RAW_ITEM:
+
+        variables = {
+            "slug": team_slug,
+            "organization": self.client.organization,
+            "memberFirst": 25,
+        }
+
+        payload = self.client.build_graphql_payload(
+            SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL, variables
+        )
+        response = await self.client.send_api_request(
+            self.client.base_url, method="POST", json_data=payload
+        )
+        if not response:
+            return {}
+
+        return response["data"]["organization"]["team"]

@@ -23,6 +23,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from github.core.options import SingleCollaboratorOptions, SingleTeamOptions
 from typing import Any, AsyncGenerator
+from port_ocean.context.event import event_context
 
 
 VALID_MEMBER_COLLABORATOR_PAYLOADS: dict[str, Any] = {
@@ -43,7 +44,7 @@ VALID_TEAM_COLLABORATOR_PAYLOADS: dict[str, Any] = {
     "action": "added_to_repository",
     "repository": {"name": "test-repo"},
     "organization": {"login": "test-org"},
-    "team": {"name": "test-team"},
+    "team": {"name": "test-team", "slug": "test-team"},
 }
 
 INVALID_COLLABORATOR_PAYLOADS: dict[str, Any] = {
@@ -159,10 +160,12 @@ class TestCollaboratorWebhookProcessor:
         for action in events:
             event.payload = {"action": action}
             await collaborator_webhook_processor._should_process_event(event)
-            assert (
-                await collaborator_webhook_processor.validate_payload(payload)
-                is expected_result
-            )
+            async with event_context("test_event") as event_context_obj:
+                event_context_obj.port_app_config = mock_port_app_config
+                assert (
+                    await collaborator_webhook_processor.validate_payload(payload)
+                    is expected_result
+                )
 
     @pytest.mark.parametrize(
         "event_type,payload,action,expected_updated,expected_deleted",
@@ -253,62 +256,117 @@ class TestCollaboratorWebhookProcessor:
                         mock_get_team_repositories()
                     )
 
-                    # Mock enrich_collaborators_with_repositories
+                    # Mock GraphQLTeamWithMembersExporter for team events
                     with patch(
-                        "github.webhook.webhook_processors.collaborator_webhook_processor.enrich_collaborators_with_repositories"
-                    ) as mock_enrich:
-                        enriched_data = {
-                            **mock_collaborator_data,
-                            "repositories": mock_repositories,
-                        }
-                        mock_enrich.return_value = enriched_data
-
-                        result = await collaborator_webhook_processor.handle_event(
-                            payload, resource_config
+                        "github.webhook.webhook_processors.collaborator_webhook_processor.GraphQLTeamWithMembersExporter"
+                    ) as mock_graphql_team_exporter_class:
+                        mock_graphql_team_exporter = MagicMock()
+                        mock_graphql_team_exporter_class.return_value = (
+                            mock_graphql_team_exporter
                         )
 
-                        # Verify the result
-                        assert isinstance(result, WebhookEventRawResults)
-                        assert bool(result.updated_raw_results) is expected_updated
-                        assert bool(result.deleted_raw_results) is expected_deleted
-
-                        if expected_updated:
-                            if (
-                                event_type == "membership"
-                                and action in COLLABORATOR_UPSERT_EVENTS
-                            ):
-                                assert result.updated_raw_results == [enriched_data]
-                                mock_team_exporter.get_team_repositories_by_slug.assert_called_once_with(
-                                    SingleTeamOptions(slug="test-team")
-                                )
-                                mock_enrich.assert_called_once_with(
-                                    mock_collaborator_data, mock_repositories
-                                )
-                            else:
-                                assert result.updated_raw_results == [
-                                    mock_collaborator_data
+                        # Mock team data for GraphQL exporter
+                        mock_team_data = {
+                            "members": {
+                                "nodes": [
+                                    {
+                                        "id": "user1",
+                                        "login": "test-user",
+                                        "name": "Test User",
+                                        "isSiteAdmin": False,
+                                    }
                                 ]
+                            },
+                            "repositories": {
+                                "nodes": [
+                                    {"name": "repo1"},
+                                    {"name": "repo2"},
+                                ]
+                            },
+                        }
+                        mock_graphql_team_exporter.get_team_member_repositories = (
+                            AsyncMock(return_value=mock_team_data)
+                        )
 
-                        if expected_deleted:
-                            if event_type == "team":
-                                assert result.deleted_raw_results == ["test-org"]
-                            else:
-                                assert result.deleted_raw_results == ["test-user"]
+                        # Mock enrich_collaborators_with_repositories
+                        with patch(
+                            "github.webhook.webhook_processors.collaborator_webhook_processor.enrich_collaborators_with_repositories"
+                        ) as mock_enrich:
+                            enriched_data = [
+                                {
+                                    **mock_collaborator_data,
+                                    "__repository": repo["name"],
+                                }
+                                for repo in mock_repositories
+                            ]
+                            mock_enrich.return_value = enriched_data
 
-                        # Verify exporter was called with correct options
-                        if not expected_deleted:
-                            if event_type == "team":
-                                mock_exporter.get_resource.assert_called_once_with(
-                                    SingleCollaboratorOptions(
-                                        repo_name="test-repo", username="test-org"
+                            result = await collaborator_webhook_processor.handle_event(
+                                payload, resource_config
+                            )
+
+                            # Verify the result
+                            assert isinstance(result, WebhookEventRawResults)
+                            assert bool(result.updated_raw_results) is expected_updated
+                            assert bool(result.deleted_raw_results) is expected_deleted
+
+                            if expected_updated:
+                                if (
+                                    event_type == "membership"
+                                    and action in COLLABORATOR_UPSERT_EVENTS
+                                ):
+                                    assert result.updated_raw_results == enriched_data
+                                    mock_team_exporter.get_team_repositories_by_slug.assert_called_once_with(
+                                        SingleTeamOptions(slug="test-team")
                                     )
-                                )
-                            else:
-                                mock_exporter.get_resource.assert_called_once_with(
-                                    SingleCollaboratorOptions(
-                                        repo_name="test-repo", username="test-user"
+                                    mock_enrich.assert_called_once_with(
+                                        payload["member"], mock_repositories
                                     )
-                                )
+                                elif event_type == "team":
+                                    # For team events, we expect the data from GraphQL exporter
+                                    expected_team_data = [
+                                        {
+                                            "id": "user1",
+                                            "login": "test-user",
+                                            "name": "Test User",
+                                            "site_admin": False,
+                                            "__repository": "repo1",
+                                        },
+                                        {
+                                            "id": "user1",
+                                            "login": "test-user",
+                                            "name": "Test User",
+                                            "site_admin": False,
+                                            "__repository": "repo2",
+                                        },
+                                    ]
+                                    assert (
+                                        result.updated_raw_results == expected_team_data
+                                    )
+                                    mock_graphql_team_exporter.get_team_member_repositories.assert_called_once_with(
+                                        "test-team"
+                                    )
+                                else:
+                                    assert result.updated_raw_results == [
+                                        mock_collaborator_data
+                                    ]
+
+                            if expected_deleted:
+                                if event_type == "team":
+                                    assert result.deleted_raw_results == ["test-org"]
+                                else:
+                                    assert result.deleted_raw_results == ["test-user"]
+
+                            # Verify exporter was called with correct options
+                            if not expected_deleted:
+                                if event_type == "team" or event_type == "membership":
+                                    mock_exporter.get_resource.assert_not_called()
+                                else:
+                                    mock_exporter.get_resource.assert_called_once_with(
+                                        SingleCollaboratorOptions(
+                                            repo_name="test-repo", username="test-user"
+                                        )
+                                    )
 
     async def test_handle_event_membership_with_upsert_action(
         self,
@@ -366,10 +424,13 @@ class TestCollaboratorWebhookProcessor:
                     with patch(
                         "github.webhook.webhook_processors.collaborator_webhook_processor.enrich_collaborators_with_repositories"
                     ) as mock_enrich:
-                        enriched_data = {
-                            **mock_collaborator_data,
-                            "repositories": mock_repositories,
-                        }
+                        enriched_data = [
+                            {
+                                **mock_collaborator_data,
+                                "__repository": repo["name"],
+                            }
+                            for repo in mock_repositories
+                        ]
                         mock_enrich.return_value = enriched_data
 
                         result = await collaborator_webhook_processor.handle_event(
@@ -377,7 +438,7 @@ class TestCollaboratorWebhookProcessor:
                         )
 
                         assert isinstance(result, WebhookEventRawResults)
-                        assert result.updated_raw_results == [enriched_data]
+                        assert result.updated_raw_results == enriched_data
                         assert result.deleted_raw_results == []
 
                         # Verify team exporter was called
@@ -385,5 +446,5 @@ class TestCollaboratorWebhookProcessor:
                             SingleTeamOptions(slug="test-team")
                         )
                         mock_enrich.assert_called_once_with(
-                            mock_collaborator_data, mock_repositories
+                            payload["member"], mock_repositories
                         )

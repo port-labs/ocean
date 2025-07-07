@@ -107,5 +107,5 @@ class TestRestCollaboratorExporter:
 
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/collaborators",
-                    {"affiliation": "all"},
+                    {},
                 )

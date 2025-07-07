@@ -1,13 +1,16 @@
 from loguru import logger
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
-from github.core.exporters.team_exporter import RestTeamExporter
+from github.core.exporters.team_exporter import (
+    GraphQLTeamWithMembersExporter,
+    RestTeamExporter,
+)
 from github.webhook.events import (
     COLLABORATOR_DELETE_EVENTS,
     COLLABORATOR_UPSERT_EVENTS,
     COLLABORATOR_EVENTS,
     TEAM_COLLABORATOR_EVENTS,
 )
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import GithubClientType, ObjectKind
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
@@ -27,7 +30,7 @@ class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
 
     EVENT_VALIDATION_FIELDS = {
         "member": {"action", "repository", "member"},
-        "membership": {"action", "repository", "organization", "team", "member"},
+        "membership": {"action", "organization", "team", "member"},
         "team": {"action", "repository", "organization", "team"},
     }
 
@@ -83,13 +86,17 @@ class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
 
         action = payload["action"]
+        event_name = self._event_name
+
+        if event_name == "membership":
+            return await self.handle_membership_event(payload)
+
+        if event_name == "team":
+            return await self.handle_team_event(payload)
+
         repository = payload["repository"]
         repo_name = repository["name"]
-
-        if self._event_name == "team":
-            username = payload["organization"]["login"]
-        else:
-            username = payload["member"]["login"]
+        username = payload["member"]["login"]
 
         logger.info(f"Processing member event: {action} for {username} in {repo_name}")
 
@@ -107,24 +114,86 @@ class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
         data_to_upsert = await exporter.get_resource(
             SingleCollaboratorOptions(repo_name=repo_name, username=username)
         )
-        if self._event_name == "membership" and action in COLLABORATOR_UPSERT_EVENTS:
-            team_slug = payload["team"]["slug"]
-            team_exporter = RestTeamExporter(rest_client)
-
-            repositories = []
-            async for batch in team_exporter.get_team_repositories_by_slug(
-                SingleTeamOptions(slug=team_slug)
-            ):
-                repositories.extend(batch)
-
-            list_data_to_upsert = enrich_collaborators_with_repositories(
-                data_to_upsert, repositories
-            )
-
-            return WebhookEventRawResults(
-                updated_raw_results=list_data_to_upsert, deleted_raw_results=[]
-            )
-
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
+        )
+
+    async def handle_team_event(self, payload: EventPayload) -> WebhookEventRawResults:
+        """Handle team-related webhook events for collaborators."""
+        action = payload["action"]
+        team_slug = payload["team"]["slug"]
+
+        logger.info(f"Handling team event: {action} for team {team_slug}")
+
+        if action not in TEAM_COLLABORATOR_EVENTS:
+            logger.info(f"Skipping unsupported team event {action} for {team_slug}")
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        rest_client = create_github_client(client_type=GithubClientType.GRAPHQL)
+        team_exporter = GraphQLTeamWithMembersExporter(rest_client)
+        team_data = await team_exporter.get_team_member_repositories(team_slug)
+
+        data_to_upsert = [
+            {
+                "id": member["id"],
+                "login": member["login"],
+                "name": member["name"],
+                "site_admin": member["isSiteAdmin"],
+                "__repository": repo["name"],
+            }
+            for member in team_data["members"]["nodes"]
+            for repo in team_data["repositories"]["nodes"]
+        ]
+
+        logger.info(
+            f"Upserting {len(data_to_upsert)} collaborators for team {team_slug}"
+        )
+
+        return WebhookEventRawResults(
+            updated_raw_results=data_to_upsert, deleted_raw_results=[]
+        )
+
+    async def handle_membership_event(
+        self, payload: EventPayload
+    ) -> WebhookEventRawResults:
+        """Handle membership-related webhook events for collaborators."""
+        action = payload["action"]
+        member = payload["member"]
+        team_slug = payload["team"]["slug"]
+        member_login = member["login"]
+
+        logger.info(
+            f"Handling membership event: {action} for {member_login} in team {team_slug}"
+        )
+
+        if action not in COLLABORATOR_UPSERT_EVENTS:
+            # Since we cannot ascertain the repos for which the member was a collaborator,
+            logger.info(
+                f"Skipping unsupported membership event {action} for {member_login}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        rest_client = create_github_client()
+        team_exporter = RestTeamExporter(rest_client)
+
+        repositories = []
+        async for batch in team_exporter.get_team_repositories_by_slug(
+            SingleTeamOptions(slug=team_slug)
+        ):
+            repositories.extend(batch)
+
+        list_data_to_upsert = enrich_collaborators_with_repositories(
+            member, repositories
+        )
+
+        logger.info(
+            f"Upserting {len(list_data_to_upsert)} collaborators for member {member_login} in team {team_slug}"
+        )
+
+        return WebhookEventRawResults(
+            updated_raw_results=list_data_to_upsert, deleted_raw_results=[]
         )
