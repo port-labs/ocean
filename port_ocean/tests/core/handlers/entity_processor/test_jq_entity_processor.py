@@ -11,6 +11,7 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
 from port_ocean.core.ocean_types import CalculationResult
 from port_ocean.exceptions.core import EntityProcessorException
 from unittest.mock import patch
+from typing import cast
 
 
 @pytest.mark.asyncio
@@ -311,7 +312,8 @@ class TestJQEntityProcessor:
                 "url": ".foobar",
                 "defaultBranch": ".bar.baz",
             }
-            assert len(mock_send_examples.await_args[0][0]) > 0
+            args, _ = mock_send_examples.await_args
+            assert len(cast(list, args[0])) > 0
 
     async def test_parse_items_empty_required(
         self, mocked_processor: JQEntityProcessor
