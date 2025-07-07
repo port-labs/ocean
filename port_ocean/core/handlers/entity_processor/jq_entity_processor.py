@@ -317,7 +317,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         passed_entities = []
         failed_entities = []
-        examples_to_send = ExampleStates()
+        examples_to_send = ExampleStates(send_raw_data_examples_amount)
         entity_misconfigurations: dict[str, str] = {}
         missing_required_fields: bool = False
         entity_mapping_fault_counter: int = 0
