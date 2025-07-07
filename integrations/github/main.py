@@ -1,4 +1,4 @@
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -28,10 +28,7 @@ from github.core.exporters.environment_exporter import RestEnvironmentExporter
 from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
-from github.core.exporters.repository_exporter import (
-    GraphQLRepositoryExporter,
-    RestRepositoryExporter,
-)
+from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.exporters.release_exporter import RestReleaseExporter
 from github.core.exporters.tag_exporter import RestTagExporter
 from github.core.exporters.dependabot_exporter import RestDependabotAlertExporter
@@ -43,12 +40,10 @@ from github.core.exporters.folder_exporter import RestFolderExporter
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 
 from github.core.options import (
-    GraphQLRepositorySelectorOptions,
     ListBranchOptions,
     ListDeploymentsOptions,
     ListEnvironmentsOptions,
     ListFolderOptions,
-    ListGraphQLRepositoryOptions,
     ListIssueOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
@@ -72,7 +67,6 @@ from integration import (
     GithubPullRequestConfig,
     GithubDependabotAlertConfig,
     GithubCodeScanningAlertConfig,
-    GithubRepositoryConfig,
     GithubTeamConfig,
     GithubFileResourceConfig,
 )
@@ -113,36 +107,11 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the organization."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    config = cast(GithubRepositoryConfig, event.resource_config)
-    repository_type = cast(GithubPortAppConfig, event.port_app_config).repository_type
+    rest_client = create_github_client()
+    exporter = RestRepositoryExporter(rest_client)
 
-    graphql_required_selectors = [
-        config.selector.collaborators,
-        config.selector.teams,
-        config.selector.custom_properties,
-    ]
-
-    exporter: Union[GraphQLRepositoryExporter, RestRepositoryExporter]
-    options: Union[ListGraphQLRepositoryOptions, ListRepositoryOptions]
-
-    if any(graphql_required_selectors):
-        logger.info(
-            "Using GraphQL client with collaborators exporter for repository resync"
-        )
-        graphql_client = create_github_client(GithubClientType.GRAPHQL)
-        exporter = GraphQLRepositoryExporter(graphql_client)
-        options = ListGraphQLRepositoryOptions(
-            type=repository_type,
-            selector=cast(
-                GraphQLRepositorySelectorOptions,
-                config.selector.dict(exclude_unset=True),
-            ),
-        )
-    else:
-        logger.info("Using REST client with repository exporter for repository resync")
-        rest_client = create_github_client()
-        exporter = RestRepositoryExporter(rest_client)
-        options = ListRepositoryOptions(type=repository_type)
+    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
+    options = ListRepositoryOptions(type=port_app_config.repository_type)
 
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories

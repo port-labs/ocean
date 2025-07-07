@@ -11,26 +11,6 @@ class ListRepositoryOptions(TypedDict):
     type: str
 
 
-class GraphQLRepositorySelectorOptions(TypedDict):
-    collaborators: bool
-    teams: bool
-    custom_properties: bool
-
-
-class GraphQLRepositorySelectorBaseOptions(TypedDict):
-    selector: Required[GraphQLRepositorySelectorOptions]
-
-
-class SingleGraphQLRepositoryOptions(GraphQLRepositorySelectorBaseOptions):
-    name: str
-
-
-class ListGraphQLRepositoryOptions(GraphQLRepositorySelectorBaseOptions):
-    """Options for listing repositories."""
-
-    type: str
-
-
 class SingleFolderOptions(TypedDict):
     repo: str
     path: str
