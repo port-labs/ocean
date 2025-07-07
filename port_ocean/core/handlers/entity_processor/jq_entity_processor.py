@@ -39,7 +39,7 @@ class ExampleStates:
           - errors:  items that failed
         """
         self._succeed = []
-        self._errors = []
+        self.__errors = []
         self.__max_size = max_size
 
     def add(self, succeed: bool, item: object):
@@ -52,7 +52,7 @@ class ExampleStates:
         """
         Total number of items (successes + errors).
         """
-        return len(self._succeed) + len(self._errors)
+        return len(self._succeed) + len(self.__errors)
 
     def take(self, n: int = 0):
         """
@@ -66,14 +66,14 @@ class ExampleStates:
         # how many more from errors?
         e_count = n - s_count
         if e_count > 0:
-            result.extend(self._errors[:e_count])
+            result.extend(self.__errors[:e_count])
         return result
 
     def take_iter(self, n: int):
         """
         Lazy version: return an iterator over up to n items
         """
-        return islice(chain(self._succeed, self._errors), n)
+        return islice(chain(self._succeed, self.__errors), n)
 
 
 @dataclass
