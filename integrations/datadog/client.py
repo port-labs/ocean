@@ -1,8 +1,8 @@
 import asyncio
+import re
 import datetime
 import http
 import json
-import re
 import time
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
@@ -11,6 +11,7 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
+from port_ocean.context.ocean import ocean
 
 from utils import generate_time_windows_from_interval_days
 
@@ -609,8 +610,6 @@ class DatadogClient:
                         "event_type": "$EVENT_TYPE",
                         "event_url": "$LINK",
                         "service": "$HOSTNAME",
-                        "service_id": "$SERVICE_ID",
-                        "service_name": "$SERVICE_NAME",
                         "creator": "$USER",
                         "title": "$EVENT_TITLE",
                         "date": "$DATE",

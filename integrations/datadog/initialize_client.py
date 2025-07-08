@@ -8,4 +8,5 @@ def init_client() -> DatadogClient:
         ocean.integration_config["datadog_api_key"],
         ocean.integration_config["datadog_application_key"],
         ocean.integration_config["datadog_access_token"],
+        ocean.integration_config["datadog_service_dependency_env"],
     )
