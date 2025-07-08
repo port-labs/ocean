@@ -44,7 +44,7 @@ pydantic = { version = "^1.10.8", extras = ["dotenv"] }
 loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = ">=2.3.4,<4.0.0"
-fastapi = "^0.115.3"
+fastapi = ">=0.115.3,<0.117.0"
 uvicorn = "^0.34.3"
 confluent-kafka = "^2.10.1"
 httpx = "^0.28.1"
