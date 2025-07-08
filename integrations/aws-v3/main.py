@@ -1,56 +1,45 @@
-from typing import Any
-
 from port_ocean.context.ocean import ocean
+from integration import AWSResourceConfig
+import asyncio
+from port_ocean.context.event import event
+from aws.auth.session_factory import get_all_account_sessions
+from aws.core import (
+    resync_resources_for_account_with_session,
+    ASYNC_GENERATOR_RESYNC_TYPE,
+)
+from port_ocean.utils.async_iterators import (
+    semaphore_async_iterator,
+    stream_async_iterators_tasks,
+)
+import functools
+import typing
+
+ACCOUNT_CONCURRENCY_LIMIT = 10
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
-@ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-
-    # Initial stub to show complete flow, replace this with your own logic
-    if kind == "aws-v3-example-kind":
-        return [
-            {
-                "my_custom_id": f"id_{x}",
-                "my_custom_text": f"very long text with {x} in it",
-                "my_special_score": x * 32 % 3,
-                "my_component": f"component-{x}",
-                "my_service": f"service-{x %2}",
-                "my_enum": "VALID" if x % 2 == 0 else "FAILED",
-            }
-            for x in range(25)
-        ]
-
-    return []
-
-
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
-
-
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
     print("Starting aws-v3 integration")
+
+
+@ocean.on_resync()
+async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    account_semaphore = asyncio.Semaphore(ACCOUNT_CONCURRENCY_LIMIT)
+    account_tasks = []
+
+    async for account, session in get_all_account_sessions():
+        account_tasks.append(
+            semaphore_async_iterator(
+                account_semaphore,
+                functools.partial(
+                    resync_resources_for_account_with_session,
+                    account,
+                    session,
+                    kind,
+                    aws_resource_config,
+                ),
+            )
+        )
+    async for batch in stream_async_iterators_tasks(*account_tasks):
+        yield batch
