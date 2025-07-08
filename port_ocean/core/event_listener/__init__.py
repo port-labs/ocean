@@ -1,7 +1,3 @@
-from port_ocean.core.event_listener.http import (
-    HttpEventListenerSettings,
-    HttpEventListener,
-)
 from port_ocean.core.event_listener.kafka import (
     KafkaEventListenerSettings,
     KafkaEventListener,
@@ -23,8 +19,7 @@ from port_ocean.core.event_listener.webhooks_only import (
 
 
 EventListenerSettingsType = (
-    HttpEventListenerSettings
-    | KafkaEventListenerSettings
+    KafkaEventListenerSettings
     | PollingEventListenerSettings
     | OnceEventListenerSettings
     | WebhooksOnlyEventListenerSettings
@@ -32,8 +27,6 @@ EventListenerSettingsType = (
 
 __all__ = [
     "EventListenerSettingsType",
-    "HttpEventListener",
-    "HttpEventListenerSettings",
     "KafkaEventListener",
     "KafkaEventListenerSettings",
     "PollingEventListener",
