@@ -15,9 +15,7 @@ from github.helpers.utils import IgnoredError
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     _IGNORE_USER_ERRORS = [
         IgnoredError(
-            status=200,
-            message="SAML not enabled for organization",
-            type="FORBIDDEN",
+            status=200, type="FORBIDDEN", message="Failed to fetch external identities"
         )
     ]
 
@@ -42,7 +40,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "__path": "organization.membersWithRole",
         }
         async for users in self.client.send_paginated_request(
-            LIST_ORG_MEMBER_GQL, variables, ignored_errors=self._IGNORE_USER_ERRORS
+            LIST_ORG_MEMBER_GQL, variables
         ):
             users_with_no_email = {
                 (idx, user["login"]): user
@@ -74,7 +72,9 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         try:
             async for identity_batch in self.client.send_paginated_request(
-                LIST_EXTERNAL_IDENTITIES_GQL, variables
+                LIST_EXTERNAL_IDENTITIES_GQL,
+                variables,
+                ignored_errors=self._IGNORE_USER_ERRORS,
             ):
                 saml_users = {
                     user["node"]["user"]["login"]: user["node"]["samlIdentity"][
