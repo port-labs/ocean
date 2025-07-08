@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import AsyncMock, patch
-from aiobotocore.session import AioSession
 
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy

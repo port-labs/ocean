@@ -10,7 +10,6 @@ from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 
 from aws.auth.utils import AWSSessionError
-from aws.auth.session_factory import ResyncStrategyFactory
 
 
 class TestResyncStrategyFactory:
