@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from aiobotocore.session import AioSession
 from aiobotocore.credentials import AioCredentials, AioRefreshableCredentials
 
-from aws.auth.providers.base import CredentialProvider
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.utils import CredentialsProviderError

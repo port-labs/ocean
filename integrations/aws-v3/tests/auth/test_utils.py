@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from aws.auth.utils import (
     AWSSessionError,
     CredentialsProviderError,

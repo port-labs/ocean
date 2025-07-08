@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Union, Optional
+from typing import Any, Union
 from aiobotocore.session import AioSession
 from aiobotocore.credentials import AioRefreshableCredentials, AioCredentials
 

@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Any, List, AsyncIterator, Optional, AsyncGenerator
+from typing import Any, List, Optional, AsyncGenerator
 import logging
 
 logger = logging.getLogger(__name__)

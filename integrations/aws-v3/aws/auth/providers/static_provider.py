@@ -1,8 +1,6 @@
 from aws.auth.providers.base import CredentialProvider, AioCredentialsType
 from aiobotocore.session import AioSession
 from aiobotocore.credentials import AioCredentials
-from aws.auth.utils import CredentialsProviderError
-from loguru import logger
 from typing import Any
 
 

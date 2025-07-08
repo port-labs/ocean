@@ -5,7 +5,6 @@ from typing import Any, List, Callable
 from loguru import logger
 from aiobotocore.session import AioSession
 from aiobotocore.config import AioConfig
-from botocore.exceptions import ClientError
 from aws.auth.session_factory import AccountInfo, get_all_account_sessions
 from aws.auth.region_resolver import RegionResolver
 from port_ocean.utils.async_iterators import (

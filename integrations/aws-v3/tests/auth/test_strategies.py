@@ -1,8 +1,7 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from aiobotocore.session import AioSession
 
-from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.providers.static_provider import StaticCredentialProvider

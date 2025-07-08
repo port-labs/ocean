@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-import json
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, Generator
 

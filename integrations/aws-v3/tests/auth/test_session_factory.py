@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from aiobotocore.session import AioSession
+from unittest.mock import MagicMock, patch
 
 from aws.auth.session_factory import ResyncStrategyFactory, get_all_account_sessions
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
