@@ -67,7 +67,9 @@ class TestStaticCredentialProvider:
     async def test_get_credentials_with_partial_credentials(self):
         """Test get_credentials with only access key (should return None)."""
         provider = StaticCredentialProvider()
-        credentials = await provider.get_credentials(aws_access_key_id="test_access_key")
+        credentials = await provider.get_credentials(
+            aws_access_key_id="test_access_key"
+        )
         assert credentials is None
 
     @pytest.mark.asyncio
@@ -175,7 +177,9 @@ class TestAssumeRoleProvider:
                     mock_create_creds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_credentials_default_session_name(self, mock_assume_role_refresher):
+    async def test_get_credentials_default_session_name(
+        self, mock_assume_role_refresher
+    ):
         """Test get_credentials uses default session name when not provided."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -228,7 +232,9 @@ class TestAssumeRoleProvider:
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
                 side_effect=mock_assume_role_refresher.side_effect,
             ):
-                with pytest.raises(CredentialsProviderError, match="Failed to assume role"):
+                with pytest.raises(
+                    CredentialsProviderError, match="Failed to assume role"
+                ):
                     await provider.get_credentials(
                         role_arn="arn:aws:iam::123456789012:role/test-role",
                         region="us-west-2",
@@ -282,14 +288,18 @@ class TestAssumeRoleProvider:
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
                 side_effect=mock_assume_role_refresher.side_effect,
             ):
-                with pytest.raises(CredentialsProviderError, match="Failed to assume role"):
+                with pytest.raises(
+                    CredentialsProviderError, match="Failed to assume role"
+                ):
                     await provider.get_session(
                         role_arn="arn:aws:iam::123456789012:role/test-role",
                         region="us-west-2",
                     )
 
     @pytest.mark.asyncio
-    async def test_get_credentials_with_custom_role_session_name(self, mock_assume_role_refresher):
+    async def test_get_credentials_with_custom_role_session_name(
+        self, mock_assume_role_refresher
+    ):
         """Test get_credentials with custom role session name."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -315,15 +325,17 @@ class TestAssumeRoleProvider:
                     mock_create_creds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_credentials_with_different_regions(self, mock_assume_role_refresher):
+    async def test_get_credentials_with_different_regions(
+        self, mock_assume_role_refresher
+    ):
         """Test get_credentials with different AWS regions."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        
+
         test_regions = ["us-east-1", "eu-west-1", "ap-southeast-1"]
-        
+
         for region in test_regions:
             with patch.object(provider, "aws_client_factory_session", mock_session):
                 mock_session.create_client.return_value = mock_context_manager
@@ -342,7 +354,9 @@ class TestAssumeRoleProvider:
                         )
                         assert credentials == mock_creds
                         # Verify the session was created with the correct region
-                        mock_session.create_client.assert_called_with("sts", region_name=region)
+                        mock_session.create_client.assert_called_with(
+                            "sts", region_name=region
+                        )
 
     @pytest.mark.asyncio
     async def test_get_credentials_refresh_behavior(self, mock_assume_role_refresher):
@@ -374,7 +388,9 @@ class TestAssumeRoleProvider:
                     assert call_args[1]["refresh_using"] is not None
 
     @pytest.mark.asyncio
-    async def test_get_credentials_with_all_optional_parameters(self, mock_assume_role_refresher):
+    async def test_get_credentials_with_all_optional_parameters(
+        self, mock_assume_role_refresher
+    ):
         """Test get_credentials with all optional parameters provided."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -426,4 +442,4 @@ class TestAssumeRoleProvider:
                     )
                     assert isinstance(session, AioSession)
                     assert hasattr(session, "_credentials")
-                    assert session._credentials == mock_creds 
+                    assert session._credentials == mock_creds

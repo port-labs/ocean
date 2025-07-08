@@ -200,6 +200,7 @@ def mock_logger() -> Generator[None, None, None]:
 @pytest.fixture
 def mock_assume_role_refresher() -> MagicMock:
     """Mocks the assume role refresher function."""
+
     def _refresher_factory(*args, **kwargs):
         async def refresher():
             return {
@@ -208,6 +209,8 @@ def mock_assume_role_refresher() -> MagicMock:
                 "token": "test_session_token",
                 "expiry_time": "2024-12-31T23:59:59Z",
             }
+
         return refresher
+
     mock = MagicMock(side_effect=_refresher_factory)
-    return mock 
+    return mock

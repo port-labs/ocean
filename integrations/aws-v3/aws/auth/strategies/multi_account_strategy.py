@@ -20,7 +20,7 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
     @property
     def valid_arns(self) -> list[str]:
         """Get the list of valid ARNs that passed health check."""
-        return getattr(self, '_valid_arns', [])
+        return getattr(self, "_valid_arns", [])
 
     async def _can_assume_role(self, arn: str) -> AioSession | None:
         """Check if role can be assumed and return the session if successful."""

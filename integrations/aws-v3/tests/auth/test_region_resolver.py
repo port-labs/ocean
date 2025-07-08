@@ -58,14 +58,18 @@ class TestRegionResolver:
         mock_context_manager.__aenter__.return_value = mock_account_client
         mock_context_manager.__aexit__.return_value = None
 
-        with patch.object(mock_aiosession, "create_client", return_value=mock_context_manager):
+        with patch.object(
+            mock_aiosession, "create_client", return_value=mock_context_manager
+        ):
             regions = await resolver.get_enabled_regions()
-            
+
             # Verify the correct regions are returned
             assert regions == ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
-            
+
             # Verify the AWS Account API was called correctly
-            mock_aiosession.create_client.assert_called_once_with("account", region_name=None)
+            mock_aiosession.create_client.assert_called_once_with(
+                "account", region_name=None
+            )
             mock_account_client.list_regions.assert_called_once_with(
                 RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"]
             )
@@ -80,27 +84,32 @@ class TestRegionResolver:
         mock_context_manager.__aenter__.return_value = mock_account_client
         mock_context_manager.__aexit__.return_value = None
 
-        with patch.object(mock_aiosession, "create_client", return_value=mock_context_manager):
+        with patch.object(
+            mock_aiosession, "create_client", return_value=mock_context_manager
+        ):
             regions = await resolver.get_enabled_regions()
             assert regions == []
 
     @pytest.mark.asyncio
     async def test_get_enabled_regions_client_error(self, resolver, mock_aiosession):
         """Test get_enabled_regions handles client creation error."""
-        with patch.object(mock_aiosession, "create_client", side_effect=Exception("Client error")):
+        with patch.object(
+            mock_aiosession, "create_client", side_effect=Exception("Client error")
+        ):
             with pytest.raises(Exception, match="Client error"):
                 await resolver.get_enabled_regions()
 
     @pytest.mark.asyncio
-    async def test_get_allowed_regions_with_real_selector(self, resolver, mock_aiosession):
+    async def test_get_allowed_regions_with_real_selector(
+        self, resolver, mock_aiosession
+    ):
         """Test get_allowed_regions with a real AWSDescribeResourcesSelector instance."""
         # Create a real selector with region policy
         region_policy = RegionPolicy(allow=["us-east-1", "us-west-2"])
         real_selector = AWSDescribeResourcesSelector(
-            query="test",
-            regionPolicy=region_policy
+            query="test", regionPolicy=region_policy
         )
-        
+
         # Update resolver with real selector
         resolver.selector = real_selector
 
@@ -119,8 +128,10 @@ class TestRegionResolver:
         mock_context_manager.__aenter__.return_value = mock_account_client
         mock_context_manager.__aexit__.return_value = None
 
-        with patch.object(mock_aiosession, "create_client", return_value=mock_context_manager):
+        with patch.object(
+            mock_aiosession, "create_client", return_value=mock_context_manager
+        ):
             regions = await resolver.get_allowed_regions()
-            
+
             # Only us-east-1 and us-west-2 should be allowed based on the region policy
-            assert regions == {"us-east-1", "us-west-2"} 
+            assert regions == {"us-east-1", "us-west-2"}

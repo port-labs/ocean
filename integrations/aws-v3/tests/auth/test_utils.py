@@ -133,4 +133,4 @@ class TestExtractAccountFromArn:
         for arn in test_cases:
             result = extract_account_from_arn(arn, arn_parser=mock_arn_parser)
             assert result == "123456789012"
-            mock_arn_parser.parse_arn.assert_called_with(arn) 
+            mock_arn_parser.parse_arn.assert_called_with(arn)
