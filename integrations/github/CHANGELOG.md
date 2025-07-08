@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.0.4-beta (2025-07-08)
+
+
+### Improvements
+
+- Fix deleted raw results in file webhook processor and improved logging in repository visibility type
+
+
+## 1.0.3-beta (2025-07-08)
+
+
+### Bug Fixes
+
+- Fix Bug on GraphQL Errors throwing a stack of errors instead of specific error messages
+
+
 ## 1.0.2-beta (2025-07-08)
 
 
