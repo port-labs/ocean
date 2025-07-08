@@ -39,7 +39,7 @@ class ExampleStates:
         self.__errors = []
         self.__max_size = max_size
 
-    def add(self, succeed: bool, item: dict[str, Any]) -> None:
+    def add_example(self, succeed: bool, item: dict[str, Any]) -> None:
         if succeed:
             self.__succeed.append(item)
         else:
@@ -51,17 +51,17 @@ class ExampleStates:
         """
         return len(self.__succeed) + len(self.__errors)
 
-    def take(self, n: int = 0) -> list[dict[str, Any]]:
+    def get_examples(self, number: int = 0) -> list[dict[str, Any]]:
         """
-        Return a list of up to n items, taking successes first,
+        Return a list of up to number items, taking successes first,
         """
-        if n <= 0:
-            n = self.__max_size
+        if number <= 0:
+            number = self.__max_size
         # how many from succeed?
-        s_count = min(n, len(self.__succeed))
+        s_count = min(number, len(self.__succeed))
         result = list(self.__succeed[:s_count])
         # how many more from errors?
-        e_count = n - s_count
+        e_count = number - s_count
         if e_count > 0:
             result.extend(self.__errors[:e_count])
         return result
@@ -325,7 +325,9 @@ class JQEntityProcessor(BaseEntityProcessor):
                 len(examples_to_send) < send_raw_data_examples_amount
                 and result.raw_data is not None
             ):
-                examples_to_send.add(result.did_entity_pass_selector, result.raw_data)
+                examples_to_send.add_example(
+                    result.did_entity_pass_selector, result.raw_data
+                )
 
             if result.entity.get("identifier") and result.entity.get("blueprint"):
                 parsed_entity = Entity.parse_obj(result.entity)
@@ -343,7 +345,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             entity_mapping_fault_counter,
         )
 
-        await self._send_examples(examples_to_send.take(), mapping.kind)
+        await self._send_examples(examples_to_send.get_examples(), mapping.kind)
 
         return CalculationResult(
             EntitySelectorDiff(passed=passed_entities, failed=failed_entities),
