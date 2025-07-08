@@ -200,15 +200,14 @@ def mock_logger() -> Generator[None, None, None]:
 def mock_assume_role_refresher() -> MagicMock:
     """Mocks the assume role refresher function."""
 
-    def _refresher_factory(*args, **kwargs):
-        async def refresher():
+    def _refresher_factory(*args: Any, **kwargs: Any) -> Any:
+        async def refresher() -> dict[str, str]:
             return {
                 "access_key": "test_access_key",
                 "secret_key": "test_secret_key",
                 "token": "test_session_token",
                 "expiry_time": "2024-12-31T23:59:59Z",
             }
-
         return refresher
 
     mock = MagicMock(side_effect=_refresher_factory)

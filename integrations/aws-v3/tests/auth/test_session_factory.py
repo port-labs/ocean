@@ -1,5 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock
+from typing import Generator
 
 from aws.auth.session_factory import ResyncStrategyFactory, get_all_account_sessions
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
@@ -14,13 +16,13 @@ class TestResyncStrategyFactory:
     """Test ResyncStrategyFactory."""
 
     @pytest.fixture(autouse=True)
-    def reset_cached_strategy(self):
+    def reset_cached_strategy(self) -> Generator[None, None, None]:
         """Reset the cached strategy by mocking the module variable."""
         with patch.object(aws.auth.session_factory, "_cached_strategy", None):
             yield
 
     @pytest.mark.asyncio
-    async def test_create_single_account_strategy(self, mock_single_account_config):
+    async def test_create_single_account_strategy(self, mock_single_account_config: dict[str, object]) -> None:
         """Test create returns SingleAccountStrategy for single account config."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
@@ -33,7 +35,7 @@ class TestResyncStrategyFactory:
                 mock_healthcheck.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_multi_account_strategy(self, mock_multi_account_config):
+    async def test_create_multi_account_strategy(self, mock_multi_account_config: dict[str, object]) -> None:
         """Test create returns MultiAccountStrategy for multi account config."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
@@ -44,7 +46,7 @@ class TestResyncStrategyFactory:
             assert isinstance(strategy.provider, AssumeRoleProvider)
 
     @pytest.mark.asyncio
-    async def test_create_caches_strategy(self, mock_single_account_config):
+    async def test_create_caches_strategy(self, mock_single_account_config: dict[str, object]) -> None:
         """Test create caches the strategy for subsequent calls."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
@@ -61,8 +63,8 @@ class TestResyncStrategyFactory:
 
     @pytest.mark.asyncio
     async def test_create_single_account_performs_healthcheck(
-        self, mock_single_account_config
-    ):
+        self, mock_single_account_config: dict[str, object]
+    ) -> None:
         """Test create performs healthcheck for single account strategy."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
@@ -72,7 +74,7 @@ class TestResyncStrategyFactory:
                 mock_healthcheck.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_multi_account_no_healthcheck(self, mock_multi_account_config):
+    async def test_create_multi_account_no_healthcheck(self, mock_multi_account_config: dict[str, object]) -> None:
         """Test create does not perform healthcheck for multi account strategy."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
@@ -83,8 +85,8 @@ class TestResyncStrategyFactory:
 
     @pytest.mark.asyncio
     async def test_create_single_account_healthcheck_failure(
-        self, mock_single_account_config
-    ):
+        self, mock_single_account_config: dict[str, object]
+    ) -> None:
         """Test create handles healthcheck failure for single account."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
@@ -98,7 +100,7 @@ class TestResyncStrategyFactory:
                     await ResyncStrategyFactory.create()
 
     @pytest.mark.asyncio
-    async def test_create_with_empty_config(self):
+    async def test_create_with_empty_config(self) -> None:
         """Test create handles empty config."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = {}
@@ -111,7 +113,7 @@ class TestResyncStrategyFactory:
                 mock_healthcheck.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_with_none_config(self):
+    async def test_create_with_none_config(self) -> None:
         """Test create handles None config."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = None
@@ -124,7 +126,7 @@ class TestResyncStrategyFactory:
                 mock_healthcheck.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_with_mixed_config(self):
+    async def test_create_with_mixed_config(self) -> None:
         """Test create handles config with both single and multi account settings."""
         mixed_config = {
             "aws_access_key_id": "test_access_key",
@@ -147,8 +149,8 @@ class TestGetAllAccountSessions:
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_single_account(
-        self, mock_single_account_config, mock_aiosession
-    ):
+        self, mock_single_account_config: dict[str, object], mock_aiosession: AsyncMock
+    ) -> None:
         """Test get_all_account_sessions with single account strategy."""
         with patch(
             "aws.auth.session_factory.ResyncStrategyFactory.create"
@@ -174,8 +176,8 @@ class TestGetAllAccountSessions:
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_multi_account(
-        self, mock_multi_account_config, mock_aiosession
-    ):
+        self, mock_multi_account_config: dict[str, object], mock_aiosession: AsyncMock
+    ) -> None:
         """Test get_all_account_sessions with multi account strategy."""
         with patch(
             "aws.auth.session_factory.ResyncStrategyFactory.create"
@@ -202,7 +204,7 @@ class TestGetAllAccountSessions:
             assert sessions[1][0]["Id"] == "987654321098"
 
     @pytest.mark.asyncio
-    async def test_get_all_account_sessions_empty(self, mock_single_account_config):
+    async def test_get_all_account_sessions_empty(self, mock_single_account_config: dict[str, object]) -> None:
         """Test get_all_account_sessions with no accounts."""
         with patch(
             "aws.auth.session_factory.ResyncStrategyFactory.create"
@@ -219,8 +221,8 @@ class TestGetAllAccountSessions:
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_strategy_error(
-        self, mock_single_account_config
-    ):
+        self, mock_single_account_config: dict[str, object]
+    ) -> None:
         """Test get_all_account_sessions handles strategy creation error."""
         with patch(
             "aws.auth.session_factory.ResyncStrategyFactory.create",
@@ -232,8 +234,8 @@ class TestGetAllAccountSessions:
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_yields_correct_types(
-        self, mock_single_account_config, mock_aiosession
-    ):
+        self, mock_single_account_config: dict[str, object], mock_aiosession: AsyncMock
+    ) -> None:
         """Test get_all_account_sessions yields correct types."""
         with patch(
             "aws.auth.session_factory.ResyncStrategyFactory.create"
@@ -255,3 +257,25 @@ class TestGetAllAccountSessions:
                 # Check that session is the expected mock session
                 assert session == mock_aiosession
                 break
+
+@pytest.fixture
+def mock_multi_account_config() -> dict[str, object]:
+    """Mocks multi-account AWS configuration."""
+    return {
+        "account_role_arn": [
+            "arn:aws:iam::123456789012:role/test-role-1",
+            "arn:aws:iam::987654321098:role/test-role-2",
+        ],
+        "region": "us-west-2",
+        "external_id": "test-external-id",
+    }
+
+@pytest.fixture
+def mock_single_account_config() -> dict[str, object]:
+    """Mocks single account AWS configuration."""
+    return {
+        "aws_access_key_id": "test_access_key",
+        "aws_secret_access_key": "test_secret_key",
+        "aws_session_token": "test_session_token",
+        "region": "us-west-2",
+    }

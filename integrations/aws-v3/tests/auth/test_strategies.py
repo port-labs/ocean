@@ -12,7 +12,7 @@ from aws.auth.utils import AWSSessionError, CredentialsProviderError
 class TestAWSSessionStrategyBase:
     """Test the base AWSSessionStrategy class."""
 
-    def test_strategy_initialization(self):
+    def test_strategy_initialization(self) -> None:
         """Test AWSSessionStrategy initialization."""
         provider = StaticCredentialProvider()
         config = {"test_key": "test_value"}
@@ -25,7 +25,7 @@ class TestSingleAccountStrategy:
     """Test SingleAccountStrategy."""
 
     @pytest.fixture
-    def strategy(self, mock_single_account_config):
+    def strategy(self, mock_single_account_config: dict[str, object]) -> SingleAccountStrategy:
         """Create a SingleAccountStrategy instance."""
         provider = StaticCredentialProvider(config=mock_single_account_config)
         return SingleAccountStrategy(
@@ -33,7 +33,7 @@ class TestSingleAccountStrategy:
         )
 
     @pytest.mark.asyncio
-    async def test_create_session_with_kwargs(self, strategy):
+    async def test_create_session_with_kwargs(self, strategy: SingleAccountStrategy) -> None:
         """Test create_session with credentials passed via kwargs."""
         session = await strategy.create_session(
             aws_access_key_id="kwargs_access_key",
@@ -43,13 +43,13 @@ class TestSingleAccountStrategy:
         assert isinstance(session, AioSession)
 
     @pytest.mark.asyncio
-    async def test_create_session_with_config_fallback(self, strategy):
+    async def test_create_session_with_config_fallback(self, strategy: SingleAccountStrategy) -> None:
         """Test create_session falls back to config when kwargs not provided."""
         session = await strategy.create_session()
         assert isinstance(session, AioSession)
 
     @pytest.mark.asyncio
-    async def test_create_session_mixed_kwargs_config(self, strategy):
+    async def test_create_session_mixed_kwargs_config(self, strategy: SingleAccountStrategy) -> None:
         """Test create_session with some credentials in kwargs, some in config."""
         session = await strategy.create_session(
             aws_access_key_id="kwargs_access_key",
@@ -58,7 +58,7 @@ class TestSingleAccountStrategy:
         assert isinstance(session, AioSession)
 
     @pytest.mark.asyncio
-    async def test_get_account_sessions(self, strategy, mock_aiosession):
+    async def test_get_account_sessions(self, strategy: SingleAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test get_account_sessions yields account info and session."""
         with patch.object(strategy, "create_session", return_value=mock_aiosession):
             sessions = []
@@ -73,8 +73,8 @@ class TestSingleAccountStrategy:
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_with_account_id(
-        self, strategy, mock_aiosession
-    ):
+        self, strategy: SingleAccountStrategy, mock_aiosession: AsyncMock
+    ) -> None:
         """Test get_account_sessions uses account_id when available."""
         strategy.account_id = "123456789012"
         with patch.object(strategy, "create_session", return_value=mock_aiosession):
@@ -93,7 +93,7 @@ class TestSingleAccountHealthCheckMixin:
     """Test SingleAccountHealthCheckMixin."""
 
     @pytest.fixture
-    def strategy(self, mock_single_account_config):
+    def strategy(self, mock_single_account_config: dict[str, object]) -> SingleAccountStrategy:
         """Create a SingleAccountStrategy instance."""
         provider = StaticCredentialProvider(config=mock_single_account_config)
         return SingleAccountStrategy(
@@ -101,7 +101,7 @@ class TestSingleAccountHealthCheckMixin:
         )
 
     @pytest.mark.asyncio
-    async def test_healthcheck_success(self, strategy, mock_aiosession):
+    async def test_healthcheck_success(self, strategy: SingleAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test healthcheck succeeds with valid credentials."""
         mock_sts_client = AsyncMock()
         mock_sts_client.get_caller_identity.return_value = {
@@ -120,7 +120,7 @@ class TestSingleAccountHealthCheckMixin:
                 assert strategy.account_id == "123456789012"
 
     @pytest.mark.asyncio
-    async def test_healthcheck_without_credentials(self, strategy, mock_aiosession):
+    async def test_healthcheck_without_credentials(self, strategy: SingleAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test healthcheck succeeds without explicit credentials."""
         strategy.config = {}  # No credentials in config
         mock_sts_client = AsyncMock()
@@ -138,7 +138,7 @@ class TestSingleAccountHealthCheckMixin:
                 assert strategy.account_id == "123456789012"
 
     @pytest.mark.asyncio
-    async def test_healthcheck_sts_error(self, strategy, mock_aiosession):
+    async def test_healthcheck_sts_error(self, strategy: SingleAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test healthcheck fails when STS call fails."""
         mock_sts_client = AsyncMock()
         mock_sts_client.get_caller_identity.side_effect = Exception("STS error")
@@ -154,7 +154,7 @@ class TestSingleAccountHealthCheckMixin:
                     await strategy.healthcheck()
 
     @pytest.mark.asyncio
-    async def test_healthcheck_session_error(self, strategy):
+    async def test_healthcheck_session_error(self, strategy: SingleAccountStrategy) -> None:
         """Test healthcheck fails when session creation fails."""
         with patch.object(
             strategy.provider, "get_session", side_effect=Exception("Session error")
@@ -169,13 +169,13 @@ class TestMultiAccountStrategy:
     """Test MultiAccountStrategy."""
 
     @pytest.fixture
-    def strategy(self, mock_multi_account_config):
+    def strategy(self, mock_multi_account_config: dict[str, object]) -> MultiAccountStrategy:
         """Create a MultiAccountStrategy instance."""
         provider = AssumeRoleProvider(config=mock_multi_account_config)
         return MultiAccountStrategy(provider=provider, config=mock_multi_account_config)
 
     @pytest.mark.asyncio
-    async def test_create_session_success(self, strategy, mock_aiosession):
+    async def test_create_session_success(self, strategy: MultiAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test create_session successfully creates session for given ARN."""
         with patch.object(
             strategy.provider, "get_session", return_value=mock_aiosession
@@ -187,7 +187,7 @@ class TestMultiAccountStrategy:
             assert session == mock_aiosession
 
     @pytest.mark.asyncio
-    async def test_create_session_with_external_id(self, strategy, mock_aiosession):
+    async def test_create_session_with_external_id(self, strategy: MultiAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test create_session passes external_id from config."""
         with patch.object(
             strategy.provider, "get_session", return_value=mock_aiosession
@@ -202,7 +202,7 @@ class TestMultiAccountStrategy:
             assert call_kwargs["external_id"] == "test-external-id"
 
     @pytest.mark.asyncio
-    async def test_create_session_credentials_error(self, strategy):
+    async def test_create_session_credentials_error(self, strategy: MultiAccountStrategy) -> None:
         """Test create_session handles credentials provider error."""
         with patch.object(
             strategy.provider,
@@ -216,7 +216,7 @@ class TestMultiAccountStrategy:
                 )
 
     @pytest.mark.asyncio
-    async def test_create_session_general_error(self, strategy):
+    async def test_create_session_general_error(self, strategy: MultiAccountStrategy) -> None:
         """Test create_session handles general session error."""
         with patch.object(
             strategy.provider, "get_session", side_effect=Exception("Session error")
@@ -229,8 +229,8 @@ class TestMultiAccountStrategy:
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_with_valid_sessions(
-        self, strategy, mock_aiosession
-    ):
+        self, strategy: MultiAccountStrategy, mock_aiosession: AsyncMock
+    ) -> None:
         """Test get_account_sessions yields pre-validated sessions."""
         # Set up the strategy as if healthcheck has already been completed
         strategy._valid_arns = ["arn:aws:iam::123456789012:role/test-role"]
@@ -257,17 +257,17 @@ class TestMultiAccountHealthCheckMixin:
     """Test MultiAccountHealthCheckMixin."""
 
     @pytest.fixture
-    def strategy(self, mock_multi_account_config):
+    def strategy(self, mock_multi_account_config: dict[str, object]) -> MultiAccountStrategy:
         """Create a MultiAccountStrategy instance."""
         provider = AssumeRoleProvider(config=mock_multi_account_config)
         return MultiAccountStrategy(provider=provider, config=mock_multi_account_config)
 
-    def test_valid_arns_property(self, strategy):
+    def test_valid_arns_property(self, strategy: MultiAccountStrategy) -> None:
         """Test valid_arns property returns the list of valid ARNs."""
         strategy._valid_arns = ["arn1", "arn2"]
         assert strategy.valid_arns == ["arn1", "arn2"]
 
-    def test_valid_arns_property_when_not_initialized(self, strategy):
+    def test_valid_arns_property_when_not_initialized(self, strategy: MultiAccountStrategy) -> None:
         """Test valid_arns property returns empty list when _valid_arns doesn't exist."""
         # Ensure _valid_arns doesn't exist
         if hasattr(strategy, "_valid_arns"):
@@ -275,7 +275,7 @@ class TestMultiAccountHealthCheckMixin:
         assert strategy.valid_arns == []
 
     @pytest.mark.asyncio
-    async def test_can_assume_role_success(self, strategy, mock_aiosession):
+    async def test_can_assume_role_success(self, strategy: MultiAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test _can_assume_role returns session when role can be assumed."""
         with patch.object(
             strategy.provider, "get_session", return_value=mock_aiosession
@@ -286,7 +286,7 @@ class TestMultiAccountHealthCheckMixin:
             assert result == mock_aiosession
 
     @pytest.mark.asyncio
-    async def test_can_assume_role_failure(self, strategy):
+    async def test_can_assume_role_failure(self, strategy: MultiAccountStrategy) -> None:
         """Test _can_assume_role returns None when role cannot be assumed."""
         with patch.object(
             strategy.provider,
@@ -299,7 +299,7 @@ class TestMultiAccountHealthCheckMixin:
             assert result is None
 
     @pytest.mark.asyncio
-    async def test_healthcheck_success(self, strategy, mock_aiosession):
+    async def test_healthcheck_success(self, strategy: MultiAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test healthcheck succeeds with valid role ARNs."""
         with patch.object(strategy, "_can_assume_role", return_value=mock_aiosession):
             result = await strategy.healthcheck()
@@ -308,21 +308,21 @@ class TestMultiAccountHealthCheckMixin:
             assert len(strategy._valid_sessions) == 2
 
     @pytest.mark.asyncio
-    async def test_healthcheck_no_arns(self, strategy):
+    async def test_healthcheck_no_arns(self, strategy: MultiAccountStrategy) -> None:
         """Test healthcheck fails when no role ARNs provided."""
         strategy.config = {"region": "us-west-2"}  # No account_role_arn
         result = await strategy.healthcheck()
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_healthcheck_empty_arns(self, strategy):
+    async def test_healthcheck_empty_arns(self, strategy: MultiAccountStrategy) -> None:
         """Test healthcheck fails when empty role ARNs list provided."""
         strategy.config = {"account_role_arn": [], "region": "us-west-2"}
         result = await strategy.healthcheck()
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_healthcheck_partial_failure(self, strategy, mock_aiosession):
+    async def test_healthcheck_partial_failure(self, strategy: MultiAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test healthcheck succeeds when some roles can be assumed."""
         with patch.object(strategy, "_can_assume_role") as mock_can_assume:
             # First role succeeds, second fails
@@ -333,7 +333,7 @@ class TestMultiAccountHealthCheckMixin:
             assert len(strategy._valid_sessions) == 1
 
     @pytest.mark.asyncio
-    async def test_healthcheck_all_failures(self, strategy):
+    async def test_healthcheck_all_failures(self, strategy: MultiAccountStrategy) -> None:
         """Test healthcheck raises error when no roles can be assumed."""
         with patch.object(strategy, "_can_assume_role", return_value=None):
             with pytest.raises(
@@ -342,7 +342,7 @@ class TestMultiAccountHealthCheckMixin:
                 await strategy.healthcheck()
 
     @pytest.mark.asyncio
-    async def test_healthcheck_concurrency_control(self, strategy, mock_aiosession):
+    async def test_healthcheck_concurrency_control(self, strategy: MultiAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test healthcheck respects concurrency limits."""
         with patch.object(strategy, "_can_assume_role", return_value=mock_aiosession):
             with patch("asyncio.Semaphore") as mock_semaphore:
@@ -353,7 +353,7 @@ class TestMultiAccountHealthCheckMixin:
                 mock_semaphore.assert_called_with(strategy.DEFAULT_CONCURRENCY)
 
     @pytest.mark.asyncio
-    async def test_healthcheck_batching(self, strategy, mock_aiosession):
+    async def test_healthcheck_batching(self, strategy: MultiAccountStrategy, mock_aiosession: AsyncMock) -> None:
         """Test healthcheck processes ARNs in batches."""
         # Add more ARNs to test batching
         strategy.config["account_role_arn"] = [

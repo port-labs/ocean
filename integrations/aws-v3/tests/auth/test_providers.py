@@ -8,7 +8,7 @@ from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.utils import CredentialsProviderError
 
 
-def create_mock_sts_context_manager(mock_sts_client):
+def create_mock_sts_context_manager(mock_sts_client: MagicMock) -> MagicMock:
     """Helper function to create a mock STS context manager."""
     mock_context_manager = MagicMock()
     mock_context_manager.__aenter__ = AsyncMock(return_value=mock_sts_client)
@@ -19,14 +19,14 @@ def create_mock_sts_context_manager(mock_sts_client):
 class TestCredentialProviderBase:
     """Test the base CredentialProvider class."""
 
-    def test_credential_provider_initialization(self):
+    def test_credential_provider_initialization(self) -> None:
         """Test CredentialProvider initialization with config."""
         config = {"test_key": "test_value"}
         provider = StaticCredentialProvider(config=config)
         assert provider.config == config
         assert provider.aws_client_factory_session is not None
 
-    def test_credential_provider_initialization_empty_config(self):
+    def test_credential_provider_initialization_empty_config(self) -> None:
         """Test CredentialProvider initialization with empty config."""
         provider = StaticCredentialProvider()
         assert provider.config == {}
@@ -36,13 +36,13 @@ class TestCredentialProviderBase:
 class TestStaticCredentialProvider:
     """Test StaticCredentialProvider."""
 
-    def test_is_refreshable_property(self):
+    def test_is_refreshable_property(self) -> None:
         """Test is_refreshable property returns False."""
         provider = StaticCredentialProvider()
         assert provider.is_refreshable is False
 
     @pytest.mark.asyncio
-    async def test_get_credentials_with_valid_credentials(self):
+    async def test_get_credentials_with_valid_credentials(self) -> None:
         """Test get_credentials with valid access and secret keys."""
         provider = StaticCredentialProvider()
         credentials = await provider.get_credentials(
@@ -56,14 +56,14 @@ class TestStaticCredentialProvider:
         assert credentials.token == "test_session_token"
 
     @pytest.mark.asyncio
-    async def test_get_credentials_without_credentials(self):
+    async def test_get_credentials_without_credentials(self) -> None:
         """Test get_credentials without explicit credentials (uses boto3 chain)."""
         provider = StaticCredentialProvider()
         credentials = await provider.get_credentials()
         assert credentials is None
 
     @pytest.mark.asyncio
-    async def test_get_credentials_with_partial_credentials(self):
+    async def test_get_credentials_with_partial_credentials(self) -> None:
         """Test get_credentials with only access key (should return None)."""
         provider = StaticCredentialProvider()
         credentials = await provider.get_credentials(
@@ -72,7 +72,7 @@ class TestStaticCredentialProvider:
         assert credentials is None
 
     @pytest.mark.asyncio
-    async def test_get_session_with_credentials(self):
+    async def test_get_session_with_credentials(self) -> None:
         """Test get_session with explicit credentials."""
         provider = StaticCredentialProvider()
         session = await provider.get_session(
@@ -87,7 +87,7 @@ class TestStaticCredentialProvider:
         assert session._credentials.token == "test_session_token"
 
     @pytest.mark.asyncio
-    async def test_get_session_without_credentials(self):
+    async def test_get_session_without_credentials(self) -> None:
         """Test get_session without explicit credentials."""
         provider = StaticCredentialProvider()
         session = await provider.get_session()
@@ -98,7 +98,7 @@ class TestStaticCredentialProvider:
             assert session._credentials is None
 
     @pytest.mark.asyncio
-    async def test_get_session_with_partial_credentials(self):
+    async def test_get_session_with_partial_credentials(self) -> None:
         """Test get_session with partial credentials (should not set _credentials)."""
         provider = StaticCredentialProvider()
         session = await provider.get_session(aws_access_key_id="test_access_key")
@@ -110,13 +110,13 @@ class TestStaticCredentialProvider:
 class TestAssumeRoleProvider:
     """Test AssumeRoleProvider."""
 
-    def test_is_refreshable_property(self):
+    def test_is_refreshable_property(self) -> None:
         """Test is_refreshable property returns True."""
         provider = AssumeRoleProvider()
         assert provider.is_refreshable is True
 
     @pytest.mark.asyncio
-    async def test_get_credentials_success(self, mock_assume_role_refresher):
+    async def test_get_credentials_success(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test get_credentials successfully assumes role."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -150,7 +150,7 @@ class TestAssumeRoleProvider:
                     mock_create_creds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_credentials_with_external_id(self, mock_assume_role_refresher):
+    async def test_get_credentials_with_external_id(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test get_credentials with external ID."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -176,9 +176,7 @@ class TestAssumeRoleProvider:
                     mock_create_creds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_credentials_default_session_name(
-        self, mock_assume_role_refresher
-    ):
+    async def test_get_credentials_default_session_name(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test get_credentials uses default session name when not provided."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -204,7 +202,7 @@ class TestAssumeRoleProvider:
                     mock_create_creds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_credentials_sts_client_error(self):
+    async def test_get_credentials_sts_client_error(self) -> None:
         """Test get_credentials handles STS client creation error."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -218,7 +216,7 @@ class TestAssumeRoleProvider:
                 )
 
     @pytest.mark.asyncio
-    async def test_get_credentials_assume_role_error(self, mock_assume_role_refresher):
+    async def test_get_credentials_assume_role_error(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test get_credentials handles assume role error."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -240,7 +238,7 @@ class TestAssumeRoleProvider:
                     )
 
     @pytest.mark.asyncio
-    async def test_get_session_success(self, mock_assume_role_refresher):
+    async def test_get_session_success(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test get_session successfully creates session with assumed role credentials."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -266,7 +264,7 @@ class TestAssumeRoleProvider:
                     assert session._credentials == mock_creds
 
     @pytest.mark.asyncio
-    async def test_get_session_missing_role_arn(self):
+    async def test_get_session_missing_role_arn(self) -> None:
         """Test get_session raises error when role_arn is missing."""
         provider = AssumeRoleProvider()
 
@@ -274,7 +272,7 @@ class TestAssumeRoleProvider:
             await provider.get_session(region="us-west-2")
 
     @pytest.mark.asyncio
-    async def test_get_session_credentials_error(self, mock_assume_role_refresher):
+    async def test_get_session_credentials_error(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test get_session handles credentials error."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -296,9 +294,7 @@ class TestAssumeRoleProvider:
                     )
 
     @pytest.mark.asyncio
-    async def test_get_credentials_with_custom_role_session_name(
-        self, mock_assume_role_refresher
-    ):
+    async def test_get_credentials_with_custom_role_session_name(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test get_credentials with custom role session name."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -324,9 +320,7 @@ class TestAssumeRoleProvider:
                     mock_create_creds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_credentials_with_different_regions(
-        self, mock_assume_role_refresher
-    ):
+    async def test_get_credentials_with_different_regions(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test get_credentials with different AWS regions."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -358,7 +352,7 @@ class TestAssumeRoleProvider:
                         )
 
     @pytest.mark.asyncio
-    async def test_get_credentials_refresh_behavior(self, mock_assume_role_refresher):
+    async def test_get_credentials_refresh_behavior(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test that credentials are properly configured for refresh behavior."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -387,9 +381,7 @@ class TestAssumeRoleProvider:
                     assert call_args[1]["refresh_using"] is not None
 
     @pytest.mark.asyncio
-    async def test_get_credentials_with_all_optional_parameters(
-        self, mock_assume_role_refresher
-    ):
+    async def test_get_credentials_with_all_optional_parameters(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test get_credentials with all optional parameters provided."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
@@ -416,7 +408,7 @@ class TestAssumeRoleProvider:
                     mock_create_creds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_session_with_all_parameters(self, mock_assume_role_refresher):
+    async def test_get_session_with_all_parameters(self, mock_assume_role_refresher: MagicMock) -> None:
         """Test get_session with all parameters provided."""
         provider = AssumeRoleProvider()
         mock_session = MagicMock()
