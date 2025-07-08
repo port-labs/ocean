@@ -113,7 +113,7 @@ async def test_sync_raw_mixin_self_dependency(
     calc_result_mock.number_of_transformed_entities = len(
         entities
     )  # Add this to match real behavior
-    calc_result_mock.misonfigured_entity_keys = {}  # Add this to match real behavior
+    calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
@@ -234,7 +234,7 @@ async def test_sync_raw_mixin_circular_dependency(
     calc_result_mock.number_of_transformed_entities = len(
         entities
     )  # Add this to match real behavior
-    calc_result_mock.misonfigured_entity_keys = {}  # Add this to match real behavior
+    calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
@@ -378,7 +378,7 @@ async def test_sync_raw_mixin_dependency(
     calc_result_mock.number_of_transformed_entities = len(
         entities
     )  # Add this to match real behavior
-    calc_result_mock.misonfigured_entity_keys = {}  # Add this to match real behavior
+    calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
     # Mock the parse_items method to return our realistic mock
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
@@ -773,7 +773,7 @@ class CalculationResult:
     entity_selector_diff: EntitySelectorDiff
     errors: List[Any]
     misconfigurations: List[Any]
-    misonfigured_entity_keys: Optional[List[Any]] = None
+    misconfigured_entity_keys: Optional[List[Any]] = None
 
 
 @pytest.mark.asyncio
@@ -782,7 +782,7 @@ async def test_register_resource_raw_no_changes_upsert_not_called_entitiy_is_ret
     mock_port_app_config: PortAppConfig,
 ) -> None:
     entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misconfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
@@ -809,7 +809,7 @@ async def test_register_resource_raw_with_changes_upsert_called_and_entities_are
     mock_port_app_config: PortAppConfig,
 ) -> None:
     entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misconfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
@@ -836,7 +836,7 @@ async def test_register_resource_raw_with_errors(
 ) -> None:
     failed_entity = Entity(identifier="1", blueprint="service")
     error = Exception("Test error")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misconfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
@@ -873,7 +873,7 @@ async def test_register_resource_raw_skip_event_type_http_request_upsert_called_
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
         errors=[],
         misconfigurations=[],
-        misonfigured_entity_keys=[],
+        misconfigured_entity_keys=[],
     )
     mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[calculation_result])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock()  # type: ignore
