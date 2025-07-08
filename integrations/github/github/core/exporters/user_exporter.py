@@ -9,9 +9,18 @@ from github.helpers.gql_queries import (
     LIST_ORG_MEMBER_GQL,
     FETCH_GITHUB_USER_GQL,
 )
+from github.helpers.utils import IgnoredError
 
 
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
+    _IGNORE_USER_ERRORS = [
+        IgnoredError(
+            status=200,
+            message="SAML not enabled for organization",
+            type="FORBIDDEN",
+        )
+    ]
+
     async def get_resource[
         ExporterOptionT: SingleUserOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
@@ -33,7 +42,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "__path": "organization.membersWithRole",
         }
         async for users in self.client.send_paginated_request(
-            LIST_ORG_MEMBER_GQL, variables
+            LIST_ORG_MEMBER_GQL, variables, ignored_errors=self._IGNORE_USER_ERRORS
         ):
             users_with_no_email = {
                 (idx, user["login"]): user
