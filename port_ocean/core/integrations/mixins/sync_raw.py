@@ -332,7 +332,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 passed=modified_objects
             ),
             errors=objects_diff[0].errors,
-            misonfigured_entity_keys=objects_diff[0].misonfigured_entity_keys,
+            misconfigured_entity_keys=objects_diff[0].misconfigured_entity_keys
         )
 
     async def _unregister_resource_raw(

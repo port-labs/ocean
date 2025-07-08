@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import cast, Any
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
@@ -155,7 +156,14 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         deleted_raw_results = [
-            {"metadata": {"path": file["filename"]}} for file in deleted_files
+            {
+                "path": file["filename"],
+                "metadata": {"path": file["filename"]},
+                "repository": repository,
+                "branch": current_branch,
+                "name": Path(file["filename"]).name,
+            }
+            for file in deleted_files
         ]
 
         return updated_raw_results, deleted_raw_results
