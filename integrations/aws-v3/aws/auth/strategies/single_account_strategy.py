@@ -52,16 +52,13 @@ class SingleAccountStrategy(SingleAccountHealthCheckMixin):
         session = await self.provider.get_session(**session_kwargs)
         return session
 
-    def get_account_sessions(
+    async def get_account_sessions(
         self,
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
-        async def _get_sessions() -> AsyncIterator[tuple[dict[str, str], AioSession]]:
-            session = await self.create_session()
-            account_id = getattr(self, "account_id", "unknown")
-            account_info = {
-                "Id": account_id,
-                "Name": f"Account {account_id}",
-            }
-            yield account_info, session
-
-        return _get_sessions()
+        session = await self.create_session()
+        account_id = getattr(self, "account_id", "unknown")
+        account_info = {
+            "Id": account_id,
+            "Name": f"Account {account_id}",
+        }
+        yield account_info, session
