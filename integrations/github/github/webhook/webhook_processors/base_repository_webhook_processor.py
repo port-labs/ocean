@@ -8,6 +8,7 @@ from github.webhook.webhook_processors.github_abstract_webhook_processor import 
     _GithubAbstractWebhookProcessor,
 )
 from integration import GithubPortAppConfig
+from loguru import logger
 
 
 class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
@@ -17,11 +18,20 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         if not repository.get("name"):
             return False
 
-        visibility = cast(GithubPortAppConfig, event.port_app_config).repository_type
+        configured_visibility = cast(
+            GithubPortAppConfig, event.port_app_config
+        ).repository_type
+        repository_visibility = repository.get("visibility")
+
+        logger.info(
+            f"Validating repository webhook - configured visibility filter: {configured_visibility}, repository visibility: {repository_visibility}"
+        )
+
         validation_result = await self._validate_payload(payload)
 
         return validation_result and (
-            visibility == "all" or repository.get("visibility") == visibility
+            configured_visibility == "all"
+            or repository_visibility == configured_visibility
         )
 
     @abstractmethod
