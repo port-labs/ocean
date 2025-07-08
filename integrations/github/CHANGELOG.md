@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.0.5-beta (2025-07-08)
+
+
+### Improvements
+
+- Gracefully handle permission error when fetching external identities fail
+
+
 ## 1.0.4-beta (2025-07-08)
 
 
