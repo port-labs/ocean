@@ -41,7 +41,9 @@ class TestResyncStrategyFactory:
                 mock_healthcheck.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_multi_account_strategy(self, mock_multi_account_config: dict[str, object]) -> None:
+    async def test_create_multi_account_strategy(
+        self, mock_multi_account_config: dict[str, object]
+    ) -> None:
         """Test create returns MultiAccountStrategy for multi account config."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
@@ -94,7 +96,9 @@ class TestResyncStrategyFactory:
                 mock_healthcheck.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_multi_account_no_healthcheck(self, mock_multi_account_config: dict[str, object]) -> None:
+    async def test_create_multi_account_no_healthcheck(
+        self, mock_multi_account_config: dict[str, object]
+    ) -> None:
         """Test create does not perform healthcheck for multi account strategy."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
@@ -329,7 +333,9 @@ class TestGetAllAccountSessions:
                     assert sessions[0][1] == mock_session
 
     @pytest.mark.asyncio
-    async def test_get_account_sessions_multi_account_success(self, mock_multi_account_config: dict[str, object]) -> None:
+    async def test_get_account_sessions_multi_account_success(
+        self, mock_multi_account_config: dict[str, object]
+    ) -> None:
         """Test get_account_sessions yields correct account info and session for multi account (real path, not patched healthcheck)."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
