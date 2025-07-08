@@ -22,7 +22,9 @@ class TestResyncStrategyFactory:
             yield
 
     @pytest.mark.asyncio
-    async def test_create_single_account_strategy(self, mock_single_account_config: dict[str, object]) -> None:
+    async def test_create_single_account_strategy(
+        self, mock_single_account_config: dict[str, object]
+    ) -> None:
         """Test create returns SingleAccountStrategy for single account config."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
@@ -35,7 +37,9 @@ class TestResyncStrategyFactory:
                 mock_healthcheck.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_multi_account_strategy(self, mock_multi_account_config: dict[str, object]) -> None:
+    async def test_create_multi_account_strategy(
+        self, mock_multi_account_config: dict[str, object]
+    ) -> None:
         """Test create returns MultiAccountStrategy for multi account config."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
@@ -46,7 +50,9 @@ class TestResyncStrategyFactory:
             assert isinstance(strategy.provider, AssumeRoleProvider)
 
     @pytest.mark.asyncio
-    async def test_create_caches_strategy(self, mock_single_account_config: dict[str, object]) -> None:
+    async def test_create_caches_strategy(
+        self, mock_single_account_config: dict[str, object]
+    ) -> None:
         """Test create caches the strategy for subsequent calls."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
@@ -74,7 +80,9 @@ class TestResyncStrategyFactory:
                 mock_healthcheck.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_multi_account_no_healthcheck(self, mock_multi_account_config: dict[str, object]) -> None:
+    async def test_create_multi_account_no_healthcheck(
+        self, mock_multi_account_config: dict[str, object]
+    ) -> None:
         """Test create does not perform healthcheck for multi account strategy."""
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
@@ -204,7 +212,9 @@ class TestGetAllAccountSessions:
             assert sessions[1][0]["Id"] == "987654321098"
 
     @pytest.mark.asyncio
-    async def test_get_all_account_sessions_empty(self, mock_single_account_config: dict[str, object]) -> None:
+    async def test_get_all_account_sessions_empty(
+        self, mock_single_account_config: dict[str, object]
+    ) -> None:
         """Test get_all_account_sessions with no accounts."""
         with patch(
             "aws.auth.session_factory.ResyncStrategyFactory.create"
@@ -258,6 +268,7 @@ class TestGetAllAccountSessions:
                 assert session == mock_aiosession
                 break
 
+
 @pytest.fixture
 def mock_multi_account_config() -> dict[str, object]:
     """Mocks multi-account AWS configuration."""
@@ -269,6 +280,7 @@ def mock_multi_account_config() -> dict[str, object]:
         "region": "us-west-2",
         "external_id": "test-external-id",
     }
+
 
 @pytest.fixture
 def mock_single_account_config() -> dict[str, object]:

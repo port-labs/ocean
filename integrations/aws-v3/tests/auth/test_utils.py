@@ -104,7 +104,9 @@ class TestExtractAccountFromArn:
             "arn:aws:iam::123456789012:role/test-role"
         )
 
-    def test_extract_account_from_arn_with_custom_parser(self, mock_arn_parser: MagicMock) -> None:
+    def test_extract_account_from_arn_with_custom_parser(
+        self, mock_arn_parser: MagicMock
+    ) -> None:
         """Test extract_account_from_arn with custom parser."""
         result = extract_account_from_arn(
             "arn:aws:iam::123456789012:role/test-role", arn_parser=mock_arn_parser
@@ -122,7 +124,9 @@ class TestExtractAccountFromArn:
         with pytest.raises(ValueError, match="Invalid ARN"):
             extract_account_from_arn("invalid-arn", arn_parser=mock_parser)
 
-    def test_extract_account_from_arn_different_services(self, mock_arn_parser: MagicMock) -> None:
+    def test_extract_account_from_arn_different_services(
+        self, mock_arn_parser: MagicMock
+    ) -> None:
         """Test extract_account_from_arn with different AWS services."""
         test_cases = [
             "arn:aws:s3:::my-bucket",

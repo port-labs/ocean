@@ -208,6 +208,7 @@ def mock_assume_role_refresher() -> MagicMock:
                 "token": "test_session_token",
                 "expiry_time": "2024-12-31T23:59:59Z",
             }
+
         return refresher
 
     mock = MagicMock(side_effect=_refresher_factory)
