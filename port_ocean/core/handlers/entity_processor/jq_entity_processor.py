@@ -234,7 +234,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             {},
             did_entity_pass_selector=False,
             raw_data=data,
-            misconfigurations=misconfigurations,
+            misconfigurations={},
         )
 
     async def _calculate_entity(
