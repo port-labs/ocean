@@ -2,7 +2,7 @@
 
 In order to run the local image of Ocean you need to follow these steps:
 
-1. Build the image with the specific integration:
+1. Build the image:
 
     ```bash
     docker build -f integrations/_infra/Dockerfile.local --build-arg BUILD_CONTEXT=integrations/<integration_type> --platform linux/arm64 -t <my-local-image>:<local> .
@@ -12,7 +12,7 @@ In order to run the local image of Ocean you need to follow these steps:
    1. `5678` is the debugpy port mentioned in the `entry_local.sh` file
    2. `8000` is the port of the Ocean FastAPI server
    3. the `-v` option mounts your local Ocean directory to the pod, allowing you not to constantly build the image.
-      1. Make sure to run the command from the root directory of the Ocean repository."
+      1. Make sure to run the command from the root directory of the Ocean repository.
 
     ```bash
     docker run --rm -it \
