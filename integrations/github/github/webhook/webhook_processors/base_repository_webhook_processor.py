@@ -24,7 +24,7 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         repository_visibility = repository.get("visibility")
 
         logger.debug(
-            f"Validating repository webhook - configured visibility filter: {configured_visibility}, repository visibility: {repository_visibility}"
+            f"Validating repository webhook for repository with visibility '{repository_visibility}' against configured filter '{configured_visibility}'"
         )
 
         validation_result = await self._validate_payload(payload)
