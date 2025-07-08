@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 from loguru import logger
 
 from github.clients.http.base_client import AbstractGithubClient
-from github.helpers.exceptions import GraphQLClientError
+from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
 
 PAGE_SIZE = 25
@@ -39,7 +39,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
 
         if non_ignored_exceptions:
-            raise ExceptionGroup("GraphQL errors occurred.", non_ignored_exceptions)
+            raise GraphQLErrorGroup(non_ignored_exceptions)
 
         return response
 
