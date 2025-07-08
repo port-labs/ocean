@@ -22,7 +22,6 @@ class GithubGraphQLClient(AbstractGithubClient):
         response: Dict[str, Any],
         ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> Dict[str, Any]:
-
         if "errors" not in response:
             return response
 
@@ -34,7 +33,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         for error in response["errors"]:
             error_type = error.get("type")
             if error_type in ignored_types:
-                logger.warning(ignored_types[error_type])
+                logger.warning(f"{ignored_types[error_type]} - {error['message']}")
                 continue
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
 
