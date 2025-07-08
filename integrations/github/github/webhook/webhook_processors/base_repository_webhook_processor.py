@@ -23,7 +23,7 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         ).repository_type
         repository_visibility = repository.get("visibility")
 
-        logger.info(
+        logger.debug(
             f"Validating repository webhook - configured visibility filter: {configured_visibility}, repository visibility: {repository_visibility}"
         )
 

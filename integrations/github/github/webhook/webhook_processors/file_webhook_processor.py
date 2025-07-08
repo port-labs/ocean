@@ -159,7 +159,6 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
             {
                 "path": file["filename"],
                 "metadata": {"path": file["filename"]},
-                "content": None,
                 "repository": repository,
                 "branch": current_branch,
                 "name": Path(file["filename"]).name,
