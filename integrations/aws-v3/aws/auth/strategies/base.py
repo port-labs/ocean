@@ -12,10 +12,6 @@ class AWSSessionStrategy(ABC):
         self.config = config
 
     @abstractmethod
-    async def create_session(self, **kwargs: Any) -> AioSession:
-        pass
-
-    @abstractmethod
     def get_account_sessions(
         self,
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:

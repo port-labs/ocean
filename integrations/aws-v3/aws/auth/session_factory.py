@@ -10,48 +10,41 @@ from typing import TypedDict, AsyncIterator
 
 StrategyType = SingleAccountStrategy | MultiAccountStrategy
 
-_cached_strategy: StrategyType | None = None
-
 
 class ResyncStrategyFactory:
     """A factory for creating resync strategies based on the global configuration."""
 
-    @staticmethod
-    async def create() -> StrategyType:
-        global _cached_strategy
-        if _cached_strategy is not None:
-            return _cached_strategy
+    _cached_strategy: StrategyType | None = None
+
+    @classmethod
+    async def create(cls) -> StrategyType:
+        if cls._cached_strategy is not None:
+            return cls._cached_strategy
         config = ocean.integration_config or {}
         account_role_arn = config.get("account_role_arn")
         is_multi_account = bool(account_role_arn and len(account_role_arn) > 0)
+
         provider: CredentialProvider
+        strategy_cls: type[StrategyType]
 
         if is_multi_account:
             logger.info(
                 "[SessionStrategyFactory] Using AssumeRoleProvider for multi-account"
             )
             provider = AssumeRoleProvider(config=config)
+            strategy_cls = MultiAccountStrategy
         else:
             logger.info(
                 "[SessionStrategyFactory] Using StaticCredentialProvider (no org role ARN found)"
             )
             provider = StaticCredentialProvider(config=config)
-        strategy_cls: type[SingleAccountStrategy | MultiAccountStrategy] = (
-            MultiAccountStrategy if is_multi_account else SingleAccountStrategy
-        )
+            strategy_cls = SingleAccountStrategy
 
         logger.info(f"Initializing {strategy_cls.__name__}")
-
         strategy = strategy_cls(provider=provider, config=config)
-
         logger.info(f"Successfully initialized {strategy_cls.__name__}")
 
-        if not is_multi_account:
-            logger.info("Performing healthcheck for single account strategy")
-            await strategy.healthcheck()
-            logger.info("Single account healthcheck completed.")
-
-        _cached_strategy = strategy
+        cls._cached_strategy = strategy
         return strategy
 
 

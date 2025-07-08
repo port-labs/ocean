@@ -2,9 +2,9 @@ from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
 from aws.auth.utils import (
     normalize_arn_list,
     AWSSessionError,
-    CredentialsProviderError,
     extract_account_from_arn,
 )
+from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from loguru import logger
 import asyncio
@@ -16,6 +16,13 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 
     DEFAULT_CONCURRENCY = 10
     DEFAULT_BATCH_SIZE = 10
+
+    def __init__(self, provider: CredentialProvider, config: dict[str, Any]):
+        self.provider = provider
+        self.config = config
+
+        self._valid_arns: list[str] = []
+        self._valid_sessions: dict[str, AioSession] = {}
 
     @property
     def valid_arns(self) -> list[str]:
@@ -46,8 +53,6 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             return False
 
         logger.info(f"Starting AWS account health check for {len(arns)} role ARNs")
-        self._valid_arns = []
-        self._valid_sessions = {}
 
         semaphore = asyncio.Semaphore(self.DEFAULT_CONCURRENCY)
 
@@ -87,7 +92,7 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             )
 
         logger.info(
-            f"Health check complete: {len(self._valid_arns)}/{len(arns)} role ARNs validated successfully"
+            f"Health check complete: {len(self._valid_arns or [])}/{len(arns)} role ARNs validated successfully"
         )
 
         if not self._valid_arns:
@@ -99,43 +104,24 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 class MultiAccountStrategy(MultiAccountHealthCheckMixin):
     """Strategy for handling multiple AWS accounts using explicit role ARNs."""
 
-    async def create_session(self, **kwargs: Any) -> AioSession:
-        try:
-            arn = kwargs["arn"]
-            session_kwargs = {
-                "region": kwargs.get("region"),
-                "role_arn": arn,
-                "role_session_name": kwargs.get("session_name", "OceanRoleSession"),
-            }
-            if self.config.get("external_id"):
-                session_kwargs["external_id"] = self.config["external_id"]
-
-            return await self.provider.get_session(**session_kwargs)
-
-        except CredentialsProviderError as e:
-            logger.error(f"Credentials error for ARN {arn}: {e}")
-            raise AWSSessionError(f"Credentials error for ARN {arn}: {e}") from e
-        except Exception as e:
-            logger.error(f"Session error for ARN {arn}: {e}")
-            raise AWSSessionError(f"Session error for ARN {arn}: {e}") from e
-
     async def get_account_sessions(
         self, **kwargs: Any
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
-        if not hasattr(self, "_valid_arns") or not self._valid_arns:
+        if not (self._valid_arns and self._valid_sessions):
             await self.healthcheck()
+        if not (self._valid_arns and self._valid_sessions):
+            raise AWSSessionError(
+                "Account sessions not initialized. Run healthcheck first."
+            )
 
         logger.info(f"Providing {len(self._valid_arns)} pre-validated AWS sessions")
 
         for arn in self._valid_arns:
             session = self._valid_sessions[arn]
             account_id = extract_account_from_arn(arn)
-            setattr(session, "_AccountId", account_id)
-            setattr(session, "_RoleArn", arn)
-
             account_info = {
                 "Id": account_id,
-                "Name": f"Account {account_id}",  # Default name, can be enhanced later
+                "Name": f"Account {account_id}",
             }
             yield account_info, session
 

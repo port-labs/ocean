@@ -189,6 +189,7 @@ async def _handle_global_resource_resync(
         )
         regions = await get_allowed_regions(session, selector)
         logger.debug(f"Found {len(regions)} allowed regions for account {account_id}")
+        processed_successfully = False
         for region in regions:
             try:
                 async for batch in resync_cloudcontrol(
@@ -198,17 +199,22 @@ async def _handle_global_resource_resync(
                 logger.info(
                     f"Successfully processed global resource {kind} in region {region} for account {account_id}"
                 )
-                return
+                processed_successfully = True
+                break
             except Exception as e:
                 if is_access_denied_exception(e):
                     logger.info(
-                        f"Access denied for global resource {kind} in region {region} for account {account_id}, trying next session"
+                        f"Access denied for global resource {kind} in region {region} for account {account_id}, trying next region"
                     )
                     continue
                 logger.error(
                     f"Error processing global resource {kind} in region {region} for account {account_id}: {e}"
                 )
                 raise e
+        if not processed_successfully:
+            logger.warning(
+                f"Failed to process global resource {kind} in any region for account {account_id}"
+            )
 
 
 async def sync_account_region_resources(
