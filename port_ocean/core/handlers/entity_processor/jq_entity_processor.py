@@ -230,7 +230,12 @@ class JQEntityProcessor(BaseEntityProcessor):
                 misconfigurations=misconfigurations,
             )
 
-        return MappedEntity()
+        return MappedEntity(
+            {},
+            did_entity_pass_selector=False,
+            raw_data=data,
+            misconfigurations=misconfigurations,
+        )
 
     async def _calculate_entity(
         self,
