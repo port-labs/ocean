@@ -13,6 +13,7 @@ from loguru import logger
 from utils import generate_time_windows_from_interval_days
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
+from port_ocean.context.ocean import ocean
 
 MAX_PAGE_SIZE = 100
 
@@ -74,12 +75,14 @@ class DatadogClient:
         api_key: str,
         app_key: str,
         access_token: Optional[str] = None,
+        service_dependency_env: Optional[str] = None,
     ):
         self.api_url = api_url
         self.dd_api_key = api_key
         self.dd_app_key = app_key
         self.access_token = access_token
         self.http_client = http_async_client
+        self.service_dependency_env = service_dependency_env
 
         # These are created to limit the concurrent requests we are making to specific routes.
         # The limits provided to each semaphore were pre-determined by the headers sent for each one of the routes.
@@ -632,3 +635,24 @@ class DatadogClient:
 
         except Exception as e:
             logger.error("Failed to create webhook, skipping...", exc_info=e)
+
+    async def get_service_dependencies(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get service dependencies from Datadog.
+        Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
+        """
+        ONE_HOUR = 3600
+        end = int(time.time())
+        start = end - ONE_HOUR
+
+        while start < (end - ONE_HOUR):
+            url = f"{self.api_url}/api/v1/service_dependencies"
+            dependencies = await self._send_api_request(
+                url, params={"env": self.service_dependency_env, "start": start, "end": end}
+            )
+
+            if not dependencies:
+                break
+
+            yield dependencies
+            start += ONE_HOUR 
