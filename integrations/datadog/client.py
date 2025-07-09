@@ -647,12 +647,59 @@ class DatadogClient:
 
         while start < (end - ONE_HOUR):
             url = f"{self.api_url}/api/v1/service_dependencies"
-            dependencies = await self._send_api_request(
+            result = await self._send_api_request(
                 url, params={"env": self.service_dependency_env, "start": start, "end": end}
             )
+            dependencies = result.get("data", [])
 
             if not dependencies:
                 break
 
-            yield dependencies
-            start += ONE_HOUR 
+            processed_dependencies = []
+            for service_id, dependency_data in dependencies.items():
+                processed_dependency = {
+                    "sourceService": service_id,
+                    "calledServices": dependency_data.get("calls", []),
+                    "description": f"Service dependencies for {service_id}"
+                }
+                processed_dependencies.append(processed_dependency)
+
+            yield processed_dependencies
+            start += ONE_HOUR
+
+    async def get_single_service_dependency(self, service_id: str) -> dict[str, Any] | None:
+        """
+        Get service dependencies for a specific service from Datadog.
+        Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-service-dependencies
+        """
+        if not service_id:
+            return None
+        
+        try:
+            ONE_HOUR = 3600
+            end = int(time.time())
+            start = end - ONE_HOUR
+            
+            url = f"{self.api_url}/api/v1/service_dependencies/{service_id}"
+            result = await self._send_api_request(
+                url, 
+                params={
+                    "env": self.service_dependency_env, 
+                    "start": start, 
+                    "end": end
+                }
+            )
+            
+            if result and "data" in result:
+                dependency_data = result.get("data", {})
+                return {
+                    "sourceService": service_id,
+                    "calledServices": dependency_data.get("calls", []),
+                    "description": f"Service dependencies for {service_id}"
+                }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch service dependencies for {service_id}: {str(e)}")
+            return None
