@@ -33,7 +33,8 @@
                     "title": "Primary Language"
                 },
                 "readme": {
-                    "type": "markdown",
+                    "type": "string",
+                    "format": "markdown",
                     "title": "Readme"
                 }
             },
