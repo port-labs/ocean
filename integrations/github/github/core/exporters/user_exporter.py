@@ -9,16 +9,9 @@ from github.helpers.gql_queries import (
     LIST_ORG_MEMBER_GQL,
     FETCH_GITHUB_USER_GQL,
 )
-from github.helpers.utils import IgnoredError
 
 
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    _IGNORE_USER_ERRORS = [
-        IgnoredError(
-            status=200, type="FORBIDDEN", message="Failed to fetch external identities"
-        )
-    ]
-
     async def get_resource[
         ExporterOptionT: SingleUserOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
@@ -27,6 +20,8 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         response = await self.client.send_api_request(
             self.client.base_url, method="POST", json_data=payload
         )
+        if "data" not in response:
+            return response
         user = response["data"]["user"]
         if not user.get("email"):
             await self._fetch_external_identities([user], {(0, user["login"]): user})
@@ -74,7 +69,6 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             async for identity_batch in self.client.send_paginated_request(
                 LIST_EXTERNAL_IDENTITIES_GQL,
                 variables,
-                ignored_errors=self._IGNORE_USER_ERRORS,
             ):
                 saml_users = {
                     user["node"]["user"]["login"]: user["node"]["samlIdentity"][

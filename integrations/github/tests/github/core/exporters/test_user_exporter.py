@@ -138,7 +138,6 @@ class TestGraphQLUserExporter:
                     "__path": "organization.samlIdentityProvider.externalIdentities",
                     "__node_key": "edges",
                 },
-                ignored_errors=exporter._IGNORE_USER_ERRORS,
             )
 
     async def test_get_paginated_resources(
@@ -201,7 +200,6 @@ class TestGraphQLUserExporter:
                         "__path": "organization.samlIdentityProvider.externalIdentities",
                         "__node_key": "edges",
                     },
-                    ignored_errors=exporter._IGNORE_USER_ERRORS,
                 )
 
     async def test_fetch_external_identities_modifies_in_place(
@@ -250,5 +248,4 @@ class TestGraphQLUserExporter:
                     "__path": "organization.samlIdentityProvider.externalIdentities",
                     "__node_key": "edges",
                 },
-                ignored_errors=exporter._IGNORE_USER_ERRORS,
             )

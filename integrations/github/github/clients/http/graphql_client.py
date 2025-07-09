@@ -26,6 +26,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             return response
 
         ignored_errors = ignored_errors or []
+        ignored_errors.extend(self._DEFAULT_IGNORED_ERRORS)
         ignored_types = {e.type: e.message for e in ignored_errors}
 
         non_ignored_exceptions = []
@@ -33,14 +34,15 @@ class GithubGraphQLClient(AbstractGithubClient):
         for error in response["errors"]:
             error_type = error.get("type")
             if error_type in ignored_types:
-                logger.warning(f"{ignored_types[error_type]} - {error['message']}")
+                log_message = f"{ignored_types[error_type]} due to {error['message']} for {error['path']} "
+                logger.warning(log_message)
                 continue
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
 
         if non_ignored_exceptions:
             raise GraphQLErrorGroup(non_ignored_exceptions)
 
-        return response
+        return {}
 
     async def send_api_request(
         self,
