@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.79 (2025-07-09)
+
+
+### Features
+
+- Added the `serviceDependency` resource to the Datadog integration, enabling users to fetch inter-service dependencies using a specified `env`
+
+
 ## 0.2.78 (2025-07-07)
 
 
