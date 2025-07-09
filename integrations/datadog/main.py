@@ -168,7 +168,11 @@ async def on_start() -> None:
         dd_client = init_client()
         webhook_secret = ocean.integration_config.get("webhook_secret")
 
+        # Create the main webhook for general events
         await dd_client.create_webhooks_if_not_exists(base_url, webhook_secret)
+        
+        # Create dedicated webhook for service dependency events
+        await dd_client.create_service_dependency_webhook(base_url, webhook_secret)
 
 
 ocean.add_webhook_processor("/webhook", MonitorWebhookProcessor)
