@@ -609,10 +609,7 @@ class DatadogClient:
                         "event_type": "service_dependency_change",
                         "service_id": "$HOSTNAME",
                         "service_name": "$HOSTNAME",
-                        "service": {
-                            "id": "$HOSTNAME",
-                            "name": "$HOSTNAME"
-                        },
+                        "service": {"id": "$HOSTNAME", "name": "$HOSTNAME"},
                         "timestamp": "$DATE",
                         "message": "$TEXT_ONLY_MSG",
                         "event_url": "$LINK",
@@ -631,7 +628,9 @@ class DatadogClient:
             logger.info(f"Service Dependency Webhook Creation Response: {result}")
 
         except Exception as e:
-            logger.error("Failed to create service dependency webhook, skipping...", exc_info=e)
+            logger.error(
+                "Failed to create service dependency webhook, skipping...", exc_info=e
+            )
 
     async def create_webhooks_if_not_exists(
         self, base_url: Any, webhook_secret: Any
