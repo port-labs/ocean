@@ -34,7 +34,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         for error in response["errors"]:
             error_type = error.get("type")
             if error_type in ignored_types:
-                log_message = f"{ignored_types[error_type]} due to {error['message']} for {error['path']} "
+                log_message = f"{ignored_types[error_type]} due to {error['message']} for {'::'.join(error['path'])} "
                 logger.warning(log_message)
                 continue
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
