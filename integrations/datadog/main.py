@@ -4,7 +4,9 @@ from typing import cast
 from initialize_client import init_client
 from integration import ObjectKind
 from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
-from webhook_processors.service_dependency_webhook_processor import ServiceDependencyWebhookProcessor
+from webhook_processors.service_dependency_webhook_processor import (
+    ServiceDependencyWebhookProcessor,
+)
 from loguru import logger
 
 from utils import (
@@ -137,6 +139,7 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received batch with {len(metrics)} metrics")
         yield metrics
 
+
 @ocean.on_resync(ObjectKind.SERVICE_DEPENDENCY)
 async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
@@ -144,6 +147,7 @@ async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for dependencies in dd_client.get_service_dependencies():
         logger.info(f"Received batch with {len(dependencies)} dependencies")
         yield dependencies
+
 
 @ocean.on_start()
 async def on_start() -> None:
@@ -157,7 +161,7 @@ async def on_start() -> None:
 
         # Create the main webhook for general events
         await dd_client.create_webhooks_if_not_exists(base_url, webhook_secret)
-        
+
         # Create dedicated webhook for service dependency events
         await dd_client.create_service_dependency_webhook(base_url, webhook_secret)
 

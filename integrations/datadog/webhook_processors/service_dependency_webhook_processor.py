@@ -21,72 +21,80 @@ class ServiceDependencyWebhookProcessor(AbstractWebhookProcessor):
         """Only process events that are related to service dependencies."""
         payload = event.payload
         event_type = payload.get("event_type", "")
-        
+
         # Check if this is a service dependency related event
         # Datadog might send different event types for service changes
         service_related_events = [
             "service_dependency_change",
-            "service_change", 
+            "service_change",
             "apm_service_change",
-            "dependency_change"
+            "dependency_change",
         ]
-        
+
         # Also check if the payload contains service-related information
-        has_service_info = any(key in payload for key in ["service_id", "service_name", "service"])
-        
-        should_process = (
-            event_type in service_related_events or 
-            has_service_info or
-            "service" in event_type.lower()
+        has_service_info = any(
+            key in payload for key in ["service_id", "service_name", "service"]
         )
-        
-        logger.info(f"Service dependency webhook processor: event_type={event_type}, should_process={should_process}")
+
+        should_process = (
+            event_type in service_related_events
+            or has_service_info
+            or "service" in event_type.lower()
+        )
+
+        logger.info(
+            f"Service dependency webhook processor: event_type={event_type}, should_process={should_process}"
+        )
         return should_process
 
     async def get_matching_kinds(self, _: WebhookEvent) -> list[str]:
         return [ObjectKind.SERVICE_DEPENDENCY]
 
-    async def handle_event(self, payload: EventPayload, _: ResourceConfig) -> WebhookEventRawResults:
+    async def handle_event(
+        self, payload: EventPayload, _: ResourceConfig
+    ) -> WebhookEventRawResults:
         """Handle service dependency webhook events."""
         try:
             # Extract service ID from various possible payload formats
             service_id = (
-                payload.get("service_id") or 
-                payload.get("service_name") or 
-                payload.get("service", {}).get("id") or
-                payload.get("service", {}).get("name")
+                payload.get("service_id")
+                or payload.get("service_name")
+                or payload.get("service", {}).get("id")
+                or payload.get("service", {}).get("name")
             )
-            
+
             if not service_id:
                 logger.warning(f"No service ID found in webhook payload: {payload}")
                 return WebhookEventRawResults(
-                    updated_raw_results=[],
-                    deleted_raw_results=[]
+                    updated_raw_results=[], deleted_raw_results=[]
                 )
-            
-            logger.info(f"Processing service dependency webhook for service: {service_id}")
-            
+
+            logger.info(
+                f"Processing service dependency webhook for service: {service_id}"
+            )
+
             dd_client = init_client()
-            service_dependency = await dd_client.get_single_service_dependency(service_id)
-            
+            service_dependency = await dd_client.get_single_service_dependency(
+                service_id
+            )
+
             if service_dependency:
                 logger.info(f"Successfully fetched service dependency for {service_id}")
                 return WebhookEventRawResults(
-                    updated_raw_results=[service_dependency],
-                    deleted_raw_results=[]
+                    updated_raw_results=[service_dependency], deleted_raw_results=[]
                 )
             else:
                 logger.warning(f"No service dependency found for service: {service_id}")
                 return WebhookEventRawResults(
-                    updated_raw_results=[],
-                    deleted_raw_results=[]
+                    updated_raw_results=[], deleted_raw_results=[]
                 )
-                
+
         except Exception as e:
-            logger.error(f"Error processing service dependency webhook: {str(e)}", exc_info=True)
+            logger.error(
+                f"Error processing service dependency webhook: {str(e)}", exc_info=True
+            )
             return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[]
+                updated_raw_results=[], deleted_raw_results=[]
             )
 
     async def authenticate(self, _: EventPayload, headers: dict[str, Any]) -> bool:
@@ -96,7 +104,7 @@ class ServiceDependencyWebhookProcessor(AbstractWebhookProcessor):
         if not authorization:
             logger.warning("No authorization header found in webhook request")
             return False
-            
+
         try:
             auth_type, encoded_token = authorization.split(" ", 1)
             if auth_type.lower() != "basic":
@@ -106,10 +114,10 @@ class ServiceDependencyWebhookProcessor(AbstractWebhookProcessor):
             decoded = base64.b64decode(encoded_token).decode("utf-8")
             _, token = decoded.split(":", 1)
             is_valid = token == webhook_secret
-            
+
             if not is_valid:
                 logger.warning("Invalid webhook secret")
-                
+
             return is_valid
         except (ValueError, UnicodeDecodeError) as e:
             logger.warning(f"Error decoding authorization header: {str(e)}")
@@ -118,12 +126,14 @@ class ServiceDependencyWebhookProcessor(AbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         """Validate that the payload contains required fields for service dependency events."""
         # For service dependency events, we need at least some service identification
-        has_service_info = any(key in payload for key in ["service_id", "service_name", "service"])
+        has_service_info = any(
+            key in payload for key in ["service_id", "service_name", "service"]
+        )
         has_event_info = "event_type" in payload
-        
+
         is_valid = has_service_info and has_event_info
-        
+
         if not is_valid:
             logger.warning(f"Invalid webhook payload for service dependency: {payload}")
-            
+
         return is_valid

@@ -610,10 +610,7 @@ class DatadogClient:
                         "event_type": "service_dependency_change",
                         "service_id": "$HOSTNAME",
                         "service_name": "$HOSTNAME",
-                        "service": {
-                            "id": "$HOSTNAME",
-                            "name": "$HOSTNAME"
-                        },
+                        "service": {"id": "$HOSTNAME", "name": "$HOSTNAME"},
                         "timestamp": "$DATE",
                         "message": "$TEXT_ONLY_MSG",
                         "event_url": "$LINK",
@@ -632,7 +629,9 @@ class DatadogClient:
             logger.info(f"Service Dependency Webhook Creation Response: {result}")
 
         except Exception as e:
-            logger.error("Failed to create service dependency webhook, skipping...", exc_info=e)
+            logger.error(
+                "Failed to create service dependency webhook, skipping...", exc_info=e
+            )
 
     async def create_webhooks_if_not_exists(
         self, base_url: Any, webhook_secret: Any
@@ -697,7 +696,9 @@ class DatadogClient:
         except Exception as e:
             logger.error("Failed to create webhook, skipping...", exc_info=e)
 
-    async def get_service_dependencies(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_service_dependencies(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get service dependencies from Datadog.
         Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
@@ -709,7 +710,8 @@ class DatadogClient:
         while start < (end - ONE_HOUR):
             url = f"{self.api_url}/api/v1/service_dependencies"
             result = await self._send_api_request(
-                url, params={"env": self.service_dependency_env, "start": start, "end": end}
+                url,
+                params={"env": self.service_dependency_env, "start": start, "end": end},
             )
             dependencies = result.get("data", [])
 
@@ -721,46 +723,46 @@ class DatadogClient:
                 processed_dependency = {
                     "sourceService": service_id,
                     "calledServices": dependency_data.get("calls", []),
-                    "description": f"Service dependencies for {service_id}"
+                    "description": f"Service dependencies for {service_id}",
                 }
                 processed_dependencies.append(processed_dependency)
 
             yield processed_dependencies
             start += ONE_HOUR
 
-    async def get_single_service_dependency(self, service_id: str) -> dict[str, Any] | None:
+    async def get_single_service_dependency(
+        self, service_id: str
+    ) -> dict[str, Any] | None:
         """
         Get service dependencies for a specific service from Datadog.
         Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-service-dependencies
         """
         if not service_id:
             return None
-        
+
         try:
             ONE_HOUR = 3600
             end = int(time.time())
             start = end - ONE_HOUR
-            
+
             url = f"{self.api_url}/api/v1/service_dependencies/{service_id}"
             result = await self._send_api_request(
-                url, 
-                params={
-                    "env": self.service_dependency_env, 
-                    "start": start, 
-                    "end": end
-                }
+                url,
+                params={"env": self.service_dependency_env, "start": start, "end": end},
             )
-            
+
             if result and "data" in result:
                 dependency_data = result.get("data", {})
                 return {
                     "sourceService": service_id,
                     "calledServices": dependency_data.get("calls", []),
-                    "description": f"Service dependencies for {service_id}"
+                    "description": f"Service dependencies for {service_id}",
                 }
-            
+
             return None
-            
+
         except Exception as e:
-            logger.error(f"Failed to fetch service dependencies for {service_id}: {str(e)}")
+            logger.error(
+                f"Failed to fetch service dependencies for {service_id}: {str(e)}"
+            )
             return None
