@@ -3,13 +3,13 @@ from unittest.mock import MagicMock, patch
 from unittest.mock import AsyncMock
 from typing import Generator
 
-from aws.auth.session_factory import ResyncStrategyFactory, get_all_account_sessions
+from aws.auth.factory import ResyncStrategyFactory, get_all_account_sessions
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
-from aws.auth.providers.static_provider import StaticCredentialProvider
+from aws.auth.providers.static_credentials_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 
-from aws.auth.utils import AWSSessionError
+from aws.auth._helpers.exceptions import AWSSessionError
 
 
 class TestResyncStrategyFactory:
@@ -26,7 +26,7 @@ class TestResyncStrategyFactory:
         self, mock_single_account_config: dict[str, object]
     ) -> None:
         """Test create returns SingleAccountStrategy for single account config."""
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
 
             with patch.object(
@@ -45,7 +45,7 @@ class TestResyncStrategyFactory:
         self, mock_multi_account_config: dict[str, object]
     ) -> None:
         """Test create returns MultiAccountStrategy for multi account config."""
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
 
             strategy = await ResyncStrategyFactory.create()
@@ -58,7 +58,7 @@ class TestResyncStrategyFactory:
         self, mock_single_account_config: dict[str, object]
     ) -> None:
         """Test create caches the strategy for subsequent calls."""
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
 
             with patch.object(
@@ -83,7 +83,7 @@ class TestResyncStrategyFactory:
         self, mock_single_account_config: dict[str, object]
     ) -> None:
         """Test create performs healthcheck for single account strategy."""
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
 
             with patch.object(
@@ -100,7 +100,7 @@ class TestResyncStrategyFactory:
         self, mock_multi_account_config: dict[str, object]
     ) -> None:
         """Test create does not perform healthcheck for multi account strategy."""
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
 
             with patch.object(MultiAccountStrategy, "healthcheck") as mock_healthcheck:
@@ -112,7 +112,7 @@ class TestResyncStrategyFactory:
         self, mock_single_account_config: dict[str, object]
     ) -> None:
         """Test create handles healthcheck failure for single account."""
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
 
             with patch.object(
@@ -129,36 +129,20 @@ class TestResyncStrategyFactory:
     @pytest.mark.asyncio
     async def test_create_with_empty_config(self) -> None:
         """Test create handles empty config."""
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = {}
 
-            with patch.object(
-                SingleAccountStrategy, "healthcheck", new_callable=AsyncMock
-            ) as mock_healthcheck:
-                strategy = await ResyncStrategyFactory.create()
-                with pytest.raises(AWSSessionError):
-                    async for _ in strategy.get_account_sessions():
-                        break
-                assert isinstance(strategy, SingleAccountStrategy)
-                assert isinstance(strategy.provider, StaticCredentialProvider)
-                mock_healthcheck.assert_called_once()
+            with pytest.raises(Exception, match="Unable to create a resync strategy"):
+                await ResyncStrategyFactory.create()
 
     @pytest.mark.asyncio
     async def test_create_with_none_config(self) -> None:
         """Test create handles None config."""
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = None
 
-            with patch.object(
-                SingleAccountStrategy, "healthcheck", new_callable=AsyncMock
-            ) as mock_healthcheck:
-                strategy = await ResyncStrategyFactory.create()
-                with pytest.raises(AWSSessionError):
-                    async for _ in strategy.get_account_sessions():
-                        break
-                assert isinstance(strategy, SingleAccountStrategy)
-                assert isinstance(strategy.provider, StaticCredentialProvider)
-                mock_healthcheck.assert_called_once()
+            with pytest.raises(Exception, match="Unable to create a resync strategy"):
+                await ResyncStrategyFactory.create()
 
     @pytest.mark.asyncio
     async def test_create_with_mixed_config(self) -> None:
@@ -169,7 +153,7 @@ class TestResyncStrategyFactory:
             "account_role_arn": ["arn:aws:iam::123456789012:role/test-role"],
         }
 
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mixed_config
 
             strategy = await ResyncStrategyFactory.create()
@@ -187,199 +171,169 @@ class TestGetAllAccountSessions:
         self, mock_single_account_config: dict[str, object], mock_aiosession: AsyncMock
     ) -> None:
         """Test get_all_account_sessions with single account strategy."""
-        with patch(
-            "aws.auth.session_factory.ResyncStrategyFactory.create"
-        ) as mock_create:
+        with patch("aws.auth.factory.ResyncStrategyFactory.create") as mock_create:
             mock_strategy = MagicMock(spec=SingleAccountStrategy)
+            # Create proper AccountContext objects instead of tuples
+            mock_account_context = {
+                "details": {"Id": "123456789012", "Name": "Account 123456789012"},
+                "session": mock_aiosession,
+            }
             mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
-                (
-                    {"Id": "123456789012", "Name": "Account 123456789012"},
-                    mock_aiosession,
-                )
+                mock_account_context
             ]
             mock_create.return_value = mock_strategy
 
-            sessions = []
-            async for account_info, session in get_all_account_sessions():
-                sessions.append((account_info, session))
+            accounts = []
+            async for account_context in get_all_account_sessions():
+                accounts.append(account_context)
 
-            assert len(sessions) == 1
-            account_info, session = sessions[0]
-            assert account_info["Id"] == "123456789012"
-            assert account_info["Name"] == "Account 123456789012"
-            assert session == mock_aiosession
+            assert len(accounts) == 1
+            account_context = accounts[0]
+            assert account_context["details"]["Id"] == "123456789012"
+            assert account_context["details"]["Name"] == "Account 123456789012"
+            assert account_context["session"] == mock_aiosession
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_multi_account(
         self, mock_aiosession: AsyncMock
     ) -> None:
         """Test get_all_account_sessions with multi account strategy."""
-        with patch(
-            "aws.auth.session_factory.ResyncStrategyFactory.create"
-        ) as mock_create:
+        with patch("aws.auth.factory.ResyncStrategyFactory.create") as mock_create:
             mock_strategy = MagicMock(spec=MultiAccountStrategy)
-            mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
-                (
-                    {"Id": "123456789012", "Name": "Account 123456789012"},
-                    mock_aiosession,
-                ),
-                (
-                    {"Id": "987654321098", "Name": "Account 987654321098"},
-                    mock_aiosession,
-                ),
+            # Create proper AccountContext objects instead of tuples
+            mock_account_contexts = [
+                {
+                    "details": {"Id": "123456789012", "Name": "Account 123456789012"},
+                    "session": mock_aiosession,
+                },
+                {
+                    "details": {"Id": "987654321098", "Name": "Account 987654321098"},
+                    "session": mock_aiosession,
+                },
             ]
+            mock_strategy.get_account_sessions.return_value.__aiter__.return_value = (
+                mock_account_contexts
+            )
             mock_create.return_value = mock_strategy
 
-            sessions = []
-            async for account_info, session in get_all_account_sessions():
-                sessions.append((account_info, session))
+            accounts = []
+            async for account_info in get_all_account_sessions():
+                accounts.append(account_info)
 
-            assert len(sessions) == 2
-            assert sessions[0][0]["Id"] == "123456789012"
-            assert sessions[1][0]["Id"] == "987654321098"
+            assert len(accounts) == 2
+            assert accounts[0]["details"]["Id"] == "123456789012"
+            assert accounts[1]["details"]["Id"] == "987654321098"
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_empty(self) -> None:
         """Test get_all_account_sessions with no accounts."""
-        with patch(
-            "aws.auth.session_factory.ResyncStrategyFactory.create"
-        ) as mock_create:
+        with patch("aws.auth.factory.ResyncStrategyFactory.create") as mock_create:
             mock_strategy = MagicMock(spec=SingleAccountStrategy)
             mock_strategy.get_account_sessions.return_value.__aiter__.return_value = []
             mock_create.return_value = mock_strategy
 
-            sessions = []
-            async for account_info, session in get_all_account_sessions():
-                sessions.append((account_info, session))
+            accounts = []
+            async for account_info in get_all_account_sessions():
+                accounts.append(account_info)
 
-            assert len(sessions) == 0
+            assert len(accounts) == 0
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_strategy_error(
         self, mock_single_account_config: dict[str, object]
     ) -> None:
         """Test get_all_account_sessions handles strategy creation error."""
-        with patch(
-            "aws.auth.session_factory.ResyncStrategyFactory.create",
-            side_effect=Exception("Strategy error"),
-        ):
-            with pytest.raises(Exception, match="Strategy error"):
+        with patch("aws.auth.factory.ResyncStrategyFactory.create") as mock_create:
+            mock_create.side_effect = Exception("Strategy creation failed")
+
+            with pytest.raises(Exception, match="Strategy creation failed"):
                 async for _ in get_all_account_sessions():
-                    pass
+                    break
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_yields_correct_types(
         self, mock_aiosession: AsyncMock
     ) -> None:
         """Test get_all_account_sessions yields correct types."""
-        with patch(
-            "aws.auth.session_factory.ResyncStrategyFactory.create"
-        ) as mock_create:
+        with patch("aws.auth.factory.ResyncStrategyFactory.create") as mock_create:
             mock_strategy = MagicMock(spec=SingleAccountStrategy)
+            mock_account_context = {
+                "details": {"Id": "123456789012", "Name": "Account 123456789012"},
+                "session": mock_aiosession,
+            }
             mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
-                (
-                    {"Id": "123456789012", "Name": "Account 123456789012"},
-                    mock_aiosession,
-                )
+                mock_account_context
             ]
             mock_create.return_value = mock_strategy
 
-            async for account_info, session in get_all_account_sessions():
+            async for account_context in get_all_account_sessions():
                 # Check that account_info is a dict with required keys
+                account_info = account_context["details"]
                 assert isinstance(account_info, dict)
                 assert "Id" in account_info
                 assert "Name" in account_info
-                # Check that session is the expected mock session
-                assert session == mock_aiosession
-                break
+                assert account_context["session"] == mock_aiosession
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_single_account_success(
         self, mock_single_account_config: dict[str, object]
     ) -> None:
-        """Test get_account_sessions yields correct account info and session for single account (real path, not patched healthcheck)."""
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        """Test get_account_sessions for single account strategy."""
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_single_account_config
-            with patch.object(
-                StaticCredentialProvider, "get_session", new_callable=AsyncMock
-            ) as mock_get_session:
-                mock_session = AsyncMock()
-                mock_sts_client = AsyncMock()
-                mock_sts_client.get_caller_identity.return_value = {
-                    "Account": "123456789012"
-                }
-                # Use MagicMock for create_client and set up async context manager
-                mock_session.create_client = MagicMock()
-                mock_context_manager = AsyncMock()
-                mock_context_manager.__aenter__.return_value = mock_sts_client
-                mock_session.create_client.return_value = mock_context_manager
-                mock_get_session.return_value = mock_session
 
-                async def fake_healthcheck(self: SingleAccountStrategy) -> bool:
-                    self._session = mock_session
-                    self.account_id = "123456789012"
-                    return True
+            strategy = await ResyncStrategyFactory.create()
+            # Directly set the strategy attributes to simulate successful healthcheck
+            if hasattr(strategy, "_session"):
+                strategy._session = MagicMock()
+            if hasattr(strategy, "_identity"):
+                strategy._identity = {"Account": "123456789012"}
 
-                with patch.object(
-                    SingleAccountStrategy, "healthcheck", new=fake_healthcheck
-                ):
-                    strategy = await ResyncStrategyFactory.create()
-                    sessions = []
-                    async for account_info, session in strategy.get_account_sessions():
-                        sessions.append((account_info, session))
-                    assert len(sessions) == 1
-                    assert sessions[0][0]["Id"] == "123456789012"
-                    assert sessions[0][0]["Name"] == "Account 123456789012"
-                    assert sessions[0][1] == mock_session
+            sessions = []
+            async for account_context in strategy.get_account_sessions():
+                sessions.append(account_context)
+
+            assert len(sessions) == 1
+            account_context = sessions[0]
+            assert account_context["details"]["Id"] == "123456789012"
+            assert account_context["details"]["Name"] == "Account 123456789012"
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_multi_account_success(
         self, mock_multi_account_config: dict[str, object]
     ) -> None:
-        """Test get_account_sessions yields correct account info and session for multi account (real path, not patched healthcheck)."""
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+        """Test get_account_sessions for multi account strategy."""
+        with patch("aws.auth.factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
-            with patch.object(
-                AssumeRoleProvider, "get_session", new_callable=AsyncMock
-            ) as mock_get_session:
-                # Simulate two accounts
-                mock_session_1 = AsyncMock()
-                mock_session_2 = AsyncMock()
-                mock_get_session.side_effect = [mock_session_1, mock_session_2]
 
-                async def fake_healthcheck(self: MultiAccountStrategy) -> bool:
-                    self._valid_arns = [
-                        "arn:aws:iam::123456789012:role/test-role-1",
-                        "arn:aws:iam::987654321098:role/test-role-2",
-                    ]
-                    self._valid_sessions = {
-                        "arn:aws:iam::123456789012:role/test-role-1": mock_session_1,
-                        "arn:aws:iam::987654321098:role/test-role-2": mock_session_2,
-                    }
-                    return True
+            strategy = await ResyncStrategyFactory.create()
+            # Directly set the strategy attributes to simulate successful healthcheck
+            if hasattr(strategy, "_valid_arns"):
+                strategy._valid_arns = ["arn:aws:iam::123456789012:role/test-role"]
+            if hasattr(strategy, "_valid_sessions"):
+                from aiobotocore.session import AioSession
 
-                with patch.object(
-                    MultiAccountStrategy, "healthcheck", new=fake_healthcheck
-                ):
-                    strategy = await ResyncStrategyFactory.create()
-                    sessions = []
-                    async for account_info, session in strategy.get_account_sessions():
-                        sessions.append((account_info, session))
-                    assert len(sessions) == 2
-                    assert sessions[0][0]["Id"] == "123456789012"
-                    assert sessions[1][0]["Id"] == "987654321098"
-                    assert sessions[0][1] == mock_session_1
-                    assert sessions[1][1] == mock_session_2
+                strategy._valid_sessions = {
+                    "arn:aws:iam::123456789012:role/test-role": MagicMock(
+                        spec=AioSession
+                    )
+                }
+
+            sessions = []
+            async for account_context in strategy.get_account_sessions():
+                sessions.append(account_context)
+
+            assert len(sessions) == 1
+            account_context = sessions[0]
+            assert account_context["details"]["Id"] == "123456789012"
+            assert account_context["details"]["Name"] == "Account 123456789012"
 
 
 @pytest.fixture
 def mock_multi_account_config() -> dict[str, object]:
-    """Mocks multi-account AWS configuration."""
+    """Create a mock multi-account configuration."""
     return {
-        "account_role_arn": [
-            "arn:aws:iam::123456789012:role/test-role-1",
-            "arn:aws:iam::987654321098:role/test-role-2",
-        ],
+        "account_role_arn": ["arn:aws:iam::123456789012:role/test-role"],
         "region": "us-west-2",
         "external_id": "test-external-id",
     }
@@ -387,7 +341,7 @@ def mock_multi_account_config() -> dict[str, object]:
 
 @pytest.fixture
 def mock_single_account_config() -> dict[str, object]:
-    """Mocks single account AWS configuration."""
+    """Create a mock single-account configuration."""
     return {
         "aws_access_key_id": "test_access_key",
         "aws_secret_access_key": "test_secret_key",

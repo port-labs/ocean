@@ -8,13 +8,10 @@ from aws.core.cloudcontrol_sync import (
     resync_resources_for_account_with_session,
 )
 from aws.core.paginator import AsyncPaginator
-from aws.core.utils import (
-    ASYNC_GENERATOR_RESYNC_TYPE,
+from aws.core.helpers.utils import (
     CloudControlClientProtocol,
     CloudControlThrottlingConfig,
     CustomProperties,
-    RAW_ITEM,
-    RAW_RESULT,
     fix_unserializable_date_properties,
     is_access_denied_exception,
     is_global_resource,

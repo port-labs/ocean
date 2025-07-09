@@ -4,7 +4,7 @@ from aiobotocore.credentials import (
     AioRefreshableCredentials,
     create_assume_role_refresher,
 )
-from aws.auth.utils import CredentialsProviderError
+from aws.auth._helpers.exceptions import CredentialsProviderError
 from loguru import logger
 from typing import Any
 
@@ -28,7 +28,7 @@ class AssumeRoleProvider(CredentialProvider):
 
     async def get_credentials(self, **kwargs: Any) -> AioRefreshableCredentials:
         try:
-            async with self.aws_client_factory_session.create_client(
+            async with self._integration_session.create_client(
                 "sts", region_name=kwargs.get("region")
             ) as sts_client:
                 role_arn = kwargs["role_arn"]

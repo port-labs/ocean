@@ -13,7 +13,6 @@ from aws.core import (
     get_allowed_regions,
     resync_cloudcontrol,
     resync_resources_for_account_with_session,
-    ASYNC_GENERATOR_RESYNC_TYPE,
     CloudControlThrottlingConfig,
     CloudControlClientProtocol,
     CustomProperties,
@@ -21,8 +20,6 @@ from aws.core import (
     is_access_denied_exception,
     is_global_resource,
     is_resource_not_found_exception,
-    RAW_ITEM,
-    RAW_RESULT,
 )
 
 __all__ = [
@@ -40,7 +37,6 @@ __all__ = [
     "get_allowed_regions",
     "resync_cloudcontrol",
     "resync_resources_for_account_with_session",
-    "ASYNC_GENERATOR_RESYNC_TYPE",
     "CloudControlThrottlingConfig",
     "CloudControlClientProtocol",
     "CustomProperties",
@@ -48,6 +44,4 @@ __all__ = [
     "is_access_denied_exception",
     "is_global_resource",
     "is_resource_not_found_exception",
-    "RAW_ITEM",
-    "RAW_RESULT",
 ]

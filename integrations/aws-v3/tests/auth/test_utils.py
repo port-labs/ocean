@@ -1,8 +1,10 @@
 import pytest
 from unittest.mock import MagicMock
-from aws.auth.utils import (
+from aws.auth._helpers.exceptions import (
     AWSSessionError,
     CredentialsProviderError,
+)
+from aws.auth._helpers.utils import (
     normalize_arn_list,
     extract_account_from_arn,
 )
