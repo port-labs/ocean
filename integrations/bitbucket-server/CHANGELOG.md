@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added beta suffix to version number
 
 
-## 0.1.25 (2025-06-26)
+## 0.1.25-beta (2025-06-26)
 
 
 ### Improvements
@@ -53,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.20
 
 
-## 0.1.24 (2025-06-25)
+## 0.1.24-beta (2025-06-25)
 
 
 ### Improvements
@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.19
 
 
-## 0.1.23 (2025-06-24)
+## 0.1.23-beta (2025-06-24)
 
 
 ### Improvements
@@ -69,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.18
 
 
-## 0.1.22 (2025-06-23)
+## 0.1.22-beta (2025-06-23)
 
 
 ### Improvements
@@ -77,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.17
 
 
-## 0.1.21 (2025-06-22)
+## 0.1.21-beta (2025-06-22)
 
 
 ### Improvements
@@ -85,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.24.16
 
 
-## 0.1.20 (2025-06-22)
+## 0.1.20-beta (2025-06-22)
 
 
 ### Improvements
