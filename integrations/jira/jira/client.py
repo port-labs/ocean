@@ -161,11 +161,14 @@ class JiraClient(OAuthClient):
 
             yield items
 
-            page_info = response_data.get("pageInfo", {})
-            cursor = page_info.get("endCursor")
-
-            if not page_info.get("hasNextPage", False):
-                break
+            if page_info := response_data.get("pageInfo", {}):
+                cursor = page_info.get("endCursor")
+                if not page_info.get("hasNextPage", False):
+                    break
+            else:
+                cursor = response_data.get("cursor")
+                if not cursor:
+                    break
 
     @staticmethod
     def _generate_base_req_params(
@@ -192,9 +195,18 @@ class JiraClient(OAuthClient):
         webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
             "values"
         )
-
-        if webhooks:
-            logger.info("Ocean real time reporting webhook already exists")
+        if len(webhooks) > 0:
+            # jira allows for only one webhook per user per oauth app that is why we are always checking the first webhook
+            existing_webhook_url = webhooks[0].get("url")
+            if existing_webhook_url == webhook_target_app_host:
+                logger.info("Ocean real time reporting webhook already exists")
+            else:
+                logger.warning(
+                    f"Ocean real time reporting webhook already exists: {existing_webhook_url} attempted to create webhook: {webhook_target_app_host}"
+                )
+                logger.warning(
+                    "If you'd like to use a different webhook, please contact support."
+                )
             return
 
         # We search a random project to get data from all projects
@@ -215,15 +227,14 @@ class JiraClient(OAuthClient):
 
     async def create_webhooks(self, app_host: str) -> None:
         """Create webhooks if the user has permission."""
-        if not await self.has_webhook_permission():
-            logger.warning(
-                f"Cannot create webhooks for {self.jira_url}: Ensure the token has Jira Administrator rights."
-            )
-            return
-
         if self.is_oauth_enabled():
             await self._create_events_webhook_oauth(app_host)
         else:
+            if not await self.has_webhook_permission():
+                logger.warning(
+                    f"Cannot create webhooks for {self.jira_url}: Ensure the token has Jira Administrator rights."
+                )
+                return
             await self._create_events_webhook(app_host)
 
     async def _create_events_webhook(self, app_host: str) -> None:
