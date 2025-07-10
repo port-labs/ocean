@@ -706,17 +706,14 @@ class DatadogClient:
         end = int(time.time())
         start = end - ONE_HOUR
 
-        while start < (end - ONE_HOUR):
-            url = f"{self.api_url}/api/v1/service_dependencies"
-            result = await self._send_api_request(
-                url,
-                params={"env": self.service_dependency_env, "start": start, "end": end},
-            )
-            dependencies = result.get("data", [])
+        url = f"{self.api_url}/api/v1/service_dependencies"
+        result = await self._send_api_request(
+            url,
+            params={"env": self.service_dependency_env, "start": start, "end": end},
+        )
+        dependencies = result.get("data", [])
 
-            if not dependencies:
-                break
-
+        if dependencies:
             processed_dependencies = []
             for service_id, dependency_data in dependencies.items():
                 processed_dependency = {
@@ -725,9 +722,7 @@ class DatadogClient:
                     "description": f"Service dependencies for {service_id}",
                 }
                 processed_dependencies.append(processed_dependency)
-
             yield processed_dependencies
-            start += ONE_HOUR
 
     async def get_single_service_dependency(
         self, service_id: str
