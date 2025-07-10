@@ -13,7 +13,6 @@ from loguru import logger
 from utils import generate_time_windows_from_interval_days
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
-from port_ocean.context.ocean import ocean
 
 MAX_PAGE_SIZE = 100
 

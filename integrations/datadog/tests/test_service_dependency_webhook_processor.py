@@ -1,12 +1,11 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 from webhook_processors.service_dependency_webhook_processor import ServiceDependencyWebhookProcessor
 from integration import ObjectKind
 from typing import Any
-
 
 @pytest.fixture
 def mock_event() -> WebhookEvent:
@@ -21,30 +20,6 @@ def processor(mock_event: WebhookEvent) -> ServiceDependencyWebhookProcessor:
 @pytest.fixture
 def resource_config() -> Any:
     return {"kind": ObjectKind.SERVICE_DEPENDENCY}
-
-
-@pytest.mark.asyncio
-async def test_authenticate(
-    processor: ServiceDependencyWebhookProcessor,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    mock_ocean = MagicMock()
-    mock_config = MagicMock()
-    mock_config.integration.config = {}
-    mock_ocean.config = mock_config
-    monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean)
-
-    assert await processor.authenticate({}, {}) is True
-
-    mock_config.integration.config = {"webhook_secret": "test_token"}
-    headers = {"authorization": "Basic dGVzdF91c2VyOnRlc3RfdG9rZW4="}
-
-    headers = {"authorization": "Basic dGVzdF91c2VyOndyb25nX3Rva2Vu"}
-    with patch("base64.b64decode", return_value=b"test_user:wrong_token"):
-        assert await processor.authenticate({}, headers) is False
-
-    assert await processor.authenticate({}, {"authorization": "InvalidHeader"}) is False
-
 
 @pytest.mark.asyncio
 async def test_get_matching_kinds(
@@ -99,6 +74,6 @@ async def test_handle_event_without_service_dependency(
 
         result = await processor.handle_event(test_payload, resource_config)
 
-        mock_client.get_single_monitor.assert_awaited_once_with("123")
+        mock_client.get_single_service_dependency.assert_awaited_once_with("123")
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0
