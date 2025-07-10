@@ -1,4 +1,5 @@
 from typing import Dict
+from integration import GithubRepositorySelector
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -13,7 +14,6 @@ from github.core.options import SingleRepositoryOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
@@ -25,7 +25,7 @@ from github.helpers.utils import ObjectKind
 def resource_config() -> ResourceConfig:
     return ResourceConfig(
         kind=ObjectKind.REPOSITORY,
-        selector=Selector(query="true"),
+        selector=GithubRepositorySelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -162,3 +162,81 @@ class TestRepositoryWebhookProcessor:
     ) -> None:
         result = await repository_webhook_processor._validate_payload(payload)
         assert result is expected
+
+    @pytest.mark.asyncio
+    async def test_handle_event_graphql_path(
+        self,
+        repository_webhook_processor: RepositoryWebhookProcessor,
+        resource_config: ResourceConfig,
+    ) -> None:
+        """Test that the GraphQLRepositoryExporter is used when selector requires GraphQL."""
+        repo_data = {
+            "id": 2,
+            "name": "test-graphql-repo",
+            "full_name": "test-org/test-graphql-repo",
+            "description": "Test repository (GraphQL)",
+        }
+        payload = {"action": "created", "repository": repo_data}
+
+        # Cast selector to GithubRepositorySelector to access specific attributes
+        github_selector = resource_config.selector
+        assert isinstance(github_selector, GithubRepositorySelector)
+
+        # Patch the selector to require GraphQL (e.g., collaborators=True)
+        github_selector.collaborators = True
+        github_selector.teams = False
+        github_selector.custom_properties = False
+
+        # Patch GraphQLRepositoryExporter
+        with patch(
+            "github.webhook.webhook_processors.repository_webhook_processor.GraphQLRepositoryExporter"
+        ) as mock_graphql_exporter:
+            mock_exporter_instance = mock_graphql_exporter.return_value
+            mock_exporter_instance.get_resource = AsyncMock(return_value=repo_data)
+
+            result = await repository_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+            mock_exporter_instance.get_resource.assert_called_once()
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == [repo_data]
+            assert result.deleted_raw_results == []
+
+    @pytest.mark.asyncio
+    async def test_handle_event_exporter_exception(
+        self,
+        repository_webhook_processor: RepositoryWebhookProcessor,
+        resource_config: ResourceConfig,
+    ) -> None:
+        """Test that exceptions in the exporter are propagated (not handled)."""
+        repo_data = {
+            "id": 3,
+            "name": "test-exception-repo",
+            "full_name": "test-org/test-exception-repo",
+            "description": "Test repository (Exception)",
+        }
+        payload = {"action": "created", "repository": repo_data}
+
+        # Cast selector to GithubRepositorySelector to access specific attributes
+        github_selector = resource_config.selector
+        assert isinstance(github_selector, GithubRepositorySelector)
+
+        # Patch the selector to use REST path
+        github_selector.collaborators = False
+        github_selector.teams = False
+        github_selector.custom_properties = False
+
+        # Patch RestRepositoryExporter to raise an exception
+        with patch(
+            "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter"
+        ) as mock_rest_exporter:
+            mock_exporter_instance = mock_rest_exporter.return_value
+            mock_exporter_instance.get_resource = AsyncMock(
+                side_effect=Exception("Exporter error")
+            )
+
+            with pytest.raises(Exception, match="Exporter error"):
+                await repository_webhook_processor.handle_event(
+                    payload, resource_config
+                )
