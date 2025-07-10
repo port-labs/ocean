@@ -437,7 +437,7 @@ async def test_get_headers() -> None:
 
 
 @pytest.mark.asyncio
-async def test_client_init_with_invalid_workspace_tokens():
+async def test_client_init_with_invalid_workspace_tokens() -> None:
     """Test that invalid workspace tokens raise appropriate exceptions."""
     from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 
