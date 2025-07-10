@@ -108,4 +108,5 @@ resources:
             calledServices: .calledServices
             description: .description
           relations:
-            service: .sourceService
+            source: .sourceService
+            targets: .calledServices
