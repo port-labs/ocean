@@ -51,7 +51,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
         response = await self.client.send_api_request(
             self.client.base_url, method="POST", json_data=payload
         )
-        if "data" not in response:
+        if not response:
             return response
 
         data = response["data"]
