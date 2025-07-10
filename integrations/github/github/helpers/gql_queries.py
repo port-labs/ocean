@@ -121,13 +121,8 @@ query getTeam(
 ) {{
   organization(login: $organization) {{
     team(slug: $slug) {{
-      nodes {{
-        ...TeamFields
-        ...TeamMemberFields
-      }}
-      pageInfo {{
-        ...PageInfoFields
-      }}
+      ...TeamFields
+      ...TeamMemberFields
     }}
   }}
 }}

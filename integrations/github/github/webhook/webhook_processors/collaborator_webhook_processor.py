@@ -204,8 +204,8 @@ class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
         """Helper function to enrich response with repository information."""
         list_of_collaborators = []
         for repository in repositories:
+            collaborator_copy = response.copy()
             list_of_collaborators.append(
-                enrich_with_repository(response, repository["name"])
+                enrich_with_repository(collaborator_copy, repository["name"])
             )
-
         return list_of_collaborators
