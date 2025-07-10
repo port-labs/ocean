@@ -711,7 +711,7 @@ class DatadogClient:
             url,
             params={"env": self.service_dependency_env, "start": start, "end": end},
         )
-        dependencies = result.get("data", [])
+        dependencies = result.get("data", {})
 
         if dependencies:
             processed_dependencies = []
