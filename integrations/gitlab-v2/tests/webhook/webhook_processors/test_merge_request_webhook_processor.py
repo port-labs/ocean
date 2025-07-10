@@ -14,6 +14,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from typing import Any
 
+from datetime import datetime, timezone
+
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
@@ -77,13 +79,18 @@ class TestMergeRequestWebhookProcessor:
             ObjectKind.MERGE_REQUEST
         ]
 
-    async def test_handle_event(
+    async def test_handle_event_matching_state(
         self, processor: MergeRequestWebhookProcessor, mr_payload: dict[str, Any]
     ) -> None:
-        """Test handling a merge request event"""
+        """Test handling a merge request event when state matches"""
         resource_config = MagicMock()
+        resource_config.selector.states = ["opened"]
+        resource_config.selector.updated_after_datetime = datetime(
+            2022, 1, 1, tzinfo=timezone.utc
+        )
+
         project_id = mr_payload["project"]["id"]
-        mr_id = mr_payload["object_attributes"]["id"]
+        mr_id = mr_payload["object_attributes"]["iid"]  # Use iid instead of id
         expected_mr = {
             "id": mr_id,
             "object_kind": "merge_request",
@@ -103,3 +110,22 @@ class TestMergeRequestWebhookProcessor:
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_mr
         assert not result.deleted_raw_results
+
+    async def test_handle_event_non_matching_state(
+        self, processor: MergeRequestWebhookProcessor, mr_payload: dict[str, Any]
+    ) -> None:
+        """Test handling a merge request event when state doesn't match"""
+        resource_config = MagicMock()
+        resource_config.selector.states = ["merged"]
+        resource_config.selector.updated_after_datetime = datetime(
+            2022, 1, 1, tzinfo=timezone.utc
+        )
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_merge_request = AsyncMock()
+
+        result = await processor.handle_event(mr_payload, resource_config)
+
+        processor._gitlab_webhook_client.get_merge_request.assert_not_called()
+        assert not result.updated_raw_results
+        assert result.deleted_raw_results

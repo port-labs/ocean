@@ -2,6 +2,11 @@ ARG BASE_PYTHON_IMAGE=debian:trixie-slim
 # debian:trixie-slim - Python 3.12
 FROM ${BASE_PYTHON_IMAGE}
 
+RUN groupadd -r appgroup && useradd -r -g appgroup -m ocean
+
+RUN mkdir -p /tmp/ocean
+
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends librdkafka-dev python3 \
     && apt-get clean
@@ -29,6 +34,9 @@ ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
 
 ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR}
 
+# Create /tmp/ocean directory and set permissions
+
+
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
 
 WORKDIR /app
@@ -42,5 +50,10 @@ RUN python3 -m venv ${BUILD_CONTEXT}/.venv-docker
 WORKDIR /app/${BUILD_CONTEXT}
 
 WORKDIR /app
+RUN chown -R ocean:appgroup /app && chmod -R 755 /app
+RUN chown -R ocean:appgroup /app/${BUILD_CONTEXT} && chmod -R 755 /app/${BUILD_CONTEXT}
+RUN chown -R ocean:appgroup /tmp/ocean && chmod -R 755 /tmp/ocean
+
+USER ocean
 
 ENTRYPOINT ["./integrations/_infra/entry_local.sh"]
