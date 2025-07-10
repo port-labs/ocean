@@ -131,9 +131,15 @@ class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        rest_client = create_github_client(client_type=GithubClientType.GRAPHQL)
-        team_exporter = GraphQLTeamWithMembersExporter(rest_client)
+        graphql_client = create_github_client(client_type=GithubClientType.GRAPHQL)
+        team_exporter = GraphQLTeamWithMembersExporter(graphql_client)
         team_data = await team_exporter.get_team_member_repositories(team_slug)
+
+        if not team_data:
+            logger.warning(f"No team data returned for team {team_slug}")
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         data_to_upsert = [
             {
