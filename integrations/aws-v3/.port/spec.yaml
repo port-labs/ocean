@@ -1,0 +1,33 @@
+description: aws-v3 integration for Port Ocean
+icon: AWS
+features:
+  - type: exporter
+    section: Cloud Providers
+    resources:
+      - kind: AWS::SQS::Queue
+configurations:
+  - name: accountRoleArn
+    required: false
+    type: array
+    sensitive: true
+    description: An array of AWS Account Role ARNs, used for multi-account access.
+  - name: externalId
+    required: false
+    type: string
+    sensitive: true
+    description: The external ID used for the AWS Account Read Role.
+  - name: aws_access_key_id
+    required: false
+    type: string
+    sensitive: true
+    description: AWS Access Key ID for static credential authentication (optional).
+  - name: aws_secret_access_key
+    required: false
+    type: string
+    sensitive: true
+    description: AWS Secret Access Key for static credential authentication (optional).
+  - name: aws_session_token
+    required: false
+    type: string
+    sensitive: true
+    description: AWS Session Token for temporary static credentials (optional).
