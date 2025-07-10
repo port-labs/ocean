@@ -97,7 +97,9 @@ class ServiceDependencyWebhookProcessor(AbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-    async def authenticate(self, _: EventPayload, headers: dict[str, Any]) -> bool:
+    async def authenticate(
+        self, payload: EventPayload, headers: dict[str, Any]
+    ) -> bool:
         authorization = headers.get("authorization")
         webhook_secret = ocean.integration_config.get("webhook_secret")
 
