@@ -45,7 +45,7 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         }
 
         if config.selector.jql:
-            params["jql"] = f"{config.selector.jql} AND key = {issue_key}"
+            params["jql"] = f"({config.selector.jql}) AND key = {issue_key}"
 
         issues: list[dict[str, Any]] = []
         async for issues_batch in client.get_paginated_issues(params):

@@ -14,6 +14,7 @@ from webhook_processors.project_webhook_processor import (
 )
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
 from typing import Any, AsyncGenerator
+import asyncio
 
 
 @pytest.fixture
@@ -207,7 +208,7 @@ async def test_handleEvent_issueUpdated_filterIssuesReturnedFromClient_updatedRa
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
             assert args[0] == {
-                "jql": "project = TEST AND key = TEST-123",
+                "jql": "(project = TEST) AND key = TEST-123",
                 "fields": "*all",
             }
             yield [mock_issue]
@@ -241,7 +242,7 @@ async def test_handleEvent_issueUpdated_filterIssuesNotReturnedFromClient_delete
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
             assert args[0] == {
-                "jql": "project = TEST AND key = TEST-123",
+                "jql": "(project = TEST) AND key = TEST-123",
                 "fields": "*all",
             }
             yield []
@@ -565,3 +566,52 @@ async def test_handleEvent_projectSoftDeleted_deletedRawResultsReturnedCorrectly
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == payload["project"]
+
+
+@pytest.mark.asyncio
+def test_handleEvent_issueUpdated_jqlFilterIsWrappedWithParentheses(
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
+    resource_config: ResourceConfig,
+) -> None:
+    resource_config.selector.jql = "(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)"  # type: ignore
+
+    payload: dict[str, Any] = {
+        "webhookEvent": "jira:issue_updated",
+        "issue": {"key": "TEST-123"},
+    }
+    mock_issue: dict[str, Any] = {
+        "key": "TEST-123",
+        "fields": {"summary": "Test Issue"},
+    }
+
+    with patch(
+        "webhook_processors.issue_webhook_processor.create_jira_client"
+    ) as mock_create_client:
+        mock_client = AsyncMock()
+
+        async def mock_paginated_issues(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            assert (
+                args[0]["jql"]
+                == "((statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)) AND key = TEST-123"
+            )
+            yield [mock_issue]
+
+        mock_client.get_paginated_issues = mock_paginated_issues
+        mock_create_client.return_value = mock_client
+
+        result = (
+            pytest.run(
+                asyncio.run(
+                    jiraIssueWebhookProcessor.handle_event(payload, resource_config)
+                )
+            )
+            if hasattr(pytest, "run")
+            else asyncio.run(
+                jiraIssueWebhookProcessor.handle_event(payload, resource_config)
+            )
+        )
+
+        assert len(result.updated_raw_results) == 1
+        assert result.updated_raw_results[0] == mock_issue
