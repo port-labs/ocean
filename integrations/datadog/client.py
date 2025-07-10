@@ -724,3 +724,8 @@ class DatadogClient:
 
         for i in range(0, len(items), MAX_PAGE_SIZE):
             yield items[i : i + MAX_PAGE_SIZE]
+
+async def get_single_service_dependency(
+        self, service_id: str
+) -> dict[str, Any] | None:
+    pass
