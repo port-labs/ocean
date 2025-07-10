@@ -283,20 +283,22 @@ class TestGetAllAccountSessions:
             mock_ocean.integration_config = mock_single_account_config
 
             strategy = await ResyncStrategyFactory.create()
-            # Directly set the strategy attributes to simulate successful healthcheck
-            if hasattr(strategy, "_session"):
-                strategy._session = MagicMock()
-            if hasattr(strategy, "_identity"):
-                strategy._identity = {"Account": "123456789012"}
+            # Mock the healthcheck to prevent real AWS calls
+            with patch.object(strategy, "healthcheck", return_value=True):
+                # Directly set the strategy attributes to simulate successful healthcheck
+                if hasattr(strategy, "_session"):
+                    strategy._session = MagicMock()
+                if hasattr(strategy, "_identity"):
+                    strategy._identity = {"Account": "123456789012"}
 
-            sessions = []
-            async for account_context in strategy.get_account_sessions():
-                sessions.append(account_context)
+                sessions = []
+                async for account_context in strategy.get_account_sessions():
+                    sessions.append(account_context)
 
-            assert len(sessions) == 1
-            account_context = sessions[0]
-            assert account_context["details"]["Id"] == "123456789012"
-            assert account_context["details"]["Name"] == "Account 123456789012"
+                assert len(sessions) == 1
+                account_context = sessions[0]
+                assert account_context["details"]["Id"] == "123456789012"
+                assert account_context["details"]["Name"] == "Account 123456789012"
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_multi_account_success(
@@ -307,26 +309,28 @@ class TestGetAllAccountSessions:
             mock_ocean.integration_config = mock_multi_account_config
 
             strategy = await ResyncStrategyFactory.create()
-            # Directly set the strategy attributes to simulate successful healthcheck
-            if hasattr(strategy, "_valid_arns"):
-                strategy._valid_arns = ["arn:aws:iam::123456789012:role/test-role"]
-            if hasattr(strategy, "_valid_sessions"):
-                from aiobotocore.session import AioSession
+            # Mock the healthcheck to prevent real AWS calls
+            with patch.object(strategy, "healthcheck", return_value=True):
+                # Directly set the strategy attributes to simulate successful healthcheck
+                if hasattr(strategy, "_valid_arns"):
+                    strategy._valid_arns = ["arn:aws:iam::123456789012:role/test-role"]
+                if hasattr(strategy, "_valid_sessions"):
+                    from aiobotocore.session import AioSession
 
-                strategy._valid_sessions = {
-                    "arn:aws:iam::123456789012:role/test-role": MagicMock(
-                        spec=AioSession
-                    )
-                }
+                    strategy._valid_sessions = {
+                        "arn:aws:iam::123456789012:role/test-role": MagicMock(
+                            spec=AioSession
+                        )
+                    }
 
-            sessions = []
-            async for account_context in strategy.get_account_sessions():
-                sessions.append(account_context)
+                sessions = []
+                async for account_context in strategy.get_account_sessions():
+                    sessions.append(account_context)
 
-            assert len(sessions) == 1
-            account_context = sessions[0]
-            assert account_context["details"]["Id"] == "123456789012"
-            assert account_context["details"]["Name"] == "Account 123456789012"
+                assert len(sessions) == 1
+                account_context = sessions[0]
+                assert account_context["details"]["Id"] == "123456789012"
+                assert account_context["details"]["Name"] == "Account 123456789012"
 
 
 @pytest.fixture
@@ -347,4 +351,6 @@ def mock_single_account_config() -> dict[str, object]:
         "aws_secret_access_key": "test_secret_key",
         "aws_session_token": "test_session_token",
         "region": "us-west-2",
+        # Ensure no account_role_arn to force single account strategy
+        "account_role_arn": None,
     }
