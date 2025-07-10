@@ -20,6 +20,7 @@ class ObjectKind:
     SASS_ANALYSIS = "saas_analysis"
     ONPREM_ANALYSIS = "onprem_analysis"
     PORTFOLIOS = "portfolios"
+    ALM_SETTINGS = "alm_settings"
 
 
 class SonarQubeComponentSearchFilter(BaseModel):
@@ -211,6 +212,7 @@ class CustomResourceConfig(ResourceConfig):
         "analysis",
         "saas_analysis",
         "portfolios",
+        "alm_settings",
     ]
 
 
@@ -255,12 +257,22 @@ class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):
     selector: SonarQubeOnPremAnalysisSelector
 
 
+class SonarQubeAlmSettingsSelector(CustomSelector):
+    query: str = Field(default="true", description="Query filter for ALM settings")
+
+
+class SonarQubeAlmSettingsResourceConfig(CustomResourceConfig):
+    kind: Literal["alm_settings"]
+    selector: SonarQubeAlmSettingsSelector
+
+
 SonarResourcesConfig = Annotated[
     Union[
         SonarQubeProjectResourceConfig,
         SonarQubeIssueResourceConfig,
         SonarQubeGAProjectResourceConfig,
         SonarQubeOnPremAnalysisResourceConfig,
+        SonarQubeAlmSettingsResourceConfig,
         CustomResourceConfig,
     ],
     Field(discriminator="kind"),
