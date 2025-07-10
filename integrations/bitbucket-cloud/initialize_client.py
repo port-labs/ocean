@@ -1,3 +1,4 @@
+import threading
 from port_ocean.context.ocean import ocean
 from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
@@ -5,13 +6,16 @@ from typing import Optional
 
 # Use None to indicate client hasn't been created yet
 _client: Optional[BitbucketClient] = None
+_client_lock = threading.Lock()
 
 
 def init_client() -> BitbucketClient:
     """Initialize and return the BitbucketClient instance with lazy loading."""
     global _client
     if _client is None:
-        _client = BitbucketClient.create_from_ocean_config()
+        with _client_lock:
+            if _client is None:
+                _client = BitbucketClient.create_from_ocean_config()
     return _client
 
 
