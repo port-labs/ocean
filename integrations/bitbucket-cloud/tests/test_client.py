@@ -434,3 +434,50 @@ async def test_get_headers() -> None:
         "Content-Type": "application/json",
     }
     assert no_auth_headers == expected_no_auth
+
+
+@pytest.mark.asyncio
+async def test_client_init_with_invalid_workspace_tokens():
+    """Test that invalid workspace tokens raise appropriate exceptions."""
+    from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
+
+    # Test with separators only
+    with pytest.raises(
+        MissingIntegrationCredentialException, match="No valid tokens found"
+    ):
+        BitbucketClient(
+            workspace="test-workspace",
+            host="https://api.bitbucket.org/2.0",
+            workspace_token=",,,",
+        )
+
+    # Test with whitespace only
+    with pytest.raises(
+        MissingIntegrationCredentialException, match="No valid tokens found"
+    ):
+        BitbucketClient(
+            workspace="test-workspace",
+            host="https://api.bitbucket.org/2.0",
+            workspace_token="   ",
+        )
+
+    # Test with mixed separators and whitespace
+    with pytest.raises(
+        MissingIntegrationCredentialException, match="No valid tokens found"
+    ):
+        BitbucketClient(
+            workspace="test-workspace",
+            host="https://api.bitbucket.org/2.0",
+            workspace_token=" , , ,",
+        )
+
+    # Test with empty string (should hit the general auth error, not token validation)
+    with pytest.raises(
+        MissingIntegrationCredentialException,
+        match="Either workspace token or both username and app password must be provided",
+    ):
+        BitbucketClient(
+            workspace="test-workspace",
+            host="https://api.bitbucket.org/2.0",
+            workspace_token="",
+        )
