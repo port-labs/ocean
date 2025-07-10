@@ -39,7 +39,11 @@ class BitbucketClient:
                 token.strip() for token in workspace_token.split(",") if token.strip()
             ]
 
-            if len(tokens) > 1:
+            if not tokens:
+                raise MissingIntegrationCredentialException(
+                    "No valid tokens found in workspace_token. Please provide valid comma-separated tokens."
+                )
+            elif len(tokens) > 1:
                 self.token_manager = TokenManager(tokens)
                 self.headers = self.get_headers(
                     bearer_token=self.token_manager.current_token
@@ -48,7 +52,7 @@ class BitbucketClient:
                     f"Initialized BitbucketClient with {len(tokens)} tokens for rotation"
                 )
             else:
-                single_token = tokens[0] if tokens else workspace_token.strip()
+                single_token = tokens[0]
                 self.headers = self.get_headers(bearer_token=single_token)
                 logger.info("Initialized BitbucketClient with single token")
         elif app_password and username:
