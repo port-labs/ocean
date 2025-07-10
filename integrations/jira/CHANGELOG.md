@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.42 (2025-07-10)
+
+
+### Bug Fixes
+
+-  Fixes JQL bug in Jira integration by properly wrapping user filters in parentheses before appending the issue key, ensuring correct issue fetching during live events.
+
+
 ## 0.4.41 (2025-07-07)
 
 
