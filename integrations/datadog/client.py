@@ -74,12 +74,14 @@ class DatadogClient:
         api_key: str,
         app_key: str,
         access_token: Optional[str] = None,
+        service_dependency_env: Optional[str] = None,
     ):
         self.api_url = api_url
         self.dd_api_key = api_key
         self.dd_app_key = app_key
         self.access_token = access_token
         self.http_client = http_async_client
+        self.service_dependency_env = service_dependency_env
 
         # These are created to limit the concurrent requests we are making to specific routes.
         # The limits provided to each semaphore were pre-determined by the headers sent for each one of the routes.
@@ -574,6 +576,62 @@ class DatadogClient:
             )
             return False
 
+    async def create_service_dependency_webhook(
+        self, base_url: Any, webhook_secret: Any
+    ) -> None:
+        """
+        Create a dedicated webhook for service dependency events.
+        This can be used to set up specific monitoring for service dependency changes.
+        """
+        webhook_name = "PORT_SERVICE_DEPENDENCY"
+        dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
+
+        try:
+            if await self._webhook_exists(dd_webhook_url):
+                logger.info("Service dependency webhook already exists")
+                return
+
+            logger.info("Creating dedicated service dependency webhook...")
+
+            base_webhook_url = f"{base_url}/integration/webhook"
+            modified_url = (
+                embed_credentials_in_url(base_webhook_url, "port", webhook_secret)
+                if webhook_secret
+                else base_webhook_url
+            )
+
+            body = {
+                "name": webhook_name,
+                "url": modified_url,
+                "encode_as": "json",
+                "payload": json.dumps(
+                    {
+                        "event_type": "service_dependency_change",
+                        "service_id": "$HOSTNAME",
+                        "service_name": "$HOSTNAME",
+                        "service": {"id": "$HOSTNAME", "name": "$HOSTNAME"},
+                        "timestamp": "$DATE",
+                        "message": "$TEXT_ONLY_MSG",
+                        "event_url": "$LINK",
+                        "tags": "$TAGS",
+                        "alert_id": "$ALERT_ID",
+                        "alert_status": "$ALERT_STATUS",
+                        "alert_title": "$ALERT_TITLE",
+                    }
+                ),
+            }
+
+            result = await self._send_api_request(
+                url=dd_webhook_url, method="POST", json_data=body
+            )
+
+            logger.info(f"Service Dependency Webhook Creation Response: {result}")
+
+        except Exception as e:
+            logger.error(
+                "Failed to create service dependency webhook, skipping...", exc_info=e
+            )
+
     async def create_webhooks_if_not_exists(
         self, base_url: Any, webhook_secret: Any
     ) -> None:
@@ -608,6 +666,8 @@ class DatadogClient:
                         "event_type": "$EVENT_TYPE",
                         "event_url": "$LINK",
                         "service": "$HOSTNAME",
+                        "service_id": "$HOSTNAME",
+                        "service_name": "$HOSTNAME",
                         "creator": "$USER",
                         "title": "$EVENT_TITLE",
                         "date": "$DATE",
@@ -620,6 +680,8 @@ class DatadogClient:
                         "alert_type": "$ALERT_TYPE",
                         "tags": "$TAGS",
                         "body": "$EVENT_MSG",
+                        "dependency_change": "$EVENT_TYPE",
+                        "affected_services": "$HOSTNAME",
                     }
                 ),
             }
@@ -632,3 +694,69 @@ class DatadogClient:
 
         except Exception as e:
             logger.error("Failed to create webhook, skipping...", exc_info=e)
+
+    async def get_service_dependencies(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get service dependencies from Datadog.
+        Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
+        """
+        ONE_HOUR = 3600
+        end = int(time.time())
+        start = end - ONE_HOUR
+
+        url = f"{self.api_url}/api/v1/service_dependencies"
+        result = await self._send_api_request(
+            url,
+            params={"env": self.service_dependency_env, "start": start, "end": end},
+        )
+        dependencies = result.get("data", {})
+
+        if dependencies:
+            processed_dependencies = []
+            for service_id, dependency_data in dependencies.items():
+                processed_dependency = {
+                    "sourceService": service_id,
+                    "calledServices": dependency_data.get("calls", []),
+                    "description": f"Service dependencies for {service_id}",
+                }
+                processed_dependencies.append(processed_dependency)
+            yield processed_dependencies
+
+    async def get_single_service_dependency(
+        self, service_id: str
+    ) -> dict[str, Any] | None:
+        """
+        Get service dependencies for a specific service from Datadog.
+        Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-service-dependencies
+        """
+        if not service_id:
+            return None
+
+        try:
+            ONE_HOUR = 3600
+            end = int(time.time())
+            start = end - ONE_HOUR
+
+            url = f"{self.api_url}/api/v1/service_dependencies/{service_id}"
+            result = await self._send_api_request(
+                url,
+                params={"env": self.service_dependency_env, "start": start, "end": end},
+            )
+
+            if result and "data" in result:
+                dependency_data = result.get("data", {})
+                return {
+                    "sourceService": service_id,
+                    "calledServices": dependency_data.get("calls", []),
+                    "description": f"Service dependencies for {service_id}",
+                }
+
+            return None
+
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch service dependencies for {service_id}: {str(e)}"
+            )
+            return None
