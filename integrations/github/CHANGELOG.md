@@ -7,12 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.0.1-beta (2025-07-07)
+## 1.1.0-beta (2025-07-10)
 
 
 ### Improvements
 
 - Added improvement for selecting collaborators, team and custom properties relationships on repository kind
+
+
+## 1.0.5-beta (2025-07-09)
+
+
+### Bugfix
+
+- Fix default resources not getting created due to blueprint config error
+
+
+## 1.0.4-beta (2025-07-08)
+
+
+### Improvements
+
+- Fix deleted raw results in file webhook processor and improved logging in repository visibility type
+
+
+## 1.0.3-beta (2025-07-08)
+
+
+### Bug Fixes
+
+- Fix Bug on GraphQL Errors throwing a stack of errors instead of specific error messages
+
+
+## 1.0.2-beta (2025-07-08)
+
+
+### Improvements
+
+- Temporally trim default resources to just repository and pull request
+
+
+## 1.0.1-beta (2025-07-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
 
 
 ## 1.0.0-beta (2025-07-04)
