@@ -1,3 +1,4 @@
+from typing import Any, Dict, List
 from loguru import logger
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
 from github.core.exporters.team_exporter import (
@@ -10,7 +11,7 @@ from github.webhook.events import (
     COLLABORATOR_EVENTS,
     TEAM_COLLABORATOR_EVENTS,
 )
-from github.helpers.utils import GithubClientType, ObjectKind
+from github.helpers.utils import GithubClientType, ObjectKind, enrich_with_repository
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
@@ -22,7 +23,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from github.core.options import SingleCollaboratorOptions, SingleTeamOptions
-from github.helpers.utils import enrich_collaborators_with_repositories
 
 
 class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
@@ -186,7 +186,7 @@ class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
         ):
             repositories.extend(batch)
 
-        list_data_to_upsert = enrich_collaborators_with_repositories(
+        list_data_to_upsert = self._enrich_collaborators_with_repositories(
             member, repositories
         )
 
@@ -197,3 +197,15 @@ class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=list_data_to_upsert, deleted_raw_results=[]
         )
+
+    def _enrich_collaborators_with_repositories(
+        self, response: Dict[str, Any], repositories: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Helper function to enrich response with repository information."""
+        list_of_collaborators = []
+        for repository in repositories:
+            list_of_collaborators.append(
+                enrich_with_repository(response, repository["name"])
+            )
+
+        return list_of_collaborators

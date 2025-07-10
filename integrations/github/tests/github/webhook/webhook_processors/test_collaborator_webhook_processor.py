@@ -289,8 +289,9 @@ class TestCollaboratorWebhookProcessor:
                         )
 
                         # Mock enrich_collaborators_with_repositories
-                        with patch(
-                            "github.webhook.webhook_processors.collaborator_webhook_processor.enrich_collaborators_with_repositories"
+                        with patch.object(
+                            collaborator_webhook_processor,
+                            "_enrich_collaborators_with_repositories",
                         ) as mock_enrich:
                             enriched_data = [
                                 {
@@ -421,8 +422,9 @@ class TestCollaboratorWebhookProcessor:
                         mock_get_team_repositories()
                     )
 
-                    with patch(
-                        "github.webhook.webhook_processors.collaborator_webhook_processor.enrich_collaborators_with_repositories"
+                    with patch.object(
+                        collaborator_webhook_processor,
+                        "_enrich_collaborators_with_repositories",
                     ) as mock_enrich:
                         enriched_data = [
                             {

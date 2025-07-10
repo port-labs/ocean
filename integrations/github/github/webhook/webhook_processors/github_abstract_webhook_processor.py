@@ -67,6 +67,16 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
         if not repository.get("name"):
             return False
 
-        visibility = cast(GithubPortAppConfig, event.port_app_config).repository_type
+        configured_visibility = cast(
+            GithubPortAppConfig, event.port_app_config
+        ).repository_type
+        repository_visibility = repository.get("visibility")
 
-        return visibility == "all" or repository.get("visibility") == visibility
+        logger.debug(
+            f"Validating repository webhook for repository with visibility '{repository_visibility}' against configured filter '{configured_visibility}'"
+        )
+
+        return (
+            configured_visibility == "all"
+            or repository_visibility == configured_visibility
+        )
