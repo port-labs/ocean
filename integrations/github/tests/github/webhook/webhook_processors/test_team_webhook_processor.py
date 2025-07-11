@@ -185,7 +185,7 @@ class TestTeamWebhookProcessor:
             (
                 {
                     "action": TEAM_DELETE_EVENTS[0],
-                    "team": {"slug": "team2", "name": "team2"},
+                    "team": {"slug": "team2"},
                 },
                 True,
             ),

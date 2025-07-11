@@ -76,7 +76,7 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
             SingleTeamOptions(slug=team["slug"])
         )
 
-        logger.info(f"Upserting team '{team['name']}'")
+        logger.info(f"Upserting team '{team['slug']}'")
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
@@ -85,4 +85,4 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         if not {"action", "team", "member"} <= payload.keys():
             return False
-        return bool(payload["team"].get("slug") and payload["team"].get("name"))
+        return bool(payload["team"].get("slug"))
