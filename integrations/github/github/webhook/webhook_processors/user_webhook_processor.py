@@ -53,7 +53,7 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
             SingleUserOptions(login=user["login"])
         )
 
-        logger.info(f"User {data_to_upsert['login']} was upserted")
+        logger.info(f"User {user['login']} was upserted")
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
