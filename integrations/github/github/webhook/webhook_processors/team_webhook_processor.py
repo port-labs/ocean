@@ -69,7 +69,7 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
             SingleTeamOptions(slug=team["slug"])
         )
 
-        logger.info(f"Team {data_to_upsert['name']} was upserted")
+        logger.info(f"Team {team['name']} was upserted")
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
@@ -78,4 +78,4 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
         if not {"action", "team"} <= payload.keys():
             return False
 
-        return bool(payload["team"].get("slug"))
+        return bool(payload["team"].get("slug") and payload["team"].get("name"))

@@ -178,19 +178,19 @@ class TestTeamWebhookProcessor:
             (
                 {
                     "action": TEAM_UPSERT_EVENTS[0],
-                    "team": {"slug": "team1"},
+                    "team": {"slug": "team1", "name": "team1"},
                 },
                 True,
             ),
             (
                 {
                     "action": TEAM_DELETE_EVENTS[0],
-                    "team": {"slug": "team2"},
+                    "team": {"slug": "team2", "name": "team2"},
                 },
                 True,
             ),
             ({"action": TEAM_UPSERT_EVENTS[0]}, False),  # missing team
-            ({"team": {"slug": "team4"}}, False),  # missing action
+            ({"team": {"slug": "team4", "name": "team4"}}, False),  # missing action
             (
                 {"action": TEAM_UPSERT_EVENTS[0], "team": {}},  # no slug
                 False,
