@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.52 (2025-07-08)
+
+
+### Features
+
+- Added support for multi-token rotation, modified rate limiter class by adding `can_acquire()` method to check availability without consuming slots and updated client.py to use the token manager when applicable while maintaining backward compatibility and test coverage
+
+
 ## 0.1.51 (2025-07-07)
 
 
@@ -19,8 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Bug Fix
-- Fixed bug in file kind live events where tracked file does not get upserted to port
 
+- Fixed bug in file kind live events where tracked file does not get upserted to port
 - Fixed bug in file kind live event causing tracked file not getting deleted from port when file has been deleted from bitbucket repo.
 
 

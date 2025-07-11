@@ -134,53 +134,60 @@ async def test_check_and_load_file_prefix() -> None:
 @pytest.mark.asyncio
 async def test_process_file_changes() -> None:
     """Test the process_file_changes function."""
-    # Mock the webhook client
-    mock_webhook_client = AsyncMock()
+    # Mock the init_client function
+    with patch("bitbucket_cloud.helpers.file_kind_live_event.init_client") as mock_init:
+        mock_client = AsyncMock()
+        mock_init.return_value = mock_client
 
-    # Create an async generator for retrieve_diff_stat
-    async def mock_retrieve_diff_stat(
-        *args: Any, **kwargs: Any
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        # Return a list of diff stats, not a list of lists
-        yield [SAMPLE_DIFF_STAT]
+        # Mock the webhook client
+        mock_webhook_client = AsyncMock()
 
-    mock_webhook_client.retrieve_diff_stat = mock_retrieve_diff_stat
-    # Return a list of dictionaries instead of a string
-    mock_webhook_client.get_repository_files.return_value = [{"test": "test content"}]
+        # Create an async generator for retrieve_diff_stat
+        async def mock_retrieve_diff_stat(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            # Return a list of diff stats, not a list of lists
+            yield [SAMPLE_DIFF_STAT]
 
-    # Mock selector
-    mock_selector = MagicMock()
-    mock_selector.files.filenames = ["*.txt"]
-    mock_selector.files.path = "*"
+        mock_webhook_client.retrieve_diff_stat = mock_retrieve_diff_stat
+        # Return a list of dictionaries instead of a string
+        mock_webhook_client.get_repository_files.return_value = [
+            {"test": "test content"}
+        ]
 
-    # Test payload
-    test_payload: Dict[str, Dict[str, str]] = {"repository": {"name": "test-repo"}}
+        # Mock selector
+        mock_selector = MagicMock()
+        mock_selector.files.filenames = ["*.txt"]
+        mock_selector.files.path = "*"
 
-    # Test with YAML file
-    yaml_diff_stat: Dict[str, Any] = SAMPLE_DIFF_STAT.copy()
-    yaml_diff_stat["new"]["path"] = "test.yaml"
+        # Test payload
+        test_payload: Dict[str, Dict[str, str]] = {"repository": {"name": "test-repo"}}
 
-    # Update the mock to return the YAML diff stat
-    async def mock_retrieve_diff_stat_yaml(
-        *args: Any, **kwargs: Any
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        # Return a list of diff stats, not a list of lists
-        yield [yaml_diff_stat]
+        # Test with YAML file
+        yaml_diff_stat: Dict[str, Any] = SAMPLE_DIFF_STAT.copy()
+        yaml_diff_stat["new"]["path"] = "test.yaml"
 
-    mock_webhook_client.retrieve_diff_stat = mock_retrieve_diff_stat_yaml
+        # Update the mock to return the YAML diff stat
+        async def mock_retrieve_diff_stat_yaml(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            # Return a list of diff stats, not a list of lists
+            yield [yaml_diff_stat]
 
-    # Update the selector to match the YAML file
-    mock_selector.files.filenames = ["*.yaml"]
+        mock_webhook_client.retrieve_diff_stat = mock_retrieve_diff_stat_yaml
 
-    updated, deleted = await process_file_changes(
-        "test-repo",
-        [SAMPLE_CHANGE],
-        mock_selector,
-        False,
-        mock_webhook_client,
-        test_payload,
-    )
+        # Update the selector to match the YAML file
+        mock_selector.files.filenames = ["*.yaml"]
 
-    assert len(updated) > 0
-    assert len(deleted) == 0
-    assert mock_webhook_client.get_repository_files.called
+        updated, deleted = await process_file_changes(
+            "test-repo",
+            [SAMPLE_CHANGE],
+            mock_selector,
+            False,
+            mock_webhook_client,
+            test_payload,
+        )
+
+        assert len(updated) > 0
+        assert len(deleted) == 0
+        assert mock_webhook_client.get_repository_files.called
