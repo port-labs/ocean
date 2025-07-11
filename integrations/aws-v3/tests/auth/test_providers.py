@@ -3,9 +3,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from aiobotocore.session import AioSession
 from aiobotocore.credentials import AioCredentials, AioRefreshableCredentials
 
-from aws.auth.providers.static_provider import StaticCredentialProvider
+from aws.auth.providers.static_credentials_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
-from aws.auth.utils import CredentialsProviderError
+from aws.auth._helpers.exceptions import CredentialsProviderError
 
 
 def create_mock_sts_context_manager(mock_sts_client: MagicMock) -> MagicMock:
@@ -24,13 +24,13 @@ class TestCredentialProviderBase:
         config = {"test_key": "test_value"}
         provider = StaticCredentialProvider(config=config)
         assert provider.config == config
-        assert provider.aws_client_factory_session is not None
+        assert provider._integration_session is not None
 
     def test_credential_provider_initialization_empty_config(self) -> None:
         """Test CredentialProvider initialization with empty config."""
         provider = StaticCredentialProvider()
         assert provider.config == {}
-        assert provider.aws_client_factory_session is not None
+        assert provider._integration_session is not None
 
 
 class TestStaticCredentialProvider:
@@ -57,19 +57,17 @@ class TestStaticCredentialProvider:
 
     @pytest.mark.asyncio
     async def test_get_credentials_without_credentials(self) -> None:
-        """Test get_credentials without explicit credentials (uses boto3 chain)."""
+        """Test get_credentials without explicit credentials raises error."""
         provider = StaticCredentialProvider()
-        credentials = await provider.get_credentials()
-        assert credentials is None
+        with pytest.raises(CredentialsProviderError, match="Failed to get credentials"):
+            await provider.get_credentials()
 
     @pytest.mark.asyncio
     async def test_get_credentials_with_partial_credentials(self) -> None:
-        """Test get_credentials with only access key (should return None)."""
+        """Test get_credentials with only access key raises error."""
         provider = StaticCredentialProvider()
-        credentials = await provider.get_credentials(
-            aws_access_key_id="test_access_key"
-        )
-        assert credentials is None
+        with pytest.raises(CredentialsProviderError, match="Failed to get credentials"):
+            await provider.get_credentials(aws_access_key_id="test_access_key")
 
     @pytest.mark.asyncio
     async def test_get_session_with_credentials(self) -> None:
@@ -81,30 +79,27 @@ class TestStaticCredentialProvider:
             aws_session_token="test_session_token",
         )
         assert isinstance(session, AioSession)
+        # Check that credentials were set on the session
         assert hasattr(session, "_credentials")
-        assert session._credentials.access_key == "test_access_key"
-        assert session._credentials.secret_key == "test_secret_key"
-        assert session._credentials.token == "test_session_token"
+        credentials = getattr(session, "_credentials")
+        assert isinstance(credentials, AioCredentials)
+        assert credentials.access_key == "test_access_key"
+        assert credentials.secret_key == "test_secret_key"
+        assert credentials.token == "test_session_token"
 
     @pytest.mark.asyncio
     async def test_get_session_without_credentials(self) -> None:
-        """Test get_session without explicit credentials."""
+        """Test get_session without explicit credentials raises error."""
         provider = StaticCredentialProvider()
-        session = await provider.get_session()
-        assert isinstance(session, AioSession)
-        # The session should be created but credentials should not be explicitly set by our provider
-        # If _credentials exists, it should be None (not set by us)
-        if hasattr(session, "_credentials"):
-            assert session._credentials is None
+        with pytest.raises(CredentialsProviderError, match="Failed to get credentials"):
+            await provider.get_session()
 
     @pytest.mark.asyncio
     async def test_get_session_with_partial_credentials(self) -> None:
-        """Test get_session with partial credentials (should not set _credentials)."""
+        """Test get_session with partial credentials raises error."""
         provider = StaticCredentialProvider()
-        session = await provider.get_session(aws_access_key_id="test_access_key")
-        assert isinstance(session, AioSession)
-        if hasattr(session, "_credentials"):
-            assert session._credentials is None
+        with pytest.raises(CredentialsProviderError, match="Failed to get credentials"):
+            await provider.get_session(aws_access_key_id="test_access_key")
 
 
 class TestAssumeRoleProvider:
@@ -132,7 +127,7 @@ class TestAssumeRoleProvider:
             }
         }
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             mock_session.create_client.return_value = mock_context_manager
             with patch(
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -160,7 +155,7 @@ class TestAssumeRoleProvider:
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             mock_session.create_client.return_value = mock_context_manager
             with patch(
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -188,7 +183,7 @@ class TestAssumeRoleProvider:
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             mock_session.create_client.return_value = mock_context_manager
             with patch(
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -214,7 +209,7 @@ class TestAssumeRoleProvider:
         mock_session = MagicMock()
         mock_session.create_client.side_effect = Exception("STS client error")
 
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             with pytest.raises(CredentialsProviderError, match="Failed to assume role"):
                 await provider.get_credentials(
                     role_arn="arn:aws:iam::123456789012:role/test-role",
@@ -231,7 +226,7 @@ class TestAssumeRoleProvider:
         mock_sts_client = AsyncMock()
         mock_assume_role_refresher.side_effect = Exception("Assume role failed")
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             mock_session.create_client.return_value = mock_context_manager
             with patch(
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -254,7 +249,7 @@ class TestAssumeRoleProvider:
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             mock_session.create_client.return_value = mock_context_manager
             with patch(
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -271,7 +266,7 @@ class TestAssumeRoleProvider:
                     )
                     assert isinstance(session, AioSession)
                     assert hasattr(session, "_credentials")
-                    assert session._credentials == mock_creds
+                    assert getattr(session, "_credentials") == mock_creds
 
     @pytest.mark.asyncio
     async def test_get_session_missing_role_arn(self) -> None:
@@ -291,7 +286,7 @@ class TestAssumeRoleProvider:
         mock_sts_client = AsyncMock()
         mock_assume_role_refresher.side_effect = Exception("Assume role failed")
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             mock_session.create_client.return_value = mock_context_manager
             with patch(
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -314,7 +309,7 @@ class TestAssumeRoleProvider:
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             mock_session.create_client.return_value = mock_context_manager
             with patch(
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -346,7 +341,7 @@ class TestAssumeRoleProvider:
         test_regions = ["us-east-1", "eu-west-1", "ap-southeast-1"]
 
         for region in test_regions:
-            with patch.object(provider, "aws_client_factory_session", mock_session):
+            with patch.object(provider, "_integration_session", mock_session):
                 mock_session.create_client.return_value = mock_context_manager
                 with patch(
                     "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -376,7 +371,7 @@ class TestAssumeRoleProvider:
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             mock_session.create_client.return_value = mock_context_manager
             with patch(
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -407,7 +402,7 @@ class TestAssumeRoleProvider:
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             mock_session.create_client.return_value = mock_context_manager
             with patch(
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -436,7 +431,7 @@ class TestAssumeRoleProvider:
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
         mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
-        with patch.object(provider, "aws_client_factory_session", mock_session):
+        with patch.object(provider, "_integration_session", mock_session):
             mock_session.create_client.return_value = mock_context_manager
             with patch(
                 "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
@@ -455,4 +450,4 @@ class TestAssumeRoleProvider:
                     )
                     assert isinstance(session, AioSession)
                     assert hasattr(session, "_credentials")
-                    assert session._credentials == mock_creds
+                    assert getattr(session, "_credentials") == mock_creds

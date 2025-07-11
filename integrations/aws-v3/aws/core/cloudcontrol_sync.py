@@ -5,16 +5,15 @@ from typing import Any, List, Callable
 from loguru import logger
 from aiobotocore.session import AioSession
 from aiobotocore.config import AioConfig
-from aws.auth.session_factory import AccountInfo, get_all_account_sessions
-from aws.auth.region_resolver import RegionResolver
+from aws.auth import AccountContext, get_all_account_sessions
+from aws.auth import RegionResolver
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
 import functools
 
-from aws.core.utils import (
-    ASYNC_GENERATOR_RESYNC_TYPE,
+from aws.core.helpers.utils import (
     CloudControlThrottlingConfig,
     CustomProperties,
     CloudControlClientProtocol,
@@ -23,7 +22,13 @@ from aws.core.utils import (
     is_global_resource,
     fix_unserializable_date_properties,
 )
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from aws.core.paginator import AsyncPaginator
+
+
+async def get_allowed_regions(session: AioSession, selector: Any) -> list[str]:
+    resolver = RegionResolver(session, selector)
+    return list(await resolver.get_allowed_regions())
 
 
 async def describe_single_resource_cloudcontrol(
@@ -181,19 +186,23 @@ async def _handle_global_resource_resync(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = aws_resource_config.selector
     logger.info(f"Starting global resource resync for {kind}")
-    async for account, session in get_all_account_sessions():
-        account_id = account["Id"]
-        account_name = account["Name"]
+    async for account_context in get_all_account_sessions():
+        account_id = account_context["details"]["Id"]
+        account_name = account_context["details"]["Name"]
         logger.info(
             f"Processing global resource {kind} for account {account_id} ({account_name})"
         )
-        regions = await get_allowed_regions(session, selector)
+        regions = await get_allowed_regions(account_context["session"], selector)
         logger.debug(f"Found {len(regions)} allowed regions for account {account_id}")
         processed_successfully = False
         for region in regions:
             try:
                 async for batch in resync_cloudcontrol(
-                    kind, session, region, aws_resource_config, account_id
+                    kind,
+                    account_context["session"],
+                    region,
+                    aws_resource_config,
+                    account_id,
                 ):
                     yield batch
                 logger.info(
@@ -219,39 +228,43 @@ async def _handle_global_resource_resync(
 
 async def sync_account_region_resources(
     kind: str,
-    session: AioSession,
     aws_resource_config: Any,
-    account: AccountInfo,
+    account_context: AccountContext,
     region: str,
     errors: list[Exception],
     error_regions: list[str],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     try:
         async for batch in resync_cloudcontrol(
-            kind, session, region, aws_resource_config, account["Id"]
+            kind,
+            account_context["session"],
+            region,
+            aws_resource_config,
+            account_context["details"]["Id"],
         ):
             yield batch
     except Exception as exc:
         if is_access_denied_exception(exc):
             logger.info(
-                f"Skipping access denied error in region {region} for account {account['Id']}"
+                f"Skipping access denied error in region {region} for account {account_context['details']['Id']}"
             )
             return
-        logger.error(f"Error in region {region} for account {account['Id']}: {exc}")
+        logger.error(
+            f"Error in region {region} for account {account_context['details']['Id']}: {exc}"
+        )
         errors.append(exc)
         error_regions.append(region)
 
 
 async def resync_resources_for_account_with_session(
-    account: AccountInfo,
-    session: AioSession,
+    account_context: AccountContext,
     kind: str,
     aws_resource_config: Any,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     errors: list[Exception] = []
     error_regions: list[str] = []
-    account_id: str = account["Id"]
+    account_id: str = account_context["details"]["Id"]
     REGION_CONCURRENCY_LIMIT = 10
     if is_global_resource(kind):
         logger.info(f"Handling global resource {kind} for account {account_id}")
@@ -263,7 +276,7 @@ async def resync_resources_for_account_with_session(
     )
     region_semaphore = asyncio.Semaphore(REGION_CONCURRENCY_LIMIT)
     selector = aws_resource_config.selector
-    regions = await get_allowed_regions(session, selector)
+    regions = await get_allowed_regions(account_context["session"], selector)
     region_tasks = []
     for region in regions:
         region_tasks.append(
@@ -272,9 +285,8 @@ async def resync_resources_for_account_with_session(
                 functools.partial(
                     sync_account_region_resources,
                     kind,
-                    session,
                     aws_resource_config,
-                    account,
+                    account_context,
                     region,
                     errors,
                     error_regions,
@@ -283,6 +295,7 @@ async def resync_resources_for_account_with_session(
         )
     async for batch in stream_async_iterators_tasks(*region_tasks):
         yield batch
+
     logger.info(f"Completed processing regions for account {account_id}")
     if errors:
         message = (
@@ -290,8 +303,3 @@ async def resync_resources_for_account_with_session(
             f"with {len(errors)} errors in account {account_id}"
         )
         raise ExceptionGroup(message, errors)
-
-
-async def get_allowed_regions(session: AioSession, selector: Any) -> list[str]:
-    resolver = RegionResolver(session, selector)
-    return list(await resolver.get_allowed_regions())

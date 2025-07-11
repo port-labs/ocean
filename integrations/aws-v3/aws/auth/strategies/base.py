@@ -1,7 +1,22 @@
 from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, Any
+from typing import AsyncIterator, Any, TypedDict, NotRequired
+
+
+class AccountDetails(TypedDict):
+    """TypedDict representing AWS account details."""
+
+    Id: str
+    Name: str
+    Arn: NotRequired[str]
+
+
+class AccountContext(TypedDict):
+    """TypedDict representing the context for an AWS account session."""
+
+    details: AccountDetails
+    session: AioSession
 
 
 class AWSSessionStrategy(ABC):
@@ -14,9 +29,7 @@ class AWSSessionStrategy(ABC):
     @abstractmethod
     def get_account_sessions(
         self,
-    ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
-        """Yield (AccountInfo, AioSession) pairs for each account managed by this strategy."""
-        pass
+    ) -> AsyncIterator[AccountContext]: ...
 
 
 class HealthCheckMixin(ABC):

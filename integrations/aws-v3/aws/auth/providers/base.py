@@ -13,8 +13,8 @@ class CredentialProvider(ABC):
 
     def __init__(self, config: dict[str, Any] = {}):
         self.config = config or {}
-        # Long-lived session used as a factory for creating AWS service clients
-        self.aws_client_factory_session = AioSession()
+        # Integration session identifies the integration that is using the credential provider
+        self._integration_session = AioSession()
 
     @abstractmethod
     async def get_credentials(self, **kwargs: Any) -> AioCredentialsType: ...
