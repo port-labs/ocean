@@ -13,8 +13,8 @@ from github.webhook.events import (
 )
 from github.helpers.utils import GithubClientType, ObjectKind, enrich_with_repository
 from github.clients.client_factory import create_github_client
-from github.webhook.webhook_processors.github_abstract_webhook_processor import (
-    _GithubAbstractWebhookProcessor,
+from github.webhook.webhook_processors.base_repository_webhook_processor import (
+    BaseRepositoryWebhookProcessor,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -25,7 +25,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from github.core.options import SingleCollaboratorOptions, SingleTeamOptions
 
 
-class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
+class CollaboratorWebhookProcessor(BaseRepositoryWebhookProcessor):
     _event_name: str | None = None
 
     EVENT_VALIDATION_FIELDS = {
@@ -35,6 +35,14 @@ class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
     }
 
     async def validate_payload(self, payload: EventPayload) -> bool:
+        # For membership events, skip repository validation
+        if self._event_name != "membership":
+            if not await self.validate_repository_payload(payload):
+                return False
+
+        return await self._validate_payload(payload)
+
+    async def _validate_payload(self, payload: EventPayload) -> bool:
         if self._event_name is None:
             return False
 
@@ -48,12 +56,6 @@ class CollaboratorWebhookProcessor(_GithubAbstractWebhookProcessor):
         has_org_login = "login" in payload.get("organization", {})
         has_team_name = "name" in payload.get("team", {})
         has_member_login = "login" in payload.get("member", {})
-
-        if (
-            self._event_name != "membership"
-            and not await super().validate_repository_payload(payload)
-        ):
-            return False
 
         match self._event_name:
             case "member":

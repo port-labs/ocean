@@ -1,6 +1,4 @@
-from typing import cast
 from abc import abstractmethod
-from integration import GithubPortAppConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -9,7 +7,6 @@ import hashlib
 import hmac
 from fastapi import Request
 from port_ocean.context.ocean import ocean
-from port_ocean.context.event import event
 from loguru import logger
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
@@ -61,22 +58,3 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
         if not (event._original_request and await self._should_process_event(event)):
             return False
         return await self._verify_webhook_signature(event._original_request)
-
-    async def validate_repository_payload(self, payload: EventPayload) -> bool:
-        repository = payload.get("repository", {})
-        if not repository.get("name"):
-            return False
-
-        configured_visibility = cast(
-            GithubPortAppConfig, event.port_app_config
-        ).repository_type
-        repository_visibility = repository.get("visibility")
-
-        logger.debug(
-            f"Validating repository webhook for repository with visibility '{repository_visibility}' against configured filter '{configured_visibility}'"
-        )
-
-        return (
-            configured_visibility == "all"
-            or repository_visibility == configured_visibility
-        )
