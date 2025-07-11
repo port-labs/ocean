@@ -10,6 +10,7 @@ from github.core.options import SingleTeamOptions
 from github.helpers.gql_queries import (
     FETCH_TEAM_WITH_MEMBERS_GQL,
     LIST_TEAM_MEMBERS_GQL,
+    SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
 )
 
 
@@ -33,6 +34,14 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
         async for teams in self.client.send_paginated_request(url):
             yield teams
 
+    async def get_team_repositories_by_slug[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        url = f"{self.client.base_url}/orgs/{self.client.organization}/teams/{options['slug']}/repos"
+        async for repos in self.client.send_paginated_request(url):
+            logger.info(f"Fetched {len(repos)} repos for team {options['slug']}")
+            yield repos
+
 
 class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]):
     MEMBER_PAGE_SIZE = 30
@@ -45,6 +54,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             "organization": self.client.organization,
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
+
         payload = self.client.build_graphql_payload(
             FETCH_TEAM_WITH_MEMBERS_GQL, variables
         )
@@ -158,3 +168,22 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             f"Successfully fetched {len(all_member_nodes)} members for team '{team_slug}'"
         )
         return all_member_nodes
+
+    async def get_team_member_repositories(self, team_slug: str) -> RAW_ITEM:
+
+        variables = {
+            "slug": team_slug,
+            "organization": self.client.organization,
+            "memberFirst": 25,
+        }
+
+        payload = self.client.build_graphql_payload(
+            SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL, variables
+        )
+        response = await self.client.send_api_request(
+            self.client.base_url, method="POST", json_data=payload
+        )
+        if not response:
+            return {}
+
+        return response["data"]["organization"]["team"]
