@@ -107,7 +107,13 @@ class TestRestCollaboratorExporter:
 
                 assert len(collaborators) == 1
                 assert len(collaborators[0]) == 2
-                assert collaborators[0] == TEST_COLLABORATORS
+                
+                # Create expected enriched collaborators with __repository field
+                expected_collaborators = [
+                    {**collaborator, "__repository": "test-repo"} 
+                    for collaborator in TEST_COLLABORATORS
+                ]
+                assert collaborators[0] == expected_collaborators
 
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/collaborators",

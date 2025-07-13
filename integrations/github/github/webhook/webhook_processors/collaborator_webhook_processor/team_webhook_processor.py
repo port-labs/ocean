@@ -33,7 +33,6 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
         return has_required_fields and has_org_login and has_team_name
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        print(event.headers.get("x-github-event"), event.payload)
         return (
             event.headers.get("x-github-event") == "team"
             and event.payload.get("action") in TEAM_COLLABORATOR_EVENTS
