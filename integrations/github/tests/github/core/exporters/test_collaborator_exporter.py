@@ -107,10 +107,10 @@ class TestRestCollaboratorExporter:
 
                 assert len(collaborators) == 1
                 assert len(collaborators[0]) == 2
-                
+
                 # Create expected enriched collaborators with __repository field
                 expected_collaborators = [
-                    {**collaborator, "__repository": "test-repo"} 
+                    {**collaborator, "__repository": "test-repo"}
                     for collaborator in TEST_COLLABORATORS
                 ]
                 assert collaborators[0] == expected_collaborators
