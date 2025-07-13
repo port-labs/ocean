@@ -13,13 +13,16 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
         username = params["username"]
 
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/collaborators/{username}"
+        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/collaborators/{username}/permission"
         response = await self.client.send_api_request(endpoint)
         logger.info(
             f"Fetched collaborator with identifier: {username} from repository: {repo_name}"
         )
+        if not response:
+            return {}
 
-        return enrich_with_repository(response, repo_name)
+        collaborator = response["user"]
+        return enrich_with_repository(collaborator, repo_name)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListCollaboratorOptions

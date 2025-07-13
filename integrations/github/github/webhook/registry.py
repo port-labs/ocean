@@ -50,7 +50,9 @@ from github.webhook.webhook_processors.file_webhook_processor import (
     FileWebhookProcessor,
 )
 from github.webhook.webhook_processors.collaborator_webhook_processor import (
-    CollaboratorWebhookProcessor,
+    CollaboratorMemberWebhookProcessor,
+    CollaboratorMembershipWebhookProcessor,
+    CollaboratorTeamWebhookProcessor,
 )
 
 
@@ -73,4 +75,6 @@ def register_live_events_webhooks(path: str = "/webhook") -> None:
     ocean.add_webhook_processor(path, TeamMemberWebhookProcessor)
     ocean.add_webhook_processor(path, UserWebhookProcessor)
     ocean.add_webhook_processor(path, FileWebhookProcessor)
-    ocean.add_webhook_processor(path, CollaboratorWebhookProcessor)
+    ocean.add_webhook_processor(path, CollaboratorMemberWebhookProcessor)
+    ocean.add_webhook_processor(path, CollaboratorMembershipWebhookProcessor)
+    ocean.add_webhook_processor(path, CollaboratorTeamWebhookProcessor)

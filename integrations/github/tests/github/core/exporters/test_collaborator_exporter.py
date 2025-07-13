@@ -63,7 +63,8 @@ class TestRestCollaboratorExporter:
         # Create a mock response
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
-        mock_response.json.return_value = TEST_COLLABORATORS[0]
+        # The API returns a response with a "user" key containing the collaborator data
+        mock_response.json.return_value = {"user": TEST_COLLABORATORS[0]}
 
         exporter = RestCollaboratorExporter(rest_client)
 
@@ -75,10 +76,13 @@ class TestRestCollaboratorExporter:
                 SingleCollaboratorOptions(repo_name="test-repo", username="user1")
             )
 
-            assert collaborator == TEST_COLLABORATORS[0]
+            # The exporter enriches the data with repository info
+            expected_collaborator = TEST_COLLABORATORS[0].copy()
+            expected_collaborator["__repository"] = "test-repo"
+            assert collaborator == expected_collaborator
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/collaborators/user1"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/collaborators/user1/permission"
             )
 
     async def test_get_paginated_resources(
