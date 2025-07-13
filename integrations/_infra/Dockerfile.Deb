@@ -19,7 +19,7 @@ RUN poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
 FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
 
-RUN groupadd -r appgroup && useradd -r -g appgroup -m ocean
+RUN groupadd -r appgroup && useradd -r -g appgroup -m -u 999 ocean
 
 RUN mkdir -p /tmp/ocean
 
