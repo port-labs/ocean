@@ -1,5 +1,6 @@
 ARG BASE_BUILDER_PYTHON_IMAGE=ghcr.io/port-labs/port-ocean-base-builder:latest
 ARG BASE_RUNNER_PYTHON_IMAGE=ghcr.io/port-labs/port-ocean-base-runner:latest
+ARG OCEAN_USER_ID=999
 
 FROM ${BASE_BUILDER_PYTHON_IMAGE} AS base
 
@@ -19,7 +20,7 @@ RUN poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
 FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
 
-RUN groupadd -r appgroup && useradd -r -g appgroup -m -u 999 ocean
+RUN groupadd -r appgroup && useradd -r -g appgroup -m -u ${OCEAN_USER_ID} ocean
 
 RUN mkdir -p /tmp/ocean
 

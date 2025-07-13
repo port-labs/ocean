@@ -1,8 +1,9 @@
 ARG BASE_PYTHON_IMAGE=debian:trixie-slim
+ARG OCEAN_USER_ID=999
 # debian:trixie-slim - Python 3.12
 FROM ${BASE_PYTHON_IMAGE}
 
-RUN groupadd -r appgroup && useradd -r -g appgroup -m -u 999 ocean
+RUN groupadd -r appgroup && useradd -r -g appgroup -m -u ${OCEAN_USER_ID} ocean
 
 RUN mkdir -p /tmp/ocean
 
