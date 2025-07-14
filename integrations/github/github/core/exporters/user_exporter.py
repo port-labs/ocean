@@ -20,6 +20,9 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         response = await self.client.send_api_request(
             self.client.base_url, method="POST", json_data=payload
         )
+        if not response:
+            return response
+
         user = response["data"]["user"]
         if not user.get("email"):
             await self._fetch_external_identities([user], {(0, user["login"]): user})
@@ -65,7 +68,8 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         try:
             async for identity_batch in self.client.send_paginated_request(
-                LIST_EXTERNAL_IDENTITIES_GQL, variables
+                LIST_EXTERNAL_IDENTITIES_GQL,
+                variables,
             ):
                 saml_users = {
                     user["node"]["user"]["login"]: user["node"]["samlIdentity"][
