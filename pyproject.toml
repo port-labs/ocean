@@ -66,6 +66,7 @@ prometheus-client = "^0.21.1"
 pytest-cov = "^6.0.0"
 gunicorn = "^23.0.0"
 types-psutil = "^7.0.0.20250601"
+psutil = "^7.0.0"
 
 [tool.poetry.extras]
 cli = ["click", "rich", "cookiecutter", "jinja2-time"]
