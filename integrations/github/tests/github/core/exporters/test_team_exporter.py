@@ -442,7 +442,7 @@ class TestGraphQLTeamExporter:
                 "organization": graphql_client.organization,
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
-                "repoFirst": 2,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "repoAfter": None,
             }
             expected_payload = graphql_client.build_graphql_payload(
@@ -572,7 +572,7 @@ class TestGraphQLTeamExporter:
                 "organization": graphql_client.organization,
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
-                "repoFirst": 2,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "repoAfter": None,
             }
             expected_payload_1 = graphql_client.build_graphql_payload(
@@ -590,7 +590,7 @@ class TestGraphQLTeamExporter:
                 "organization": graphql_client.organization,
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": "cursor_delta_members_p1",
-                "repoFirst": 2,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "repoAfter": None,
             }
             expected_payload_2 = graphql_client.build_graphql_payload(
@@ -750,7 +750,7 @@ class TestGraphQLTeamExporter:
                 "organization": graphql_client.organization,
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
-                "repoFirst": 2,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "repoAfter": None,
             }
             expected_payload_1 = graphql_client.build_graphql_payload(
@@ -768,7 +768,7 @@ class TestGraphQLTeamExporter:
                 "organization": graphql_client.organization,
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
-                "repoFirst": 2,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "repoAfter": "cursor_epsilon_repos_p1",
             }
             expected_payload_2 = graphql_client.build_graphql_payload(
@@ -961,7 +961,7 @@ class TestGraphQLTeamExporter:
                 "organization": graphql_client.organization,
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
-                "repoFirst": 2,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "repoAfter": None,
             }
             expected_payload_1 = graphql_client.build_graphql_payload(
@@ -979,7 +979,7 @@ class TestGraphQLTeamExporter:
                 "organization": graphql_client.organization,
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": "cursor_zeta_members_p1",
-                "repoFirst": 2,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "repoAfter": None,
             }
             expected_payload_2 = graphql_client.build_graphql_payload(
@@ -997,7 +997,7 @@ class TestGraphQLTeamExporter:
                 "organization": graphql_client.organization,
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
-                "repoFirst": 2,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "repoAfter": "cursor_zeta_repos_p1",
             }
             expected_payload_3 = graphql_client.build_graphql_payload(
