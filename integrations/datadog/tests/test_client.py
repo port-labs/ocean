@@ -313,8 +313,8 @@ async def test_get_single_service_dependency(
     ) as mock_request:
         mock_request.return_value = expected_response_value
 
-        service_dependency: dict[str, str | list[str]] = (
-            await mock_datadog_client.get_single_service_dependency(sample_service_id)
+        service_dependency = await mock_datadog_client.get_single_service_dependency(
+            sample_service_id
         )
         assert service_dependency == expected_return_value
 
