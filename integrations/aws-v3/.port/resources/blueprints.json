@@ -1,0 +1,91 @@
+[
+  {
+    "identifier": "awsAccount",
+    "title": "AWS account",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "Arn"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email"
+        },
+        "status": {
+          "type": "array",
+          "title": "Status",
+          "default": ["ACTIVE"],
+          "items": {
+            "enum": ["ACTIVE", "SUSPENDED", "PENDING_CLOSURE"],
+            "enumColors": {
+              "ACTIVE": "green",
+              "SUSPENDED": "red",
+              "PENDING_CLOSURE": "yellow"
+            },
+            "type": "string"
+          }
+        },
+        "joined_method": {
+          "type": "string",
+          "title": "Joined Method",
+          "enum": ["INVITED", "CREATED"],
+          "enumColors": {
+            "INVITED": "lightGray",
+            "CREATED": "lightGray"
+          }
+        },
+        "joined_timestamp": {
+          "type": "string",
+          "title": "Joined Timestamp",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "cloudResource",
+    "title": "AWS Cloud Resource",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array",
+          "title": "Tags"
+        },
+        "arn": {
+          "type": "string",
+          "title": "ARN"
+        },
+        "link": {
+          "type": "string",
+          "title": "Link",
+          "icon": "AWS",
+          "format": "url"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region"
+        }
+      }
+    },
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": true,
+        "many": false
+      }
+    }
+  }
+]

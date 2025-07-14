@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.32 (2025-07-08)
+
+
+### Bug Fix
+
+- Fixed bug in file kind live event causing tracked file not getting deleted from port when file has been deleted from ADO repo.
+
+
+## 0.2.31 (2025-07-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
+
+
+
+## 0.2.30 (2025-07-03)
+
+
+### Bug Fix
+
+- Fixed pagination in Azure DevOps integration where `continuationToken` is not present in header
+
+
+## 0.2.29 (2025-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.22
+
+
 ## 0.2.28 (2025-06-30)
 
 

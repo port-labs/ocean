@@ -7,6 +7,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.0.6-beta (2025-07-09)
+
+
+### Improvements
+
+- Gracefully handle permission error when fetching external identities fail
+- Properly handle ignoring default errors in graphql client
+
+
+## 1.0.5-beta (2025-07-09)
+
+
+### Bugfix
+
+- Fix default resources not getting created due to blueprint config error
+
+
+## 1.0.4-beta (2025-07-08)
+
+
+### Improvements
+
+- Fix deleted raw results in file webhook processor and improved logging in repository visibility type
+
+
+## 1.0.3-beta (2025-07-08)
+
+
+### Bug Fixes
+
+- Fix Bug on GraphQL Errors throwing a stack of errors instead of specific error messages
+
+
+## 1.0.2-beta (2025-07-08)
+
+
+### Improvements
+
+- Temporally trim default resources to just repository and pull request
+
+
+## 1.0.1-beta (2025-07-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
+
+
+## 1.0.0-beta (2025-07-04)
+
+
+### Release
+
+- Bumped integration from dev to beta release
+
+
+## 0.5.2-dev (2025-07-03)
+
+
+### Bug Fixes
+
+- Fixed error handling for repositories with Advanced Security or Dependabot disabled
+- Previously, 403 errors for disabled features would crash the integration
+- Now gracefully ignores these errors and returns empty results
+- Affects both code scanning alerts, Dependabot alerts exporters and webhook upsertion
+
+
+## 0.5.1-dev (2025-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.22
+
+
+## 0.5.0-dev (2025-07-01)
+
+
+### Features
+
+- Added file exporter functionality with support for file content fetching and processing
+- Implemented file webhook processor for real-time file change detection and processing
+- Added file entity processor for dynamic file content retrieval in entity mappings
+- Added support for file pattern matching with glob patterns and size-based routing (GraphQL vs REST)
+
+
+## 0.4.0-dev (2025-06-26)
+
+
+### Features
+
+- Added support for Github folder kind
+
+
 ## 0.3.1-dev (2025-06-30)
 
 

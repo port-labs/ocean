@@ -15,38 +15,9 @@ resources:
             description: if .description then .description else "" end
             visibility: if .private then "private" else "public" end
             defaultBranch: .default_branch
+            readme: file://README.md
             url: .html_url
             language: if .language then .language else "" end
-  - kind: user
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .login
-          title: .login
-          blueprint: '"githubUser"'
-          properties:
-            login: .login
-  - kind: team
-    selector:
-      query: "true"
-      members: true
-    port:
-      entity:
-        mappings:
-          identifier: .id | tostring
-          title: .name
-          blueprint: '"githubTeam"'
-          properties:
-            slug: .slug
-            description: .description
-            link: .url
-            permission: .permission
-            notification_setting: .notificationSetting
-            members: '[.members.nodes[].login]'
-          relations:
-            githubUser: '[.members.nodes[].login]'
   - kind: pull-request
     selector:
       query: 'true'
