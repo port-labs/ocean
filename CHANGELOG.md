@@ -12,6 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Introduced Ocean user's id (999) as the default id for security purposes
 - Added rwX permissions to the Ocean user to write and read certificates
+- Fixed raise of issue with an entity which has a relation that the blueprint doesn't
 
 ## 0.25.1 (2025-07-07)
 

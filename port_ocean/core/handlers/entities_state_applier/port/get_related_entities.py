@@ -2,6 +2,8 @@ import asyncio
 from collections import defaultdict
 from itertools import groupby
 
+from loguru import logger
+
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.models import Entity
 
@@ -37,6 +39,11 @@ async def get_related_entities(
     blueprints_to_relations = defaultdict(list)
     for entity, blueprint in entity_to_blueprint:
         for relation_name, relation in entity.relations.items():
+            if relation_name not in blueprint.relations:
+                logger.warning(
+                    f"Relation {relation_name} found in entity {entity.identifier} but not in blueprint {blueprint.identifier}"
+                )
+                continue
             relation_blueprint = blueprint.relations[relation_name].target
             blueprints_to_relations[relation_blueprint].extend(
                 relation if isinstance(relation, list) else [relation]
