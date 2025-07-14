@@ -41,7 +41,10 @@ def mock_ocean_context() -> None:
 @pytest.fixture
 def mock_datadog_client() -> DatadogClient:
     return DatadogClient(
-        api_key="test_api_key", app_key="test_app_key", api_url="api.datadoghq.com"
+        api_key="test_api_key",
+        app_key="test_app_key",
+        api_url="api.datadoghq.com",
+        service_dependency_env="prod",
     )
 
 
