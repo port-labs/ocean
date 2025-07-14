@@ -334,7 +334,7 @@ async def test_parse_raw_event_results_to_entities_creation(
     calculation_result = CalculationResult(
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
         errors=[],
-        misonfigured_entity_keys={},
+        misconfigured_entity_keys={},
     )
     mock_live_events_mixin.entity_processor.parse_items.return_value = (
         calculation_result
@@ -361,7 +361,7 @@ async def test_parse_raw_event_results_to_entities_deletion(
     calculation_result = CalculationResult(
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
         errors=[],
-        misonfigured_entity_keys={},
+        misconfigured_entity_keys={},
     )
     mock_live_events_mixin.entity_processor.parse_items.return_value = (
         calculation_result

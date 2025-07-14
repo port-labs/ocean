@@ -7,6 +7,171 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.42 (2025-07-10)
+
+
+### Bug Fixes
+
+-  Fixes JQL bug in Jira integration by properly wrapping user filters in parentheses before appending the issue key, ensuring correct issue fetching during live events.
+
+
+## 0.4.41 (2025-07-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
+
+
+## 0.4.40 (2025-07-02)
+
+
+### Bug Fixes
+
+-  Fix `JIRA_HOST` from str type to url
+## 0.4.39 (2025-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.22
+
+
+## 0.4.38 (2025-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
+## 0.4.37 (2025-06-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+## 0.4.36 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
+## 0.4.35 (2025-06-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.18
+
+
+## 0.4.34 (2025-06-23)
+
+
+### Bug Fixes
+
+- Fixed pagination for teams list and team members API
+
+
+## 0.4.33 (2025-06-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.17
+
+
+## 0.4.32 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.16
+
+
+## 0.4.31 (2025-06-22)
+
+
+### Improvements
+
+- Upgraded integration requests dependency (#1)
+
+
+## 0.4.30 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.15
+
+
+## 0.4.29 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+## 0.4.28 (2025-06-19)
+
+
+### Improvements
+
+- If webhook destination already exsits added warning message and suggestion to contact support if customer needs to change the destination.
+
+## 0.4.28 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+## 0.4.27 (2025-06-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.11
+
+
+## 0.4.26 (2025-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.10
+
+
+## 0.4.25 (2025-06-09)
+
+
+### Bug Fixes
+
+- Removed webhook permission check from OAuth enabled integrations to prevent unnecessary webhook permission validation for OAuth-based connections, as OAuth already handles appropriate permission scopes during authentication
+
+
+## 0.4.24 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.8
+
+
+## 0.4.23 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
 ## 0.4.22 (2025-06-09)
 
 
