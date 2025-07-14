@@ -1,0 +1,166 @@
+---
+description: Guidelines for using AWS Documentation MCP effectively in development workflow
+globs: **/*.py,**/*.md,**/*.yaml,**/*.yml,**/*.json,**/*.tf,**/*.sh
+---
+
+# AWS Documentation MCP Usage Guidelines
+
+You have access to the AWS Documentation MCP server which provides real-time access to AWS documentation. Use it to enhance development with accurate, up-to-date AWS information.
+
+## Core Principles
+
+- **Always cite sources** when providing AWS information
+- **Verify current best practices** before making recommendations
+- **Use specific documentation** rather than general knowledge
+- **Cross-reference multiple sources** for complex topics
+- **Provide actionable examples** from official docs
+
+## MCP Tools Available
+
+### read_documentation
+- Fetch specific AWS documentation pages
+- Convert to markdown for easy reading
+- Use for detailed implementation guides
+
+### search_documentation
+- Search across all AWS documentation
+- Find relevant pages for specific topics
+- Discover new features and services
+
+### recommend
+- Get related documentation for current page
+- Find complementary AWS services
+- Discover best practices documentation
+
+## When to Use AWS Documentation MCP
+
+### ✅ Always Use For:
+- AWS service configuration details
+- Best practices and security guidelines
+- API reference information
+- Pricing and limits documentation
+- Architecture patterns and examples
+- Troubleshooting guides
+- Feature availability by region
+- Service integrations and compatibility
+
+### ✅ Specific Use Cases:
+- **Infrastructure as Code**: Get exact CloudFormation/Terraform syntax
+- **Security**: Verify IAM policies and permissions
+- **Networking**: VPC, subnet, and security group configurations
+- **Storage**: S3, EBS, EFS setup and optimization
+- **Compute**: EC2, Lambda, ECS/EKS configurations
+- **Databases**: RDS, DynamoDB, DocumentDB setup
+- **Monitoring**: CloudWatch, X-Ray, AWS Config usage
+- **CI/CD**: CodePipeline, CodeBuild, CodeDeploy integration
+
+## Best Practices for MCP Usage
+
+### Query Strategies
+```
+# Good: Specific and actionable
+"Look up S3 bucket naming rules and lifecycle policies"
+"Find Lambda function timeout and memory configuration documentation"
+"Get VPC peering setup documentation with examples"
+
+# Better: Include context
+"I'm setting up cross-region replication for S3. Get the documentation for configuration requirements and IAM permissions needed"
+```
+
+### Documentation Integration
+1. **Start with search** to find relevant documentation
+2. **Read specific pages** for detailed implementation
+3. **Get recommendations** for related topics
+4. **Cite all sources** in code comments and documentation
+
+### Code Documentation
+```python
+# Based on AWS Lambda documentation: [URL]
+# See: https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html
+lambda_config = {
+    "memory_size": 512,  # MB, must be multiple of 64
+    "timeout": 300       # seconds, max 900 for standard
+}
+```
+
+## Ocean Integration Context
+
+When working with Ocean integrations:
+
+### AWS Service Integration
+- **Check service availability** in target regions
+- **Verify API compatibility** with Ocean's async patterns
+- **Document rate limits** and pagination requirements
+- **Include IAM permissions** needed for integration
+
+### Configuration Examples
+```python
+# AWS S3 Integration - Based on official S3 documentation
+# Source: https://docs.aws.amazon.com/s3/latest/userguide/...
+class S3Integration(BaseIntegration):
+    def __init__(self, config):
+        # Bucket naming rules from AWS docs
+        self.bucket_name = self._validate_bucket_name(config.bucket)
+        # Connection settings per AWS best practices
+        self.client = boto3.client('s3',
+            region_name=config.region,
+            config=Config(
+                retries={'max_attempts': 3},  # AWS recommended
+                max_pool_connections=50       # For high throughput
+            )
+        )
+```
+
+### Documentation Standards
+- Include AWS documentation URLs in docstrings
+- Reference specific AWS service versions
+- Document regional limitations
+- Include example configurations from AWS docs
+
+## Error Handling with AWS Context
+
+```python
+# Get AWS error handling best practices before implementing
+try:
+    response = aws_client.describe_instances()
+except ClientError as e:
+    # Handle specific AWS errors based on documentation
+    error_code = e.response['Error']['Code']
+    if error_code == 'UnauthorizedOperation':
+        # Document required IAM permissions from AWS docs
+        logger.error("Missing IAM permissions. Required: ec2:DescribeInstances")
+    elif error_code == 'InvalidInstanceID.NotFound':
+        logger.error("Instance not found")
+    else:
+        logger.error(f"AWS error: {error_code}")
+```
+
+## Team Collaboration
+
+### Sharing AWS Information
+- **Reference exact documentation URLs** in pull requests
+- **Include AWS service quotas** in planning discussions
+- **Document regional differences** when relevant
+- **Share architecture diagrams** from AWS documentation
+
+### Code Reviews
+- Verify AWS configurations against latest documentation
+- Check for deprecated AWS features
+- Ensure IAM permissions follow least privilege principle
+- Validate resource naming follows AWS conventions
+
+## Examples of Effective Usage
+
+```
+# Development Scenarios
+
+1. "I need to implement S3 event notifications for Lambda. Get the latest documentation on S3 event configuration and Lambda permissions required."
+
+2. "Setting up RDS Multi-AZ for high availability. Find documentation on failover behavior and connection string handling."
+
+3. "Implementing CloudWatch custom metrics for Ocean integration. Get documentation on metric publishing limits and best practices."
+
+4. "Need to configure VPC endpoints for S3 access. Find documentation on endpoint policies and routing requirements."
+```
+
+Remember: The AWS Documentation MCP gives you access to the most current AWS information. Use it actively to ensure your code follows current best practices and uses the latest features appropriately.
