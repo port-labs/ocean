@@ -242,18 +242,43 @@ async def test_create_webhooks_if_exists(mock_datadog_client: DatadogClient) -> 
 
 @pytest.mark.asyncio
 async def test_get_service_dependencies(mock_datadog_client: DatadogClient) -> None:
-    expected_return_value = {
-        "servica_a": {"calls": ["service_b", "service_c"]},
+    expected_side_effect: dict[str, dict[str, list[str]]] = {
+        "service_a": {"calls": ["service_b", "service_c"]},
         "service_b": {"calls": ["service_o"]},
         "service_c": {"calls": ["service_o"]},
         "service_o": {"calls": []},
     }
+
     with patch.object(
         mock_datadog_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.return_value = expected_return_value
-        service_dependency = await mock_datadog_client.get_service_dependencies()
-        assert service_dependency == expected_return_value
+        mock_request.side_effect = [expected_side_effect]
+
+        dependencies: list[dict[str, Any]] = []
+        async for dependency_batch in mock_datadog_client.get_service_dependencies():
+            dependencies.extend(dependency_batch)
+        assert dependencies == [
+            {
+                "sourceService": "service_a",
+                "calledServices": ["service_b", "service_c"],
+                "description": f"Service dependencies for service_a",
+            },
+            {
+                "sourceService": "service_b",
+                "calledServices": ["service_o"],
+                "description": f"Service dependencies for service_b",
+            },
+            {
+                "sourceService": "service_c",
+                "calledServices": ["service_o"],
+                "description": f"Service dependencies for service_c",
+            },
+            {
+                "sourceService": "service_o",
+                "calledServices": [],
+                "description": f"Service dependencies for service_o",
+            },
+        ]
 
         end = int(time.time())
         start = end - FETCH_SERVICE_DEPENDENCY_INTERVAL_IN_SECONDS
@@ -271,24 +296,32 @@ async def test_get_service_dependencies(mock_datadog_client: DatadogClient) -> N
 async def test_get_single_service_dependency(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    expected_return_value = {
+    sample_service_id = "service-c"
+    expected_response_value: dict[str, str | list[str]] = {
         "called_by": ["service-a", "service-b"],
         "calls": ["service-d", "service-e"],
-        "name": "service-c",
+        "name": f"{sample_service_id}",
+    }
+    expected_return_value: dict[str, str | list[str]] = {
+        "sourceService": f"{sample_service_id}",
+        "calledServices": ["service-d", "service-e"],
+        "calledBy": ["service-a", "service-b"],
+        "description": f"Service dependencies for {sample_service_id}",
     }
     with patch.object(
         mock_datadog_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.return_value = expected_return_value
-        service_dependency = await mock_datadog_client.get_single_service_dependency(
-            "service-a"
+        mock_request.return_value = expected_response_value
+
+        service_dependency: dict[str, str | list[str]] = (
+            await mock_datadog_client.get_single_service_dependency(sample_service_id)
         )
         assert service_dependency == expected_return_value
 
         end = int(time.time())
         start = end - FETCH_SERVICE_DEPENDENCY_INTERVAL_IN_SECONDS
         mock_request.assert_called_with(
-            f"{mock_datadog_client.api_url}/api/v1/service_dependencies/service-a",
+            f"{mock_datadog_client.api_url}/api/v1/service_dependencies/{sample_service_id}",
             params={
                 "env": mock_datadog_client.service_dependency_env,
                 "start": start,
