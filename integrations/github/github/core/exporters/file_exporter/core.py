@@ -56,6 +56,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         logger.info(f"Fetching file: {file_path} from {repo_name}@{branch}")
 
         response = await self.client.send_api_request(resource, params={"ref": branch})
+        if not response:
+            logger.warning(f"File {file_path} not found in {repo_name}@{branch}")
+            return {}
 
         response_size = response["size"]
         content = None
@@ -163,7 +166,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 )
             )
 
-            decoded_content = file_data.pop("content")
+            decoded_content = file_data.pop("content", None)
             if decoded_content is None:
                 logger.warning(f"File {file_path} has no content")
                 continue

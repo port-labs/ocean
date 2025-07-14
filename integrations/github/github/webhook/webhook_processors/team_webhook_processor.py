@@ -69,7 +69,7 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
             SingleTeamOptions(slug=team["slug"])
         )
 
-        logger.info(f"Team {data_to_upsert['name']} was upserted")
+        logger.info(f"Team {team['slug']} was upserted")
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
