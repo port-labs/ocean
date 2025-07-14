@@ -69,6 +69,9 @@ install_uv() {
         source "$HOME/.cargo/env"
     fi
 
+    # Add common uv installation paths to PATH
+    export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+
     if command_exists uv; then
         print_success "uv installed successfully"
     else
