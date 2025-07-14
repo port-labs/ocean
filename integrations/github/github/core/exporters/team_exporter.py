@@ -170,20 +170,93 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
         return all_member_nodes
 
     async def get_team_member_repositories(self, team_slug: str) -> RAW_ITEM:
+        team_data = None
+        all_members = {}
+        all_repos = {}
+        member_after = None
+        repo_after = None
+        members_complete = False
+        initial_repo_after = None
 
-        variables = {
-            "slug": team_slug,
-            "organization": self.client.organization,
-            "memberFirst": 25,
-        }
+        while True:
+            # If we're still paginating members, ensure repoAfter is None
+            if not members_complete:
+                repo_after = None
 
-        payload = self.client.build_graphql_payload(
-            SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL, variables
-        )
-        response = await self.client.send_api_request(
-            self.client.base_url, method="POST", json_data=payload
-        )
-        if not response:
-            return {}
+            variables = {
+                "slug": team_slug,
+                "organization": self.client.organization,
+                "memberFirst": self.MEMBER_PAGE_SIZE,
+                "memberAfter": member_after,
+                "repoFirst": self.MEMBER_PAGE_SIZE,
+                "repoAfter": repo_after,
+            }
 
-        return response["data"]["organization"]["team"]
+            payload = self.client.build_graphql_payload(
+                SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL, variables
+            )
+
+            response = await self.client.send_api_request(
+                self.client.base_url, method="POST", json_data=payload
+            )
+            if not response:
+                return {}
+
+            team = response.get("data", {}).get("organization", {}).get("team")
+            if team is None:
+                return {}
+
+            if team_data is None:
+                team_data = dict(team)
+
+            # Handle member pagination
+            members_data = team.get("members", {})
+            members_page_info = members_data.get("pageInfo", {})
+            for member in members_data.get("nodes", []):
+                all_members[member["id"]] = member
+
+            member_after = (
+                members_page_info.get("endCursor")
+                if members_page_info.get("hasNextPage")
+                else None
+            )
+
+            # Handle repository pagination
+            repos_data = team.get("repositories", {})
+            repos_page_info = repos_data.get("pageInfo", {})
+            for repo in repos_data.get("nodes", []):
+                all_repos[repo["id"]] = repo
+
+            # Store the initial repo_after value from the first page
+            if initial_repo_after is None:
+                initial_repo_after = (
+                    repos_page_info.get("endCursor")
+                    if repos_page_info.get("hasNextPage")
+                    else None
+                )
+
+            repo_after = (
+                repos_page_info.get("endCursor")
+                if repos_page_info.get("hasNextPage")
+                else None
+            )
+
+            # If member pagination is complete and we haven't started repo pagination yet
+            if not member_after and not members_complete:
+                members_complete = True
+                member_after = None
+                # Only start repo pagination if there is a next page for repos
+                if initial_repo_after is not None:
+                    repo_after = initial_repo_after
+                    continue
+                else:
+                    break
+
+            # Break if all pages fetched
+            if not member_after and not repo_after:
+                break
+
+        team_data["members"] = {"nodes": list(all_members.values())}
+        team_data["repositories"] = {"nodes": list(all_repos.values())}
+
+        return team_data
