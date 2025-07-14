@@ -261,22 +261,22 @@ async def test_get_service_dependencies(mock_datadog_client: DatadogClient) -> N
             {
                 "sourceService": "service_a",
                 "calledServices": ["service_b", "service_c"],
-                "description": f"Service dependencies for service_a",
+                "description": "Service dependencies for service_a",
             },
             {
                 "sourceService": "service_b",
                 "calledServices": ["service_o"],
-                "description": f"Service dependencies for service_b",
+                "description": "Service dependencies for service_b",
             },
             {
                 "sourceService": "service_c",
                 "calledServices": ["service_o"],
-                "description": f"Service dependencies for service_c",
+                "description": "Service dependencies for service_c",
             },
             {
                 "sourceService": "service_o",
                 "calledServices": [],
-                "description": f"Service dependencies for service_o",
+                "description": "Service dependencies for service_o",
             },
         ]
 
