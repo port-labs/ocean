@@ -1,6 +1,5 @@
 import os
 import psutil
-from math import ceil
 
 
 def get_memory_limit_mb():
@@ -35,4 +34,4 @@ workers = min(BY_MEM, BY_CPU)
 
 mem_per_worker = TOTAL_MEM_MB / workers
 max_requests = max(100, int(mem_per_worker))
-max_requests_jitter = max(ceil(max_requests / workers), 100)
+max_requests_jitter = max(10, min(100, int(max_requests * 0.1)))
