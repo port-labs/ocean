@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.0.6-beta (2025-07-09)
+
+
+### Improvements
+
+- Gracefully handle permission error when fetching external identities fail
+- Properly handle ignoring default errors in graphql client
+
+
 ## 1.0.5-beta (2025-07-09)
 
 
