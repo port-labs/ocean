@@ -12,8 +12,8 @@ from github.webhook.events import (
     COLLABORATOR_EVENTS,
     COLLABORATOR_UPSERT_EVENTS,
 )
-from github.webhook.webhook_processors.github_abstract_webhook_processor import (
-    _GithubAbstractWebhookProcessor,
+from github.webhook.webhook_processors.base_repository_webhook_processor import (
+    BaseRepositoryWebhookProcessor,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -23,9 +23,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class CollaboratorMembershipWebhookProcessor(_GithubAbstractWebhookProcessor):
+class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
+        return await self._validate_payload(payload)
+
+    async def _validate_payload(self, payload: EventPayload) -> bool:
 
         has_required_fields = not (
             {"action", "organization", "team", "member"} - payload.keys()
@@ -78,7 +81,10 @@ class CollaboratorMembershipWebhookProcessor(_GithubAbstractWebhookProcessor):
         async for batch in team_exporter.get_team_repositories_by_slug(
             SingleTeamOptions(slug=team_slug)
         ):
-            repositories.extend(batch)
+            for repo in batch:
+                if not await self.validate_repository_visibility(repo["visibility"]):
+                    continue
+                repositories.append(repo)
 
         list_data_to_upsert = self._enrich_collaborators_with_repositories(
             member, repositories

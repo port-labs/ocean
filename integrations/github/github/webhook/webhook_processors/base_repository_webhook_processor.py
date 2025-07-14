@@ -24,10 +24,13 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         if not repository.get("name"):
             return False
 
+        repository_visibility = repository.get("visibility")
+        return await self.validate_repository_visibility(repository_visibility)
+
+    async def validate_repository_visibility(self, repository_visibility: str) -> bool:
         configured_visibility = cast(
             GithubPortAppConfig, event.port_app_config
         ).repository_type
-        repository_visibility = repository.get("visibility")
 
         logger.debug(
             f"Validating repository webhook for repository with visibility '{repository_visibility}' against configured filter '{configured_visibility}'"

@@ -174,6 +174,7 @@ class TestCollaboratorMembershipWebhookProcessor:
         self,
         membership_webhook_processor: CollaboratorMembershipWebhookProcessor,
         resource_config: ResourceConfig,
+        mock_port_app_config: GithubPortAppConfig,
         action: str,
         expected_updated: bool,
         expected_deleted: bool,
@@ -184,8 +185,8 @@ class TestCollaboratorMembershipWebhookProcessor:
 
         # Mock the repositories data
         mock_repositories = [
-            {"name": "repo1", "full_name": "org/repo1"},
-            {"name": "repo2", "full_name": "org/repo2"},
+            {"name": "repo1", "full_name": "org/repo1", "visibility": "public"},
+            {"name": "repo2", "full_name": "org/repo2", "visibility": "public"},
         ]
 
         with patch(
@@ -211,9 +212,11 @@ class TestCollaboratorMembershipWebhookProcessor:
                     mock_get_team_repositories()
                 )
 
-                result = await membership_webhook_processor.handle_event(
-                    payload, resource_config
-                )
+                async with event_context("test_event") as event_context_obj:
+                    event_context_obj.port_app_config = mock_port_app_config
+                    result = await membership_webhook_processor.handle_event(
+                        payload, resource_config
+                    )
 
                 # Verify the result
                 assert isinstance(result, WebhookEventRawResults)
