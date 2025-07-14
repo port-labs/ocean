@@ -205,7 +205,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             if not response:
                 return {}
 
-            team = response.get("data", {}).get("organization", {}).get("team")
+            team = response["data"]["organization"]["team"]
             if team is None:
                 return {}
 

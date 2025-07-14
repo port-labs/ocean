@@ -179,20 +179,6 @@ fragment RepositoryFields on Repository {
 }
 """
 
-COLLABORATORS_FIELD = """
-collaborators(first: 25) {
-  nodes {
-    login
-    name
-    email
-    url
-  }
-  pageInfo {
-    ...PageInfoFields
-  }
-}
-"""
-
 
 TEAM_REPOSITORY_FRAGMENT = """
 fragment TeamRepositoryFields on Team {
