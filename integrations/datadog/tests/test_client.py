@@ -1,10 +1,15 @@
+import time
 import pytest
 from typing import Any
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from client import DatadogClient, MAX_PAGE_SIZE
+from client import (
+    FETCH_SERVICE_DEPENDENCY_INTERVAL_IN_SECONDS,
+    DatadogClient,
+    MAX_PAGE_SIZE,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -28,7 +33,10 @@ def mock_ocean_context() -> None:
 @pytest.fixture
 def mock_datadog_client() -> DatadogClient:
     return DatadogClient(
-        api_key="test_api_key", app_key="test_app_key", api_url="api.datadoghq.com"
+        api_key="test_api_key",
+        app_key="test_app_key",
+        api_url="api.datadoghq.com",
+        service_dependency_env="prod",
     )
 
 
@@ -230,3 +238,60 @@ async def test_create_webhooks_if_exists(mock_datadog_client: DatadogClient) -> 
             "https://example.com", "test_secret"
         )
         mock_send.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_service_dependencies(mock_datadog_client: DatadogClient) -> None:
+    expected_return_value = {
+        "servica_a": {"calls": ["service_b", "service_c"]},
+        "service_b": {"calls": ["service_o"]},
+        "service_c": {"calls": ["service_o"]},
+        "service_o": {"calls": []},
+    }
+    with patch.object(
+        mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = expected_return_value
+        service_dependency = await mock_datadog_client.get_service_dependencies()
+        assert service_dependency == expected_return_value
+
+        end = int(time.time())
+        start = end - FETCH_SERVICE_DEPENDENCY_INTERVAL_IN_SECONDS
+        mock_request.assert_called_with(
+            f"{mock_datadog_client.api_url}/api/v1/service_dependencies",
+            params={
+                "env": mock_datadog_client.service_dependency_env,
+                "start": start,
+                "end": end,
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_single_service_dependency(
+    mock_datadog_client: DatadogClient,
+) -> None:
+    expected_return_value = {
+        "called_by": ["service-a", "service-b"],
+        "calls": ["service-d", "service-e"],
+        "name": "service-c",
+    }
+    with patch.object(
+        mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = expected_return_value
+        service_dependency = await mock_datadog_client.get_single_service_dependency(
+            "service-a"
+        )
+        assert service_dependency == expected_return_value
+
+        end = int(time.time())
+        start = end - FETCH_SERVICE_DEPENDENCY_INTERVAL_IN_SECONDS
+        mock_request.assert_called_with(
+            f"{mock_datadog_client.api_url}/api/v1/service_dependencies/service-a",
+            params={
+                "env": mock_datadog_client.service_dependency_env,
+                "start": start,
+                "end": end,
+            },
+        )
