@@ -1,5 +1,6 @@
 from initialize_client import init_client
 from integration import ObjectKind
+from port_ocean.context.ocean import ocean
 from webhook_processors._abstract_webhook_processor import (
     _AbstractDatadogWebhookProcessor,
 )
@@ -29,10 +30,6 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
         ]
 
         should_process = event_type in service_related_events
-
-        logger.info(
-            f"Service dependency webhook processor: event_type={event_type}, should_process={should_process}"
-        )
         return should_process
 
     async def get_matching_kinds(self, _: WebhookEvent) -> list[str]:
@@ -42,42 +39,20 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
         self, payload: EventPayload, _: ResourceConfig
     ) -> WebhookEventRawResults:
         """Handle service dependency webhook events."""
-        try:
-            service_id = payload.get("service_id")
+        dd_client = init_client()
+        env = ocean.integration_config["datadog_service_dependency_env"]
+        service_dependency = await dd_client.get_single_service_dependency(
+            service_id=payload["service_id"], env=env
+        )
 
-            if service_id:
-                logger.info(
-                    f"Processing service dependency webhook for service: {service_id}"
-                )
-                dd_client = init_client()
-                service_dependency = await dd_client.get_single_service_dependency(
-                    service_id
-                )
-
-                if service_dependency:
-                    logger.info(
-                        f"Successfully fetched service dependency for {service_id}"
-                    )
-                    return WebhookEventRawResults(
-                        updated_raw_results=[service_dependency], deleted_raw_results=[]
-                    )
-
-            logger.warning(f"No service ID found in webhook payload: {payload}")
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        except Exception as e:
-            logger.error(
-                f"Error processing service dependency webhook: {str(e)}", exc_info=True
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
+        return WebhookEventRawResults(
+            updated_raw_results=[service_dependency] if service_dependency else [],
+            deleted_raw_results=[],
+        )
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         """Validate that the payload contains required fields for service dependency events."""
-        has_service_info = any(key in payload for key in ["service_id"])
+        has_service_info = "service_id" in payload
         has_event_info = "event_type" in payload
 
         is_valid = has_service_info and has_event_info

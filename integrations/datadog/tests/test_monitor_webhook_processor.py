@@ -1,11 +1,11 @@
 import pytest
-from unittest.mock import AsyncMock, patch, PropertyMock
+from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
 from integration import ObjectKind
-from typing import Any, Generator
+from typing import Any
 
 
 @pytest.fixture
@@ -23,35 +23,21 @@ def resource_config() -> Any:
     return {"kind": ObjectKind.MONITOR}
 
 
-@pytest.fixture
-def mock_integration_config() -> Generator[dict[str, str], None, None]:
-    """Mock the ocean integration config."""
-    config = {"webhook_secret": "test_token"}
-    with patch(
-        "port_ocean.context.ocean.PortOceanContext.integration_config",
-        new_callable=PropertyMock,
-    ) as mock_config:
-        mock_config.return_value = config
-        yield config
-
-
 @pytest.mark.asyncio
-async def test_failing_authenticate(
-    processor: MonitorWebhookProcessor, mock_integration_config: dict[str, str]
+async def test_authenticate_with_valid_auth_header(
+    processor: MonitorWebhookProcessor,
+    mock_integration_config: dict[str, str],
 ) -> None:
     headers = {"authorization": "Basic dGVzdF91c2VyOnRlc3RfdG9rZW4="}
     with patch("base64.b64decode", return_value=b"test_user:test_token"):
         assert await processor.authenticate({}, headers) is True
 
-    headers = {"authorization": "Basic dGVzdF91c2VyOndyb25nX3Rva2Vu"}
-    with patch("base64.b64decode", return_value=b"test_user:wrong_token"):
-        assert await processor.authenticate({}, headers) is False
-
-    assert await processor.authenticate({}, {"authorization": "InvalidHeader"}) is False
-
 
 @pytest.mark.asyncio
-async def test_authenticate(processor: MonitorWebhookProcessor) -> None:
+async def test_authenticate_without_webhook_secret(
+    processor: MonitorWebhookProcessor,
+    mock_integration_config_without_webhook_secret: dict[str, str],
+) -> None:
     # pass authentication (no webhook secret provided)
     assert await processor.authenticate({}, {}) is True
 

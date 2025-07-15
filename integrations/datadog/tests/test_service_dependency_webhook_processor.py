@@ -38,24 +38,27 @@ async def test_get_matching_kinds(
 async def test_validate_payload(processor: ServiceDependencyWebhookProcessor) -> None:
     assert (
         await processor.validate_payload(
-            {"event_type": "service_dependency", "service_id": "123"}
+            {"event_type": "service_check", "service_id": "123"}
         )
         is True
     )
 
     assert await processor.validate_payload({"service_id": "123"}) is False
 
-    assert (
-        await processor.validate_payload({"event_type": "service_dependency"}) is False
-    )
+    assert await processor.validate_payload({"event_type": "service_check"}) is False
 
 
 @pytest.mark.asyncio
 async def test_handle_event_with_service_dependency(
-    processor: ServiceDependencyWebhookProcessor, resource_config: Any
+    processor: ServiceDependencyWebhookProcessor,
+    resource_config: Any,
+    mock_integration_config: dict[str, str],
 ) -> None:
-    test_payload = {"event_type": "service_dependency", "service_id": "123"}
-    mock_service_dependency = {"id": "123", "name": "Test Service Dependency"}
+    test_payload = {"event_type": "service_check", "service_id": "123"}
+    mock_service_dependency = {
+        "service_id": "123",
+        "service_name": "Test Service Dependency",
+    }
 
     with patch(
         "webhook_processors.service_dependency_webhook_processor.init_client"
@@ -66,7 +69,9 @@ async def test_handle_event_with_service_dependency(
 
         result = await processor.handle_event(test_payload, resource_config)
 
-        mock_client.get_single_service_dependency.assert_awaited_once_with("123")
+        mock_client.get_single_service_dependency.assert_awaited_once_with(
+            service_id="123", env="prod"
+        )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == mock_service_dependency
         assert len(result.deleted_raw_results) == 0
@@ -74,9 +79,11 @@ async def test_handle_event_with_service_dependency(
 
 @pytest.mark.asyncio
 async def test_handle_event_without_service_dependency(
-    processor: ServiceDependencyWebhookProcessor, resource_config: Any
+    processor: ServiceDependencyWebhookProcessor,
+    resource_config: Any,
+    mock_integration_config: dict[str, str],
 ) -> None:
-    test_payload = {"event_type": "service_dependency", "service_id": "123"}
+    test_payload = {"event_type": "service_check", "service_id": "123"}
 
     with patch(
         "webhook_processors.service_dependency_webhook_processor.init_client"
@@ -87,6 +94,8 @@ async def test_handle_event_without_service_dependency(
 
         result = await processor.handle_event(test_payload, resource_config)
 
-        mock_client.get_single_service_dependency.assert_awaited_once_with("123")
+        mock_client.get_single_service_dependency.assert_awaited_once_with(
+            service_id="123", env="prod"
+        )
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0
