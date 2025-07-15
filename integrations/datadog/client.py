@@ -597,7 +597,6 @@ class DatadogClient:
                 else base_webhook_url
             )
 
-            # !fix: add the service dependency webhook to the body
             body = {
                 "name": webhook_name,
                 "url": modified_url,
