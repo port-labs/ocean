@@ -125,11 +125,13 @@ class TestRestDependabotAlertExporter:
             assert alert == expected_alert
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts/1"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts/1",
             )
 
     async def test_get_paginated_resources(
-        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+        self,
+        rest_client: GithubRestClient,
+        mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         # Create an async mock to return the test alerts
 
@@ -194,6 +196,7 @@ class TestRestDependabotAlertExporter:
     async def test_get_resource_with_different_alert_number(
         self, rest_client: GithubRestClient
     ) -> None:
+
         exporter = RestDependabotAlertExporter(rest_client)
 
         with patch.object(
@@ -213,5 +216,68 @@ class TestRestDependabotAlertExporter:
             assert alert["dismissed_reason"] == "no_bandwidth"
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts/2"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts/2",
             )
+
+    async def test_handle_request_with_dependabot_disabled_error(
+        self,
+        rest_client: GithubRestClient,
+    ) -> None:
+        """Test that _handle_request properly handles Dependabot disabled errors."""
+        exporter = RestDependabotAlertExporter(rest_client)
+
+        # Create a mock HTTP error that indicates Dependabot is disabled
+        mock_error = httpx.HTTPStatusError(
+            "403 Forbidden",
+            request=MagicMock(),
+            response=MagicMock(
+                status_code=403,
+                text="Dependabot alerts are disabled for this repository",
+            ),
+        )
+
+        # Mock the underlying HTTP client to raise the error
+        with patch.object(
+            rest_client.authenticator.client,
+            "request",
+            new_callable=AsyncMock,
+            side_effect=mock_error,
+        ):
+            result = await exporter.get_resource(
+                SingleDependabotAlertOptions(repo_name="test-repo", alert_number="1")
+            )
+
+            assert result == {"__repository": "test-repo"}
+
+    async def test_handle_request_paginated_with_dependabot_disabled_error(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Test that _handle_request properly handles Dependabot disabled errors for paginated requests."""
+        exporter = RestDependabotAlertExporter(rest_client)
+
+        # Create a mock HTTP error that indicates Dependabot is disabled
+        mock_error = httpx.HTTPStatusError(
+            "403 Forbidden",
+            request=MagicMock(),
+            response=MagicMock(
+                status_code=403,
+                text="Dependabot alerts are disabled for this repository",
+            ),
+        )
+
+        # Mock the underlying HTTP client to raise the error
+        with patch.object(
+            rest_client.authenticator.client,
+            "request",
+            new_callable=AsyncMock,
+            side_effect=mock_error,
+        ):
+            # Collect all results from the generator
+            results = []
+            async for batch in exporter.get_paginated_resources(
+                ListDependabotAlertOptions(repo_name="test-repo", state=["open"])
+            ):
+                results.extend(batch)
+
+            # Should return no results when the error is ignored
+            assert results == []

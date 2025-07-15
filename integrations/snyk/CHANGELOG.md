@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.49 (2025-07-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
+
+
+## 0.2.48 (2025-07-03)
+
+
+### Bug Fixes
+
+- Fixed pagination issue in Snyk client
+
+
+## 0.2.47 (2025-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.22
+
+
+## 0.2.46 (2025-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
+## 0.2.45 (2025-06-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+## 0.2.44 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
 ## 0.2.43 (2025-06-24)
 
 

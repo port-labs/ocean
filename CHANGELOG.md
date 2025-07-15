@@ -6,6 +6,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.25.3 (2025-07-15)
+
+### Bugfix
+
+- Fixed dockerfile's ocean user argument position to be under the last FROM
+
+
+## 0.25.2 (2025-07-13)
+
+### Improvements
+
+- Introduced Ocean user's id (999) as the default id for security purposes
+- Added rwX permissions to the Ocean user to write and read certificates
+- Fixed raise of issue with an entity which has a relation that the blueprint doesn't
+
+## 0.25.1 (2025-07-07)
+
+### Improvements
+
+- Add failed mapping if all values filtered out
+
+## 0.25.0 (2025-07-02)
+
+### Improvement
+
+- Added extraction of the deletion process from the main process if multi processing is enabled
+
+## 0.24.22 (2025-07-02)
+
+### Bug Fixes
+- Fix trailing slash issue
+
+## 0.24.21 (2025-06-30)
+
+### Bug Fixes
+- Fixed url in PUT metrics route
+
+## 0.24.20 (2025-06-26)
+
+### Improvements
+
+- Added resource kind to context of process initiation
+
+## 0.24.19 (2025-06-25)
+
+### Bug Fixes
+- Fixed issue with resync function not retuning the success value
+
 ## 0.24.18 (2025-06-23)
 
 ### Bug Fixes

@@ -6,6 +6,9 @@ features:
     section: Git
     resources:
       - kind: repository
+      - kind: folder
+      - kind: user
+      - kind: team
       - kind: workflow
       - kind: workflow-run
       - kind: pull-request
@@ -17,6 +20,7 @@ features:
       - kind: deployment
       - kind: dependabot-alert
       - kind: code-scanning-alerts
+      - kind: file
 configurations:
   - name: githubHost
     required: false

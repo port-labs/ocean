@@ -1,4 +1,7 @@
 from port_ocean.context.ocean import ocean
+from github.webhook.webhook_processors.folder_webhook_processor import (
+    FolderWebhookProcessor,
+)
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
@@ -22,6 +25,15 @@ from github.webhook.webhook_processors.environment_webhook_processor import (
 from github.webhook.webhook_processors.deployment_webhook_processor import (
     DeploymentWebhookProcessor,
 )
+from github.webhook.webhook_processors.team_member_webhook_processor import (
+    TeamMemberWebhookProcessor,
+)
+from github.webhook.webhook_processors.team_webhook_processor import (
+    TeamWebhookProcessor,
+)
+from github.webhook.webhook_processors.user_webhook_processor import (
+    UserWebhookProcessor,
+)
 from github.webhook.webhook_processors.workflow_run_webhook_processor import (
     WorkflowRunWebhookProcessor,
 )
@@ -33,6 +45,9 @@ from github.webhook.webhook_processors.dependabot_webhook_processor import (
 )
 from github.webhook.webhook_processors.code_scanning_alert_webhook_processor import (
     CodeScanningAlertWebhookProcessor,
+)
+from github.webhook.webhook_processors.file_webhook_processor import (
+    FileWebhookProcessor,
 )
 
 
@@ -50,3 +65,8 @@ def register_live_events_webhooks(path: str = "/webhook") -> None:
     ocean.add_webhook_processor(path, WorkflowWebhookProcessor)
     ocean.add_webhook_processor(path, DependabotAlertWebhookProcessor)
     ocean.add_webhook_processor(path, CodeScanningAlertWebhookProcessor)
+    ocean.add_webhook_processor(path, FolderWebhookProcessor)
+    ocean.add_webhook_processor(path, TeamWebhookProcessor)
+    ocean.add_webhook_processor(path, TeamMemberWebhookProcessor)
+    ocean.add_webhook_processor(path, UserWebhookProcessor)
+    ocean.add_webhook_processor(path, FileWebhookProcessor)

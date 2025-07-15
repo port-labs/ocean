@@ -1,3 +1,51 @@
+## 0.1.98-beta (2025-07-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
+
+
+## 0.1.97-beta (2025-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.22
+
+
+## 0.1.96-beta (2025-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
+## 0.1.95-beta (2025-06-26)
+
+
+### Improvements
+
+- Added beta suffix to version number
+
+
+## 0.1.95 (2025-06-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+## 0.1.94 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
 ## 0.1.93 (2025-06-24)
 
 

@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.112 (2025-07-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
+
+
+# Port_Ocean 0.1.111 (2025-07-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.22
+
+
+# Port_Ocean 0.1.110 (2025-06-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
+# Port_Ocean 0.1.109 (2025-06-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+# Port_Ocean 0.1.108 (2025-06-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
 # Port_Ocean 0.1.107 (2025-06-24)
 
 ### Improvements
