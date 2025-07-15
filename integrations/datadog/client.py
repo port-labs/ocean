@@ -1,8 +1,8 @@
 import asyncio
-import re
 import datetime
 import http
 import json
+import re
 import time
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
@@ -74,7 +74,6 @@ class DatadogClient:
         api_url: str,
         api_key: str,
         app_key: str,
-        service_dependency_env: str,
         access_token: Optional[str] = None,
     ):
         self.api_url = api_url
@@ -626,8 +625,6 @@ class DatadogClient:
                         "alert_type": "$ALERT_TYPE",
                         "tags": "$TAGS",
                         "body": "$EVENT_MSG",
-                        "dependency_change": "$EVENT_TYPE",
-                        "affected_services": "$HOSTNAME",
                     }
                 ),
             }

@@ -44,7 +44,6 @@ def mock_datadog_client() -> DatadogClient:
         api_key="test_api_key",
         app_key="test_app_key",
         api_url="api.datadoghq.com",
-        service_dependency_env="prod",
     )
 
 

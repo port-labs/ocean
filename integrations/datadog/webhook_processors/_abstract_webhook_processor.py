@@ -15,14 +15,15 @@ class _AbstractDatadogWebhookProcessor(AbstractWebhookProcessor):
         self, payload: EventPayload, headers: dict[str, Any]
     ) -> bool:
         webhook_secret = ocean.integration_config.get("webhook_secret")
-        logger.info(f"webhook secret is {webhook_secret}")
         if not webhook_secret:
             logger.info("No webhook secret found. Skipping authentication")
-            return True  # No authentication required if no secret is configured
+            return True
 
         authorization = headers.get("authorization")
         if not authorization:
-            logger.warning("No authorization header found in webhook request")
+            logger.warning(
+                "Webhook authentication failed due to missing Authorization header in the event"
+            )
             return False
 
         try:
