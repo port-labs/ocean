@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 import httpx
 from httpx import Response
 
-
 from loguru import logger
 
 from github.helpers.utils import IgnoredError
+from github.clients.rate_limiter import GitHubRateLimiter
 
 
 if TYPE_CHECKING:
@@ -22,12 +22,17 @@ class AbstractGithubClient(ABC):
         organization: str,
         github_host: str,
         authenticator: "AbstractGitHubAuthenticator",
+        max_retries: int = 5,
+        max_concurrent: int = 10,
         **kwargs: Any,
     ) -> None:
         self.organization = organization
         self.github_host = github_host
         self.authenticator = authenticator
         self.kwargs = kwargs
+        self.rate_limiter = GitHubRateLimiter(
+            max_retries=max_retries, max_concurrent=max_concurrent
+        )
 
     _DEFAULT_IGNORED_ERRORS = [
         IgnoredError(
@@ -73,6 +78,22 @@ class AbstractGithubClient(ABC):
                 return True
         return False
 
+    async def _make_raw_request(
+        self,
+        resource: str,
+        params: Optional[Dict[str, Any]] = None,
+        method: str = "GET",
+        json_data: Optional[Dict[str, Any]] = None,
+    ) -> Response:
+        """Make a raw HTTP request without rate limiting (used by rate limiter)."""
+        return await self.authenticator.client.request(
+            method=method,
+            url=resource,
+            params=params,
+            json=json_data,
+            headers=await self.headers,
+        )
+
     async def make_request(
         self,
         resource: str,
@@ -81,15 +102,15 @@ class AbstractGithubClient(ABC):
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> Response:
-        """Make a request to the GitHub API with error handling and rate limiting."""
+        """Make a request to the GitHub API with GitHub rate limiting and error handling."""
 
         try:
-            response = await self.authenticator.client.request(
-                method=method,
-                url=resource,
+            response = await self.rate_limiter.execute_request(
+                self._make_raw_request,
+                resource=resource,
                 params=params,
-                json=json_data,
-                headers=await self.headers,
+                method=method,
+                json_data=json_data,
             )
             response.raise_for_status()
 
@@ -123,6 +144,14 @@ class AbstractGithubClient(ABC):
             resource, params, method, json_data, ignored_errors
         )
         return response.json()
+
+    def get_rate_limit_status(self) -> Dict[str, Any]:
+        """Get current rate limit status for monitoring."""
+        return self.rate_limiter.get_rate_limit_status()
+
+    def log_rate_limit_status(self) -> None:
+        """Log current rate limit status for debugging."""
+        self.rate_limiter.log_rate_limit_status()
 
     @abstractmethod
     def send_paginated_request(
