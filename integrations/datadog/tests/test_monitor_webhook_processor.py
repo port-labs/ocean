@@ -1,11 +1,11 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
 from integration import ObjectKind
-from typing import Any
+from typing import Any, Generator
 
 
 @pytest.fixture
@@ -23,21 +23,25 @@ def resource_config() -> Any:
     return {"kind": ObjectKind.MONITOR}
 
 
+@pytest.fixture
+def mock_integration_config() -> Generator[dict[str, str], None, None]:
+    """Mock the ocean integration config."""
+    config = {"webhook_secret": "test_token"}
+    with patch(
+        "port_ocean.context.ocean.PortOceanContext.integration_config",
+        new_callable=PropertyMock,
+    ) as mock_config:
+        mock_config.return_value = config
+        yield config
+
+
 @pytest.mark.asyncio
-async def test_authenticate(
-    processor: MonitorWebhookProcessor,
-    monkeypatch: pytest.MonkeyPatch,
+async def test_failing_authenticate(
+    processor: MonitorWebhookProcessor, mock_integration_config: dict[str, str]
 ) -> None:
-    mock_ocean = MagicMock()
-    mock_config = MagicMock()
-    mock_config.integration.config = {}
-    mock_ocean.config = mock_config
-    monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean)
-
-    assert await processor.authenticate({}, {}) is True
-
-    mock_config.integration.config = {"webhook_secret": "test_token"}
     headers = {"authorization": "Basic dGVzdF91c2VyOnRlc3RfdG9rZW4="}
+    with patch("base64.b64decode", return_value=b"test_user:test_token"):
+        assert await processor.authenticate({}, headers) is True
 
     headers = {"authorization": "Basic dGVzdF91c2VyOndyb25nX3Rva2Vu"}
     with patch("base64.b64decode", return_value=b"test_user:wrong_token"):
@@ -45,6 +49,12 @@ async def test_authenticate(
 
     assert await processor.authenticate({}, {"authorization": "InvalidHeader"}) is False
 
+@pytest.mark.asyncio
+async def test_authenticate(
+    processor: MonitorWebhookProcessor
+) -> None:
+    # pass authentication (no webhook secret provided)
+    assert await processor.authenticate({}, {}) is True
 
 @pytest.mark.asyncio
 async def test_get_matching_kinds(

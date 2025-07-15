@@ -1,3 +1,4 @@
+from initialize_client import init_client
 from integration import ObjectKind
 from webhook_processors._abstract_webhook_processor import (
     _AbstractDatadogWebhookProcessor,
@@ -48,8 +49,9 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
                 logger.info(
                     f"Processing service dependency webhook for service: {service_id}"
                 )
-                service_dependency = (
-                    await self._webhook_client.get_single_service_dependency(service_id)
+                dd_client = init_client()
+                service_dependency = await dd_client.get_single_service_dependency(
+                    service_id
                 )
 
                 if service_dependency:

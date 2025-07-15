@@ -1,27 +1,26 @@
 import base64
 from loguru import logger
 from typing import Any
+
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload
-from initialize_client import init_client
 
 
 class _AbstractDatadogWebhookProcessor(AbstractWebhookProcessor):
 
-    _webhook_client = init_client()
-
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]
     ) -> bool:
-        authorization = headers.get("authorization")
         webhook_secret = ocean.integration_config.get("webhook_secret")
-
+        logger.info(f"webhook secret is {webhook_secret}")
         if not webhook_secret:
+            logger.info("No webhook secret found. Skipping authentication")
             return True  # No authentication required if no secret is configured
 
+        authorization = headers.get("authorization")
         if not authorization:
             logger.warning("No authorization header found in webhook request")
             return False

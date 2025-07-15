@@ -1,3 +1,4 @@
+from initialize_client import init_client
 from webhook_processors._abstract_webhook_processor import (
     _AbstractDatadogWebhookProcessor,
 )
@@ -20,7 +21,8 @@ class MonitorWebhookProcessor(_AbstractDatadogWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        monitor = await self._webhook_client.get_single_monitor(payload["alert_id"])
+        dd_client = init_client()
+        monitor = await dd_client.get_single_monitor(payload["alert_id"])
 
         return WebhookEventRawResults(
             updated_raw_results=[monitor] if monitor else [],
