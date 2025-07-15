@@ -3,7 +3,7 @@ from inspect import getmembers
 from typing import Dict, Any, Type
 
 from pydantic import BaseModel
-from gunicorn.app.base import BaseApplication
+from gunicorn.app.base import BaseApplication  # type: ignore
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
@@ -74,18 +74,18 @@ def run(
         Embeds Gunicorn so we can pass a pre-built `app` object.
         """
 
-        def __init__(self, app, options):
+        def __init__(self, app: object, options: dict[str, Any]) -> None:
             self._application = app
             self._options = options or {}
             super().__init__()
 
         # gunicorn hook overrides
-        def load_config(self):
+        def load_config(self) -> None:
             cfg = self.cfg
             for k, v in self._options.items():
                 cfg.set(k, v)
 
-        def load(self):
+        def load(self) -> object:
             return self._application
 
     _GunicornApp(app, gunicorn_options).run()

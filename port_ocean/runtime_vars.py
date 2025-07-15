@@ -2,7 +2,7 @@ import os
 import psutil
 
 
-def get_memory_limit_mb():
+def get_memory_limit_mb() -> float:
     # cgroup v2
     try:
         with open("/sys/fs/cgroup/memory.max") as f:
@@ -20,7 +20,7 @@ def get_memory_limit_mb():
             return psutil.virtual_memory().total // (1024 * 1024)
 
 
-def estimate_worker_rss_mb():
+def estimate_worker_rss_mb() -> float:
     """Measure this process’s RSS once imports have settled."""
     rss_bytes = psutil.Process(os.getpid()).memory_info().rss
     return max(rss_bytes // (1024 * 1024), 50)  # floor at 50 MB
