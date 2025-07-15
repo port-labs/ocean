@@ -85,6 +85,9 @@ class ServiceDependencyWebhookProcessor(AbstractWebhookProcessor):
         authorization = headers.get("authorization")
         webhook_secret = ocean.integration_config.get("webhook_secret")
 
+        if not webhook_secret:
+            return True  # No authentication required if no secret is configured
+
         if not authorization:
             logger.warning("No authorization header found in webhook request")
             return False
