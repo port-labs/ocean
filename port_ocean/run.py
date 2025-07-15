@@ -3,8 +3,8 @@ from inspect import getmembers
 from typing import Dict, Any, Type
 
 from pydantic import BaseModel
-from gunicorn.app.base import BaseApplication
-import uvicorn  # type: ignore
+from gunicorn.app.base import BaseApplication  # type: ignore
+import uvicorn
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
