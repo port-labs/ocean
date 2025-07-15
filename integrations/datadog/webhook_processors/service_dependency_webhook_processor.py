@@ -1,13 +1,8 @@
-import base64
-from typing import Any
-
-from initialize_client import init_client
 from integration import ObjectKind
-from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-    AbstractWebhookProcessor,
+from webhook_processors._abstract_webhook_processor import (
+    _AbstractDatadogWebhookProcessor,
 )
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -16,7 +11,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from loguru import logger
 
 
-class ServiceDependencyWebhookProcessor(AbstractWebhookProcessor):
+class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         """Only process events that are related to service dependencies."""
         payload = event.payload
@@ -53,9 +48,8 @@ class ServiceDependencyWebhookProcessor(AbstractWebhookProcessor):
                 logger.info(
                     f"Processing service dependency webhook for service: {service_id}"
                 )
-                dd_client = init_client()
-                service_dependency = await dd_client.get_single_service_dependency(
-                    service_id
+                service_dependency = (
+                    await self._webhook_client.get_single_service_dependency(service_id)
                 )
 
                 if service_dependency:
@@ -78,37 +72,6 @@ class ServiceDependencyWebhookProcessor(AbstractWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
-
-    async def authenticate(
-        self, payload: EventPayload, headers: dict[str, Any]
-    ) -> bool:
-        authorization = headers.get("authorization")
-        webhook_secret = ocean.integration_config.get("webhook_secret")
-
-        if not webhook_secret:
-            return True  # No authentication required if no secret is configured
-
-        if not authorization:
-            logger.warning("No authorization header found in webhook request")
-            return False
-
-        try:
-            auth_type, encoded_token = authorization.split(" ", 1)
-            if auth_type.lower() != "basic":
-                logger.warning(f"Invalid authorization type: {auth_type}")
-                return False
-
-            decoded = base64.b64decode(encoded_token).decode("utf-8")
-            _, token = decoded.split(":", 1)
-            is_valid = token == webhook_secret
-
-            if not is_valid:
-                logger.warning("Invalid webhook secret")
-
-            return is_valid
-        except (ValueError, UnicodeDecodeError) as e:
-            logger.warning(f"Error decoding authorization header: {str(e)}")
-            return False
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         """Validate that the payload contains required fields for service dependency events."""
