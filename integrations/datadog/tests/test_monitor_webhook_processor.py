@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, patch, PropertyMock
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
@@ -49,12 +49,12 @@ async def test_failing_authenticate(
 
     assert await processor.authenticate({}, {"authorization": "InvalidHeader"}) is False
 
+
 @pytest.mark.asyncio
-async def test_authenticate(
-    processor: MonitorWebhookProcessor
-) -> None:
+async def test_authenticate(processor: MonitorWebhookProcessor) -> None:
     # pass authentication (no webhook secret provided)
     assert await processor.authenticate({}, {}) is True
+
 
 @pytest.mark.asyncio
 async def test_get_matching_kinds(
