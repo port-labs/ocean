@@ -488,7 +488,9 @@ class DatadogClient:
                 result.update(
                     {
                         SERVICE_KEY: service_id,
-                        QUERY_ID_KEY: f"{query}/{service_tag}:{service_id}/{env_tag}:{env_to_fetch}",
+                        QUERY_ID_KEY: (
+                            f"{query}/{service_tag}:{service_id}/{env_tag}:{env_to_fetch}"
+                        ),
                         QUERY_KEY: query,
                         ENV_KEY: env_to_fetch,
                     }
