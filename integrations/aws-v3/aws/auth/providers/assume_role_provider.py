@@ -69,3 +69,47 @@ class AssumeRoleProvider(CredentialProvider):
         assumed_session = AioSession()
         setattr(assumed_session, "_credentials", assumed_role_credentials)
         return assumed_session
+
+
+# class AssumeRoleWithWebIdentityProvider(CredentialProvider):
+#     """
+#     A credential provider that provides temporary credentials for assuming a role with a web identity.
+#     """
+
+#     @property
+#     def is_refreshable(self) -> bool:
+#         return True
+
+
+#     async def get_credentials(self, **kwargs: Any) -> AioRefreshableCredentials:
+#         try:
+#             async with self.aws_client_factory_session.create_client(
+#                 "sts", region_name=kwargs.get("region")
+#             ) as sts_client:
+#                 role_arn = kwargs["role_arn"]
+#                 assume_role_params = {
+#                     "RoleArn": role_arn,
+#                     "RoleSessionName": kwargs.get(
+#                         "role_session_name", "OceanRoleSession"
+#                     ),
+#                 }
+
+#                 if "external_id" in kwargs:
+#                     assume_role_params["ExternalId"] = kwargs["external_id"]
+
+#                 refresher = create_assume_role_refresher(
+#                     sts_client,
+#                     assume_role_params,
+#                 )
+#                 metadata = await refresher()
+#                 assumed_role_credentials = (
+#                     AioRefreshableCredentials.create_from_metadata(
+#                         metadata=metadata,
+#                         refresh_using=refresher,
+#                         method="sts-assume-role-with-web-identity",
+#                     )
+#                 )
+#                 return assumed_role_credentials
+#         except Exception as e:
+#             logger.error(f"Failed to assume role with web identity: {e}")
+#             raise CredentialsProviderError(f"Failed to assume role with web identity: {e}") from e
