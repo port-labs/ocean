@@ -3,6 +3,7 @@ ARG BASE_RUNNER_PYTHON_IMAGE=ghcr.io/port-labs/port-ocean-base-runner:latest
 
 FROM ${BASE_BUILDER_PYTHON_IMAGE} AS base
 
+ARG OCEAN_USER_ID=999
 ARG BUILD_CONTEXT
 ARG BUILDPLATFORM
 
@@ -19,7 +20,7 @@ RUN poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
 FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
 
-RUN groupadd -r appgroup && useradd -r -g appgroup -m ocean
+RUN groupadd -r appgroup && useradd -r -g appgroup -m -u ${OCEAN_USER_ID} ocean
 
 RUN mkdir -p /tmp/ocean
 
@@ -38,6 +39,7 @@ RUN apt-get update \
         ca-certificates \
         openssl \
         curl \
+        acl \
     && apt-get clean
 
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
@@ -64,7 +66,8 @@ RUN chmod a+x /app/.venv/bin/ocean
 
 RUN chmod a+x /app/init.sh
 RUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
-
+# Add ocean user to ssl certs group
+RUN setfacl -m u:ocean:rwX /etc/ssl/certs
 USER ocean
 # Run the application
 CMD ["bash", "/app/init.sh"]
