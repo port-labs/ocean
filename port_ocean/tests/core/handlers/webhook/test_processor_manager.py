@@ -37,7 +37,10 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.models import Entity
-from port_ocean.exceptions.webhook_processor import RetryableError
+from port_ocean.exceptions.webhook_processor import (
+    RetryableError,
+    WebhookEventNotSupportedError,
+)
 from port_ocean.core.handlers.queue import LocalQueue
 
 
@@ -354,7 +357,9 @@ async def test_extractMatchingProcessors_noMatch(
     test_path = "/test"
     processor_manager.register_processor(test_path, MockProcessorFalse)
 
-    with pytest.raises(ValueError, match="No matching processors found"):
+    with pytest.raises(
+        WebhookEventNotSupportedError, match="No matching processors found"
+    ):
         async with event_context(
             EventType.HTTP_REQUEST, trigger_type="request"
         ) as event:
@@ -407,6 +412,82 @@ async def test_extractMatchingProcessors_onlyOneMatches(
     assert config.kind == "repository"
     assert processor.event != webhook_event
     assert processor.event.payload == webhook_event.payload
+
+
+@pytest.mark.asyncio
+async def test_extractMatchingProcessors_noProcessorsRegistered(
+    processor_manager: LiveEventsProcessorManager,
+    webhook_event: WebhookEvent,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    """Test that WebhookEventNotSupportedError is raised for unknown events without any registered processors"""
+    test_path = "/unknown_path"
+    # No processors registered for this path
+
+    # Manually add the path to _processors_classes to simulate a path with no processors
+    processor_manager._processors_classes[test_path] = []
+
+    with pytest.raises(
+        WebhookEventNotSupportedError, match="No matching processors found"
+    ):
+        async with event_context(
+            EventType.HTTP_REQUEST, trigger_type="request"
+        ) as event:
+            event.port_app_config = mock_port_app_config
+            await processor_manager._extract_matching_processors(
+                webhook_event, test_path
+            )
+
+
+@pytest.mark.asyncio
+async def test_extractMatchingProcessors_processorsAvailableButKindsNotConfigured(
+    processor_manager: LiveEventsProcessorManager,
+    webhook_event: WebhookEvent,
+) -> None:
+    """Test that processors available but kinds not configured returns empty list"""
+    test_path = "/test"
+
+    from port_ocean.core.handlers.port_app_config.models import (
+        PortAppConfig,
+        ResourceConfig,
+    )
+
+    # Create a mock processor that will match the event but return a kind not in the port app config
+    class MockProcessorWithUnmappedKind(AbstractWebhookProcessor):
+        async def authenticate(
+            self, payload: Dict[str, Any], headers: Dict[str, str]
+        ) -> bool:
+            return True
+
+        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+            return True
+
+        async def handle_event(
+            self, payload: EventPayload, resource: ResourceConfig
+        ) -> WebhookEventRawResults:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        async def should_process_event(self, event: WebhookEvent) -> bool:
+            return True  # This processor will match
+
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+            return ["unmapped_kind"]  # This kind is not in the mock_port_app_config
+
+    processor_manager.register_processor(test_path, MockProcessorWithUnmappedKind)
+
+    empty_port_app_config = PortAppConfig(
+        resources=[],
+    )
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
+        event.port_app_config = empty_port_app_config
+        processors = await processor_manager._extract_matching_processors(
+            webhook_event, test_path
+        )
+
+    assert len(processors) == 0
 
 
 def test_registerProcessor_registrationWorks(
@@ -853,7 +934,10 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
     except asyncio.TimeoutError:
         pytest.fail("Event processing timed out")
 
-    assert isinstance(test_state["exception_thrown"], ValueError) is True
+    assert (
+        isinstance(test_state["exception_thrown"], WebhookEventNotSupportedError)
+        is True
+    )
 
     mock_upsert.assert_not_called()
     mock_delete.assert_not_called()
