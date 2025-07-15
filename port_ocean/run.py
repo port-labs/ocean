@@ -3,7 +3,8 @@ from inspect import getmembers
 from typing import Dict, Any, Type
 
 from pydantic import BaseModel
-from gunicorn.app.base import BaseApplication  # type: ignore
+from gunicorn.app.base import BaseApplication
+import uvicorn  # type: ignore
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
@@ -59,33 +60,36 @@ def run(
         app.config.initialize_port_resources = initialize_port_resources
     initialize_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config)
 
-    gunicorn_options = {
-        "bind": f"0.0.0.0:{application_settings.port}",
-        "workers": workers,
-        "worker_class": "uvicorn.workers.UvicornWorker",
-        "loglevel": application_settings.log_level.lower(),
-        "max_requests": max_requests,
-        "max_requests_jitter": max_requests_jitter,
-        "timeout": 30,
-    }
+    if app.config.event_listener.should_resync is False:
+        gunicorn_options = {
+            "bind": f"0.0.0.0:{application_settings.port}",
+            "workers": workers,
+            "worker_class": "uvicorn.workers.UvicornWorker",
+            "loglevel": application_settings.log_level.lower(),
+            "max_requests": max_requests,
+            "max_requests_jitter": max_requests_jitter,
+            "timeout": 30,
+        }
 
-    class _GunicornApp(BaseApplication):
-        """
-        Embeds Gunicorn so we can pass a pre-built `app` object.
-        """
+        class _GunicornApp(BaseApplication):
+            """
+            Embeds Gunicorn so we can pass a pre-built `app` object.
+            """
 
-        def __init__(self, app: object, options: dict[str, Any]) -> None:
-            self._application = app
-            self._options = options or {}
-            super().__init__()
+            def __init__(self, app: object, options: dict[str, Any]) -> None:
+                self._application = app
+                self._options = options or {}
+                super().__init__()
 
-        # gunicorn hook overrides
-        def load_config(self) -> None:
-            cfg = self.cfg
-            for k, v in self._options.items():
-                cfg.set(k, v)
+            # gunicorn hook overrides
+            def load_config(self) -> None:
+                cfg = self.cfg
+                for k, v in self._options.items():
+                    cfg.set(k, v)
 
-        def load(self) -> object:
-            return self._application
+            def load(self) -> object:
+                return self._application
 
-    _GunicornApp(app, gunicorn_options).run()
+        _GunicornApp(app, gunicorn_options).run()
+    else:
+        uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
