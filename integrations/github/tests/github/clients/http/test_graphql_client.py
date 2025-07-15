@@ -22,8 +22,8 @@ class TestGithubGraphQLClient:
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "errors": [
-                {"message": "Error 1", "path": ["field1"]},
-                {"message": "Error 2", "path": ["field2"]},
+                {"message": "Error 1", "path": ["field1"], "type": "CUSTOM_ERROR_1"},
+                {"message": "Error 2", "path": ["field2"], "type": "CUSTOM_ERROR_2"},
             ]
         }
 
