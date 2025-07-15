@@ -610,6 +610,7 @@ class DatadogClient:
                         "last_updated": "$LAST_UPDATED",
                         "event_type": "$EVENT_TYPE",
                         "event_url": "$LINK",
+                        "service" : "$HOSTNAME",
                         "service_id": "$SERVICE_ID",
                         "service_name": "$SERVICE_NAME",
                         "creator": "$USER",
