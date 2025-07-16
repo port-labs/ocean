@@ -1,6 +1,7 @@
 import pickle
 import os
 from typing import Any
+from loguru import logger
 
 
 class FileIPC:
@@ -22,8 +23,22 @@ class FileIPC:
     def load(self) -> Any:
         if not os.path.exists(self.file_path):
             return self.default_return
-        with open(self.file_path, "rb") as f:
-            return pickle.load(f)
+
+        try:
+            with open(self.file_path, "rb") as f:
+                return pickle.load(f)
+        except (
+            pickle.PickleError,
+            EOFError,
+            OSError,
+            TypeError,
+            AttributeError,
+            ImportError,
+        ) as e:
+            logger.warning(
+                f"Failed to load IPC data from {self.file_path}: {str(e)}. Returning default value."
+            )
+            return self.default_return
 
     def delete(self) -> None:
         if os.path.exists(self.file_path):
