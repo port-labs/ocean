@@ -323,14 +323,25 @@ class TestGetAllAccountSessions:
                 with patch.object(
                     SingleAccountStrategy, "healthcheck", new=fake_healthcheck
                 ):
-                    strategy = await ResyncStrategyFactory.create()
-                    sessions = []
-                    async for account_info, session in strategy.get_account_sessions():
-                        sessions.append((account_info, session))
-                    assert len(sessions) == 1
-                    assert sessions[0][0]["Id"] == "123456789012"
-                    assert sessions[0][0]["Name"] == "Account 123456789012"
-                    assert sessions[0][1] == mock_session
+                    with patch(
+                        "aws.auth.session_factory.ResyncStrategyFactory.create",
+                        new=AsyncMock(
+                            return_value=SingleAccountStrategy(
+                                StaticCredentialProvider(), mock_single_account_config
+                            )
+                        ),
+                    ):
+                        strategy = await ResyncStrategyFactory.create()
+                        sessions = []
+                        async for (
+                            account_info,
+                            session,
+                        ) in strategy.get_account_sessions():
+                            sessions.append((account_info, session))
+                        assert len(sessions) == 1
+                        assert sessions[0][0]["Id"] == "123456789012"
+                        assert sessions[0][0]["Name"] == "Account 123456789012"
+                        assert sessions[0][1] == mock_session
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_multi_account_success(
@@ -361,15 +372,26 @@ class TestGetAllAccountSessions:
                 with patch.object(
                     MultiAccountStrategy, "healthcheck", new=fake_healthcheck
                 ):
-                    strategy = await ResyncStrategyFactory.create()
-                    sessions = []
-                    async for account_info, session in strategy.get_account_sessions():
-                        sessions.append((account_info, session))
-                    assert len(sessions) == 2
-                    assert sessions[0][0]["Id"] == "123456789012"
-                    assert sessions[1][0]["Id"] == "987654321098"
-                    assert sessions[0][1] == mock_session_1
-                    assert sessions[1][1] == mock_session_2
+                    with patch(
+                        "aws.auth.session_factory.ResyncStrategyFactory.create",
+                        new=AsyncMock(
+                            return_value=MultiAccountStrategy(
+                                AssumeRoleProvider(), mock_multi_account_config
+                            )
+                        ),
+                    ):
+                        strategy = await ResyncStrategyFactory.create()
+                        sessions = []
+                        async for (
+                            account_info,
+                            session,
+                        ) in strategy.get_account_sessions():
+                            sessions.append((account_info, session))
+                        assert len(sessions) == 2
+                        assert sessions[0][0]["Id"] == "123456789012"
+                        assert sessions[1][0]["Id"] == "987654321098"
+                        assert sessions[0][1] == mock_session_1
+                        assert sessions[1][1] == mock_session_2
 
 
 @pytest.fixture
