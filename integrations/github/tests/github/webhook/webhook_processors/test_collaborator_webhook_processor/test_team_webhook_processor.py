@@ -204,16 +204,16 @@ class TestCollaboratorTeamWebhookProcessor:
             mock_client = MagicMock()
             mock_create_client.return_value = mock_client
 
-            # Mock GraphQLTeamWithMembersExporter
+            # Mock GraphQLTeamMembersAndReposExporter
             with patch(
-                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.GraphQLTeamWithMembersExporter"
+                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.GraphQLTeamMembersAndReposExporter"
             ) as mock_graphql_team_exporter_class:
                 mock_graphql_team_exporter = MagicMock()
                 mock_graphql_team_exporter_class.return_value = (
                     mock_graphql_team_exporter
                 )
 
-                mock_graphql_team_exporter.get_team_member_repositories = AsyncMock(
+                mock_graphql_team_exporter.get_resource = AsyncMock(
                     return_value=mock_team_data
                 )
 
@@ -252,13 +252,13 @@ class TestCollaboratorTeamWebhookProcessor:
                     )
 
                     # Verify team exporter was called
-                    mock_graphql_team_exporter.get_team_member_repositories.assert_called_once_with(
-                        "test-team"
+                    mock_graphql_team_exporter.get_resource.assert_called_once_with(
+                        {"slug": "test-team"}
                     )
                 else:
                     # For unsupported events, no exporters should be called
                     mock_create_client.assert_not_called()
-                    mock_graphql_team_exporter.get_team_member_repositories.assert_not_called()
+                    mock_graphql_team_exporter.get_resource.assert_not_called()
 
     async def test_handle_event_no_team_data(
         self,
@@ -275,18 +275,16 @@ class TestCollaboratorTeamWebhookProcessor:
             mock_client = MagicMock()
             mock_create_client.return_value = mock_client
 
-            # Mock GraphQLTeamWithMembersExporter returning None
+            # Mock GraphQLTeamMembersAndReposExporter returning None
             with patch(
-                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.GraphQLTeamWithMembersExporter"
+                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.GraphQLTeamMembersAndReposExporter"
             ) as mock_graphql_team_exporter_class:
                 mock_graphql_team_exporter = MagicMock()
                 mock_graphql_team_exporter_class.return_value = (
                     mock_graphql_team_exporter
                 )
 
-                mock_graphql_team_exporter.get_team_member_repositories = AsyncMock(
-                    return_value=None
-                )
+                mock_graphql_team_exporter.get_resource = AsyncMock(return_value=None)
 
                 result = await team_webhook_processor.handle_event(
                     payload, resource_config

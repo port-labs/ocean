@@ -14,6 +14,7 @@ from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.team_exporter import (
     RestTeamExporter,
     GraphQLTeamWithMembersExporter,
+    GraphQLTeamMembersAndReposExporter,
 )
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
@@ -361,6 +362,18 @@ class TestGraphQLTeamExporter:
                 member_page_size=MEMBER_PAGE_SIZE_IN_EXPORTER,
             )
 
+
+class TestGraphQLTeamMembersAndReposExporter:
+
+    @pytest.fixture(autouse=True)
+    def patch_page_size(self) -> Iterator[None]:
+        with patch.object(
+            GraphQLTeamMembersAndReposExporter,
+            "PAGE_SIZE",
+            MEMBER_PAGE_SIZE_IN_EXPORTER,
+        ):
+            yield
+
     async def test_get_team_member_repositories_no_pagination(
         self, graphql_client: GithubGraphQLClient
     ) -> None:
@@ -424,13 +437,13 @@ class TestGraphQLTeamExporter:
             {"data": {"organization": {"team": team_with_members_and_repos}}}
         )
 
-        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
         with patch.object(
             graphql_client,
             "send_api_request",
             new=AsyncMock(return_value=mock_response_data),
         ) as mock_request:
-            result = await exporter.get_team_member_repositories("team-gamma")
+            result = await exporter.get_resource(SingleTeamOptions(slug="team-gamma"))
 
             assert result == expected_result
             mock_request.assert_called_once()
@@ -556,11 +569,11 @@ class TestGraphQLTeamExporter:
             ]
         )
 
-        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
         with patch.object(
             graphql_client, "send_api_request", new=mock_send_api_request
         ):
-            result = await exporter.get_team_member_repositories("team-delta")
+            result = await exporter.get_resource(SingleTeamOptions(slug="team-delta"))
 
             assert result == expected_result
             assert mock_send_api_request.call_count == 2
@@ -734,11 +747,11 @@ class TestGraphQLTeamExporter:
             ]
         )
 
-        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
         with patch.object(
             graphql_client, "send_api_request", new=mock_send_api_request
         ):
-            result = await exporter.get_team_member_repositories("team-epsilon")
+            result = await exporter.get_resource(SingleTeamOptions(slug="team-epsilon"))
 
             assert result == expected_result
             assert mock_send_api_request.call_count == 2
@@ -945,11 +958,11 @@ class TestGraphQLTeamExporter:
             ]
         )
 
-        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
         with patch.object(
             graphql_client, "send_api_request", new=mock_send_api_request
         ):
-            result = await exporter.get_team_member_repositories("team-zeta")
+            result = await exporter.get_resource(SingleTeamOptions(slug="team-zeta"))
 
             assert result == expected_result
             assert mock_send_api_request.call_count == 3
@@ -1012,13 +1025,13 @@ class TestGraphQLTeamExporter:
         self, graphql_client: GithubGraphQLClient
     ) -> None:
         """Test get_team_member_repositories when the API returns an empty response."""
-        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
         with patch.object(
             graphql_client,
             "send_api_request",
             new=AsyncMock(return_value=None),
         ) as mock_request:
-            result = await exporter.get_team_member_repositories("team-empty")
+            result = await exporter.get_resource(SingleTeamOptions(slug="team-empty"))
 
             assert result == {}
             mock_request.assert_called_once()
@@ -1029,13 +1042,15 @@ class TestGraphQLTeamExporter:
         """Test get_team_member_repositories when the team is not found."""
         mock_response_data = {"data": {"organization": {"team": None}}}
 
-        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
         with patch.object(
             graphql_client,
             "send_api_request",
             new=AsyncMock(return_value=mock_response_data),
         ) as mock_request:
-            result = await exporter.get_team_member_repositories("team-not-found")
+            result = await exporter.get_resource(
+                SingleTeamOptions(slug="team-not-found")
+            )
 
             # The method should handle None team gracefully
             assert result == {}

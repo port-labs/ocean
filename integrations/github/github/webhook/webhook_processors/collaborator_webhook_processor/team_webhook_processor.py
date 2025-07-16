@@ -2,7 +2,7 @@ from loguru import logger
 
 from github.clients.client_factory import create_github_client
 from github.core.exporters.team_exporter import (
-    GraphQLTeamWithMembersExporter,
+    GraphQLTeamMembersAndReposExporter,
 )
 from github.helpers.utils import GithubClientType, ObjectKind
 from github.webhook.events import (
@@ -17,6 +17,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
+from github.core.options import SingleTeamOptions
 
 
 class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
@@ -58,8 +59,8 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         graphql_client = create_github_client(client_type=GithubClientType.GRAPHQL)
-        team_exporter = GraphQLTeamWithMembersExporter(graphql_client)
-        team_data = await team_exporter.get_team_member_repositories(team_slug)
+        team_exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
+        team_data = await team_exporter.get_resource(SingleTeamOptions(slug=team_slug))
 
         if not team_data:
             logger.warning(f"No team data returned for team {team_slug}")
