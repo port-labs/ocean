@@ -1,5 +1,6 @@
+import time
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
 from integration import ObjectKind
@@ -23,7 +24,12 @@ def processor(mock_event: WebhookEvent) -> ServiceDependencyWebhookProcessor:
 
 @pytest.fixture
 def resource_config() -> Any:
-    return {"kind": ObjectKind.SERVICE_DEPENDENCY}
+    mock_resource_config = MagicMock()
+    mock_resource_config.kind = ObjectKind.SERVICE_DEPENDENCY
+    mock_resource_config.selector.environment = "prod"
+    mock_resource_config.selector.start_time = time.monotonic_ns() - 60 * 60
+
+    return mock_resource_config
 
 
 @pytest.mark.asyncio
@@ -70,7 +76,9 @@ async def test_handle_event_with_service_dependency(
         result = await processor.handle_event(test_payload, resource_config)
 
         mock_client.get_single_service_dependency.assert_awaited_once_with(
-            service_id="123", env="prod"
+            service_id="123",
+            env=resource_config.selector.environment,
+            start_time=resource_config.selector.start_time,
         )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == mock_service_dependency
@@ -81,7 +89,6 @@ async def test_handle_event_with_service_dependency(
 async def test_handle_event_without_service_dependency(
     processor: ServiceDependencyWebhookProcessor,
     resource_config: Any,
-    mock_integration_config: dict[str, str],
 ) -> None:
     test_payload = {"event_type": "service_check", "service_id": "123"}
 
@@ -93,9 +100,10 @@ async def test_handle_event_without_service_dependency(
         mock_init.return_value = mock_client
 
         result = await processor.handle_event(test_payload, resource_config)
-
         mock_client.get_single_service_dependency.assert_awaited_once_with(
-            service_id="123", env="prod"
+            service_id="123",
+            env=resource_config.selector.environment,
+            start_time=resource_config.selector.start_time,
         )
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0

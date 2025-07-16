@@ -568,7 +568,7 @@ class DatadogClient:
 
     async def _webhook_exists(self, webhook_url: str) -> bool:
         try:
-            webhook = await self._send_api_request(url=webhook_url, method="GET")
+            webhook = await self._send_api_request(url=webhook_url)
             return bool(webhook)
 
         except httpx.HTTPStatusError as err:
@@ -583,6 +583,8 @@ class DatadogClient:
 
         webhook_name = "PORT"
         dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
+        # !todo remove this
+        logger.info(f"webhook before call => {dd_webhook_url}")
 
         try:
             if await self._webhook_exists(dd_webhook_url):

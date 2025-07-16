@@ -48,11 +48,6 @@ configurations:
     type: string
     required: false
     sensitive: true
-  - name: datadogServiceDependencyEnv
-    description: Datadog service dependency environment. This is used as a required query parameter for retrieving service dependencies. To learn mode see the <a target="_blank" href="https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies">Datadog documentation</a>.
-    type: string
-    required: false
-    default: "prod"
 
 saas:
   enabled: true
