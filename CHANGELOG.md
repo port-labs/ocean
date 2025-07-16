@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.25.3 (2025-07-16)
+
+### Improvements
+
+- Add logging for integrations's response body size.
+
 ## 0.25.3 (2025-07-15)
 
 ### Bugfix
