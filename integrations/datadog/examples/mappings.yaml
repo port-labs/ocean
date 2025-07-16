@@ -100,12 +100,11 @@ resources:
     port:
       entity:
         mappings:
-          identifier: (.name | tostring) + "-" +
+          identifier: .name | tostring
           title: .name
           blueprint: '"datadogServiceDependency"'
           properties:
             sourceService: .name
             dependencies: .calls
           relations:
-            sourceService: .name
-            dependencies: '[.calls[] | tostring]'
+            service: '[.calls[] | tostring]'
