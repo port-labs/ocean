@@ -241,7 +241,7 @@ async def test_create_webhooks_if_exists(mock_datadog_client: DatadogClient) -> 
 async def test_get_service_dependencies(
     mock_datadog_client: DatadogClient, mock_integration_config: dict[str, str]
 ) -> None:
-    expected_side_effect: dict[str, Any] = {
+    expected_return_value: dict[str, Any] = {
         "service_a": {"calls": ["service_b", "service_c"]},
         "service_b": {"calls": ["service_o"]},
         "service_c": {"calls": ["service_o"]},
@@ -251,15 +251,18 @@ async def test_get_service_dependencies(
     with patch.object(
         mock_datadog_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = [expected_side_effect]
+        mock_request.return_value = expected_return_value
 
         dependencies: list[dict[str, Any]] = []
         async for dependency_batch in mock_datadog_client.get_service_dependencies(
             "prod"
         ):
             dependencies.extend(dependency_batch)
-        assert len(dependencies) == 1
-        assert dependencies[0] == expected_side_effect
+        assert len(dependencies) == 4
+        items: list[dict[str, Any]] = [
+            {"name": name, **details} for name, details in expected_return_value.items()
+        ]
+        assert dependencies == items
 
         mock_request.assert_called_with(
             f"{mock_datadog_client.api_url}/api/v1/service_dependencies",
