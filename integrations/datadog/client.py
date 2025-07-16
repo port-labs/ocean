@@ -641,17 +641,30 @@ class DatadogClient:
         self, env: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
-        Get service dependencies from Datadog.
+        Get service dependencies from Datadog, chunked into pages.
+
+        Each yielded page is a list of service dependency dicts, e.g.,
+        [{ "name": "service_a", "calls": [...] }, ...]
         Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
         """
 
         url = f"{self.api_url}/api/v1/service_dependencies"
-        result = await self._send_api_request(
+        result: dict[str, Any] = await self._send_api_request(
             url,
             params={"env": env},
         )
 
-        yield [result] if result else []
+        if not result:
+            return
+
+        # Convert result to a list of dicts with service names
+        items: list[dict[str, Any]] = [
+            {"name": name, **details} for name, details in result.items()
+        ]
+
+        for i in range(0, len(items), MAX_PAGE_SIZE):
+            yield items[i : i + MAX_PAGE_SIZE]
+
 
     async def get_single_service_dependency(
         self, service_id: str, env: str
