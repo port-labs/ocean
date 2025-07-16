@@ -1,10 +1,6 @@
-from typing import Any, AsyncIterator, Protocol
+from typing import Any, Protocol
 import enum
 import json
-
-RAW_ITEM = dict[Any, Any]
-RAW_RESULT = list[RAW_ITEM]
-ASYNC_GENERATOR_RESYNC_TYPE = AsyncIterator[RAW_RESULT]
 
 
 class CloudControlThrottlingConfig(enum.Enum):

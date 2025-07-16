@@ -2,6 +2,7 @@ from aws.auth.providers.base import CredentialProvider, AioCredentialsType
 from aiobotocore.session import AioSession
 from aiobotocore.credentials import AioCredentials
 from typing import Any
+from aws.auth._helpers.exceptions import CredentialsProviderError
 
 
 class StaticCredentialProvider(CredentialProvider):
@@ -14,18 +15,19 @@ class StaticCredentialProvider(CredentialProvider):
         return False
 
     async def get_credentials(self, **kwargs: Any) -> AioCredentialsType:
-        access_key = kwargs.get("aws_access_key_id")
-        secret_key = kwargs.get("aws_secret_access_key")
-        token = kwargs.get("aws_session_token")
-        if access_key and secret_key:
+        try:
+            access_key = kwargs["aws_access_key_id"]
+            secret_key = kwargs["aws_secret_access_key"]
+            token = kwargs.get("aws_session_token")
             return AioCredentials(access_key, secret_key, token=token)
-        # If no explicit credentials provided, return None to use boto3 credential chain
-        return None
+        except Exception as e:
+            raise CredentialsProviderError(f"Failed to get credentials: {e}")
 
     async def get_session(self, **kwargs: Any) -> AioSession:
-        session = AioSession()
+        """For static credentials, overwrite the integration's identity with the credentials or identity provided.
+        While we can equally create a new session, this is more efficient as we don't need another session instance.
+        """
+        session = AioSession()  # self._integration_session
         credentials = await self.get_credentials(**kwargs)
-        if credentials:
-            setattr(session, "_credentials", credentials)
-        # If credentials is None, session will use boto3 credential chain
+        setattr(session, "_credentials", credentials)
         return session

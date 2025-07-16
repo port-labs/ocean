@@ -1,9 +1,14 @@
-from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
-from aws.auth.utils import (
+from aws.auth.strategies.base import (
+    AWSSessionStrategy,
+    HealthCheckMixin,
+    AccountContext,
+    AccountDetails,
+)
+from aws.auth._helpers.utils import (
     normalize_arn_list,
-    AWSSessionError,
     extract_account_from_arn,
 )
+from aws.auth._helpers.exceptions import AWSSessionError
 from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from loguru import logger
@@ -11,11 +16,10 @@ import asyncio
 from typing import Any, AsyncIterator
 
 
-class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
+class MultiAccountHealthCheckMixin(HealthCheckMixin):
     """Mixin for multi-account health checking with batching and concurrency."""
 
-    DEFAULT_CONCURRENCY = 10
-    DEFAULT_BATCH_SIZE = 10
+    DEFAULT_CONCURRENCY = 20
 
     def __init__(self, provider: CredentialProvider, config: dict[str, Any]):
         self.provider = provider
@@ -56,40 +60,20 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 
         semaphore = asyncio.Semaphore(self.DEFAULT_CONCURRENCY)
 
-        async def check_arn(arn: str) -> tuple[str, AioSession | None]:
+        async def check_arn(arn: str) -> None:
             async with semaphore:
-                session = await self._can_assume_role(arn)
-                return arn, session
-
-        total_batches = (
-            len(arns) + self.DEFAULT_BATCH_SIZE - 1
-        ) // self.DEFAULT_BATCH_SIZE
-        for batch_num, batch_start in enumerate(
-            range(0, len(arns), self.DEFAULT_BATCH_SIZE), 1
-        ):
-            batch = arns[batch_start : batch_start + self.DEFAULT_BATCH_SIZE]
-            logger.debug(
-                f"Processing batch {batch_num}/{total_batches} ({len(batch)} role ARNs)"
-            )
-
-            tasks = [check_arn(arn) for arn in batch]
-
-            successful = 0
-            for arn, task in zip(batch, tasks):
                 try:
-                    arn, session = await task
+                    session = await self._can_assume_role(arn)
                     if session:
                         self._valid_arns.append(arn)
                         self._valid_sessions[arn] = session
-                        successful += 1
                         account_id = extract_account_from_arn(arn)
                         logger.debug(f"Role ARN validated for account {account_id}")
                 except Exception as e:
                     logger.warning(f"Health check failed for role ARN {arn}: {e}")
 
-            logger.info(
-                f"Batch {batch_num}/{total_batches}: {successful}/{len(batch)} role ARNs validated"
-            )
+        tasks = [check_arn(arn) for arn in arns]
+        await asyncio.gather(*tasks)
 
         logger.info(
             f"Health check complete: {len(self._valid_arns or [])}/{len(arns)} role ARNs validated successfully"
@@ -101,12 +85,12 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
         return True
 
 
-class MultiAccountStrategy(MultiAccountHealthCheckMixin):
+class MultiAccountStrategy(MultiAccountHealthCheckMixin, AWSSessionStrategy):
     """Strategy for handling multiple AWS accounts using explicit role ARNs."""
 
     async def get_account_sessions(
         self, **kwargs: Any
-    ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
+    ) -> AsyncIterator[AccountContext]:
         if not (self._valid_arns and self._valid_sessions):
             await self.healthcheck()
         if not (self._valid_arns and self._valid_sessions):
@@ -119,11 +103,12 @@ class MultiAccountStrategy(MultiAccountHealthCheckMixin):
         for arn in self._valid_arns:
             session = self._valid_sessions[arn]
             account_id = extract_account_from_arn(arn)
-            account_info = {
-                "Id": account_id,
-                "Name": f"Account {account_id}",
-            }
-            yield account_info, session
+            account_info = AccountDetails(
+                Id=account_id,
+                Name=f"Account {account_id}",
+                Arn=arn,
+            )
+            yield AccountContext(details=account_info, session=session)
 
         logger.debug(
             f"Session provision complete: {len(self._valid_arns)} sessions yielded"
