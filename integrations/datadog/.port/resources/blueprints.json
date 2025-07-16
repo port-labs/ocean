@@ -1,452 +1,452 @@
 [
-    {
-      "identifier": "datadogUser",
-      "description": "This blueprint represents a Datadog user account. Users can be assigned to teams, granted specific permissions, and can interact with various Datadog features based on their access levels.",
-      "title": "Datadog User",
-      "icon": "Datadog",
-      "schema": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email",
-            "description": "The email address associated with the user account"
-          },
-          "handle": {
-            "type": "string",
-            "title": "Handle",
-            "description": "The unique handle identifier for the user within Datadog"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status",
-            "description": "The current status of the user account (e.g., active, pending, disabled)"
-          },
-          "disabled": {
-            "type": "boolean",
-            "title": "Disabled",
-            "description": "Indicates whether the user account is currently disabled"
-          },
-          "verified": {
-            "type": "boolean",
-            "title": "Verified",
-            "description": "Indicates whether the user's email address has been verified"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The timestamp when the user account was created"
-          }
+  {
+    "identifier": "datadogUser",
+    "description": "This blueprint represents a Datadog user account. Users can be assigned to teams, granted specific permissions, and can interact with various Datadog features based on their access levels.",
+    "title": "Datadog User",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "title": "Email",
+          "description": "The email address associated with the user account"
         },
-        "required": []
-      },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "aggregationProperties": {},
-      "relations": {}
-    },
-    {
-      "identifier": "datadogTeam",
-      "description": "This blueprint represents a Datadog team",
-      "title": "Datadog Team",
-      "icon": "Datadog",
-      "schema": {
-        "properties": {
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "description": "A description of the team's purpose and responsibilities"
-          },
-          "handle": {
-            "type": "string",
-            "title": "Handle",
-            "description": "The unique handle identifier for the team within Datadog"
-          },
-          "userCount": {
-            "type": "number",
-            "title": "User Count",
-            "description": "The total number of users that are members of this team"
-          },
-          "summary": {
-            "type": "string",
-            "title": "Summary",
-            "description": "A brief summary of the team's purpose or main responsibilities"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The timestamp when the team was created"
-          }
+        "handle": {
+          "type": "string",
+          "title": "Handle",
+          "description": "The unique handle identifier for the user within Datadog"
         },
-        "required": []
-      },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "aggregationProperties": {},
-      "relations": {
-        "members": {
-          "target": "datadogUser",
-          "title": "Members",
-          "description": "Users who are members of this team",
-          "many": true,
-          "required": false
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the user account (e.g., active, pending, disabled)"
+        },
+        "disabled": {
+          "type": "boolean",
+          "title": "Disabled",
+          "description": "Indicates whether the user account is currently disabled"
+        },
+        "verified": {
+          "type": "boolean",
+          "title": "Verified",
+          "description": "Indicates whether the user's email address has been verified"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "The timestamp when the user account was created"
         }
-      }
-    },
-    {
-      "identifier": "datadogHost",
-      "description": "This blueprint represents a datadog host",
-      "title": "Datadog Host",
-      "icon": "Datadog",
-      "schema": {
-        "properties": {
-          "up": {
-            "type": "boolean",
-            "title": "Is Running?",
-            "description": "Is the host up?"
-          },
-          "host_name": {
-            "type": "string",
-            "title": "Host Name",
-            "description": "the name of the host"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "description": "the host description"
-          },
-          "platform": {
-            "type": "string",
-            "title": "Platform",
-            "description": "the host platform"
-          },
-          "machine": {
-            "type": "string",
-            "title": "Machine",
-            "description": "The CPU architecture of the host machine (e.g., amd64, x86, x64, arm, arm64)."
-          },
-          "cpu_cores": {
-            "type": "number",
-            "title": "CPU Cores",
-            "description": "the host CPU cores"
-          },
-          "agent_version": {
-            "type": "string",
-            "title": "Datadog Agent Version",
-            "description": "the Datadog agent version installed on the host"
-          },
-          "is_muted": {
-            "type": "boolean",
-            "title": "Is Host Muted?",
-            "description": "Indicates whether alerts for that specific host are temporarily suppressed."
-          },
-          "sources": {
-            "title": "Sources",
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Source or cloud provider associated with your host."
-          },
-          "tags": {
-            "title": "Tags",
-            "type": "object",
-            "description": "Tags associated with the host."
-          }
-        },
-        "required": []
       },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "relations": {}
+      "required": []
     },
-    {
-      "identifier": "datadogMonitor",
-      "description": "This blueprint represents a datadog monitor",
-      "title": "Datadog Monitor",
-      "icon": "Datadog",
-      "schema": {
-        "properties": {
-          "monitorType": {
-            "type": "string",
-            "title": "Monitor Type"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags"
-          },
-          "overallState": {
-            "type": "string",
-            "title": "Overall state",
-            "enum": [
-              "Alert",
-              "Ignored",
-              "No Data",
-              "OK",
-              "Skipped",
-              "Unknown",
-              "Warn"
-            ],
-            "enumColors": {
-              "Alert": "red",
-              "Ignored": "darkGray",
-              "No Data": "lightGray",
-              "OK": "green",
-              "Skipped": "yellow",
-              "Unknown": "purple",
-              "Warn": "orange"
-            }
-          },
-          "priority": {
-            "type": "string",
-            "title": "Priority"
-          },
-          "thresholds": {
-            "type": "object",
-            "title": "Thresholds"
-          },
-          "createdBy": {
-            "type": "string",
-            "title": "Creator"
-          },
-          "createdAt": {
-            "title": "Created At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "title": "Updated At",
-            "type": "string",
-            "format": "date-time"
-          }
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "datadogTeam",
+    "description": "This blueprint represents a Datadog team",
+    "title": "Datadog Team",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "A description of the team's purpose and responsibilities"
         },
-        "required": []
-      },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "relations": {}
-    },
-    {
-      "identifier": "datadogService",
-      "description": "This blueprint represents a Datadog service",
-      "title": "Datadog Service",
-      "icon": "Datadog",
-      "schema": {
-        "properties": {
-          "application": {
-            "title": "Application",
-            "type": "string"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags"
-          },
-          "languages": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Languages",
-            "type": "array"
-          },
-          "type": {
-            "title": "Type",
-            "type": "string",
-            "enum": [
-              "web",
-              "db",
-              "custom",
-              "cache",
-              "function",
-              "browser",
-              "mobile"
-            ],
-            "enumColors": {
-              "web": "lightGray",
-              "db": "lightGray",
-              "custom": "lightGray",
-              "cache": "lightGray",
-              "function": "lightGray",
-              "browser": "lightGray",
-              "mobile": "lightGray"
-            }
-          },
-          "owners": {
-            "type": "array",
-            "title": "Service Owners",
-            "items": {
-              "type": "string"
-            }
-          },
-          "links": {
-            "title": "Service Links",
-            "type": "array",
-            "description": "Links to external resources and repositories",
-            "items": {
-              "type": "string",
-              "format": "url"
-            }
-          }
+        "handle": {
+          "type": "string",
+          "title": "Handle",
+          "description": "The unique handle identifier for the team within Datadog"
         },
-        "required": []
-      },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "aggregationProperties": {},
-      "relations": {
-        "team": {
-          "target": "datadogTeam",
-          "title": "Team",
-          "many": false,
-          "required": false
+        "userCount": {
+          "type": "number",
+          "title": "User Count",
+          "description": "The total number of users that are members of this team"
+        },
+        "summary": {
+          "type": "string",
+          "title": "Summary",
+          "description": "A brief summary of the team's purpose or main responsibilities"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "The timestamp when the team was created"
         }
-      }
-    },
-    {
-      "identifier": "datadogSlo",
-      "description": "This blueprint represents a datadog SLO",
-      "title": "Datadog SLO",
-      "icon": "Datadog",
-      "schema": {
-        "properties": {
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags"
-          },
-          "sloType": {
-            "title": "Type",
-            "type": "string"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "warningThreshold": {
-            "icon": "DefaultProperty",
-            "title": "Warning Threshold",
-            "type": "number"
-          },
-          "targetThreshold": {
-            "icon": "DefaultProperty",
-            "title": "Target Threshold",
-            "type": "number"
-          },
-          "createdAt": {
-            "title": "Created At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "title": "Updated At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdBy": {
-            "title": "Creator",
-            "type": "string"
-          }
-        },
-        "required": []
       },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "aggregationProperties": {},
-      "relations": {
-        "monitors": {
-          "title": "SLO Monitors",
-          "description": "The monitors tracking this SLO",
-          "target": "datadogMonitor",
-          "required": false,
-          "many": true
-        },
-        "services": {
-          "title": "Services",
-          "description": "The services tracked by this SLO",
-          "target": "datadogService",
-          "required": false,
-          "many": true
-        }
-      }
+      "required": []
     },
-    {
-      "identifier": "datadogCloudResource",
-      "description": "This blueprint represents a cloud resource in Datadog",
-      "title": "Datadog Cloud Resource",
-      "icon": "Datadog",
-      "schema": {
-        "properties": {
-          "up": {
-            "type": "boolean",
-            "title": "Is Running?",
-            "description": "Is the host up?"
-          },
-          "host_name": {
-            "type": "string",
-            "title": "Host Name",
-            "description": "the name of the host"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "description": "the host description"
-          },
-          "platform": {
-            "type": "string",
-            "title": "Platform",
-            "description": "the host platform"
-          },
-          "machine": {
-            "type": "string",
-            "title": "Machine",
-            "description": "The CPU architecture of the host machine (e.g., amd64, x86, x64, arm, arm64)."
-          },
-          "cpu_cores": {
-            "type": "number",
-            "title": "CPU Cores",
-            "description": "the host CPU cores"
-          },
-          "agent_version": {
-            "type": "string",
-            "title": "Datadog Agent Version",
-            "description": "the Datadog agent version installed on the host"
-          },
-          "is_muted": {
-            "type": "boolean",
-            "title": "Is Host Muted?",
-            "description": "Indicates whether alerts for that specific host are temporarily suppressed."
-          },
-          "sources": {
-            "title": "Sources",
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Source or cloud provider associated with your host."
-          },
-          "tags": {
-            "title": "Tags",
-            "type": "object",
-            "description": "Tags associated with the host."
-          }
-        },
-        "required": []
-      },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "relations": {}
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "members": {
+        "target": "datadogUser",
+        "title": "Members",
+        "description": "Users who are members of this team",
+        "many": true,
+        "required": false
+      }
     }
-  ]
+  },
+  {
+    "identifier": "datadogHost",
+    "description": "This blueprint represents a datadog host",
+    "title": "Datadog Host",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "up": {
+          "type": "boolean",
+          "title": "Is Running?",
+          "description": "Is the host up?"
+        },
+        "host_name": {
+          "type": "string",
+          "title": "Host Name",
+          "description": "the name of the host"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "the host description"
+        },
+        "platform": {
+          "type": "string",
+          "title": "Platform",
+          "description": "the host platform"
+        },
+        "machine": {
+          "type": "string",
+          "title": "Machine",
+          "description": "The CPU architecture of the host machine (e.g., amd64, x86, x64, arm, arm64)."
+        },
+        "cpu_cores": {
+          "type": "number",
+          "title": "CPU Cores",
+          "description": "the host CPU cores"
+        },
+        "agent_version": {
+          "type": "string",
+          "title": "Datadog Agent Version",
+          "description": "the Datadog agent version installed on the host"
+        },
+        "is_muted": {
+          "type": "boolean",
+          "title": "Is Host Muted?",
+          "description": "Indicates whether alerts for that specific host are temporarily suppressed."
+        },
+        "sources": {
+          "title": "Sources",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Source or cloud provider associated with your host."
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object",
+          "description": "Tags associated with the host."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "datadogMonitor",
+    "description": "This blueprint represents a datadog monitor",
+    "title": "Datadog Monitor",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "monitorType": {
+          "type": "string",
+          "title": "Monitor Type"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags"
+        },
+        "overallState": {
+          "type": "string",
+          "title": "Overall state",
+          "enum": [
+            "Alert",
+            "Ignored",
+            "No Data",
+            "OK",
+            "Skipped",
+            "Unknown",
+            "Warn"
+          ],
+          "enumColors": {
+            "Alert": "red",
+            "Ignored": "darkGray",
+            "No Data": "lightGray",
+            "OK": "green",
+            "Skipped": "yellow",
+            "Unknown": "purple",
+            "Warn": "orange"
+          }
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority"
+        },
+        "thresholds": {
+          "type": "object",
+          "title": "Thresholds"
+        },
+        "createdBy": {
+          "type": "string",
+          "title": "Creator"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "datadogService",
+    "description": "This blueprint represents a Datadog service",
+    "title": "Datadog Service",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "application": {
+          "title": "Application",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags"
+        },
+        "languages": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Languages",
+          "type": "array"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "web",
+            "db",
+            "custom",
+            "cache",
+            "function",
+            "browser",
+            "mobile"
+          ],
+          "enumColors": {
+            "web": "lightGray",
+            "db": "lightGray",
+            "custom": "lightGray",
+            "cache": "lightGray",
+            "function": "lightGray",
+            "browser": "lightGray",
+            "mobile": "lightGray"
+          }
+        },
+        "owners": {
+          "type": "array",
+          "title": "Service Owners",
+          "items": {
+            "type": "string"
+          }
+        },
+        "links": {
+          "title": "Service Links",
+          "type": "array",
+          "description": "Links to external resources and repositories",
+          "items": {
+            "type": "string",
+            "format": "url"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "team": {
+        "target": "datadogTeam",
+        "title": "Team",
+        "many": false,
+        "required": false
+      }
+    }
+  },
+  {
+    "identifier": "datadogSlo",
+    "description": "This blueprint represents a datadog SLO",
+    "title": "Datadog SLO",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags"
+        },
+        "sloType": {
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "warningThreshold": {
+          "icon": "DefaultProperty",
+          "title": "Warning Threshold",
+          "type": "number"
+        },
+        "targetThreshold": {
+          "icon": "DefaultProperty",
+          "title": "Target Threshold",
+          "type": "number"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "title": "Creator",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "monitors": {
+        "title": "SLO Monitors",
+        "description": "The monitors tracking this SLO",
+        "target": "datadogMonitor",
+        "required": false,
+        "many": true
+      },
+      "services": {
+        "title": "Services",
+        "description": "The services tracked by this SLO",
+        "target": "datadogService",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "datadogCloudResource",
+    "description": "This blueprint represents a cloud resource in Datadog",
+    "title": "Datadog Cloud Resource",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "up": {
+          "type": "boolean",
+          "title": "Is Running?",
+          "description": "Is the host up?"
+        },
+        "host_name": {
+          "type": "string",
+          "title": "Host Name",
+          "description": "the name of the host"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "the host description"
+        },
+        "platform": {
+          "type": "string",
+          "title": "Platform",
+          "description": "the host platform"
+        },
+        "machine": {
+          "type": "string",
+          "title": "Machine",
+          "description": "The CPU architecture of the host machine (e.g., amd64, x86, x64, arm, arm64)."
+        },
+        "cpu_cores": {
+          "type": "number",
+          "title": "CPU Cores",
+          "description": "the host CPU cores"
+        },
+        "agent_version": {
+          "type": "string",
+          "title": "Datadog Agent Version",
+          "description": "the Datadog agent version installed on the host"
+        },
+        "is_muted": {
+          "type": "boolean",
+          "title": "Is Host Muted?",
+          "description": "Indicates whether alerts for that specific host are temporarily suppressed."
+        },
+        "sources": {
+          "title": "Sources",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Source or cloud provider associated with your host."
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object",
+          "description": "Tags associated with the host."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  }
+]
