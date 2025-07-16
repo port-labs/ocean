@@ -1116,13 +1116,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.25.3"
+version = "0.25.5"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.25.3-py3-none-any.whl", hash = "sha256:f2c84bd8cd4329cef6d6d85860408755541564bda93052d73349d4b7124fe33a"},
-    {file = "port_ocean-0.25.3.tar.gz", hash = "sha256:64c2c44d11faa5363f98b6e4b4c3f7e345f7917df58c4b5bae72522e1046eefa"},
+    {file = "port_ocean-0.25.5-py3-none-any.whl", hash = "sha256:44e70942cdefdbf3d29eafc098b7c937408c451b9dd82fe532c9105be36a67b4"},
+    {file = "port_ocean-0.25.5.tar.gz", hash = "sha256:5857c79e324e0c0e909b531b697279842b48ffa0f248f1f0befdb370a7a5a912"},
 ]
 
 [package.dependencies]
@@ -1132,6 +1132,7 @@ confluent-kafka = ">=2.10.1,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
 fastapi = ">=0.115.3,<0.116.0"
 httpx = ">=0.28.1,<0.29.0"
+jinja2 = ">=3.1.6"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 jq = ">=1.8.0,<2.0.0"
 loguru = ">=0.7.0,<0.8.0"
@@ -1808,4 +1809,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "be765c2c0262b4bf7cf3cc8904d5abe713ec58a791a24a452531ecf5ae7521b1"
+content-hash = "6aa3860f44f03732683d2c685828223165870de3393dbe7ec0870aea7218e1d8"
