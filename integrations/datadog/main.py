@@ -4,6 +4,9 @@ from typing import cast
 from initialize_client import init_client
 from integration import ObjectKind
 from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
+from webhook_processors.service_dependency_webhook_processor import (
+    ServiceDependencyWebhookProcessor,
+)
 from loguru import logger
 
 from utils import (
@@ -137,6 +140,16 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield metrics
 
 
+@ocean.on_resync(ObjectKind.SERVICE_DEPENDENCY)
+async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+
+    env = ocean.integration_config["datadog_service_dependency_env"]
+    async for dependencies in dd_client.get_service_dependencies(env):
+        logger.info(f"Received batch with {len(dependencies)} dependencies")
+        yield dependencies
+
+
 @ocean.on_start()
 async def on_start() -> None:
     if ocean.event_listener_type == "ONCE":
@@ -147,7 +160,9 @@ async def on_start() -> None:
         dd_client = init_client()
         webhook_secret = ocean.integration_config.get("webhook_secret")
 
+        # Create the main webhook for general events
         await dd_client.create_webhooks_if_not_exists(base_url, webhook_secret)
 
 
 ocean.add_webhook_processor("/webhook", MonitorWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ServiceDependencyWebhookProcessor)

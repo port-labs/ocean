@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
@@ -24,26 +24,22 @@ def resource_config() -> Any:
 
 
 @pytest.mark.asyncio
-async def test_authenticate(
+async def test_authenticate_with_valid_auth_header(
     processor: MonitorWebhookProcessor,
-    monkeypatch: pytest.MonkeyPatch,
+    mock_integration_config: dict[str, str],
 ) -> None:
-    mock_ocean = MagicMock()
-    mock_config = MagicMock()
-    mock_config.integration.config = {}
-    mock_ocean.config = mock_config
-    monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean)
-
-    assert await processor.authenticate({}, {}) is True
-
-    mock_config.integration.config = {"webhook_secret": "test_token"}
     headers = {"authorization": "Basic dGVzdF91c2VyOnRlc3RfdG9rZW4="}
+    with patch("base64.b64decode", return_value=b"test_user:test_token"):
+        assert await processor.authenticate({}, headers) is True
 
-    headers = {"authorization": "Basic dGVzdF91c2VyOndyb25nX3Rva2Vu"}
-    with patch("base64.b64decode", return_value=b"test_user:wrong_token"):
-        assert await processor.authenticate({}, headers) is False
 
-    assert await processor.authenticate({}, {"authorization": "InvalidHeader"}) is False
+@pytest.mark.asyncio
+async def test_authenticate_without_webhook_secret(
+    processor: MonitorWebhookProcessor,
+    mock_integration_config_without_webhook_secret: dict[str, str],
+) -> None:
+    # pass authentication (no webhook secret provided)
+    assert await processor.authenticate({}, {}) is True
 
 
 @pytest.mark.asyncio

@@ -1,18 +1,18 @@
 import asyncio
-import re
 import datetime
 import http
 import json
+import re
 import time
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
 
 import httpx
 from loguru import logger
-
-from utils import generate_time_windows_from_interval_days
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
+
+from utils import generate_time_windows_from_interval_days
 
 MAX_PAGE_SIZE = 100
 
@@ -486,7 +486,9 @@ class DatadogClient:
                 result.update(
                     {
                         SERVICE_KEY: service_id,
-                        QUERY_ID_KEY: f"{query}/{service_tag}:{service_id}/{env_tag}:{env_to_fetch}",
+                        QUERY_ID_KEY: (
+                            f"{query}/{service_tag}:{service_id}/{env_tag}:{env_to_fetch}"
+                        ),
                         QUERY_KEY: query,
                         ENV_KEY: env_to_fetch,
                     }
@@ -608,6 +610,8 @@ class DatadogClient:
                         "event_type": "$EVENT_TYPE",
                         "event_url": "$LINK",
                         "service": "$HOSTNAME",
+                        "service_id": "$SERVICE_ID",
+                        "service_name": "$SERVICE_NAME",
                         "creator": "$USER",
                         "title": "$EVENT_TITLE",
                         "date": "$DATE",
@@ -632,3 +636,44 @@ class DatadogClient:
 
         except Exception as e:
             logger.error("Failed to create webhook, skipping...", exc_info=e)
+
+    async def get_service_dependencies(
+        self, env: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get service dependencies from Datadog, chunked into pages.
+
+        Each yielded page is a list of service dependency dicts, e.g.,
+        [{ "name": "service_a", "calls": [...] }, ...]
+        Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
+        """
+
+        url = f"{self.api_url}/api/v1/service_dependencies"
+        result: dict[str, Any] = await self._send_api_request(
+            url,
+            params={"env": env},
+        )
+
+        if not result:
+            return
+
+        # Convert result to a list of dicts with service names
+        items: list[dict[str, Any]] = [
+            {"name": name, **details} for name, details in result.items()
+        ]
+
+        for i in range(0, len(items), MAX_PAGE_SIZE):
+            yield items[i : i + MAX_PAGE_SIZE]
+
+    async def get_single_service_dependency(
+        self, service_id: str, env: str
+    ) -> dict[str, Any] | None:
+        """
+        Get service dependencies for a specific service from Datadog.
+        Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-service-dependencies
+        """
+        url = f"{self.api_url}/api/v1/service_dependencies/{service_id}"
+        return await self._send_api_request(
+            url,
+            params={"env": env},
+        )
