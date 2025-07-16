@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "github-ocean"
-version = "1.0.6-beta"
+version = "1.1.0-beta"
 description = "This integration ingest data from github"
 authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <melodyogonna@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
 
@@ -116,3 +116,6 @@ exclude = '''
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-vv -n auto ./tests"
+markers = [
+    "no_mock_rate_limiter: mark test to not use mock rate limiter"
+]
