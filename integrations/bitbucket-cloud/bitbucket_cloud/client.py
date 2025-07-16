@@ -6,7 +6,7 @@ from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialExcep
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
 from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
-from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
+from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig, BitbucketFileRateLimiterConfig
 from bitbucket_cloud.helpers.token_manager import TokenManager, TokenRateLimiterContext
 import base64
 
@@ -33,6 +33,7 @@ class BitbucketClient:
         self.workspace = workspace
         self.client = http_async_client
         self.token_manager: Optional[TokenManager] = None
+        self.file_token_manager: Optional[TokenManager] = None
 
         if workspace_token:
             tokens = [
@@ -44,7 +45,8 @@ class BitbucketClient:
                     "No valid tokens found in workspace_token. Please provide valid comma-separated tokens."
                 )
             elif len(tokens) > 1:
-                self.token_manager = TokenManager(tokens)
+                self.token_manager = TokenManager(tokens, BitbucketRateLimiterConfig.LIMIT, BitbucketRateLimiterConfig.WINDOW)
+                self.file_token_manager = TokenManager(tokens, BitbucketFileRateLimiterConfig.LIMIT, BitbucketFileRateLimiterConfig.WINDOW)
                 self.headers = self.get_headers(
                     bearer_token=self.token_manager.current_token
                 )
@@ -157,6 +159,30 @@ class BitbucketClient:
             if not url:
                 break
 
+    async def _send_file_api_request_with_rate_limiter(
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        method: str = "GET",
+        return_full_response: bool = False,
+    ) -> Any:
+        """Send file-specific API request with dedicated file rate limiter."""
+        if self.file_token_manager:
+            async with FileTokenRateLimiterContext(self.file_token_manager) as ctx:
+                current_token = ctx.get_token()
+                self._update_authorization_header(current_token)
+                response = await self._send_api_request(
+                    url, params=params, method=method, return_full_response=return_full_response
+                )
+        else:
+            # No file token manager means single token or basic auth - just make the request
+            response = await self._send_api_request(
+                url, params=params, method=method, return_full_response=return_full_response
+            )
+        return response
+
+
+
     async def _send_paginated_api_request(
         self,
         url: str,
@@ -264,7 +290,7 @@ class BitbucketClient:
 
     async def get_repository_files(self, repo: str, branch: str, path: str) -> Any:
         """Get the content of a file."""
-        response = await self._send_api_request(
+        response = await self._send_file_api_request_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
             method="GET",
             return_full_response=True,

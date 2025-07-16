@@ -97,7 +97,7 @@ class TokenManager:
     Uses the can_acquire() method to check availability without consuming rate limit slots.
     """
 
-    def __init__(self, tokens: List[str]):
+    def __init__(self, tokens: List[str], limit: int, window: int):
         self.tokens = tokens
         self.current_index = 0
         self.rate_limiters: Dict[str, RollingWindowLimiter] = {}
@@ -105,8 +105,8 @@ class TokenManager:
 
         for token in tokens:
             self.rate_limiters[token] = RollingWindowLimiter(
-                limit=BitbucketRateLimiterConfig.LIMIT,
-                window=BitbucketRateLimiterConfig.WINDOW,
+                limit=limit,
+                window=window,
             )
 
     @property
