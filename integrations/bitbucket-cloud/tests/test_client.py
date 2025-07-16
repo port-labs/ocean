@@ -312,7 +312,7 @@ async def test_client_init_with_single_token_in_multiple_format() -> None:
 async def test_token_manager_rotation() -> None:
     """Test token manager rotation logic."""
     tokens = ["token1", "token2", "token3"]
-    manager = TokenManager(tokens)
+    manager = TokenManager(tokens, 100, 100)
 
     assert manager.current_token == "token1"
     assert manager.current_index == 0
@@ -335,7 +335,7 @@ async def test_token_manager_rotation() -> None:
 async def test_fetch_with_token_rotation(mock_client: BitbucketClient) -> None:
     """Test that fetch_paginated_api_with_rate_limiter works with token rotation."""
     # Mock multiple tokens
-    mock_client.token_manager = TokenManager(["token1", "token2"])
+    mock_client.token_manager = TokenManager(["token1", "token2"], 100, 100)
 
     mock_data = {"values": [{"id": 1}, {"id": 2}], "next": None}
 
@@ -385,7 +385,7 @@ async def test_token_rate_limiter_context_direct_usage() -> None:
     from bitbucket_cloud.helpers.token_manager import TokenRateLimiterContext
 
     tokens = ["token1", "token2", "token3"]
-    manager = TokenManager(tokens)
+    manager = TokenManager(tokens, 100, 100)
 
     # Test direct instantiation and usage
     async with TokenRateLimiterContext(manager) as ctx:

@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Optional, Type
 import asyncio
 from loguru import logger
 from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
-from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
 
 
 class TokenRateLimiterContext:
