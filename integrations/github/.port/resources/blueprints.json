@@ -2,7 +2,7 @@
     {
         "identifier": "githubRepository",
         "title": "Repository",
-        "icon": "Microservice",
+        "icon": "Github",
         "schema": {
             "properties": {
                 "description": {
@@ -31,6 +31,11 @@
                 "language": {
                     "type": "string",
                     "title": "Primary Language"
+                },
+                "readme": {
+                    "type": "string",
+                    "format": "markdown",
+                    "title": "Readme"
                 }
             },
             "required": []

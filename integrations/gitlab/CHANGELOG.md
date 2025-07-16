@@ -7,6 +7,126 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.97-post1 (2025-07-16)
+=========================
+
+### Improvements
+
+- Bumped ocean version to ^0.25.5
+
+
+0.2.96-post1 (2025-07-07)
+=========================
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
+
+
+0.2.95-post1 (2025-07-02)
+=========================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.22
+
+
+0.2.94-post1 (2025-06-30)
+=========================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
+0.2.93-post1 (2025-06-26)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+0.2.92 (2025-06-25)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
+0.2.91 (2025-06-24)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.18
+
+
+0.2.90 (2025-06-23)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.17
+
+
+0.2.89 (2025-06-22)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.16
+
+
+0.2.88 (2025-06-22)
+===================
+
+### Improvements
+
+- Upgraded integration requests dependency (#1)
+
+
+0.2.87-post1 (2025-06-22)
+=========================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.15
+
+
+0.2.86-post1 (2025-06-22)
+=========================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+0.2.85-post1 (2025-06-22)
+=========================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+0.2.84-post1 (2025-06-16)
+=========================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.11
+
+
+0.2.83-post1 (2025-06-15)
+=========================
+
+### Improvements
+
+- Bumped ocean version to ^0.24.10
+
+
 0.2.82-post1 (2025-06-11)
 =========================
 
@@ -1876,6 +1996,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Breaking Changes
 
 - Changed the mergeRequest kind to merge-request (PORT-4327)
+- Fixed a bug that caused the gitops parsing to fail (#1)
 
 ### Bug Fixes
 

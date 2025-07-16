@@ -312,7 +312,7 @@ class TestGithubWebhookClient:
         mock_response.status_code = 200
 
         with patch.object(
-            client, "send_api_request", AsyncMock(return_value=mock_response)
+            client, "make_request", AsyncMock(return_value=mock_response)
         ):
             # Test finding an existing webhook
             webhook = await client._get_existing_webhook(

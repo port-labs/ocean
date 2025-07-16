@@ -79,7 +79,7 @@ integration:
 ```
 :::tip Integration Configuration
 The generic configuration for integrations can be found in
-the [integration configuration](../develop-an-integration/integration-configuration.md) guide.
+the [integration configuration](../developing-an-integration/testing-the-integration.md#configuration-mapping) guide.
 :::
 
 :::tip Event Listener
