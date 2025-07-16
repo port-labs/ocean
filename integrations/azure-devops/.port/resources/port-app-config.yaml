@@ -125,3 +125,20 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
+  - kind: iteration
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | gsub(" "; "")
+          title: .name
+          blueprint: '"iteration"'
+          properties:
+            path: .path
+            startDate: .attributes.startDate
+            finishDate: .attributes.finishDate
+            timeFrame: .attributes.timeFrame
+            link: .url
+          relations:
+            project: .__projectId | gsub(" "; "")

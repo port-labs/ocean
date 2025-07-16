@@ -333,5 +333,56 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "iteration",
+    "title": "Iteration",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string",
+          "icon": "AzureDevops",
+          "description": "The full path of the iteration"
+        },
+        "startDate": {
+          "title": "Start Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The start date of the iteration"
+        },
+        "finishDate": {
+          "title": "Finish Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The finish date of the iteration"
+        },
+        "timeFrame": {
+          "title": "Time Frame",
+          "type": "string",
+          "description": "The time frame of the iteration (past, current, future)"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops",
+          "description": "Link to the iteration in Azure DevOps"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "project",
+        "required": true,
+        "many": false
+      }
+    }
   }
 ]
