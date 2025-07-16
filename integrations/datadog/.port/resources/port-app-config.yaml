@@ -1,0 +1,146 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .attributes.name
+          blueprint: '"datadogUser"'
+          properties:
+            email: .attributes.email
+            handle: .attributes.handle
+            status: .attributes.status
+            disabled: .attributes.disabled
+            verified: .attributes.verified
+            createdAt: .attributes.created_at | todate
+  - kind: team
+    selector:
+      query: 'true'
+      includeMembers: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .attributes.name
+          blueprint: '"datadogTeam"'
+          properties:
+            description: .attributes.description
+            handle: .attributes.handle
+            userCount: .attributes.user_count
+            summary: .attributes.summary
+            createdAt: .attributes.created_at | todate
+          relations:
+            members: if .__members then [.__members[] | .id] else [] end
+  - kind: host
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogHost"'
+          identifier: .id | tostring
+          title: .aws_name // .host_name
+          properties:
+            up: .up
+            host_name: .host_name
+            platform: .meta.platform
+            is_muted: .is_muted
+            machine: .meta.machine
+            description: .description
+            sources: .sources
+            cpu_cores: .meta.cpuCores
+            agent_version: .meta.agent_version
+            tags: .tags_by_source
+  - kind: monitor
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"datadogMonitor"'
+          properties:
+            tags: .tags
+            monitorType: .type
+            overallState: .overall_state
+            thresholds: .thresholds
+            priority: .priority
+            createdBy: .creator.email
+            createdAt: .created
+            updatedAt: .modified
+  - kind: service
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .attributes.schema."dd-service"
+          title: .attributes.schema."dd-service"
+          blueprint: '"datadogService"'
+          properties:
+            application: .attributes.schema.application
+            languages: .attributes.schema.languages
+            description: .attributes.schema.description
+            tags: .attributes.schema.tags
+            type: .attributes.schema.type
+            links: .attributes.schema.links | map(.url)
+            owners: >-
+              [.attributes.schema.contacts[] | select(.type == "email") |
+              .contact]
+          relations:
+            team:
+              combinator: '"and"'
+              rules:
+                - property: '"handle"'
+                  operator: '"="'
+                  value: .attributes.schema.team
+  - kind: slo
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"datadogSlo"'
+          properties:
+            tags: .tags
+            sloType: .type
+            description: .description
+            warningThreshold: .warning_threshold
+            targetThreshold: .target_threshold
+            createdBy: .creator.email
+            createdAt: .created_at | todate
+            updatedAt: .modified_at | todate
+          relations:
+            monitors: .monitor_ids | map(tostring)
+            services: >-
+              .monitor_tags + .tags | map(select(startswith("service:"))) |
+              unique | map(split(":")[1])
+  - kind: host
+    selector:
+      query: >-
+        [.sources[] | . as $source | ["azure", "gcp", "gce", "aws"] |
+        contains([$source])] | any(.)
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogCloudResource"'
+          identifier: .id | tostring
+          title: .aws_name // .host_name
+          properties:
+            up: .up
+            host_name: .host_name
+            platform: .meta.platform
+            is_muted: .is_muted
+            machine: .meta.machine
+            description: .description
+            sources: .sources
+            cpu_cores: .meta.cpuCores
+            agent_version: .meta.agent_version
+            tags: .tags_by_source
