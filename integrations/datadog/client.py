@@ -567,7 +567,7 @@ class DatadogClient:
 
     async def _webhook_exists(self, webhook_url: str) -> bool:
         try:
-            webhook = await self._send_api_request(url=webhook_url, method="GET")
+            webhook = await self._send_api_request(url=webhook_url)
             return bool(webhook)
 
         except httpx.HTTPStatusError as err:
@@ -582,6 +582,8 @@ class DatadogClient:
 
         webhook_name = "PORT"
         dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
+        # !todo remove this
+        logger.info(f"webhook before call => {dd_webhook_url}")
 
         try:
             if await self._webhook_exists(dd_webhook_url):
@@ -638,7 +640,7 @@ class DatadogClient:
             logger.error("Failed to create webhook, skipping...", exc_info=e)
 
     async def get_service_dependencies(
-        self, env: str
+        self, env: str, start_time: int, end_time: Optional[int] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get service dependencies from Datadog, chunked into pages.
@@ -647,11 +649,13 @@ class DatadogClient:
         [{ "name": "service_a", "calls": [...] }, ...]
         Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
         """
+        if not end_time:
+            end_time = time.monotonic_ns()
 
         url = f"{self.api_url}/api/v1/service_dependencies"
         result: dict[str, Any] = await self._send_api_request(
             url,
-            params={"env": env},
+            params={"env": env, "start": start_time, "end": end_time},
         )
 
         if not result:
@@ -666,14 +670,17 @@ class DatadogClient:
             yield items[i : i + MAX_PAGE_SIZE]
 
     async def get_single_service_dependency(
-        self, service_id: str, env: str
+        self, service_id: str, env: str, start_time: int, end_time: Optional[int] = None
     ) -> dict[str, Any] | None:
         """
         Get service dependencies for a specific service from Datadog.
         Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-service-dependencies
         """
+        if not end_time:
+            end_time = time.monotonic_ns()
+
         url = f"{self.api_url}/api/v1/service_dependencies/{service_id}"
         return await self._send_api_request(
             url,
-            params={"env": env},
+            params={"env": env, "start": start_time, "end": end_time},
         )

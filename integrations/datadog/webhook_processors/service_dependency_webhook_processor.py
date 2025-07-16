@@ -1,6 +1,8 @@
+from typing import cast, Union
+
 from initialize_client import init_client
 from integration import ObjectKind
-from port_ocean.context.ocean import ocean
+from overrides import DatadogResourceConfig, DatadogServiceDependencySelector
 from webhook_processors._abstract_webhook_processor import (
     _AbstractDatadogWebhookProcessor,
 )
@@ -36,13 +38,16 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
         return [ObjectKind.SERVICE_DEPENDENCY]
 
     async def handle_event(
-        self, payload: EventPayload, _: ResourceConfig
+        self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         """Handle service dependency webhook events."""
+        config = cast(Union[ResourceConfig, DatadogResourceConfig], resource_config)
+        selector = cast(DatadogServiceDependencySelector, config.selector)
         dd_client = init_client()
-        env = ocean.integration_config["datadog_service_dependency_env"]
         service_dependency = await dd_client.get_single_service_dependency(
-            service_id=payload["service_id"], env=env
+            service_id=payload["service_id"],
+            env=selector.environment,
+            start_time=selector.start_time,
         )
 
         return WebhookEventRawResults(

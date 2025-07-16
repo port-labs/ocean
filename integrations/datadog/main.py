@@ -1,27 +1,30 @@
-import typing
-from typing import cast
+from typing import cast, Union
+
+from loguru import logger
+from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.port_app_config.models import (
+    ResourceConfig,
+)
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from initialize_client import init_client
 from integration import ObjectKind
-from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
-from webhook_processors.service_dependency_webhook_processor import (
-    ServiceDependencyWebhookProcessor,
-)
-from loguru import logger
-
-from utils import (
-    get_start_of_the_day_in_seconds_x_day_back,
-    get_start_of_the_month_in_seconds_x_months_back,
-)
 from overrides import (
     SLOHistoryResourceConfig,
     DatadogResourceConfig,
     DatadogSelector,
     TeamResourceConfig,
+    DatadogServiceDependencySelector,
 )
-from port_ocean.context.event import event
-from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from utils import (
+    get_start_of_the_day_in_seconds_x_day_back,
+    get_start_of_the_month_in_seconds_x_months_back,
+)
+from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
+from webhook_processors.service_dependency_webhook_processor import (
+    ServiceDependencyWebhookProcessor,
+)
 
 
 @ocean.on_resync(ObjectKind.TEAM)
@@ -124,7 +127,7 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
-    params: DatadogSelector = typing.cast(
+    params: DatadogSelector = cast(
         DatadogResourceConfig, event.resource_config
     ).selector.datadog_selector
 
@@ -142,10 +145,13 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.SERVICE_DEPENDENCY)
 async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = cast(Union[ResourceConfig, DatadogResourceConfig], event.resource_config)
+    selector = cast(DatadogServiceDependencySelector, config.selector)
     dd_client = init_client()
 
-    env = ocean.integration_config["datadog_service_dependency_env"]
-    async for dependencies in dd_client.get_service_dependencies(env):
+    async for dependencies in dd_client.get_service_dependencies(
+        env=selector.environment, start_time=selector.start_time
+    ):
         logger.info(f"Received batch with {len(dependencies)} dependencies")
         yield dependencies
 

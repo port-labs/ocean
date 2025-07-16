@@ -1,13 +1,25 @@
-import pytest
+import time
 from typing import Any
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from port_ocean.context.ocean import initialize_port_ocean_context
-from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+import pytest
 from client import (
     DatadogClient,
     MAX_PAGE_SIZE,
 )
+from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+from integration import ObjectKind
+
+
+@pytest.fixture
+def resource_config() -> Any:
+    mock_resource_config = MagicMock()
+    mock_resource_config.kind = ObjectKind.SERVICE_DEPENDENCY
+    mock_resource_config.selector.environment = "prod"
+    mock_resource_config.selector.start_time = time.monotonic_ns() - 60 * 60
+
+    return mock_resource_config
 
 
 @pytest.fixture(autouse=True)
@@ -239,7 +251,7 @@ async def test_create_webhooks_if_exists(mock_datadog_client: DatadogClient) -> 
 
 @pytest.mark.asyncio
 async def test_get_service_dependencies(
-    mock_datadog_client: DatadogClient, mock_integration_config: dict[str, str]
+    mock_datadog_client: DatadogClient, resource_config: Any
 ) -> None:
     expected_return_value: dict[str, Any] = {
         "service_a": {"calls": ["service_b", "service_c"]},
@@ -254,8 +266,11 @@ async def test_get_service_dependencies(
         mock_request.return_value = expected_return_value
 
         dependencies: list[dict[str, Any]] = []
+        end_time = time.monotonic_ns()
         async for dependency_batch in mock_datadog_client.get_service_dependencies(
-            "prod"
+            env=resource_config.selector.environment,
+            start_time=resource_config.selector.start_time,
+            end_time=end_time,
         ):
             dependencies.extend(dependency_batch)
         assert len(dependencies) == 4
@@ -266,13 +281,17 @@ async def test_get_service_dependencies(
 
         mock_request.assert_called_with(
             f"{mock_datadog_client.api_url}/api/v1/service_dependencies",
-            params={"env": "prod"},
+            params={
+                "env": resource_config.selector.environment,
+                "start": resource_config.selector.start_time,
+                "end": end_time,
+            },
         )
 
 
 @pytest.mark.asyncio
 async def test_get_single_service_dependency(
-    mock_datadog_client: DatadogClient, mock_integration_config: dict[str, str]
+    mock_datadog_client: DatadogClient, resource_config: Any
 ) -> None:
     sample_service_id = "service-c"
     expected_response_value: dict[str, Any] = {
@@ -286,12 +305,20 @@ async def test_get_single_service_dependency(
     ) as mock_request:
         mock_request.return_value = expected_response_value
 
+        end_time = time.monotonic_ns()
         service_dependency = await mock_datadog_client.get_single_service_dependency(
-            sample_service_id, "prod"
+            service_id=sample_service_id,
+            env=resource_config.selector.environment,
+            start_time=resource_config.selector.start_time,
+            end_time=end_time,
         )
         assert service_dependency == expected_response_value
 
         mock_request.assert_called_with(
             f"{mock_datadog_client.api_url}/api/v1/service_dependencies/{sample_service_id}",
-            params={"env": "prod"},
+            params={
+                "env": resource_config.selector.environment,
+                "start": resource_config.selector.start_time,
+                "end": end_time,
+            },
         )
