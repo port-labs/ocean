@@ -1,9 +1,10 @@
 import time
 import asyncio
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable, Awaitable
 from dataclasses import dataclass
 import httpx
 from loguru import logger
+from github.helpers.exceptions import RateLimitExceededError
 
 
 @dataclass
@@ -49,7 +50,7 @@ class GitHubRateLimiter:
         Determine the rate limit resource type based on the API endpoint.
 
         Args:
-            resource: API endpoint path (e.g., "/search/repositories", "/graphql")
+            resource: Full API URL (e.g., "https://api.github.com/search/repositories", "/graphql")
 
         Returns:
             Resource type string (core, search, graphql, etc.)
@@ -74,7 +75,12 @@ class GitHubRateLimiter:
 
         Returns RateLimitInfo if headers are present, None otherwise.
         """
-        if "x-ratelimit-limit" in response.headers:
+        required_headers = [
+            "x-ratelimit-limit",
+            "x-ratelimit-remaining",
+            "x-ratelimit-reset",
+        ]
+        if all(header in response.headers for header in required_headers):
             return RateLimitInfo(
                 limit=int(response.headers["x-ratelimit-limit"]),
                 remaining=int(response.headers["x-ratelimit-remaining"]),
@@ -140,7 +146,11 @@ class GitHubRateLimiter:
         return None
 
     async def execute_request(
-        self, request_func, resource: str, *args, **kwargs
+        self,
+        request_func: Callable[..., Awaitable[httpx.Response]],
+        resource: str,
+        *args: Any,
+        **kwargs: Any,
     ) -> httpx.Response:
         """
         Execute a request with GitHub rate limiting and retry logic.
@@ -163,6 +173,7 @@ class GitHubRateLimiter:
         Raises:
             httpx.HTTPStatusError: If rate limit exceeded after max retries
         """
+
         async with self._semaphore:
             retry_count = 0
             resource_type = self._determine_resource_type(resource)
@@ -174,6 +185,10 @@ class GitHubRateLimiter:
                     rate_limit_info = self._parse_rate_limit_headers(response)
                     if rate_limit_info:
                         self._rate_limits[resource_type] = rate_limit_info
+                        logger.debug(
+                            f"Rate limit info for {resource_type}: "
+                            f"{rate_limit_info.remaining}/{rate_limit_info.limit} remaining"
+                        )
 
                     backoff_time = self._handle_rate_limit_error(
                         response, resource, resource_type
@@ -199,7 +214,7 @@ class GitHubRateLimiter:
                 except Exception as e:
                     if retry_count < self.max_retries:
                         delay = min(60, 2**retry_count)
-                        logger.warning(
+                        logger.debug(
                             f"Request failed for {resource}: {e}. "
                             f"Retrying in {delay}s (attempt {retry_count + 1}/{self.max_retries})"
                         )
@@ -213,11 +228,7 @@ class GitHubRateLimiter:
                         raise
 
             # If we get here, we've exhausted all retries
-            raise httpx.HTTPStatusError(
-                f"Rate limit exceeded for {resource} after {self.max_retries} retries",
-                request=None,
-                response=None,
-            )
+            raise RateLimitExceededError(resource, self.max_retries)
 
     def get_rate_limit_status(self) -> Dict[str, Any]:
         """
@@ -231,10 +242,10 @@ class GitHubRateLimiter:
             - seconds_until_reset: Seconds until rate limit resets
             - utilization_percentage: Percentage of rate limit used
         """
-        status = {"rate_limits": {}}
+        status = {}
 
         for resource, rate_limit in self._rate_limits.items():
-            status["rate_limits"][resource] = {
+            status[resource] = {
                 "limit": rate_limit.limit,
                 "remaining": rate_limit.remaining,
                 "reset_time": rate_limit.reset_time,
@@ -252,14 +263,14 @@ class GitHubRateLimiter:
         Log current rate limit status for debugging.
 
         Example output:
-        INFO: core: 4500/5000 remaining (10.0% used) - resets in 1800s
-        INFO: search: 25/30 remaining (16.7% used) - resets in 45s
-        INFO: graphql: 4995/5000 remaining (0.1% used) - resets in 3600s
+        DEBUG: core: 4500/5000 remaining (10.0% used) - resets in 1800s
+        DEBUG: search: 25/30 remaining (16.7% used) - resets in 45s
+        DEBUG: graphql: 4995/5000 remaining (0.1% used) - resets in 3600s
         """
         status = self.get_rate_limit_status()
 
-        for resource, info in status["rate_limits"].items():
-            logger.info(
+        for resource, info in status.items():
+            logger.debug(
                 f"{resource}: {info['remaining']}/{info['limit']} remaining "
                 f"({info['utilization_percentage']:.1f}% used) - "
                 f"resets in {info['seconds_until_reset']}s"

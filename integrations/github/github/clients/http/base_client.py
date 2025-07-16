@@ -8,6 +8,7 @@ from loguru import logger
 
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter import GitHubRateLimiter
+from github.helpers.exceptions import RateLimitExceededError
 
 
 if TYPE_CHECKING:
@@ -128,6 +129,10 @@ class AbstractGithubClient(ABC):
             raise
         except httpx.HTTPError as e:
             logger.error(f"HTTP error for endpoint '{resource}': {str(e)}")
+            raise
+
+        except RateLimitExceededError as e:
+            logger.error(f"Rate limit exceeded for endpoint '{resource}': {str(e)}")
             raise
 
     async def send_api_request(

@@ -42,6 +42,7 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
+        mock_response.headers = {}  # Add headers attribute
         mock_response.json.return_value = {"id": 1, "name": "test-repo"}
 
         with patch(
@@ -64,6 +65,7 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
+        mock_response.headers = {}  # Add headers attribute
 
         params = {"type": "public"}
         json_data = {"name": "new-repo", "private": False}
@@ -98,6 +100,7 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 404
+        mock_response.headers = {}  # Add headers attribute
         mock_response.text = "Not Found"
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "404 Not Found", request=MagicMock(), response=mock_response
@@ -123,6 +126,7 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 403
+        mock_response.headers = {}  # Add headers attribute
         mock_response.text = "Forbidden"
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "403 Forbidden", request=MagicMock(), response=mock_response
@@ -148,6 +152,7 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 401
+        mock_response.headers = {}  # Add headers attribute
         mock_response.text = "Unauthorized"
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "401 Unauthorized", request=MagicMock(), response=mock_response
@@ -173,6 +178,7 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 500
+        mock_response.headers = {}  # Add headers attribute
         mock_response.text = "Internal Server Error"
         http_error = httpx.HTTPStatusError(
             "500 Internal Server Error", request=MagicMock(), response=mock_response
@@ -234,7 +240,7 @@ class TestAbstractGithubClient:
             "port_ocean.utils.http_async_client.request",
             AsyncMock(side_effect=network_error),
         ):
-            with pytest.raises(httpx.HTTPError):
+            with pytest.raises(httpx.ConnectError):
                 await client.send_api_request("orgs/test-org/repos")
 
     async def test_send_api_request_different_http_methods(

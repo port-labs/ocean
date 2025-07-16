@@ -25,3 +25,10 @@ class GraphQLErrorGroup(Exception):
 
     def _format_message(self) -> str:
         return "GraphQL errors occurred:\n" + "\n".join(f"- {e}" for e in self.errors)
+
+
+class RateLimitExceededError(Exception):
+    def __init__(self, resource: str, retries: int):
+        super().__init__(f"Rate limit exceeded for {resource} after {retries} retries")
+        self.resource = resource
+        self.retries = retries
