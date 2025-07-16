@@ -200,13 +200,9 @@ class FileProcessor:
         file_content_response = await self.exporter.get_resource(
             FileContentOptions(repo_name=repository, file_path=file_path, branch=branch)
         )
-        decoded_content = file_content_response["content"]
-        file_size = file_content_response["size"]
-
+        decoded_content = file_content_response.get("content")
         if not decoded_content:
-            logger.warning(
-                f"Referenced file {file_path} is too large ({file_size} bytes)"
-            )
+            logger.warning(f"File {file_path} has no content")
             return ""
 
         return parse_content(decoded_content, file_path)
