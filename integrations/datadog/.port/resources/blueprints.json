@@ -448,51 +448,5 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {}
-  },
-  {
-    "identifier": "datadogServiceDependency",
-    "description": "This blueprint represents a Datadog service-to-service dependency",
-    "title": "Datadog Service Dependency",
-    "icon": "Datadog",
-    "schema": {
-      "properties": {
-        "sourceService": {
-          "type": "string",
-          "title": "Service",
-          "description": "The Datadog source service"
-        },
-        "dependencies": {
-          "type": "array",
-          "title": "Dependencies",
-          "uniqueItems": true,
-          "description": "Array containing services called by the source service"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {
-      "startTime": {
-        "title": "From",
-        "type": "string",
-        "format": "date-time",
-        "calculation": "date -u +'%Y-%m-%dT%H:%M:%SZ' | jq -R 'fromdateiso8601 - 3600 | todateiso8601'"
-      },
-      "endTime": {
-        "title": "To",
-        "type": "string",
-        "format": "date-time",
-        "calculation": "date -u +'%Y-%m-%dT%H:%M:%SZ' | jq -R 'fromdateiso8601 | todateiso8601'"
-      }
-    },
-    "relations": {
-      "service": {
-        "title": "Service",
-        "description": "The source service associated with this query",
-        "target": "datadogService",
-        "required": false,
-        "many": false
-      }
-    }
   }
 ]

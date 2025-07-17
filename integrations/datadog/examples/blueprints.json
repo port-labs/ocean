@@ -125,7 +125,8 @@
     "title": "Datadog Service Dependency",
     "icon": "Datadog",
     "schema": {
-      "properties": {},
+      "properties": {
+      },
       "required": []
     },
     "mirrorProperties": {},

@@ -97,6 +97,8 @@ resources:
   - kind: serviceDependency
     selector:
       query: "true"
+      environment: "prod"
+      startTime: "date -u -v-1H +%s"
     port:
       entity:
         mappings:
@@ -105,6 +107,5 @@ resources:
           blueprint: '"datadogServiceDependency"'
           properties:
             sourceService: .name
-            dependencies: .calls
           relations:
-            service: '[.calls[] | tostring]'
+            dependencies: '[.calls[] | tostring]'
