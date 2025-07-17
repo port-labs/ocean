@@ -95,9 +95,9 @@ def test_bitbucket_generic_resource_config() -> None:
     config = BitbucketGenericResourceConfig(
         kind="project",
         selector=selector,
-        port={}
+        port={"entity": {"mappings": {"identifier": "test", "title": "test", "blueprint": "test", "properties": {}}}}
     )
-    
+
     # Assert
     assert config.kind == "project"
     assert config.selector.query == "true"
@@ -110,9 +110,9 @@ def test_bitbucket_pull_request_resource_config() -> None:
     config = BitbucketPullRequestResourceConfig(
         kind="pull-request",
         selector=selector,
-        port={}
+        port={"entity": {"mappings": {"identifier": "test", "title": "test", "blueprint": "test", "properties": {}}}}
     )
-    
+
     # Assert
     assert config.kind == "pull-request"
     assert config.selector.query == "true"
