@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING
 
 import yaml
 from loguru import logger
+from github.integration import GithubFileResourceConfig, GithubPortAppConfig
 from wcmatch import glob
 
 from github.core.options import FileSearchOptions, ListFileSearchOptions
@@ -264,3 +265,31 @@ def extract_file_paths_and_metadata(
         file_metadata[file_path] = file["skip_parsing"]
 
     return file_paths, file_metadata
+
+
+def get_file_resource_config_and_validation_mappings(
+    port_app_config: GithubPortAppConfig, repo_name: str
+) -> tuple[GithubFileResourceConfig | None, List[GithubFilePattern]]:
+    """
+    Get file resource configuration and validation mappings in one pass.
+
+    Returns:
+        tuple: (file_resource_config, validation_mappings)
+        - file_resource_config: The file resource config if found, None otherwise
+        - validation_mappings: List of file patterns with validation enabled
+    """
+    file_config = None
+    validation_mappings = []
+
+    for resource in port_app_config.resources:
+        if isinstance(resource, GithubFileResourceConfig):
+            file_config = resource
+            validation_mappings = [
+                pattern
+                for pattern in resource.selector.files
+                if pattern.validation_check
+                and any(repo.name == repo_name for repo in pattern.repos)
+            ]
+            break
+
+    return file_config, validation_mappings
