@@ -105,12 +105,11 @@ class TeamResourceConfig(ResourceConfig):
 
 class DatadogServiceDependencySelector(Selector):
     start_time: int = Field(
-        default=int(time.time()) - 60 * 60,  # 1 hour ago in seconds
+        default=int(time.time()) - 60 * 60,
         description="Specify the start time to fetch the service dependencies, defaults to last 1 hour in epoch seconds",
         alias="startTime",
     )
     environment: str = Field(
-        default="prod",
         description="Specify the service dependency environment, defaults to 'prod'",
         alias="environment",
     )
