@@ -131,12 +131,16 @@ test_cursor_configuration() {
 # Test if cursor rules exist
 test_cursor_rules() {
     print_status "Checking Cursor rules..."
+    
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+    CURSOR_RULE_PATH="$PROJECT_ROOT/.cursor/rules/aws-documentation-mcp.mdc"
 
-    if [ -f ".cursor/rules/aws-documentation-mcp.mdc" ]; then
+    if [ -f "$CURSOR_RULE_PATH" ]; then
         print_success "AWS Documentation MCP cursor rule exists"
         return 0
     else
-        print_error "AWS Documentation MCP cursor rule not found"
+        print_error "AWS Documentation MCP cursor rule not found at: $CURSOR_RULE_PATH"
         return 1
     fi
 }
