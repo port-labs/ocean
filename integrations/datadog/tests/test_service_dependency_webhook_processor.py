@@ -27,7 +27,7 @@ def resource_config() -> Any:
     mock_resource_config = MagicMock()
     mock_resource_config.kind = ObjectKind.SERVICE_DEPENDENCY
     mock_resource_config.selector.environment = "prod"
-    mock_resource_config.selector.start_time = time.monotonic_ns() - 60 * 60
+    mock_resource_config.selector.start_time = int(time.time()) - 60 * 60
 
     return mock_resource_config
 

@@ -572,7 +572,7 @@ class DatadogClient:
 
         except httpx.HTTPStatusError as err:
             logger.warning(
-                "Failed to check if webhook exists, skipping...", exc_info=err
+                f"Failed to check if a webhook exists, skipping...Exception: {err}",
             )
             return False
 
@@ -581,12 +581,12 @@ class DatadogClient:
     ) -> None:
 
         webhook_name = "PORT"
-        dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
-        # !todo remove this
-        logger.info(f"webhook before call => {dd_webhook_url}")
+        dd_webhook_url = (
+            f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks"
+        )
 
         try:
-            if await self._webhook_exists(dd_webhook_url):
+            if await self._webhook_exists(f"{dd_webhook_url}/{webhook_name}"):
                 logger.info("Webhook already exists")
                 return
 
@@ -637,7 +637,7 @@ class DatadogClient:
             logger.info(f"Webhook Subscription Response: {result}")
 
         except Exception as e:
-            logger.error("Failed to create webhook, skipping...", exc_info=e)
+            logger.error("Failed to create a webhook, skipping...", exc_info=e)
 
     async def get_service_dependencies(
         self, env: str, start_time: int, end_time: Optional[int] = None
@@ -650,7 +650,7 @@ class DatadogClient:
         Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
         """
         if not end_time:
-            end_time = time.monotonic_ns()
+            end_time = int(time.time())
 
         url = f"{self.api_url}/api/v1/service_dependencies"
         result: dict[str, Any] = await self._send_api_request(
@@ -661,7 +661,7 @@ class DatadogClient:
         if not result:
             return
 
-        # Convert result to a list of dicts with service names
+        # Convert the result to a list of dicts with service names
         items: list[dict[str, Any]] = [
             {"name": name, **details} for name, details in result.items()
         ]
@@ -677,7 +677,7 @@ class DatadogClient:
         Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-service-dependencies
         """
         if not end_time:
-            end_time = time.monotonic_ns()
+            end_time = int(time.time())
 
         url = f"{self.api_url}/api/v1/service_dependencies/{service_id}"
         return await self._send_api_request(

@@ -121,7 +121,7 @@
   },
   {
     "identifier": "datadogServiceDependency",
-    "description": "This blueprint represents a Datadog service-to-service dependencies",
+    "description": "This blueprint represents a Datadog service-to-service dependency",
     "title": "Datadog Service Dependency",
     "icon": "Datadog",
     "schema": {
@@ -133,7 +133,7 @@
         },
         "dependencies": {
           "type": "array",
-          "title": "Dependencies",
+          "title": "Depends on",
           "uniqueItems": true,
           "description": "Array containing services called by the source service"
         }
