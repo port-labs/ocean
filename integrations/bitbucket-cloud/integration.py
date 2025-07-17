@@ -108,6 +108,16 @@ class BitbucketPullRequestSelector(BitbucketGenericSelector):
     )
 
 
+class BitbucketProjectResourceConfig(ResourceConfig):
+    selector: BitbucketGenericSelector
+    kind: Literal["project"]
+
+
+class BitbucketRepositoryResourceConfig(ResourceConfig):
+    selector: BitbucketGenericSelector
+    kind: Literal["repository"]
+
+
 class BitbucketGenericResourceConfig(ResourceConfig):
     selector: BitbucketGenericSelector
     kind: Literal["project", "repository"]
@@ -120,10 +130,12 @@ class BitbucketPullRequestResourceConfig(ResourceConfig):
 
 class BitbucketAppConfig(PortAppConfig):
     resources: list[
-        BitbucketFolderResourceConfig 
-        | BitbucketFileResourceConfig 
-        | BitbucketGenericResourceConfig
+        BitbucketFolderResourceConfig
+        | BitbucketFileResourceConfig
+        | BitbucketProjectResourceConfig
+        | BitbucketRepositoryResourceConfig
         | BitbucketPullRequestResourceConfig
+        | BitbucketGenericResourceConfig
         | ResourceConfig
     ] = Field(
         default_factory=list,

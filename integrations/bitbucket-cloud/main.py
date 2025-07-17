@@ -24,6 +24,8 @@ from integration import (
     BitbucketFolderSelector,
     BitbucketFileResourceConfig,
     BitbucketFileSelector,
+    BitbucketProjectResourceConfig,
+    BitbucketRepositoryResourceConfig,
     BitbucketGenericResourceConfig,
     BitbucketGenericSelector,
     BitbucketPullRequestResourceConfig,
@@ -55,10 +57,12 @@ async def on_start() -> None:
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all projects in the workspace."""
     config = cast(
-        Union[ResourceConfig, BitbucketGenericResourceConfig], event.resource_config
+        Union[ResourceConfig, BitbucketProjectResourceConfig], event.resource_config
     )
+    selector = cast(BitbucketGenericSelector, config.selector)
     client = init_client()
-    async for projects in client.get_projects():
+    query = selector.query if selector.query != "true" else None
+    async for projects in client.get_projects(query=query):
         yield projects
 
 
@@ -66,10 +70,12 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the workspace."""
     config = cast(
-        Union[ResourceConfig, BitbucketGenericResourceConfig], event.resource_config
+        Union[ResourceConfig, BitbucketRepositoryResourceConfig], event.resource_config
     )
+    selector = cast(BitbucketGenericSelector, config.selector)
     client = init_client()
-    async for repositories in client.get_repositories():
+    query = selector.query if selector.query != "true" else None
+    async for repositories in client.get_repositories(query=query):
         yield repositories
 
 
@@ -79,11 +85,13 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(
         Union[ResourceConfig, BitbucketPullRequestResourceConfig], event.resource_config
     )
+    selector = cast(BitbucketPullRequestSelector, config.selector)
     client = init_client()
     async for repositories in client.get_repositories():
         tasks = [
             client.get_pull_requests(
-                repo.get("slug", repo["name"].lower().replace(" ", "-"))
+                repo.get("slug", repo["name"].lower().replace(" ", "-")),
+                state=selector.state
             )
             for repo in repositories
         ]
