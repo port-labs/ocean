@@ -144,3 +144,19 @@ resources:
             cpu_cores: .meta.cpuCores
             agent_version: .meta.agent_version
             tags: .tags_by_source
+  - kind: serviceDependency
+    selector:
+      query: "true"
+      startTime: "date -u +'%Y-%m-%dT%H:%M:%SZ' | jq -R 'fromdateiso8601 - 3600 | todateiso8601'"
+      environment: "prod"
+    port:
+      entity:
+        mappings:
+          identifier: .name | tostring
+          title: .name
+          blueprint: '"datadogServiceDependency"'
+          properties:
+            sourceService: .name
+            dependencies: .calls
+          relations:
+            service: '[.calls[] | tostring]'
