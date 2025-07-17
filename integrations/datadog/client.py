@@ -582,12 +582,12 @@ class DatadogClient:
     ) -> None:
 
         webhook_name = "PORT"
-        dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
-        # !todo remove this
-        logger.info(f"webhook before call => {dd_webhook_url}")
+        dd_webhook_url = (
+            f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks"
+        )
 
         try:
-            if await self._webhook_exists(dd_webhook_url):
+            if await self._webhook_exists(f"{dd_webhook_url}/{webhook_name}"):
                 logger.info("Webhook already exists")
                 return
 
