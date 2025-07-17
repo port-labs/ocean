@@ -2,8 +2,9 @@ import asyncio
 from inspect import getmembers
 from typing import Dict, Any, Type
 
-import uvicorn
 from pydantic import BaseModel
+from gunicorn.app.base import BaseApplication  # type: ignore
+import uvicorn
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
@@ -14,6 +15,7 @@ from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
 from port_ocean.utils.signal import init_signal_handler
+from port_ocean.runtime_vars import workers, max_requests, max_requests_jitter
 
 
 def _get_default_config_factory() -> None | Type[BaseModel]:
@@ -58,4 +60,36 @@ def run(
         app.config.initialize_port_resources = initialize_port_resources
     initialize_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config)
 
-    uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
+    if app.config.event_listener.should_resync is False:
+        gunicorn_options = {
+            "bind": f"0.0.0.0:{application_settings.port}",
+            "workers": workers,
+            "worker_class": "uvicorn.workers.UvicornWorker",
+            "loglevel": application_settings.log_level.lower(),
+            "max_requests": max_requests,
+            "max_requests_jitter": max_requests_jitter,
+            "timeout": 30,
+        }
+
+        class _GunicornApp(BaseApplication):
+            """
+            Embeds Gunicorn so we can pass a pre-built `app` object.
+            """
+
+            def __init__(self, app: object, options: dict[str, Any]) -> None:
+                self._application = app
+                self._options = options or {}
+                super().__init__()
+
+            # gunicorn hook overrides
+            def load_config(self) -> None:
+                cfg = self.cfg
+                for k, v in self._options.items():
+                    cfg.set(k, v)
+
+            def load(self) -> object:
+                return self._application
+
+        _GunicornApp(app, gunicorn_options).run()
+    else:
+        uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
