@@ -3,7 +3,6 @@ ARG BASE_RUNNER_PYTHON_IMAGE=ghcr.io/port-labs/port-ocean-base-runner:latest
 
 FROM ${BASE_BUILDER_PYTHON_IMAGE} AS base
 
-ARG OCEAN_USER_ID=999
 ARG BUILD_CONTEXT
 ARG BUILDPLATFORM
 
@@ -19,6 +18,7 @@ COPY ./${BUILD_CONTEXT}/pyproject.toml ./${BUILD_CONTEXT}/poetry.lock /app/
 RUN poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
 FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
+ARG OCEAN_USER_ID=999
 
 RUN groupadd -r appgroup && useradd -r -g appgroup -m -u ${OCEAN_USER_ID} ocean
 
