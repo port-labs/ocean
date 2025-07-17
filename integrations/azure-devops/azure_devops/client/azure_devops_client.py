@@ -129,7 +129,9 @@ class AzureDevopsClient(HTTPBaseClient):
         async for teams in self._get_paginated_by_top_and_skip(teams_url):
             yield teams
 
-    async def get_team_members(self, team: dict[str, Any]) -> list[dict[str, Any]]:
+    async def get_team_members(
+        self, team: dict[str, Any], expand_nested_members: bool = False
+    ) -> list[dict[str, Any]]:
         members_url = (
             f"{self._organization_base_url}/{API_URL_PREFIX}/projects/"
             f"{team['projectId']}/teams/{team['id']}/members"
@@ -139,14 +141,143 @@ class AzureDevopsClient(HTTPBaseClient):
             members_url,
         ):
             members.extend(members_batch)
+
+        if expand_nested_members:
+            return await self._expand_group_members_recursively(members)
         return members
 
+    async def _expand_group_members_recursively(
+        self, members: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Recursively expand group members to get all nested users.
+
+        Args:
+            members: List of team members that may include groups
+
+        Returns:
+            List of expanded members with all nested users
+        """
+        expanded_members = []
+        seen_identities: set[str] = set()
+
+        for member in members:
+            expanded = await self._expand_single_member(member, seen_identities)
+            expanded_members.extend(expanded)
+
+        return expanded_members
+
+    async def _expand_single_member(
+        self, member: dict[str, Any], seen_identities: set[str]
+    ) -> list[dict[str, Any]]:
+        """
+        Expand a single member, recursively expanding if it's a group.
+
+        Args:
+            member: The member to expand
+            seen_identities: Set of already processed identity IDs to avoid cycles
+
+        Returns:
+            List of expanded members (may be the original member if it's a user)
+        """
+        identity = member.get("identity", {})
+        identity_id = identity.get("id")
+
+        # Avoid cycles by checking if we've already processed this identity
+        if identity_id in seen_identities:
+            return []
+
+        seen_identities.add(identity_id)
+
+        # Check if this is a group that needs expansion
+        subject_kind = identity.get("subjectKind")
+        if subject_kind == "group":
+            try:
+                # Get group members using the Graph API
+                group_members = await self._get_group_members(identity_id)
+                expanded_members = []
+                for group_member in group_members:
+                    nested_expanded = await self._expand_single_member(
+                        group_member, seen_identities
+                    )
+                    expanded_members.extend(nested_expanded)
+                return expanded_members
+            except Exception as e:
+                logger.warning(f"Failed to expand group {identity_id}: {e}")
+                # Return the group as-is if expansion fails
+                return [member]
+        else:
+            # This is a user, return as-is
+            return [member]
+
+    async def _get_group_members(self, group_id: str) -> list[dict[str, Any]]:
+        """
+        Get members of a specific group using the Azure DevOps Graph API.
+
+        Args:
+            group_id: The ID of the group to get members for
+
+        Returns:
+            List of group members
+        """
+        # Use the Graph API to get group members
+        # The endpoint for getting group members
+        graph_url = f"{self._format_service_url('vssps')}/{API_URL_PREFIX}/graph/memberships/{group_id}/members"
+
+        members = []
+        try:
+            async for (
+                members_batch
+            ) in self._get_paginated_by_top_and_continuation_token(
+                graph_url, data_key="value"
+            ):
+                for member_ref in members_batch:
+                    # Get detailed member information
+                    member_descriptor = member_ref.get("memberDescriptor")
+                    if member_descriptor:
+                        member_detail = await self._get_member_details(
+                            member_descriptor
+                        )
+                        if member_detail:
+                            members.append({"identity": member_detail})
+        except Exception as e:
+            logger.warning(f"Failed to get members for group {group_id}: {e}")
+
+        return members
+
+    async def _get_member_details(
+        self, member_descriptor: str
+    ) -> dict[str, Any] | None:
+        """
+        Get detailed information about a member using their descriptor.
+
+        Args:
+            member_descriptor: The descriptor of the member
+
+        Returns:
+            Member details or None if not found
+        """
+        if not member_descriptor:
+            return None
+
+        try:
+            detail_url = f"{self._format_service_url('vssps')}/{API_URL_PREFIX}/graph/descriptors/{member_descriptor}"
+            response = await self.send_request("GET", detail_url)
+            if response and response.status_code == 200:
+                return response.json()
+        except Exception as e:
+            logger.warning(f"Failed to get details for member {member_descriptor}: {e}")
+
+        return None
+
     async def enrich_teams_with_members(
-        self, teams: list[dict[str, Any]]
+        self, teams: list[dict[str, Any]], expand_nested_members: bool = False
     ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching members for {len(teams)} teams")
 
-        team_tasks = [self.get_team_members(team) for team in teams]
+        team_tasks = [
+            self.get_team_members(team, expand_nested_members) for team in teams
+        ]
 
         members_results = await asyncio.gather(*team_tasks)
 
