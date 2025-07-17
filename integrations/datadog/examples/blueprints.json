@@ -156,16 +156,9 @@
       }
     },
     "relations": {
-      "sourceService": {
+      "service": {
         "title": "Service",
         "description": "The source service associated with this query",
-        "target": "datadogService",
-        "required": false,
-        "many": false
-      },
-      "dependencies": {
-        "title": "Dependencies",
-        "description": "The services called by the source service",
         "target": "datadogService",
         "required": false,
         "many": true
