@@ -76,7 +76,7 @@ class FileProcessor:
 
         match content:
             case dict():
-                logger.info("Content is a dictionary. Processing dict content.")
+                logger.debug("Content is a dictionary. Processing dict content.")
                 result = await self._process_dict_content(
                     content,
                     parent_dir,
@@ -87,7 +87,7 @@ class FileProcessor:
                     repo_metadata,
                 )
             case list():
-                logger.info("Content is a list. Processing list content.")
+                logger.debug("Content is a list. Processing list content.")
                 result = await self._process_list_content(
                     content,
                     parent_dir,

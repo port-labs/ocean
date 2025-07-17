@@ -3,7 +3,6 @@ from typing import Any
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 
-from github.clients.http.rest_client import GithubRestClient
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleTeamOptions
@@ -11,27 +10,6 @@ from github.helpers.gql_queries import (
     FETCH_TEAM_WITH_MEMBERS_GQL,
     LIST_TEAM_MEMBERS_GQL,
 )
-
-
-class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionT: SingleTeamOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
-        slug = options["slug"]
-        organization = self.client.organization
-
-        url = f"{self.client.base_url}/orgs/{organization}/teams/{slug}"
-        response = await self.client.send_api_request(url)
-
-        logger.info(f"Fetched team {slug} from {organization}")
-        return response
-
-    async def get_paginated_resources(
-        self, options: None = None
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        url = f"{self.client.base_url}/orgs/{self.client.organization}/teams"
-        async for teams in self.client.send_paginated_request(url):
-            yield teams
 
 
 class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]):
@@ -45,6 +23,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             "organization": self.client.organization,
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
+
         payload = self.client.build_graphql_payload(
             FETCH_TEAM_WITH_MEMBERS_GQL, variables
         )

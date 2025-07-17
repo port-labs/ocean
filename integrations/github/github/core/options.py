@@ -174,3 +174,13 @@ class ListFileSearchOptions(TypedDict):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
+
+
+class SingleCollaboratorOptions(RepositoryIdentifier):
+    """Options for fetching a single collaborator."""
+
+    username: Required[str]
+
+
+class ListCollaboratorOptions(RepositoryIdentifier):
+    """Options for listing collaborators."""
