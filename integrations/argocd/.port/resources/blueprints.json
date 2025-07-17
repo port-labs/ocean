@@ -319,5 +319,102 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "argocdRollout",
+    "description": "This blueprint represents an ArgoCD Rollout",
+    "title": "ArgoCD Rollout",
+    "icon": "Argo",
+    "schema": {
+      "properties": {
+        "strategy": {
+          "title": "Strategy",
+          "type": "string",
+          "description": "The rollout strategy (canary, blue-green, etc.)",
+          "icon": "DefaultProperty"
+        },
+        "replicas": {
+          "title": "Replicas",
+          "type": "number",
+          "description": "Number of desired pods",
+          "icon": "DefaultProperty"
+        },
+        "namespace": {
+          "title": "Namespace",
+          "type": "string",
+          "description": "The namespace where the rollout is deployed",
+          "icon": "DefaultProperty"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "description": "Current status of the rollout",
+          "icon": "DefaultProperty"
+        },
+        "syncStatus": {
+          "title": "Sync Status",
+          "type": "string",
+          "enum": [
+            "Synced",
+            "OutOfSync",
+            "Unknown"
+          ],
+          "enumColors": {
+            "Synced": "green",
+            "OutOfSync": "red",
+            "Unknown": "lightGray"
+          },
+          "description": "Sync status of the rollout with the desired state"
+        },
+        "healthStatus": {
+          "title": "Health Status",
+          "type": "string",
+          "enum": [
+            "Healthy",
+            "Progressing",
+            "Degraded",
+            "Suspended",
+            "Missing",
+            "Unknown"
+          ],
+          "enumColors": {
+            "Healthy": "green",
+            "Progressing": "blue",
+            "Degraded": "red",
+            "Suspended": "purple",
+            "Missing": "yellow",
+            "Unknown": "lightGray"
+          },
+          "description": "Health status of the rollout"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels",
+          "description": "Labels attached to the rollout"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations",
+          "description": "Annotations attached to the rollout"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "application": {
+        "title": "Application",
+        "target": "argocdApplication",
+        "required": false,
+        "many": false
+      },
+      "namespace": {
+        "title": "ArgoCD Namespace",
+        "target": "argocdNamespace",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
