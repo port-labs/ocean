@@ -110,6 +110,7 @@ class DatadogServiceDependencySelector(Selector):
         alias="startTime",
     )
     environment: str = Field(
+        default="prod",
         description="Specify the service dependency environment, defaults to 'prod'",
         alias="environment",
     )
