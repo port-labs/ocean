@@ -158,7 +158,7 @@ Here is an example mapping configuration that uses the `itemsToParse` syntax wit
 ```yaml
   - kind: issue
     selector:
-      query: .item.name != 'test-item' and .issueType == 'Bug' 
+      query: .item.name != 'test-item' and .issueType == 'Bug'
     port:
       itemsToParse: .fields.comments
       entity:

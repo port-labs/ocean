@@ -9,7 +9,7 @@ These examples are provided to demonstrate deployment patterns. For production d
 - [AWS Ocean Integration](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws/installations/installation)
 - [GCP Ocean Integration](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/gcp/installation)
 - [Azure Ocean Integration](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/azure/installation)
-  
+
 ## Purpose
 
 These examples demonstrate:
