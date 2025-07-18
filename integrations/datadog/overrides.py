@@ -110,6 +110,7 @@ class DatadogServiceDependencySelector(Selector):
         alias="startTime",
     )
     environment: str = Field(
+        default="prod",
         description="Specify the service dependency environment, defaults to 'prod'",
         alias="environment",
     )
@@ -127,7 +128,11 @@ class DataDogPortAppConfig(PortAppConfig):
         | SLOHistoryResourceConfig
         | DatadogResourceConfig
         | ResourceConfig
-    ] = Field(default_factory=list)
+    ] = Field(
+        default_factory=list,
+        alias="resources",
+        description="Specify the resources to include in the sync process",
+    )
 
 
 class DatadogIntegration(BaseIntegration):

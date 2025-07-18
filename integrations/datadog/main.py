@@ -1,11 +1,8 @@
-from typing import cast, Union
+from typing import cast
 
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from initialize_client import init_client
@@ -15,7 +12,7 @@ from overrides import (
     DatadogResourceConfig,
     DatadogSelector,
     TeamResourceConfig,
-    DatadogServiceDependencySelector,
+    ServiceDependencyResourceConfig,
 )
 from utils import (
     get_start_of_the_day_in_seconds_x_day_back,
@@ -145,10 +142,9 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.SERVICE_DEPENDENCY)
 async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    config = cast(Union[ResourceConfig, DatadogResourceConfig], event.resource_config)
-    selector = cast(DatadogServiceDependencySelector, config.selector)
     dd_client = init_client()
 
+    selector = cast(ServiceDependencyResourceConfig, event.resource_config).selector
     async for dependencies in dd_client.get_service_dependencies(
         env=selector.environment, start_time=selector.start_time
     ):
