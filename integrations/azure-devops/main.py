@@ -144,6 +144,14 @@ async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield boards
 
 
+@ocean.on_resync(Kind.BRANCH)
+async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for branches in azure_devops_client.generate_branches():
+        logger.info(f"Resyncing {len(branches)} branches")
+        yield branches
+
+
 @ocean.on_resync(Kind.RELEASE)
 async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
