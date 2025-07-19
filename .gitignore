@@ -170,3 +170,5 @@ junit/*
 
 # Ocean Cache
 .ocean_cache/
+.DS_STORE
+integrations/.DS_Store
