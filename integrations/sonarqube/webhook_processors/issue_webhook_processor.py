@@ -27,7 +27,9 @@ class IssueWebhookProcessor(BaseSonarQubeWebhookProcessor):
         selector = cast(SonarQubeIssueResourceConfig, resource_config).selector
         query_params = selector.generate_request_params()
 
-        async for issues_batch in sonar_client.get_issues_by_component(project, query_params):
+        async for issues_batch in sonar_client.get_issues_by_component(
+            project, query_params
+        ):
             issues.extend(issues_batch)
 
         return WebhookEventRawResults(
