@@ -120,6 +120,97 @@
     }
   },
   {
+    "identifier": "datadogService",
+    "description": "This blueprint represents a Datadog service",
+    "title": "Datadog Service",
+    "icon": "Datadog",
+    "ownership": {
+      "type": "Direct"
+    },
+    "schema": {
+      "properties": {
+        "application": {
+          "title": "Application",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags"
+        },
+        "languages": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Languages",
+          "type": "array"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "web",
+            "db",
+            "custom",
+            "cache",
+            "function",
+            "browser",
+            "mobile"
+          ],
+          "enumColors": {
+            "web": "lightGray",
+            "db": "lightGray",
+            "custom": "lightGray",
+            "cache": "lightGray",
+            "function": "lightGray",
+            "browser": "lightGray",
+            "mobile": "lightGray"
+          }
+        },
+        "owners": {
+          "type": "array",
+          "title": "Service Owners",
+          "items": {
+            "type": "string"
+          }
+        },
+        "links": {
+          "title": "Service Links",
+          "type": "array",
+          "description": "Links to external resources and repositories",
+          "items": {
+            "type": "string",
+            "format": "url"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "owner_team_datadog": {
+        "title": "Owner Team (Datadog)",
+        "target": "datadogTeam",
+        "required": false,
+        "many": false
+      },
+      "dependency": {
+        "title": "Dependency",
+        "target": "datadogServiceDependency",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "datadogServiceDependency",
     "description": "This blueprint represents a Datadog service-to-service dependency",
     "title": "Datadog Service Dependency",
