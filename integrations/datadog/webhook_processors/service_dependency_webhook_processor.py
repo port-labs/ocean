@@ -2,7 +2,7 @@ from typing import cast, Union
 
 from initialize_client import init_client
 from integration import ObjectKind
-from overrides import DatadogResourceConfig, ServiceDependencyResourceConfig
+from overrides import ServiceDependencyResourceConfig, DatadogServiceDependencySelector
 from webhook_processors._abstract_webhook_processor import (
     _AbstractDatadogWebhookProcessor,
 )
@@ -41,7 +41,10 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         """Handle service dependency webhook events."""
-        selector = cast(Union[ResourceConfig, ServiceDependencyResourceConfig], resource_config).selector
+        config = cast(
+            Union[ResourceConfig, ServiceDependencyResourceConfig], resource_config
+        )
+        selector = cast(DatadogServiceDependencySelector, config.selector)
         dd_client = init_client()
         service_dependency = await dd_client.get_single_service_dependency(
             service_id=payload["service_id"],
