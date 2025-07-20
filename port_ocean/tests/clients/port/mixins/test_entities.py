@@ -183,11 +183,11 @@ async def test_search_entities_uses_datasource_route_when_query_is_none(
     mock_response.is_error = False
     mock_response.status_code = 200
     mock_response.headers = {}
-    entity_client.client.post = AsyncMock(return_value=mock_response)
-
-    entity_client.auth.headers = AsyncMock(
+    entity_client.client.post = AsyncMock(return_value=mock_response)  # type: ignore
+    entity_client.auth.headers = AsyncMock(  # type: ignore
         return_value={"Authorization": "Bearer test"}
     )
+
     entity_client.auth.integration_type = "test-integration"
     entity_client.auth.integration_identifier = "test-identifier"
     entity_client.auth.api_url = "https://api.getport.io/v1"
