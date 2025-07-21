@@ -363,9 +363,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results, errors = await self._get_resource_raw_results(resource_config)
         async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
         raw_results: RAW_RESULT = []
+
+        raw_data = []
+
         for result in results:
             if isinstance(result, dict):
                 raw_results.append(result)
+                raw_data.append(result)
             else:
                 async_generators.append(result)
 
@@ -397,6 +401,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         for generator in async_generators:
             try:
                 async for items in generator:
+                    raw_data.extend(items)
                     number_of_raw_results += len(items)
                     if send_raw_data_examples_amount > 0:
                         send_raw_data_examples_amount = max(
@@ -423,6 +428,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(
             f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
         )
+
+        flags = await ocean.port_client.get_organization_feature_flags();
+        if "DATALAKE_ENABLED" in flags:
+            await ocean.port_client.post_integration_raw_data(raw_data, event.id, resource_config.kind)
 
         ocean.metrics.set_metric(
             name=MetricType.SUCCESS_NAME,
