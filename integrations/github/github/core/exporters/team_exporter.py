@@ -17,9 +17,14 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
-        url = f"{self.client.base_url}/orgs/{self.client.organization}/teams/{options['slug']}"
-        data = await self.client.send_api_request(url)
-        return data
+        slug = options["slug"]
+        organization = self.client.organization
+
+        url = f"{self.client.base_url}/orgs/{organization}/teams/{slug}"
+        response = await self.client.send_api_request(url)
+
+        logger.info(f"Fetched team {slug} from {organization}")
+        return response
 
     async def get_paginated_resources(
         self, options: None = None
@@ -43,11 +48,14 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
         payload = self.client.build_graphql_payload(
             FETCH_TEAM_WITH_MEMBERS_GQL, variables
         )
-        res = await self.client.send_api_request(
+        response = await self.client.send_api_request(
             self.client.base_url, method="POST", json_data=payload
         )
-        data = res.json()
-        team = data["data"]["organization"]["team"]
+        if not response:
+            return response
+
+        data = response["data"]
+        team = data["organization"]["team"]
 
         members_data = team["members"]
         member_nodes = members_data["nodes"]
@@ -142,9 +150,8 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             response = await self.client.send_api_request(
                 self.client.base_url, method="POST", json_data=payload
             )
-            response_data = response.json()
 
-            team_data = response_data["data"]["organization"]["team"]
+            team_data = response["data"]["organization"]["team"]
 
             new_members_data = team_data["members"]
             all_member_nodes.extend(new_members_data["nodes"])

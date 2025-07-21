@@ -40,8 +40,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}"
         logger.info(f"Fetching metadata for repository: {repo_name}")
 
-        response = await self.client.send_api_request(url)
-        return response
+        return await self.client.send_api_request(url)
 
     async def get_resource[
         ExporterOptionsT: FileContentOptions
@@ -57,6 +56,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         logger.info(f"Fetching file: {file_path} from {repo_name}@{branch}")
 
         response = await self.client.send_api_request(resource, params={"ref": branch})
+        if not response:
+            logger.warning(f"File {file_path} not found in {repo_name}@{branch}")
+            return {}
 
         response_size = response["size"]
         content = None
@@ -164,7 +166,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 )
             )
 
-            decoded_content = file_data.pop("content")
+            decoded_content = file_data.pop("content", None)
             if decoded_content is None:
                 logger.warning(f"File {file_path} has no content")
                 continue
@@ -244,7 +246,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     client.base_url, method="POST", json_data=query_payload
                 )
 
-                data = response.json()
                 logger.info(
                     f"Fetched {len(batch_files)} files from {repo_name}:{branch}"
                 )
@@ -252,7 +253,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 yield {
                     "repo": repo_name,
                     "branch": branch,
-                    "file_data": data["data"],
+                    "file_data": response["data"],
                     "batch_files": batch_files,
                 }
 

@@ -7,12 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.44 (2025-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.1
+
+
+## 0.4.43 (2025-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.5
+
+
+## 0.4.42 (2025-07-10)
+
+
+### Bug Fixes
+
+-  Fixes JQL bug in Jira integration by properly wrapping user filters in parentheses before appending the issue key, ensuring correct issue fetching during live events.
+
+
+## 0.4.41 (2025-07-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
+
+
 ## 0.4.40 (2025-07-02)
 
 
 ### Bug Fixes
 
--  Fix `JIRA_HOST` from str type to url 
+-  Fix `JIRA_HOST` from str type to url
 ## 0.4.39 (2025-07-02)
 
 
