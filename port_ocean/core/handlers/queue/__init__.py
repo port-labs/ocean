@@ -1,4 +1,6 @@
 from .abstract_queue import AbstractQueue
-from .local_queue import LocalQueue
+from .memory_queue import MemoryQueue
+from .disk_queue import DiskQueue
 
-__all__ = ["AbstractQueue", "LocalQueue"]
+
+__all__ = ["AbstractQueue", "MemoryQueue", "DiskQueue"]
