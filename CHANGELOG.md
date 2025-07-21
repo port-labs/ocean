@@ -6,10 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.25.6 (2025-07-16)
+
+## 0.26.2 (2025-07-16)
 
 ### Bug Fixes
-- Fixed pickle error when using multiprocess mode
+
+- Fixed error handling issues around pickle file load
+
+## 0.26.1 (2025-07-20)
+
+### Improvements
+
+- Added limited sudo permissions for Ocean user to execute update-ca-certificates command
+
+## 0.26.0 (2025-07-16)
+
+### Improvements
+
+- Use new and efficient datasource route
 
 ## 0.25.5 (2025-07-16)
 
