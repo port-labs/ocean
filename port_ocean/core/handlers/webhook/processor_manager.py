@@ -17,7 +17,7 @@ from port_ocean.context.event import event
 
 from .abstract_webhook_processor import AbstractWebhookProcessor
 from port_ocean.utils.signal import SignalHandler
-from port_ocean.core.handlers.queue import AbstractQueue, MemoryQueue
+from port_ocean.core.handlers.queue import AbstractQueue
 from port_ocean.runtime_vars import workers
 
 CONCURRENCY_PER_PATH = workers  # tune for CPU/I/O mix
@@ -25,6 +25,8 @@ CONCURRENCY_PER_PATH = workers  # tune for CPU/I/O mix
 
 class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     """Manages webhook processors and their routes"""
+
+    QueueCls: AbstractQueue
 
     def __init__(
         self,
@@ -40,6 +42,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
         signal_handler.register(self.shutdown)
+        self.QueueCls = ocean.app.config.get_queue_class()
 
     async def start_processing_event_messages(self) -> None:
         """Start processing events for all registered paths"""
@@ -276,7 +279,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
         if path not in self._processors_classes:
             self._processors_classes[path] = []
-            self._event_queues[path] = MemoryQueue()
+            self._event_queues[path] = self.QueueCls(path)
             self._register_route(path)
 
         self._processors_classes[path].append(processor)

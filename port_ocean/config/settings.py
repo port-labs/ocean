@@ -9,6 +9,8 @@ from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
+from port_ocean.core.handlers.queue import QueueType, MemoryQueue, DiskQueue
+
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
@@ -88,6 +90,14 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     event_listener: EventListenerSettingsType = Field(
         default=cast(EventListenerSettingsType, {"type": "POLLING"})
     )
+    queue_type: QueueType = Field(default=QueueType.MEMORY)
+
+    def get_queue_class(self):
+        if self.queue_type == QueueType.MEMORY:
+            return MemoryQueue
+        else:
+            return DiskQueue
+
     # If an identifier or type is not provided, it will be generated based on the integration name
     integration: IntegrationSettings = Field(
         default_factory=lambda: IntegrationSettings(type="", identifier="")

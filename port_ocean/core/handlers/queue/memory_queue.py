@@ -9,7 +9,7 @@ T = TypeVar("T")
 class MemoryQueue(AbstractQueue[T]):
     """Implementation of Queue using asyncio.Queue"""
 
-    def __init__(self) -> None:
+    def __init__(self, _: str | None = None) -> None:
         self._queue: asyncio.Queue[T] = asyncio.Queue()
 
     async def put(self, item: T) -> None:

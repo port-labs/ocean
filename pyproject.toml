@@ -68,6 +68,10 @@ pytest-cov = "^6.0.0"
 gunicorn = "^23.0.0"
 types-psutil = "^7.0.0.20250601"
 psutil = "^7.0.0"
+aiosqlite = "^0.21.0"
+aiosqlitepool = "^1.0.0"
+cloudpickle = "^3.1.1"
+dill = "^0.4.0"
 
 [tool.poetry.extras]
 cli = ["click", "rich", "cookiecutter", "jinja2-time"]
@@ -194,3 +198,9 @@ addopts = "-vv -n auto --durations=10 --color=yes --ignore-glob='./integrations/
 markers = [
     "smoke: Smoke tests (deselect with '-m \"not smoke\"')"
 ]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"        # optional
+typeCheckingMode = "strict"   # optional

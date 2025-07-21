@@ -2,7 +2,7 @@ import asyncio
 import pytest
 from dataclasses import dataclass
 
-from port_ocean.core.handlers.queue.local_queue import LocalQueue
+from port_ocean.core.handlers.queue.memory_queue import LocalQueue
 
 
 @dataclass

@@ -7,6 +7,9 @@ T = TypeVar("T")
 class AbstractQueue(ABC, Generic[T]):
     """Abstract interface for queues"""
 
+    def __init__(self, name: str | None = None):
+        pass
+
     @abstractmethod
     async def put(self, item: T) -> None:
         """Put an item into the queue"""
