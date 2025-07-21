@@ -2,7 +2,7 @@ import asyncio
 import pytest
 from dataclasses import dataclass
 
-from port_ocean.core.handlers.queue.memory_queue import LocalQueue
+from port_ocean.core.handlers.queue.memory_queue import MemoryQueue
 
 
 @dataclass
@@ -14,17 +14,19 @@ class MockMessage:
     processed: bool = False
 
 
-class TestLocalQueue:
+class TestMemoryQueue:
     """
-    Test suite for LocalQueue implementation
+    Test suite for MemoryQueue implementation
     This can serve as an example for testing other Queue implementations
     """
 
     @pytest.fixture
-    def queue(self) -> LocalQueue[MockMessage]:
-        return LocalQueue[MockMessage]()
+    def queue(self) -> MemoryQueue[MockMessage]:
+        return MemoryQueue[MockMessage]()
 
-    async def test_basic_queue_operations(self, queue: LocalQueue[MockMessage]) -> None:
+    async def test_basic_queue_operations(
+        self, queue: MemoryQueue[MockMessage]
+    ) -> None:
         """Test basic put/get operations"""
         message = MockMessage(id="1", data="test")
 
@@ -40,7 +42,7 @@ class TestLocalQueue:
         # Mark as processed
         await queue.commit()
 
-    async def test_fifo_order(self, queue: LocalQueue[MockMessage]) -> None:
+    async def test_fifo_order(self, queue: MemoryQueue[MockMessage]) -> None:
         """Demonstrate and test FIFO (First In, First Out) behavior"""
         messages = [
             MockMessage(id="1", data="first"),
@@ -58,7 +60,7 @@ class TestLocalQueue:
             assert received.id == expected.id
             await queue.commit()
 
-    async def test_wait_for_completion(self, queue: LocalQueue[MockMessage]) -> None:
+    async def test_wait_for_completion(self, queue: MemoryQueue[MockMessage]) -> None:
         """Example of waiting for all messages to be processed"""
         processed_count = 0
 
