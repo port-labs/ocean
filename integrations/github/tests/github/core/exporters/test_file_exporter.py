@@ -507,7 +507,9 @@ class TestFileExporterUtils:
 
         repo_exporter = MagicMock()
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [
                 {"name": "repo1", "default_branch": "main"},
                 {"name": "repo2", "default_branch": "master"},
