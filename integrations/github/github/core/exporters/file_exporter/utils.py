@@ -4,7 +4,16 @@ from collections import defaultdict
 import json
 from pathlib import Path
 import re
-from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING
+from typing import (
+    Any,
+    AsyncGenerator,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    TypedDict,
+    TYPE_CHECKING,
+)
 
 import yaml
 from loguru import logger
@@ -108,7 +117,7 @@ def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
 
 async def group_file_patterns_by_repositories_in_selector(
     files: List["GithubFilePattern"],
-    repo_exporter: AbstractGithubExporter,
+    repo_exporter: "AbstractGithubExporter[Any]",
     repo_type: str,
 ) -> List[ListFileSearchOptions]:
     """
@@ -123,7 +132,7 @@ async def group_file_patterns_by_repositories_in_selector(
 
     async def _get_repos_and_branches_for_selector(
         selector: "GithubFilePattern",
-    ) -> AsyncGenerator[Tuple[str, str], None]:
+    ) -> AsyncGenerator[Tuple[str, Optional[str]], None]:
         if selector.repos is None:
             repo_option = ListRepositoryOptions(type=repo_type)
             async for repo_batch in repo_exporter.get_paginated_resources(repo_option):
