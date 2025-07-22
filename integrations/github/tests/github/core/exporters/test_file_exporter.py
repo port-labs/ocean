@@ -2,6 +2,7 @@ import binascii
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import base64
+from collections import namedtuple
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import (
     decode_content,
@@ -11,6 +12,7 @@ from github.core.exporters.file_exporter.utils import (
     get_graphql_file_metadata,
     build_batch_file_query,
     match_file_path_against_glob_pattern,
+    group_file_patterns_by_repositories_in_selector,
     MAX_FILE_SIZE,
     GRAPHQL_MAX_FILE_SIZE,
 )
@@ -23,6 +25,9 @@ from github.core.options import (
 from github.helpers.utils import GithubClientType
 from port_ocean.context.event import event_context
 from typing import AsyncGenerator, List, Dict, Any
+
+# Mocking GithubFilePattern as it's not available in test context directly
+GithubFilePattern = namedtuple("GithubFilePattern", ["path", "skip_parsing", "repos"])
 
 TEST_FILE_CONTENT = "Hello, World!"
 TEST_FILE_CONTENT_BASE64 = base64.b64encode(TEST_FILE_CONTENT.encode()).decode()
@@ -488,6 +493,51 @@ class TestRestFileExporter:
 
 
 class TestFileExporterUtils:
+    @pytest.mark.asyncio
+    async def test_group_file_patterns_by_repositories_in_selector_no_repos_specified(
+        self,
+    ) -> None:
+        """
+        Test that when a file selector has no repositories specified, it defaults to all available repositories from the exporter.
+        """
+        # Arrange
+        mock_file_pattern = GithubFilePattern(
+            path="**/*.yaml", skip_parsing=False, repos=None
+        )
+        files = [mock_file_pattern]
+
+        repo_exporter = MagicMock()
+
+        async def mock_paginated_resources(*args, **kwargs):
+            yield [
+                {"name": "repo1", "default_branch": "main"},
+                {"name": "repo2", "default_branch": "master"},
+            ]
+
+        repo_exporter.get_paginated_resources = mock_paginated_resources
+
+        repo_type = "private"
+
+        # Act
+        result = await group_file_patterns_by_repositories_in_selector(
+            files, repo_exporter, repo_type
+        )
+
+        # Assert
+        assert len(result) == 2
+
+        repo1_result = next(item for item in result if item["repo_name"] == "repo1")
+        repo1_files = repo1_result["files"]
+        assert repo1_files[0]["path"] == "**/*.yaml"
+        assert repo1_files[0]["branch"] == "main"
+        assert repo1_files[0]["skip_parsing"] is False
+
+        repo2_result = next(item for item in result if item["repo_name"] == "repo2")
+        repo2_files = repo2_result["files"]
+        assert repo2_files[0]["path"] == "**/*.yaml"
+        assert repo2_files[0]["branch"] == "master"
+        assert repo2_files[0]["skip_parsing"] is False
+
     def test_decode_content_base64(self) -> None:
         content = decode_content(TEST_FILE_CONTENT_BASE64, "base64")
         assert content == TEST_FILE_CONTENT
