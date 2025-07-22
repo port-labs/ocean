@@ -91,4 +91,6 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
         await self.client.send_api_request(endpoint, method="PATCH", json_data=payload)
 
-        logger.info(f"Updated check run {check_run_id} with {conclusion} status")
+        logger.info(
+            f"Updated check run {check_run_id} for {repo_name} with {conclusion} status"
+        )

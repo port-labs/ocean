@@ -1,21 +1,25 @@
 import base64
 import binascii
 from collections import defaultdict
+from dataclasses import dataclass
 import json
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING, cast
 
 import yaml
 from loguru import logger
-from github.integration import GithubFileResourceConfig, GithubPortAppConfig
 from wcmatch import glob
 
 from github.core.options import FileSearchOptions, ListFileSearchOptions
 from github.helpers.utils import GithubClientType
 
 if TYPE_CHECKING:
-    from integration import GithubFilePattern
+    from integration import (
+        GithubFilePattern,
+        GithubPortAppConfig,
+        GithubFileResourceConfig,
+    )
 
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
@@ -242,7 +246,7 @@ def get_matching_files(
         if matched_patterns:
             file_info["patterns"] = matched_patterns
             matching_files.append(file_info)
-
+    print("MATCHING FILES", matching_files)
     return matching_files
 
 
@@ -267,29 +271,47 @@ def extract_file_paths_and_metadata(
     return file_paths, file_metadata
 
 
-def get_file_resource_config_and_validation_mappings(
-    port_app_config: GithubPortAppConfig, repo_name: str
-) -> tuple[GithubFileResourceConfig | None, List[GithubFilePattern]]:
+@dataclass
+class ResourceConfigToPatternMapping:
+    resource_config: "GithubFileResourceConfig"
+    patterns: List["GithubFilePattern"]
+
+
+@dataclass
+class MatchedFile:
+    resource_config: "GithubFileResourceConfig"
+    file_info: Dict[str, Any]
+
+
+def get_file_validation_mappings(
+    port_app_config: "GithubPortAppConfig", repo_name: str
+) -> List[ResourceConfigToPatternMapping]:
     """
-    Get file resource configuration and validation mappings in one pass.
+    Get file resource configurations with validation enabled for the specific repository.
 
     Returns:
-        tuple: (file_resource_config, validation_mappings)
-        - file_resource_config: The file resource config if found, None otherwise
-        - validation_mappings: List of file patterns with validation enabled
+        List of file resource configurations that have validation enabled for the specific repository
     """
-    file_config = None
-    validation_mappings = []
 
+    matching_mappings = []
     for resource in port_app_config.resources:
-        if isinstance(resource, GithubFileResourceConfig):
-            file_config = resource
-            validation_mappings = [
-                pattern
-                for pattern in resource.selector.files
-                if pattern.validation_check
-                and any(repo.name == repo_name for repo in pattern.repos)
-            ]
-            break
+        # Check if this is a file resource by checking the kind attribute
+        if hasattr(resource, "kind") and resource.kind == "file":
+            file_resource_config = cast(GithubFileResourceConfig, resource)
+            selector = file_resource_config.selector
 
-    return file_config, validation_mappings
+            matching_patterns = []
+            for pattern in selector.files:
+                if pattern.validation_check and any(
+                    repo.name == repo_name for repo in pattern.repos
+                ):
+                    matching_patterns.append(pattern)
+
+            if matching_patterns:
+                matching_mappings.append(
+                    ResourceConfigToPatternMapping(
+                        resource_config=file_resource_config, patterns=matching_patterns
+                    )
+                )
+
+    return matching_mappings

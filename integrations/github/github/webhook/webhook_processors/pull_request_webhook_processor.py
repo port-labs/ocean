@@ -1,4 +1,5 @@
-from typing import cast
+import asyncio
+from typing import List, cast
 from loguru import logger
 from github.webhook.events import PULL_REQUEST_EVENTS
 from github.helpers.utils import ObjectKind
@@ -13,7 +14,9 @@ from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.options import SinglePullRequestOptions
 from github.core.exporters.file_exporter.file_validation import FileValidationService
 from github.core.exporters.file_exporter.utils import (
-    get_file_resource_config_and_validation_mappings,
+    FileObject,
+    get_file_validation_mappings,
+    group_file_patterns_by_repositories_in_selector,
 )
 from github.core.exporters.file_exporter.core import RestFileExporter
 from integration import GithubPullRequestConfig, GithubPortAppConfig
@@ -48,7 +51,10 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
         logger.info(f"Processing pull request event: {action} for {repo_name}/{number}")
 
         # Handle file validation for opened/synchronized pull requests
-        if action in ["opened", "synchronize"]:
+        if action in ["opened", "synchronize", "reopened", "edited"]:
+            logger.info(
+                f"Handling file validation for pull request of type: {action} for {repo_name}/{number}"
+            )
             await self._handle_file_validation(payload)
 
         config = cast(GithubPullRequestConfig, resource_config)
@@ -74,24 +80,18 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
 
     async def _handle_file_validation(self, payload: EventPayload) -> None:
         """Handle file validation only if validation is configured."""
-        repo_name = payload["repository"]["name"]
+        repository = payload["repository"]
         pull_request = payload["pull_request"]
         base_sha = pull_request["base"]["sha"]
         head_sha = pull_request["head"]["sha"]
-        head_ref = pull_request["head"]["ref"]
         pr_number = pull_request["number"]
+        repo_name = repository["name"]
 
         port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-        file_config, validation_mappings = (
-            get_file_resource_config_and_validation_mappings(port_app_config, repo_name)
-        )
-
-        if not file_config:
-            logger.debug("No file resource configuration found, skipping validation")
-            return
+        validation_mappings = get_file_validation_mappings(port_app_config, repo_name)
 
         if not validation_mappings:
-            logger.debug(
+            logger.info(
                 f"No validation mappings found for repository {repo_name}, skipping validation"
             )
             return
@@ -100,7 +100,8 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
             f"Fetching commit diff for repository {repo_name} from {base_sha} to {head_sha}"
         )
 
-        file_exporter = RestFileExporter(create_github_client())
+        rest_client = create_github_client()
+        file_exporter = RestFileExporter(rest_client)
         diff_data = await file_exporter.fetch_commit_diff(repo_name, base_sha, head_sha)
         changed_files = diff_data["files"]
 
@@ -112,9 +113,28 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
             f"Validation needed for {len(validation_mappings)} patterns, creating validation service"
         )
 
-        pr_exporter = RestPullRequestExporter(create_github_client())
-        validation_service = FileValidationService(file_exporter, pr_exporter)
+        pr_exporter = RestPullRequestExporter(rest_client)
+        validation_service = FileValidationService(pr_exporter)
 
-        await validation_service.validate_pull_request_files(
-            validation_mappings, changed_files, repo_name, head_sha, head_ref, pr_number
-        )
+        for validation_mapping in validation_mappings:
+            files_pattern = validation_mapping.patterns
+
+            repo_path_map = group_file_patterns_by_repositories_in_selector(
+                files_pattern
+            )
+
+            async for file_results in file_exporter.get_paginated_resources(
+                repo_path_map
+            ):
+                typed_file_results = cast(List[FileObject], file_results)
+
+                tasks = [
+                    validation_service.validate_pull_request_files(
+                        file_result,
+                        validation_mapping.resource_config,
+                        head_sha,
+                        pr_number,
+                    )
+                    for file_result in typed_file_results
+                ]
+                await asyncio.gather(*tasks)

@@ -1,143 +1,71 @@
-from typing import Dict, List, Any
+from typing import Any, List, Optional, TypedDict
 from loguru import logger
-from github.core.exporters.file_exporter.core import RestFileExporter
-from github.core.exporters.file_exporter.utils import get_matching_files, parse_content
-from github.core.options import FileContentOptions
-from integration import GithubFilePattern
-from ocean.integrations.github.github.core.exporters.pull_request_exporter import (
+from github.core.exporters.file_exporter.utils import (
+    FileObject,
+)
+from integration import GithubFileResourceConfig
+from github.core.exporters.pull_request_exporter import (
     RestPullRequestExporter,
 )
+from port_ocean.clients.port.types import RequestOptions
 from port_ocean.context.ocean import ocean
+from port_ocean.core.models import Entity
+from port_ocean.core.handlers.entity_processor import JQEntityProcessor
 
 
-async def find_matching_files_for_validation(
-    changed_files: List[Dict[str, Any]], validation_mappings: List[GithubFilePattern]
-) -> List[Dict[str, Any]]:
-    """Find files that match validation patterns."""
-
-    matching_files = get_matching_files(changed_files, validation_mappings)
-
-    return [
-        {
-            "filename": file_info["filename"],
-            "pattern": file_info["patterns"][0],
-            "status": file_info.get("status", "unknown"),
-        }
-        for file_info in matching_files
-    ]
-
-
-async def create_port_entities_for_validation(
-    parsed_content: Any, mapping: GithubFilePattern, repo_name: str
-) -> List[Dict[str, Any]]:
-    """Create Port entities from parsed content for validation."""
-    try:
-        if isinstance(parsed_content, dict):
-            # Single entity
-            entity = {
-                "identifier": parsed_content.get(
-                    "identifier", f"{repo_name}-{mapping.path}"
-                ),
-                "title": parsed_content.get("title", f"Entity from {mapping.path}"),
-                "blueprint": parsed_content.get("blueprint", "default"),
-                "properties": parsed_content.get("properties", {}),
-                "relations": parsed_content.get("relations", {}),
-            }
-            return [entity]
-
-        elif isinstance(parsed_content, list):
-            # Multiple entities
-            entities = []
-            for item in parsed_content:
-                if isinstance(item, dict):
-                    entity = {
-                        "identifier": item.get(
-                            "identifier", f"{repo_name}-{mapping.path}-{len(entities)}"
-                        ),
-                        "title": item.get("title", f"Entity from {mapping.path}"),
-                        "blueprint": item.get("blueprint", "default"),
-                        "properties": item.get("properties", {}),
-                        "relations": item.get("relations", {}),
-                    }
-                    entities.append(entity)
-            return entities
-
-        else:
-            logger.warning(
-                f"Unexpected content type for {mapping.path}: {type(parsed_content)}"
-            )
-            return []
-
-    except Exception as e:
-        logger.error(f"Failed to create Port entities for {mapping.path}: {str(e)}")
-        return []
-
-
-async def validate_entity_against_port(
-    entity: Dict[str, Any], blueprint_identifier: str
-) -> Dict[str, Any]:
-    """Validate an entity against Port's API."""
-    try:
-        # Use Port's validation endpoint with validation_only: true
-        validation_response = await ocean.port_client.validate_entity(
-            entity_data=entity,
-            blueprint_identifier=blueprint_identifier,
-            validation_only=True,
-        )
-
-        return {"success": True, "errors": [], "response": validation_response}
-
-    except Exception as e:
-        logger.error(
-            f"Failed to validate entity {entity.get('identifier', 'unknown')}: {str(e)}"
-        )
-        return {"success": False, "errors": [str(e)], "response": None}
+class ValidationResult(TypedDict):
+    success: bool
+    errors: List[str]
+    response: Optional[Any]
 
 
 class FileValidationService:
     """Service for validating files during pull request processing."""
 
-    def __init__(
-        self, file_exporter: RestFileExporter, pr_exporter: RestPullRequestExporter
-    ) -> None:
-        self.file_exporter = file_exporter
+    def __init__(self, pr_exporter: RestPullRequestExporter) -> None:
         self.pr_exporter = pr_exporter
 
     async def validate_pull_request_files(
         self,
-        validation_mappings: List[GithubFilePattern],
-        changed_files: List[Dict[str, Any]],
-        repo_name: str,
+        changed_file: FileObject,
+        resource_config: GithubFileResourceConfig,
         head_sha: str,
-        head_ref: str,
         pr_number: int,
     ) -> None:
         """Validate files in a pull request against Port configuration."""
 
-        logger.info(f"Starting validation for PR {repo_name}/{pr_number}")
+        repo_name = changed_file["repository"]["name"]
+        file_path = changed_file["path"]
 
-        matching_files = await find_matching_files_for_validation(
-            changed_files, validation_mappings
-        )
-        if not matching_files:
-            return
-
-        logger.info(f"Found {len(matching_files)} files to validate")
-
-        check_run_id = await self.pr_exporter.create_validation_check(
-            repo_name=repo_name, head_sha=head_sha
+        logger.info(
+            f"Starting validation for file {file_path} in PR {repo_name}/{pr_number}"
         )
 
         validation_check_status = "completed"
         validation_check_conclusion = "success"
         validation_check_title = "File validation passed"
-        validation_check_summary = f"Successfully validated {len(matching_files)} files"
+        validation_check_summary = "Successfully validated file"
         validation_check_details = "All files passed validation"
 
         try:
-            validation_errors = await self._validate_files_against_port_blueprints(
-                matching_files, repo_name, head_ref
+            check_run_id = await self.pr_exporter.create_validation_check(
+                repo_name=repo_name, head_sha=head_sha
             )
+
+            validation_errors = []
+            result: ValidationResult = await self._validate_entity_against_port(
+                changed_file, resource_config
+            )
+
+            logger.info(
+                f"Validation result {'success' if result['success'] else 'failure'} for file {file_path}"
+            )
+
+            if not result["success"]:
+                error_msg = (
+                    f"Validation failed for {file_path}: {', '.join(result['errors'])}"
+                )
+                validation_errors.append(error_msg)
 
             if validation_errors:
                 validation_check_conclusion = "failure"
@@ -164,48 +92,76 @@ class FileValidationService:
             validation_check_details,
         )
 
-    async def _validate_files_against_port_blueprints(
-        self, matching_files: List[Dict[str, Any]], repo_name: str, branch: str
-    ) -> List[str]:
-        """Validate all matching files."""
-        validation_errors = []
+    async def _validate_entity_against_port(
+        self, entity: FileObject, resource_config: GithubFileResourceConfig
+    ) -> ValidationResult:
+        """Validate an entity against Port's API using upsert_entity with validation_only=True."""
+        try:
 
-        for file_info in matching_files:
-            file_path = file_info["filename"]
-            pattern = file_info["pattern"]
+            jq_processor = JQEntityProcessor(ocean)
 
-            try:
-                file_content_response = await self.file_exporter.get_resource(
-                    FileContentOptions(
-                        repo_name=repo_name, file_path=file_path, branch=branch
-                    )
-                )
-                decoded_content = file_content_response.get("content")
-                if not decoded_content:
-                    logger.warning(f"File {file_path} has no content")
-                    validation_errors.append(
-                        f"Could not retrieve content for {file_path}"
-                    )
-                    continue
+            entity_mappings = {
+                "identifier": resource_config.port.entity.mappings.identifier,
+                "title": resource_config.port.entity.mappings.title,
+                "blueprint": resource_config.port.entity.mappings.blueprint,
+                "properties": resource_config.port.entity.mappings.properties,
+                "relations": resource_config.port.entity.mappings.relations,
+            }
 
-                parsed_content = parse_content(decoded_content, file_path)
+            extracted_values = await jq_processor._search_as_object(
+                dict(entity), entity_mappings
+            )
 
-                entities = await create_port_entities_for_validation(
-                    parsed_content, pattern, repo_name
-                )
-                if not entities:
-                    validation_errors.append(f"No valid entities found in {file_path}")
-                    continue
+            blueprint = extracted_values["blueprint"]
+            properties = extracted_values["properties"]
+            relations = extracted_values["relations"]
+            identifier = extracted_values["identifier"]
+            title = extracted_values["title"]
 
-                for entity in entities:
-                    blueprint_id = entity.get("blueprint", "default")
-                    result = await validate_entity_against_port(entity, blueprint_id)
+            if not isinstance(blueprint, str):
+                return {
+                    "success": False,
+                    "errors": ["Blueprint is not a string"],
+                    "response": None,
+                }
 
-                    if not result["success"]:
-                        error_msg = f"Validation failed for {entity.get('identifier')} in {file_path}: {', '.join(result['errors'])}"
-                        validation_errors.append(error_msg)
+            if not isinstance(properties, dict):
+                return {
+                    "success": False,
+                    "errors": ["Properties is not a dictionary"],
+                    "response": None,
+                }
 
-            except Exception as e:
-                validation_errors.append(f"Error validating {file_path}: {str(e)}")
+            if not isinstance(relations, dict):
+                return {
+                    "success": False,
+                    "errors": ["Relations is not a dictionary"],
+                    "response": None,
+                }
 
-        return validation_errors
+            entity_obj = Entity(
+                identifier=identifier,
+                blueprint=blueprint,
+                title=title,
+                properties=properties,
+                relations=relations,
+            )
+
+            request_options = RequestOptions(
+                validation_only=True,
+                merge=True,
+                create_missing_related_entities=False,
+                delete_dependent_entities=False,
+            )
+
+            validation_response = await ocean.port_client.upsert_entity(
+                entity=entity_obj,
+                request_options=request_options,
+                should_raise=False,
+            )
+
+            return {"success": True, "errors": [], "response": validation_response}
+
+        except Exception as e:
+            logger.error(f"Failed to validate entity {identifier}: {str(e)}")
+            return {"success": False, "errors": [str(e)], "response": None}
