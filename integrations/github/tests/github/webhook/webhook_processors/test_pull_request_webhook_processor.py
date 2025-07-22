@@ -398,10 +398,6 @@ class TestPullRequestWebhookProcessor:
                             mock_payload
                         )
 
-                        # Verify that the exporter methods were called
-                        assert file_exporter.fetch_commit_diff.called
-                        assert file_exporter.get_paginated_resources.called
-
                         assert mock_fetch_diff.called
                         assert mock_get_resources.called
                         assert (
