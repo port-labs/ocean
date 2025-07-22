@@ -4,7 +4,7 @@ from collections import defaultdict
 import json
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING
 
 import yaml
 from loguru import logger
@@ -121,36 +121,30 @@ async def group_file_patterns_by_repositories_in_selector(
 
     repo_map: Dict[str, List[FileSearchOptions]] = defaultdict(list)
 
-    for file_selector in files:
-        path = file_selector.path
-        skip_parsing = file_selector.skip_parsing
-        # AI! I've added this check here to fetch a path in all repositories if the repositories aren't specified. Is there a way to make this more succint? I also need you to add test case for this
-        if file_selector.repos is None:
+    async def _get_repos_and_branches_for_selector(
+        selector: "GithubFilePattern",
+    ) -> AsyncGenerator[Tuple[str, str], None]:
+        if selector.repos is None:
             repo_option = ListRepositoryOptions(type=repo_type)
             async for repo_batch in repo_exporter.get_paginated_resources(repo_option):
                 for repository in repo_batch:
-                    repo = repository["name"]
-                    branch = repository["default_branch"]
-
-                    repo_map[repo].append(
-                        {
-                            "path": path,
-                            "skip_parsing": skip_parsing,
-                            "branch": branch,
-                        }
-                    )
+                    yield repository["name"], repository["default_branch"]
         else:
-            for repo_branch_mapping in file_selector.repos:
-                repo = repo_branch_mapping.name
-                branch = repo_branch_mapping.branch
+            for repo_branch_mapping in selector.repos:
+                yield repo_branch_mapping.name, repo_branch_mapping.branch
 
-                repo_map[repo].append(
-                    {
-                        "path": path,
-                        "skip_parsing": skip_parsing,
-                        "branch": branch,
-                    }
-                )
+    for file_selector in files:
+        path = file_selector.path
+        skip_parsing = file_selector.skip_parsing
+
+        async for repo, branch in _get_repos_and_branches_for_selector(file_selector):
+            repo_map[repo].append(
+                {
+                    "path": path,
+                    "skip_parsing": skip_parsing,
+                    "branch": branch,
+                }
+            )
 
     logger.info(f"Repository path map built for {len(repo_map)} repositories.")
 
