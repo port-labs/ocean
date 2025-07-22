@@ -1,6 +1,4 @@
-from typing import Any, AsyncIterator, Protocol
-import enum
-import json
+from typing import Any
 from aiobotocore.session import AioSession
 from aws.auth.region_resolver import RegionResolver
 

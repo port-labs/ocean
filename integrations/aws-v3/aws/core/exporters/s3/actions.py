@@ -1,6 +1,5 @@
 from typing import Dict, Any
 
-from aiobotocore.client import AioBaseClient
 
 from aws.core.interfaces.action import IAction
 from loguru import logger

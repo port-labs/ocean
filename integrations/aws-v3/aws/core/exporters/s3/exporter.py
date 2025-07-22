@@ -6,7 +6,7 @@ from aws.core.options import (
 )
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.s3.inspector import S3BucketInspector
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator
 from aws.core.exporters.s3.models import S3Bucket
 import asyncio
 
