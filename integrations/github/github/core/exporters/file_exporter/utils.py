@@ -10,7 +10,12 @@ import yaml
 from loguru import logger
 from wcmatch import glob
 
-from github.core.options import FileSearchOptions, ListFileSearchOptions
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.core.options import (
+    FileSearchOptions,
+    ListFileSearchOptions,
+    ListRepositoryOptions,
+)
 from github.helpers.utils import GithubClientType
 
 if TYPE_CHECKING:
@@ -75,7 +80,7 @@ def parse_content(content: str, file_path: str) -> Any:
 
 
 def group_files_by_status(
-    files: List[Dict[str, Any]]
+    files: List[Dict[str, Any]],
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     deleted_files: List[Dict[str, Any]] = []
     updated_files: List[Dict[str, Any]] = []
@@ -101,14 +106,16 @@ def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
     return False
 
 
-def group_file_patterns_by_repositories_in_selector(
+async def group_file_patterns_by_repositories_in_selector(
     files: List["GithubFilePattern"],
+    repo_exporter: AbstractGithubExporter,
+    repo_type: str,
 ) -> List[ListFileSearchOptions]:
     """
     Group file patterns by repository to enable batch processing.
 
     Takes a list of file patterns with repository mappings and organizes them
-    by repository name for efficient batch file fetching.
+    by repository name for efficient batch file fetching. If no repo is specified, fetch the relevant file for every repository
     """
     logger.info("Grouping file patterns by repository for batch processing.")
 
@@ -117,19 +124,32 @@ def group_file_patterns_by_repositories_in_selector(
     for file_selector in files:
         path = file_selector.path
         skip_parsing = file_selector.skip_parsing
-        repo_branch_mappings = file_selector.repos
+        if file_selector.repos is None:
+            repo_option = ListRepositoryOptions(type=repo_type)
+            async for repo_batch in repo_exporter.get_paginated_resources(repo_option):
+                for repository in repo_batch:
+                    repo = repository["name"]
+                    branch = repository["default_branch"]
 
-        for repo_branch_mapping in repo_branch_mappings:
-            repo = repo_branch_mapping.name
-            branch = repo_branch_mapping.branch
+                    repo_map[repo].append(
+                        {
+                            "path": path,
+                            "skip_parsing": skip_parsing,
+                            "branch": branch,
+                        }
+                    )
+        else:
+            for repo_branch_mapping in file_selector.repos:
+                repo = repo_branch_mapping.name
+                branch = repo_branch_mapping.branch
 
-            repo_map[repo].append(
-                {
-                    "path": path,
-                    "skip_parsing": skip_parsing,
-                    "branch": branch,
-                }
-            )
+                repo_map[repo].append(
+                    {
+                        "path": path,
+                        "skip_parsing": skip_parsing,
+                        "branch": branch,
+                    }
+                )
 
     logger.info(f"Repository path map built for {len(repo_map)} repositories.")
 
@@ -144,7 +164,7 @@ def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
     Match file path against a glob pattern using wcmatch's globmatch.
     Supports ** and other extended glob syntax.
     """
-    return glob.globmatch(path, pattern, flags=glob.GLOBSTAR)
+    return glob.globmatch(path, pattern, flags=glob.GLOBSTAR | glob.IGNORECASE)
 
 
 def determine_api_client_type_by_file_size(size: int) -> GithubClientType:
@@ -253,7 +273,7 @@ def extract_file_index(field_name: str) -> Optional[int]:
 
 
 def extract_file_paths_and_metadata(
-    files: List[Dict[str, Any]]
+    files: List[Dict[str, Any]],
 ) -> tuple[list[str], dict[str, bool]]:
     file_paths = []
     file_metadata = {}
