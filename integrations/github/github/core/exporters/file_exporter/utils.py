@@ -124,6 +124,7 @@ async def group_file_patterns_by_repositories_in_selector(
     for file_selector in files:
         path = file_selector.path
         skip_parsing = file_selector.skip_parsing
+        # AI! I've added this check here to fetch a path in all repositories if the repositories aren't specified. Is there a way to make this more succint? I also need you to add test case for this
         if file_selector.repos is None:
             repo_option = ListRepositoryOptions(type=repo_type)
             async for repo_batch in repo_exporter.get_paginated_resources(repo_option):
