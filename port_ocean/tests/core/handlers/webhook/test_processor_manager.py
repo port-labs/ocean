@@ -41,7 +41,7 @@ from port_ocean.exceptions.webhook_processor import (
     RetryableError,
     WebhookEventNotSupportedError,
 )
-from port_ocean.core.handlers.queue import MemoryQueue
+from port_ocean.core.handlers.queue import LocalQueue
 
 
 class MockProcessor(AbstractWebhookProcessor):
@@ -496,7 +496,7 @@ def test_registerProcessor_registrationWorks(
     processor_manager.register_processor("/test", MockWebhookProcessor)
     assert "/test" in processor_manager._processors_classes
     assert len(processor_manager._processors_classes["/test"]) == 1
-    assert isinstance(processor_manager._event_queues["/test"], MemoryQueue)
+    assert isinstance(processor_manager._event_queues["/test"], LocalQueue)
 
 
 def test_registerProcessor_multipleHandlers_allRegistered(
