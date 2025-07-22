@@ -2,7 +2,6 @@ import binascii
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import base64
-from collections import namedtuple
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import (
     decode_content,
@@ -26,8 +25,8 @@ from github.helpers.utils import GithubClientType
 from port_ocean.context.event import event_context
 from typing import AsyncGenerator, List, Dict, Any
 
-# Mocking GithubFilePattern as it's not available in test context directly
-GithubFilePattern = namedtuple("GithubFilePattern", ["path", "skip_parsing", "repos"])
+from integration import GithubFilePattern, RepositoryBranchMapping
+
 
 TEST_FILE_CONTENT = "Hello, World!"
 TEST_FILE_CONTENT_BASE64 = base64.b64encode(TEST_FILE_CONTENT.encode()).decode()
@@ -82,7 +81,7 @@ TEST_TREE_ENTRIES: List[Dict[str, Any]] = [
     },
 ]
 
-TEST_JSON_CONTENT = '{"name": "test", "value": 123}'
+TEST_JSON_CONTENT = """{"name": "test", "value": 123}"""
 TEST_YAML_CONTENT = "name: test\nvalue: 123"
 
 
@@ -502,7 +501,7 @@ class TestFileExporterUtils:
         """
         # Arrange
         mock_file_pattern = GithubFilePattern(
-            path="**/*.yaml", skip_parsing=False, repos=None
+            path="**/*.yaml", skipParsing=False, repos=None
         )
         files = [mock_file_pattern]
 
@@ -537,6 +536,47 @@ class TestFileExporterUtils:
         assert repo2_files[0]["path"] == "**/*.yaml"
         assert repo2_files[0]["branch"] == "master"
         assert repo2_files[0]["skip_parsing"] is False
+
+    @pytest.mark.asyncio
+    async def test_group_file_patterns_by_repositories_in_selector_with_repos_specified(
+        self,
+    ) -> None:
+        """
+        Test that when a file selector has repositories specified, it uses those repositories.
+        """
+        # Arrange
+        mock_file_pattern = GithubFilePattern(
+            path="**/*.yaml",
+            skipParsing=False,
+            repos=[
+                RepositoryBranchMapping(name="repo3", branch="dev"),
+                RepositoryBranchMapping(name="repo4", branch="main"),
+            ],
+        )
+        files = [mock_file_pattern]
+
+        repo_exporter = MagicMock()  # This should not be used
+        repo_type = "private"
+
+        # Act
+        result = await group_file_patterns_by_repositories_in_selector(
+            files, repo_exporter, repo_type
+        )
+
+        # Assert
+        assert len(result) == 2
+
+        repo3_result = next(item for item in result if item["repo_name"] == "repo3")
+        repo3_files = repo3_result["files"]
+        assert repo3_files[0]["path"] == "**/*.yaml"
+        assert repo3_files[0]["branch"] == "dev"
+        assert repo3_files[0]["skip_parsing"] is False
+
+        repo4_result = next(item for item in result if item["repo_name"] == "repo4")
+        repo4_files = repo4_result["files"]
+        assert repo4_files[0]["path"] == "**/*.yaml"
+        assert repo4_files[0]["branch"] == "main"
+        assert repo4_files[0]["skip_parsing"] is False
 
     def test_decode_content_base64(self) -> None:
         content = decode_content(TEST_FILE_CONTENT_BASE64, "base64")
