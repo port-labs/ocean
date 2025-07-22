@@ -4,9 +4,10 @@ import time
 from datetime import datetime
 from functools import partial
 from http import HTTPStatus
-from typing import Any, Callable, Coroutine, Iterable, Mapping, Union
+from typing import Any, Callable, Coroutine, Iterable, Mapping, Union, cast
 import httpx
 from dateutil.parser import isoparse
+import logging
 
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
 
@@ -148,6 +149,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response = self._retry_operation(request, send_method)
             else:
                 response = transport.handle_request(request)
+
+            self._log_response_size(request, response)
+
             return response
         except Exception as e:
             if not self._is_retryable_method(request) and self._logger is not None:
@@ -171,6 +175,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response = await self._retry_operation_async(request, send_method)
             else:
                 response = await transport.handle_async_request(request)
+
+            await self._log_response_size_async(request, response)
 
             return response
         except Exception as e:
@@ -245,6 +251,67 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 f"Request {request.method} {request.url} failed with exception:"
                 f" {type(error).__name__} - {str(error) or 'No error message'}, retrying in {sleep_time} seconds."
             )
+
+    def _should_log_response_size(self, request: httpx.Request) -> bool:
+        return self._logger is not None and not request.url.host.endswith("getport.io")
+
+    def _get_content_length(self, response: httpx.Response) -> int | None:
+        content_length = response.headers.get("Content-Length") or response.headers.get(
+            "content-length"
+        )
+        if content_length:
+            return int(content_length)
+        return None
+
+    async def _log_response_size_async(
+        self, request: httpx.Request, response: httpx.Response
+    ) -> None:
+        """Log the size of the response."""
+        if not self._should_log_response_size(request):
+            return
+
+        # Try to get content length from headers first
+        content_length = self._get_content_length(response)
+        if content_length is not None:
+            size_info = content_length
+        else:
+            # If no Content-Length header, try to get actual content size
+            try:
+                actual_size = len(await response.aread())
+                size_info = actual_size
+            except Exception as e:
+                cast(logging.Logger, self._logger).error(
+                    f"Error getting response size: {e}"
+                )
+                return
+
+        cast(logging.Logger, self._logger).info(
+            f"Response for {request.method} {request.url} - Size: {size_info} bytes"
+        )
+
+    def _log_response_size(
+        self, request: httpx.Request, response: httpx.Response
+    ) -> None:
+        if not self._should_log_response_size(request):
+            return
+
+        content_length = self._get_content_length(response)
+        if content_length is not None:
+            size_info = content_length
+        else:
+            # If no Content-Length header, try to get actual content size
+            try:
+                actual_size = len(response.read())
+                size_info = actual_size
+            except Exception as e:
+                cast(logging.Logger, self._logger).error(
+                    f"Error getting response size: {e}"
+                )
+                return
+
+        cast(logging.Logger, self._logger).info(
+            f"Response for {request.method} {request.url} - Size: {size_info} bytes"
+        )
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         return response.status_code in self._retry_status_codes
