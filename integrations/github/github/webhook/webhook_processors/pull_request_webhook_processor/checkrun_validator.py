@@ -52,6 +52,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
 
         port_app_config = cast(GithubPortAppConfig, event.port_app_config)
         validation_mappings = get_file_validation_mappings(port_app_config, repo_name)
+        repository_type = port_app_config.repository_type
 
         if not validation_mappings:
             logger.info(
@@ -63,7 +64,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             )
 
         await self._handle_file_validation(
-            repo_name, base_sha, head_sha, pr_number, validation_mappings
+            repo_name, base_sha, head_sha, pr_number, repository_type, validation_mappings
         )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
@@ -74,6 +75,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
         base_sha: str,
         head_sha: str,
         pr_number: int,
+        repository_type: str,
         validation_mappings: List[ResourceConfigToPatternMapping],
     ) -> None:
         logger.info(
@@ -99,8 +101,8 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
         for validation_mapping in validation_mappings:
             files_pattern = validation_mapping.patterns
 
-            repo_path_map = group_file_patterns_by_repositories_in_selector(
-                files_pattern
+            repo_path_map = await group_file_patterns_by_repositories_in_selector(
+                files_pattern, file_exporter, repository_type
             )
 
             async for file_results in file_exporter.get_paginated_resources(
