@@ -4,6 +4,7 @@ resources:
   - kind: serviceDependency
     selector:
       query: 'true'
+      environment: 'dev'
     port:
       entity:
         mappings:
