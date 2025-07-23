@@ -59,6 +59,7 @@ class CollaboratorMemberWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[data_to_delete]
             )
 
+        logger.info(f"Creating REST client and exporter for collaborator {username}")
         rest_client = create_github_client()
         exporter = RestCollaboratorExporter(rest_client)
 

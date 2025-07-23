@@ -15,11 +15,15 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
 
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/collaborators/{username}/permission"
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No collaborator found with identifier: {username} from repository: {repo_name}"
+            )
+            return {}
+
         logger.info(
             f"Fetched collaborator with identifier: {username} from repository: {repo_name}"
         )
-        if not response:
-            return {}
 
         collaborator = response["user"]
         return enrich_with_repository(collaborator, repo_name)

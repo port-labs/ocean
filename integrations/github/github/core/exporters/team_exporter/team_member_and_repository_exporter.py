@@ -46,23 +46,37 @@ class GraphQLTeamMembersAndReposExporter(AbstractGithubExporter[GithubGraphQLCli
         state = TeamFetchState(team_slug=team_slug)
 
         while True:
+            logger.debug(
+                f"Fetching next page for team '{team_slug}' - members_complete: {state.members_complete}, member_after: {state.member_after}, repo_after: {state.repo_after}"
+            )
+
             response = await self._fetch_next_team_page(state)
 
             if not response:
+                logger.warning(f"No response received for team '{team_slug}'")
                 return {}
 
             team = response.get("data", {}).get("organization", {}).get("team")
             if not team:
+                logger.warning(f"No team data found in response for team '{team_slug}'")
                 return {}
 
             if state.team_data is None:
                 state.team_data = dict(team)
+                logger.debug(f"Initialized team data for '{team_slug}'")
 
             self._merge_members(state, team.get("members", {}))
             self._merge_repositories(state, team.get("repositories", {}))
 
+            logger.debug(
+                f"Current progress for team '{team_slug}': {len(state.all_members)} members, {len(state.all_repos)} repositories"
+            )
+
             if not state.member_after and not state.members_complete:
                 state.members_complete = True
+                logger.info(
+                    f"Completed fetching all members for team '{team_slug}', switching to repositories"
+                )
                 if state.initial_repo_after:
                     state.repo_after = state.initial_repo_after
                     continue
@@ -70,6 +84,7 @@ class GraphQLTeamMembersAndReposExporter(AbstractGithubExporter[GithubGraphQLCli
                     break
 
             if not self._has_more_pages(state):
+                logger.info(f"No more pages to fetch for team '{team_slug}'")
                 break
 
         state.team_data["members"] = {"nodes": list(state.all_members.values())}

@@ -83,6 +83,9 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         ):
             for repo in batch:
                 if not await self.validate_repository_visibility(repo["visibility"]):
+                    logger.info(
+                        f"Skipping repository {repo['name']} due to visibility validation"
+                    )
                     continue
                 repositories.append(repo)
 

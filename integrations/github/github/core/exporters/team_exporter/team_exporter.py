@@ -13,6 +13,8 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
         slug = options["slug"]
         organization = self.client.organization
 
+        logger.info(f"Fetching team {slug} from organization {organization}")
+
         url = f"{self.client.base_url}/orgs/{organization}/teams/{slug}"
         response = await self.client.send_api_request(url)
 
