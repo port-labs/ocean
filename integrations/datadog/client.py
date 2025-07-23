@@ -579,9 +579,7 @@ class DatadogClient:
     ) -> None:
 
         webhook_name = "PORT"
-        dd_webhook_url = (
-            f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
-        )
+        dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
 
         try:
             if await self._webhook_exists(dd_webhook_url):
