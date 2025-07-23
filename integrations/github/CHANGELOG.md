@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Bumped ocean version to ^0.26.1
+- Make "repos" object in file selector optional # Ai! improve this changelog text
 
 
 ## 1.0.8-beta (2025-07-20)
