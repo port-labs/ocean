@@ -261,7 +261,7 @@ class SonarQubeAlmSettingsSelector(CustomSelector): ...
 
 
 class SonarQubeAlmSettingsResourceConfig(CustomResourceConfig):
-    kind: Literal["alm_settings"]  # type: ignore
+    kind: Literal["alm_settings"]
     selector: SonarQubeAlmSettingsSelector
 
 
