@@ -5,6 +5,7 @@ from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.pull_request_webhook_processor.file_validation import (
     get_file_validation_mappings,
     ResourceConfigToPatternMapping,
+    FileValidationService,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -12,7 +13,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
-from github.core.exporters.file_exporter.file_validation import FileValidationService
 from github.core.exporters.file_exporter.utils import (
     FileObject,
     group_file_patterns_by_repositories_in_selector,
