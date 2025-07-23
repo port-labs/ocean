@@ -23,10 +23,19 @@ class BaseAikidoWebhookProcessor(AbstractWebhookProcessor):
         webhook_secret = ocean.integration_config.get("webhook_secret")
         signature = event.headers.get("x-aikido-webhook-signature", "")
 
+        if signature and not webhook_secret:
+            logger.warning(
+                "Signature found but no secret configured for authenticating incoming webhooks, skipping event."
+            )
+            return False
+
         if not webhook_secret:
+            logger.info(
+                "No secret provided for authenticating incoming webhooks, skipping webhook authentication."
+            )
             return True
 
-        if not signature or not event._original_request:
+        if not event._original_request:
             return False
 
         body = await event._original_request.body()
