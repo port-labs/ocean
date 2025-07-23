@@ -40,6 +40,7 @@ RUN apt-get update \
         openssl \
         curl \
         acl \
+        sudo \
     && apt-get clean
 
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
@@ -68,6 +69,11 @@ RUN chmod a+x /app/init.sh
 RUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
 # Add ocean user to ssl certs group
 RUN setfacl -m u:ocean:rwX /etc/ssl/certs
+
+# Allow ocean user to run update-ca-certificates without password (secure, limited sudo)
+RUN echo "ocean ALL=(root) NOPASSWD: /usr/sbin/update-ca-certificates" >> /etc/sudoers.d/ocean-certs \
+    && chmod 440 /etc/sudoers.d/ocean-certs
+
 USER ocean
 # Run the application
 CMD ["bash", "/app/init.sh"]
