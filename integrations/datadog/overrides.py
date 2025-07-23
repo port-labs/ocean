@@ -1,14 +1,15 @@
+import time
 from typing import Optional, Literal
 
+from loguru import logger
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     PortAppConfig,
     Selector,
 )
-from pydantic import Field, validator, BaseModel
-from loguru import logger
 from port_ocean.core.integrations.base import BaseIntegration
+from pydantic import Field, validator, BaseModel
 
 
 class SLOHistorySelector(Selector):
@@ -102,13 +103,36 @@ class TeamResourceConfig(ResourceConfig):
     selector: TeamSelector
 
 
+class DatadogServiceDependencySelector(Selector):
+    start_time: int = Field(
+        default=int(time.time()) - 60 * 60,
+        description="Specify the start time to fetch the service dependencies, defaults to last 1 hour in epoch seconds",
+        alias="startTime",
+    )
+    environment: str = Field(
+        default="prod",
+        description="Specify the service dependency environment, defaults to 'prod'",
+        alias="environment",
+    )
+
+
+class ServiceDependencyResourceConfig(ResourceConfig):
+    kind: Literal["serviceDependency"]
+    selector: DatadogServiceDependencySelector
+
+
 class DataDogPortAppConfig(PortAppConfig):
     resources: list[
-        TeamResourceConfig
+        ServiceDependencyResourceConfig
+        | TeamResourceConfig
         | SLOHistoryResourceConfig
         | DatadogResourceConfig
         | ResourceConfig
-    ] = Field(default_factory=list)
+    ] = Field(
+        default_factory=list,
+        alias="resources",
+        description="Specify the resources to include in the sync process",
+    )
 
 
 class DatadogIntegration(BaseIntegration):

@@ -570,7 +570,7 @@ class DatadogClient:
 
         except httpx.HTTPStatusError as err:
             logger.warning(
-                "Failed to check if webhook exists, skipping...", exc_info=err
+                f"Failed to check if a webhook exists, skipping...Exception: {err}",
             )
             return False
 
@@ -579,10 +579,12 @@ class DatadogClient:
     ) -> None:
 
         webhook_name = "PORT"
-        dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
+        dd_webhook_url = (
+            f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks"
+        )
 
         try:
-            if await self._webhook_exists(dd_webhook_url):
+            if await self._webhook_exists(f"{dd_webhook_url}/{webhook_name}"):
                 logger.info("Webhook already exists")
                 return
 
@@ -608,6 +610,8 @@ class DatadogClient:
                         "event_type": "$EVENT_TYPE",
                         "event_url": "$LINK",
                         "service": "$HOSTNAME",
+                        "service_id": "$SERVICE_ID",
+                        "service_name": "$SERVICE_NAME",
                         "creator": "$USER",
                         "title": "$EVENT_TITLE",
                         "date": "$DATE",
@@ -631,4 +635,33 @@ class DatadogClient:
             logger.info(f"Webhook Subscription Response: {result}")
 
         except Exception as e:
-            logger.error("Failed to create webhook, skipping...", exc_info=e)
+            logger.error("Failed to create a webhook, skipping...", exc_info=e)
+
+    async def get_service_dependencies(
+        self, env: str, start_time: int, end_time: Optional[int] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get service dependencies from Datadog, chunked into pages.
+        Each yielded page is a list of service dependency dicts, e.g.,
+        [{ "name": "service_a", "calls": [...] }, ...]
+        Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
+        """
+        if not end_time:
+            end_time = int(time.time())
+
+        url = f"{self.api_url}/api/v1/service_dependencies"
+        result: dict[str, Any] = await self._send_api_request(
+            url,
+            params={"env": env, "start": start_time, "end": end_time},
+        )
+
+        if not result:
+            return
+
+        # Convert the result to a list of dicts with service names
+        items: list[dict[str, Any]] = [
+            {"name": name, **details} for name, details in result.items()
+        ]
+
+        for i in range(0, len(items), MAX_PAGE_SIZE):
+            yield items[i : i + MAX_PAGE_SIZE]
