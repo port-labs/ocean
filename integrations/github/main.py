@@ -35,6 +35,7 @@ from github.core.exporters.dependabot_exporter import RestDependabotAlertExporte
 from github.core.exporters.code_scanning_alert_exporter import (
     RestCodeScanningAlertExporter,
 )
+from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
 from github.core.exporters.folder_exporter import RestFolderExporter
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 
@@ -52,6 +53,7 @@ from github.core.options import (
     ListTagOptions,
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
+    ListCollaboratorOptions,
     SingleRepositoryOptions,
 )
 from github.helpers.utils import ObjectKind, GithubClientType
@@ -477,15 +479,43 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client()
-    exporter = RestFileExporter(rest_client)
+    file_exporter = RestFileExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
 
     config = cast(GithubFileResourceConfig, event.resource_config)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
     files_pattern = config.selector.files
 
-    repo_path_map = group_file_patterns_by_repositories_in_selector(files_pattern)
+    repo_path_map = await group_file_patterns_by_repositories_in_selector(
+        files_pattern, repo_exporter, app_config.repository_type
+    )
 
-    async for file_results in exporter.get_paginated_resources(repo_path_map):
+    async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         yield file_results
+
+
+@ocean.on_resync(ObjectKind.COLLABORATOR)
+async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all collaborators in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    collaborator_exporter = RestCollaboratorExporter(rest_client)
+
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            collaborator_exporter.get_paginated_resources(
+                ListCollaboratorOptions(repo_name=repo["name"])
+            )
+            for repo in repositories
+        ]
+        async for collaborators in stream_async_iterators_tasks(*tasks):
+            yield collaborators
 
 
 # Register webhook processors
