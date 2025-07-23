@@ -1,11 +1,10 @@
 import base64
 import binascii
 from collections import defaultdict
-from dataclasses import dataclass
 import json
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING, cast
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, TYPE_CHECKING
 
 import yaml
 from loguru import logger
@@ -17,8 +16,6 @@ from github.helpers.utils import GithubClientType
 if TYPE_CHECKING:
     from integration import (
         GithubFilePattern,
-        GithubPortAppConfig,
-        GithubFileResourceConfig,
     )
 
 JSON_FILE_SUFFIX = ".json"
@@ -269,49 +266,3 @@ def extract_file_paths_and_metadata(
         file_metadata[file_path] = file["skip_parsing"]
 
     return file_paths, file_metadata
-
-
-@dataclass
-class ResourceConfigToPatternMapping:
-    resource_config: "GithubFileResourceConfig"
-    patterns: List["GithubFilePattern"]
-
-
-@dataclass
-class MatchedFile:
-    resource_config: "GithubFileResourceConfig"
-    file_info: Dict[str, Any]
-
-
-def get_file_validation_mappings(
-    port_app_config: "GithubPortAppConfig", repo_name: str
-) -> List[ResourceConfigToPatternMapping]:
-    """
-    Get file resource configurations with validation enabled for the specific repository.
-
-    Returns:
-        List of file resource configurations that have validation enabled for the specific repository
-    """
-
-    matching_mappings = []
-    for resource in port_app_config.resources:
-        # Check if this is a file resource by checking the kind attribute
-        if hasattr(resource, "kind") and resource.kind == "file":
-            file_resource_config = cast(GithubFileResourceConfig, resource)
-            selector = file_resource_config.selector
-
-            matching_patterns = []
-            for pattern in selector.files:
-                if pattern.validation_check and any(
-                    repo.name == repo_name for repo in pattern.repos
-                ):
-                    matching_patterns.append(pattern)
-
-            if matching_patterns:
-                matching_mappings.append(
-                    ResourceConfigToPatternMapping(
-                        resource_config=file_resource_config, patterns=matching_patterns
-                    )
-                )
-
-    return matching_mappings

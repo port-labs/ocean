@@ -7,6 +7,7 @@ from github.webhook.webhook_processors.repository_webhook_processor import (
 )
 from github.webhook.webhook_processors.pull_request_webhook_processor import (
     PullRequestWebhookProcessor,
+    CheckRunValidatorWebhookProcessor,
 )
 from github.webhook.webhook_processors.issue_webhook_processor import (
     IssueWebhookProcessor,
@@ -70,3 +71,4 @@ def register_live_events_webhooks(path: str = "/webhook") -> None:
     ocean.add_webhook_processor(path, TeamMemberWebhookProcessor)
     ocean.add_webhook_processor(path, UserWebhookProcessor)
     ocean.add_webhook_processor(path, FileWebhookProcessor)
+    ocean.add_webhook_processor(path, CheckRunValidatorWebhookProcessor)
