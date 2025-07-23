@@ -570,7 +570,7 @@ class DatadogClient:
 
         except httpx.HTTPStatusError as err:
             logger.warning(
-                f"Failed to check if a webhook exists, skipping...Exception: {err}",
+                f"An error occurred while checking if a webhook exists. Error: {err}. Skipping webhook setup."
             )
             return False
 
@@ -580,11 +580,11 @@ class DatadogClient:
 
         webhook_name = "PORT"
         dd_webhook_url = (
-            f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks"
+            f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
         )
 
         try:
-            if await self._webhook_exists(f"{dd_webhook_url}/{webhook_name}"):
+            if await self._webhook_exists(dd_webhook_url):
                 logger.info("Webhook already exists")
                 return
 
