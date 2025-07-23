@@ -26,7 +26,6 @@ JSON_SUFFIX = ".json"
 
 
 class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
-
     async def _validate_payload(self, payload: EventPayload) -> bool:
         required_keys = {"ref", "before", "after", "commits"}
 
@@ -47,7 +46,6 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-
         repository = payload["repository"]
         before_sha = payload["before"]
         after_sha = payload["after"]
@@ -115,6 +113,9 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         current_branch: str,
         default_branch: str,
     ) -> bool:
+        if pattern.repos is None:
+            return current_branch == default_branch
+
         for mapping in pattern.repos:
             if mapping.name == repo_name and (
                 mapping.branch == current_branch
