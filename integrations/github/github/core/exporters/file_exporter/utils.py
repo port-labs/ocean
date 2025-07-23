@@ -131,14 +131,20 @@ async def group_file_patterns_by_repositories_in_selector(
     repo_map: Dict[str, List[FileSearchOptions]] = defaultdict(list)
 
     async def _get_repos_and_branches_for_selector(
-        selector: "GithubFilePattern",
+        selector: "GithubFilePattern", path: str
     ) -> AsyncGenerator[Tuple[str, Optional[str]], None]:
         if selector.repos is None:
+            logger.info(
+                f"No repositories specified, fetching {path} from {repo_type} repositories"  # AI! improve this log message
+            )
             repo_option = ListRepositoryOptions(type=repo_type)
             async for repo_batch in repo_exporter.get_paginated_resources(repo_option):
                 for repository in repo_batch:
                     yield repository["name"], repository["default_branch"]
         else:
+            logger.info(
+                f"Repositories specified, fetching {path} from specified repositories"  # AI! improve this log message
+            )
             for repo_branch_mapping in selector.repos:
                 yield repo_branch_mapping.name, repo_branch_mapping.branch
 
@@ -146,7 +152,9 @@ async def group_file_patterns_by_repositories_in_selector(
         path = file_selector.path
         skip_parsing = file_selector.skip_parsing
 
-        async for repo, branch in _get_repos_and_branches_for_selector(file_selector):
+        async for repo, branch in _get_repos_and_branches_for_selector(
+            file_selector, path
+        ):
             repo_map[repo].append(
                 {
                     "path": path,
