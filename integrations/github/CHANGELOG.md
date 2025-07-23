@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.0.9-beta (2025-07-22)
+
+
+### Improvements
+
+- Made the `repos` field optional in the file selector configuration. When omitted, the file selector will apply to all repositories.
+
+
 ## 1.0.8-beta (2025-07-20)
 
 

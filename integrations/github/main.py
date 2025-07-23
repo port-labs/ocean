@@ -477,14 +477,18 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client()
-    exporter = RestFileExporter(rest_client)
+    file_exporter = RestFileExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
 
     config = cast(GithubFileResourceConfig, event.resource_config)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
     files_pattern = config.selector.files
 
-    repo_path_map = group_file_patterns_by_repositories_in_selector(files_pattern)
+    repo_path_map = await group_file_patterns_by_repositories_in_selector(
+        files_pattern, repo_exporter, app_config.repository_type
+    )
 
-    async for file_results in exporter.get_paginated_resources(repo_path_map):
+    async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         yield file_results
 
 
