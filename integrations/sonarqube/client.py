@@ -612,11 +612,6 @@ class SonarQubeClient:
                 return {}
             logger.error(f"Error fetching ALM bindings for project {project_key}: {e}")
             raise
-        except httpx.HTTPError as e:
-            logger.error(
-                f"HTTP error occurred while fetching ALM bindings for project {project_key}: {e}"
-            )
-            raise
 
     async def get_all_alm_bindings(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
@@ -637,7 +632,7 @@ class SonarQubeClient:
                             binding_data["__project"] = project
                             binding_data["__projectKey"] = project_key
                             alm_bindings.append(binding_data)
-                    except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+                    except httpx.HTTPStatusError as e:
                         logger.warning(
                             f"Failed to fetch ALM bindings for project {project_key}: {e}"
                         )

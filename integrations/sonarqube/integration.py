@@ -257,12 +257,11 @@ class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):
     selector: SonarQubeOnPremAnalysisSelector
 
 
-class SonarQubeAlmSettingsSelector(CustomSelector):
-    query: str = Field(default="true", description="Query filter for ALM settings")
+class SonarQubeAlmSettingsSelector(CustomSelector): ...
 
 
 class SonarQubeAlmSettingsResourceConfig(CustomResourceConfig):
-    kind: Literal["alm_settings"]
+    kind: Literal["alm_settings"]  # type: ignore
     selector: SonarQubeAlmSettingsSelector
 
 
