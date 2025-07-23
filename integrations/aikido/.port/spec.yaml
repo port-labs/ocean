@@ -1,0 +1,29 @@
+description: Aikido integration for Port Ocean
+icon: Buddy  # Todo: Replace with appropriate icon
+features:
+  - type: exporter
+    section: Source Code Management
+    resources:
+      - kind: repositories
+      - kind: issues
+configurations:
+  - name: aikidoClientId
+    required: true
+    type: string
+    sensitive: true
+    description: The Aikido OAuth client ID used to authenticate with the Aikido API.
+  - name: aikidoClientSecret
+    required: true
+    type: string
+    sensitive: true
+    description: The Aikido OAuth client secret used to authenticate with the Aikido API.
+  - name: aikidoApiUrl
+    type: string
+    required: false
+    description: The base URL for the Aikido API.
+    default: https://app.aikido.dev/api/public/v1
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Secret used to sign and validate incoming webhooks from Aikido.
