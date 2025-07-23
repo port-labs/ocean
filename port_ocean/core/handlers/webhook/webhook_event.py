@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from enum import StrEnum
 from typing import Any, Dict, Type, TypeAlias, Optional
 from uuid import uuid4
@@ -41,10 +41,6 @@ class LiveEvent(ABC):
         )
         self._timestamp = timestamp
 
-    @abstractmethod
-    def to_dict(self) -> dict[str, Any]:
-        pass
-
 
 class WebhookEvent(LiveEvent):
     """Represents a webhook event"""
@@ -81,14 +77,6 @@ class WebhookEvent(LiveEvent):
             trace_id=data["trace_id"],
             payload=data["payload"],
             headers=data["headers"],
-            original_request=None,
-        )
-
-    def to_dict(self):
-        return dict(
-            trace_id=self.trace_id,
-            payload=self.payload,
-            headers=self.headers,
             original_request=None,
         )
 

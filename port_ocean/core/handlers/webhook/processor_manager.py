@@ -104,9 +104,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
         async def _worker(worker_id: int) -> None:  # the old loop, per‑worker
             while True:
-                matching: List[  # type: ignore
-                    Tuple[ResourceConfig, AbstractWebhookProcessor]
-                ] = []
+                matching: List[Tuple[ResourceConfig, AbstractWebhookProcessor]] = []
                 event: WebhookEvent | None = None
                 try:
                     event = await queue.get()
