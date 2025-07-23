@@ -135,16 +135,14 @@ async def group_file_patterns_by_repositories_in_selector(
     ) -> AsyncGenerator[Tuple[str, Optional[str]], None]:
         if selector.repos is None:
             logger.info(
-                f"No repositories specified, fetching {path} from {repo_type} repositories"  # AI! improve this log message
+                f"No repositories specified for file pattern '{path}'. Fetching from '{repo_type}' repositories."
             )
             repo_option = ListRepositoryOptions(type=repo_type)
             async for repo_batch in repo_exporter.get_paginated_resources(repo_option):
                 for repository in repo_batch:
                     yield repository["name"], repository["default_branch"]
         else:
-            logger.info(
-                f"Repositories specified, fetching {path} from specified repositories"  # AI! improve this log message
-            )
+            logger.info(f"Fetching file pattern '{path}' from specified repositories.")
             for repo_branch_mapping in selector.repos:
                 yield repo_branch_mapping.name, repo_branch_mapping.branch
 
