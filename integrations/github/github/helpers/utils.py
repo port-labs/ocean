@@ -31,6 +31,7 @@ class ObjectKind(StrEnum):
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
     FILE = "file"
+    COLLABORATOR = "collaborator"
 
 
 def enrich_with_repository(
