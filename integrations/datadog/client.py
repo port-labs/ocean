@@ -1,18 +1,18 @@
 import asyncio
-import re
 import datetime
 import http
 import json
+import re
 import time
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
 
 import httpx
 from loguru import logger
-
-from utils import generate_time_windows_from_interval_days
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
+
+from utils import generate_time_windows_from_interval_days
 
 MAX_PAGE_SIZE = 100
 
@@ -21,6 +21,7 @@ MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
 MINIMUM_LIMIT_REMAINING = 1
 DEFAULT_SLEEP_TIME = 0.1
 FETCH_WINDOW_TIME_IN_MINUTES = 10
+FETCH_WINDOW_TIME_IN_SECONDS = 3600
 
 SERVICE_KEY = "__service"
 QUERY_ID_KEY = "__query_id"
@@ -636,7 +637,7 @@ class DatadogClient:
             logger.error("Failed to create a webhook, skipping...", exc_info=e)
 
     async def get_service_dependencies(
-        self, env: str, start_time: int, end_time: Optional[int] = None
+        self, env: str, start_time: float, end_time: Optional[int] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get service dependencies from Datadog, chunked into pages.
@@ -647,10 +648,13 @@ class DatadogClient:
         if not end_time:
             end_time = int(time.time())
 
+        # convert `start_time` to unix timestamp
+        start_time = time.time() - (FETCH_WINDOW_TIME_IN_SECONDS * start_time)
+
         url = f"{self.api_url}/api/v1/service_dependencies"
         result: dict[str, Any] = await self._send_api_request(
             url,
-            params={"env": env, "start": start_time, "end": end_time},
+            params={"env": env, "start": int(start_time), "end": end_time},
         )
 
         if not result:

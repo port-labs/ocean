@@ -1,4 +1,3 @@
-import time
 from typing import Optional, Literal
 
 from loguru import logger
@@ -104,8 +103,8 @@ class TeamResourceConfig(ResourceConfig):
 
 
 class DatadogServiceDependencySelector(Selector):
-    start_time: int = Field(
-        default=int(time.time()) - 60 * 60,
+    start_time: float = Field(
+        default=1,
         description="Specify the start time to fetch the service dependencies, defaults to last 1 hour in epoch seconds",
         alias="startTime",
     )

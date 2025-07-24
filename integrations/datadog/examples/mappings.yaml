@@ -5,6 +5,7 @@ resources:
     selector:
       query: 'true'
       environment: 'dev'
+      startTime: 1
     port:
       entity:
         mappings:

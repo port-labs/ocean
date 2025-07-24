@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from client import DatadogClient, MAX_PAGE_SIZE
+from client import DatadogClient, MAX_PAGE_SIZE, FETCH_WINDOW_TIME_IN_SECONDS
 from integration import ObjectKind
 
 
@@ -15,7 +15,7 @@ def resource_config() -> Any:
     mock_resource_config = MagicMock()
     mock_resource_config.kind = ObjectKind.SERVICE_DEPENDENCY
     mock_resource_config.selector.environment = "prod"
-    mock_resource_config.selector.start_time = int(time.time()) - 60 * 60
+    mock_resource_config.selector.start_time = 2.5
 
     return mock_resource_config
 
@@ -262,7 +262,7 @@ async def test_get_service_dependencies(
         mock_request.return_value = expected_return_value
 
         dependencies: list[dict[str, Any]] = []
-        end_time = time.monotonic_ns()
+        end_time = int(time.time())
         async for dependency_batch in mock_datadog_client.get_service_dependencies(
             env=resource_config.selector.environment,
             start_time=resource_config.selector.start_time,
@@ -275,11 +275,15 @@ async def test_get_service_dependencies(
         ]
         assert dependencies == items
 
+        parsed_start_time = int(
+            time.time()
+            - (FETCH_WINDOW_TIME_IN_SECONDS * resource_config.selector.start_time)
+        )
         mock_request.assert_called_with(
             f"{mock_datadog_client.api_url}/api/v1/service_dependencies",
             params={
                 "env": resource_config.selector.environment,
-                "start": resource_config.selector.start_time,
+                "start": parsed_start_time,
                 "end": end_time,
             },
         )
