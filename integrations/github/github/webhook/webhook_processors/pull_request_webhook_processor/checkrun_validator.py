@@ -26,6 +26,13 @@ from github.webhook.webhook_processors.pull_request_webhook_processor.pull_reque
 
 
 class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
+    """
+    Validates PR files against Port schemas and reports via GitHub check runs.
+
+    Triggered on PR events: opened, synchronized, reopened, edited.
+    Validates files without syncing entities, providing immediate developer feedback.
+    """
+
     NoWebhookEventResults: WebhookEventRawResults = WebhookEventRawResults(
         updated_raw_results=[],
         deleted_raw_results=[],
