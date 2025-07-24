@@ -6,25 +6,32 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_coroutine_result
 from loguru import logger
 from github.core.options import ListFolderOptions, SingleFolderOptions
+from github.helpers.utils import IgnoredError
 from wcmatch import glob
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionsT: SingleFolderOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    _IGNORED_ERRORS = [
+        IgnoredError(status=409, message="empty repository"),
+    ]
+
+    async def get_resource[ExporterOptionsT: SingleFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         raise NotImplementedError
 
     @cache_coroutine_result()
     async def _get_tree(self, url: str, recursive: bool) -> list[dict[str, Any]]:
         logger.info("Fetching repository tree")
         params = {"recursive": "true"} if recursive else {}
-        tree = await self.client.send_api_request(url, params=params)
+        tree = await self.client.send_api_request(
+            url, params=params, ignored_errors=self._IGNORED_ERRORS
+        )
         return tree.get("tree", [])
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListFolderOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
         branch_ref = options.get("branch") or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
