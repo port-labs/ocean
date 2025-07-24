@@ -273,7 +273,6 @@ def get_matching_files(
         if matched_patterns:
             file_info["patterns"] = matched_patterns
             matching_files.append(file_info)
-    print("MATCHING FILES", matching_files)
     return matching_files
 
 
