@@ -105,7 +105,7 @@ class TeamResourceConfig(ResourceConfig):
 class DatadogServiceDependencySelector(Selector):
     start_time: float = Field(
         default=1,
-        description="Specify the start time to fetch the service dependencies, defaults to last 1 hour in epoch seconds",
+        description="Specify the start time to fetch the service dependencies in hours, defaults to last 1 hour",
         alias="startTime",
     )
     environment: str = Field(
