@@ -1,7 +1,7 @@
 from typing import Any
 from github.core.exporters.file_exporter.utils import FileObject
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
     EntityMapping,
@@ -15,7 +15,7 @@ from integration import (
     RepositoryBranchMapping,
     GithubPortAppConfig,
 )
-from github.webhook.webhook_processors.pull_request_webhook_processor.file_validation import (
+from github.webhook.webhook_processors.check_runs.file_validation import (
     ResourceConfigToPatternMapping,
     FileValidationService,
     get_file_validation_mappings,
@@ -130,8 +130,7 @@ class TestFileValidation:
         file_resource_config: GithubFileResourceConfig,
     ) -> None:
         """Test FileValidationService.validate_pull_request_files method."""
-        mock_pr_exporter = AsyncMock()
-        validation_service = FileValidationService(mock_pr_exporter)
+        validation_service = FileValidationService()
 
         file_object = FileObject(
             content="",
@@ -142,9 +141,18 @@ class TestFileValidation:
             name="config.yaml",
         )
 
-        with patch.object(
-            validation_service, "_validate_entity_against_port"
-        ) as mock_validate:
+        with (
+            patch.object(
+                validation_service.check_run, "create_validation_check"
+            ) as mock_create_check,
+            patch.object(
+                validation_service.check_run, "update_check_run"
+            ) as mock_update_check,
+            patch.object(
+                validation_service, "_validate_entity_against_port"
+            ) as mock_validate,
+        ):
+            mock_create_check.return_value = "check-run-id-123"
             mock_validate.return_value = {
                 "success": True,
                 "errors": [],
@@ -155,18 +163,17 @@ class TestFileValidation:
                 file_object, file_resource_config, "head-sha-456", 101
             )
 
-            mock_pr_exporter.create_validation_check.assert_called_once_with(
+            mock_create_check.assert_called_once_with(
                 repo_name="test-repo", head_sha="head-sha-456"
             )
-            mock_pr_exporter.update_check_run.assert_called_once()
+            mock_update_check.assert_called_once()
 
     async def test_file_validation_service_validate_pull_request_files_with_errors(
         self,
         file_resource_config: GithubFileResourceConfig,
     ) -> None:
         """Test FileValidationService.validate_pull_request_files method with validation errors."""
-        mock_pr_exporter = AsyncMock()
-        validation_service = FileValidationService(mock_pr_exporter)
+        validation_service = FileValidationService()
 
         file_object = FileObject(
             content="",
@@ -177,9 +184,18 @@ class TestFileValidation:
             name="config.yaml",
         )
 
-        with patch.object(
-            validation_service, "_validate_entity_against_port"
-        ) as mock_validate:
+        with (
+            patch.object(
+                validation_service.check_run, "create_validation_check"
+            ) as mock_create_check,
+            patch.object(
+                validation_service.check_run, "update_check_run"
+            ) as mock_update_check,
+            patch.object(
+                validation_service, "_validate_entity_against_port"
+            ) as mock_validate,
+        ):
+            mock_create_check.return_value = "check-run-id-123"
             mock_validate.return_value = {
                 "success": False,
                 "errors": ["Validation error"],
@@ -190,19 +206,17 @@ class TestFileValidation:
                 file_object, file_resource_config, "head-sha-456", 101
             )
 
-            mock_pr_exporter.create_validation_check.assert_called_once_with(
+            mock_create_check.assert_called_once_with(
                 repo_name="test-repo", head_sha="head-sha-456"
             )
-            mock_pr_exporter.update_check_run.assert_called_once()
+            mock_update_check.assert_called_once()
 
     async def test_file_validation_service_validate_pull_request_files_exception(
         self,
         file_resource_config: GithubFileResourceConfig,
     ) -> None:
         """Test FileValidationService.validate_pull_request_files method handles exceptions."""
-        mock_pr_exporter = AsyncMock()
-        mock_pr_exporter.create_validation_check.side_effect = Exception("API Error")
-        validation_service = FileValidationService(mock_pr_exporter)
+        validation_service = FileValidationService()
 
         file_object = FileObject(
             content="",
@@ -213,9 +227,19 @@ class TestFileValidation:
             name="config.yaml",
         )
 
-        await validation_service.validate_pull_request_files(
-            file_object, file_resource_config, "head-sha-456", 101
-        )
+        with (
+            patch.object(
+                validation_service.check_run, "create_validation_check"
+            ) as mock_create_check,
+            patch.object(
+                validation_service.check_run, "update_check_run"
+            ) as mock_update_check,
+        ):
+            mock_create_check.side_effect = Exception("API Error")
 
-        # When create_validation_check fails, the method returns early and doesn't call update_check_run
-        mock_pr_exporter.update_check_run.assert_not_called()
+            await validation_service.validate_pull_request_files(
+                file_object, file_resource_config, "head-sha-456", 101
+            )
+
+            # When create_validation_check fails, the method returns early and doesn't call update_check_run
+            mock_update_check.assert_not_called()

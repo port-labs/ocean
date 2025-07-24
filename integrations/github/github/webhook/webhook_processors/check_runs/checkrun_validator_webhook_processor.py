@@ -2,7 +2,7 @@ import asyncio
 from typing import List, cast
 from loguru import logger
 from github.clients.client_factory import create_github_client
-from github.webhook.webhook_processors.pull_request_webhook_processor.file_validation import (
+from github.webhook.webhook_processors.check_runs.file_validation import (
     get_file_validation_mappings,
     ResourceConfigToPatternMapping,
     FileValidationService,
@@ -12,7 +12,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEventRawResults,
 )
-from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.file_exporter.utils import (
     FileObject,
     group_file_patterns_by_repositories_in_selector,
@@ -20,7 +19,7 @@ from github.core.exporters.file_exporter.utils import (
 from github.core.exporters.file_exporter.core import RestFileExporter
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event
-from github.webhook.webhook_processors.pull_request_webhook_processor.pull_request import (
+from github.webhook.webhook_processors.pull_request_webhook_processor import (
     PullRequestWebhookProcessor,
 )
 
@@ -33,7 +32,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
     Validates files without syncing entities, providing immediate developer feedback.
     """
 
-    NoWebhookEventResults: WebhookEventRawResults = WebhookEventRawResults(
+    _NoWebhookEventResults: WebhookEventRawResults = WebhookEventRawResults(
         updated_raw_results=[],
         deleted_raw_results=[],
     )
@@ -52,7 +51,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             logger.info(
                 f"Skipping handling of file validation for pull request event: {action} for {repo_name}/{pr_number}"
             )
-            return self.NoWebhookEventResults
+            return self._NoWebhookEventResults
 
         logger.info(
             f"Handling file validation for pull request of type: {action} for {repo_name}/{pr_number}"
@@ -66,7 +65,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             logger.info(
                 f"No validation mappings found for repository {repo_name}, skipping validation"
             )
-            return self.NoWebhookEventResults
+            return self._NoWebhookEventResults
 
         await self._handle_file_validation(
             repo_name,
@@ -77,7 +76,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             validation_mappings,
         )
 
-        return self.NoWebhookEventResults
+        return self._NoWebhookEventResults
 
     async def _handle_file_validation(
         self,
@@ -105,8 +104,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             f"Validation needed for {len(validation_mappings)} patterns, creating validation service"
         )
 
-        pr_exporter = RestPullRequestExporter(rest_client)
-        validation_service = FileValidationService(pr_exporter)
+        validation_service = FileValidationService()
 
         for validation_mapping in validation_mappings:
             files_pattern = validation_mapping.patterns

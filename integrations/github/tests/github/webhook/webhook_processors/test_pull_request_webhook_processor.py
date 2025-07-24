@@ -171,7 +171,7 @@ class TestPullRequestWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.pull_request_webhook_processor.pull_request.RestPullRequestExporter",
+                "github.webhook.webhook_processors.pull_request_webhook_processor.RestPullRequestExporter",
                 return_value=mock_exporter,
             ),
         ):

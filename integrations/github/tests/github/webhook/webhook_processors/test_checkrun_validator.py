@@ -18,10 +18,10 @@ from integration import (
     GithubPullRequestConfig,
     GithubPullRequestSelector,
 )
-from github.webhook.webhook_processors.pull_request_webhook_processor.checkrun_validator import (
+from github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor import (
     CheckRunValidatorWebhookProcessor,
 )
-from github.webhook.webhook_processors.pull_request_webhook_processor.file_validation import (
+from github.webhook.webhook_processors.check_runs.file_validation import (
     ResourceConfigToPatternMapping,
 )
 
@@ -134,7 +134,7 @@ class TestCheckRunValidatorWebhookProcessor:
     ) -> None:
         """Test handle_event when no validation mappings are found."""
         with patch(
-            "github.webhook.webhook_processors.pull_request_webhook_processor.checkrun_validator.get_file_validation_mappings",
+            "github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor.get_file_validation_mappings",
             return_value=[],
         ):
             async with event_context("test_event") as event:
@@ -162,15 +162,15 @@ class TestCheckRunValidatorWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.pull_request_webhook_processor.checkrun_validator.get_file_validation_mappings",
+                "github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor.get_file_validation_mappings",
                 return_value=[validation_mapping],
             ),
             patch(
-                "github.webhook.webhook_processors.pull_request_webhook_processor.checkrun_validator.create_github_client",
+                "github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor.create_github_client",
                 return_value=MagicMock(),
             ),
             patch(
-                "github.webhook.webhook_processors.pull_request_webhook_processor.checkrun_validator.RestFileExporter",
+                "github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor.RestFileExporter",
             ) as mock_file_exporter_class,
         ):
             # Create mock file exporter
@@ -209,21 +209,18 @@ class TestCheckRunValidatorWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.pull_request_webhook_processor.checkrun_validator.get_file_validation_mappings",
+                "github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor.get_file_validation_mappings",
                 return_value=[validation_mapping],
             ),
             patch(
-                "github.webhook.webhook_processors.pull_request_webhook_processor.checkrun_validator.create_github_client",
+                "github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor.create_github_client",
                 return_value=MagicMock(),
             ),
             patch(
-                "github.webhook.webhook_processors.pull_request_webhook_processor.checkrun_validator.RestFileExporter",
+                "github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor.RestFileExporter",
             ) as mock_file_exporter_class,
             patch(
-                "github.webhook.webhook_processors.pull_request_webhook_processor.checkrun_validator.RestPullRequestExporter",
-            ) as mock_pr_exporter_class,
-            patch(
-                "github.webhook.webhook_processors.pull_request_webhook_processor.checkrun_validator.FileValidationService",
+                "github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor.FileValidationService",
             ) as mock_validation_service_class,
         ):
             # Create mock file exporter
@@ -234,10 +231,7 @@ class TestCheckRunValidatorWebhookProcessor:
             mock_file_exporter.get_paginated_resources = mock_file_generator
             mock_file_exporter_class.return_value = mock_file_exporter
 
-            # Create mock PR exporter and validation service
-            mock_pr_exporter = AsyncMock()
-            mock_pr_exporter_class.return_value = mock_pr_exporter
-
+            # Create mock validation service
             mock_validation_service = AsyncMock()
             mock_validation_service_class.return_value = mock_validation_service
 
@@ -256,7 +250,7 @@ class TestCheckRunValidatorWebhookProcessor:
                 )
 
                 # Verify that validation service was created and called
-                mock_validation_service_class.assert_called_once_with(mock_pr_exporter)
+                mock_validation_service_class.assert_called_once()
                 assert mock_validation_service.validate_pull_request_files.called
 
     async def test_handle_event_skipped_actions(
