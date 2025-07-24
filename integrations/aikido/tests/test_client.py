@@ -251,7 +251,9 @@ async def test_get_all_issues_with_dict_response(aikido_client: AikidoClient) ->
         issues = await aikido_client.get_all_issues()
         assert len(issues) == 2
         assert issues[0]["title"] == "issue1"
-        mock_request.assert_called_once_with("issues/export", params={"format": "json"})
+        mock_request.assert_called_once_with(
+            "api/public/v1/issues/export", params={"format": "json"}
+        )
 
 
 @pytest.mark.asyncio
@@ -348,7 +350,9 @@ async def test_get_repository_detail_success(aikido_client: AikidoClient) -> Non
         result = await aikido_client.get_repository_detail("456")
 
         assert result == test_repo
-        mock_request.assert_called_once_with("repositories/code/456", method="GET")
+        mock_request.assert_called_once_with(
+            "api/public/v1/repositories/code/456", method="GET"
+        )
 
 
 @pytest.mark.asyncio

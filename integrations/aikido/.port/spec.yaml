@@ -21,7 +21,7 @@ configurations:
     type: string
     required: false
     description: The base URL for the Aikido API.
-    default: https://app.aikido.dev/api/public/v1
+    default: https://app.aikido.dev
   - name: webhookSecret
     required: false
     type: string

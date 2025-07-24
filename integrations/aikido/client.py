@@ -6,9 +6,11 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from helpers.exceptions import MissingIntegrationCredentialException
 
+API_VERSION = "v1"
 PAGE_SIZE = 50
-ISSUES_ENDPOINT = "issues/export"
-REPOSITORIES_ENDPOINT = "repositories/code"
+ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
+REPOSITORIES_ENDPOINT = f"api/public/{API_VERSION}/repositories/code"
+AUTH_TOKEN_ENDPOINT = "api/oauth/token"
 REPO_FIRST_PAGE = 0
 
 
@@ -51,7 +53,7 @@ class AikidoClient:
 
             logger.info("Generating OAuth token from Aikido API")
             response = await self.http_client.post(
-                "https://app.aikido.dev/api/oauth/token",
+                f"{self.base_url}/{AUTH_TOKEN_ENDPOINT}",
                 headers=headers,
                 json=data,
                 timeout=30,
