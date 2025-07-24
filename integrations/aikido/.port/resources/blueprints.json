@@ -2,7 +2,7 @@
     {
         "identifier": "aikidoRepository",
         "title": "Aikido Repository",
-        "icon": "Repository",
+        "icon": "Aikido",
         "schema": {
             "properties": {
                 "name": {
@@ -49,7 +49,7 @@
     {
         "identifier": "aikidoIssue",
         "title": "Aikido Issue",
-        "icon": "AlertTriangle",
+        "icon": "Aikido",
         "schema": {
             "properties": {
                 "groupId": {
