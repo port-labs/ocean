@@ -1,5 +1,5 @@
 description: Aikido integration for Port Ocean
-icon: Buddy  # Todo: Replace with appropriate icon
+icon: Aikido
 features:
   - type: exporter
     section: Source Code Management
