@@ -21,7 +21,7 @@ from github.core.options import (
     FileSearchOptions,
     ListFileSearchOptions,
 )
-from github.helpers.utils import GithubClientType
+from github.helpers.utils import GithubClientType, IgnoredError
 from port_ocean.context.event import event_context
 from typing import AsyncGenerator, List, Dict, Any
 
@@ -439,7 +439,8 @@ class TestRestFileExporter:
 
             assert tree == TEST_TREE_ENTRIES
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/tree-sha?recursive=1"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/tree-sha?recursive=1",
+                ignored_errors=[IgnoredError(status=409, message="empty repository")],
             )
 
     async def test_get_tree_recursive_empty_repo(
@@ -454,7 +455,8 @@ class TestRestFileExporter:
 
             assert tree == []
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/tree-sha?recursive=1"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/tree-sha?recursive=1",
+                ignored_errors=[IgnoredError(status=409, message="empty repository")],
             )
 
     async def test_fetch_commit_diff(self, rest_client: GithubRestClient) -> None:
