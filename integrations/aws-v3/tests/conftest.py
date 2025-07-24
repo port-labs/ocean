@@ -9,11 +9,10 @@ from port_ocean.context.event import EventContext
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from aws.auth.session_factory import ResyncStrategyFactory
 
-# Shared test constants to eliminate duplication
 MOCK_ORG_URL: str = "https://mock-organization-url.com"
 MOCK_PERSONAL_ACCESS_TOKEN: str = "mock-personal_access_token"
 
-# AWS test data constants
+AWS_TEST_ACCOUNT_ID: str = "123456789012"
 AWS_TEST_ACCOUNT_ID: str = "123456789012"
 AWS_TEST_ACCESS_KEY: str = "test_access_key"
 AWS_TEST_SECRET_KEY: str = "test_secret_key"
@@ -26,12 +25,10 @@ AWS_TEST_ROLE_ARN_2: str = "arn:aws:iam::987654321098:role/test-role-2"
 AWS_TEST_USER_ID: str = "AIDACKCEVSQ6C2EXAMPLE"
 
 
-# Use dynamic expiration (1 hour from now)
 AWS_TEST_EXPIRATION: str = (datetime.now() + timedelta(hours=1)).strftime(
     "%Y-%m-%dT%H:%M:%SZ"
 )
 
-# AWS response templates
 AWS_STS_CREDENTIALS_RESPONSE: Dict[str, Any] = {
     "Credentials": {
         "AccessKeyId": AWS_TEST_ACCESS_KEY,
@@ -112,7 +109,6 @@ def mock_aiosession() -> AsyncMock:
         else:
             raise NotImplementedError(f"Client for service '{service_name}' not mocked")
 
-    # Provide a mock for get_credentials
     class MockFrozenCredentials:
         access_key: str = AWS_TEST_ACCESS_KEY
         secret_key: str = AWS_TEST_SECRET_KEY
@@ -227,15 +223,12 @@ def mock_selector() -> MagicMock:
 @pytest.fixture(scope="function", autouse=True)
 def reset_cached_strategy() -> Generator[None, None, None]:
     """Reset the cached strategy before and after each test."""
-    # Store original state
     original_cache = getattr(ResyncStrategyFactory, "_cached_strategy", None)
 
-    # Clear before test
     ResyncStrategyFactory._cached_strategy = None
 
     yield
 
-    # Restore original state after test
     ResyncStrategyFactory._cached_strategy = original_cache
 
 
@@ -264,7 +257,6 @@ def mock_assume_role_refresher() -> MagicMock:
     return mock
 
 
-# New fixtures for auth tests
 @pytest.fixture
 def aws_credentials() -> Dict[str, str]:
     """Provides AWS credentials for testing."""

@@ -5,7 +5,6 @@ from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.utils import AWSSessionError
 from unittest.mock import patch, AsyncMock
 
-# Import constants from conftest
 from tests.conftest import AWS_TEST_ACCOUNT_ID, AWS_TEST_ROLE_ARN
 
 
@@ -65,15 +64,13 @@ class TestMultiAccountStrategy:
         with patch.object(provider, "get_session") as mock_get_session:
             mock_get_session.return_value = mock_session_with_sts
 
-            # First call should create session
             result1 = await strategy._can_assume_role(AWS_TEST_ROLE_ARN)
             assert result1 == mock_session_with_sts
             assert mock_get_session.call_count == 1
 
-            # Second call should use cached session
             result2 = await strategy._can_assume_role(AWS_TEST_ROLE_ARN)
             assert result2 == mock_session_with_sts
-            assert mock_get_session.call_count == 2  # Each call creates a new session
+            assert mock_get_session.call_count == 2
 
     @pytest.mark.asyncio
     async def test_can_assume_role_caches_failed_sessions(self) -> None:
@@ -86,15 +83,13 @@ class TestMultiAccountStrategy:
         with patch.object(provider, "get_session") as mock_get_session:
             mock_get_session.side_effect = Exception("Role assumption failed")
 
-            # First call should fail
             result1 = await strategy._can_assume_role(AWS_TEST_ROLE_ARN)
             assert result1 is None
             assert mock_get_session.call_count == 1
 
-            # Second call should use cached failure
             result2 = await strategy._can_assume_role(AWS_TEST_ROLE_ARN)
             assert result2 is None
-            assert mock_get_session.call_count == 2  # Each call attempts again
+            assert mock_get_session.call_count == 2
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_single_role(
@@ -109,7 +104,6 @@ class TestMultiAccountStrategy:
         with patch.object(provider, "get_session") as mock_get_session:
             mock_get_session.return_value = mock_session_with_sts
 
-            # Mock successful healthcheck
             with patch.object(strategy, "healthcheck") as mock_healthcheck:
                 mock_healthcheck.return_value = True
                 strategy._valid_arns = [AWS_TEST_ROLE_ARN]
@@ -142,7 +136,6 @@ class TestMultiAccountStrategy:
         with patch.object(provider, "get_session") as mock_get_session:
             mock_get_session.return_value = mock_session_with_sts
 
-            # Mock successful healthcheck
             with patch.object(strategy, "healthcheck") as mock_healthcheck:
                 mock_healthcheck.return_value = True
                 strategy._valid_arns = role_arns
@@ -155,11 +148,9 @@ class TestMultiAccountStrategy:
                     sessions.append((account_info, session))
 
                 assert len(sessions) == 2
-                # First session
                 assert sessions[0][0]["Id"] == AWS_TEST_ACCOUNT_ID
                 assert sessions[0][0]["Name"] == f"Account {AWS_TEST_ACCOUNT_ID}"
                 assert sessions[0][1] == mock_session_with_sts
-                # Second session
                 assert sessions[1][0]["Id"] == "987654321098"
                 assert sessions[1][0]["Name"] == "Account 987654321098"
                 assert sessions[1][1] == mock_session_with_sts
@@ -179,7 +170,7 @@ class TestMultiAccountStrategy:
         )
 
         with patch.object(provider, "get_session") as mock_get_session:
-            # Mock different responses for different role ARNs
+
             def mock_get_session_side_effect(role_arn: str, **kwargs: Any) -> AsyncMock:
                 if role_arn == AWS_TEST_ROLE_ARN:
                     return mock_session_with_sts
@@ -188,7 +179,6 @@ class TestMultiAccountStrategy:
 
             mock_get_session.side_effect = mock_get_session_side_effect
 
-            # Mock successful healthcheck with only one valid ARN
             with patch.object(strategy, "healthcheck") as mock_healthcheck:
                 mock_healthcheck.return_value = True
                 strategy._valid_arns = [AWS_TEST_ROLE_ARN]
@@ -198,7 +188,6 @@ class TestMultiAccountStrategy:
                 async for account_info, session in strategy.get_account_sessions():
                     sessions.append((account_info, session))
 
-                # Should only get sessions for successful role assumptions
                 assert len(sessions) == 1
                 account_info, session = sessions[0]
                 assert account_info["Id"] == AWS_TEST_ACCOUNT_ID
@@ -216,7 +205,6 @@ class TestMultiAccountStrategy:
         with patch.object(provider, "get_session") as mock_get_session:
             mock_get_session.side_effect = Exception("Role assumption failed")
 
-            # Mock failed healthcheck
             with patch.object(strategy, "healthcheck") as mock_healthcheck:
                 mock_healthcheck.side_effect = AWSSessionError(
                     "No accounts are accessible after health check"
@@ -237,7 +225,6 @@ class TestMultiAccountStrategy:
             provider=provider, config={"account_role_arn": []}
         )
 
-        # Mock failed healthcheck due to empty ARN list
         with patch.object(strategy, "healthcheck") as mock_healthcheck:
             mock_healthcheck.side_effect = AWSSessionError(
                 "Account sessions not initialized. Run healthcheck first."
@@ -263,7 +250,6 @@ class TestMultiAccountStrategy:
         with patch.object(provider, "get_session") as mock_get_session:
             mock_get_session.return_value = mock_session_with_sts
 
-            # Mock successful healthcheck
             with patch.object(strategy, "healthcheck") as mock_healthcheck:
                 mock_healthcheck.return_value = True
                 strategy._valid_arns = [AWS_TEST_ROLE_ARN]
@@ -290,7 +276,6 @@ class TestMultiAccountStrategy:
         with patch.object(provider, "get_session") as mock_get_session:
             mock_get_session.side_effect = Exception("Session creation failed")
 
-            # Mock failed healthcheck
             with patch.object(strategy, "healthcheck") as mock_healthcheck:
                 mock_healthcheck.side_effect = AWSSessionError(
                     "No accounts are accessible after health check"

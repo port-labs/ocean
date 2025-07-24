@@ -5,7 +5,6 @@ from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.utils import AWSSessionError
 from unittest.mock import patch
 
-# Import constants from conftest
 from tests.conftest import AWS_TEST_ACCOUNT_ID
 
 
@@ -40,7 +39,6 @@ class TestSingleAccountStrategy:
             assert strategy.account_id == AWS_TEST_ACCOUNT_ID
             assert strategy._session == mock_session_with_sts
 
-            # Verify get_session was called with correct credentials from config
             mock_get_session.assert_called_with(
                 aws_access_key_id="test_access_key",
                 aws_secret_access_key="test_secret_key",
@@ -89,7 +87,6 @@ class TestSingleAccountStrategy:
             assert account_info["Name"] == f"Account {AWS_TEST_ACCOUNT_ID}"
             assert session == mock_session_with_sts
 
-            # Verify get_session was called with correct credentials from config
             mock_get_session.assert_called_with(
                 aws_access_key_id="test_access_key",
                 aws_secret_access_key="test_secret_key",
@@ -103,7 +100,6 @@ class TestSingleAccountStrategy:
         """Test healthcheck behavior with and without explicit credentials."""
         provider = StaticCredentialProvider()
 
-        # Test with credentials in config
         strategy_with_creds = SingleAccountStrategy(
             provider=provider, config=aws_credentials
         )
@@ -112,7 +108,6 @@ class TestSingleAccountStrategy:
             await strategy_with_creds.healthcheck()
             assert strategy_with_creds.account_id == AWS_TEST_ACCOUNT_ID
 
-        # Test without credentials in config
         strategy_without_creds = SingleAccountStrategy(provider=provider, config={})
         with pytest.raises(AWSSessionError, match="Single account is not accessible"):
             await strategy_without_creds.healthcheck()

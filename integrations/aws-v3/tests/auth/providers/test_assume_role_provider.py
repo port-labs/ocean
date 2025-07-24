@@ -180,7 +180,6 @@ class TestAssumeRoleProvider:
                             region=region,
                         )
                         assert credentials == mock_aiorefreshable_credentials
-                        # Verify the session was created with the correct region
                         mock_session.create_client.assert_called_with(
                             "sts", region_name=region
                         )
@@ -217,7 +216,6 @@ class TestAssumeRoleProvider:
                         region="us-west-2",
                     )
                     assert credentials == mock_aiorefreshable_credentials
-                    # Verify AioRefreshableCredentials was created with correct parameters
                     mock_create_creds.assert_called_once()
                     call_args = mock_create_creds.call_args
                     assert call_args[1]["method"] == "sts-assume-role"

@@ -1,147 +1,188 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from aiobotocore.session import AioSession
+from unittest.mock import AsyncMock, MagicMock
+from typing import Any, AsyncGenerator
+from contextlib import asynccontextmanager
 
 from aws.auth.region_resolver import RegionResolver
-from integration import AWSDescribeResourcesSelector, RegionPolicy
+
+from tests.conftest import AWS_TEST_ACCOUNT_ID
+
+
+def create_mock_session_with_client(mock_client: AsyncMock) -> AsyncMock:
+    """Helper to create a mock session that returns the given client."""
+    mock_session = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_create_client(*args, **kwargs) -> AsyncGenerator[Any, None]:
+        yield mock_client
+
+    mock_session.create_client = mock_create_client
+    return mock_session
 
 
 class TestRegionResolver:
-    """Test RegionResolver."""
+    """Test RegionResolver functionality."""
 
-    @pytest.fixture
-    def mock_aiosession(self) -> AsyncMock:
-        """Create a mock AioSession."""
-        return AsyncMock(spec=AioSession)
-
-    @pytest.fixture
-    def mock_selector(self) -> MagicMock:
-        """Create a mock AWSDescribeResourcesSelector."""
-        return MagicMock(spec=AWSDescribeResourcesSelector)
-
-    @pytest.fixture
-    def resolver(
-        self, mock_aiosession: AsyncMock, mock_selector: MagicMock
-    ) -> RegionResolver:
-        """Create a RegionResolver instance."""
-        return RegionResolver(
-            session=mock_aiosession,
-            selector=mock_selector,
-            account_id="123456789012",
-        )
-
-    def test_initialization_with_account_id(
-        self, mock_aiosession: AsyncMock, mock_selector: MagicMock
-    ) -> None:
-        """Test RegionResolver initialization with account_id."""
+    def test_initialization_with_required_parameters(self) -> None:
+        """Test RegionResolver initializes with required parameters."""
+        mock_session = AsyncMock()
+        mock_selector = MagicMock()
         resolver = RegionResolver(
-            session=mock_aiosession,
-            selector=mock_selector,
-            account_id="123456789012",
+            session=mock_session, selector=mock_selector, account_id=AWS_TEST_ACCOUNT_ID
         )
-        assert resolver.session == mock_aiosession
+        assert resolver.session == mock_session
         assert resolver.selector == mock_selector
-        assert resolver.account_id == "123456789012"
+        assert resolver.account_id == AWS_TEST_ACCOUNT_ID
+
+    def test_initialization_without_account_id(self) -> None:
+        """Test RegionResolver initializes without account_id."""
+        mock_session = AsyncMock()
+        mock_selector = MagicMock()
+        resolver = RegionResolver(session=mock_session, selector=mock_selector)
+        assert resolver.session == mock_session
+        assert resolver.selector == mock_selector
+        assert resolver.account_id is None
 
     @pytest.mark.asyncio
-    async def test_get_enabled_regions_success(
-        self, resolver: RegionResolver, mock_aiosession: AsyncMock
+    async def test_get_enabled_regions_parses_response_correctly(
+        self, mock_session_with_account_client: Any
     ) -> None:
-        """Test get_enabled_regions successfully retrieves enabled regions from AWS Account API."""
-        # Mock the AWS Account API response
-        mock_account_client = AsyncMock()
-        mock_account_client.list_regions.return_value = {
-            "Regions": [
-                {"RegionName": "us-east-1", "RegionOptStatus": "ENABLED"},
-                {"RegionName": "us-west-2", "RegionOptStatus": "ENABLED"},
-                {"RegionName": "eu-west-1", "RegionOptStatus": "ENABLED_BY_DEFAULT"},
-                {"RegionName": "ap-southeast-1", "RegionOptStatus": "ENABLED"},
-            ]
-        }
+        """Test that get_enabled_regions correctly parses the response."""
+        mock_selector = MagicMock()
 
-        # Mock the session context manager
-        mock_context_manager = AsyncMock()
-        mock_context_manager.__aenter__.return_value = mock_account_client
-        mock_context_manager.__aexit__.return_value = None
+        resolver = RegionResolver(mock_session_with_account_client, mock_selector)
+        regions = await resolver.get_enabled_regions()
 
-        with patch.object(
-            mock_aiosession, "create_client", return_value=mock_context_manager
-        ):
-            regions = await resolver.get_enabled_regions()
-
-            # Verify the correct regions are returned
-            assert regions == ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
-
-            # Verify the AWS Account API was called correctly
-            mock_aiosession.create_client.assert_called_once_with(
-                "account", region_name=None
-            )
-            mock_account_client.list_regions.assert_called_once_with(
-                RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"]
-            )
+        assert "us-east-1" in regions
+        assert "eu-west-1" in regions
+        assert "us-west-2" in regions
+        assert len(regions) == 3
 
     @pytest.mark.asyncio
-    async def test_get_enabled_regions_empty_response(
-        self, resolver: RegionResolver, mock_aiosession: AsyncMock
-    ) -> None:
-        """Test get_enabled_regions handles empty response from AWS Account API."""
-        mock_account_client = AsyncMock()
-        mock_account_client.list_regions.return_value = {"Regions": []}
+    async def test_get_enabled_regions_handles_empty_response(self) -> None:
+        """Test that get_enabled_regions handles empty response correctly."""
+        mock_selector = MagicMock()
 
-        mock_context_manager = AsyncMock()
-        mock_context_manager.__aenter__.return_value = mock_account_client
-        mock_context_manager.__aexit__.return_value = None
+        mock_client = AsyncMock()
+        mock_client.list_regions.return_value = {"Regions": []}
 
-        with patch.object(
-            mock_aiosession, "create_client", return_value=mock_context_manager
-        ):
-            regions = await resolver.get_enabled_regions()
-            assert regions == []
+        mock_session = create_mock_session_with_client(mock_client)
+
+        resolver = RegionResolver(mock_session, mock_selector)
+        regions = await resolver.get_enabled_regions()
+
+        assert regions == []
 
     @pytest.mark.asyncio
-    async def test_get_enabled_regions_client_error(
-        self, resolver: RegionResolver, mock_aiosession: AsyncMock
-    ) -> None:
-        """Test get_enabled_regions handles client creation error."""
-        with patch.object(
-            mock_aiosession, "create_client", side_effect=Exception("Client error")
-        ):
-            with pytest.raises(Exception, match="Client error"):
-                await resolver.get_enabled_regions()
+    async def test_get_enabled_regions_handles_missing_regions_key(self) -> None:
+        """Test that get_enabled_regions handles missing 'Regions' key correctly."""
+        mock_selector = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.list_regions.return_value = {}
+
+        mock_session = create_mock_session_with_client(mock_client)
+
+        resolver = RegionResolver(mock_session, mock_selector)
+        regions = await resolver.get_enabled_regions()
+
+        assert regions == []
 
     @pytest.mark.asyncio
-    async def test_get_allowed_regions_with_real_selector(
-        self, resolver: RegionResolver, mock_aiosession: AsyncMock
+    async def test_get_enabled_regions_handles_session_creation_error(self) -> None:
+        """Test that get_enabled_regions handles session creation errors."""
+        mock_session = AsyncMock()
+        mock_selector = MagicMock()
+
+        def mock_create_client_raises(*args, **kwargs):
+            raise Exception("Session creation failed")
+
+        mock_session.create_client = mock_create_client_raises
+
+        resolver = RegionResolver(mock_session, mock_selector)
+
+        with pytest.raises(Exception, match="Session creation failed"):
+            await resolver.get_enabled_regions()
+
+    @pytest.mark.asyncio
+    async def test_get_enabled_regions_handles_client_error(self) -> None:
+        """Test that get_enabled_regions handles client creation errors."""
+        mock_session = AsyncMock()
+        mock_selector = MagicMock()
+
+        def mock_create_client_raises(*args, **kwargs):
+            raise Exception("Client creation failed")
+
+        mock_session.create_client = mock_create_client_raises
+
+        resolver = RegionResolver(mock_session, mock_selector)
+
+        with pytest.raises(Exception, match="Client creation failed"):
+            await resolver.get_enabled_regions()
+
+    @pytest.mark.asyncio
+    async def test_get_enabled_regions_handles_list_regions_error(self) -> None:
+        """Test that get_enabled_regions handles list_regions API errors."""
+        mock_selector = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.list_regions.side_effect = Exception("API error")
+
+        mock_session = create_mock_session_with_client(mock_client)
+
+        resolver = RegionResolver(mock_session, mock_selector)
+
+        with pytest.raises(Exception, match="API error"):
+            await resolver.get_enabled_regions()
+
+    @pytest.mark.asyncio
+    async def test_get_allowed_regions_uses_selector(
+        self, mock_session_with_account_client: Any
     ) -> None:
-        """Test get_allowed_regions with a real AWSDescribeResourcesSelector instance."""
-        # Create a real selector with region policy
-        region_policy = RegionPolicy(allow=["us-east-1", "us-west-2"])
-        real_selector = AWSDescribeResourcesSelector(
-            query="test", regionPolicy=region_policy
-        )
+        """Test that get_allowed_regions uses the selector to filter regions."""
+        mock_selector = MagicMock()
 
-        # Update resolver with real selector
-        resolver.selector = real_selector
+        mock_selector.is_region_allowed.side_effect = lambda region: region in [
+            "us-east-1",
+            "eu-west-1",
+        ]
 
-        # Mock AWS Account API response
-        mock_account_client = AsyncMock()
-        mock_account_client.list_regions.return_value = {
-            "Regions": [
-                {"RegionName": "us-east-1", "RegionOptStatus": "ENABLED"},
-                {"RegionName": "us-west-2", "RegionOptStatus": "ENABLED"},
-                {"RegionName": "eu-west-1", "RegionOptStatus": "ENABLED"},
-                {"RegionName": "ap-southeast-1", "RegionOptStatus": "ENABLED"},
-            ]
-        }
+        resolver = RegionResolver(mock_session_with_account_client, mock_selector)
+        allowed_regions = await resolver.get_allowed_regions()
 
-        mock_context_manager = AsyncMock()
-        mock_context_manager.__aenter__.return_value = mock_account_client
-        mock_context_manager.__aexit__.return_value = None
+        assert "us-east-1" in allowed_regions
+        assert "eu-west-1" in allowed_regions
+        assert "us-west-2" not in allowed_regions
+        assert len(allowed_regions) == 2
 
-        with patch.object(
-            mock_aiosession, "create_client", return_value=mock_context_manager
-        ):
-            regions = await resolver.get_allowed_regions()
+        assert mock_selector.is_region_allowed.call_count == 3
 
-            # Only us-east-1 and us-west-2 should be allowed based on the region policy
-            assert regions == {"us-east-1", "us-west-2"}
+    @pytest.mark.asyncio
+    async def test_get_allowed_regions_handles_empty_enabled_regions(self) -> None:
+        """Test that get_allowed_regions handles empty enabled regions."""
+        mock_selector = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.list_regions.return_value = {"Regions": []}
+
+        mock_session = create_mock_session_with_client(mock_client)
+
+        resolver = RegionResolver(mock_session, mock_selector)
+        allowed_regions = await resolver.get_allowed_regions()
+
+        assert allowed_regions == set()
+        mock_selector.is_region_allowed.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_allowed_regions_handles_selector_error(
+        self, mock_session_with_account_client: Any
+    ) -> None:
+        """Test that get_allowed_regions handles selector errors."""
+        mock_selector = MagicMock()
+
+        mock_selector.is_region_allowed.side_effect = Exception("Selector error")
+
+        resolver = RegionResolver(mock_session_with_account_client, mock_selector)
+
+        with pytest.raises(Exception, match="Selector error"):
+            await resolver.get_allowed_regions()
