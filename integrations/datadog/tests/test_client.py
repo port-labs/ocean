@@ -1,10 +1,23 @@
+import time
+
 import pytest
 from typing import Any
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from client import DatadogClient, MAX_PAGE_SIZE
+from client import DatadogClient, MAX_PAGE_SIZE, FETCH_WINDOW_TIME_IN_SECONDS
+from integration import ObjectKind
+
+
+@pytest.fixture
+def resource_config() -> Any:
+    mock_resource_config = MagicMock()
+    mock_resource_config.kind = ObjectKind.SERVICE_DEPENDENCY
+    mock_resource_config.selector.environment = "prod"
+    mock_resource_config.selector.start_time = 2.5
+
+    return mock_resource_config
 
 
 @pytest.fixture(autouse=True)
@@ -230,3 +243,46 @@ async def test_create_webhooks_if_exists(mock_datadog_client: DatadogClient) -> 
             "https://example.com", "test_secret"
         )
         mock_send.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_service_dependencies(
+    mock_datadog_client: DatadogClient, resource_config: Any
+) -> None:
+    expected_return_value: dict[str, Any] = {
+        "service_a": {"calls": ["service_b", "service_c"]},
+        "service_b": {"calls": ["service_o"]},
+        "service_c": {"calls": ["service_o"]},
+        "service_o": {"calls": []},
+    }
+
+    with patch.object(
+        mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = expected_return_value
+
+        dependencies: list[dict[str, Any]] = []
+        end_time = int(time.time())
+        async for dependency_batch in mock_datadog_client.get_service_dependencies(
+            env=resource_config.selector.environment,
+            start_time=resource_config.selector.start_time,
+        ):
+            dependencies.extend(dependency_batch)
+        assert len(dependencies) == 4
+        items: list[dict[str, Any]] = [
+            {"name": name, **details} for name, details in expected_return_value.items()
+        ]
+        assert dependencies == items
+
+        parsed_start_time = int(
+            time.time()
+            - (FETCH_WINDOW_TIME_IN_SECONDS * resource_config.selector.start_time)
+        )
+        mock_request.assert_called_with(
+            f"{mock_datadog_client.api_url}/api/v1/service_dependencies",
+            params={
+                "env": resource_config.selector.environment,
+                "start": parsed_start_time,
+                "end": end_time,
+            },
+        )

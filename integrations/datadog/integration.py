@@ -6,6 +6,7 @@ from overrides import DataDogPortAppConfig
 
 
 class ObjectKind(StrEnum):
+    SERVICE_DEPENDENCY = "serviceDependency"
     HOST = "host"
     MONITOR = "monitor"
     SLO = "slo"
