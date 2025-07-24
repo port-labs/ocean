@@ -31,3 +31,8 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+  - name: oidc_token
+    required: false
+    type: string
+    sensitive: true
+    description: OIDC token for federated authentication. When provided, the integration will use assume_role_with_web_identity with the roles specified in accountRoleArn.

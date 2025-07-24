@@ -1,6 +1,7 @@
 from aws.auth.providers.base import CredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.providers.static_provider import StaticCredentialProvider
+from aws.auth.providers.web_identity_provider import WebIdentityCredentialProvider
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from loguru import logger
@@ -27,7 +28,16 @@ class ResyncStrategyFactory:
         provider: CredentialProvider
         strategy_cls: type[StrategyType]
 
-        if is_multi_account:
+        oidc_token = config.get("oidc_token")
+        is_oidc = bool(oidc_token)
+
+        if is_oidc:
+            logger.info(
+                "[SessionStrategyFactory] Using WebIdentityCredentialProvider for OIDC authentication"
+            )
+            provider = WebIdentityCredentialProvider(config=config)
+            strategy_cls = MultiAccountStrategy
+        elif is_multi_account:
             logger.info(
                 "[SessionStrategyFactory] Using AssumeRoleProvider for multi-account"
             )
