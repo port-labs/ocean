@@ -40,6 +40,10 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             if self.config.get("external_id"):
                 session_kwargs["external_id"] = self.config["external_id"]
 
+            # Pass OIDC token if available
+            if self.config.get("oidc_token"):
+                session_kwargs["oidc_token"] = self.config["oidc_token"]
+
             session = await self.provider.get_session(**session_kwargs)
             return session
         except Exception as e:
