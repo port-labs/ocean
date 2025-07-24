@@ -7,13 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.1.1-beta (2025-07-24)
+
+
+### Improvements
+
+- Added File validation for pull requests with GitHub check run integration
+- Enhanced pull request webhook processor to trigger validation on open/sync events
+
+
 ## 1.1.0-beta (2025-07-23)
 
 
 ### Features
 
-- Added File validation for pull requests with GitHub check run integration
-- Enhanced pull request webhook processor to trigger validation on open/sync events
+- Added support for Collaborator resources to track repository collaborators
+- Implemented Collaborator webhook processor for real-time updates
 
 
 ## 1.0.9-beta (2025-07-22)
