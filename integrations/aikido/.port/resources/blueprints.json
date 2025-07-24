@@ -1,0 +1,121 @@
+[
+    {
+        "identifier": "aikidoRepository",
+        "title": "Aikido Repository",
+        "icon": "Aikido",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Repository Name"
+                },
+                "provider": {
+                    "type": "string",
+                    "title": "Provider",
+                    "enum": ["github", "gitlab", "gitlab-server", "bitbucket", "azure_devops", "selfscan"]
+                },
+                "externalRepoId": {
+                    "type": "string",
+                    "title": "External Repository ID"
+                },
+                "active": {
+                    "type": "boolean",
+                    "title": "Active"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "Repository URL"
+                },
+                "branch": {
+                    "type": "string",
+                    "title": "Default Branch"
+                },
+                "lastScannedAt": {
+                    "type": "number",
+                    "title": "Last Scanned At"
+                }
+            },
+            "required": ["name", "provider", "externalRepoId"]
+        },
+        "relations": {
+            "aikidoIssue": {
+                "title": "Issues",
+                "target": "aikidoIssue",
+                "required": false,
+                "many": true
+            }
+        }
+    },
+    {
+        "identifier": "aikidoIssue",
+        "title": "Aikido Issue",
+        "icon": "Aikido",
+        "schema": {
+            "properties": {
+                "groupId": {
+                    "type": "number",
+                    "title": "Group ID"
+                },
+                "attackSurface": {
+                    "type": "string",
+                    "title": "Attack Surface",
+                    "enum": ["backend", "frontend", "infrastructure", "container"]
+                },
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "enum": ["open", "closed", "ignored", "snoozed"],
+                    "enumColors": {
+                        "open": "red",
+                        "closed": "green",
+                        "ignored": "yellow",
+                        "snoozed": "blue"
+                    }
+                },
+                "severity": {
+                    "type": "string",
+                    "title": "Severity",
+                    "enum": ["critical", "high", "medium", "low"]
+                },
+                "severityScore": {
+                    "type": "number",
+                    "title": "Severity Score"
+                },
+                "type": {
+                    "type": "string",
+                    "title": "Issue Type",
+                    "enum": ["open_source", "leaked_secret", "cloud", "iac", "sast", "mobile", "surface_monitoring", "malware", "eol", "scm_security", "license"]
+                },
+                "rule": {
+                    "type": "string",
+                    "title": "Rule Name"
+                },
+                "affectedFile": {
+                    "type": "string",
+                    "title": "Affected File"
+                },
+                "codeRepoName": {
+                    "type": "string",
+                    "title": "Code Repository Name"
+                },
+                "codeRepoId": {
+                    "type": "number",
+                    "title": "Code Repository ID"
+                },
+                "closedAt": {
+                    "type": "number",
+                    "title": "Closed At"
+                }
+            },
+            "required": ["status", "severity", "type", "rule"]
+        },
+        "relations": {
+            "aikidoRepository": {
+                "title": "Repository",
+                "target": "aikidoRepository",
+                "required": false,
+                "many": false
+            }
+        }
+    }
+]
