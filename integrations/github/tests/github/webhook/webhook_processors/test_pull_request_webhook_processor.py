@@ -10,7 +10,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
-from port_ocean.context.event import event_context
 
 from github.webhook.webhook_processors.pull_request_webhook_processor import (
     PullRequestWebhookProcessor,
@@ -18,11 +17,7 @@ from github.webhook.webhook_processors.pull_request_webhook_processor import (
 from github.helpers.utils import ObjectKind
 from github.webhook.events import PULL_REQUEST_EVENTS
 from github.core.options import SinglePullRequestOptions
-from integration import (
-    GithubPullRequestSelector,
-    GithubPullRequestConfig,
-    GithubPortAppConfig,
-)
+from integration import GithubPullRequestSelector, GithubPullRequestConfig
 
 
 @pytest.fixture
@@ -47,16 +42,6 @@ def resource_config() -> GithubPullRequestConfig:
                 )
             )
         ),
-    )
-
-
-@pytest.fixture
-def mock_port_app_config() -> GithubPortAppConfig:
-    return GithubPortAppConfig(
-        delete_dependent_entities=True,
-        create_missing_related_entities=False,
-        repository_type="all",
-        resources=[],
     )
 
 
@@ -143,7 +128,6 @@ class TestPullRequestWebhookProcessor:
         expected_delete: bool,
         resource_config: GithubPullRequestConfig,
         pull_request_webhook_processor: PullRequestWebhookProcessor,
-        mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         # Configure resource_config with the specified selector state
         resource_config.selector.state = selector_state
@@ -154,8 +138,6 @@ class TestPullRequestWebhookProcessor:
             "number": 101,
             "title": "Test PR",
             "state": "open" if action == "opened" else "closed",
-            "base": {"sha": "base-sha-123"},
-            "head": {"sha": "head-sha-456"},
         }
 
         repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
@@ -169,31 +151,25 @@ class TestPullRequestWebhookProcessor:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = updated_pr_data
 
-        with (
-            patch(
-                "github.webhook.webhook_processors.pull_request_webhook_processor.RestPullRequestExporter",
-                return_value=mock_exporter,
-            ),
+        with patch(
+            "github.webhook.webhook_processors.pull_request_webhook_processor.RestPullRequestExporter",
+            return_value=mock_exporter,
         ):
-            async with event_context("test_event") as event:
-                # Set up empty port app config
-                event.port_app_config = mock_port_app_config
+            result = await pull_request_webhook_processor.handle_event(
+                payload, resource_config
+            )
 
-                result = await pull_request_webhook_processor.handle_event(
-                    payload, resource_config
+            # Verify results based on expected behavior
+            assert isinstance(result, WebhookEventRawResults)
+
+            if expected_update:
+                assert result.updated_raw_results == [updated_pr_data]
+                assert result.deleted_raw_results == []
+                mock_exporter.get_resource.assert_called_once_with(
+                    SinglePullRequestOptions(repo_name="test-repo", pr_number=101)
                 )
-
-                # Verify results based on expected behavior
-                assert isinstance(result, WebhookEventRawResults)
-
-                if expected_update:
-                    assert result.updated_raw_results == [updated_pr_data]
-                    assert result.deleted_raw_results == []
-                    mock_exporter.get_resource.assert_called_once_with(
-                        SinglePullRequestOptions(repo_name="test-repo", pr_number=101)
-                    )
-                elif expected_delete:
-                    assert result.updated_raw_results == []
-                    assert result.deleted_raw_results == [pr_data]
-                    # Should not call get_resource when deleting
-                    mock_exporter.get_resource.assert_not_called()
+            elif expected_delete:
+                assert result.updated_raw_results == []
+                assert result.deleted_raw_results == [pr_data]
+                # Should not call get_resource when deleting
+                mock_exporter.get_resource.assert_not_called()
