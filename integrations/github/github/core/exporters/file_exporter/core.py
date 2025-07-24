@@ -45,9 +45,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return await self.client.send_api_request(url)
 
-    async def get_resource[
-        ExporterOptionsT: FileContentOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: FileContentOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         """
         Fetch the content of a file from a repository using the Contents API.
         """
@@ -77,9 +77,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return {**response, "content": content}
 
-    async def get_paginated_resources[
-        ExporterOptionsT: List[ListFileSearchOptions]
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Search for files across repositories and fetch their content."""
 
         graphql_files = []
@@ -322,30 +322,17 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return response
 
-    async def get_branch_tree_sha(self, repo: str, branch: str) -> str:
+    async def get_tree_recursive(self, repo: str, branch: str) -> List[Dict[str, Any]]:
         """Retrieve the full recursive tree for a given branch."""
-        commit_url = f"{self.client.base_url}/repos/{self.client.organization}/{repo}/commits/{branch}"
-        response = await self.client.send_api_request(
-            commit_url, ignored_errors=self._IGNORED_ERRORS
-        )
-        if not response:
-            return ""
-
-        tree_sha = response["commit"]["tree"]["sha"]
-        logger.info(f"Retrieved branch tree sha for {repo}@{branch}: {tree_sha[:8]}")
-
-        return tree_sha
-
-    async def get_tree_recursive(self, repo: str, sha: str) -> List[Dict[str, Any]]:
-        """Retrieve the full recursive tree for a given branch."""
-        tree_url = f"{self.client.base_url}/repos/{self.client.organization}/{repo}/git/trees/{sha}?recursive=1"
+        tree_url = f"{self.client.base_url}/repos/{self.client.organization}/{repo}/git/trees/{branch}?recursive=1"
         response = await self.client.send_api_request(
             tree_url, ignored_errors=self._IGNORED_ERRORS
         )
         if not response:
+            logger.warning(f"Did not retrieve tree from {repo}@{branch}")
             return []
 
         tree_items = response["tree"]
-        logger.info(f"Retrieved tree for {repo}@{sha[:8]}: {len(tree_items)} items")
+        logger.info(f"Retrieved tree for {repo}@{branch}: {len(tree_items)} items")
 
         return tree_items
