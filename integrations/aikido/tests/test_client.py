@@ -184,8 +184,8 @@ async def test_get_all_issues_empty(aikido_client: AikidoClient) -> None:
 @pytest.mark.asyncio
 async def test_get_repositories_pagination(aikido_client: AikidoClient) -> None:
     """Test pagination in get_repositories method"""
-    first_page = [{"id": i, "name": f"repo{i}"} for i in range(1, 51)]
-    second_page = [{"id": i, "name": f"repo{i}"} for i in range(51, 61)]
+    first_page = [{"id": i, "name": f"repo{i}"} for i in range(1, 101)]
+    second_page = [{"id": i, "name": f"repo{i}"} for i in range(101, 111)]
 
     with patch.object(
         aikido_client, "_send_api_request", new_callable=AsyncMock
@@ -199,7 +199,7 @@ async def test_get_repositories_pagination(aikido_client: AikidoClient) -> None:
         async for batch in aikido_client.get_repositories():
             all_repos.extend(batch)
 
-        assert len(all_repos) == 60
+        assert len(all_repos) == 110
         assert mock_request.call_count == 2
 
 

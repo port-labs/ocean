@@ -7,7 +7,7 @@ from port_ocean.utils import http_async_client
 from helpers.exceptions import MissingIntegrationCredentialException
 
 API_VERSION = "v1"
-PAGE_SIZE = 50
+PAGE_SIZE = 100
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
 REPOSITORIES_ENDPOINT = f"api/public/{API_VERSION}/repositories/code"
 AUTH_TOKEN_ENDPOINT = "api/oauth/token"
@@ -75,7 +75,7 @@ class AikidoClient:
         """
         Get a valid access token, generating a new one if needed.
         """
-        if not self._access_token or time.time() >= self._token_expiry:
+        if (not self._access_token) or (time.time() >= self._token_expiry):
             return await self._generate_oauth_token()
         return self._access_token
 
