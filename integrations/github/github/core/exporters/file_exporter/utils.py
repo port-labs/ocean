@@ -28,9 +28,7 @@ from github.core.options import (
 from github.helpers.utils import GithubClientType
 
 if TYPE_CHECKING:
-    from integration import (
-        GithubFilePattern,
-    )
+    from integration import GithubFilePattern
 
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
@@ -273,6 +271,7 @@ def get_matching_files(
         if matched_patterns:
             file_info["patterns"] = matched_patterns
             matching_files.append(file_info)
+
     return matching_files
 
 
