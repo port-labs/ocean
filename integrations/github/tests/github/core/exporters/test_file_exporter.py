@@ -21,7 +21,7 @@ from github.core.options import (
     FileSearchOptions,
     ListFileSearchOptions,
 )
-from github.helpers.utils import GithubClientType
+from github.helpers.utils import GithubClientType, IgnoredError
 from port_ocean.context.event import event_context
 from typing import AsyncGenerator, List, Dict, Any
 
@@ -245,9 +245,6 @@ class TestRestFileExporter:
 
         with (
             patch.object(
-                exporter, "get_branch_tree_sha", AsyncMock(return_value="tree-sha")
-            ),
-            patch.object(
                 exporter,
                 "get_tree_recursive",
                 AsyncMock(return_value=TEST_TREE_ENTRIES),
@@ -306,9 +303,6 @@ class TestRestFileExporter:
 
         with (
             patch.object(
-                exporter, "get_branch_tree_sha", AsyncMock(return_value="tree-sha")
-            ),
-            patch.object(
                 exporter,
                 "get_tree_recursive",
                 AsyncMock(return_value=tree_entries_with_sizes),
@@ -343,9 +337,6 @@ class TestRestFileExporter:
         exporter = RestFileExporter(rest_client)
 
         with (
-            patch.object(
-                exporter, "get_branch_tree_sha", AsyncMock(return_value="tree-sha")
-            ),
             patch.object(
                 exporter,
                 "get_tree_recursive",
@@ -427,29 +418,6 @@ class TestRestFileExporter:
 
             assert len(results) == 0
 
-    async def test_get_branch_tree_sha(self, rest_client: GithubRestClient) -> None:
-        exporter = RestFileExporter(rest_client)
-
-        # Fix the mock response structure to match what the method expects
-        branch_response = {
-            "sha": "commit-sha",
-            "commit": {
-                "tree": {
-                    "sha": "tree-sha",
-                }
-            },
-        }
-
-        with patch.object(
-            rest_client, "send_api_request", AsyncMock(return_value=branch_response)
-        ) as mock_request:
-            tree_sha = await exporter.get_branch_tree_sha("repo1", "main")
-
-            assert tree_sha == "tree-sha"
-            mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/commits/main"
-            )
-
     async def test_get_tree_recursive(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
 
@@ -458,11 +426,28 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=tree_response)
         ) as mock_request:
-            tree = await exporter.get_tree_recursive("repo1", "tree-sha")
+            tree = await exporter.get_tree_recursive("repo1", "main")
 
             assert tree == TEST_TREE_ENTRIES
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/tree-sha?recursive=1"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/main?recursive=1",
+                ignored_errors=[IgnoredError(status=409, message="empty repository")],
+            )
+
+    async def test_get_tree_recursive_empty_repo(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(return_value=None)
+        ) as mock_request:
+            tree = await exporter.get_tree_recursive("repo1", "main")
+
+            assert tree == []
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/main?recursive=1",
+                ignored_errors=[IgnoredError(status=409, message="empty repository")],
             )
 
     async def test_fetch_commit_diff(self, rest_client: GithubRestClient) -> None:

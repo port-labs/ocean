@@ -2,7 +2,7 @@ from typing import AsyncGenerator, Dict, List, Any, Tuple, cast
 from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client
-from github.helpers.utils import GithubClientType
+from github.helpers.utils import GithubClientType, IgnoredError
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,
@@ -30,6 +30,9 @@ from github.core.exporters.file_exporter.file_processor import FileProcessor
 
 
 class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
+    _IGNORED_ERRORS = [
+        IgnoredError(status=409, message="empty repository"),
+    ]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -119,8 +122,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.debug(
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name}"
             )
-            tree_sha = await self.get_branch_tree_sha(repo_name, branch)
-            tree = await self.get_tree_recursive(repo_name, tree_sha)
+            tree = await self.get_tree_recursive(repo_name, branch)
 
             matched = filter_github_tree_entries_by_pattern(tree, pattern)
 
@@ -320,22 +322,17 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return response
 
-    async def get_branch_tree_sha(self, repo: str, branch: str) -> str:
+    async def get_tree_recursive(self, repo: str, branch: str) -> List[Dict[str, Any]]:
         """Retrieve the full recursive tree for a given branch."""
-        commit_url = f"{self.client.base_url}/repos/{self.client.organization}/{repo}/commits/{branch}"
-        response = await self.client.send_api_request(commit_url)
-
-        tree_sha = response["commit"]["tree"]["sha"]
-        logger.info(f"Retrieved branch tree sha for {repo}@{branch}: {tree_sha[:8]}")
-
-        return tree_sha
-
-    async def get_tree_recursive(self, repo: str, sha: str) -> List[Dict[str, Any]]:
-        """Retrieve the full recursive tree for a given branch."""
-        tree_url = f"{self.client.base_url}/repos/{self.client.organization}/{repo}/git/trees/{sha}?recursive=1"
-        response = await self.client.send_api_request(tree_url)
+        tree_url = f"{self.client.base_url}/repos/{self.client.organization}/{repo}/git/trees/{branch}?recursive=1"
+        response = await self.client.send_api_request(
+            tree_url, ignored_errors=self._IGNORED_ERRORS
+        )
+        if not response:
+            logger.warning(f"Did not retrieve tree from {repo}@{branch}")
+            return []
 
         tree_items = response["tree"]
-        logger.info(f"Retrieved tree for {repo}@{sha[:8]}: {len(tree_items)} items")
+        logger.info(f"Retrieved tree for {repo}@{branch}: {len(tree_items)} items")
 
         return tree_items
