@@ -97,7 +97,7 @@ class FileValidationService:
     """Service for validating files during pull request processing."""
 
     def __init__(self) -> None:
-        self.check_run = CheckRuns()
+        self.check_runs = CheckRuns()
 
     async def validate_pull_request_files(
         self,
@@ -122,7 +122,7 @@ class FileValidationService:
         validation_check_details = "All files passed validation"
 
         try:
-            check_run_id = await self.check_run.create_validation_check(
+            check_run_id = await self.check_runs.create_validation_check(
                 repo_name=repo_name, head_sha=head_sha
             )
         except Exception as e:
@@ -160,7 +160,7 @@ class FileValidationService:
             validation_check_summary = "An error occurred during validation"
             validation_check_details = str(e)
 
-        await self.check_run.update_check_run(
+        await self.check_runs.update_check_run(
             repo_name,
             check_run_id,
             validation_check_status,

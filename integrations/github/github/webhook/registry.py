@@ -54,7 +54,7 @@ from github.webhook.webhook_processors.collaborator_webhook_processor import (
     CollaboratorMembershipWebhookProcessor,
     CollaboratorTeamWebhookProcessor,
 )
-from github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor import (
+from github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor import (
     CheckRunValidatorWebhookProcessor,
 )
 

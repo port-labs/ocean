@@ -143,10 +143,10 @@ class TestFileValidation:
 
         with (
             patch.object(
-                validation_service.check_run, "create_validation_check"
+                validation_service.check_runs, "create_validation_check"
             ) as mock_create_check,
             patch.object(
-                validation_service.check_run, "update_check_run"
+                validation_service.check_runs, "update_check_run"
             ) as mock_update_check,
             patch.object(
                 validation_service, "_validate_entity_against_port"
@@ -186,10 +186,10 @@ class TestFileValidation:
 
         with (
             patch.object(
-                validation_service.check_run, "create_validation_check"
+                validation_service.check_runs, "create_validation_check"
             ) as mock_create_check,
             patch.object(
-                validation_service.check_run, "update_check_run"
+                validation_service.check_runs, "update_check_run"
             ) as mock_update_check,
             patch.object(
                 validation_service, "_validate_entity_against_port"
@@ -229,10 +229,10 @@ class TestFileValidation:
 
         with (
             patch.object(
-                validation_service.check_run, "create_validation_check"
+                validation_service.check_runs, "create_validation_check"
             ) as mock_create_check,
             patch.object(
-                validation_service.check_run, "update_check_run"
+                validation_service.check_runs, "update_check_run"
             ) as mock_update_check,
         ):
             mock_create_check.side_effect = Exception("API Error")
