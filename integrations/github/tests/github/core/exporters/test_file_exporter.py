@@ -245,9 +245,6 @@ class TestRestFileExporter:
 
         with (
             patch.object(
-                exporter, "get_branch_tree_sha", AsyncMock(return_value="tree-sha")
-            ),
-            patch.object(
                 exporter,
                 "get_tree_recursive",
                 AsyncMock(return_value=TEST_TREE_ENTRIES),
@@ -306,9 +303,6 @@ class TestRestFileExporter:
 
         with (
             patch.object(
-                exporter, "get_branch_tree_sha", AsyncMock(return_value="tree-sha")
-            ),
-            patch.object(
                 exporter,
                 "get_tree_recursive",
                 AsyncMock(return_value=tree_entries_with_sizes),
@@ -343,9 +337,6 @@ class TestRestFileExporter:
         exporter = RestFileExporter(rest_client)
 
         with (
-            patch.object(
-                exporter, "get_branch_tree_sha", AsyncMock(return_value="tree-sha")
-            ),
             patch.object(
                 exporter,
                 "get_tree_recursive",
@@ -435,11 +426,11 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=tree_response)
         ) as mock_request:
-            tree = await exporter.get_tree_recursive("repo1", "tree-sha")
+            tree = await exporter.get_tree_recursive("repo1", "main")
 
             assert tree == TEST_TREE_ENTRIES
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/tree-sha?recursive=1",
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/main?recursive=1",
                 ignored_errors=[IgnoredError(status=409, message="empty repository")],
             )
 
@@ -451,11 +442,11 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=None)
         ) as mock_request:
-            tree = await exporter.get_tree_recursive("repo1", "tree-sha")
+            tree = await exporter.get_tree_recursive("repo1", "main")
 
             assert tree == []
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/tree-sha?recursive=1",
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/main?recursive=1",
                 ignored_errors=[IgnoredError(status=409, message="empty repository")],
             )
 
