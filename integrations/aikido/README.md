@@ -16,7 +16,7 @@ This integration uses OAuth2 client credentials for authentication. You'll need 
 
 ### Optional Environment Variables
 
-- `OCEAN__INTEGRATION__CONFIG__AIKIDO_API_URL`: Custom Aikido API URL (defaults to `https://app.aikido.dev/api/public/v1`)
+- `OCEAN__INTEGRATION__CONFIG__AIKIDO_API_URL`: Custom Aikido API URL (defaults to `https://app.aikido.dev`)
 
 - `OCEAN__INTEGRATION__CONFIG__WEBHOOK_SECRET`: Secret used to sign and validate incoming webhooks from Aikido
 
@@ -27,7 +27,7 @@ OCEAN__PORT__CLIENT_ID=<port_client_id>
 OCEAN__PORT__CLIENT_SECRET=<port_client_secret>
 OCEAN__INTEGRATION__CONFIG__AIKIDO_CLIENT_SECRET=<aikido_client_secret>
 OCEAN__INTEGRATION__CONFIG__AIKIDO_CLIENT_ID=<aikido_client_id>
-OCEAN__INTEGRATION__CONFIG__AIKIDO_API_URL=https://app.aikido.dev/api/public/v1
+OCEAN__INTEGRATION__CONFIG__AIKIDO_API_URL=https://app.aikido.dev
 OCEAN__INTEGRATION__CONFIG__WEBHOOK_SECRET=<webhook_secret>
 OCEAN__BASE_URL=<base_url>
 
