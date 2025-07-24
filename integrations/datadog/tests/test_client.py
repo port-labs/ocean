@@ -266,7 +266,6 @@ async def test_get_service_dependencies(
         async for dependency_batch in mock_datadog_client.get_service_dependencies(
             env=resource_config.selector.environment,
             start_time=resource_config.selector.start_time,
-            end_time=end_time,
         ):
             dependencies.extend(dependency_batch)
         assert len(dependencies) == 4

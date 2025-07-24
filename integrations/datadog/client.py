@@ -571,7 +571,7 @@ class DatadogClient:
 
         except httpx.HTTPStatusError as err:
             logger.warning(
-                f"An error occurred while checking if a webhook exists. Error: {err}. Skipping webhook setup."
+                f"An error occurred while checking if a webhook exists. Error: {str(err)}. Skipping webhook setup."
             )
             return False
 
@@ -634,10 +634,10 @@ class DatadogClient:
             logger.info(f"Webhook Subscription Response: {result}")
 
         except Exception as e:
-            logger.error("Failed to create a webhook, skipping...", exc_info=e)
+            logger.error(f"Failed to create a webhook: {str(e)}, skipping...")
 
     async def get_service_dependencies(
-        self, env: str, start_time: float, end_time: Optional[int] = None
+        self, env: str, start_time: float
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get service dependencies from Datadog, chunked into pages.
@@ -645,8 +645,7 @@ class DatadogClient:
         [{ "name": "service_a", "calls": [...] }, ...]
         Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
         """
-        if not end_time:
-            end_time = int(time.time())
+        end_time = int(time.time())
 
         # convert `start_time` to unix timestamp
         start_time = time.time() - (FETCH_WINDOW_TIME_IN_SECONDS * start_time)
