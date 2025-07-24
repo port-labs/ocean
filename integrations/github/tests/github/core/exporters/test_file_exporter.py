@@ -427,29 +427,6 @@ class TestRestFileExporter:
 
             assert len(results) == 0
 
-    async def test_get_branch_tree_sha(self, rest_client: GithubRestClient) -> None:
-        exporter = RestFileExporter(rest_client)
-
-        # Fix the mock response structure to match what the method expects
-        branch_response = {
-            "sha": "commit-sha",
-            "commit": {
-                "tree": {
-                    "sha": "tree-sha",
-                }
-            },
-        }
-
-        with patch.object(
-            rest_client, "send_api_request", AsyncMock(return_value=branch_response)
-        ) as mock_request:
-            tree_sha = await exporter.get_branch_tree_sha("repo1", "main")
-
-            assert tree_sha == "tree-sha"
-            mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/commits/main"
-            )
-
     async def test_get_tree_recursive(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
 

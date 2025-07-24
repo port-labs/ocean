@@ -122,11 +122,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.debug(
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name}"
             )
-            tree_sha = await self.get_branch_tree_sha(repo_name, branch)
-            if not tree_sha:
-                logger.warning(f"no sha returned for {repo_name}, skipping ...")
-                continue
-            tree = await self.get_tree_recursive(repo_name, tree_sha)
+            tree = await self.get_tree_recursive(repo_name, branch)
 
             matched = filter_github_tree_entries_by_pattern(tree, pattern)
 
