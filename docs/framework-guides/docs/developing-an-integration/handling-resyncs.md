@@ -182,7 +182,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     # Access resource configuration
     selector = cast(ProjectResourceConfig, event.resource_config).selector
     params = {"expand": selector.expand}
-    
+
     client = create_jira_client()
     async for projects in client.get_paginated_projects(params):
         yield projects
