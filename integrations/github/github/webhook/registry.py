@@ -7,7 +7,6 @@ from github.webhook.webhook_processors.repository_webhook_processor import (
 )
 from github.webhook.webhook_processors.pull_request_webhook_processor import (
     PullRequestWebhookProcessor,
-    CheckRunValidatorWebhookProcessor,
 )
 from github.webhook.webhook_processors.issue_webhook_processor import (
     IssueWebhookProcessor,
@@ -54,6 +53,9 @@ from github.webhook.webhook_processors.collaborator_webhook_processor import (
     CollaboratorMemberWebhookProcessor,
     CollaboratorMembershipWebhookProcessor,
     CollaboratorTeamWebhookProcessor,
+)
+from github.webhook.webhook_processors.check_runs.checkrun_validator_webhook_processor import (
+    CheckRunValidatorWebhookProcessor,
 )
 
 
