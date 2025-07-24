@@ -201,12 +201,9 @@ def get_file_validation_mappings(
             file_resource_config = cast("GithubFileResourceConfig", resource)
             selector = file_resource_config.selector
 
-            matching_patterns = []
-            for pattern in selector.files:
-                if pattern.validation_check and any(
-                    repo.name == repo_name for repo in pattern.repos
-                ):
-                    matching_patterns.append(pattern)
+            matching_patterns = [
+                pattern for pattern in selector.files if pattern.validation_check
+            ]
 
             if matching_patterns:
                 matching_mappings.append(

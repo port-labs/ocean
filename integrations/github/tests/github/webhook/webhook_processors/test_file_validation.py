@@ -96,14 +96,21 @@ def mock_payload() -> dict[str, Any]:
 
 @pytest.mark.asyncio
 class TestFileValidation:
-    async def test_get_file_validation_mappings_no_validation_mappings(
+    async def test_get_file_validation_mappings_no_file_resources(
         self,
         mock_port_app_config: GithubPortAppConfig,
     ) -> None:
-        """Test get_file_validation_mappings when no validation mappings are found."""
-        # Test with a repository that doesn't match any patterns
+        """Test get_file_validation_mappings when no file resources are configured."""
+        # Create a port app config with no validation patterns
+        port_app_config_no_validation = GithubPortAppConfig(
+            delete_dependent_entities=True,
+            create_missing_related_entities=False,
+            repository_type="all",
+            resources=[],
+        )
+
         mappings = get_file_validation_mappings(
-            mock_port_app_config, "non-existent-repo"
+            port_app_config_no_validation, "any-repo"
         )
         assert mappings == []
 
@@ -112,7 +119,7 @@ class TestFileValidation:
         mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         """Test get_file_validation_mappings when validation mappings exist."""
-        mappings = get_file_validation_mappings(mock_port_app_config, "test-repo")
+        mappings = get_file_validation_mappings(mock_port_app_config, "any-repo")
         assert len(mappings) == 1
         assert isinstance(mappings[0], ResourceConfigToPatternMapping)
         assert len(mappings[0].patterns) == 1

@@ -26,6 +26,10 @@ from github.webhook.webhook_processors.pull_request_webhook_processor.pull_reque
 
 
 class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
+    NoWebhookEventResults: WebhookEventRawResults = WebhookEventRawResults(
+        updated_raw_results=[],
+        deleted_raw_results=[],
+    )
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -41,10 +45,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             logger.info(
                 f"Skipping handling of file validation for pull request event: {action} for {repo_name}/{pr_number}"
             )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
+            return self.NoWebhookEventResults
 
         logger.info(
             f"Handling file validation for pull request of type: {action} for {repo_name}/{pr_number}"
@@ -58,16 +59,18 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             logger.info(
                 f"No validation mappings found for repository {repo_name}, skipping validation"
             )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
+            return self.NoWebhookEventResults
 
         await self._handle_file_validation(
-            repo_name, base_sha, head_sha, pr_number, repository_type, validation_mappings
+            repo_name,
+            base_sha,
+            head_sha,
+            pr_number,
+            repository_type,
+            validation_mappings,
         )
 
-        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+        return self.NoWebhookEventResults
 
     async def _handle_file_validation(
         self,
