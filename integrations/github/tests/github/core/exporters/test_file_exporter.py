@@ -442,6 +442,21 @@ class TestRestFileExporter:
                 f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/tree-sha?recursive=1"
             )
 
+    async def test_get_tree_recursive_empty_repo(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(return_value=None)
+        ) as mock_request:
+            tree = await exporter.get_tree_recursive("repo1", "tree-sha")
+
+            assert tree == []
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/tree-sha?recursive=1"
+            )
+
     async def test_fetch_commit_diff(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
 
