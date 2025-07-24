@@ -78,6 +78,12 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
 
 
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ROLLOUT)
+async def on_rollouts_resync(kind: str) -> RAW_RESULT:
+    argocd_client = init_client()
+    return await argocd_client.get_rollouts()
+
+
 @ocean.router.post("/webhook")
 async def on_application_event_webhook_handler(request: Request) -> None:
     data = await request.json()
@@ -89,3 +95,30 @@ async def on_application_event_webhook_handler(request: Request) -> None:
             data["application_name"]
         )
         await ocean.register_raw(ObjectKind.APPLICATION, [application])
+
+        # Also update related rollouts when application is updated
+        try:
+            managed_resources = await argocd_client.get_managed_resources(
+                application_name=data["application_name"]
+            )
+            rollouts = [
+                {
+                    **resource,
+                    "__application": application,
+                    "__applicationId": application["metadata"]["uid"],
+                }
+                for resource in managed_resources
+                if resource.get("kind") == "Rollout"
+                and resource.get("group") == "argoproj.io"
+            ]
+            if rollouts:
+                await ocean.register_raw(
+                    ResourceKindsWithSpecialHandling.ROLLOUT, rollouts
+                )
+                logger.info(
+                    f"Updated {len(rollouts)} rollouts for application {data['application_name']}"
+                )
+        except Exception as e:
+            logger.warning(
+                f"Failed to update rollouts for application {data['application_name']}: {e}"
+            )
