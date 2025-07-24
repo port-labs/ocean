@@ -1,6 +1,6 @@
 import datetime
 import signal
-from typing import Literal, Any
+from typing import Any
 
 from loguru import logger
 
@@ -9,6 +9,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
+from port_ocean.core.ocean_types import EventListenerType
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.time import convert_str_to_utc_datetime, convert_to_minutes
@@ -21,7 +22,7 @@ class OnceEventListenerSettings(EventListenerSettings):
     This class inherits from `EventListenerSettings`, which provides a foundation for creating event listener settings.
     """
 
-    type: Literal["ONCE"]
+    type: EventListenerType = EventListenerType.ONCE
 
 
 class OnceEventListener(BaseEventListener):
