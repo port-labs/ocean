@@ -2,13 +2,63 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, Generator
+from datetime import datetime, timedelta
 
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.context.event import EventContext
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+from aws.auth.session_factory import ResyncStrategyFactory
 
+# Shared test constants to eliminate duplication
 MOCK_ORG_URL: str = "https://mock-organization-url.com"
 MOCK_PERSONAL_ACCESS_TOKEN: str = "mock-personal_access_token"
+
+# AWS test data constants
+AWS_TEST_ACCOUNT_ID: str = "123456789012"
+AWS_TEST_ACCESS_KEY: str = "test_access_key"
+AWS_TEST_SECRET_KEY: str = "test_secret_key"
+AWS_TEST_SESSION_TOKEN: str = "test_session_token"
+AWS_TEST_REGION: str = "us-west-2"
+AWS_TEST_EXTERNAL_ID: str = "test-external-id"
+AWS_TEST_ROLE_ARN: str = f"arn:aws:iam::{AWS_TEST_ACCOUNT_ID}:role/test-role"
+AWS_TEST_ROLE_ARN_1: str = f"arn:aws:iam::{AWS_TEST_ACCOUNT_ID}:role/test-role-1"
+AWS_TEST_ROLE_ARN_2: str = "arn:aws:iam::987654321098:role/test-role-2"
+AWS_TEST_USER_ID: str = "AIDACKCEVSQ6C2EXAMPLE"
+
+
+# Use dynamic expiration (1 hour from now)
+AWS_TEST_EXPIRATION: str = (datetime.now() + timedelta(hours=1)).strftime(
+    "%Y-%m-%dT%H:%M:%SZ"
+)
+
+# AWS response templates
+AWS_STS_CREDENTIALS_RESPONSE: Dict[str, Any] = {
+    "Credentials": {
+        "AccessKeyId": AWS_TEST_ACCESS_KEY,
+        "SecretAccessKey": AWS_TEST_SECRET_KEY,
+        "SessionToken": AWS_TEST_SESSION_TOKEN,
+        "Expiration": AWS_TEST_EXPIRATION,
+    }
+}
+
+AWS_STS_CALLER_IDENTITY_RESPONSE: Dict[str, Any] = {
+    "Account": AWS_TEST_ACCOUNT_ID,
+    "Arn": f"arn:aws:sts::{AWS_TEST_ACCOUNT_ID}:assumed-role/test-role/test-session",
+    "UserId": AWS_TEST_USER_ID,
+}
+
+AWS_ACCOUNT_REGIONS_RESPONSE: Dict[str, Any] = {
+    "Regions": [
+        {"RegionName": "us-east-1", "RegionOptStatus": "ENABLED"},
+        {"RegionName": "us-west-2", "RegionOptStatus": "ENABLED"},
+        {"RegionName": "eu-west-1", "RegionOptStatus": "ENABLED"},
+    ]
+}
+
+AWS_ACCOUNT_INFO_TEMPLATE: Dict[str, str] = {
+    "Id": AWS_TEST_ACCOUNT_ID,
+    "Name": f"Account {AWS_TEST_ACCOUNT_ID}",
+}
 
 
 @pytest.fixture(autouse=True)
@@ -42,7 +92,7 @@ def mock_event_context() -> Generator[MagicMock, None, None]:
 def mock_aiosession() -> AsyncMock:
     """Creates a mocked AioSession with client factory and credentials."""
     mock_session: AsyncMock = AsyncMock()
-    mock_session.region_name = "us-west-2"
+    mock_session.region_name = AWS_TEST_REGION
 
     @asynccontextmanager
     async def mock_client(
@@ -50,38 +100,23 @@ def mock_aiosession() -> AsyncMock:
     ) -> AsyncGenerator[Any, None]:
         if service_name == "sts":
             mock_sts_client: AsyncMock = AsyncMock()
-            mock_sts_client.assume_role.return_value = {
-                "Credentials": {
-                    "AccessKeyId": "mock_access_key",
-                    "SecretAccessKey": "mock_secret_key",
-                    "SessionToken": "mock_session_token",
-                    "Expiration": "2024-12-31T23:59:59Z",
-                }
-            }
-            mock_sts_client.get_caller_identity.return_value = {
-                "Account": "123456789012",
-                "Arn": "arn:aws:sts::123456789012:assumed-role/test-role/test-session",
-                "UserId": "AIDACKCEVSQ6C2EXAMPLE",
-            }
+            mock_sts_client.assume_role.return_value = AWS_STS_CREDENTIALS_RESPONSE
+            mock_sts_client.get_caller_identity.return_value = (
+                AWS_STS_CALLER_IDENTITY_RESPONSE
+            )
             yield mock_sts_client
         elif service_name == "account":
             mock_account_client: AsyncMock = AsyncMock()
-            mock_account_client.list_regions.return_value = {
-                "Regions": [
-                    {"RegionName": "us-east-1", "RegionOptStatus": "ENABLED"},
-                    {"RegionName": "us-west-2", "RegionOptStatus": "ENABLED"},
-                    {"RegionName": "eu-west-1", "RegionOptStatus": "ENABLED"},
-                ]
-            }
+            mock_account_client.list_regions.return_value = AWS_ACCOUNT_REGIONS_RESPONSE
             yield mock_account_client
         else:
             raise NotImplementedError(f"Client for service '{service_name}' not mocked")
 
     # Provide a mock for get_credentials
     class MockFrozenCredentials:
-        access_key: str = "mock_access_key"
-        secret_key: str = "mock_secret_key"
-        token: str = "mock_session_token"
+        access_key: str = AWS_TEST_ACCESS_KEY
+        secret_key: str = AWS_TEST_SECRET_KEY
+        token: str = AWS_TEST_SESSION_TOKEN
 
     class MockCredentials:
         async def get_frozen_credentials(self) -> MockFrozenCredentials:
@@ -95,30 +130,30 @@ def mock_aiosession() -> AsyncMock:
 @pytest.fixture
 def mock_account_id() -> str:
     """Mocks the account ID."""
-    return "123456789012"
+    return AWS_TEST_ACCOUNT_ID
 
 
 @pytest.fixture
 def mock_role_arn() -> str:
     """Mocks a role ARN."""
-    return "arn:aws:iam::123456789012:role/test-role"
+    return AWS_TEST_ROLE_ARN
 
 
 @pytest.fixture
 def mock_external_id() -> str:
     """Mocks an external ID."""
-    return "test-external-id"
+    return AWS_TEST_EXTERNAL_ID
 
 
 @pytest.fixture
 def mock_aws_config() -> Dict[str, Any]:
     """Mocks AWS configuration."""
     return {
-        "aws_access_key_id": "test_access_key",
-        "aws_secret_access_key": "test_secret_key",
-        "aws_session_token": "test_session_token",
-        "region": "us-west-2",
-        "external_id": "test-external-id",
+        "aws_access_key_id": AWS_TEST_ACCESS_KEY,
+        "aws_secret_access_key": AWS_TEST_SECRET_KEY,
+        "aws_session_token": AWS_TEST_SESSION_TOKEN,
+        "region": AWS_TEST_REGION,
+        "external_id": AWS_TEST_EXTERNAL_ID,
     }
 
 
@@ -127,11 +162,11 @@ def mock_multi_account_config() -> Dict[str, Any]:
     """Mocks multi-account AWS configuration."""
     return {
         "account_role_arn": [
-            "arn:aws:iam::123456789012:role/test-role-1",
-            "arn:aws:iam::987654321098:role/test-role-2",
+            AWS_TEST_ROLE_ARN_1,
+            AWS_TEST_ROLE_ARN_2,
         ],
-        "region": "us-west-2",
-        "external_id": "test-external-id",
+        "region": AWS_TEST_REGION,
+        "external_id": AWS_TEST_EXTERNAL_ID,
     }
 
 
@@ -139,10 +174,10 @@ def mock_multi_account_config() -> Dict[str, Any]:
 def mock_single_account_config() -> Dict[str, Any]:
     """Mocks single account AWS configuration."""
     return {
-        "aws_access_key_id": "test_access_key",
-        "aws_secret_access_key": "test_secret_key",
-        "aws_session_token": "test_session_token",
-        "region": "us-west-2",
+        "aws_access_key_id": AWS_TEST_ACCESS_KEY,
+        "aws_secret_access_key": AWS_TEST_SECRET_KEY,
+        "aws_session_token": AWS_TEST_SESSION_TOKEN,
+        "region": AWS_TEST_REGION,
     }
 
 
@@ -150,9 +185,9 @@ def mock_single_account_config() -> Dict[str, Any]:
 def mock_aiocredentials() -> MagicMock:
     """Mocks AioCredentials."""
     mock_creds = MagicMock()
-    mock_creds.access_key = "test_access_key"
-    mock_creds.secret_key = "test_secret_key"
-    mock_creds.token = "test_session_token"
+    mock_creds.access_key = AWS_TEST_ACCESS_KEY
+    mock_creds.secret_key = AWS_TEST_SECRET_KEY
+    mock_creds.token = AWS_TEST_SESSION_TOKEN
     return mock_creds
 
 
@@ -160,9 +195,9 @@ def mock_aiocredentials() -> MagicMock:
 def mock_aiorefreshable_credentials() -> MagicMock:
     """Mocks AioRefreshableCredentials."""
     mock_creds = MagicMock()
-    mock_creds.access_key = "test_access_key"
-    mock_creds.secret_key = "test_secret_key"
-    mock_creds.token = "test_session_token"
+    mock_creds.access_key = AWS_TEST_ACCESS_KEY
+    mock_creds.secret_key = AWS_TEST_SECRET_KEY
+    mock_creds.token = AWS_TEST_SESSION_TOKEN
     mock_creds.refresh_needed.return_value = False
     return mock_creds
 
@@ -175,7 +210,7 @@ def mock_arn_parser() -> MagicMock:
         "partition": "aws",
         "service": "iam",
         "region": "",
-        "account": "123456789012",
+        "account": AWS_TEST_ACCOUNT_ID,
         "resource": "role/test-role",
     }
     return mock_parser
@@ -189,6 +224,21 @@ def mock_selector() -> MagicMock:
     return mock_selector
 
 
+@pytest.fixture(scope="function", autouse=True)
+def reset_cached_strategy() -> Generator[None, None, None]:
+    """Reset the cached strategy before and after each test."""
+    # Store original state
+    original_cache = getattr(ResyncStrategyFactory, "_cached_strategy", None)
+
+    # Clear before test
+    ResyncStrategyFactory._cached_strategy = None
+
+    yield
+
+    # Restore original state after test
+    ResyncStrategyFactory._cached_strategy = original_cache
+
+
 @pytest.fixture(autouse=True)
 def mock_logger() -> Generator[None, None, None]:
     """Mock logger to prevent actual logging during tests."""
@@ -200,16 +250,153 @@ def mock_logger() -> Generator[None, None, None]:
 def mock_assume_role_refresher() -> MagicMock:
     """Mocks the assume role refresher function."""
 
-    def _refresher_factory(*args: Any, **kwargs: Any) -> Any:
-        async def refresher() -> dict[str, str]:
-            return {
-                "access_key": "test_access_key",
-                "secret_key": "test_secret_key",
-                "token": "test_session_token",
-                "expiry_time": "2024-12-31T23:59:59Z",
-            }
-
-        return refresher
+    async def _refresher_factory(*args: Any, **kwargs: Any) -> dict[str, str]:
+        return {
+            "access_key": "test_access_key",
+            "secret_key": "test_secret_key",
+            "token": "test_session_token",
+            "expiry_time": (datetime.now() + timedelta(hours=1)).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            ),
+        }
 
     mock = MagicMock(side_effect=_refresher_factory)
     return mock
+
+
+# New fixtures for auth tests
+@pytest.fixture
+def aws_credentials() -> Dict[str, str]:
+    """Provides AWS credentials for testing."""
+    return {
+        "aws_access_key_id": AWS_TEST_ACCESS_KEY,
+        "aws_secret_access_key": AWS_TEST_SECRET_KEY,
+        "aws_session_token": AWS_TEST_SESSION_TOKEN,
+    }
+
+
+@pytest.fixture
+def aws_credentials_without_token() -> Dict[str, str]:
+    """Provides AWS credentials without session token for testing."""
+    return {
+        "aws_access_key_id": AWS_TEST_ACCESS_KEY,
+        "aws_secret_access_key": AWS_TEST_SECRET_KEY,
+    }
+
+
+@pytest.fixture
+def role_arn() -> str:
+    """Provides a test role ARN."""
+    return AWS_TEST_ROLE_ARN
+
+
+@pytest.fixture
+def multi_account_config(role_arn: str) -> Dict[str, Any]:
+    """Provides multi-account configuration."""
+    return {
+        "account_role_arn": [role_arn],
+        "region": AWS_TEST_REGION,
+        "external_id": AWS_TEST_EXTERNAL_ID,
+    }
+
+
+@pytest.fixture
+def oidc_config(role_arn: str) -> Dict[str, Any]:
+    """Provides OIDC configuration."""
+    return {
+        "oidc_token": "test-oidc-token",
+        "account_role_arn": [role_arn],
+        "region": AWS_TEST_REGION,
+    }
+
+
+@pytest.fixture
+def mock_sts_client() -> AsyncMock:
+    """Provides a mock STS client with common responses."""
+    mock_client = AsyncMock()
+    mock_client.get_caller_identity.return_value = AWS_STS_CALLER_IDENTITY_RESPONSE
+    mock_client.assume_role.return_value = AWS_STS_CREDENTIALS_RESPONSE
+    return mock_client
+
+
+@pytest.fixture
+def mock_session_with_sts(mock_sts_client: AsyncMock) -> AsyncMock:
+    """Provides a mock session that returns the mock STS client."""
+    session = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_create_client(
+        service_name: str, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
+        if service_name == "sts":
+            yield mock_sts_client
+        else:
+            yield AsyncMock()
+
+    session.create_client = mock_create_client
+    return session
+
+
+@pytest.fixture
+def mock_account_client() -> AsyncMock:
+    """Provides a mock account client with region responses."""
+    mock_client = AsyncMock()
+    mock_client.list_regions.return_value = AWS_ACCOUNT_REGIONS_RESPONSE
+    return mock_client
+
+
+@pytest.fixture
+def mock_session_with_account_client(mock_account_client: AsyncMock) -> AsyncMock:
+    """Provides a mock session that returns the mock account client."""
+    session = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_create_client(
+        service_name: str, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
+        if service_name == "account":
+            yield mock_account_client
+        else:
+            yield AsyncMock()
+
+    session.create_client = mock_create_client
+    return session
+
+
+@pytest.fixture
+def mock_web_identity_response() -> Dict[str, Any]:
+    """Provides a mock web identity response."""
+    return {
+        "Credentials": {
+            "AccessKeyId": AWS_TEST_ACCESS_KEY,
+            "SecretAccessKey": AWS_TEST_SECRET_KEY,
+            "SessionToken": AWS_TEST_SESSION_TOKEN,
+            "Expiration": AWS_TEST_EXPIRATION,
+        }
+    }
+
+
+@pytest.fixture
+def mock_web_identity_client(mock_web_identity_response: Dict[str, Any]) -> AsyncMock:
+    """Provides a mock STS client for web identity."""
+    mock_client = AsyncMock()
+    mock_client.assume_role_with_web_identity.return_value = mock_web_identity_response
+    return mock_client
+
+
+@pytest.fixture
+def mock_session_with_web_identity(mock_web_identity_client: AsyncMock) -> AsyncMock:
+    """Provides a mock session that returns the mock web identity client."""
+    session = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_create_client(
+        service_name: str, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
+        if service_name == "sts":
+            yield mock_web_identity_client
+        else:
+            yield AsyncMock()
+
+    session.create_client = mock_create_client
+    return session
