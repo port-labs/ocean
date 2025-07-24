@@ -1,3 +1,4 @@
+from typing import cast
 from initialize_client import init_sonar_client
 from utils import extract_metrics_from_payload
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
@@ -8,7 +9,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from integration import ObjectKind
+from integration import ObjectKind, SonarQubeIssueResourceConfig
 
 
 class IssueWebhookProcessor(BaseSonarQubeWebhookProcessor):
@@ -23,8 +24,12 @@ class IssueWebhookProcessor(BaseSonarQubeWebhookProcessor):
 
         project = await sonar_client.get_single_component(payload["project"])
         issues = []
+        selector = cast(SonarQubeIssueResourceConfig, resource_config).selector
+        query_params = selector.generate_request_params()
 
-        async for issues_batch in sonar_client.get_issues_by_component(project):
+        async for issues_batch in sonar_client.get_issues_by_component(
+            project, query_params
+        ):
             issues.extend(issues_batch)
 
         return WebhookEventRawResults(
