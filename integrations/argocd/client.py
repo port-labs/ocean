@@ -105,7 +105,7 @@ class ArgocdClient:
         all_history = [
             {**history_item, "__applicationId": application["metadata"]["uid"]}
             for application in applications
-            if application and application.get("metadata", {}).get("uid")
+            if application
             for history_item in application.get("status", {}).get("history", [])
         ]
         return all_history
