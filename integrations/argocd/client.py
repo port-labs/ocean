@@ -105,7 +105,7 @@ class ArgocdClient:
         all_history = [
             {**history_item, "__applicationId": application["metadata"]["uid"]}
             for application in applications
-            if application
+            if application and application.get("metadata", {}).get("uid")
             for history_item in application.get("status", {}).get("history", [])
         ]
         return all_history
@@ -121,7 +121,7 @@ class ArgocdClient:
         all_k8s_resources = [
             {**resource, "__applicationId": application["metadata"]["uid"]}
             for application in applications
-            if application
+            if application and application.get("metadata", {}).get("uid")
             for resource in application.get("status", {}).get("resources", [])
         ]
         return all_k8s_resources
