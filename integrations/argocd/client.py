@@ -127,9 +127,41 @@ class ArgocdClient:
         return all_k8s_resources
 
     async def get_managed_resources(
-        self, application_name: str
-    ) -> list[dict[str, Any]]:
-        logger.info(f"Fetching managed resources for application: {application_name}")
-        url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
-        managed_resources = (await self._send_api_request(url=url)).get("items", [])
-        return managed_resources
+        self, application: dict[str, Any]
+    ) -> list[dict[str, Any]] | None:
+        errors = []
+        try:
+            application_name = application.get("metadata", {}).get("name")
+            application_id = application.get("metadata", {}).get("uid")
+            if not application_name or not application_id:
+                logger.error(
+                    "Application metadata is missing 'name' or 'uid', skipping..."
+                )
+                return []
+
+            logger.info(
+                f"Fetching managed resources for application: {application_name}"
+            )
+            url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
+            managed_resources = (await self._send_api_request(url=url)).get("items", [])
+            application_resource = [
+                {
+                    **managed_resource,
+                    "__application": application,
+                    "__applicationId": application_id,
+                }
+                for managed_resource in managed_resources
+                if managed_resource
+            ]
+            return application_resource
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch managed resources for application {application['metadata']['name']}: {e}"
+            )
+            errors.append(e)
+
+        if errors and not self.ignore_server_error:
+            raise ExceptionGroup(
+                "Errors occurred during managed resource ingestion", errors
+            )
+        return None
