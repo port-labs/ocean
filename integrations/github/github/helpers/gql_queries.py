@@ -77,36 +77,57 @@ query getTeamMembers(
 }}
 """
 
+
+TEAM_FIELDS_FRAGMENT = """
+fragment TeamFields on Team {
+  slug
+  id
+  name
+  description
+  privacy
+  notificationSetting
+  url
+}
+"""
+
+
+TEAM_MEMBER_FRAGMENT = """
+fragment TeamMemberFields on Team {
+  members(first: $memberFirst, after: $memberAfter) {
+    nodes {
+      id
+      login
+      name
+      isSiteAdmin
+    }
+    pageInfo {
+      ...PageInfoFields
+    }
+  }
+}
+"""
+
+
 FETCH_TEAM_WITH_MEMBERS_GQL = f"""
 {PAGE_INFO_FRAGMENT}
+{TEAM_FIELDS_FRAGMENT}
+{TEAM_MEMBER_FRAGMENT}
+
 query getTeam(
-    $organization: String!,
-    $slug: String!,
-    $memberFirst: Int = 25,
-    $memberAfter: String
+  $organization: String!,
+  $slug: String!,
+  $memberFirst: Int = 25,
+  $memberAfter: String
 ) {{
   organization(login: $organization) {{
     team(slug: $slug) {{
-      slug
-      id
-      name
-      description
-      privacy
-      notificationSetting
-      url
-      members(first: $memberFirst, after: $memberAfter) {{
-        nodes {{
-          login
-          isSiteAdmin
-        }}
-        pageInfo {{
-          ...PageInfoFields
-        }}
-      }}
+      ...TeamFields
+      ...TeamMemberFields
     }}
   }}
 }}
 """
+
 
 LIST_EXTERNAL_IDENTITIES_GQL = f"""
     {PAGE_INFO_FRAGMENT}
@@ -158,70 +179,6 @@ fragment RepositoryFields on Repository {
 }
 """
 
-COLLABORATORS_FIELD = """
-collaborators(first: 25) {
-  nodes {
-    login
-    name
-    email
-    url
-  }
-  pageInfo {
-    ...PageInfoFields
-  }
-}
-"""
-
-
-def build_single_repository_gql(
-    additional_fragments: str = "", additional_fields: str = ""
-) -> str:
-    """Build a GraphQL query for fetching a single repository with optional additional fields."""
-    return f"""
-{PAGE_INFO_FRAGMENT}
-{REPOSITORY_FRAGMENT}
-{additional_fragments}
-query getRepository(
-  $organization: String!,
-  $repositoryName: String!,
-) {{
-  organization(login: $organization) {{
-    repository(name: $repositoryName) {{
-      ...RepositoryFields
-      {additional_fields}
-    }}
-  }}
-}}
-"""
-
-
-def build_list_repositories_gql(
-    additional_fragments: str = "", additional_fields: str = ""
-) -> str:
-    return f"""
-{PAGE_INFO_FRAGMENT}
-{REPOSITORY_FRAGMENT}
-{additional_fragments}
-query listOrgRepositories(
-  $organization: String!,
-  $first: Int = 25,
-  $after: String,
-  $repositoryVisibility: RepositoryVisibility
-) {{
-  organization(login: $organization) {{
-    repositories(first: $first, after: $after, visibility: $repositoryVisibility) {{
-      nodes {{
-        ...RepositoryFields
-        {additional_fields}
-      }}
-      pageInfo {{
-        ...PageInfoFields
-      }}
-    }}
-  }}
-}}
-"""
-
 
 TEAM_REPOSITORY_FRAGMENT = """
 fragment TeamRepositoryFields on Team {
@@ -234,4 +191,29 @@ fragment TeamRepositoryFields on Team {
     }
   }
 }
+"""
+
+SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL = f"""
+{PAGE_INFO_FRAGMENT}
+{TEAM_FIELDS_FRAGMENT}
+{TEAM_MEMBER_FRAGMENT}
+{REPOSITORY_FRAGMENT}
+{TEAM_REPOSITORY_FRAGMENT}
+
+query getTeamWithMembersAndRepos(
+  $organization: String!,
+  $slug: String!,
+  $memberFirst: Int = 50,
+  $memberAfter: String,
+  $repoFirst: Int = 25,
+  $repoAfter: String
+) {{
+  organization(login: $organization) {{
+    team(slug: $slug) {{
+      ...TeamFields
+      ...TeamMemberFields
+      ...TeamRepositoryFields
+    }}
+  }}
+}}
 """
