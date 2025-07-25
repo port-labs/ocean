@@ -1,7 +1,7 @@
 from typing import cast
 from loguru import logger
 from github.webhook.events import REPOSITORY_DELETE_EVENTS, REPOSITORY_UPSERT_EVENTS
-from github.helpers.utils import GithubClientType, ObjectKind
+from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
@@ -14,12 +14,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from integration import GithubRepositoryConfig
 from github.core.options import (
-    GraphQLRepositorySelectorOptions,
-    SingleGraphQLRepositoryOptions,
     SingleRepositoryOptions,
 )
 from github.core.exporters.repository_exporter import (
-    GraphQLRepositoryExporter,
     RestRepositoryExporter,
 )
 
@@ -57,7 +54,9 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         exporter = RestRepositoryExporter(rest_client)
 
         resource_config = cast(GithubRepositoryConfig, resource_config)
-        options = SingleRepositoryOptions(name=name, extra_relationship=resource_config.selector.relationship)
+        options = SingleRepositoryOptions(
+            name=name, extra_relationship=resource_config.selector.relationship
+        )
 
         data_to_upsert = await exporter.get_resource(options)
 

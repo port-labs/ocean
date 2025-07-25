@@ -1,4 +1,4 @@
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -29,7 +29,6 @@ from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.core.exporters.repository_exporter import (
-    GraphQLRepositoryExporter,
     RestRepositoryExporter,
 )
 from github.core.exporters.release_exporter import RestReleaseExporter
@@ -43,12 +42,10 @@ from github.core.exporters.folder_exporter import RestFolderExporter
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 
 from github.core.options import (
-    GraphQLRepositorySelectorOptions,
     ListBranchOptions,
     ListDeploymentsOptions,
     ListEnvironmentsOptions,
     ListFolderOptions,
-    ListGraphQLRepositoryOptions,
     ListIssueOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
@@ -119,8 +116,10 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubRepositoryConfig, event.resource_config)
     repository_type = cast(GithubPortAppConfig, event.port_app_config).repository_type
     selected_relationship = config.selector.relationship
-    
-    options = ListRepositoryOptions(type=repository_type, extra_relationship=selected_relationship)
+
+    options = ListRepositoryOptions(
+        type=repository_type, extra_relationship=selected_relationship
+    )
 
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories

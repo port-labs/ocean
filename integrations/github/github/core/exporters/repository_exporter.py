@@ -1,25 +1,13 @@
-import asyncio
-from typing import Any, Callable, Dict, List, TYPE_CHECKING, Coroutine
+from typing import Any, Dict, TYPE_CHECKING
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.clients.client_factory import create_github_client
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
 from github.core.options import (
-    ListGraphQLRepositoryOptions,
     ListRepositoryOptions,
-    RepositoryRelationshipOptions,
-    SingleGraphQLRepositoryOptions,
     SingleRepositoryOptions,
-    GraphQLRepositorySelectorOptions,
 )
 from github.clients.http.rest_client import GithubRestClient
-from github.clients.http.graphql_client import GithubGraphQLClient
-from github.helpers.gql_queries import (
-    COLLABORATORS_FIELD,
-    build_list_repositories_gql,
-    build_single_repository_gql,
-)
 
 if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
@@ -39,7 +27,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         if not extra_relationship:
             return response
 
-        return await self.enrich_repository_with_selected_relationship(response, extra_relationship)
+        return await self.enrich_repository_with_selected_relationship(
+            response, extra_relationship
+        )
 
     @cache_iterator_result()
     async def get_paginated_resources[
@@ -60,12 +50,16 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 yield repos
             else:
                 batch = [
-                    self.enrich_repository_with_selected_relationship(repo, extra_relationship)
+                    self.enrich_repository_with_selected_relationship(
+                        repo, extra_relationship
+                    )
                     for repo in repos
                 ]
                 yield batch
 
-    async def enrich_repository_with_selected_relationship(self, repository: Dict[str, Any], relationship: str) -> RAW_ITEM:
+    async def enrich_repository_with_selected_relationship(
+        self, repository: Dict[str, Any], relationship: str
+    ) -> RAW_ITEM:
         """Enrich repository with selected relationship."""
 
         match relationship:
@@ -77,8 +71,10 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 pass
 
         return repository
-        
-    async def _enrich_repository_with_collaborators(self, repository: Dict[str, Any]) -> RAW_ITEM:
+
+    async def _enrich_repository_with_collaborators(
+        self, repository: Dict[str, Any]
+    ) -> RAW_ITEM:
         """Enrich repository with collaborators."""
         repo_name = repository["name"]
         all_collaborators = []
@@ -95,7 +91,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         repository["collaborators"] = all_collaborators
         return repository
 
-    async def _enrich_repository_with_teams(self, repository: Dict[str, Any]) -> RAW_ITEM:
+    async def _enrich_repository_with_teams(
+        self, repository: Dict[str, Any]
+    ) -> RAW_ITEM:
         """Enrich repository with teams."""
         repo_name = repository["name"]
         all_teams = []
