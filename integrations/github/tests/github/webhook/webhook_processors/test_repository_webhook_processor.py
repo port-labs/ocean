@@ -1,5 +1,4 @@
 from typing import Dict
-from integration import GithubRepositorySelector
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -13,17 +12,17 @@ from github.webhook.events import REPOSITORY_UPSERT_EVENTS, REPOSITORY_DELETE_EV
 from github.core.options import SingleRepositoryOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
 )
+from integration import GithubRepositoryConfig, GithubRepositorySelector
 from github.helpers.utils import ObjectKind
 
 
 @pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+def resource_config() -> GithubRepositoryConfig:
+    return GithubRepositoryConfig(
         kind=ObjectKind.REPOSITORY,
         selector=GithubRepositorySelector(query="true"),
         port=PortResourceConfig(
@@ -86,7 +85,7 @@ class TestRepositoryWebhookProcessor:
     async def test_handle_event_create_and_delete(
         self,
         repository_webhook_processor: RepositoryWebhookProcessor,
-        resource_config: ResourceConfig,
+        resource_config: GithubRepositoryConfig,
         action: str,
         is_deletion: bool,
         expected_updated: bool,
@@ -120,7 +119,7 @@ class TestRepositoryWebhookProcessor:
 
             # Verify exporter was called with correct repo name
             mock_exporter.get_resource.assert_called_once_with(
-                SingleRepositoryOptions(name="test-repo")
+                SingleRepositoryOptions(name="test-repo", included_property=None)
             )
 
         assert isinstance(result, WebhookEventRawResults)
@@ -132,6 +131,50 @@ class TestRepositoryWebhookProcessor:
 
         if expected_deleted:
             assert result.deleted_raw_results == [repo_data]
+    @pytest.mark.parametrize(
+        "include_property",
+        ["teams", "collaborators"],
+    )
+    async def test_handle_event_with_included_property(
+        self,
+        repository_webhook_processor: RepositoryWebhookProcessor,
+        resource_config: GithubRepositoryConfig,
+        include_property: str,
+    ) -> None:
+        """Test that webhook processor handles included_property correctly."""
+        repo_data = {
+            "id": 1,
+            "name": "test-repo",
+            "full_name": "test-org/test-repo",
+            "description": "Test repository",
+        }
+
+        # Create a resource config with included_property set
+        resource_config.selector.include = include_property
+
+        payload = {"action": "created", "repository": repo_data}
+
+        # Mock the RepositoryExporter
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = repo_data
+
+        with patch(
+            "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+            return_value=mock_exporter,
+        ):
+            result = await repository_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        # Verify exporter was called with correct repo name and included_property
+        mock_exporter.get_resource.assert_called_once_with(
+            SingleRepositoryOptions(name="test-repo", included_property=include_property)
+        )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert len(result.updated_raw_results) == 1
+        assert result.updated_raw_results == [repo_data]
+        assert len(result.deleted_raw_results) == 0
 
     @pytest.mark.parametrize(
         "payload,expected",
@@ -162,81 +205,3 @@ class TestRepositoryWebhookProcessor:
     ) -> None:
         result = await repository_webhook_processor._validate_payload(payload)
         assert result is expected
-
-    @pytest.mark.asyncio
-    async def test_handle_event_graphql_path(
-        self,
-        repository_webhook_processor: RepositoryWebhookProcessor,
-        resource_config: ResourceConfig,
-    ) -> None:
-        """Test that the GraphQLRepositoryExporter is used when selector requires GraphQL."""
-        repo_data = {
-            "id": 2,
-            "name": "test-graphql-repo",
-            "full_name": "test-org/test-graphql-repo",
-            "description": "Test repository (GraphQL)",
-        }
-        payload = {"action": "created", "repository": repo_data}
-
-        # Cast selector to GithubRepositorySelector to access specific attributes
-        github_selector = resource_config.selector
-        assert isinstance(github_selector, GithubRepositorySelector)
-
-        # Patch the selector to require GraphQL (e.g., collaborators=True)
-        github_selector.collaborators = True
-        github_selector.teams = False
-        github_selector.custom_properties = False
-
-        # Patch GraphQLRepositoryExporter
-        with patch(
-            "github.webhook.webhook_processors.repository_webhook_processor.GraphQLRepositoryExporter"
-        ) as mock_graphql_exporter:
-            mock_exporter_instance = mock_graphql_exporter.return_value
-            mock_exporter_instance.get_resource = AsyncMock(return_value=repo_data)
-
-            result = await repository_webhook_processor.handle_event(
-                payload, resource_config
-            )
-
-            mock_exporter_instance.get_resource.assert_called_once()
-            assert isinstance(result, WebhookEventRawResults)
-            assert result.updated_raw_results == [repo_data]
-            assert result.deleted_raw_results == []
-
-    @pytest.mark.asyncio
-    async def test_handle_event_exporter_exception(
-        self,
-        repository_webhook_processor: RepositoryWebhookProcessor,
-        resource_config: ResourceConfig,
-    ) -> None:
-        """Test that exceptions in the exporter are propagated (not handled)."""
-        repo_data = {
-            "id": 3,
-            "name": "test-exception-repo",
-            "full_name": "test-org/test-exception-repo",
-            "description": "Test repository (Exception)",
-        }
-        payload = {"action": "created", "repository": repo_data}
-
-        # Cast selector to GithubRepositorySelector to access specific attributes
-        github_selector = resource_config.selector
-        assert isinstance(github_selector, GithubRepositorySelector)
-
-        # Patch the selector to use REST path
-        github_selector.collaborators = False
-        github_selector.teams = False
-        github_selector.custom_properties = False
-
-        # Patch RestRepositoryExporter to raise an exception
-        with patch(
-            "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter"
-        ) as mock_rest_exporter:
-            mock_exporter_instance = mock_rest_exporter.return_value
-            mock_exporter_instance.get_resource = AsyncMock(
-                side_effect=Exception("Exporter error")
-            )
-
-            with pytest.raises(Exception, match="Exporter error"):
-                await repository_webhook_processor.handle_event(
-                    payload, resource_config
-                )

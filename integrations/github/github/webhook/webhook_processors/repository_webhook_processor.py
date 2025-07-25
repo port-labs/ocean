@@ -55,7 +55,7 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         resource_config = cast(GithubRepositoryConfig, resource_config)
         options = SingleRepositoryOptions(
-            name=name, extra_relationship=resource_config.selector.relationship
+            name=name, included_property=resource_config.selector.include
         )
 
         data_to_upsert = await exporter.get_resource(options)

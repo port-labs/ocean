@@ -25,7 +25,7 @@ FILE_PROPERTY_PREFIX = "file://"
 
 
 class GithubRepositorySelector(Selector):
-    relationship: Optional[Literal["collaborators", "teams"]] = Field(
+    include: Optional[Literal["collaborators", "teams"]] = Field(
         default=None,
         description="Specify the relationship to include in the repository",
     )

@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Dict, TYPE_CHECKING
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
@@ -38,7 +39,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all repositories in the organization with pagination."""
 
         params = dict(options)
-        extra_relationship = options.get("extra_relationship")
+        included_property = options.get("included_property")
 
         async for repos in self.client.send_paginated_request(
             f"{self.client.base_url}/orgs/{self.client.organization}/repos", params
@@ -46,23 +47,24 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             logger.info(
                 f"Fetched batch of {len(repos)} repositories from organization {self.client.organization}"
             )
-            if not extra_relationship:
+            if not included_property:
                 yield repos
             else:
-                batch = [
+                logger.info(f"Enriching repository with {included_property}")
+                batch = await asyncio.gather(*[
                     self.enrich_repository_with_selected_relationship(
-                        repo, extra_relationship
+                        repo, included_property
                     )
                     for repo in repos
-                ]
+                ])
                 yield batch
 
     async def enrich_repository_with_selected_relationship(
-        self, repository: Dict[str, Any], relationship: str
+        self, repository: Dict[str, Any], included_property: str
     ) -> RAW_ITEM:
         """Enrich repository with selected relationship."""
 
-        match relationship:
+        match included_property:
             case "collaborators":
                 return await self._enrich_repository_with_collaborators(repository)
             case "teams":
@@ -88,7 +90,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             )
             all_collaborators.extend(collaborators)
 
-        repository["collaborators"] = all_collaborators
+        repository["__collaborators"] = all_collaborators
         return repository
 
     async def _enrich_repository_with_teams(
@@ -107,5 +109,5 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             )
             all_teams.extend(teams)
 
-        repository["teams"] = all_teams
+        repository["__teams"] = all_teams
         return repository
