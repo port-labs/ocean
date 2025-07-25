@@ -100,10 +100,13 @@ class ArgocdClient:
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        if applications is None:
+            return []
         all_history = [
             {**history_item, "__applicationId": application["metadata"]["uid"]}
             for application in applications
-            for history_item in application["status"].get("history", [])
+            if application
+            for history_item in application.get("status", {}).get("history", [])
         ]
         return all_history
 
@@ -113,17 +116,52 @@ class ArgocdClient:
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        if applications is None:
+            return []
         all_k8s_resources = [
             {**resource, "__applicationId": application["metadata"]["uid"]}
             for application in applications
-            for resource in application["status"].get("resources", [])
+            if application and application.get("metadata", {}).get("uid")
+            for resource in application.get("status", {}).get("resources", [])
         ]
         return all_k8s_resources
 
     async def get_managed_resources(
-        self, application_name: str
-    ) -> list[dict[str, Any]]:
-        logger.info(f"Fetching managed resources for application: {application_name}")
-        url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
-        managed_resources = (await self._send_api_request(url=url)).get("items", [])
-        return managed_resources
+        self, application: dict[str, Any]
+    ) -> list[dict[str, Any]] | None:
+        errors = []
+        try:
+            application_name = application.get("metadata", {}).get("name")
+            application_id = application.get("metadata", {}).get("uid")
+            if not application_name or not application_id:
+                logger.error(
+                    "Application metadata is missing 'name' or 'uid', skipping..."
+                )
+                return []
+
+            logger.info(
+                f"Fetching managed resources for application: {application_name}"
+            )
+            url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
+            managed_resources = (await self._send_api_request(url=url)).get("items", [])
+            application_resource = [
+                {
+                    **managed_resource,
+                    "__application": application,
+                    "__applicationId": application_id,
+                }
+                for managed_resource in managed_resources
+                if managed_resource
+            ]
+            return application_resource
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch managed resources for application {application['metadata']['name']}: {e}"
+            )
+            errors.append(e)
+
+        if errors and not self.ignore_server_error:
+            raise ExceptionGroup(
+                "Errors occurred during managed resource ingestion", errors
+            )
+        return None
