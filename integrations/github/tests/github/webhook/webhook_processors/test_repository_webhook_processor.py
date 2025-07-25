@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Literal
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -12,20 +12,19 @@ from github.webhook.events import REPOSITORY_UPSERT_EVENTS, REPOSITORY_DELETE_EV
 from github.core.options import SingleRepositoryOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
 )
+from integration import GithubRepositoryConfig, GithubRepositorySelector
 from github.helpers.utils import ObjectKind
 
 
 @pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
-        kind=ObjectKind.REPOSITORY,
-        selector=Selector(query="true"),
+def resource_config() -> GithubRepositoryConfig:
+    return GithubRepositoryConfig(
+        kind="repository",
+        selector=GithubRepositorySelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -86,7 +85,7 @@ class TestRepositoryWebhookProcessor:
     async def test_handle_event_create_and_delete(
         self,
         repository_webhook_processor: RepositoryWebhookProcessor,
-        resource_config: ResourceConfig,
+        resource_config: GithubRepositoryConfig,
         action: str,
         is_deletion: bool,
         expected_updated: bool,
@@ -120,7 +119,7 @@ class TestRepositoryWebhookProcessor:
 
             # Verify exporter was called with correct repo name
             mock_exporter.get_resource.assert_called_once_with(
-                SingleRepositoryOptions(name="test-repo")
+                SingleRepositoryOptions(name="test-repo", included_property=None)
             )
 
         assert isinstance(result, WebhookEventRawResults)
@@ -132,6 +131,53 @@ class TestRepositoryWebhookProcessor:
 
         if expected_deleted:
             assert result.deleted_raw_results == [repo_data]
+
+    @pytest.mark.parametrize(
+        "include_property",
+        ["teams", "collaborators"],
+    )
+    async def test_handle_event_with_included_property(
+        self,
+        repository_webhook_processor: RepositoryWebhookProcessor,
+        resource_config: GithubRepositoryConfig,
+        include_property: Literal["teams", "collaborators"],
+    ) -> None:
+        """Test that webhook processor handles included_property correctly."""
+        repo_data = {
+            "id": 1,
+            "name": "test-repo",
+            "full_name": "test-org/test-repo",
+            "description": "Test repository",
+        }
+
+        # Create a resource config with included_property set
+        resource_config.selector.include = include_property
+
+        payload = {"action": "created", "repository": repo_data}
+
+        # Mock the RepositoryExporter
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = repo_data
+
+        with patch(
+            "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+            return_value=mock_exporter,
+        ):
+            result = await repository_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        # Verify exporter was called with correct repo name and included_property
+        mock_exporter.get_resource.assert_called_once_with(
+            SingleRepositoryOptions(
+                name="test-repo", included_property=include_property
+            )
+        )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert len(result.updated_raw_results) == 1
+        assert result.updated_raw_results == [repo_data]
+        assert len(result.deleted_raw_results) == 0
 
     @pytest.mark.parametrize(
         "payload,expected",
