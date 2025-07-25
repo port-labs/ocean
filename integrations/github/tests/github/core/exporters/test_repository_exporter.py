@@ -111,7 +111,7 @@ class TestRestRepositoryExporter:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     type=mock_port_app_config.repository_type,
-                    included_property="collaborators"
+                    included_property="collaborators",
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
@@ -121,7 +121,7 @@ class TestRestRepositoryExporter:
 
                 assert len(repos) == 1
                 assert len(repos[0]) == 2
-                
+
                 # Verify that repositories are enriched with collaborators
                 for repo in repos[0]:
                     assert "__collaborators" in repo
@@ -139,7 +139,7 @@ class TestRestRepositoryExporter:
                 )
 
                 # Verify collaborator requests were called for each repository
-                expected_collaborator_calls = [
+                expected_collaborator_calls: list[tuple[str, dict[str, Any]]] = [
                     (
                         f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/collaborators",
                         {},
@@ -149,7 +149,7 @@ class TestRestRepositoryExporter:
                         {},
                     ),
                 ]
-                
+
                 # Should have 3 total calls: 1 for repositories + 2 for collaborators
                 assert mock_request.call_count == 3
                 mock_request.assert_any_call(*expected_collaborator_calls[0])

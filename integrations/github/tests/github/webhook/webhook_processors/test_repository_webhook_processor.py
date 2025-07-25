@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Literal
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -23,7 +23,7 @@ from github.helpers.utils import ObjectKind
 @pytest.fixture
 def resource_config() -> GithubRepositoryConfig:
     return GithubRepositoryConfig(
-        kind=ObjectKind.REPOSITORY,
+        kind="repository",
         selector=GithubRepositorySelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -131,6 +131,7 @@ class TestRepositoryWebhookProcessor:
 
         if expected_deleted:
             assert result.deleted_raw_results == [repo_data]
+
     @pytest.mark.parametrize(
         "include_property",
         ["teams", "collaborators"],
@@ -139,7 +140,7 @@ class TestRepositoryWebhookProcessor:
         self,
         repository_webhook_processor: RepositoryWebhookProcessor,
         resource_config: GithubRepositoryConfig,
-        include_property: str,
+        include_property: Literal["teams", "collaborators"],
     ) -> None:
         """Test that webhook processor handles included_property correctly."""
         repo_data = {
@@ -168,7 +169,9 @@ class TestRepositoryWebhookProcessor:
 
         # Verify exporter was called with correct repo name and included_property
         mock_exporter.get_resource.assert_called_once_with(
-            SingleRepositoryOptions(name="test-repo", included_property=include_property)
+            SingleRepositoryOptions(
+                name="test-repo", included_property=include_property
+            )
         )
 
         assert isinstance(result, WebhookEventRawResults)
