@@ -100,7 +100,7 @@ class ArgocdClient:
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
-        if not applications:
+        if applications is None:
             return []
         all_history = [
             {**history_item, "__applicationId": application["metadata"]["uid"]}
@@ -116,6 +116,8 @@ class ArgocdClient:
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        if applications is None:
+            return []
         all_k8s_resources = [
             {**resource, "__applicationId": application["metadata"]["uid"]}
             for application in applications

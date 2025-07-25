@@ -35,7 +35,7 @@ async def test_get_resources(mock_argocd_client: ArgocdClient) -> None:
                 "items": [
                     {
                         "spec": {"destinations": [{"server": "*", "namespace": "*"}]},
-                        "metadata": {"name": "test-project"},
+                        "metadata": {"name": "test-project", "uid": "test-uid"},
                     }
                 ]
             }
@@ -52,7 +52,7 @@ async def test_get_resources(mock_argocd_client: ArgocdClient) -> None:
                             ],
                             "project": "default",
                         },
-                        "metadata": {"name": "test-project"},
+                        "metadata": {"name": "test-project", "uid": "test-uid"},
                     }
                 ]
             }
@@ -79,7 +79,7 @@ async def test_get_application_by_name(mock_argocd_client: ArgocdClient) -> None
             ],
             "project": "default",
         },
-        "metadata": {"name": "test-project"},
+        "metadata": {"name": "test-project", "uid": "test-uid"},
     }
     with patch.object(
         mock_argocd_client, "_send_api_request", new_callable=AsyncMock
