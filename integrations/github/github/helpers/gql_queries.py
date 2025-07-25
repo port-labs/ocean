@@ -179,6 +179,82 @@ fragment RepositoryFields on Repository {
 }
 """
 
+COLLABORATORS_FIELD = """
+collaborators(first: 25) {
+  nodes {
+    login
+    name
+    email
+    url
+  }
+  pageInfo {
+    ...PageInfoFields
+  }
+}
+"""
+
+COLLABORATORS_FRAGMENT = """
+fragment CollaboratorsFields on Repository {
+  collaborators(first: 25) {
+  nodes {
+    login
+    name
+    email
+    url
+  }
+    pageInfo {
+      ...PageInfoFields
+    }
+  }
+}
+"""
+
+
+
+SINGLE_REPOSITORY_GQL = f"""
+{PAGE_INFO_FRAGMENT}
+{REPOSITORY_FRAGMENT}
+query getRepository(
+  $organization: String!,
+  $repositoryName: String!,
+) {{
+  organization(login: $organization) {{
+    repository(name: $repositoryName) {{
+      ...RepositoryFields
+      ...CollaboratorsField
+    }}
+  }}
+}}
+"""
+
+
+def build_list_repositories_gql(
+    additional_fragments: str = "", additional_fields: str = ""
+) -> str:
+    return f"""
+{PAGE_INFO_FRAGMENT}
+{REPOSITORY_FRAGMENT}
+{additional_fragments}
+query listOrgRepositories(
+  $organization: String!,
+  $first: Int = 25,
+  $after: String,
+  $repositoryVisibility: RepositoryVisibility
+) {{
+  organization(login: $organization) {{
+    repositories(first: $first, after: $after, visibility: $repositoryVisibility) {{
+      nodes {{
+        ...RepositoryFields
+        {additional_fields}
+      }}
+      pageInfo {{
+        ...PageInfoFields
+      }}
+    }}
+  }}
+}}
+"""
+
 
 TEAM_REPOSITORY_FRAGMENT = """
 fragment TeamRepositoryFields on Team {

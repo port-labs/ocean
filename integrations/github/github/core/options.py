@@ -3,32 +3,14 @@ from typing import List, NotRequired, Optional, Required, TypedDict, Any
 
 class SingleRepositoryOptions(TypedDict):
     name: str
+    extra_relationship: NotRequired[Optional[str]]
 
 
 class ListRepositoryOptions(TypedDict):
     """Options for listing repositories."""
 
     type: str
-
-
-class GraphQLRepositorySelectorOptions(TypedDict):
-    collaborators: bool
-    teams: bool
-    custom_properties: bool
-
-
-class GraphQLRepositorySelectorBaseOptions(TypedDict):
-    selector: Required[GraphQLRepositorySelectorOptions]
-
-
-class SingleGraphQLRepositoryOptions(GraphQLRepositorySelectorBaseOptions):
-    name: str
-
-
-class ListGraphQLRepositoryOptions(GraphQLRepositorySelectorBaseOptions):
-    """Options for listing repositories."""
-
-    type: str
+    extra_relationship: NotRequired[Optional[str]]
 
 
 class SingleFolderOptions(TypedDict):

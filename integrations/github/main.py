@@ -113,36 +113,14 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the organization."""
     logger.info(f"Starting resync for kind: {kind}")
 
+    rest_client = create_github_client()
+    exporter = RestRepositoryExporter(rest_client)
+
     config = cast(GithubRepositoryConfig, event.resource_config)
     repository_type = cast(GithubPortAppConfig, event.port_app_config).repository_type
-
-    graphql_required_selectors = [
-        config.selector.collaborators,
-        config.selector.teams,
-        config.selector.custom_properties,
-    ]
-
-    exporter: Union[GraphQLRepositoryExporter, RestRepositoryExporter]
-    options: Union[ListGraphQLRepositoryOptions, ListRepositoryOptions]
-
-    if any(graphql_required_selectors):
-        logger.info(
-            "Using GraphQL client with collaborators exporter for repository resync"
-        )
-        graphql_client = create_github_client(GithubClientType.GRAPHQL)
-        exporter = GraphQLRepositoryExporter(graphql_client)
-        options = ListGraphQLRepositoryOptions(
-            type=repository_type,
-            selector=cast(
-                GraphQLRepositorySelectorOptions,
-                config.selector.dict(exclude_unset=True),
-            ),
-        )
-    else:
-        logger.info("Using REST client with repository exporter for repository resync")
-        rest_client = create_github_client()
-        exporter = RestRepositoryExporter(rest_client)
-        options = ListRepositoryOptions(type=repository_type)
+    selected_relationship = config.selector.relationship
+    
+    options = ListRepositoryOptions(type=repository_type, extra_relationship=selected_relationship)
 
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories

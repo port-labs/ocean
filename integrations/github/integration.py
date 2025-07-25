@@ -25,16 +25,11 @@ FILE_PROPERTY_PREFIX = "file://"
 
 
 class GithubRepositorySelector(Selector):
-    collaborators: bool = Field(
-        default=False, description="Whether to include collaborators in the repository"
-    )
-    teams: bool = Field(
-        default=False, description="Whether to include teams in the repository"
-    )
-    custom_properties: bool = Field(
-        alias="customProperties",
-        default=False,
-        description="Whether to include custom properties in the repository",
+    relationship: Optional[
+        Literal["collaborators", "teams"]
+    ] = Field(
+        default=None,
+        description="Specify the relationship to include in the repository",
     )
 
 
