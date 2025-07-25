@@ -215,6 +215,17 @@
       "python": "${workspaceFolder}/integrations/komodor/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/checkmarx_one",
+      "envFile": "${workspaceFolder}/integrations/checkmarx_one/.env",
+      "justMyCode": true,
+      "name": "Run checkmarx_one integration",
+      "program": "${workspaceFolder}/integrations/checkmarx_one/debug.py",
+      "python": "${workspaceFolder}/integrations/checkmarx_one/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }

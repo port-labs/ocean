@@ -1,0 +1,69 @@
+title: Checkmarx One
+description: Checkmarx One integration for Port Ocean
+icon: Checkmarx
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/checkmarx-one
+features:
+  - type: exporter
+    section: Code Quality & Security
+    resources:
+      - kind: project
+      - kind: scan
+configurations:
+  - name: checkmarxBaseUrl
+    required: true
+    type: url
+    description: |
+      Checkmarx One server URL for your region:
+      US: https://ast.checkmarx.net/api
+      EU: https://eu.ast.checkmarx.net/api
+      US2: https://us.ast.checkmarx.net/api
+      EU2: https://eu-2.ast.checkmarx.net/api
+      DEU: https://deu.ast.checkmarx.net/api
+      ANZ: https://anz.ast.checkmarx.net/api
+      IND: https://ind.ast.checkmarx.net/api
+      SNG: https://sng.ast.checkmarx.net/api
+      UAE: https://mea.ast.checkmarx.net/api
+    default: "https://ast.checkmarx.net/api"
+
+  - name: checkmarxIamUrl
+    required: true
+    type: url
+    description: |
+      Checkmarx One IAM URL for your region (for authentication):
+      US: https://iam.checkmarx.net
+      EU: https://eu.iam.checkmarx.net
+      US2: https://us.iam.checkmarx.net
+      EU2: https://eu-2.iam.checkmarx.net
+      DEU: https://deu.iam.checkmarx.net
+      ANZ: https://anz.iam.checkmarx.net
+      IND: https://ind.iam.checkmarx.net
+      SNG: https://sng.iam.checkmarx.net
+      UAE: https://mea.iam.checkmarx.net
+    default: "https://deu.iam.checkmarx.net"
+
+  - name: checkmarxTenant
+    required: true
+    type: string
+    description: Your Checkmarx One tenant name (required for authentication URL)
+
+  - name: checkmarxApiKey
+    required: false
+    type: string
+    sensitive: true
+    description: |
+      Checkmarx One API Key (choose this OR OAuth credentials).
+      Generate in: Settings > Identity and Access Management > API Keys
+
+  - name: checkmarxClientId
+    required: false
+    type: string
+    sensitive: true
+    description: |
+      OAuth2 Client ID (alternative to API Key).
+      Generate in: Settings > Identity and Access Management > OAuth2 Clients
+
+  - name: checkmarxClientSecret
+    required: false
+    type: string
+    sensitive: true
+    description: OAuth2 Client Secret (required with Client ID)
