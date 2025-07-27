@@ -363,13 +363,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results, errors = await self._get_resource_raw_results(resource_config)
         async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
         raw_results: RAW_RESULT = []
-
-        raw_data = []
+        lakehouse_data_enabled = await self._lakehouse_data_enabled()
 
         for result in results:
             if isinstance(result, dict):
                 raw_results.append(result)
-                raw_data.append(result)
+                if lakehouse_data_enabled:
+                    await ocean.port_client.post_integration_raw_data(result, event.id, resource_config.kind)
             else:
                 async_generators.append(result)
 
@@ -401,7 +401,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         for generator in async_generators:
             try:
                 async for items in generator:
-                    raw_data.extend(items)
+                    if lakehouse_data_enabled:
+                        await ocean.port_client.post_integration_raw_data(items, event.id, resource_config.kind)
                     number_of_raw_results += len(items)
                     if send_raw_data_examples_amount > 0:
                         send_raw_data_examples_amount = max(
@@ -429,9 +430,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
         )
 
-        flags = await ocean.port_client.get_organization_feature_flags();
-        if "LAKEHOUSE_ALLOWED" in flags and ocean.config.datalake_enabled:
-            await ocean.port_client.post_integration_raw_data(raw_data, event.id, resource_config.kind)
+        await self._post_lakehouse_data_if_enabled(raw_data, resource_config.kind)
 
         ocean.metrics.set_metric(
             name=MetricType.SUCCESS_NAME,
@@ -470,6 +469,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         return passed_entities, errors
+
+    async def _lakehouse_data_enabled(
+        self
+    ) -> bool:
+        """Check if lakehouse data is enabled.
+
+        Returns:
+            bool: True if lakehouse data is enabled, False otherwise
+        """
+        flags = await ocean.port_client.get_organization_feature_flags()
+        if "LAKEHOUSE_ALLOWED" in flags and ocean.config.datalake_enabled:
+            return True
+        return False
 
     async def register_raw(
         self,
