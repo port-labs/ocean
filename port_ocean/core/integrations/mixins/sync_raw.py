@@ -430,7 +430,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         flags = await ocean.port_client.get_organization_feature_flags();
-        if "DATALAKE_ALLOWED" in flags and ocean.config.datalake_enabled:
+        if "LAKEHOUSE_ALLOWED" in flags and ocean.config.datalake_enabled:
             await ocean.port_client.post_integration_raw_data(raw_data, event.id, resource_config.kind)
 
         ocean.metrics.set_metric(
