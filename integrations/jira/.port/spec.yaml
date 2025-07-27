@@ -52,23 +52,23 @@ saas:
       appSpec:
         minimumScheduledResyncInterval: '2h'
 installationDocs:
-  - name: Saas__SaasOAuth2
+  Saas__SaasOAuth2:
     enabled: false
-  - name: Saas__Saas
+  Saas__Saas:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=hosted-by-port&oauth=manual
     jumpTo: setup
-  - name: githubWorkflow
+  githubWorkflow:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=one-time-ci&oauth=manual&deploy=helm&cicd-method=github
     jumpTo: setup
-  - name: gitlabCI
+  gitlabCI:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=one-time-ci&oauth=manual&deploy=helm&cicd-method=gitlab
     jumpTo: setup
-  - name: helm
+  helm:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=real-time-self-hosted&oauth=manual
     jumpTo: setup
-  - name: docker
+  docker:
     enabled: false
