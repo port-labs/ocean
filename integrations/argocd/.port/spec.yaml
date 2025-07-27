@@ -35,21 +35,21 @@ configurations:
     description: Whether to allow insecure connections to the ArgoCD server. If set to true, the exporter will allow insecure connections to the ArgoCD server. If set to false, the exporter will only allow secure connections to the ArgoCD server. Default is false.
     default: false
 installationDocs:
-  - name: Saas__SaasOAuth2
+  Saas__SaasOAuth2:
     enabled: false
-  - name: Saas__Saas
+  Saas__Saas:
     enabled: false
-  - name: githubWorkflow
+  githubWorkflow:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/argocd/?deploy=helm&installation-methods=one-time-ci
     jumpTo: prerequisites
-  - name: gitlabCI
+  gitlabCI:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/argocd/?deploy=helm&installation-methods=one-time-ci&cicd-method=gitlab
     jumpTo: prerequisites
-  - name: helm
+  helm:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/argocd/?deploy=helm
     jumpTo: prerequisites
-  - name: docker
+  docker:
     enabled: false
