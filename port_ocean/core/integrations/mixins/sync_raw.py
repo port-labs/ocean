@@ -430,8 +430,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
         )
 
-        await self._post_lakehouse_data_if_enabled(raw_data, resource_config.kind)
-
         ocean.metrics.set_metric(
             name=MetricType.SUCCESS_NAME,
             labels=[ocean.metrics.current_resource_kind(), MetricPhase.RESYNC],
