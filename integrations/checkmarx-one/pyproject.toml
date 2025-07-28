@@ -6,7 +6,7 @@ authors = ["victor adebayo <victor.adebayo@port.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = { version = "^0.25.3", extras = ["cli"] }
+port_ocean = { version = "^0.26.1", extras = ["cli"] }
 aiolimiter = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
