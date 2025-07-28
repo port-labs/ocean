@@ -15,16 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added OIDC web identity authentication support via new `oidc_token` configuration parameter
 - Introduced `WebIdentityCredentialProvider` for federated authentication using AWS STS `assume_role_with_web_identity`
 - Enhanced session factory to route OIDC configurations to web identity provider with multi-account strategy
+- Static credential provider now requires explicit `aws_access_key_id` and `aws_secret_access_key` instead of falling back to boto3 credential toolchain
 
 
 ## 0.1.2-dev (2025-07-20)
 
-
-### Features
-
-- Added OIDC web identity authentication support via new `oidc_token` configuration parameter
-- Introduced `WebIdentityCredentialProvider` for federated authentication using AWS STS `assume_role_with_web_identity`
-- Enhanced session factory to route OIDC configurations to web identity provider with multi-account strategy
 
 ### Improvements
 
