@@ -91,6 +91,24 @@ class BitbucketClient:
             logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
             raise e
 
+    def _parse_next_url_params(
+        self,
+        next_url: str,
+    ) -> dict[str, Any]:
+        """Parse query parameters from next URL."""
+        parsed = urlparse(next_url)
+        query = parse_qs(parsed.query)
+        params = {}
+        for key, value in query.items():
+            if len(value) == 1:
+                try:
+                    params[key] = int(value[0])
+                except ValueError:
+                    params[key] = value[0]
+            else:
+                params[key] = value
+        return params
+
     async def _fetch_paginated_api_with_rate_limiter(
         self,
         url: str,
@@ -114,14 +132,8 @@ class BitbucketClient:
                 if not next_url:
                     break
 
-                # Get params from next url
-                parsed = urlparse(next_url)
-                query = parse_qs(parsed.query)
-                for key, value in query.items():
-                    if len(value) == 1:
-                        params[key] = int(value[0]) if value[0].isdigit() else value[0]
-                    else:
-                        params[key] = value
+                next_params = self._parse_next_url_params(next_url)
+                params.update(next_params)
 
     async def _send_paginated_api_request(
         self,
@@ -151,14 +163,8 @@ class BitbucketClient:
             if not next_url:
                 break
 
-            # Get params from next url
-            parsed = urlparse(next_url)
-            query = parse_qs(parsed.query)
-            for key, value in query.items():
-                if len(value) == 1:
-                    params[key] = int(value[0]) if value[0].isdigit() else value[0]
-                else:
-                    params[key] = value
+            next_params = self._parse_next_url_params(next_url)
+            params.update(next_params)
 
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all projects in the workspace."""
