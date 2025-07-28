@@ -316,7 +316,7 @@ class CheckmarxClient:
             page_params = {
                 **params,
                 "limit": PAGE_SIZE,
-                "offset": str(offset),
+                "offset": offset,
             }
 
             try:
@@ -328,9 +328,7 @@ class CheckmarxClient:
                 elif isinstance(response, dict):
                     # Try common pagination patterns
                     items = (
-                        response.get("data", [])
-                        or response.get(object_key, [])
-                        or []
+                        response.get("data", []) or response.get(object_key, []) or []
                     )
 
                 if not items:
@@ -365,9 +363,9 @@ class CheckmarxClient:
         """
         params = {}
         if limit is not None:
-            params["limit"] = str(limit)
+            params["limit"] = limit
         if offset is not None:
-            params["offset"] = str(offset)
+            params["offset"] = offset
 
         async for projects in self._get_paginated_resources(
             "/projects", "projects", params
@@ -392,13 +390,13 @@ class CheckmarxClient:
         Yields:
             Batches of scans
         """
-        params = {}
+        params: dict[str, Any] = {}
         if project_id:
             params["project-id"] = project_id
         if limit is not None:
-            params["limit"] = str(limit)
+            params["limit"] = limit
         if offset is not None:
-            params["offset"] = str(offset)
+            params["offset"] = offset
 
         async for scans in self._get_paginated_resources("/scans", "scans", params):
             logger.info(f"Fetched batch of {len(scans)} scans")
