@@ -22,7 +22,6 @@ class TestSingleAccountStrategy:
         assert strategy.provider == provider
         assert strategy.config == aws_credentials
         assert strategy.account_id is None
-        assert strategy._session is None
 
     @pytest.mark.asyncio
     async def test_healthcheck_success_with_valid_credentials(
@@ -57,7 +56,13 @@ class TestSingleAccountStrategy:
             # Assert
             assert result is True
             assert strategy.account_id is not None
-            assert strategy._session == mock_session
+            
+            sessions = []
+            async for account_info, session in strategy.get_account_sessions():
+                sessions.append((account_info, session))
+                
+            assert len(sessions) == 1
+            assert sessions[0][1] == mock_session
 
     @pytest.mark.asyncio
     async def test_healthcheck_failure_with_invalid_credentials(
@@ -77,7 +82,6 @@ class TestSingleAccountStrategy:
             ):
                 await strategy.healthcheck()
             assert strategy.account_id is None
-            assert strategy._session is None
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_success_after_healthcheck(
