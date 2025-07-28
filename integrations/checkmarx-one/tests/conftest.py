@@ -1,12 +1,12 @@
 import pytest
 import asyncio
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock
 from aiolimiter import AsyncLimiter
-from typing import Generator
+from typing import Any, Dict, List, Generator
 
 
 @pytest.fixture(scope="session")
-def event_loop():
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """Create an instance of the default event loop for the test session."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
@@ -14,7 +14,7 @@ def event_loop():
 
 
 @pytest.fixture
-def mock_checkmarx_client():
+def mock_checkmarx_client() -> AsyncMock:
     """Create a mock CheckmarxClient for testing."""
     mock_client = AsyncMock()
 
@@ -36,7 +36,7 @@ def mock_checkmarx_client():
 
 
 @pytest.fixture
-def sample_project():
+def sample_project() -> Dict[str, Any]:
     """Sample project data for testing."""
     return {
         "id": "proj-123",
@@ -44,12 +44,12 @@ def sample_project():
         "description": "A test project for unit testing",
         "status": "active",
         "createdAt": "2024-01-01T00:00:00Z",
-        "updatedAt": "2024-01-01T00:00:00Z"
+        "updatedAt": "2024-01-01T00:00:00Z",
     }
 
 
 @pytest.fixture
-def sample_scan():
+def sample_scan() -> Dict[str, Any]:
     """Sample scan data for testing."""
     return {
         "id": "scan-456",
@@ -58,16 +58,12 @@ def sample_scan():
         "type": "sast",
         "createdAt": "2024-01-01T00:00:00Z",
         "updatedAt": "2024-01-01T00:00:00Z",
-        "results": {
-            "high": 5,
-            "medium": 10,
-            "low": 15
-        }
+        "results": {"high": 5, "medium": 10, "low": 15},
     }
 
 
 @pytest.fixture
-def sample_projects_batch(sample_project):
+def sample_projects_batch(sample_project: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Sample batch of projects for testing pagination."""
     return [
         sample_project,
@@ -77,7 +73,7 @@ def sample_projects_batch(sample_project):
             "description": "Another test project",
             "status": "active",
             "createdAt": "2024-01-02T00:00:00Z",
-            "updatedAt": "2024-01-02T00:00:00Z"
+            "updatedAt": "2024-01-02T00:00:00Z",
         },
         {
             "id": "proj-789",
@@ -85,13 +81,13 @@ def sample_projects_batch(sample_project):
             "description": "Third test project",
             "status": "inactive",
             "createdAt": "2024-01-03T00:00:00Z",
-            "updatedAt": "2024-01-03T00:00:00Z"
-        }
+            "updatedAt": "2024-01-03T00:00:00Z",
+        },
     ]
 
 
 @pytest.fixture
-def sample_scans_batch(sample_scan):
+def sample_scans_batch(sample_scan: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Sample batch of scans for testing pagination."""
     return [
         sample_scan,
@@ -102,7 +98,7 @@ def sample_scans_batch(sample_scan):
             "type": "sca",
             "createdAt": "2024-01-02T00:00:00Z",
             "updatedAt": "2024-01-02T00:00:00Z",
-            "results": None
+            "results": None,
         },
         {
             "id": "scan-101",
@@ -111,60 +107,51 @@ def sample_scans_batch(sample_scan):
             "type": "sast",
             "createdAt": "2024-01-03T00:00:00Z",
             "updatedAt": "2024-01-03T00:00:00Z",
-            "results": None
-        }
+            "results": None,
+        },
     ]
 
 
 @pytest.fixture
-def mock_rate_limiter():
+def mock_rate_limiter() -> AsyncLimiter:
     """Create a mock rate limiter for testing."""
     return AsyncLimiter(3600, 3600)
 
 
 @pytest.fixture
-def checkmarx_config():
+def checkmarx_config() -> Dict[str, str]:
     """Sample Checkmarx configuration for testing."""
     return {
         "checkmarx_base_url": "https://ast.checkmarx.net",
         "checkmarx_iam_url": "https://iam.checkmarx.net",
         "checkmarx_tenant": "test-tenant",
-        "checkmarx_api_key": "test-api-key"
+        "checkmarx_api_key": "test-api-key",
     }
 
 
 @pytest.fixture
-def checkmarx_oauth_config():
+def checkmarx_oauth_config() -> Dict[str, str]:
     """Sample Checkmarx OAuth configuration for testing."""
     return {
         "checkmarx_base_url": "https://ast.checkmarx.net",
         "checkmarx_iam_url": "https://iam.checkmarx.net",
         "checkmarx_tenant": "test-tenant",
         "checkmarx_client_id": "test-client-id",
-        "checkmarx_client_secret": "test-client-secret"
+        "checkmarx_client_secret": "test-client-secret",
     }
 
 
-
-
-
 # Pytest configuration
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     """Configure pytest with custom markers."""
-    config.addinivalue_line(
-        "markers", "unit: mark test as a unit test"
-    )
-    config.addinivalue_line(
-        "markers", "integration: mark test as an integration test"
-    )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow running"
-    )
+    config.addinivalue_line("markers", "unit: mark test as a unit test")
+    config.addinivalue_line("markers", "integration: mark test as an integration test")
+    config.addinivalue_line("markers", "slow: mark test as slow running")
 
 
 # Async test configuration
 @pytest.fixture(autouse=True)
-def configure_async_tests():
+def configure_async_tests() -> None:
     """Configure async test environment."""
     # Set up any async-specific configuration here
     pass

@@ -1,30 +1,35 @@
 import pytest
 from abc import ABC
 from unittest.mock import MagicMock
+from typing import Any, Dict, Optional
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from client import CheckmarxClient
 
 
 class TestAbstractCheckmarxExporter:
-    def test_is_abstract_base_class(self):
+    def test_is_abstract_base_class(self) -> None:
         """Test that AbstractCheckmarxExporter is an abstract base class."""
         assert issubclass(AbstractCheckmarxExporter, ABC)
 
         # Should not be able to instantiate directly
         with pytest.raises(TypeError):
-            AbstractCheckmarxExporter(MagicMock())
+            AbstractCheckmarxExporter(MagicMock())  # type: ignore[abstract]
 
-    def test_constructor_stores_client(self):
+    def test_constructor_stores_client(self) -> None:
         """Test that constructor properly stores the client."""
+
         # Create a concrete implementation for testing
         class ConcreteExporter(AbstractCheckmarxExporter):
-            async def get_resource(self, options):
+            async def get_resource(self, options: Dict[str, Any]) -> Dict[str, Any]:
                 return {}
 
-            def get_paginated_resources(self, options=None):
-                async def mock_generator():
+            def get_paginated_resources(
+                self, options: Optional[Dict[str, Any]] = None
+            ) -> Any:
+                async def mock_generator() -> Any:
                     yield []
+
                 return mock_generator()
 
         mock_client = MagicMock(spec=CheckmarxClient)
@@ -32,7 +37,7 @@ class TestAbstractCheckmarxExporter:
 
         assert exporter.client is mock_client
 
-    def test_has_required_abstract_methods(self):
+    def test_has_required_abstract_methods(self) -> None:
         """Test that abstract class has required abstract methods."""
         abstract_methods = AbstractCheckmarxExporter.__abstractmethods__
 
@@ -40,33 +45,40 @@ class TestAbstractCheckmarxExporter:
         assert "get_paginated_resources" in abstract_methods
         assert len(abstract_methods) == 2
 
-    def test_concrete_implementation_must_implement_abstract_methods(self):
+    def test_concrete_implementation_must_implement_abstract_methods(self) -> None:
         """Test that concrete implementations must implement all abstract methods."""
+
         # Class missing get_resource
         class IncompleteExporter1(AbstractCheckmarxExporter):
-            def get_paginated_resources(self, options=None):
-                pass
+            def get_paginated_resources(
+                self, options: Optional[Dict[str, Any]] = None
+            ) -> Any:
+                return None
 
         with pytest.raises(TypeError):
-            IncompleteExporter1(MagicMock())
+            IncompleteExporter1(MagicMock())  # type: ignore[abstract]
 
         # Class missing get_paginated_resources
         class IncompleteExporter2(AbstractCheckmarxExporter):
-            async def get_resource(self, options):
-                pass
+            async def get_resource(self, options: Dict[str, Any]) -> Dict[str, Any]:
+                return {}
 
         with pytest.raises(TypeError):
-            IncompleteExporter2(MagicMock())
+            IncompleteExporter2(MagicMock())  # type: ignore[abstract]
 
-    def test_concrete_implementation_can_be_instantiated(self):
+    def test_concrete_implementation_can_be_instantiated(self) -> None:
         """Test that properly implemented concrete class can be instantiated."""
+
         class CompleteExporter(AbstractCheckmarxExporter):
-            async def get_resource(self, options):
+            async def get_resource(self, options: Dict[str, Any]) -> Dict[str, Any]:
                 return {"id": "test"}
 
-            def get_paginated_resources(self, options=None):
-                async def mock_generator():
+            def get_paginated_resources(
+                self, options: Optional[Dict[str, Any]] = None
+            ) -> Any:
+                async def mock_generator() -> Any:
                     yield [{"id": "test"}]
+
                 return mock_generator()
 
         mock_client = MagicMock(spec=CheckmarxClient)
@@ -75,44 +87,59 @@ class TestAbstractCheckmarxExporter:
         assert isinstance(exporter, AbstractCheckmarxExporter)
         assert exporter.client is mock_client
 
-    def test_generic_type_annotations(self):
+    def test_generic_type_annotations(self) -> None:
         """Test that abstract methods have proper generic type annotations."""
         # Check that get_resource has generic type annotation
-        get_resource_annotations = AbstractCheckmarxExporter.get_resource.__annotations__
-        assert 'options' in get_resource_annotations
+        get_resource_annotations = (
+            AbstractCheckmarxExporter.get_resource.__annotations__
+        )
+        assert "options" in get_resource_annotations
 
         # Check that get_paginated_resources has generic type annotation
-        get_paginated_annotations = AbstractCheckmarxExporter.get_paginated_resources.__annotations__
-        assert 'options' in get_paginated_annotations
+        get_paginated_annotations = (
+            AbstractCheckmarxExporter.get_paginated_resources.__annotations__
+        )
+        assert "options" in get_paginated_annotations
 
-    def test_method_signatures(self):
+    def test_method_signatures(self) -> None:
         """Test that abstract methods have correct signatures."""
         import inspect
 
         # Test get_resource signature
         get_resource_sig = inspect.signature(AbstractCheckmarxExporter.get_resource)
         params = list(get_resource_sig.parameters.keys())
-        assert params == ['self', 'options']
+        assert params == ["self", "options"]
 
         # Test get_paginated_resources signature
-        get_paginated_sig = inspect.signature(AbstractCheckmarxExporter.get_paginated_resources)
+        get_paginated_sig = inspect.signature(
+            AbstractCheckmarxExporter.get_paginated_resources
+        )
         params = list(get_paginated_sig.parameters.keys())
-        assert params == ['self', 'options']
+        assert params == ["self", "options"]
 
         # Test that options has default value None
-        options_param = get_paginated_sig.parameters['options']
+        options_param = get_paginated_sig.parameters["options"]
         assert options_param.default is None
 
-    def test_inheritance_hierarchy(self):
+    def test_inheritance_hierarchy(self) -> None:
         """Test the inheritance hierarchy."""
         assert AbstractCheckmarxExporter.__bases__ == (ABC,)
-        assert hasattr(AbstractCheckmarxExporter, '__abstractmethods__')
+        assert hasattr(AbstractCheckmarxExporter, "__abstractmethods__")
 
-    def test_docstring_exists(self):
+    def test_docstring_exists(self) -> None:
         """Test that the abstract class has a docstring."""
-        assert AbstractCheckmarxExporter.__doc__ == "Abstract base class for Checkmarx One resource exporters."
+        assert (
+            AbstractCheckmarxExporter.__doc__
+            == "Abstract base class for Checkmarx One resource exporters."
+        )
 
-    def test_abstract_method_docstrings(self):
+    def test_abstract_method_docstrings(self) -> None:
         """Test that abstract methods have docstrings."""
-        assert AbstractCheckmarxExporter.get_resource.__doc__ == "Get a single resource by its identifier."
-        assert AbstractCheckmarxExporter.get_paginated_resources.__doc__ == "Get paginated resources yielding batches."
+        assert (
+            AbstractCheckmarxExporter.get_resource.__doc__
+            == "Get a single resource by its identifier."
+        )
+        assert (
+            AbstractCheckmarxExporter.get_paginated_resources.__doc__
+            == "Get paginated resources yielding batches."
+        )

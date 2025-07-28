@@ -1,44 +1,51 @@
 import pytest
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
-from aiolimiter import AsyncLimiter
 import httpx
+from typing import Any
+
 
 from client import CheckmarxClient, CheckmarxAuthenticationError, CheckmarxAPIError
 
 
 class TestCheckmarxClient:
     @pytest.fixture
-    def mock_http_client(self):
+    def mock_http_client(self) -> AsyncMock:
         """Mock HTTP client for testing."""
         return AsyncMock()
 
     @pytest.fixture
-    def client_with_api_key(self, mock_http_client):
+    def client_with_api_key(self, mock_http_client: AsyncMock) -> CheckmarxClient:
         """Create client with API key authentication."""
-        with patch('client.http_async_client', mock_http_client):
-            with patch('client.CheckmarxClient._validate_auth_method', return_value=True):
+        with patch("client.http_async_client", mock_http_client):
+            with patch(
+                "client.CheckmarxClient._validate_auth_method", return_value=True
+            ):
                 return CheckmarxClient(
                     base_url="https://ast.checkmarx.net",
                     iam_url="https://iam.checkmarx.net",
                     tenant="test-tenant",
-                    api_key="test-api-key"
+                    api_key="test-api-key",
                 )
 
     @pytest.fixture
-    def client_with_oauth(self, mock_http_client):
+    def client_with_oauth(self, mock_http_client: AsyncMock) -> CheckmarxClient:
         """Create client with OAuth authentication."""
-        with patch('client.http_async_client', mock_http_client):
-            with patch('client.CheckmarxClient._validate_auth_method', return_value=True):
+        with patch("client.http_async_client", mock_http_client):
+            with patch(
+                "client.CheckmarxClient._validate_auth_method", return_value=True
+            ):
                 return CheckmarxClient(
                     base_url="https://ast.checkmarx.net",
                     iam_url="https://iam.checkmarx.net",
                     tenant="test-tenant",
                     client_id="test-client-id",
-                    client_secret="test-client-secret"
+                    client_secret="test-client-secret",
                 )
 
-    def test_client_initialization_with_api_key(self, client_with_api_key):
+    def test_client_initialization_with_api_key(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test client initialization with API key."""
         assert client_with_api_key.base_url == "https://ast.checkmarx.net"
         assert client_with_api_key.iam_url == "https://iam.checkmarx.net"
@@ -47,7 +54,9 @@ class TestCheckmarxClient:
         assert client_with_api_key.client_id is None
         assert client_with_api_key.client_secret is None
 
-    def test_client_initialization_with_oauth(self, client_with_oauth):
+    def test_client_initialization_with_oauth(
+        self, client_with_oauth: CheckmarxClient
+    ) -> None:
         """Test client initialization with OAuth credentials."""
         assert client_with_oauth.base_url == "https://ast.checkmarx.net"
         assert client_with_oauth.iam_url == "https://iam.checkmarx.net"
@@ -56,35 +65,42 @@ class TestCheckmarxClient:
         assert client_with_oauth.client_id == "test-client-id"
         assert client_with_oauth.client_secret == "test-client-secret"
 
-
-    def test_auth_url_property(self, client_with_api_key):
+    def test_auth_url_property(self, client_with_api_key: CheckmarxClient) -> None:
         """Test auth_url property generates correct URL."""
         expected_url = "https://iam.checkmarx.net/auth/realms/test-tenant/protocol/openid-connect/token"
         assert client_with_api_key.auth_url == expected_url
 
-    def test_is_token_expired_no_token(self, client_with_api_key):
+    def test_is_token_expired_no_token(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test token expiry check when no token exists."""
         assert client_with_api_key.is_token_expired is True
 
-    def test_is_token_expired_valid_token(self, client_with_api_key):
+    def test_is_token_expired_valid_token(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test token expiry check with valid token."""
         client_with_api_key._token_expires_at = time.time() + 3600  # 1 hour from now
         assert client_with_api_key.is_token_expired is False
 
-    def test_is_token_expired_expired_token(self, client_with_api_key):
+    def test_is_token_expired_expired_token(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test token expiry check with expired token."""
         client_with_api_key._token_expires_at = time.time() - 3600  # 1 hour ago
         assert client_with_api_key.is_token_expired is True
 
     @pytest.mark.asyncio
-    async def test_authenticate_with_api_key_success(self, client_with_api_key, mock_http_client):
+    async def test_authenticate_with_api_key_success(
+        self, client_with_api_key: CheckmarxClient, mock_http_client: AsyncMock
+    ) -> None:
         """Test successful API key authentication."""
         # Mock successful authentication response
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "access_token": "test-access-token",
             "refresh_token": "test-refresh-token",
-            "expires_in": 1800
+            "expires_in": 1800,
         }
         mock_response.raise_for_status = MagicMock()
         mock_http_client.post.return_value = mock_response
@@ -107,7 +123,9 @@ class TestCheckmarxClient:
         )
 
     @pytest.mark.asyncio
-    async def test_authenticate_with_api_key_failure(self, client_with_api_key, mock_http_client):
+    async def test_authenticate_with_api_key_failure(
+        self, client_with_api_key: CheckmarxClient, mock_http_client: AsyncMock
+    ) -> None:
         """Test API key authentication failure."""
         # Mock failed authentication response
         mock_response = MagicMock()
@@ -117,17 +135,21 @@ class TestCheckmarxClient:
             "Unauthorized", request=MagicMock(), response=mock_response
         )
 
-        with pytest.raises(CheckmarxAuthenticationError, match="API key authentication failed"):
+        with pytest.raises(
+            CheckmarxAuthenticationError, match="API key authentication failed"
+        ):
             await client_with_api_key._authenticate_with_api_key()
 
     @pytest.mark.asyncio
-    async def test_authenticate_with_oauth_success(self, client_with_oauth, mock_http_client):
+    async def test_authenticate_with_oauth_success(
+        self, client_with_oauth: CheckmarxClient, mock_http_client: AsyncMock
+    ) -> None:
         """Test successful OAuth authentication."""
         # Mock successful authentication response
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "access_token": "test-access-token",
-            "expires_in": 3600
+            "expires_in": 3600,
         }
         mock_response.raise_for_status = MagicMock()
         mock_http_client.post.return_value = mock_response
@@ -149,7 +171,9 @@ class TestCheckmarxClient:
         )
 
     @pytest.mark.asyncio
-    async def test_authenticate_with_oauth_failure(self, client_with_oauth, mock_http_client):
+    async def test_authenticate_with_oauth_failure(
+        self, client_with_oauth: CheckmarxClient, mock_http_client: AsyncMock
+    ) -> None:
         """Test OAuth authentication failure."""
         # Mock failed authentication response
         mock_response = MagicMock()
@@ -159,17 +183,23 @@ class TestCheckmarxClient:
             "Unauthorized", request=MagicMock(), response=mock_response
         )
 
-        with pytest.raises(CheckmarxAuthenticationError, match="OAuth authentication failed"):
+        with pytest.raises(
+            CheckmarxAuthenticationError, match="OAuth authentication failed"
+        ):
             await client_with_oauth._authenticate_with_oauth()
 
     @pytest.mark.asyncio
-    async def test_refresh_access_token_api_key(self, client_with_api_key):
+    async def test_refresh_access_token_api_key(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test token refresh with API key."""
-        with patch.object(client_with_api_key, '_authenticate_with_api_key') as mock_auth:
+        with patch.object(
+            client_with_api_key, "_authenticate_with_api_key"
+        ) as mock_auth:
             mock_auth.return_value = {
                 "access_token": "new-access-token",
                 "refresh_token": "new-refresh-token",
-                "expires_in": 1800
+                "expires_in": 1800,
             }
 
             await client_with_api_key._refresh_access_token()
@@ -179,12 +209,14 @@ class TestCheckmarxClient:
             assert client_with_api_key._token_expires_at is not None
 
     @pytest.mark.asyncio
-    async def test_refresh_access_token_oauth(self, client_with_oauth):
+    async def test_refresh_access_token_oauth(
+        self, client_with_oauth: CheckmarxClient
+    ) -> None:
         """Test token refresh with OAuth."""
-        with patch.object(client_with_oauth, '_authenticate_with_oauth') as mock_auth:
+        with patch.object(client_with_oauth, "_authenticate_with_oauth") as mock_auth:
             mock_auth.return_value = {
                 "access_token": "new-access-token",
-                "expires_in": 3600
+                "expires_in": 3600,
             }
 
             await client_with_oauth._refresh_access_token()
@@ -193,13 +225,15 @@ class TestCheckmarxClient:
             assert client_with_oauth._token_expires_at is not None
 
     @pytest.mark.asyncio
-    async def test_get_access_token_refresh_when_expired(self, client_with_api_key):
+    async def test_get_access_token_refresh_when_expired(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test that expired tokens are refreshed."""
         # Set up expired token
         client_with_api_key._access_token = "expired-token"
         client_with_api_key._token_expires_at = time.time() - 3600
 
-        with patch.object(client_with_api_key, '_refresh_access_token') as mock_refresh:
+        with patch.object(client_with_api_key, "_refresh_access_token") as mock_refresh:
             client_with_api_key._access_token = "new-token"
 
             token = await client_with_api_key._get_access_token()
@@ -208,9 +242,9 @@ class TestCheckmarxClient:
             assert token == "new-token"
 
     @pytest.mark.asyncio
-    async def test_auth_headers(self, client_with_api_key):
+    async def test_auth_headers(self, client_with_api_key: CheckmarxClient) -> None:
         """Test authentication headers generation."""
-        with patch.object(client_with_api_key, '_get_access_token') as mock_get_token:
+        with patch.object(client_with_api_key, "_get_access_token") as mock_get_token:
             mock_get_token.return_value = "test-token"
 
             headers = await client_with_api_key.auth_headers
@@ -223,7 +257,9 @@ class TestCheckmarxClient:
             assert headers == expected_headers
 
     @pytest.mark.asyncio
-    async def test_send_api_request_success(self, client_with_api_key, mock_http_client):
+    async def test_send_api_request_success(
+        self, client_with_api_key: CheckmarxClient, mock_http_client: AsyncMock
+    ) -> None:
         """Test successful API request."""
         # Mock response
         mock_response = MagicMock()
@@ -231,7 +267,9 @@ class TestCheckmarxClient:
         mock_response.raise_for_status = MagicMock()
         mock_http_client.request.return_value = mock_response
 
-        with patch.object(client_with_api_key, '_get_access_token', return_value="test-token"):
+        with patch.object(
+            client_with_api_key, "_get_access_token", return_value="test-token"
+        ):
 
             result = await client_with_api_key._send_api_request("/test-endpoint")
 
@@ -239,7 +277,9 @@ class TestCheckmarxClient:
             mock_http_client.request.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_send_api_request_401_retry(self, client_with_api_key, mock_http_client):
+    async def test_send_api_request_401_retry(
+        self, client_with_api_key: CheckmarxClient, mock_http_client: AsyncMock
+    ) -> None:
         """Test API request with 401 error and retry."""
         # Mock 401 response on first call, success on second
         mock_response_401 = MagicMock()
@@ -251,12 +291,18 @@ class TestCheckmarxClient:
         mock_response_success.raise_for_status = MagicMock()
 
         mock_http_client.request.side_effect = [
-            httpx.HTTPStatusError("Unauthorized", request=MagicMock(), response=mock_response_401),
-            mock_response_success
+            httpx.HTTPStatusError(
+                "Unauthorized", request=MagicMock(), response=mock_response_401
+            ),
+            mock_response_success,
         ]
 
-        with patch.object(client_with_api_key, '_get_access_token', return_value="test-token"):
-            with patch.object(client_with_api_key, '_refresh_access_token') as mock_refresh:
+        with patch.object(
+            client_with_api_key, "_get_access_token", return_value="test-token"
+        ):
+            with patch.object(
+                client_with_api_key, "_refresh_access_token"
+            ) as mock_refresh:
 
                 result = await client_with_api_key._send_api_request("/test-endpoint")
 
@@ -265,7 +311,9 @@ class TestCheckmarxClient:
                 assert mock_http_client.request.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_send_api_request_404_returns_empty(self, client_with_api_key, mock_http_client):
+    async def test_send_api_request_404_returns_empty(
+        self, client_with_api_key: CheckmarxClient, mock_http_client: AsyncMock
+    ) -> None:
         """Test API request with 404 returns empty dict."""
         mock_response = MagicMock()
         mock_response.status_code = 404
@@ -273,14 +321,18 @@ class TestCheckmarxClient:
             "Not Found", request=MagicMock(), response=mock_response
         )
 
-        with patch.object(client_with_api_key, '_get_access_token', return_value="test-token"):
+        with patch.object(
+            client_with_api_key, "_get_access_token", return_value="test-token"
+        ):
 
             result = await client_with_api_key._send_api_request("/test-endpoint")
 
             assert result == {}
 
     @pytest.mark.asyncio
-    async def test_send_api_request_403_raises_error(self, client_with_api_key, mock_http_client):
+    async def test_send_api_request_403_raises_error(
+        self, client_with_api_key: CheckmarxClient, mock_http_client: AsyncMock
+    ) -> None:
         """Test API request with 403 raises CheckmarxAPIError."""
         mock_response = MagicMock()
         mock_response.status_code = 403
@@ -288,13 +340,17 @@ class TestCheckmarxClient:
             "Forbidden", request=MagicMock(), response=mock_response
         )
 
-        with patch.object(client_with_api_key, '_get_access_token', return_value="test-token"):
+        with patch.object(
+            client_with_api_key, "_get_access_token", return_value="test-token"
+        ):
 
             with pytest.raises(CheckmarxAPIError, match="Access denied"):
                 await client_with_api_key._send_api_request("/test-endpoint")
 
     @pytest.mark.asyncio
-    async def test_send_api_request_429_raises_error(self, client_with_api_key, mock_http_client):
+    async def test_send_api_request_429_raises_error(
+        self, client_with_api_key: CheckmarxClient, mock_http_client: AsyncMock
+    ) -> None:
         """Test API request with 429 raises CheckmarxAPIError."""
         mock_response = MagicMock()
         mock_response.status_code = 429
@@ -302,18 +358,28 @@ class TestCheckmarxClient:
             "Too Many Requests", request=MagicMock(), response=mock_response
         )
 
-        with patch.object(client_with_api_key, '_get_access_token', return_value="test-token"):
+        with patch.object(
+            client_with_api_key, "_get_access_token", return_value="test-token"
+        ):
 
             with pytest.raises(CheckmarxAPIError, match="Rate limit exceeded"):
                 await client_with_api_key._send_api_request("/test-endpoint")
 
     @pytest.mark.asyncio
-    async def test_get_projects_single_page(self, client_with_api_key):
+    async def test_get_projects_single_page(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test getting projects with single page."""
-        mock_projects = [{"id": "1", "name": "Project 1"}, {"id": "2", "name": "Project 2"}]
+        mock_projects = [
+            {"id": "1", "name": "Project 1"},
+            {"id": "2", "name": "Project 2"},
+        ]
 
-        with patch.object(client_with_api_key, '_get_paginated_resources') as mock_paginated:
-            async def mock_generator():
+        with patch.object(
+            client_with_api_key, "_get_paginated_resources"
+        ) as mock_paginated:
+
+            async def mock_generator() -> Any:
                 yield mock_projects
 
             mock_paginated.return_value = mock_generator()
@@ -326,10 +392,15 @@ class TestCheckmarxClient:
             mock_paginated.assert_called_once_with("/projects", "projects", {})
 
     @pytest.mark.asyncio
-    async def test_get_projects_with_params(self, client_with_api_key):
+    async def test_get_projects_with_params(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test getting projects with limit and offset."""
-        with patch.object(client_with_api_key, '_get_paginated_resources') as mock_paginated:
-            async def mock_generator():
+        with patch.object(
+            client_with_api_key, "_get_paginated_resources"
+        ) as mock_paginated:
+
+            async def mock_generator() -> Any:
                 yield []
 
             mock_paginated.return_value = mock_generator()
@@ -337,15 +408,25 @@ class TestCheckmarxClient:
             async for batch in client_with_api_key.get_projects(limit=50, offset=100):
                 pass
 
-            mock_paginated.assert_called_once_with("/projects", "projects", {"limit": 50, "offset": 100})
+            mock_paginated.assert_called_once_with(
+                "/projects", "projects", {"limit": 50, "offset": 100}
+            )
 
     @pytest.mark.asyncio
-    async def test_get_scans_single_page(self, client_with_api_key):
+    async def test_get_scans_single_page(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test getting scans with single page."""
-        mock_scans = [{"id": "1", "projectId": "proj1"}, {"id": "2", "projectId": "proj1"}]
+        mock_scans = [
+            {"id": "1", "projectId": "proj1"},
+            {"id": "2", "projectId": "proj1"},
+        ]
 
-        with patch.object(client_with_api_key, '_get_paginated_resources') as mock_paginated:
-            async def mock_generator():
+        with patch.object(
+            client_with_api_key, "_get_paginated_resources"
+        ) as mock_paginated:
+
+            async def mock_generator() -> Any:
                 yield mock_scans
 
             mock_paginated.return_value = mock_generator()
@@ -358,10 +439,15 @@ class TestCheckmarxClient:
             mock_paginated.assert_called_once_with("/scans", "scans", {})
 
     @pytest.mark.asyncio
-    async def test_get_scans_with_project_filter(self, client_with_api_key):
+    async def test_get_scans_with_project_filter(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test getting scans filtered by project ID."""
-        with patch.object(client_with_api_key, '_get_paginated_resources') as mock_paginated:
-            async def mock_generator():
+        with patch.object(
+            client_with_api_key, "_get_paginated_resources"
+        ) as mock_paginated:
+
+            async def mock_generator() -> Any:
                 yield []
 
             mock_paginated.return_value = mock_generator()
@@ -369,14 +455,18 @@ class TestCheckmarxClient:
             async for batch in client_with_api_key.get_scans(project_id="proj-123"):
                 pass
 
-            mock_paginated.assert_called_once_with("/scans", "scans", {"project-id": "proj-123"})
+            mock_paginated.assert_called_once_with(
+                "/scans", "scans", {"project-id": "proj-123"}
+            )
 
     @pytest.mark.asyncio
-    async def test_get_project_by_id(self, client_with_api_key):
+    async def test_get_project_by_id(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test getting a specific project by ID."""
         mock_project = {"id": "proj-123", "name": "Test Project"}
 
-        with patch.object(client_with_api_key, '_send_api_request') as mock_request:
+        with patch.object(client_with_api_key, "_send_api_request") as mock_request:
             mock_request.return_value = mock_project
 
             result = await client_with_api_key.get_project_by_id("proj-123")
@@ -385,11 +475,11 @@ class TestCheckmarxClient:
             mock_request.assert_called_once_with("/projects/proj-123")
 
     @pytest.mark.asyncio
-    async def test_get_scan_by_id(self, client_with_api_key):
+    async def test_get_scan_by_id(self, client_with_api_key: CheckmarxClient) -> None:
         """Test getting a specific scan by ID."""
         mock_scan = {"id": "scan-456", "projectId": "proj-123"}
 
-        with patch.object(client_with_api_key, '_send_api_request') as mock_request:
+        with patch.object(client_with_api_key, "_send_api_request") as mock_request:
             mock_request.return_value = mock_scan
 
             result = await client_with_api_key.get_scan_by_id("scan-456")
@@ -398,20 +488,23 @@ class TestCheckmarxClient:
             mock_request.assert_called_once_with("/scans/scan-456")
 
     @pytest.mark.asyncio
-    async def test_get_paginated_resources_multiple_pages(self, client_with_api_key):
+    async def test_get_paginated_resources_multiple_pages(
+        self, client_with_api_key: CheckmarxClient
+    ) -> None:
         """Test paginated resources across multiple pages."""
         # Mock multiple pages of responses
         page1 = [{"id": f"item-{i}"} for i in range(100)]  # Full page
-        page2 = [{"id": f"item-{i}"} for i in range(100, 150)]  # Partial page (50 items)
+        page2 = [
+            {"id": f"item-{i}"} for i in range(100, 150)
+        ]  # Partial page (50 items)
 
-        with patch.object(client_with_api_key, '_send_api_request') as mock_request:
-            mock_request.side_effect = [
-                {"data": page1},
-                {"data": page2}
-            ]
+        with patch.object(client_with_api_key, "_send_api_request") as mock_request:
+            mock_request.side_effect = [{"data": page1}, {"data": page2}]
 
             results = []
-            async for batch in client_with_api_key._get_paginated_resources("/test", "data"):
+            async for batch in client_with_api_key._get_paginated_resources(
+                "/test", "data"
+            ):
                 results.extend(batch)
 
             assert len(results) == 150

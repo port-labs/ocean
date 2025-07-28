@@ -7,7 +7,6 @@ import httpx
 from aiolimiter import AsyncLimiter
 from loguru import logger
 from port_ocean.utils import http_async_client
-from port_ocean.utils.cache import cache_iterator_result
 
 PAGE_SIZE = 100
 MAXIMUM_CONCURRENT_REQUESTS = 10
@@ -16,11 +15,13 @@ DEFAULT_RATE_LIMIT_PER_HOUR = 3600  # Conservative default
 
 class CheckmarxAuthenticationError(Exception):
     """Raised when authentication with Checkmarx One fails."""
+
     pass
 
 
 class CheckmarxAPIError(Exception):
     """Raised when Checkmarx One API returns an error."""
+
     pass
 
 
@@ -89,7 +90,9 @@ class CheckmarxClient:
             return False
 
         if api_key_provided and oauth_provided:
-            logger.warning("Both API key and OAuth credentials provided. Using API key authentication.")
+            logger.warning(
+                "Both API key and OAuth credentials provided. Using API key authentication."
+            )
 
         return True
 
@@ -126,8 +129,12 @@ class CheckmarxClient:
             return response.json()
 
         except httpx.HTTPStatusError as e:
-            logger.error(f"API key authentication failed: {e.response.status_code} - {e.response.text}")
-            raise CheckmarxAuthenticationError(f"API key authentication failed: {e.response.text}")
+            logger.error(
+                f"API key authentication failed: {e.response.status_code} - {e.response.text}"
+            )
+            raise CheckmarxAuthenticationError(
+                f"API key authentication failed: {e.response.text}"
+            )
 
     async def _authenticate_with_oauth(self) -> dict[str, Any]:
         """Authenticate using OAuth client credentials."""
@@ -149,8 +156,12 @@ class CheckmarxClient:
             return response.json()
 
         except httpx.HTTPStatusError as e:
-            logger.error(f"OAuth authentication failed: {e.response.status_code} - {e.response.text}")
-            raise CheckmarxAuthenticationError(f"OAuth authentication failed: {e.response.text}")
+            logger.error(
+                f"OAuth authentication failed: {e.response.status_code} - {e.response.text}"
+            )
+            raise CheckmarxAuthenticationError(
+                f"OAuth authentication failed: {e.response.text}"
+            )
 
     async def _refresh_access_token(self) -> None:
         """Refresh the access token using the appropriate method."""
@@ -167,13 +178,15 @@ class CheckmarxClient:
             expires_in = token_response.get("expires_in", 1800)  # Default 30 minutes
             self._token_expires_at = time.time() + expires_in
 
-            logger.info(f"Successfully refreshed access token, expires in {expires_in} seconds")
+            logger.info(
+                f"Successfully refreshed access token, expires in {expires_in} seconds"
+            )
 
         except Exception as e:
             logger.error(f"Failed to refresh access token: {str(e)}")
             raise CheckmarxAuthenticationError(f"Token refresh failed: {str(e)}")
 
-    async def _get_access_token(self) -> str:
+    async def _get_access_token(self) -> str | None:
         """Get a valid access token, refreshing if necessary."""
         if not self._access_token or self.is_token_expired:
             await self._refresh_access_token()
@@ -184,6 +197,8 @@ class CheckmarxClient:
     async def auth_headers(self) -> dict[str, str]:
         """Get authentication headers for API requests."""
         access_token = await self._get_access_token()
+        if access_token is None:
+            raise CheckmarxAuthenticationError("Failed to obtain access token")
         return {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
@@ -231,7 +246,9 @@ class CheckmarxClient:
                     status_code = e.response.status_code
                     response_text = e.response.text
 
-                    logger.error(f"HTTP error {status_code} for {method} {url}: {response_text}")
+                    logger.error(
+                        f"HTTP error {status_code} for {method} {url}: {response_text}"
+                    )
 
                     if status_code == 401:
                         # Try to refresh token once
@@ -249,21 +266,29 @@ class CheckmarxClient:
                             response.raise_for_status()
                             return response.json()
                         except Exception:
-                            raise CheckmarxAuthenticationError("Authentication failed after token refresh")
+                            raise CheckmarxAuthenticationError(
+                                "Authentication failed after token refresh"
+                            )
 
                     elif status_code == 403:
-                        raise CheckmarxAPIError("Access denied. Please check your permissions.")
+                        raise CheckmarxAPIError(
+                            "Access denied. Please check your permissions."
+                        )
                     elif status_code == 404:
                         logger.warning(f"Resource not found: {url}")
                         return {}
                     elif status_code == 429:
-                        logger.warning("Rate limit exceeded. Consider reducing request frequency.")
+                        logger.warning(
+                            "Rate limit exceeded. Consider reducing request frequency."
+                        )
                         raise CheckmarxAPIError("Rate limit exceeded")
                     else:
                         raise CheckmarxAPIError(f"API request failed: {response_text}")
 
                 except Exception as e:
-                    logger.error(f"Unexpected error during API request to {url}: {str(e)}")
+                    logger.error(
+                        f"Unexpected error during API request to {url}: {str(e)}"
+                    )
                     raise CheckmarxAPIError(f"Request failed: {str(e)}")
 
     async def _get_paginated_resources(
@@ -285,29 +310,27 @@ class CheckmarxClient:
         if params is None:
             params = {}
 
-        offset = 0
+        offset: int = 0
 
         while True:
             page_params = {
                 **params,
                 "limit": PAGE_SIZE,
-                "offset": offset,
+                "offset": str(offset),
             }
 
             try:
                 response = await self._send_api_request(endpoint, params=page_params)
                 # Handle different response formats
-                items = []
+                items: list[dict[str, Any]] = []
                 if isinstance(response, list):
                     items = response
                 elif isinstance(response, dict):
                     # Try common pagination patterns
                     items = (
-                        response.get("data", []) or
-                        response.get("items", []) or
-                        response.get("results", []) or
-                        response.get(object_key, []) or
-                        []
+                        response.get("data", [])
+                        or response.get(object_key, [])
+                        or []
                     )
 
                 if not items:
@@ -342,11 +365,13 @@ class CheckmarxClient:
         """
         params = {}
         if limit is not None:
-            params["limit"] = limit
+            params["limit"] = str(limit)
         if offset is not None:
-            params["offset"] = offset
+            params["offset"] = str(offset)
 
-        async for projects in self._get_paginated_resources("/projects", "projects", params):
+        async for projects in self._get_paginated_resources(
+            "/projects", "projects", params
+        ):
             logger.info(f"Fetched batch of {len(projects)} projects")
             yield projects
 
@@ -371,9 +396,9 @@ class CheckmarxClient:
         if project_id:
             params["project-id"] = project_id
         if limit is not None:
-            params["limit"] = limit
+            params["limit"] = str(limit)
         if offset is not None:
-            params["offset"] = offset
+            params["offset"] = str(offset)
 
         async for scans in self._get_paginated_resources("/scans", "scans", params):
             logger.info(f"Fetched batch of {len(scans)} scans")

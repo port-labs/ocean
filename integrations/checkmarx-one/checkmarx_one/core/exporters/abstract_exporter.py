@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, AsyncIterator
 
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.core.ocean_types import RAW_ITEM
 
 from client import CheckmarxClient
 
@@ -18,8 +18,8 @@ class AbstractCheckmarxExporter(ABC):
         ...
 
     @abstractmethod
-    async def get_paginated_resources[
+    def get_paginated_resources[
         AnyOption: Any
-    ](self, options: AnyOption | None = None) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    ](self, options: AnyOption | None = None) -> AsyncIterator[list[dict[str, Any]]]:
         """Get paginated resources yielding batches."""
         ...

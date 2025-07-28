@@ -1,5 +1,6 @@
+from typing import Any, AsyncIterator, cast
 from loguru import logger
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.core.ocean_types import RAW_ITEM
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from checkmarx_one.core.options import ListScanOptions, SingleScanOptions
@@ -17,19 +18,26 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
         logger.info(f"Fetched scan with ID: {scan_id}")
         return scan
 
-    async def get_paginated_resources[
+    def get_paginated_resources[
         ExporterOptionsT: ListScanOptions
-    ](self, options: ExporterOptionsT | None = None) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    ](self, options: ExporterOptionsT | None = None) -> AsyncIterator[
+        list[dict[str, Any]]
+    ]:
         """Get all scans with pagination."""
         if options is None:
-            options = {}
+            options = cast(ExporterOptionsT, {})
 
         project_id = options.get("project_id")
         limit = options.get("limit")
         offset = options.get("offset")
 
-        async for scans_batch in self.client.get_scans(
-            project_id=project_id, limit=limit, offset=offset
-        ):
-            logger.info(f"Fetched batch of {len(scans_batch)} scans")
-            yield scans_batch
+        async def _get_scans() -> AsyncIterator[list[dict[str, Any]]]:
+            async for scans_batch in self.client.get_scans(
+                project_id=cast(str | None, project_id),
+                limit=cast(int | None, limit),
+                offset=cast(int | None, offset),
+            ):
+                logger.info(f"Fetched batch of {len(scans_batch)} scans")
+                yield scans_batch
+
+        return _get_scans()

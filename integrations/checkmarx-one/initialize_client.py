@@ -1,3 +1,4 @@
+from typing import cast
 from aiolimiter import AsyncLimiter
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -40,9 +41,9 @@ def init_client() -> CheckmarxClient:
 
     try:
         client = CheckmarxClient(
-            base_url=base_url,
-            iam_url=iam_url,
-            tenant=tenant,
+            base_url=cast(str, base_url),
+            iam_url=cast(str, iam_url),
+            tenant=cast(str, tenant),
             api_key=api_key,
             client_id=client_id,
             client_secret=client_secret,
