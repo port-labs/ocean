@@ -1,5 +1,6 @@
 from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPError, HTTPStatusError
+from urllib.parse import urlparse, parse_qs
 from loguru import logger
 from port_ocean.utils import http_async_client
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
@@ -109,9 +110,18 @@ class BitbucketClient:
                 )
                 if values := response.get(data_key, []):
                     yield values
-                url = response.get("next")
-                if not url:
+                next_url = response.get("next")
+                if not next_url:
                     break
+
+                # Get params from next url
+                parsed = urlparse(next_url)
+                query = parse_qs(parsed.query)
+                for key, value in query.items():
+                    if len(value) == 1:
+                        params[key] = int(value[0]) if value[0].isdigit() else value[0]
+                    else:
+                        params[key] = value
 
     async def _send_paginated_api_request(
         self,
@@ -137,9 +147,18 @@ class BitbucketClient:
             response = await self._send_api_request(url, params=params, method=method)
             if values := response.get(data_key, []):
                 yield values
-            url = response.get("next")
-            if not url:
+            next_url = response.get("next")
+            if not next_url:
                 break
+
+            # Get params from next url
+            parsed = urlparse(next_url)
+            query = parse_qs(parsed.query)
+            for key, value in query.items():
+                if len(value) == 1:
+                    params[key] = int(value[0]) if value[0].isdigit() else value[0]
+                else:
+                    params[key] = value
 
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all projects in the workspace."""
