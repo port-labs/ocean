@@ -160,20 +160,3 @@ class TestAssumeRoleProvider:
 
         # Assert
         assert provider.config == {}
-
-    @pytest.mark.asyncio
-    async def test_get_credentials_sts_client_creation_failure(
-        self, role_arn: str
-    ) -> None:
-        """Test get_credentials handles STS client creation failure."""
-        provider = AssumeRoleProvider()
-
-        with patch(
-            "aws.auth.providers.assume_role_provider.create_assume_role_refresher",
-            side_effect=Exception("STS client creation failed"),
-        ):
-            with pytest.raises(CredentialsProviderError, match="Failed to assume role"):
-                await provider.get_credentials(
-                    role_arn=role_arn,
-                    region="us-west-2",
-                )

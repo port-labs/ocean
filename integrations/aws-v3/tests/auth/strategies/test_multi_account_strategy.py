@@ -40,7 +40,7 @@ class TestMultiAccountStrategy:
             # Act
             result = await strategy.healthcheck()
 
-            # Assert - Test behavior through public interface
+            # Assert
             assert result is True
             assert role_arn in strategy.valid_arns
 
@@ -58,13 +58,13 @@ class TestMultiAccountStrategy:
         with patch.object(
             provider, "get_session", side_effect=Exception("Role assumption failed")
         ):
-            # Act & Assert - Test behavior through public interface
+            # Act & Assert
             with pytest.raises(
                 AWSSessionError, match="No accounts are accessible after health check"
             ):
                 await strategy.healthcheck()
 
-            # Verify no valid ARNs were cached
+            # Assert
             assert strategy.valid_arns == []
 
     @pytest.mark.asyncio
@@ -84,13 +84,14 @@ class TestMultiAccountStrategy:
 
             # Assert
             assert result is True
-            assert role_arn in strategy.valid_arns  # Use public property
+            assert role_arn in strategy.valid_arns
 
-            # Verify the session is actually available by testing behavior
+            # Act
             sessions = []
             async for account_info, session in strategy.get_account_sessions():
                 sessions.append((account_info, session))
 
+            # Assert
             assert len(sessions) == 1
             assert sessions[0][1] == mock_session
 
@@ -108,13 +109,12 @@ class TestMultiAccountStrategy:
         with patch.object(
             provider, "get_session", side_effect=Exception("Role assumption failed")
         ):
-            # Act & Assert
             with pytest.raises(
                 AWSSessionError, match="No accounts are accessible after health check"
             ):
                 await strategy.healthcheck()
 
-            # Use public property to verify no valid ARNs
+            # Assert
             assert role_arn not in strategy.valid_arns
             assert strategy.valid_arns == []
 
@@ -130,7 +130,7 @@ class TestMultiAccountStrategy:
         mock_session = AsyncMock()
 
         with patch.object(provider, "get_session", return_value=mock_session):
-            # Act - Let healthcheck populate internal state properly
+            # Act
             await strategy.healthcheck()
 
             sessions = []
@@ -157,7 +157,7 @@ class TestMultiAccountStrategy:
         mock_session = AsyncMock()
 
         with patch.object(provider, "get_session", return_value=mock_session):
-            # Act - Let healthcheck populate internal state properly
+            # Act
             await strategy.healthcheck()
 
             sessions = []
@@ -170,8 +170,8 @@ class TestMultiAccountStrategy:
             assert sessions[1][1] == mock_session
 
     @pytest.mark.asyncio
-    async def test_get_account_sessions_all_failures(self, role_arn: str) -> None:
-        """Test get_account_sessions when all role assumptions fail."""
+    async def test_get_account_sessions_after_failed_healthcheck(self, role_arn: str) -> None:
+        """Test get_account_sessions raises error if healthcheck failed."""
         # Arrange
         provider = AssumeRoleProvider()
         strategy = MultiAccountStrategy(
@@ -181,20 +181,17 @@ class TestMultiAccountStrategy:
         with patch.object(
             provider, "get_session", side_effect=Exception("Role assumption failed")
         ):
-            with patch.object(
-                strategy,
-                "healthcheck",
-                side_effect=AWSSessionError(
-                    "No accounts are accessible after health check"
-                ),
+            with pytest.raises(
+                AWSSessionError, match="No accounts are accessible after health check"
             ):
-                # Act & Assert
-                with pytest.raises(
-                    AWSSessionError,
-                    match="No accounts are accessible after health check",
-                ):
-                    async for account_info, session in strategy.get_account_sessions():
-                        pass
+                await strategy.healthcheck()
+
+        with pytest.raises(
+            AWSSessionError,
+            match="Account sessions not initialized. Run healthcheck first.",
+        ):
+            async for _ in strategy.get_account_sessions():
+                pass  
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_empty_role_list(self) -> None:
@@ -205,17 +202,24 @@ class TestMultiAccountStrategy:
             provider=provider, config={"account_role_arn": []}
         )
 
-        with patch.object(
-            strategy,
-            "healthcheck",
-            side_effect=AWSSessionError(
-                "Account sessions not initialized. Run healthcheck first."
-            ),
+        with pytest.raises(
+            AWSSessionError,
+            match="Account sessions not initialized. Run healthcheck first.",
         ):
-            # Act & Assert
-            with pytest.raises(
-                AWSSessionError,
-                match="Account sessions not initialized. Run healthcheck first.",
-            ):
-                async for account_info, session in strategy.get_account_sessions():
-                    pass
+            async for _ in strategy.get_account_sessions():
+                pass  
+
+    @pytest.mark.asyncio
+    async def test_healthcheck_with_empty_role_list_returns_false(self) -> None:
+        """Test healthcheck with empty role ARN list returns False."""
+        # Arrange
+        provider = AssumeRoleProvider()
+        strategy = MultiAccountStrategy(
+            provider=provider, config={"account_role_arn": []}
+        )
+
+        # Act
+        result = await strategy.healthcheck()
+
+        # Assert
+        assert result is False
