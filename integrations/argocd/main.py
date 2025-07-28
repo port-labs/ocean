@@ -28,14 +28,12 @@ async def on_resources_resync(kind: str) -> RAW_RESULT:
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.DEPLOYMENT_HISTORY)
 async def on_history_resync(kind: str) -> RAW_RESULT:
     argocd_client = init_client()
-
     return await argocd_client.get_deployment_history()
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.KUBERNETES_RESOURCE)
 async def on_managed_k8s_resources_resync(kind: str) -> RAW_RESULT:
     argocd_client = init_client()
-
     return await argocd_client.get_kubernetes_resource()
 
 
@@ -53,6 +51,9 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for application in applications:
         managed_resources = await argocd_client.get_managed_resources(
             application=application
+        )
+        logger.info(
+            f"Ingesting managed resources for application: {application.get('metadata', {}).get('name')}"
         )
         if managed_resources:
             yield managed_resources

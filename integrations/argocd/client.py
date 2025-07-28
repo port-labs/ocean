@@ -101,6 +101,9 @@ class ArgocdClient:
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
         if applications is None:
+            logger.error(
+                "No applications were found. Skipping deployment history ingestion"
+            )
             return []
         all_history = [
             {**history_item, "__applicationId": application["metadata"]["uid"]}
@@ -117,6 +120,9 @@ class ArgocdClient:
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
         if applications is None:
+            logger.error(
+                "No applications were found. Skipping managed resources ingestion"
+            )
             return []
         all_k8s_resources = [
             {**resource, "__applicationId": application["metadata"]["uid"]}
