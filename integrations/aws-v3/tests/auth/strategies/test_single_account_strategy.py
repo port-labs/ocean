@@ -1,12 +1,10 @@
 import pytest
-from typing import Dict, Any, AsyncGenerator
+from typing import Dict
 from unittest.mock import patch, AsyncMock
-from contextlib import asynccontextmanager
 
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.utils import AWSSessionError
-from tests.conftest import AWS_TEST_ACCOUNT_ID
 
 
 class TestSingleAccountStrategy:

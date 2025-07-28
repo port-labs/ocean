@@ -170,7 +170,9 @@ class TestMultiAccountStrategy:
             assert sessions[1][1] == mock_session
 
     @pytest.mark.asyncio
-    async def test_get_account_sessions_after_failed_healthcheck(self, role_arn: str) -> None:
+    async def test_get_account_sessions_after_failed_healthcheck(
+        self, role_arn: str
+    ) -> None:
         """Test get_account_sessions raises error if healthcheck failed."""
         # Arrange
         provider = AssumeRoleProvider()
@@ -191,7 +193,7 @@ class TestMultiAccountStrategy:
             match="Account sessions not initialized. Run healthcheck first.",
         ):
             async for _ in strategy.get_account_sessions():
-                pass  
+                pass
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_empty_role_list(self) -> None:
@@ -207,7 +209,7 @@ class TestMultiAccountStrategy:
             match="Account sessions not initialized. Run healthcheck first.",
         ):
             async for _ in strategy.get_account_sessions():
-                pass  
+                pass
 
     @pytest.mark.asyncio
     async def test_healthcheck_with_empty_role_list_returns_false(self) -> None:
