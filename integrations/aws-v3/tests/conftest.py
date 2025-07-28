@@ -13,7 +13,7 @@ MOCK_ORG_URL: str = "https://mock-organization-url.com"
 MOCK_PERSONAL_ACCESS_TOKEN: str = "mock-personal_access_token"
 
 AWS_TEST_ACCOUNT_ID: str = "123456789012"
-AWS_TEST_ACCOUNT_ID: str = "123456789012"
+AWS_TEST_ACCOUNT_ID_2: str = "987654321098"
 AWS_TEST_ACCESS_KEY: str = "test_access_key"
 AWS_TEST_SECRET_KEY: str = "test_secret_key"
 AWS_TEST_SESSION_TOKEN: str = "test_session_token"
@@ -60,18 +60,18 @@ AWS_ACCOUNT_INFO_TEMPLATE: Dict[str, str] = {
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
-    """Mock the PortOcean context to prevent initialization errors."""
+    """Initialize mock Ocean context for all tests."""
     try:
-        mock_ocean_app: MagicMock = MagicMock()
-        mock_ocean_app.config.integration.config = {
-            "organization_url": MOCK_ORG_URL,
-            "personal_access_token": MOCK_PERSONAL_ACCESS_TOKEN,
+        mock_app = MagicMock()
+        mock_app.config.integration.config = {
+            "aws_access_key_id": AWS_TEST_ACCESS_KEY,
+            "aws_secret_access_key": AWS_TEST_SECRET_KEY,
+            "aws_session_token": AWS_TEST_SESSION_TOKEN,
+            "region": AWS_TEST_REGION,
         }
-        mock_ocean_app.integration_router = MagicMock()
-        mock_ocean_app.port_client = MagicMock()
-        mock_ocean_app.cache_provider = AsyncMock()
-        mock_ocean_app.cache_provider.get.return_value = None
-        initialize_port_ocean_context(mock_ocean_app)
+        mock_app.cache_provider = AsyncMock()
+        mock_app.cache_provider.get.return_value = None
+        initialize_port_ocean_context(mock_app)
     except PortOceanContextAlreadyInitializedError:
         pass
 
@@ -83,44 +83,6 @@ def mock_event_context() -> Generator[MagicMock, None, None]:
 
     with patch("port_ocean.context.event.event_context", mock_event):
         yield mock_event
-
-
-@pytest.fixture
-def mock_aiosession() -> AsyncMock:
-    """Creates a mocked AioSession with client factory and credentials."""
-    mock_session: AsyncMock = AsyncMock()
-    mock_session.region_name = AWS_TEST_REGION
-
-    @asynccontextmanager
-    async def mock_client(
-        service_name: str, **kwargs: Any
-    ) -> AsyncGenerator[Any, None]:
-        if service_name == "sts":
-            mock_sts_client: AsyncMock = AsyncMock()
-            mock_sts_client.assume_role.return_value = AWS_STS_CREDENTIALS_RESPONSE
-            mock_sts_client.get_caller_identity.return_value = (
-                AWS_STS_CALLER_IDENTITY_RESPONSE
-            )
-            yield mock_sts_client
-        elif service_name == "account":
-            mock_account_client: AsyncMock = AsyncMock()
-            mock_account_client.list_regions.return_value = AWS_ACCOUNT_REGIONS_RESPONSE
-            yield mock_account_client
-        else:
-            raise NotImplementedError(f"Client for service '{service_name}' not mocked")
-
-    class MockFrozenCredentials:
-        access_key: str = AWS_TEST_ACCESS_KEY
-        secret_key: str = AWS_TEST_SECRET_KEY
-        token: str = AWS_TEST_SESSION_TOKEN
-
-    class MockCredentials:
-        async def get_frozen_credentials(self) -> MockFrozenCredentials:
-            return MockFrozenCredentials()
-
-    mock_session.get_credentials.return_value = MockCredentials()
-    mock_session.create_client = mock_client
-    return mock_session
 
 
 @pytest.fixture
@@ -178,41 +140,6 @@ def mock_single_account_config() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def mock_aiocredentials() -> MagicMock:
-    """Mocks AioCredentials."""
-    mock_creds = MagicMock()
-    mock_creds.access_key = AWS_TEST_ACCESS_KEY
-    mock_creds.secret_key = AWS_TEST_SECRET_KEY
-    mock_creds.token = AWS_TEST_SESSION_TOKEN
-    return mock_creds
-
-
-@pytest.fixture
-def mock_aiorefreshable_credentials() -> MagicMock:
-    """Mocks AioRefreshableCredentials."""
-    mock_creds = MagicMock()
-    mock_creds.access_key = AWS_TEST_ACCESS_KEY
-    mock_creds.secret_key = AWS_TEST_SECRET_KEY
-    mock_creds.token = AWS_TEST_SESSION_TOKEN
-    mock_creds.refresh_needed.return_value = False
-    return mock_creds
-
-
-@pytest.fixture
-def mock_arn_parser() -> MagicMock:
-    """Mocks ArnParser."""
-    mock_parser = MagicMock()
-    mock_parser.parse_arn.return_value = {
-        "partition": "aws",
-        "service": "iam",
-        "region": "",
-        "account": AWS_TEST_ACCOUNT_ID,
-        "resource": "role/test-role",
-    }
-    return mock_parser
-
-
-@pytest.fixture
 def mock_selector() -> MagicMock:
     """Mocks AWSDescribeResourcesSelector."""
     mock_selector = MagicMock()
@@ -245,12 +172,10 @@ def mock_assume_role_refresher() -> MagicMock:
 
     async def _refresher_factory(*args: Any, **kwargs: Any) -> dict[str, str]:
         return {
-            "access_key": "test_access_key",
-            "secret_key": "test_secret_key",
-            "token": "test_session_token",
-            "expiry_time": (datetime.now() + timedelta(hours=1)).strftime(
-                "%Y-%m-%dT%H:%M:%SZ"
-            ),
+            "access_key": AWS_TEST_ACCESS_KEY,
+            "secret_key": AWS_TEST_SECRET_KEY,
+            "token": AWS_TEST_SESSION_TOKEN,
+            "expiry_time": AWS_TEST_EXPIRATION,
         }
 
     mock = MagicMock(side_effect=_refresher_factory)
@@ -312,24 +237,6 @@ def mock_sts_client() -> AsyncMock:
 
 
 @pytest.fixture
-def mock_session_with_sts(mock_sts_client: AsyncMock) -> AsyncMock:
-    """Provides a mock session that returns the mock STS client."""
-    session = AsyncMock()
-
-    @asynccontextmanager
-    async def mock_create_client(
-        service_name: str, **kwargs: Any
-    ) -> AsyncGenerator[Any, None]:
-        if service_name == "sts":
-            yield mock_sts_client
-        else:
-            yield AsyncMock()
-
-    session.create_client = mock_create_client
-    return session
-
-
-@pytest.fixture
 def mock_account_client() -> AsyncMock:
     """Provides a mock account client with region responses."""
     mock_client = AsyncMock()
@@ -349,46 +256,18 @@ def mock_session_with_account_client(mock_account_client: AsyncMock) -> AsyncMoc
         if service_name == "account":
             yield mock_account_client
         else:
-            yield AsyncMock()
+            other_client = AsyncMock()
+            other_client.side_effect = Exception(f"Service {service_name} not mocked")
+            yield other_client
 
     session.create_client = mock_create_client
     return session
 
 
 @pytest.fixture
-def mock_web_identity_response() -> Dict[str, Any]:
-    """Provides a mock web identity response."""
-    return {
-        "Credentials": {
-            "AccessKeyId": AWS_TEST_ACCESS_KEY,
-            "SecretAccessKey": AWS_TEST_SECRET_KEY,
-            "SessionToken": AWS_TEST_SESSION_TOKEN,
-            "Expiration": AWS_TEST_EXPIRATION,
-        }
-    }
-
-
-@pytest.fixture
-def mock_web_identity_client(mock_web_identity_response: Dict[str, Any]) -> AsyncMock:
-    """Provides a mock STS client for web identity."""
-    mock_client = AsyncMock()
-    mock_client.assume_role_with_web_identity.return_value = mock_web_identity_response
-    return mock_client
-
-
-@pytest.fixture
-def mock_session_with_web_identity(mock_web_identity_client: AsyncMock) -> AsyncMock:
-    """Provides a mock session that returns the mock web identity client."""
-    session = AsyncMock()
-
-    @asynccontextmanager
-    async def mock_create_client(
-        service_name: str, **kwargs: Any
-    ) -> AsyncGenerator[Any, None]:
-        if service_name == "sts":
-            yield mock_web_identity_client
-        else:
-            yield AsyncMock()
-
-    session.create_client = mock_create_client
-    return session
+def mock_aio_session() -> Generator[MagicMock, None, None]:
+    """Mock AioSession for provider tests."""
+    with patch("aiobotocore.session.AioSession") as mock_session_class:
+        mock_session = MagicMock()
+        mock_session_class.return_value = mock_session
+        yield mock_session
