@@ -21,6 +21,12 @@ PAGE_SIZE = 100
 
 
 class SnykClient:
+    _IGNORED_ERRORS = {
+        404: "Resource not found",
+        403: "Request forbidden",
+        401: "Request unauthorized, are you an enterprise customer?",
+    }
+
     def __init__(
         self,
         token: str,
@@ -69,14 +75,11 @@ class SnykClient:
                 return response.json()
 
             except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
+                response_status = e.response.status_code
+                if response_status in self._IGNORED_ERRORS:
+                    log_message = self._IGNORED_ERRORS[response_status]
                     logger.warning(
-                        f"Resource not found for url: {e.response.url}; Error message: {e.response.text}"
-                    )
-                    return {}
-                if e.response.status_code == 403:
-                    logger.warning(
-                        f"Request unauthorized: {e.response.url}; Error message: {e.response.text}"
+                        f"{log_message}: {e.response.url}; Error message: {e.response.text}"
                     )
                     return {}
                 logger.error(
