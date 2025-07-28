@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.1.2-beta (2025-07-25)
+
+
+### Improvements
+
+- Added improvement for selecting collaborators and team relationships on repository kind
+
+
 ## 1.1.1-beta (2025-07-24)
 
 
