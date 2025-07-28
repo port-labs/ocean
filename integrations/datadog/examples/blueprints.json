@@ -118,5 +118,27 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "datadogServiceDependency",
+    "description": "This blueprint represents a Datadog service-to-service dependency",
+    "title": "Datadog Service Dependency",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "dependencies": {
+        "title": "Depends on",
+        "description": "The services called by the source service",
+        "target": "datadogService",
+        "required": false,
+        "many": true
+      }
+    }
   }
 ]
