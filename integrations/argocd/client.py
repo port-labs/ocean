@@ -3,7 +3,6 @@ from typing import Any, Optional
 
 import httpx
 from loguru import logger
-
 from port_ocean.utils import http_async_client
 
 
@@ -106,7 +105,7 @@ class ArgocdClient:
             )
             return []
         all_history = [
-            {**history_item, "__applicationId": application["metadata"]["uid"]}
+            {**history_item}
             for application in applications
             if application
             for history_item in application.get("status", {}).get("history", [])
@@ -125,9 +124,9 @@ class ArgocdClient:
             )
             return []
         all_k8s_resources = [
-            {**resource, "__applicationId": application["metadata"]["uid"]}
+            {**resource}
             for application in applications
-            if application and application.get("metadata", {}).get("uid")
+            if application and application["metadata"]["uid"]
             for resource in application.get("status", {}).get("resources", [])
         ]
         return all_k8s_resources
@@ -137,14 +136,7 @@ class ArgocdClient:
     ) -> list[dict[str, Any]] | None:
         errors = []
         try:
-            application_name = application.get("metadata", {}).get("name")
-            application_id = application.get("metadata", {}).get("uid")
-            if not application_name or not application_id:
-                logger.error(
-                    "Application metadata is missing 'name' or 'uid', skipping..."
-                )
-                return []
-
+            application_name = application["metadata"]["name"]
             logger.info(
                 f"Fetching managed resources for application: {application_name}"
             )
@@ -154,7 +146,6 @@ class ArgocdClient:
                 {
                     **managed_resource,
                     "__application": application,
-                    "__applicationId": application_id,
                 }
                 for managed_resource in managed_resources
                 if managed_resource

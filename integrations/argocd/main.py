@@ -49,14 +49,15 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
 
     for application in applications:
-        managed_resources = await argocd_client.get_managed_resources(
-            application=application
-        )
-        logger.info(
-            f"Ingesting managed resources for application: {application.get('metadata', {}).get('name')}"
-        )
-        if managed_resources:
-            yield managed_resources
+        if application:
+            managed_resources = await argocd_client.get_managed_resources(
+                application=application
+            )
+            logger.info(
+                f"Ingesting managed resources for application: {application.get('metadata', {}).get('name')}"
+            )
+            if managed_resources:
+                yield managed_resources
 
 
 @ocean.router.post("/webhook")
