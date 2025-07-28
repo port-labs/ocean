@@ -24,7 +24,9 @@ class TestMultiAccountStrategy:
         assert strategy.valid_arns == []
 
     @pytest.mark.asyncio
-    async def test_successful_role_assumption_through_healthcheck(self, role_arn: str) -> None:
+    async def test_successful_role_assumption_through_healthcheck(
+        self, role_arn: str
+    ) -> None:
         """Test successful role assumption behavior through public healthcheck method."""
         # Arrange
         provider = AssumeRoleProvider()
@@ -43,7 +45,9 @@ class TestMultiAccountStrategy:
             assert role_arn in strategy.valid_arns
 
     @pytest.mark.asyncio
-    async def test_failed_role_assumption_through_healthcheck(self, role_arn: str) -> None:
+    async def test_failed_role_assumption_through_healthcheck(
+        self, role_arn: str
+    ) -> None:
         """Test failed role assumption behavior through public healthcheck method."""
         # Arrange
         provider = AssumeRoleProvider()
@@ -59,7 +63,7 @@ class TestMultiAccountStrategy:
                 AWSSessionError, match="No accounts are accessible after health check"
             ):
                 await strategy.healthcheck()
-                
+
             # Verify no valid ARNs were cached
             assert strategy.valid_arns == []
 
@@ -81,12 +85,12 @@ class TestMultiAccountStrategy:
             # Assert
             assert result is True
             assert role_arn in strategy.valid_arns  # Use public property
-            
+
             # Verify the session is actually available by testing behavior
             sessions = []
             async for account_info, session in strategy.get_account_sessions():
                 sessions.append((account_info, session))
-            
+
             assert len(sessions) == 1
             assert sessions[0][1] == mock_session
 
@@ -128,7 +132,7 @@ class TestMultiAccountStrategy:
         with patch.object(provider, "get_session", return_value=mock_session):
             # Act - Let healthcheck populate internal state properly
             await strategy.healthcheck()
-            
+
             sessions = []
             async for account_info, session in strategy.get_account_sessions():
                 sessions.append((account_info, session))
@@ -155,7 +159,7 @@ class TestMultiAccountStrategy:
         with patch.object(provider, "get_session", return_value=mock_session):
             # Act - Let healthcheck populate internal state properly
             await strategy.healthcheck()
-            
+
             sessions = []
             async for account_info, session in strategy.get_account_sessions():
                 sessions.append((account_info, session))

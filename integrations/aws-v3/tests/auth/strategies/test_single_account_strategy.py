@@ -56,11 +56,11 @@ class TestSingleAccountStrategy:
             # Assert
             assert result is True
             assert strategy.account_id is not None
-            
+
             sessions = []
             async for account_info, session in strategy.get_account_sessions():
                 sessions.append((account_info, session))
-                
+
             assert len(sessions) == 1
             assert sessions[0][1] == mock_session
 
