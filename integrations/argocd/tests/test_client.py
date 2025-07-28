@@ -267,7 +267,6 @@ async def test_get_managed_resources(
                 {
                     **resource,
                     "__application": application,
-                    "__applicationId": application["metadata"]["uid"],
                 }
                 for resource in response_data["items"]
                 if resource
