@@ -7,8 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.3-dev (TBD)
+
+
+### Features
+
+- Added OIDC web identity authentication support via new `oidc_token` configuration parameter
+- Introduced `WebIdentityCredentialProvider` for federated authentication using AWS STS `assume_role_with_web_identity`
+- Enhanced session factory to route OIDC configurations to web identity provider with multi-account strategy
+
+
 ## 0.1.2-dev (2025-07-20)
 
+
+### Features
+
+- Added OIDC web identity authentication support via new `oidc_token` configuration parameter
+- Introduced `WebIdentityCredentialProvider` for federated authentication using AWS STS `assume_role_with_web_identity`
+- Enhanced session factory to route OIDC configurations to web identity provider with multi-account strategy
 
 ### Improvements
 
