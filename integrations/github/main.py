@@ -28,7 +28,9 @@ from github.core.exporters.environment_exporter import RestEnvironmentExporter
 from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
-from github.core.exporters.repository_exporter import RestRepositoryExporter
+from github.core.exporters.repository_exporter import (
+    RestRepositoryExporter,
+)
 from github.core.exporters.release_exporter import RestReleaseExporter
 from github.core.exporters.tag_exporter import RestTagExporter
 from github.core.exporters.dependabot_exporter import RestDependabotAlertExporter
@@ -67,6 +69,7 @@ from integration import (
     GithubPullRequestConfig,
     GithubDependabotAlertConfig,
     GithubCodeScanningAlertConfig,
+    GithubRepositoryConfig,
     GithubTeamConfig,
     GithubFileResourceConfig,
 )
@@ -110,8 +113,13 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     exporter = RestRepositoryExporter(rest_client)
 
-    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    options = ListRepositoryOptions(type=port_app_config.repository_type)
+    config = cast(GithubRepositoryConfig, event.resource_config)
+    repository_type = cast(GithubPortAppConfig, event.port_app_config).repository_type
+    included_property = config.selector.include
+
+    options = ListRepositoryOptions(
+        type=repository_type, included_property=included_property
+    )
 
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories
