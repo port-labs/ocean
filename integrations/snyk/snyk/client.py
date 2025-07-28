@@ -74,6 +74,11 @@ class SnykClient:
                         f"Resource not found for url: {e.response.url}; Error message: {e.response.text}"
                     )
                     return {}
+                if e.response.status_code == 403:
+                    logger.warning(
+                        f"Request unauthorized: {e.response.url}; Error message: {e.response.text}"
+                    )
+                    return {}
                 logger.error(
                     f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
                     f"version: {version}, json: {json_data}. "
@@ -131,7 +136,6 @@ class SnykClient:
         return issues
 
     async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         all_organizations = await self.get_organizations_in_groups()
         for org in all_organizations:
             logger.info(f"Fetching paginated issues for organization: {org['id']}")
@@ -183,7 +187,6 @@ class SnykClient:
             async for projects in self._get_paginated_resources(
                 url_path=url, query_params=query_params
             ):
-
                 event.attributes.setdefault(CacheKeys.PROJECT, []).extend(projects)
 
                 projects_to_yield = self._get_projects_by_target(
