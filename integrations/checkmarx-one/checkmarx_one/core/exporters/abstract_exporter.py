@@ -18,7 +18,7 @@ class AbstractCheckmarxExporter(ABC):
         ...
 
     @abstractmethod
-    def get_paginated_resources[
+    async def get_paginated_resources[
         AnyOption: Any
     ](self, options: AnyOption | None = None) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get paginated resources yielding batches."""

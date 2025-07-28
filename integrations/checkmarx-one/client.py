@@ -350,7 +350,6 @@ class CheckmarxClient:
             logger.info(f"Fetched batch of {len(projects)} projects")
             yield projects
 
-    @cache_iterator_result()
     async def get_scans(
         self,
         project_id: Optional[str] = None,

@@ -218,12 +218,12 @@
     },
     {
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/checkmarx_one",
-      "envFile": "${workspaceFolder}/integrations/checkmarx_one/.env",
+      "cwd": "${workspaceFolder}/integrations/checkmarx-one",
+      "envFile": "${workspaceFolder}/integrations/checkmarx-one/.env",
       "justMyCode": true,
       "name": "Run checkmarx_one integration",
-      "program": "${workspaceFolder}/integrations/checkmarx_one/debug.py",
-      "python": "${workspaceFolder}/integrations/checkmarx_one/.venv/bin/python",
+      "program": "${workspaceFolder}/integrations/checkmarx-one/debug.py",
+      "python": "${workspaceFolder}/integrations/checkmarx-one/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     }
