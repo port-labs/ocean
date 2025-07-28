@@ -24,7 +24,7 @@ class SnykClient:
     _IGNORED_ERRORS = {
         404: "Resource not found",
         403: "Request forbidden",
-        401: "Request unauthorized, are you an enterprise customer?",
+        401: "Request unauthorized",
     }
 
     def __init__(
