@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for installationDocs param for feature embed docs in installation
 
 
+## 0.1.194 (2025-07-28)
+
+
+- Added null checks for resources yielded from `managed_resources` and `get_deployment_history`
+
+
 ## 0.1.193 (2025-07-20)
 
 
