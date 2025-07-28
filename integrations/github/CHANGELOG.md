@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.1.2-beta (2025-07-24)
+## 1.2.0-beta (2025-07-28)
 
+
+### Improvements
 
 - Added File validation for pull requests with GitHub check run integration
 - Enhanced pull request webhook processor to trigger validation on open/sync events
