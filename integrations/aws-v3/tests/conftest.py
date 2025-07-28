@@ -265,6 +265,26 @@ def mock_session_with_account_client(mock_account_client: AsyncMock) -> AsyncMoc
 
 
 @pytest.fixture
+def mock_session_with_sts_client(mock_sts_client: AsyncMock) -> AsyncMock:
+    """Provides a mock session that returns the mock STS client."""
+    session = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_create_client(
+        service_name: str, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
+        if service_name == "sts":
+            yield mock_sts_client
+        else:
+            other_client = AsyncMock()
+            other_client.side_effect = Exception(f"Service {service_name} not mocked")
+            yield other_client
+
+    session.create_client = mock_create_client
+    return session
+
+
+@pytest.fixture
 def mock_aio_session() -> Generator[MagicMock, None, None]:
     """Mock AioSession for provider tests."""
     with patch("aiobotocore.session.AioSession") as mock_session_class:

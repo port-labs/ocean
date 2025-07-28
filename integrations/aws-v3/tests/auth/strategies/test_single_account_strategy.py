@@ -25,31 +25,16 @@ class TestSingleAccountStrategy:
 
     @pytest.mark.asyncio
     async def test_healthcheck_success_with_valid_credentials(
-        self, aws_credentials: Dict[str, str]
+        self, aws_credentials: Dict[str, str], mock_session_with_sts_client: AsyncMock
     ) -> None:
         """Test successful healthcheck with valid credentials."""
         # Arrange
         provider = StaticCredentialProvider()
         strategy = SingleAccountStrategy(provider=provider, config=aws_credentials)
 
-        mock_session = AsyncMock()
-        mock_sts_client = AsyncMock()
-        mock_sts_client.get_caller_identity.return_value = {
-            "Account": AWS_TEST_ACCOUNT_ID
-        }
-
-        @asynccontextmanager
-        async def mock_create_client(
-            service_name: str, **kwargs: Any
-        ) -> AsyncGenerator[Any, None]:
-            if service_name == "sts":
-                yield mock_sts_client
-            else:
-                raise Exception(f"Service {service_name} not mocked")
-
-        mock_session.create_client = mock_create_client
-
-        with patch.object(provider, "get_session", return_value=mock_session):
+        with patch.object(
+            provider, "get_session", return_value=mock_session_with_sts_client
+        ):
             # Act
             result = await strategy.healthcheck()
 
@@ -62,7 +47,7 @@ class TestSingleAccountStrategy:
                 sessions.append((account_info, session))
 
             assert len(sessions) == 1
-            assert sessions[0][1] == mock_session
+            assert sessions[0][1] == mock_session_with_sts_client
 
     @pytest.mark.asyncio
     async def test_healthcheck_failure_with_invalid_credentials(
@@ -85,31 +70,16 @@ class TestSingleAccountStrategy:
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_success_after_healthcheck(
-        self, aws_credentials: Dict[str, str]
+        self, aws_credentials: Dict[str, str], mock_session_with_sts_client: AsyncMock
     ) -> None:
         """Test get_account_sessions yields account info and session after successful healthcheck."""
         # Arrange
         provider = StaticCredentialProvider()
         strategy = SingleAccountStrategy(provider=provider, config=aws_credentials)
 
-        mock_session = AsyncMock()
-        mock_sts_client = AsyncMock()
-        mock_sts_client.get_caller_identity.return_value = {
-            "Account": AWS_TEST_ACCOUNT_ID
-        }
-
-        @asynccontextmanager
-        async def mock_create_client(
-            service_name: str, **kwargs: Any
-        ) -> AsyncGenerator[Any, None]:
-            if service_name == "sts":
-                yield mock_sts_client
-            else:
-                raise Exception(f"Service {service_name} not mocked")
-
-        mock_session.create_client = mock_create_client
-
-        with patch.object(provider, "get_session", return_value=mock_session):
+        with patch.object(
+            provider, "get_session", return_value=mock_session_with_sts_client
+        ):
             # Act
             await strategy.healthcheck()
 
@@ -122,37 +92,22 @@ class TestSingleAccountStrategy:
             account_info, session = sessions[0]
             assert "Id" in account_info
             assert "Name" in account_info
-            assert session == mock_session
+            assert session == mock_session_with_sts_client
 
     @pytest.mark.asyncio
     async def test_healthcheck_with_credentials_vs_without(
-        self, aws_credentials: Dict[str, str]
+        self, aws_credentials: Dict[str, str], mock_session_with_sts_client: AsyncMock
     ) -> None:
         """Test healthcheck behavior with and without explicit credentials."""
         # Arrange
         provider = StaticCredentialProvider()
 
-        mock_session = AsyncMock()
-        mock_sts_client = AsyncMock()
-        mock_sts_client.get_caller_identity.return_value = {
-            "Account": AWS_TEST_ACCOUNT_ID
-        }
-
-        @asynccontextmanager
-        async def mock_create_client(
-            service_name: str, **kwargs: Any
-        ) -> AsyncGenerator[Any, None]:
-            if service_name == "sts":
-                yield mock_sts_client
-            else:
-                raise Exception(f"Service {service_name} not mocked")
-
-        mock_session.create_client = mock_create_client
-
         strategy_with_creds = SingleAccountStrategy(
             provider=provider, config=aws_credentials
         )
-        with patch.object(provider, "get_session", return_value=mock_session):
+        with patch.object(
+            provider, "get_session", return_value=mock_session_with_sts_client
+        ):
             # Act
             await strategy_with_creds.healthcheck()
 
