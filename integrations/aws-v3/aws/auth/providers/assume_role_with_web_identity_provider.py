@@ -23,11 +23,21 @@ class AssumeRoleWithWebIdentityProvider(CredentialProvider):
         The refreshed credentials are used for the API call
     """
 
+    def __init__(self, config: dict[str, Any] = {}):
+        super().__init__(config)
+        # This is required for the STS client to work
+        # Since the STS client checks for the AWS_ROLE_ARN environment variable and if it's not set, it will fail
+        role_arn_list = config.get("account_role_arn", [])
+        if not role_arn_list:
+            raise CredentialsProviderError("No account role ARN found in config")
+
+        os.environ["AWS_ROLE_ARN"] = role_arn_list[0]
+
     @property
     def is_refreshable(self) -> bool:
         return True
 
-    def _read_web_identity_token(self) -> str:
+    async def _read_web_identity_token(self) -> str:
         """Read the web identity token from the file specified by AWS_WEB_IDENTITY_TOKEN_FILE."""
         token_file = os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
         if not token_file:
@@ -63,10 +73,7 @@ class AssumeRoleWithWebIdentityProvider(CredentialProvider):
         async def refresher() -> Dict[str, Any]:
             """Refresh credentials by calling assume_role_with_web_identity."""
             try:
-                web_identity_token = self._read_web_identity_token()
-                # This is required for the STS client to work
-                # Since the STS client checks for the AWS_ROLE_ARN environment variable and if it's not set, it will fail
-                os.environ["AWS_ROLE_ARN"] = role_arn
+                web_identity_token = await self._read_web_identity_token()
 
                 async with self.aws_client_factory_session.create_client(
                     "sts", region_name=kwargs.get("region")
