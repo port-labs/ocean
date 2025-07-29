@@ -5,6 +5,9 @@ from aiobotocore.credentials import AioCredentials, AioRefreshableCredentials
 
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
+from aws.auth.providers.assume_role_with_web_identity_provider import (
+    AssumeRoleWithWebIdentityProvider,
+)
 from aws.auth.utils import CredentialsProviderError
 
 
@@ -456,3 +459,118 @@ class TestAssumeRoleProvider:
                     assert isinstance(session, AioSession)
                     assert hasattr(session, "_credentials")
                     assert session._credentials == mock_creds
+
+
+class TestAssumeRoleWithWebIdentityProvider:
+    """Test AssumeRoleWithWebIdentityProvider."""
+
+    def test_is_refreshable_property(self) -> None:
+        """Test is_refreshable property returns True."""
+        provider = AssumeRoleWithWebIdentityProvider()
+        assert provider.is_refreshable is True
+
+    @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/test-token"})
+    @patch("builtins.open", create=True)
+    def test_read_web_identity_token_success(self, mock_open: MagicMock) -> None:
+        """Test successful reading of web identity token."""
+        provider = AssumeRoleWithWebIdentityProvider()
+        mock_file = MagicMock()
+        mock_file.read.return_value = "test-token-content\n"
+        mock_open.return_value.__enter__.return_value = mock_file
+
+        token = provider._read_web_identity_token()
+        assert token == "test-token-content"
+        mock_open.assert_called_once_with("/tmp/test-token", "r")
+
+    def test_read_web_identity_token_missing_env_var(self) -> None:
+        """Test error when AWS_WEB_IDENTITY_TOKEN_FILE is not set."""
+        provider = AssumeRoleWithWebIdentityProvider()
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(CredentialsProviderError) as exc_info:
+                provider._read_web_identity_token()
+            assert (
+                "AWS_WEB_IDENTITY_TOKEN_FILE environment variable is required"
+                in str(exc_info.value)
+            )
+
+    @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/nonexistent"})
+    @patch("builtins.open", side_effect=FileNotFoundError())
+    def test_read_web_identity_token_file_not_found(self, mock_open: MagicMock) -> None:
+        """Test error when token file doesn't exist."""
+        provider = AssumeRoleWithWebIdentityProvider()
+        with pytest.raises(CredentialsProviderError) as exc_info:
+            provider._read_web_identity_token()
+        assert "Web identity token file /tmp/nonexistent not found" in str(
+            exc_info.value
+        )
+
+    @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/empty-token"})
+    @patch("builtins.open", create=True)
+    def test_read_web_identity_token_empty_file(self, mock_open: MagicMock) -> None:
+        """Test error when token file is empty."""
+        provider = AssumeRoleWithWebIdentityProvider()
+        mock_file = MagicMock()
+        mock_file.read.return_value = ""
+        mock_open.return_value.__enter__.return_value = mock_file
+
+        with pytest.raises(CredentialsProviderError) as exc_info:
+            provider._read_web_identity_token()
+        assert "Web identity token file /tmp/empty-token is empty" in str(
+            exc_info.value
+        )
+
+    @pytest.mark.asyncio
+    @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/test-token"})
+    async def test_get_credentials_success(self) -> None:
+        """Test successful get_credentials with web identity."""
+        provider = AssumeRoleWithWebIdentityProvider()
+        mock_session = MagicMock()
+        mock_sts_client = AsyncMock()
+
+        # Mock the token file
+        mock_file = MagicMock()
+        mock_file.read.return_value = "test-web-identity-token"
+        with patch("builtins.open") as mock_open:
+            mock_open.return_value.__enter__.return_value = mock_file
+
+            # Mock STS response
+            mock_sts_client.assume_role_with_web_identity.return_value = {
+                "Credentials": {
+                    "AccessKeyId": "test_access_key",
+                    "SecretAccessKey": "test_secret_key",
+                    "SessionToken": "test_session_token",
+                    "Expiration": MagicMock(),
+                }
+            }
+            mock_sts_client.assume_role_with_web_identity.return_value["Credentials"][
+                "Expiration"
+            ].isoformat.return_value = "2024-12-31T23:59:59Z"
+
+            mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
+
+            with patch.object(provider, "aws_client_factory_session", mock_session):
+                mock_session.create_client.return_value = mock_context_manager
+
+                with patch(
+                    "aws.auth.providers.assume_role_with_web_identity_provider.AioRefreshableCredentials.create_from_metadata"
+                ) as mock_create_creds:
+                    mock_creds = MagicMock(spec=AioRefreshableCredentials)
+                    mock_create_creds.return_value = mock_creds
+
+                    credentials = await provider.get_credentials(
+                        role_arn="arn:aws:iam::123456789012:role/test-role",
+                        region="us-west-2",
+                    )
+
+                    assert credentials == mock_creds
+                    mock_sts_client.assume_role_with_web_identity.assert_called_once()
+                    call_args = mock_sts_client.assume_role_with_web_identity.call_args[
+                        1
+                    ]
+                    assert (
+                        call_args["RoleArn"]
+                        == "arn:aws:iam::123456789012:role/test-role"
+                    )
+                    assert call_args["WebIdentityToken"] == "test-web-identity-token"
+                    assert call_args["RoleSessionName"] == "OceanWebIdentitySession"
+                    assert call_args["DurationSeconds"] == 3600
