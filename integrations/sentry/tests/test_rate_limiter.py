@@ -1,4 +1,5 @@
 import time
+from typing import Awaitable
 from unittest.mock import AsyncMock, patch, create_autospec
 
 import httpx
@@ -105,9 +106,11 @@ class TestSentryRateLimiter:
         mock_response.json = AsyncMock(return_value={"data": "success"})
         mock_client.request.return_value = mock_response
 
+        def request_func() -> Awaitable[httpx.Response]:
+            return mock_client.request("https://test.com", method="GET")
+
         async with rate_limiter:
-            request_func = mock_client.request("https://test.com", method="GET")
-            await rate_limiter.execute(lambda: request_func)
+            await rate_limiter.execute(request_func)
 
         mock_sleep.assert_not_awaited()
 
@@ -135,8 +138,10 @@ class TestSentryRateLimiter:
         mock_200_response.json = AsyncMock(return_value={"data": "success"})
         mock_client.request.side_effect = [mock_429_response, mock_200_response]
 
+        def request_func() -> Awaitable[httpx.Response]:
+            return mock_client.request("https://test.com", method="GET")
+
         async with SentryRateLimiter() as rate_limiter:
-            request_func = lambda: mock_client.request("https://test.com", method="GET")
             response = await rate_limiter.execute(request_func)
 
         assert mock_client.request.call_count == 2
@@ -167,8 +172,10 @@ class TestSentryRateLimiter:
         mock_200_response.json = AsyncMock(return_value={"data": "success"})
         mock_client.request.side_effect = [mock_429_response, mock_200_response]
 
+        def request_func() -> Awaitable[httpx.Response]:
+            return mock_client.request("https://test.com", method="GET")
+
         async with SentryRateLimiter() as rate_limiter:
-            request_func = lambda: mock_client.request("https://test.com", method="GET")
             await rate_limiter.execute(request_func)
 
         assert mock_client.request.call_count == 2
@@ -197,11 +204,11 @@ class TestSentryRateLimiter:
 
         mock_client.request.return_value = mock_429_response
 
+        def request_func() -> Awaitable[httpx.Response]:
+            return mock_client.request("https://test.com", method="GET")
+
         with pytest.raises(httpx.HTTPStatusError) as exc_info:
             async with SentryRateLimiter() as rate_limiter:
-                request_func = lambda: mock_client.request(
-                    url="https://test.com", method="GET"
-                )
                 await rate_limiter.execute(request_func)
 
         # The final error should be the 429
@@ -239,10 +246,12 @@ class TestSentryRateLimiter:
 
         mock_client.request.return_value = mock_response
 
+        def request_func() -> Awaitable[httpx.Response]:
+            return mock_client.request("https://test.com", method="GET")
+
         with pytest.raises(httpx.HTTPStatusError) as exc_info:
             async with SentryRateLimiter() as rate_limiter:
-                request_func = mock_client.request("https://test.com", method="GET")
-                await rate_limiter.execute(lambda: request_func)
+                await rate_limiter.execute(request_func)
 
         assert exc_info.value.response.status_code == 500
         mock_client.request.assert_awaited_once()
