@@ -64,6 +64,9 @@ class AssumeRoleWithWebIdentityProvider(CredentialProvider):
             """Refresh credentials by calling assume_role_with_web_identity."""
             try:
                 web_identity_token = self._read_web_identity_token()
+                # This is required for the STS client to work
+                # Since the STS client checks for the AWS_ROLE_ARN environment variable and if it's not set, it will fail
+                os.environ["AWS_ROLE_ARN"] = role_arn
 
                 async with self.aws_client_factory_session.create_client(
                     "sts", region_name=kwargs.get("region")
