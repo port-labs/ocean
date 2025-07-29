@@ -23,6 +23,7 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 
         self._valid_arns: list[str] = []
         self._valid_sessions: dict[str, AioSession] = {}
+        self._healthcheck_run = False
 
     @property
     def valid_arns(self) -> list[str]:
@@ -40,6 +41,10 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             if self.config.get("external_id"):
                 session_kwargs["external_id"] = self.config["external_id"]
 
+            # Pass OIDC token if available
+            if self.config.get("oidc_token"):
+                session_kwargs["oidc_token"] = self.config["oidc_token"]
+
             session = await self.provider.get_session(**session_kwargs)
             return session
         except Exception as e:
@@ -47,6 +52,7 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             return None
 
     async def healthcheck(self) -> bool:
+        self._healthcheck_run = True
         arns = normalize_arn_list(self.config.get("account_role_arn", []))
         if not arns:
             logger.error("No account_role_arn(s) provided for healthcheck")
@@ -107,7 +113,7 @@ class MultiAccountStrategy(MultiAccountHealthCheckMixin):
     async def get_account_sessions(
         self, **kwargs: Any
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
-        if not (self._valid_arns and self._valid_sessions):
+        if not self._healthcheck_run:
             await self.healthcheck()
         if not (self._valid_arns and self._valid_sessions):
             raise AWSSessionError(
