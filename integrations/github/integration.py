@@ -166,6 +166,7 @@ class GithubPortAppConfig(PortAppConfig):
         | ResourceConfig
     ]
 
+
 class GitManipulationHandler(JQEntityProcessor):
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         entity_processor: Type[JQEntityProcessor]
