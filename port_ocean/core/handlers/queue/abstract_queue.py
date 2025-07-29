@@ -26,6 +26,11 @@ class AbstractQueue(ABC, Generic[T]):
         pass
 
     @abstractmethod
+    async def size(self) -> int:
+        """Wait for all items to be processed"""
+        pass
+
+    @abstractmethod
     async def commit(self) -> None:
         """Mark item as processed"""
         pass

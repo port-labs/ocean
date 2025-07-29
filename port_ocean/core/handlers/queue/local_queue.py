@@ -24,5 +24,5 @@ class LocalQueue(AbstractQueue[T]):
     async def commit(self) -> None:
         self._queue.task_done()
 
-    def size(self) -> int:
+    async def size(self) -> int:
         return self._queue.qsize()

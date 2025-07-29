@@ -2,6 +2,7 @@ import asyncio
 import pytest
 from dataclasses import dataclass
 from port_ocean.core.handlers.queue.group_queue import GroupQueue
+from typing import Any
 
 
 @dataclass
@@ -19,17 +20,19 @@ class TestGroupQueue:
     """Test suite for GroupQueue lock mechanism"""
 
     @pytest.fixture
-    def queue_with_group_key(self):
+    def queue_with_group_key(self) -> GroupQueue[Any]:
         """Create a GroupQueue with group_key='group_id'"""
         return GroupQueue(group_key="group_id", name="test_queue")
 
     @pytest.fixture
-    def queue_no_group_key(self):
+    def queue_no_group_key(self) -> GroupQueue[Any]:
         """Create a GroupQueue without group_key (all items in same group)"""
         return GroupQueue(group_key=None, name="test_queue_no_group")
 
     @pytest.mark.asyncio
-    async def test_basic_lock_mechanism(self, queue_with_group_key):
+    async def test_basic_lock_mechanism(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that getting an item locks the group"""
         queue = queue_with_group_key
 
@@ -52,7 +55,9 @@ class TestGroupQueue:
         assert queue._group_to_worker["group_a"] == worker_id
 
     @pytest.mark.asyncio
-    async def test_locked_group_blocks_retrieval(self, queue_with_group_key):
+    async def test_locked_group_blocks_retrieval(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that locked groups cannot have items retrieved"""
         queue = queue_with_group_key
 
@@ -77,7 +82,9 @@ class TestGroupQueue:
         assert "group_a" in queue._locked  # group_a still locked
 
     @pytest.mark.asyncio
-    async def test_commit_unlocks_group(self, queue_with_group_key):
+    async def test_commit_unlocks_group(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that commit() unlocks the group and allows next item retrieval"""
         queue = queue_with_group_key
 
@@ -104,7 +111,9 @@ class TestGroupQueue:
         assert "group_a" in queue._locked
 
     @pytest.mark.asyncio
-    async def test_multiple_groups_concurrent_processing(self, queue_with_group_key):
+    async def test_multiple_groups_concurrent_processing(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that different groups can be processed concurrently"""
         queue = queue_with_group_key
 
@@ -136,7 +145,9 @@ class TestGroupQueue:
         assert set(group_ids) == {"group_a", "group_b", "group_c"}
 
     @pytest.mark.asyncio
-    async def test_get_blocks_when_all_groups_locked(self, queue_with_group_key):
+    async def test_get_blocks_when_all_groups_locked(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that get() blocks when all available groups are locked"""
         queue = queue_with_group_key
 
@@ -157,7 +168,9 @@ class TestGroupQueue:
             await asyncio.wait_for(queue.get(), timeout=0.1)
 
     @pytest.mark.asyncio
-    async def test_no_group_key_single_group_behavior(self, queue_no_group_key):
+    async def test_no_group_key_single_group_behavior(
+        self, queue_no_group_key: GroupQueue[Any]
+    ) -> None:
         """Test behavior when group_key is None (all items in same group)"""
         queue = queue_no_group_key
 
@@ -184,7 +197,9 @@ class TestGroupQueue:
         assert retrieved_item2 == item2
 
     @pytest.mark.asyncio
-    async def test_commit_without_get_is_safe(self, queue_with_group_key):
+    async def test_commit_without_get_is_safe(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that calling commit() without get() doesn't break anything"""
         queue = queue_with_group_key
 
@@ -195,7 +210,9 @@ class TestGroupQueue:
         assert len(queue._locked) == 0
 
     @pytest.mark.asyncio
-    async def test_multiple_commits_are_safe(self, queue_with_group_key):
+    async def test_multiple_commits_are_safe(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that multiple commits after a single get are safe"""
         queue = queue_with_group_key
 
@@ -215,7 +232,9 @@ class TestGroupQueue:
         assert len(queue._current_items) == 0
 
     @pytest.mark.asyncio
-    async def test_fifo_within_group(self, queue_with_group_key):
+    async def test_fifo_within_group(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that items within a group are processed in FIFO order"""
         queue = queue_with_group_key
 
@@ -234,7 +253,9 @@ class TestGroupQueue:
         assert processed_items == items
 
     @pytest.mark.asyncio
-    async def test_lock_prevents_queue_cleanup(self, queue_with_group_key):
+    async def test_lock_prevents_queue_cleanup(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that locked groups prevent queue cleanup until unlocked"""
         queue = queue_with_group_key
 
@@ -252,7 +273,9 @@ class TestGroupQueue:
         assert "group_a" not in queue._locked
 
     @pytest.mark.asyncio
-    async def test_extract_group_key_missing_attribute(self, queue_with_group_key):
+    async def test_extract_group_key_missing_attribute(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that missing group key attribute raises ValueError"""
         queue = queue_with_group_key
 
@@ -263,7 +286,9 @@ class TestGroupQueue:
             await queue.put(bad_item)
 
     @pytest.mark.asyncio
-    async def test_size_excludes_current_item(self, queue_with_group_key):
+    async def test_size_excludes_current_item(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that size() excludes the currently processed item"""
         queue = queue_with_group_key
 
@@ -286,13 +311,15 @@ class TestGroupQueue:
     # ===== CONCURRENT WORKER TESTS =====
 
     @pytest.mark.asyncio
-    async def test_multiple_workers_different_groups(self, queue_with_group_key):
+    async def test_multiple_workers_different_groups(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test multiple workers processing items from different groups concurrently"""
         queue = queue_with_group_key
         processed_items = []
         processing_times = {}
 
-        async def worker(worker_id: int, process_time: float = 0.1):
+        async def worker(worker_id: int, process_time: float = 0.1) -> Any:
             """Simulate a worker that processes items"""
             try:
                 item = await queue.get()
@@ -340,12 +367,14 @@ class TestGroupQueue:
         assert len(queue._group_to_worker) == 0
 
     @pytest.mark.asyncio
-    async def test_multiple_workers_same_group_exclusivity(self, queue_with_group_key):
+    async def test_multiple_workers_same_group_exclusivity(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test that multiple workers cannot process items from same group concurrently"""
         queue = queue_with_group_key
         processing_log = []
 
-        async def worker(worker_id: int, process_time: float = 0.2):
+        async def worker(worker_id: int, process_time: float = 0.2) -> Any:
             """Worker that logs processing start and end times"""
             try:
                 item = await queue.get()
@@ -408,12 +437,14 @@ class TestGroupQueue:
         assert len(queue._group_to_worker) == 0
 
     @pytest.mark.asyncio
-    async def test_mixed_groups_with_multiple_workers(self, queue_with_group_key):
+    async def test_mixed_groups_with_multiple_workers(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Test workers processing mixed groups - some concurrent, some sequential"""
         queue = queue_with_group_key
         processing_events = []
 
-        async def worker(worker_id: int):
+        async def worker(worker_id: int) -> Any:
             """Worker that tracks processing events"""
             try:
                 item = await queue.get()
@@ -461,7 +492,7 @@ class TestGroupQueue:
         assert len(successful_results) == 6
 
         # Group processing events by group
-        group_events = {}
+        group_events: dict[Any, Any] = {}
         for event in processing_events:
             _, worker_id, group, value, timestamp = event
             if group not in group_events:
@@ -483,11 +514,13 @@ class TestGroupQueue:
         assert len(queue._group_to_worker) == 0
 
     @pytest.mark.asyncio
-    async def test_high_concurrency_stress_test(self, queue_with_group_key):
+    async def test_high_concurrency_stress_test(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
         """Stress test with many workers and items"""
         queue = queue_with_group_key
 
-        async def worker(worker_id: int):
+        async def worker(worker_id: int) -> Any:
             """Simple worker"""
             results = []
             while True:

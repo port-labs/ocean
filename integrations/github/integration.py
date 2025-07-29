@@ -7,9 +7,14 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
-from port_ocean.core.handlers.queue.group_queue import GroupQueue
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import AbstractWebhookProcessor
-from port_ocean.core.handlers.webhook.webhook_event import LiveEventTimestamp, WebhookEvent
+from port_ocean.core.handlers.queue import GroupQueue, LocalQueue
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+)
+from port_ocean.core.handlers.webhook.webhook_event import (
+    LiveEventTimestamp,
+    WebhookEvent,
+)
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
@@ -19,7 +24,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from typing import Any, Dict, Optional, Type, Literal
+from typing import Any, Dict, Optional, Type, Literal, cast
 from loguru import logger
 from port_ocean.utils.signal import signal_handler
 from github.helpers.utils import ObjectKind
@@ -147,7 +152,6 @@ class GithubPortAppConfig(PortAppConfig):
         | ResourceConfig
     ]
 
-
 class GitManipulationHandler(JQEntityProcessor):
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         entity_processor: Type[JQEntityProcessor]
@@ -173,7 +177,30 @@ class GithubLiveEventsProcessorManager(LiveEventsProcessorManager, GithubHandler
             processor: The processor class to register
             kind: The resource kind to associate with this processor, or None to match any kind
         """
+        if not issubclass(processor, AbstractWebhookProcessor):
+            raise ValueError("Processor must extend AbstractWebhookProcessor")
 
+        if path not in self._processors_classes:
+            self._processors_classes[path] = []
+            self._event_queues[path] = LocalQueue()
+            self._register_route(path)
+
+        self._processors_classes[path].append(processor)
+
+
+class GithubLiveEventsGroupProcessorManager(
+    LiveEventsProcessorManager, GithubHandlerMixin
+):
+    def register_processor(
+        self, path: str, processor: Type[AbstractWebhookProcessor]
+    ) -> None:
+        """Register a webhook processor for a specific path with optional filter
+
+        Args:
+            path: The webhook path to register
+            processor: The processor class to register
+            kind: The resource kind to associate with this processor, or None to match any kind
+        """
         if not issubclass(processor, AbstractWebhookProcessor):
             raise ValueError("Processor must extend AbstractWebhookProcessor")
 
@@ -185,24 +212,23 @@ class GithubLiveEventsProcessorManager(LiveEventsProcessorManager, GithubHandler
         self._processors_classes[path].append(processor)
 
     def _register_route(self, path: str) -> None:
-            async def handle_webhook(request: Request) -> Dict[str, str]:
-                """Handle incoming webhook requests for a specific path."""
-                try:
-                    webhook_event = await WebhookEvent.from_request(request)
-                    webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
-                    webhook_event.group_id = primary_id(webhook_event)
-                    await self._event_queues[path].put(webhook_event)
-                    return {"status": "ok"}
-                except Exception as e:
-                    logger.exception(f"Error processing webhook: {str(e)}")
-                    return {"status": "error", "message": str(e)}
+        async def handle_webhook(request: Request) -> Dict[str, str]:
+            """Handle incoming webhook requests for a specific path."""
+            try:
+                webhook_event = await WebhookEvent.from_request(request)
+                webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
+                webhook_event.group_id = primary_id(webhook_event)
+                await self._event_queues[path].put(webhook_event)
+                return {"status": "ok"}
+            except Exception as e:
+                logger.exception(f"Error processing webhook: {str(e)}")
+                return {"status": "error", "message": str(e)}
 
-            self._router.add_api_route(
-                path,
-                handle_webhook,
-                methods=["POST"],
-            )
-
+        self._router.add_api_route(
+            path,
+            handle_webhook,
+            methods=["POST"],
+        )
 
 
 class GithubIntegration(BaseIntegration, GithubHandlerMixin):
@@ -215,7 +241,16 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
         # GitManipulationHandler to handle file:// prefixed properties and enable
         # dynamic switching between JQEntityProcessor and FileEntityProcessor
         # for GitHub-specific file content processing.
-        self.context.app.webhook_manager = GithubLiveEventsProcessorManager(
+
+        event_workers_num = context.config.event_workers_num
+
+        ProcessManager = (
+            GithubLiveEventsGroupProcessorManager
+            if event_workers_num > 1
+            else GithubLiveEventsProcessorManager
+        )
+
+        self.context.app.webhook_manager = ProcessManager(
             self.context.app.integration_router,
             signal_handler,
             self.context.config.max_event_processing_seconds,

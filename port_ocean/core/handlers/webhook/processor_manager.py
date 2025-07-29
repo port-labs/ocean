@@ -45,9 +45,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         """Start processing events for all registered paths with N workers each."""
         await self.initialize_handlers()
         loop = asyncio.get_event_loop()
+        config = ocean.integration.context.config
 
         for path in self._event_queues.keys():
-            for worker_id in range(CONCURRENCY_PER_PATH):
+            for worker_id in range(0, config.event_workers_num):
                 task = loop.create_task(self._queue_worker(path, worker_id))
                 self._webhook_processor_tasks.add(task)
                 task.add_done_callback(self._webhook_processor_tasks.discard)
