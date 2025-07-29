@@ -1,4 +1,3 @@
-import asyncio
 from itertools import chain
 from typing import Any, AsyncGenerator, AsyncIterator, cast
 
@@ -12,13 +11,6 @@ from port_ocean.utils.cache import cache_iterator_result
 
 from .rate_limiter import SentryRateLimiter
 
-MAXIMUM_CONCURRENT_REQUESTS_SINGLE_RESOURCE = 22
-MAXIMUM_CONCURRENT_REQUESTS_ISSUES = 3
-MAXIMUM_CONCURRENT_REQUESTS_PROJECTS = 3
-MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
-MINIMUM_LIMIT_REMAINING = 10
-MINIMUM_ISSUES_LIMIT_REMAINING = 3
-DEFAULT_SLEEP_TIME = 0.1
 PAGE_SIZE = 100
 
 
@@ -44,18 +36,6 @@ class SentryClient:
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
         self._rate_limiter = SentryRateLimiter(client=self.client)
 
-        # These are created to limit the concurrent requests we are making to specific routes.
-        # The limits provided to each semaphore were pre-determined by the headers sent for each one of the routes.
-        # For more information about Sentry's rate limits, please read this: https://docs.sentry.io/api/ratelimits/
-        self._default_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_DEFAULT)
-        self._single_resource_semaphore = asyncio.Semaphore(
-            MAXIMUM_CONCURRENT_REQUESTS_SINGLE_RESOURCE
-        )
-        self._issues_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_ISSUES)
-        self._projects_semaphore = asyncio.Semaphore(
-            MAXIMUM_CONCURRENT_REQUESTS_PROJECTS
-        )
-
     @staticmethod
     def get_next_link(link_header: str) -> str:
         """Information about the next page of results is provided in the link header. The pagination cursors are returned for both the previous and the next page.
@@ -80,27 +60,15 @@ class SentryClient:
         logger.debug(f"Getting paginated resource from Sentry for URL: {url}")
 
         while url:
-            try:
-                response = await self._rate_limiter.request(
-                    url=url,
-                    params=params,
-                )
-                records = response.json()
-                logger.debug(
-                    f"Received {len(records)} records from Sentry for URL: {url}"
-                )
-                yield records
+            response = await self._rate_limiter.request(
+                url=url,
+                params=params,
+            )
+            records = response.json()
+            logger.debug(f"Received {len(records)} records from Sentry for URL: {url}")
+            yield records
 
-                url = self.get_next_link(response.headers.get("link", ""))
-
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-                )
-                raise
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP occurred while fetching Sentry data: {e}")
-                raise
+            url = self.get_next_link(response.headers.get("link", ""))
 
     async def _get_single_resource(self, url: str) -> list[dict[str, Any]]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")
@@ -110,12 +78,8 @@ class SentryClient:
         except httpx.HTTPStatusError as e:
             if e.response.status_code:
                 raise ResourceNotFoundError()
-            logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-            )
             return []
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP occurred while fetching Sentry data: {e}")
+        except httpx.HTTPError:
             return []
 
     async def _get_project_tags_iterator(

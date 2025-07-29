@@ -5,9 +5,14 @@ from typing import Optional, Any
 import httpx
 from loguru import logger
 
+MAXIMUM_CONCURRENT_REQUESTS_SINGLE_RESOURCE = 22
+MAXIMUM_CONCURRENT_REQUESTS_ISSUES = 3
+MAXIMUM_CONCURRENT_REQUESTS_PROJECTS = 3
 MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
+MINIMUM_LIMIT_REMAINING = 10
+MINIMUM_ISSUES_LIMIT_REMAINING = 3
+DEFAULT_SLEEP_TIME = 0.1
 MAXIMUM_LIMIT_ON_RETRIES = 3
-MINIMUM_LIMIT_REMAINING = 5
 
 
 class SentryRateLimiter:
@@ -67,6 +72,8 @@ class SentryRateLimiter:
 
     async def _wait_if_needed(self) -> None:
         """Checks the current rate limit state and sleeps if necessary."""
+        sleep_duration = None
+
         async with self._lock:
             # If we have no rate limit info yet, proceed with the request
             if self._rate_limit_remaining is None or self._rate_limit_reset is None:
@@ -78,11 +85,13 @@ class SentryRateLimiter:
                 # Only sleep if the reset time is in the future
                 if self._rate_limit_reset > current_time:
                     sleep_duration = self._rate_limit_reset - current_time
-                    logger.info(
-                        f"Rate limit threshold reached ({self._rate_limit_remaining} remaining). "
-                        f"Sleeping for {sleep_duration:.2f} seconds."
-                    )
-                    await asyncio.sleep(sleep_duration)
+
+        if sleep_duration:
+            logger.info(
+                f"Rate limit threshold reached ({self._rate_limit_remaining} remaining). "
+                f"Sleeping for {sleep_duration:.2f} seconds."
+            )
+            await asyncio.sleep(sleep_duration)
 
     @staticmethod
     def _get_sleep_retry_duration(response: httpx.Response, retry_count: int) -> float:
@@ -153,4 +162,7 @@ class SentryRateLimiter:
                 logger.error(
                     f"Got HTTP error to url: {url} with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
+                raise
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP occurred while fetching Sentry data: {e}")
                 raise
