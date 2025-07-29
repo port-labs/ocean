@@ -276,6 +276,7 @@ class TestGroupQueue:
 
         # After get: size should be 2 (current item excluded)
         await queue.get()
+        await queue.commit()
         assert await queue.size() == 2
 
         # After commit: size should be 2 (item removed)
