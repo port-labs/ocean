@@ -215,7 +215,6 @@ class AzureDevopsClient(HTTPBaseClient):
                         if self._repository_is_healthy(repo)
                     ]
 
-    @cache_iterator_result()
     async def generate_branches(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:

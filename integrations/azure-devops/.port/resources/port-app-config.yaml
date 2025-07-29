@@ -125,20 +125,3 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
-  - kind: branch
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .__repository.project.name + "/" + .__repository.name + "/" + .name | gsub(" "; "") | gsub("/"; "-") | ascii_downcase
-          title: .name
-          blueprint: '"branches"'
-          properties:
-            objectId: .objectId
-            creator: .creator.displayName
-            url: .url
-          relations:
-            repository: >-
-              "\(.__repository.project.name | ascii_downcase | gsub("[ ();]";
-              ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"

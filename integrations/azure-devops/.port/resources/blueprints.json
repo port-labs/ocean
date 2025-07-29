@@ -333,45 +333,5 @@
         "many": false
       }
     }
-  },
-  {
-    "identifier": "branches",
-    "title": "Branch",
-    "icon": "AzureDevops",
-    "schema": {
-      "properties": {
-        "objectId": {
-          "title": "Object ID",
-          "type": "string",
-          "icon": "DefaultProperty",
-          "description": "The object ID of the branch's latest commit"
-        },
-        "creator": {
-          "title": "Creator",
-          "type": "string",
-          "icon": "DefaultProperty",
-          "description": "The display name of the branch creator"
-        },
-        "url": {
-          "title": "URL",
-          "type": "string",
-          "format": "url",
-          "icon": "Link",
-          "description": "Link to the branch in Azure DevOps"
-        }
-      },
-      "required": ["objectId"]
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "repository": {
-        "title": "Repository",
-        "target": "service",
-        "required": true,
-        "many": false
-      }
-    }
   }
 ]
