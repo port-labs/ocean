@@ -5,6 +5,7 @@ from typing import Optional, Any
 import httpx
 from loguru import logger
 
+#!todo - remove unused constants
 MAXIMUM_CONCURRENT_REQUESTS_SINGLE_RESOURCE = 22
 MAXIMUM_CONCURRENT_REQUESTS_ISSUES = 3
 MAXIMUM_CONCURRENT_REQUESTS_PROJECTS = 3
@@ -144,6 +145,9 @@ class SentryRateLimiter:
                 await self._wait_if_needed()
                 response = await self.client.request(method, url, params=params)
                 await self._update_rate_limit_state(response)
+                logger.debug(
+                    f"Received response with status code: {response.status_code} for {method} {url}"
+                )
 
                 if response.status_code == 429:
                     retries += 1
@@ -152,6 +156,9 @@ class SentryRateLimiter:
                         response.raise_for_status()  # Raise the final httpx.HTTPStatusError
 
                     sleep_time = self._get_sleep_retry_duration(response, retries)
+                    logger.info(
+                        f"Retrying request for {method} {url} after {sleep_time:.2f} seconds due to 429."
+                    )
                     await asyncio.sleep(sleep_time)
                     continue  # Retry the request
 
