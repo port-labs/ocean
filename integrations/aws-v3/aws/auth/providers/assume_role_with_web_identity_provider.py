@@ -5,6 +5,7 @@ from aiobotocore.credentials import AioRefreshableCredentials
 from aws.auth.utils import CredentialsProviderError
 from loguru import logger
 from typing import Any, Awaitable, Callable, Dict
+import aiofiles
 
 
 class AssumeRoleWithWebIdentityProvider(CredentialProvider):
@@ -46,8 +47,8 @@ class AssumeRoleWithWebIdentityProvider(CredentialProvider):
             )
 
         try:
-            with open(token_file, "r") as file:
-                token = file.read().strip()
+            async with aiofiles.open(token_file, "r") as file:
+                token = (await file.read()).strip()
                 if not token:
                     raise CredentialsProviderError(
                         f"Web identity token file {token_file} is empty"
