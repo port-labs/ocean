@@ -72,7 +72,6 @@ class AbstractGithubClient(ABC):
         resource: str,
         ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> bool:
-
         all_ignored_errors = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
         status_code = error.response.status_code
 

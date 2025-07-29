@@ -1,18 +1,18 @@
 import asyncio
-import re
 import datetime
 import http
 import json
+import re
 import time
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
 
 import httpx
 from loguru import logger
-
-from utils import generate_time_windows_from_interval_days
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
+
+from utils import generate_time_windows_from_interval_days
 
 MAX_PAGE_SIZE = 100
 
@@ -21,6 +21,7 @@ MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
 MINIMUM_LIMIT_REMAINING = 1
 DEFAULT_SLEEP_TIME = 0.1
 FETCH_WINDOW_TIME_IN_MINUTES = 10
+FETCH_WINDOW_TIME_IN_SECONDS = 3600
 
 SERVICE_KEY = "__service"
 QUERY_ID_KEY = "__query_id"
@@ -570,7 +571,7 @@ class DatadogClient:
 
         except httpx.HTTPStatusError as err:
             logger.warning(
-                "Failed to check if webhook exists, skipping...", exc_info=err
+                f"An error occurred while checking if a webhook exists. Error: {str(err)}. Skipping webhook setup."
             )
             return False
 
@@ -608,6 +609,8 @@ class DatadogClient:
                         "event_type": "$EVENT_TYPE",
                         "event_url": "$LINK",
                         "service": "$HOSTNAME",
+                        "service_id": "$SERVICE_ID",
+                        "service_name": "$SERVICE_NAME",
                         "creator": "$USER",
                         "title": "$EVENT_TITLE",
                         "date": "$DATE",
@@ -631,4 +634,35 @@ class DatadogClient:
             logger.info(f"Webhook Subscription Response: {result}")
 
         except Exception as e:
-            logger.error("Failed to create webhook, skipping...", exc_info=e)
+            logger.error(f"Failed to create a webhook: {str(e)}, skipping...")
+
+    async def get_service_dependencies(
+        self, env: str, start_time: float
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get service dependencies from Datadog, chunked into pages.
+        Each yielded page is a list of service dependency dicts, e.g.,
+        [{ "name": "service_a", "calls": [...] }, ...]
+        Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
+        """
+        end_time = int(time.time())
+
+        # convert `start_time` to unix timestamp
+        start_time = time.time() - (FETCH_WINDOW_TIME_IN_SECONDS * start_time)
+
+        url = f"{self.api_url}/api/v1/service_dependencies"
+        result: dict[str, Any] = await self._send_api_request(
+            url,
+            params={"env": env, "start": int(start_time), "end": end_time},
+        )
+
+        if not result:
+            return
+
+        # Convert the result to a list of dicts with service names
+        items: list[dict[str, Any]] = [
+            {"name": name, **details} for name, details in result.items()
+        ]
+
+        for i in range(0, len(items), MAX_PAGE_SIZE):
+            yield items[i : i + MAX_PAGE_SIZE]

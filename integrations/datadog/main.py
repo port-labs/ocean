@@ -15,6 +15,7 @@ from overrides import (
     DatadogResourceConfig,
     DatadogSelector,
     TeamResourceConfig,
+    ServiceDependencyResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -135,6 +136,18 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         logger.info(f"Received batch with {len(metrics)} metrics")
         yield metrics
+
+
+@ocean.on_resync(ObjectKind.SERVICE_DEPENDENCY)
+async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+
+    selector = cast(ServiceDependencyResourceConfig, event.resource_config).selector
+    async for dependencies in dd_client.get_service_dependencies(
+        env=selector.environment, start_time=selector.start_time
+    ):
+        logger.info(f"Received batch with {len(dependencies)} dependencies")
+        yield dependencies
 
 
 @ocean.on_start()
