@@ -130,27 +130,3 @@ def mock_port_app_config() -> GithubPortAppConfig:
             )
         ],
     )
-
-
-@pytest.fixture(autouse=True)
-def mock_rate_limiter(request: Any) -> Generator[AsyncMock, None, None]:
-    """
-    Mock the rate limiter to bypass all delays and make tests fast.
-    """
-    if request.node.get_closest_marker("no_mock_rate_limiter"):
-        yield AsyncMock()  # Skip mocking
-        return
-    with patch(
-        "github.clients.rate_limiter.GitHubRateLimiter.execute_request"
-    ) as mock_execute:
-        # Mock the execute_request method to just call the request function directly
-        async def mock_execute_request(
-            request_func: Callable[..., Awaitable[httpx.Response]],
-            resource: str,
-            *args: Any,
-            **kwargs: Any,
-        ) -> httpx.Response:
-            return await request_func(resource, *args, **kwargs)
-
-        mock_execute.side_effect = mock_execute_request
-        yield mock_execute
