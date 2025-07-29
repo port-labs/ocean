@@ -19,17 +19,11 @@ def mock_client() -> AsyncMock:
     return AsyncMock(spec=httpx.AsyncClient)
 
 
-@pytest.fixture
-def rate_limiter(mock_client: AsyncMock) -> SentryRateLimiter:
-    """Provides an instance of SentryRateLimiter with a mock client."""
-    return SentryRateLimiter(client=mock_client)
-
-
 class TestSentryRateLimiter:
     """Test suite for the SentryRateLimiter."""
 
     async def test_successful_request_updates_state(
-        self, rate_limiter: SentryRateLimiter, mock_client: AsyncMock
+        self, mock_client: AsyncMock
     ) -> None:
         """
         Tests that a successful request updates the internal rate limit state.
@@ -44,23 +38,24 @@ class TestSentryRateLimiter:
         mock_response.json = AsyncMock(return_value={"data": "success"})
         mock_client.request.return_value = mock_response
 
-        response = await rate_limiter.request("https://test.com")
+        async with SentryRateLimiter() as rate_limiter:
+            request_func = mock_client.request("https://test.com", method="GET")
+            response = await rate_limiter.execute(lambda: request_func)
 
-        mock_client.request.assert_awaited_once_with(
-            "GET", "https://test.com", params=None
-        )
-        assert response.status_code == 200
-        assert await response.json() == {"data": "success"}
-        assert rate_limiter._rate_limit_remaining == 49
-        assert rate_limiter._rate_limit_reset == float(
-            headers["X-Sentry-Rate-Limit-Reset"]
-        )
+            mock_client.request.assert_awaited_once_with(
+                "https://test.com", method="GET"
+            )
+            assert response.status_code == 200
+            assert await response.json() == {"data": "success"}
+            assert rate_limiter._rate_limit_remaining == 49
+            assert rate_limiter._rate_limit_reset == float(
+                headers["X-Sentry-Rate-Limit-Reset"]
+            )
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_proactive_wait_when_threshold_reached(
         self,
         mock_sleep: AsyncMock,
-        rate_limiter: SentryRateLimiter,
         mock_client: AsyncMock,
     ) -> None:
         """
@@ -69,6 +64,7 @@ class TestSentryRateLimiter:
         """
         reset_time = time.time() + 10
         # Set the initial state to be below the threshold
+        rate_limiter = SentryRateLimiter()
         rate_limiter._rate_limit_remaining = MINIMUM_LIMIT_REMAINING - 1
         rate_limiter._rate_limit_reset = reset_time
 
@@ -79,7 +75,9 @@ class TestSentryRateLimiter:
         mock_client.request.return_value = mock_response
 
         with patch("time.time", return_value=reset_time - 10):
-            await rate_limiter.request("https://test.com")
+            async with rate_limiter:
+                request_func = mock_client.request("https://test.com", method="GET")
+                await rate_limiter.execute(lambda: request_func)
 
         # Should sleep for the remaining time in the window
         mock_sleep.assert_awaited_once()
@@ -90,7 +88,6 @@ class TestSentryRateLimiter:
     async def test_proactive_wait_is_skipped_if_reset_in_past(
         self,
         mock_sleep: AsyncMock,
-        rate_limiter: SentryRateLimiter,
         mock_client: AsyncMock,
     ) -> None:
         """
@@ -98,6 +95,7 @@ class TestSentryRateLimiter:
         even if the remaining count is low.
         """
         # Set the initial state with a reset time that has already passed
+        rate_limiter = SentryRateLimiter()
         rate_limiter._rate_limit_remaining = MINIMUM_LIMIT_REMAINING - 1
         rate_limiter._rate_limit_reset = time.time() - 60
 
@@ -107,7 +105,9 @@ class TestSentryRateLimiter:
         mock_response.json = AsyncMock(return_value={"data": "success"})
         mock_client.request.return_value = mock_response
 
-        await rate_limiter.request("https://test.com")
+        async with rate_limiter:
+            request_func = mock_client.request("https://test.com", method="GET")
+            await rate_limiter.execute(lambda: request_func)
 
         mock_sleep.assert_not_awaited()
 
@@ -115,7 +115,6 @@ class TestSentryRateLimiter:
     async def test_reactive_retry_on_429_with_retry_after_header(
         self,
         mock_sleep: AsyncMock,
-        rate_limiter: SentryRateLimiter,
         mock_client: AsyncMock,
     ) -> None:
         """
@@ -136,7 +135,9 @@ class TestSentryRateLimiter:
         mock_200_response.json = AsyncMock(return_value={"data": "success"})
         mock_client.request.side_effect = [mock_429_response, mock_200_response]
 
-        response = await rate_limiter.request("https://test.com")
+        async with SentryRateLimiter() as rate_limiter:
+            request_func = lambda: mock_client.request("https://test.com", method="GET")
+            response = await rate_limiter.execute(request_func)
 
         assert mock_client.request.call_count == 2
         mock_sleep.assert_awaited_once_with(retry_after_seconds)
@@ -147,7 +148,6 @@ class TestSentryRateLimiter:
     async def test_reactive_retry_on_429_with_exponential_backoff(
         self,
         mock_sleep: AsyncMock,
-        rate_limiter: SentryRateLimiter,
         mock_client: AsyncMock,
     ) -> None:
         """
@@ -167,7 +167,9 @@ class TestSentryRateLimiter:
         mock_200_response.json = AsyncMock(return_value={"data": "success"})
         mock_client.request.side_effect = [mock_429_response, mock_200_response]
 
-        await rate_limiter.request("https://test.com")
+        async with SentryRateLimiter() as rate_limiter:
+            request_func = lambda: mock_client.request("https://test.com", method="GET")
+            await rate_limiter.execute(request_func)
 
         assert mock_client.request.call_count == 2
         # Fallback sleep should be 2**1 for the first retry
@@ -178,7 +180,6 @@ class TestSentryRateLimiter:
     async def test_max_retries_exceeded_raises_error(
         self,
         mock_sleep: AsyncMock,
-        rate_limiter: SentryRateLimiter,
         mock_client: AsyncMock,
     ) -> None:
         """
@@ -197,7 +198,11 @@ class TestSentryRateLimiter:
         mock_client.request.return_value = mock_429_response
 
         with pytest.raises(httpx.HTTPStatusError) as exc_info:
-            await rate_limiter.request("https://test.com")
+            async with SentryRateLimiter() as rate_limiter:
+                request_func = lambda: mock_client.request(
+                    url="https://test.com", method="GET"
+                )
+                await rate_limiter.execute(request_func)
 
         # The final error should be the 429
         assert exc_info.value.response.status_code == 429
@@ -218,7 +223,6 @@ class TestSentryRateLimiter:
     async def test_non_429_http_error_raises_immediately(
         self,
         mock_sleep: AsyncMock,
-        rate_limiter: SentryRateLimiter,
         mock_client: AsyncMock,
     ) -> None:
         """
@@ -236,7 +240,9 @@ class TestSentryRateLimiter:
         mock_client.request.return_value = mock_response
 
         with pytest.raises(httpx.HTTPStatusError) as exc_info:
-            await rate_limiter.request("https://test.com")
+            async with SentryRateLimiter() as rate_limiter:
+                request_func = mock_client.request("https://test.com", method="GET")
+                await rate_limiter.execute(lambda: request_func)
 
         assert exc_info.value.response.status_code == 500
         mock_client.request.assert_awaited_once()
@@ -244,7 +250,7 @@ class TestSentryRateLimiter:
         mock_response.raise_for_status.assert_called_once()
 
     async def test_request_passes_method_and_params(
-        self, rate_limiter: SentryRateLimiter, mock_client: AsyncMock
+        self, mock_client: AsyncMock
     ) -> None:
         """
         Tests that the `request` method correctly passes the HTTP method
@@ -259,13 +265,13 @@ class TestSentryRateLimiter:
         url = "https://test.com/api"
         params = {"project": "test-project", "id": 123}
 
-        await rate_limiter.request(url, method="POST", params=params)
+        async with SentryRateLimiter() as rate_limiter:
+            request_func = mock_client.request(url, method="POST", params=params)
+            await rate_limiter.execute(lambda: request_func)
 
-        mock_client.request.assert_awaited_once_with("POST", url, params=params)
+        mock_client.request.assert_awaited_once_with(url, method="POST", params=params)
 
-    async def test_lock_is_used_for_state_updates(
-        self, rate_limiter: SentryRateLimiter, mock_client: AsyncMock
-    ) -> None:
+    async def test_lock_is_used_for_state_updates(self, mock_client: AsyncMock) -> None:
         """
         Verifies that the asyncio.Lock is acquired during state updates
         to ensure thread-safety in concurrent environments.
@@ -277,13 +283,16 @@ class TestSentryRateLimiter:
         mock_client.request.return_value = mock_response
 
         # Patch the lock to spy on its calls
+        rate_limiter = SentryRateLimiter()
         with (
             patch.object(
                 rate_limiter._lock, "acquire", new_callable=AsyncMock
             ) as mock_acquire,
             patch.object(rate_limiter._lock, "release") as mock_release,
         ):
-            await rate_limiter.request("https://test.com")
+            async with rate_limiter:
+                request_func = mock_client.request("https://test.com", method="GET")
+                await rate_limiter.execute(lambda: request_func)
 
             # _wait_if_needed and _update_rate_limit_state both acquire the lock
             assert mock_acquire.call_count == 2

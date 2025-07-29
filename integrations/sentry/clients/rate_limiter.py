@@ -1,28 +1,22 @@
 import asyncio
 import time
-from typing import Optional, Any
+from typing import Optional, Callable, Awaitable, Type, Any
 
 import httpx
 from loguru import logger
 
-#!todo - remove unused constants
-MAXIMUM_CONCURRENT_REQUESTS_SINGLE_RESOURCE = 22
-MAXIMUM_CONCURRENT_REQUESTS_ISSUES = 3
-MAXIMUM_CONCURRENT_REQUESTS_PROJECTS = 3
-MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
 MINIMUM_LIMIT_REMAINING = 10
-MINIMUM_ISSUES_LIMIT_REMAINING = 3
-DEFAULT_SLEEP_TIME = 0.1
 MAXIMUM_LIMIT_ON_RETRIES = 3
 
 
 class SentryRateLimiter:
     """
-    A client wrapper that handles Sentry API rate limits gracefully.
+    Orchestrates Sentry API requests to handle rate limits gracefully.
 
-    This class inspects Sentry's rate-limiting headers on each response
-    and introduces delays to prevent hitting the rate limit. It handles both
-    proactive (based on X-Sentry-Rate-Limit-Remaining) and reactive
+    This class provides a method to execute a request function, wrapping it
+    in rate-limiting logic. It inspects Sentry's rate-limiting headers on each
+    response and introduces delays to prevent hitting the rate limit. It handles
+    both proactive (based on X-Sentry-Rate-Limit-Remaining) and reactive
     (based on 429 Too Many Requests with a Retry-After header) rate limiting.
 
     Sentry Rate Limit Headers:
@@ -31,25 +25,34 @@ class SentryRateLimiter:
     - X-Sentry-Rate-Limit-Reset: The UTC epoch timestamp when the window resets.
 
     For more information, see: https://docs.sentry.io/api/ratelimits/
+
+    Usage:
+        limiter = SentryRateLimiter()
+        client = httpx.AsyncClient()
+        request_func = lambda: client.get("https://sentry.io/api/...")
+        response = await limiter.execute(request_func)
     """
 
-    def __init__(
-        self,
-        client: httpx.AsyncClient,
-    ):
+    def __init__(self) -> None:
         """
         Initializes the SentryRateLimiter.
-
-        Args:
-            client (httpx.AsyncClient): The client used for making API calls.
         """
-
-        self.client = client
-
         # Rate limit state, protected by a lock for thread safety
         self._lock = asyncio.Lock()
         self._rate_limit_remaining: Optional[int] = None
         self._rate_limit_reset: Optional[float] = None
+
+    async def __aenter__(self) -> "SentryRateLimiter":
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[Any],
+    ) -> Optional[bool]:
+        # No-op or post-request cleanup
+        return None
 
     async def _update_rate_limit_state(self, response: httpx.Response) -> None:
         """Updates the internal rate limit state from response headers."""
@@ -119,19 +122,19 @@ class SentryRateLimiter:
         )
         return sleep_duration
 
-    async def request(
-        self, url: str, method: str = "GET", params: dict[str, Any] | None = None
+    async def execute(
+        self, request_func: Callable[[], Awaitable[httpx.Response]]
     ) -> httpx.Response:
         """
-        Makes a rate-limited request to the Sentry API.
+        Executes a request function with rate-limiting logic.
 
         This is the core method that wraps the actual HTTP call, applying
         rate-limiting logic before and after the request.
 
         Args:
-            method (str): The HTTP method to use for the request.
-            params (dict[str, Any] | None): Optional query parameters to include in the request.
-            url (str): The URL for the request.
+            request_func (Callable[[], Awaitable[httpx.Response]]): An async function
+                that takes no arguments and returns an awaitable httpx.Response. This function
+                is responsible for making the actual HTTP request.
 
         Returns:
             httpx.Response: The response object from the successful request.
@@ -143,10 +146,12 @@ class SentryRateLimiter:
         while True:
             try:
                 await self._wait_if_needed()
-                response = await self.client.request(method, url, params=params)
+                response = await request_func()
                 await self._update_rate_limit_state(response)
+
+                request = response.request
                 logger.debug(
-                    f"Received response with status code: {response.status_code} for {method} {url}"
+                    f"Received response with status code: {response.status_code} for {request.method} {request.url}"
                 )
 
                 if response.status_code == 429:
@@ -157,7 +162,7 @@ class SentryRateLimiter:
 
                     sleep_time = self._get_sleep_retry_duration(response, retries)
                     logger.info(
-                        f"Retrying request for {method} {url} after {sleep_time:.2f} seconds due to 429."
+                        f"Retrying request for {request.method} {request.url} after {sleep_time:.2f} seconds due to 429."
                     )
                     await asyncio.sleep(sleep_time)
                     continue  # Retry the request
@@ -166,10 +171,14 @@ class SentryRateLimiter:
                 response.raise_for_status()
                 return response
             except httpx.HTTPStatusError as e:
+                req = e.request
                 logger.error(
-                    f"Got HTTP error to url: {url} with status code: {e.response.status_code} and response text: {e.response.text}"
+                    f"Got HTTP error to url: {req.url} with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
                 raise
             except httpx.HTTPError as e:
-                logger.error(f"HTTP occurred while fetching Sentry data: {e}")
+                req = e.request
+                logger.error(
+                    f"HTTP error occurred while requesting {req.method} {req.url}: {e}"
+                )
                 raise

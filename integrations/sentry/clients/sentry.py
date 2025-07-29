@@ -31,10 +31,9 @@ class SentryClient:
         self.base_headers = {"Authorization": "Bearer " + f"{self.auth_token}"}
         self.api_url = f"{self.sentry_base_url}/api/0"
         self.organization = sentry_organization
-        self.client = http_async_client
-        self.client.headers.update(self.base_headers)
+        self._client = http_async_client
+        self._client.headers.update(self.base_headers)
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
-        self._rate_limiter = SentryRateLimiter(client=self.client)
 
     @staticmethod
     def get_next_link(link_header: str) -> str:
@@ -60,21 +59,24 @@ class SentryClient:
         logger.debug(f"Getting paginated resource from Sentry for URL: {url}")
 
         while url:
-            response = await self._rate_limiter.request(
-                url=url,
-                params=params,
-            )
-            records = response.json()
-            logger.debug(f"Received {len(records)} records from Sentry for URL: {url}")
-            yield records
+            async with SentryRateLimiter() as limiter:
+                response = await limiter.execute(
+                    lambda: self._client.get(url=url, params=params)
+                )
+                records = response.json()
+                logger.debug(
+                    f"Received {len(records)} records from Sentry for URL: {url}"
+                )
+                yield records
 
-            url = self.get_next_link(response.headers.get("link", ""))
+                url = self.get_next_link(response.headers.get("link", ""))
 
     async def _get_single_resource(self, url: str) -> list[dict[str, Any]]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")
         try:
-            response = await self._rate_limiter.request(url=url)
-            return response.json()
+            async with SentryRateLimiter() as limiter:
+                response = await limiter.execute(lambda: self._client.get(url=url))
+                return response.json()
         except httpx.HTTPStatusError as e:
             if e.response.status_code:
                 raise ResourceNotFoundError()
