@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.1.2-beta (2025-07-25)
+
+
+### Improvements
+
+- Added improvement for selecting collaborators and team relationships on repository kind
+
+
+## 1.1.1-beta (2025-07-24)
+
+
+### Improvements
+
+- Properly handle empty repo errors when ingesting files
+- Properly handle empty repo errors when ingesting folders
+
+
+## 1.1.0-beta (2025-07-23)
+
+
+### Features
+
+- Added support for Collaborator resources to track repository collaborators
+- Implemented Collaborator webhook processor for real-time updates
+
+
+## 1.0.9-beta (2025-07-22)
+
+
+### Improvements
+
+- Made the `repos` field optional in the file selector configuration. When omitted, the file selector will apply to all repositories.
+
+
 ## 1.0.8-beta (2025-07-20)
 
 
