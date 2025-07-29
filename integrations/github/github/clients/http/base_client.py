@@ -7,7 +7,9 @@ from httpx import Response
 from loguru import logger
 
 from github.helpers.utils import IgnoredError
-from github.clients.rate_limiter import GitHubRateLimiter
+from github.clients.rate_limiter.limiter import GitHubRateLimiter
+from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
+from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 from github.helpers.exceptions import RateLimitExceededError
 
 
@@ -23,17 +25,16 @@ class AbstractGithubClient(ABC):
         organization: str,
         github_host: str,
         authenticator: "AbstractGitHubAuthenticator",
-        max_retries: int = 5,
-        max_concurrent: int = 10,
         **kwargs: Any,
     ) -> None:
         self.organization = organization
         self.github_host = github_host
         self.authenticator = authenticator
         self.kwargs = kwargs
-        self.rate_limiter = GitHubRateLimiter(
-            max_retries=max_retries, max_concurrent=max_concurrent
-        )
+        self.rate_limiter: GitHubRateLimiter = GitHubRateLimiterRegistry.get_limiter(
+            host=github_host,
+            config=self.rate_limiter_config
+        ) 
 
     _DEFAULT_IGNORED_ERRORS = [
         IgnoredError(
@@ -61,6 +62,10 @@ class AbstractGithubClient(ABC):
     @abstractmethod
     def base_url(self) -> str: ...
 
+    @property
+    @abstractmethod
+    def rate_limiter_config(self) -> GitHubRateLimiterConfig: ...
+
     def _should_ignore_error(
         self,
         error: httpx.HTTPStatusError,
@@ -79,21 +84,6 @@ class AbstractGithubClient(ABC):
                 return True
         return False
 
-    async def _make_raw_request(
-        self,
-        resource: str,
-        params: Optional[Dict[str, Any]] = None,
-        method: str = "GET",
-        json_data: Optional[Dict[str, Any]] = None,
-    ) -> Response:
-        """Make a raw HTTP request without rate limiting (used by rate limiter)."""
-        return await self.authenticator.client.request(
-            method=method,
-            url=resource,
-            params=params,
-            json=json_data,
-            headers=await self.headers,
-        )
 
     async def make_request(
         self,
@@ -104,36 +94,45 @@ class AbstractGithubClient(ABC):
         ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> Response:
         """Make a request to the GitHub API with GitHub rate limiting and error handling."""
+        retries = 0
+        while retries <= self.rate_limiter.max_retries:
+            async with self.rate_limiter:
+                try:
+                    response = await self.authenticator.client.request(
+                        method=method,
+                        url=resource,
+                        params=params,
+                        json=json_data,
+                        headers=await self.headers,
+                    )
+                    response.raise_for_status()
 
-        try:
-            response = await self.rate_limiter.execute_request(
-                self._make_raw_request,
-                resource=resource,
-                params=params,
-                method=method,
-                json_data=json_data,
-            )
-            response.raise_for_status()
+                    self.rate_limiter.update_rate_limits(response.headers, resource)
+                    retries = 0
 
-            logger.debug(f"Successfully fetched {method} {resource}")
-            return response
+                    logger.debug(f"Successfully fetched {method} {resource}")
+                    return response
 
-        except httpx.HTTPStatusError as e:
-            if self._should_ignore_error(e, resource, ignored_errors):
-                return Response(200, content=b"{}")
+                except httpx.HTTPStatusError as e:
+                    self.rate_limiter.update_rate_limits(e.response.headers, resource)
 
-            logger.error(
-                f"GitHub API error for endpoint '{resource}': Status {e.response.status_code}, "
-                f"Method: {method}, Response: {e.response.text}"
-            )
-            raise
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error for endpoint '{resource}': {str(e)}")
-            raise
+                    if not self.rate_limiter.is_rate_limit_response(e.response):
+                        if self._should_ignore_error(e, resource, ignored_errors):
+                            return Response(200, content=b"{}")
 
-        except RateLimitExceededError as e:
-            logger.error(f"Rate limit exceeded for endpoint '{resource}': {str(e)}")
-            raise
+                    logger.error(
+                        f"GitHub API error for endpoint '{resource}': Status {e.response.status_code}, "
+                        f"Method: {method}, Response: {e.response.text}"
+                    )
+
+                    retries += 1
+                    raise
+
+                except httpx.HTTPError as e:
+                    logger.error(f"HTTP error for endpoint '{resource}': {str(e)}")
+                    raise
+    
+        raise RateLimitExceededError(f"Rate limit exceeded for {resource} after {retries} retries")
 
     async def send_api_request(
         self,
