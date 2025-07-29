@@ -8,6 +8,7 @@ import asyncio
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import EventType, event_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
@@ -19,7 +20,7 @@ from .abstract_webhook_processor import AbstractWebhookProcessor
 from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import LocalQueue
 
-CONCURRENCY_PER_PATH = 15
+CONCURRENCY_PER_PATH = 3
 
 
 class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
@@ -34,23 +35,80 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     ) -> None:
         self._router = router
         self._processors_classes: Dict[str, list[Type[AbstractWebhookProcessor]]] = {}
-        self._event_queues: Dict[str, LocalQueue[WebhookEvent]] = {}
+        self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
         self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
         signal_handler.register(self.shutdown)
 
     async def start_processing_event_messages(self) -> None:
-        """Start processing events for all registered paths"""
+        """Start processing events for all registered paths with N workers each."""
         await self.initialize_handlers()
         loop = asyncio.get_event_loop()
+
         for path in self._event_queues.keys():
-            try:
-                task = loop.create_task(self.process_queue(path))
+            for worker_id in range(CONCURRENCY_PER_PATH):
+                task = loop.create_task(self._queue_worker(path, worker_id))
                 self._webhook_processor_tasks.add(task)
                 task.add_done_callback(self._webhook_processor_tasks.discard)
+
+    async def _queue_worker(self, path: str, worker_id: int) -> None:
+        """Single‐worker loop pulling from the queue for a given path."""
+        queue = self._event_queues[path]
+        while True:
+            event = None
+            matching: List[Tuple[ResourceConfig, AbstractWebhookProcessor]] = []
+            try:
+                event = await queue.get()
+                with logger.contextualize(
+                    worker=worker_id,
+                    webhook_path=path,
+                    trace_id=event.trace_id,
+                ):
+                    async with event_context(
+                        EventType.HTTP_REQUEST,
+                        trigger_type="machine",
+                    ):
+                        # refresh config, find processors, execute, etc.
+                        await ocean.integration.port_app_config_handler.get_port_app_config(
+                            use_cache=False
+                        )
+                        matching = await self._extract_matching_processors(event, path)
+                        results = await asyncio.gather(
+                            *(
+                                self._process_single_event(proc, path, res)
+                                for res, proc in matching
+                            ),
+                            return_exceptions=True,
+                        )
+
+                        good = [
+                            r for r in results if isinstance(r, WebhookEventRawResults)
+                        ]
+
+                        if good:
+                            logger.info(
+                                "Exporting raw event results to entities",
+                                ok=len(good),
+                            )
+                        await self.sync_raw_results(good)
+                        # handle good/bad, sync results…
+            except asyncio.CancelledError:
+                logger.info(f"Worker {worker_id} for {path} shutting down")
+                for _, proc in matching:
+                    await proc.cancel()
+                    self._timestamp_event_error(proc.event)
+                break
             except Exception as e:
-                logger.exception(f"Error starting queue processor for {path}: {str(e)}")
+                logger.exception(
+                    f"Unexpected error in worker {worker_id} for {path}: {e}"
+                )
+                for _, proc in matching:
+                    self._timestamp_event_error(proc.event)
+            finally:
+                if event is not None:
+                    logger.info(f"{event.group_id}")
+                    await queue.commit()
 
     async def _extract_matching_processors(
         self, webhook_event: WebhookEvent, path: str
@@ -162,6 +220,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 finally:
                     if event is not None:  # only ack if we really got one
                         await queue.commit()
+                        logger.info(f"{queue.size()} items left to process")
                         event = None
 
         # ── spin up the worker pool and wait forever ───────────────────── #

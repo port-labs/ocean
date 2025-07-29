@@ -15,7 +15,6 @@ from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
 from port_ocean.utils.signal import init_signal_handler
-from port_ocean.runtime_vars import workers
 
 
 def _get_default_config_factory() -> None | Type[BaseModel]:
@@ -63,7 +62,7 @@ def run(
     if app.config.event_listener.should_resync is False:
         gunicorn_options = {
             "bind": "0.0.0.0:8000",
-            "workers": workers,
+            "workers": 1,
             "worker_class": "uvicorn.workers.UvicornWorker",
             "loglevel": application_settings.log_level.lower(),
             "timeout": 30,
