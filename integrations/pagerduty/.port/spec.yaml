@@ -40,9 +40,7 @@ saas:
         apiUrl: '"https://api.pagerduty.com"'
 installationDocs:
   Saas__SaasOAuth2:
-    enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?oauth=manual
-    jumpTo: setup
+    enabled: false
   Saas__Saas:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?oauth=manual

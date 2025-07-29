@@ -25,3 +25,7 @@ class GraphQLErrorGroup(Exception):
 
     def _format_message(self) -> str:
         return "GraphQL errors occurred:\n" + "\n".join(f"- {e}" for e in self.errors)
+
+
+class CheckRunsException(Exception):
+    """Exception for check runs errors."""
