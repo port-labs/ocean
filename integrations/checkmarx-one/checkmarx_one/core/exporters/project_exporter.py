@@ -1,40 +1,42 @@
-from typing import Any, AsyncIterator, cast
+from collections.abc import AsyncGenerator
+from typing import Any, Optional
 from loguru import logger
-from port_ocean.core.ocean_types import RAW_ITEM
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from checkmarx_one.core.options import ListProjectOptions, SingleProjectOptions
 
 
 class CheckmarxProjectExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One projects."""
 
-    async def get_resource[
-        ExporterOptionsT: SingleProjectOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
-        """Get a single project by ID."""
-        project_id = options["project_id"]
-        project = await self.client.get_project_by_id(project_id)
+    async def get_project_by_id(self, project_id: str) -> dict[str, Any]:
+        """Get a specific project by ID."""
+        response = await self.client._send_api_request(f"/projects/{project_id}")
         logger.info(f"Fetched project with ID: {project_id}")
-        return project
+        return response
 
-    def get_paginated_resources[
-        ExporterOptionsT: ListProjectOptions
-    ](self, options: ExporterOptionsT | None = None) -> AsyncIterator[
-        list[dict[str, Any]]
-    ]:
-        """Get all projects with pagination."""
-        if options is None:
-            options = cast(ExporterOptionsT, {})
+    async def get_projects(
+        self,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get projects from Checkmarx One.
 
-        limit = options.get("limit")
-        offset = options.get("offset")
+        Args:
+            limit: Maximum number of projects per page
+            offset: Starting offset for pagination
 
-        async def _get_projects() -> AsyncIterator[list[dict[str, Any]]]:
-            async for projects_batch in self.client.get_projects(
-                limit=cast(int | None, limit), offset=cast(int | None, offset)
-            ):
-                logger.info(f"Fetched batch of {len(projects_batch)} projects")
-                yield projects_batch
+        Yields:
+            Batches of projects
+        """
+        params = {}
+        if limit is not None:
+            params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
 
-        return _get_projects()
+        async for projects in self.client._get_paginated_resources(
+            "/projects", "projects", params
+        ):
+            logger.info(f"Fetched batch of {len(projects)} projects")
+            yield projects

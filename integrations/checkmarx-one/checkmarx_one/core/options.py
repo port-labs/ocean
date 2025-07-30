@@ -1,4 +1,4 @@
-from typing import NotRequired, Optional, Required, TypedDict
+from typing import List, NotRequired, Optional, Required, TypedDict
 
 
 class ListProjectOptions(TypedDict):
@@ -17,7 +17,7 @@ class SingleProjectOptions(TypedDict):
 class ListScanOptions(TypedDict):
     """Options for listing scans."""
 
-    project_id: NotRequired[Optional[str]]
+    project_ids: NotRequired[Optional[List[str]]]
     limit: NotRequired[Optional[int]]
     offset: NotRequired[Optional[int]]
 

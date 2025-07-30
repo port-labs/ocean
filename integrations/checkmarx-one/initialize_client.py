@@ -3,7 +3,8 @@ from aiolimiter import AsyncLimiter
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
-from client import CheckmarxClient, CheckmarxAuthenticationError
+from client import CheckmarxClient
+from exceptions import CheckmarxAuthenticationError
 
 # Conservative rate limiting
 CHECKMARX_MAX_REQUESTS_PER_HOUR = 3600

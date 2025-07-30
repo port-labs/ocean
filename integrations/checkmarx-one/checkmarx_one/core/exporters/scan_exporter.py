@@ -1,43 +1,44 @@
-from typing import Any, AsyncIterator, cast
+from collections.abc import AsyncGenerator
+from typing import Any, List, Optional
 from loguru import logger
-from port_ocean.core.ocean_types import RAW_ITEM
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from checkmarx_one.core.options import ListScanOptions, SingleScanOptions
 
 
 class CheckmarxScanExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One scans."""
 
-    async def get_resource[
-        ExporterOptionsT: SingleScanOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
-        """Get a single scan by ID."""
-        scan_id = options["scan_id"]
-        scan = await self.client.get_scan_by_id(scan_id)
+    async def get_scan_by_id(self, scan_id: str) -> dict[str, Any]:
+        """Get a specific scan by ID."""
+        response = await self.client._send_api_request(f"/scans/{scan_id}")
         logger.info(f"Fetched scan with ID: {scan_id}")
-        return scan
+        return response
 
-    def get_paginated_resources[
-        ExporterOptionsT: ListScanOptions
-    ](self, options: ExporterOptionsT | None = None) -> AsyncIterator[
-        list[dict[str, Any]]
-    ]:
-        """Get all scans with pagination."""
-        if options is None:
-            options = cast(ExporterOptionsT, {})
+    async def get_scans(
+        self,
+        project_ids: Optional[List[str]] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get scans from Checkmarx One.
 
-        project_id = options.get("project_id")
-        limit = options.get("limit")
-        offset = options.get("offset")
+        Args:
+            project_id: Filter scans by project ID
+            limit: Maximum number of scans per page
+            offset: Starting offset for pagination
 
-        async def _get_scans() -> AsyncIterator[list[dict[str, Any]]]:
-            async for scans_batch in self.client.get_scans(
-                project_id=cast(str | None, project_id),
-                limit=cast(int | None, limit),
-                offset=cast(int | None, offset),
-            ):
-                logger.info(f"Fetched batch of {len(scans_batch)} scans")
-                yield scans_batch
+        Yields:
+            Batches of scans
+        """
+        params: dict[str, Any] = {}
+        if project_ids:
+            params["project-ids"] = ','.join(project_ids)
+        if limit is not None:
+            params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
 
-        return _get_scans()
+        async for scans in self.client._get_paginated_resources("/scans", "scans", params):
+            logger.info(f"Fetched batch of {len(scans)} scans")
+            yield scans
