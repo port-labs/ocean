@@ -240,6 +240,15 @@ def test_create_search_params() -> None:
     expected = ["repo1+in+nameORrepo2+in+nameORrepo3+in+name"]
     assert list(create_search_params(repos)) == expected
 
+
+def test_create_search_params_with_long_repo_name() -> None:
+    # Test case: search string with a single repo is longer than 256 characters
+    long_repo_name = "a" * 300
+    repos = [long_repo_name]
+    # This should cause a RecursionError due to the implementation of create_search_params
+    with pytest.raises(RecursionError):
+        list(create_search_params(repos))
+
     # Test case 3: List with more than max_operators repos (default is 5)
     # The function has a bug where it will skip an element and yield multiple times
     repos = ["r1", "r2", "r3", "r4", "r5", "r6"]

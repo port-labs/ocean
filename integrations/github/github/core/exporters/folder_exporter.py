@@ -30,7 +30,6 @@ def create_pattern_mapping(
     return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
 
 
-# AI! create a test case that validates what happens when search string is more than 256 characters
 def create_search_params(repos: list[str], max_operators: int = 5) -> Generator[str]:
     """Create search query strings that fits into Github search string limitations.
 
