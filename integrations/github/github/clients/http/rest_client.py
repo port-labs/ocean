@@ -7,7 +7,6 @@ from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 from loguru import logger
 
 
-
 PAGE_SIZE = 100
 
 
@@ -19,7 +18,7 @@ class GithubRestClient(AbstractGithubClient):
     @property
     def base_url(self) -> str:
         return self.github_host.rstrip("/")
-    
+
     @property
     def rate_limiter_config(self) -> GitHubRateLimiterConfig:
         return GitHubRateLimiterConfig(

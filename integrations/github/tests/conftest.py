@@ -1,5 +1,5 @@
 import time
-from typing import Any, Dict, Generator, Callable, Awaitable
+from typing import Any, Dict, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx

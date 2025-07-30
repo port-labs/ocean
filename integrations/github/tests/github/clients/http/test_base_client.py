@@ -5,6 +5,7 @@ import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.utils import IgnoredError
+from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 
 
 # Create a concrete implementation of the abstract class for testing
@@ -12,6 +13,14 @@ class ConcreteGithubClient(AbstractGithubClient):
     @property
     def base_url(self) -> str:
         return "https://api.github.com"
+
+    @property
+    def rate_limiter_config(self) -> GitHubRateLimiterConfig:
+        return GitHubRateLimiterConfig(
+            api_type="rest",
+            max_retries=5,
+            max_concurrent=10,
+        )
 
     async def send_paginated_request(
         self,
@@ -206,6 +215,7 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 500
+        mock_response.headers = {}  # Add headers attribute
         mock_response.text = "Internal Server Error"
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "500 Internal Server Error", request=MagicMock(), response=mock_response
@@ -255,6 +265,7 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
+        mock_response.headers = {}  # Add headers attribute
         url = "https://api.github.com/repos/test-org/test-repo"
 
         with patch(

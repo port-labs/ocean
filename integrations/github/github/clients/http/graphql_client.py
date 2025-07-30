@@ -17,7 +17,7 @@ class GithubGraphQLClient(AbstractGithubClient):
     @property
     def base_url(self) -> str:
         return urljoin(self.github_host, "/graphql")
-    
+
     @property
     def rate_limiter_config(self) -> GitHubRateLimiterConfig:
         return GitHubRateLimiterConfig(

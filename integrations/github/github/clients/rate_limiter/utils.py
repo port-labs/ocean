@@ -1,10 +1,8 @@
 import time
-import asyncio
-from typing import Optional, Dict, Any, Literal, TypedDict
+from typing import Optional, Dict, Literal
 from dataclasses import dataclass
-import httpx
 from pydantic import BaseModel, Field
-from loguru import logger
+
 
 @dataclass
 class PauseUntil:
@@ -34,7 +32,7 @@ class RateLimitInfo:
     @property
     def seconds_until_reset(self) -> int:
         return max(0, self.reset_time - int(time.time()))
-    
+
 
 @dataclass
 class GitHubRateLimiterConfig:
@@ -46,14 +44,17 @@ class GitHubRateLimiterConfig:
         max_retries: Maximum number of retries on rate-limited requests.
         max_concurrent: Maximum number of concurrent in-flight requests.
     """
+
     api_type: Literal["rest", "graphql", "search"]
     max_concurrent: int
     max_retries: int = 5
+
 
 class RateLimiterRequiredHeaders(BaseModel):
     """
     Headers required for the GitHubRateLimiter.
     """
+
     x_ratelimit_limit: Optional[str] = Field(alias="x-ratelimit-limit")
     x_ratelimit_remaining: Optional[str] = Field(alias="x-ratelimit-remaining")
     x_ratelimit_reset: Optional[str] = Field(alias="x-ratelimit-reset")
