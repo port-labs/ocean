@@ -1,4 +1,4 @@
-from client import AikidoClient
+from clients.aikido_client import AikidoClient
 from port_ocean.context.ocean import ocean
 
 _global_client = None

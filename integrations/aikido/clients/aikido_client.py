@@ -1,16 +1,13 @@
-import base64
-import time
 from typing import Any, AsyncGenerator, List, Dict, Optional
 from httpx import HTTPStatusError, AsyncClient
+from clients.auth_client import AikidoAuth
 from loguru import logger
 from port_ocean.utils import http_async_client
-from helpers.exceptions import MissingIntegrationCredentialException
 
 API_VERSION = "v1"
 PAGE_SIZE = 100
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
 REPOSITORIES_ENDPOINT = f"api/public/{API_VERSION}/repositories/code"
-AUTH_TOKEN_ENDPOINT = "api/oauth/token"
 REPO_FIRST_PAGE = 0
 
 
@@ -21,63 +18,9 @@ class AikidoClient:
     """
 
     def __init__(self, base_url: str, client_id: str, client_secret: str):
-        if not client_id or not client_secret:
-            raise MissingIntegrationCredentialException(
-                "Aikido client ID and secret must be provided."
-            )
-
         self.base_url = base_url.rstrip("/")
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self._access_token: Optional[str] = None
-        self._token_expiry: float = 0
         self.http_client: AsyncClient = http_async_client
-
-    async def _generate_oauth_token(self) -> str:
-        """
-        Generate OAuth token using client credentials flow.
-        Returns the access token for API authentication.
-        """
-        try:
-            auth_string = f"{self.client_id}:{self.client_secret}"
-            auth_bytes = auth_string.encode("ascii")
-            b64_auth = base64.b64encode(auth_bytes).decode("ascii")
-
-            headers = {
-                "Authorization": f"Basic {b64_auth}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            }
-
-            data = {"grant_type": "client_credentials"}
-
-            logger.info("Generating OAuth token from Aikido API")
-            response = await self.http_client.post(
-                f"{self.base_url}/{AUTH_TOKEN_ENDPOINT}",
-                headers=headers,
-                json=data,
-                timeout=30,
-            )
-            response.raise_for_status()
-
-            token_data = response.json()
-            self._access_token = token_data["access_token"]
-            self._token_expiry = time.time() + token_data.get("expires_in", 3600) - 60
-
-            logger.info("OAuth token generated successfully")
-            return self._access_token
-
-        except Exception as e:
-            logger.error(f"OAuth token generation failed: {e}")
-            raise
-
-    async def _get_valid_token(self) -> str:
-        """
-        Get a valid access token, generating a new one if needed.
-        """
-        if (not self._access_token) or (time.time() >= self._token_expiry):
-            return await self._generate_oauth_token()
-        return self._access_token
+        self.auth = AikidoAuth(base_url, client_id, client_secret, self.http_client)
 
     async def _send_api_request(
         self,
@@ -89,7 +32,7 @@ class AikidoClient:
         """
         Send an authenticated API request to the Aikido API.
         """
-        token = await self._get_valid_token()
+        token = await self.auth.get_token()
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
 
         headers = {
@@ -131,10 +74,13 @@ class AikidoClient:
 
         while True:
             try:
-                data = await self._send_api_request(endpoint, params=params)
-                repos = data if isinstance(data, list) else data.get("repositories", [])
+                repos = await self._send_api_request(endpoint, params=params)
+
+                if not isinstance(repos, list):
+                    break
 
                 if not repos:
+                    logger.info(f"No repositories returned for page {params['page']}")
                     break
 
                 logger.info(f"Fetched {len(repos)} repositories from Aikido API")
@@ -142,6 +88,7 @@ class AikidoClient:
 
                 if len(repos) < PAGE_SIZE:
                     break
+
                 params["page"] += 1
             except Exception as e:
                 logger.error(f"Error fetching repositories: {e}")
@@ -155,10 +102,10 @@ class AikidoClient:
         endpoint = ISSUES_ENDPOINT
         params = {"format": "json"}
         try:
-            data = await self._send_api_request(endpoint, params=params)
-            if isinstance(data, list):
-                return data
-            return data.get("issues", [])
+            issues = await self._send_api_request(endpoint, params=params)
+            if not isinstance(issues, list):
+                return []
+            return issues
         except Exception as e:
             logger.error(f"Error fetching issues: {e}")
             return []
@@ -173,7 +120,7 @@ class AikidoClient:
         for i in range(0, len(all_issues), batch_size):
             yield all_issues[i : i + batch_size]
 
-    async def get_issue_detail(self, issue_id: str) -> Dict[str, Any]:
+    async def get_issue(self, issue_id: str) -> Dict[str, Any]:
         """
         Fetch details for a single issue by ID.
         """
@@ -184,7 +131,7 @@ class AikidoClient:
             logger.error(f"Error fetching issue detail for {issue_id}: {e}")
             return {}
 
-    async def get_repository_detail(self, repo_id: str) -> Dict[str, Any]:
+    async def get_repository(self, repo_id: str) -> Dict[str, Any]:
         """
         Fetch details for a single repository by ID.
         """

@@ -102,7 +102,7 @@ class TestIssueWebhookProcessor:
 
         monkeypatch.setattr(
             issue_webhook_processor._webhook_client,
-            "get_issue_detail",
+            "get_issue",
             AsyncMock(return_value=mock_issue_data),
         )
 
@@ -162,13 +162,13 @@ class TestRepositoryWebhookProcessor:
 
         monkeypatch.setattr(
             repo_webhook_processor._webhook_client,
-            "get_issue_detail",
+            "get_issue",
             AsyncMock(return_value=mock_issue_data),
         )
 
         monkeypatch.setattr(
             repo_webhook_processor._webhook_client,
-            "get_repository_detail",
+            "get_repository",
             AsyncMock(return_value=mock_repo_data),
         )
 

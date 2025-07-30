@@ -23,7 +23,7 @@ class IssueWebhookProcessor(BaseAikidoWebhookProcessor):
         logger.info("Processing issue webhook event from Aikido")
 
         issue_id = payload["payload"]["issue_id"]
-        issue_data = await self._webhook_client.get_issue_detail(issue_id)
+        issue_data = await self._webhook_client.get_issue(issue_id)
         if not issue_data:
             logger.warning("No issue data found in webhook payload")
             return WebhookEventRawResults(

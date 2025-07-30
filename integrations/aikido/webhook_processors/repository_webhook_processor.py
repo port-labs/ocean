@@ -23,14 +23,14 @@ class RepositoryWebhookProcessor(BaseAikidoWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        issue_details = await self._webhook_client.get_issue_detail(issue_id)
-        if not issue_details:
+        issue = await self._webhook_client.get_issue(issue_id)
+        if not issue:
             logger.error(f"No issue details found for issue_id: {issue_id}")
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        code_repo_id = issue_details.get("code_repo_id")
+        code_repo_id = issue.get("code_repo_id")
         if not code_repo_id:
             logger.error(
                 f"No code_repo_id found in issue details for issue_id: {issue_id}"
@@ -39,8 +39,8 @@ class RepositoryWebhookProcessor(BaseAikidoWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        repo_details = await self._webhook_client.get_repository_detail(code_repo_id)
-        if not repo_details:
+        repo = await self._webhook_client.get_repository(code_repo_id)
+        if not repo:
             logger.error(
                 f"No repository details found for code_repo_id: {code_repo_id}"
             )
@@ -49,6 +49,6 @@ class RepositoryWebhookProcessor(BaseAikidoWebhookProcessor):
             )
 
         return WebhookEventRawResults(
-            updated_raw_results=[repo_details],
+            updated_raw_results=[repo],
             deleted_raw_results=[],
         )
