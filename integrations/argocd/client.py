@@ -11,12 +11,14 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     APPLICATION = "application"
     CLUSTER = "cluster"
+    ROLLOUT = "rollout"
 
 
 class ResourceKindsWithSpecialHandling(StrEnum):
     DEPLOYMENT_HISTORY = "deployment-history"
     KUBERNETES_RESOURCE = "kubernetes-resource"
     MANAGED_RESOURCE = "managed-resource"
+    ROLLOUT = "rollout"
 
 
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
@@ -127,3 +129,35 @@ class ArgocdClient:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
         managed_resources = (await self._send_api_request(url=url)).get("items", [])
         return managed_resources
+
+    async def get_rollouts(self) -> list[dict[str, Any]]:
+        """Get all rollouts managed by ArgoCD applications."""
+        logger.info("Fetching all rollouts from ArgoCD applications")
+        applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+
+        all_rollouts = []
+        for application in applications:
+            try:
+                managed_resources = await self.get_managed_resources(
+                    application_name=application["metadata"]["name"]
+                )
+                # Filter for rollout resources
+                rollouts = [
+                    {
+                        **resource,
+                        "__application": application,
+                        "__applicationId": application["metadata"]["uid"],
+                    }
+                    for resource in managed_resources
+                    if resource.get("kind") == "Rollout"
+                    and resource.get("group") == "argoproj.io"
+                ]
+                all_rollouts.extend(rollouts)
+            except Exception as e:
+                logger.error(
+                    f"Failed to fetch rollouts for application {application['metadata']['name']}: {e}"
+                )
+                if not self.ignore_server_error:
+                    raise e
+
+        return all_rollouts
