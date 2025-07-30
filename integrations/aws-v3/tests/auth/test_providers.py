@@ -471,19 +471,21 @@ class TestAssumeRoleWithWebIdentityProvider:
         assert provider.is_refreshable is True
 
     @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/test-token"})
-    @patch("builtins.open", create=True)
+    @patch("aiofiles.open", create=True)
     @pytest.mark.asyncio
-    async def test_read_web_identity_token_success(self, mock_open: MagicMock) -> None:
+    async def test_read_web_identity_token_success(
+        self, mock_aiofiles_open: MagicMock
+    ) -> None:
         """Test successful reading of web identity token."""
         config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
-        mock_file = MagicMock()
+        mock_file = AsyncMock()
         mock_file.read.return_value = "test-token-content\n"
-        mock_open.return_value.__enter__.return_value = mock_file
+        mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
 
         token = await provider._read_web_identity_token()
         assert token == "test-token-content"
-        mock_open.assert_called_once_with("/tmp/test-token", "r")
+        mock_aiofiles_open.assert_called_once_with("/tmp/test-token", "r")
 
     @pytest.mark.asyncio
     async def test_read_web_identity_token_missing_env_var(self) -> None:
@@ -499,10 +501,10 @@ class TestAssumeRoleWithWebIdentityProvider:
             )
 
     @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/nonexistent"})
-    @patch("builtins.open", side_effect=FileNotFoundError())
+    @patch("aiofiles.open", side_effect=FileNotFoundError())
     @pytest.mark.asyncio
     async def test_read_web_identity_token_file_not_found(
-        self, mock_open: MagicMock
+        self, mock_aiofiles_open: MagicMock
     ) -> None:
         """Test error when token file doesn't exist."""
         config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
@@ -514,17 +516,17 @@ class TestAssumeRoleWithWebIdentityProvider:
         )
 
     @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/empty-token"})
-    @patch("builtins.open", create=True)
+    @patch("aiofiles.open", create=True)
     @pytest.mark.asyncio
     async def test_read_web_identity_token_empty_file(
-        self, mock_open: MagicMock
+        self, mock_aiofiles_open: MagicMock
     ) -> None:
         """Test error when token file is empty."""
         config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
-        mock_file = MagicMock()
+        mock_file = AsyncMock()
         mock_file.read.return_value = ""
-        mock_open.return_value.__enter__.return_value = mock_file
+        mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
 
         with pytest.raises(CredentialsProviderError) as exc_info:
             await provider._read_web_identity_token()
@@ -542,10 +544,10 @@ class TestAssumeRoleWithWebIdentityProvider:
         mock_sts_client = AsyncMock()
 
         # Mock the token file
-        mock_file = MagicMock()
+        mock_file = AsyncMock()
         mock_file.read.return_value = "test-web-identity-token"
-        with patch("builtins.open") as mock_open:
-            mock_open.return_value.__enter__.return_value = mock_file
+        with patch("aiofiles.open") as mock_aiofiles_open:
+            mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
 
             # Mock STS response
             mock_sts_client.assume_role_with_web_identity.return_value = {
@@ -608,10 +610,10 @@ class TestAssumeRoleWithWebIdentityProvider:
         mock_sts_client = AsyncMock()
 
         # Mock the token file
-        mock_file = MagicMock()
+        mock_file = AsyncMock()
         mock_file.read.return_value = "test-web-identity-token"
-        with patch("builtins.open") as mock_open:
-            mock_open.return_value.__enter__.return_value = mock_file
+        with patch("aiofiles.open") as mock_aiofiles_open:
+            mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
 
             # Mock STS response
             mock_sts_client.assume_role_with_web_identity.return_value = {
@@ -663,10 +665,10 @@ class TestAssumeRoleWithWebIdentityProvider:
         mock_sts_client = AsyncMock()
 
         # Mock the token file
-        mock_file = MagicMock()
+        mock_file = AsyncMock()
         mock_file.read.return_value = "test-web-identity-token"
-        with patch("builtins.open") as mock_open:
-            mock_open.return_value.__enter__.return_value = mock_file
+        with patch("aiofiles.open") as mock_aiofiles_open:
+            mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
 
             # Mock STS response
             mock_sts_client.assume_role_with_web_identity.return_value = {
