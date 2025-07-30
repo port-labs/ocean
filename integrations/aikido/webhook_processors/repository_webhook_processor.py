@@ -10,7 +10,6 @@ from integration import ObjectKind
 
 
 class RepositoryWebhookProcessor(BaseAikidoWebhookProcessor):
-
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.REPOSITORY]
 

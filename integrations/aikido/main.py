@@ -3,6 +3,8 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 
 from initialize_client import init_aikido_client
+from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
+from webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
 from integration import ObjectKind
 
 
@@ -29,3 +31,7 @@ async def on_issues_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], No
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Aikido integration")
+
+
+ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)

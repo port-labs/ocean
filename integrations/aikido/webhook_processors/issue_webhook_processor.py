@@ -10,7 +10,6 @@ from .base_webhook_processor import BaseAikidoWebhookProcessor
 
 
 class IssueWebhookProcessor(BaseAikidoWebhookProcessor):
-
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ISSUES]
 
