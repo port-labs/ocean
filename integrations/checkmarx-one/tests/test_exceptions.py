@@ -143,8 +143,8 @@ class TestCheckmarxAPIError:
         auth_error = CheckmarxAuthenticationError("Auth failed")
         api_error = CheckmarxAPIError("API failed")
 
-        assert str(auth_error) != str(api_error)
-        assert type(auth_error) != type(api_error)
+        assert str(auth_error) is not str(api_error)
+        assert type(auth_error) is not type(api_error)
 
 
 class TestExceptionsIntegration:

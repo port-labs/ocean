@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Any
+from unittest.mock import MagicMock, patch
 
 from checkmarx_one.exporter_factory import (
     create_checkmarx_client,
@@ -30,8 +29,10 @@ class TestExporterFactory:
         """Create a mock CheckmarxScanExporter for testing."""
         return MagicMock(spec=CheckmarxScanExporter)
 
-    @patch('checkmarx_one.exporter_factory.init_client')
-    def test_create_checkmarx_client(self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock) -> None:
+    @patch("checkmarx_one.exporter_factory.init_client")
+    def test_create_checkmarx_client(
+        self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock
+    ) -> None:
         """Test that create_checkmarx_client calls init_client and returns the result."""
         mock_init_client.return_value = mock_checkmarx_client
 
@@ -40,8 +41,10 @@ class TestExporterFactory:
         mock_init_client.assert_called_once()
         assert result == mock_checkmarx_client
 
-    @patch('checkmarx_one.exporter_factory.init_client')
-    def test_create_project_exporter(self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock) -> None:
+    @patch("checkmarx_one.exporter_factory.init_client")
+    def test_create_project_exporter(
+        self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock
+    ) -> None:
         """Test that create_project_exporter creates a project exporter with initialized client."""
         mock_init_client.return_value = mock_checkmarx_client
 
@@ -51,8 +54,10 @@ class TestExporterFactory:
         assert isinstance(result, CheckmarxProjectExporter)
         assert result.client == mock_checkmarx_client
 
-    @patch('checkmarx_one.exporter_factory.init_client')
-    def test_create_scan_exporter(self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock) -> None:
+    @patch("checkmarx_one.exporter_factory.init_client")
+    def test_create_scan_exporter(
+        self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock
+    ) -> None:
         """Test that create_scan_exporter creates a scan exporter with initialized client."""
         mock_init_client.return_value = mock_checkmarx_client
 
@@ -62,8 +67,10 @@ class TestExporterFactory:
         assert isinstance(result, CheckmarxScanExporter)
         assert result.client == mock_checkmarx_client
 
-    @patch('checkmarx_one.exporter_factory.init_client')
-    def test_factory_functions_return_different_instances(self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock) -> None:
+    @patch("checkmarx_one.exporter_factory.init_client")
+    def test_factory_functions_return_different_instances(
+        self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock
+    ) -> None:
         """Test that factory functions return different instances of exporters."""
         mock_init_client.return_value = mock_checkmarx_client
 
@@ -75,8 +82,10 @@ class TestExporterFactory:
         # But should have the same client
         assert project_exporter_1.client == project_exporter_2.client
 
-    @patch('checkmarx_one.exporter_factory.init_client')
-    def test_factory_functions_with_different_clients(self, mock_init_client: MagicMock) -> None:
+    @patch("checkmarx_one.exporter_factory.init_client")
+    def test_factory_functions_with_different_clients(
+        self, mock_init_client: MagicMock
+    ) -> None:
         """Test that factory functions work with different client instances."""
         mock_client_1 = MagicMock(spec=CheckmarxClient)
         mock_client_2 = MagicMock(spec=CheckmarxClient)
@@ -93,20 +102,31 @@ class TestExporterFactory:
     def test_create_checkmarx_client_docstring(self) -> None:
         """Test that create_checkmarx_client has proper documentation."""
         assert create_checkmarx_client.__doc__ is not None
-        assert "Create and return a configured Checkmarx One client" in create_checkmarx_client.__doc__
+        assert (
+            "Create and return a configured Checkmarx One client"
+            in create_checkmarx_client.__doc__
+        )
 
     def test_create_project_exporter_docstring(self) -> None:
         """Test that create_project_exporter has proper documentation."""
         assert create_project_exporter.__doc__ is not None
-        assert "Create a project exporter with initialized client" in create_project_exporter.__doc__
+        assert (
+            "Create a project exporter with initialized client"
+            in create_project_exporter.__doc__
+        )
 
     def test_create_scan_exporter_docstring(self) -> None:
         """Test that create_scan_exporter has proper documentation."""
         assert create_scan_exporter.__doc__ is not None
-        assert "Create a scan exporter with initialized client" in create_scan_exporter.__doc__
+        assert (
+            "Create a scan exporter with initialized client"
+            in create_scan_exporter.__doc__
+        )
 
-    @patch('checkmarx_one.exporter_factory.init_client')
-    def test_factory_functions_call_init_client_once(self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock) -> None:
+    @patch("checkmarx_one.exporter_factory.init_client")
+    def test_factory_functions_call_init_client_once(
+        self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock
+    ) -> None:
         """Test that each factory function calls init_client exactly once."""
         mock_init_client.return_value = mock_checkmarx_client
 
@@ -116,8 +136,10 @@ class TestExporterFactory:
         # Should be called twice total (once for each exporter)
         assert mock_init_client.call_count == 2
 
-    @patch('checkmarx_one.exporter_factory.init_client')
-    def test_factory_functions_with_exception_handling(self, mock_init_client: MagicMock) -> None:
+    @patch("checkmarx_one.exporter_factory.init_client")
+    def test_factory_functions_with_exception_handling(
+        self, mock_init_client: MagicMock
+    ) -> None:
         """Test that factory functions properly handle exceptions from init_client."""
         mock_init_client.side_effect = Exception("Connection failed")
 
@@ -127,8 +149,10 @@ class TestExporterFactory:
         with pytest.raises(Exception, match="Connection failed"):
             create_scan_exporter()
 
-    @patch('checkmarx_one.exporter_factory.init_client')
-    def test_factory_functions_return_correct_types(self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock) -> None:
+    @patch("checkmarx_one.exporter_factory.init_client")
+    def test_factory_functions_return_correct_types(
+        self, mock_init_client: MagicMock, mock_checkmarx_client: MagicMock
+    ) -> None:
         """Test that factory functions return the correct types."""
         mock_init_client.return_value = mock_checkmarx_client
 

@@ -73,6 +73,7 @@ class BaseCheckmarxClient:
             API response as dictionary
         """
         from urllib.parse import urljoin
+
         url = urljoin(f"{self.base_url}/api", endpoint.lstrip("/"))
 
         async with self.rate_limiter:

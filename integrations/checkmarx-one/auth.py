@@ -1,11 +1,6 @@
-import time
-from typing import Any, Optional
+from typing import Optional
 
-import httpx
-from loguru import logger
-from port_ocean.utils import http_async_client
 
-from exceptions import CheckmarxAuthenticationError
 from auth_factory import CheckmarxAuthenticatorFactory
 from base_auth import BaseCheckmarxAuthenticator
 

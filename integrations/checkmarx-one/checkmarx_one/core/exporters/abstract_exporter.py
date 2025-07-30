@@ -1,7 +1,4 @@
-from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator
-
-from port_ocean.core.ocean_types import RAW_ITEM
+from abc import ABC
 
 from base_client import BaseCheckmarxClient
 

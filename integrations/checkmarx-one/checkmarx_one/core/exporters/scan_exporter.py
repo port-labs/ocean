@@ -33,12 +33,14 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
         """
         params: dict[str, Any] = {}
         if project_ids:
-            params["project-ids"] = ','.join(project_ids)
+            params["project-ids"] = ",".join(project_ids)
         if limit is not None:
             params["limit"] = limit
         if offset is not None:
             params["offset"] = offset
 
-        async for scans in self.client._get_paginated_resources("/scans", "scans", params):
+        async for scans in self.client._get_paginated_resources(
+            "/scans", "scans", params
+        ):
             logger.info(f"Fetched batch of {len(scans)} scans")
             yield scans

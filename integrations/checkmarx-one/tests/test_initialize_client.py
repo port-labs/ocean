@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 from aiolimiter import AsyncLimiter
 
 from initialize_client import init_client, RATE_LIMITER
@@ -40,14 +40,14 @@ class TestInitializeClient:
         mock_client.tenant = "test-tenant"
         return mock_client
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
     def test_init_client_with_api_key(
         self,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
         mock_ocean_config: dict,
-        mock_checkmarx_client: MagicMock
+        mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test client initialization with API key authentication."""
         mock_ocean.integration_config = mock_ocean_config
@@ -66,14 +66,14 @@ class TestInitializeClient:
             rate_limiter=RATE_LIMITER,
         )
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
     def test_init_client_with_oauth(
         self,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
         mock_ocean_oauth_config: dict,
-        mock_checkmarx_client: MagicMock
+        mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test client initialization with OAuth authentication."""
         mock_ocean.integration_config = mock_ocean_oauth_config
@@ -92,7 +92,7 @@ class TestInitializeClient:
             rate_limiter=RATE_LIMITER,
         )
 
-    @patch('initialize_client.ocean')
+    @patch("initialize_client.ocean")
     def test_init_client_missing_base_url(self, mock_ocean: MagicMock) -> None:
         """Test client initialization with missing base URL."""
         mock_ocean.integration_config = {
@@ -104,9 +104,12 @@ class TestInitializeClient:
         with pytest.raises(CheckmarxAuthenticationError) as exc_info:
             init_client()
 
-        assert "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required" in str(exc_info.value)
+        assert (
+            "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required"
+            in str(exc_info.value)
+        )
 
-    @patch('initialize_client.ocean')
+    @patch("initialize_client.ocean")
     def test_init_client_missing_iam_url(self, mock_ocean: MagicMock) -> None:
         """Test client initialization with missing IAM URL."""
         mock_ocean.integration_config = {
@@ -118,9 +121,12 @@ class TestInitializeClient:
         with pytest.raises(CheckmarxAuthenticationError) as exc_info:
             init_client()
 
-        assert "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required" in str(exc_info.value)
+        assert (
+            "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required"
+            in str(exc_info.value)
+        )
 
-    @patch('initialize_client.ocean')
+    @patch("initialize_client.ocean")
     def test_init_client_missing_tenant(self, mock_ocean: MagicMock) -> None:
         """Test client initialization with missing tenant."""
         mock_ocean.integration_config = {
@@ -132,25 +138,33 @@ class TestInitializeClient:
         with pytest.raises(CheckmarxAuthenticationError) as exc_info:
             init_client()
 
-        assert "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required" in str(exc_info.value)
+        assert (
+            "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required"
+            in str(exc_info.value)
+        )
 
-    @patch('initialize_client.ocean')
-    def test_init_client_missing_all_required_config(self, mock_ocean: MagicMock) -> None:
+    @patch("initialize_client.ocean")
+    def test_init_client_missing_all_required_config(
+        self, mock_ocean: MagicMock
+    ) -> None:
         """Test client initialization with missing all required configuration."""
         mock_ocean.integration_config = {}
 
         with pytest.raises(CheckmarxAuthenticationError) as exc_info:
             init_client()
 
-        assert "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required" in str(exc_info.value)
+        assert (
+            "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required"
+            in str(exc_info.value)
+        )
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
     def test_init_client_with_empty_strings(
         self,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_checkmarx_client: MagicMock
+        mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test client initialization with empty string values."""
         mock_ocean.integration_config = {
@@ -164,15 +178,18 @@ class TestInitializeClient:
         with pytest.raises(CheckmarxAuthenticationError) as exc_info:
             init_client()
 
-        assert "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required" in str(exc_info.value)
+        assert (
+            "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required"
+            in str(exc_info.value)
+        )
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
     def test_init_client_with_none_values(
         self,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_checkmarx_client: MagicMock
+        mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test client initialization with None values."""
         mock_ocean.integration_config = {
@@ -186,15 +203,18 @@ class TestInitializeClient:
         with pytest.raises(CheckmarxAuthenticationError) as exc_info:
             init_client()
 
-        assert "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required" in str(exc_info.value)
+        assert (
+            "checkmarx_base_url, checkmarx_iam_url, and checkmarx_tenant are required"
+            in str(exc_info.value)
+        )
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
     def test_init_client_authentication_error(
         self,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict
+        mock_ocean_config: dict,
     ) -> None:
         """Test client initialization when authentication fails."""
         mock_ocean.integration_config = mock_ocean_config
@@ -205,13 +225,13 @@ class TestInitializeClient:
 
         assert "Auth failed" in str(exc_info.value)
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
     def test_init_client_general_exception(
         self,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict
+        mock_ocean_config: dict,
     ) -> None:
         """Test client initialization when general exception occurs."""
         mock_ocean.integration_config = mock_ocean_config
@@ -222,16 +242,16 @@ class TestInitializeClient:
 
         assert "Client initialization failed: General error" in str(exc_info.value)
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
-    @patch('initialize_client.logger')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
+    @patch("initialize_client.logger")
     def test_init_client_logs_info_message(
         self,
         mock_logger: MagicMock,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
         mock_ocean_config: dict,
-        mock_checkmarx_client: MagicMock
+        mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test that info message is logged during client initialization."""
         mock_ocean.integration_config = mock_ocean_config
@@ -239,18 +259,20 @@ class TestInitializeClient:
 
         init_client()
 
-        mock_logger.info.assert_any_call("Initializing Checkmarx One client for https://ast.checkmarx.net")
+        mock_logger.info.assert_any_call(
+            "Initializing Checkmarx One client for https://ast.checkmarx.net"
+        )
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
-    @patch('initialize_client.logger')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
+    @patch("initialize_client.logger")
     def test_init_client_logs_api_key_auth(
         self,
         mock_logger: MagicMock,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
         mock_ocean_config: dict,
-        mock_checkmarx_client: MagicMock
+        mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test that API key authentication is logged."""
         mock_ocean.integration_config = mock_ocean_config
@@ -260,16 +282,16 @@ class TestInitializeClient:
 
         mock_logger.info.assert_any_call("Using API key authentication")
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
-    @patch('initialize_client.logger')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
+    @patch("initialize_client.logger")
     def test_init_client_logs_oauth_auth(
         self,
         mock_logger: MagicMock,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
         mock_ocean_oauth_config: dict,
-        mock_checkmarx_client: MagicMock
+        mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test that OAuth authentication is logged."""
         mock_ocean.integration_config = mock_ocean_oauth_config
@@ -277,17 +299,19 @@ class TestInitializeClient:
 
         init_client()
 
-        mock_logger.info.assert_any_call("Using OAuth authentication with client: test-client-id")
+        mock_logger.info.assert_any_call(
+            "Using OAuth authentication with client: test-client-id"
+        )
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
-    @patch('initialize_client.logger')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
+    @patch("initialize_client.logger")
     def test_init_client_logs_error_on_auth_failure(
         self,
         mock_logger: MagicMock,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict
+        mock_ocean_config: dict,
     ) -> None:
         """Test that error is logged on authentication failure."""
         mock_ocean.integration_config = mock_ocean_config
@@ -296,17 +320,19 @@ class TestInitializeClient:
         with pytest.raises(CheckmarxAuthenticationError):
             init_client()
 
-        mock_logger.error.assert_called_with("Authentication configuration error: Auth failed")
+        mock_logger.error.assert_called_with(
+            "Authentication configuration error: Auth failed"
+        )
 
-    @patch('initialize_client.ocean')
-    @patch('initialize_client.CheckmarxClient')
-    @patch('initialize_client.logger')
+    @patch("initialize_client.ocean")
+    @patch("initialize_client.CheckmarxClient")
+    @patch("initialize_client.logger")
     def test_init_client_logs_error_on_general_failure(
         self,
         mock_logger: MagicMock,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict
+        mock_ocean_config: dict,
     ) -> None:
         """Test that error is logged on general failure."""
         mock_ocean.integration_config = mock_ocean_config
@@ -315,7 +341,9 @@ class TestInitializeClient:
         with pytest.raises(CheckmarxAuthenticationError):
             init_client()
 
-        mock_logger.error.assert_called_with("Failed to initialize Checkmarx One client: General error")
+        mock_logger.error.assert_called_with(
+            "Failed to initialize Checkmarx One client: General error"
+        )
 
     def test_rate_limiter_constant(self) -> None:
         """Test that RATE_LIMITER constant is properly defined."""
