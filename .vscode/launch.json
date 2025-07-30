@@ -128,6 +128,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/aws-v3",
+      "envFile": "${workspaceFolder}/integrations/aws-v3/.env",
+      "justMyCode": false,
+      "name": "Run AWS-v3 integration",
+      "program": "${workspaceFolder}/integrations/aws-v3/debug.py",
+      "python": "${workspaceFolder}/integrations/aws-v3/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/test-integration",
       "envFile": "${workspaceFolder}/integrations/test-integration/.env",
       "justMyCode": true,
