@@ -132,6 +132,11 @@ class GithubFilePattern(BaseModel):
         alias="skipParsing",
         description="Skip parsing the files and just return the raw file content",
     )
+    validation_check: bool = Field(
+        default=False,
+        alias="validationCheck",
+        description="Enable validation for this file pattern during pull request processing",
+    )
 
 
 class GithubFileSelector(Selector):

@@ -131,7 +131,9 @@ class AbstractGithubClient(ABC):
                     if "response" in locals():
                         self.rate_limiter.update_rate_limits(response.headers, resource)
 
-        raise RateLimitExceededError(resource, retries)
+        raise RateLimitExceededError(
+            f"Rate limit exceeded for {resource} after {retries} retries"
+        )
 
     async def send_api_request(
         self,

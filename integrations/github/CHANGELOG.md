@@ -7,10 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.3.0-beta (2025-07-29)
+## 1.3.0-beta (2025-07-30)
 
-
-### Features
 
 - Added GitHub API rate limiting with concurrency control
 - Implemented GitHubRateLimiter with smart backoff strategies based on GitHub's rate limit headers
@@ -23,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced API reliability by automatically handling 403/429 rate limit responses
 - Improved error handling to distinguish between rate limit and permission errors
 - Added rate limit monitoring and comprehensive logging
+
+
+## 1.2.0-beta (2025-07-28)
+
+
+### Features
+
+- Added File validation for pull requests with GitHub check run integration
+- Enhanced pull request webhook processor to trigger validation on open/sync events
 
 
 ## 1.1.2-beta (2025-07-25)

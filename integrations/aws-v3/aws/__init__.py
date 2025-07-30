@@ -1,5 +1,6 @@
 from aws.auth import (
     AssumeRoleProvider,
+    AssumeRoleWithWebIdentityProvider,
     CredentialProvider,
     CredentialsProviderError,
     MultiAccountStrategy,
@@ -28,6 +29,7 @@ from aws.core import (
 __all__ = [
     # Auth exports
     "AssumeRoleProvider",
+    "AssumeRoleWithWebIdentityProvider",
     "CredentialProvider",
     "CredentialsProviderError",
     "MultiAccountStrategy",
