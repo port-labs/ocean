@@ -1,5 +1,4 @@
 from typing import Dict, Tuple, Type, Set, List
-from contextlib import AsyncExitStack
 
 from fastapi import APIRouter, Request
 from loguru import logger
@@ -153,86 +152,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             webhook_path=path,
         )
         return created_processors
-
-    async def process_queue(self, path: str) -> None:
-        """
-        Spawn <CONCURRENCY_PER_PATH> workers that pull from the same queue
-        and process events in *parallel*.
-        """
-        queue = self._event_queues[path]  # alias for speed
-
-        async def _worker(worker_id: int) -> None:  # the old loop, per‑worker
-            while True:
-                matching: List[Tuple[ResourceConfig, AbstractWebhookProcessor]] = []
-                event: WebhookEvent | None = None
-                try:
-                    event = await queue.get()
-
-                    with logger.contextualize(
-                        worker=worker_id,
-                        webhook_path=path,
-                        trace_id=event.trace_id,
-                    ):
-                        async with event_context(
-                            EventType.HTTP_REQUEST,
-                            trigger_type="machine",
-                        ):
-                            await ocean.integration.port_app_config_handler.get_port_app_config(
-                                use_cache=False
-                            )
-
-                            matching = await self._extract_matching_processors(
-                                event, path
-                            )
-
-                            results = await asyncio.gather(
-                                *(
-                                    self._process_single_event(proc, path, res)
-                                    for res, proc in matching
-                                ),
-                                return_exceptions=True,
-                            )
-
-                            good = [
-                                r
-                                for r in results
-                                if isinstance(r, WebhookEventRawResults)
-                            ]
-
-                            if good:
-                                logger.info(
-                                    "Exporting raw event results to entities",
-                                    ok=len(good),
-                                )
-                                await self.sync_raw_results(good)
-
-                except asyncio.CancelledError:
-                    logger.info(f"Worker {worker_id} for {path} shutting down")
-                    for _, proc in matching:
-                        await proc.cancel()
-                        self._timestamp_event_error(proc.event)
-                    break  # exit loop
-                except Exception as e:
-                    logger.exception(
-                        f"Unexpected error in worker {worker_id} for {path}: {e}"
-                    )
-                    for _, proc in matching:
-                        self._timestamp_event_error(proc.event)
-                finally:
-                    if event is not None:  # only ack if we really got one
-                        await queue.commit()
-                        logger.info(f"{queue.size()} items left to process")
-                        event = None
-
-        # ── spin up the worker pool and wait forever ───────────────────── #
-        async with AsyncExitStack() as stack:
-            tasks = {
-                i: asyncio.create_task(_worker(i), name=f"{path}-worker-{i}")
-                for i in range(CONCURRENCY_PER_PATH)
-            }
-            for t in tasks.values():
-                stack.callback(t.cancel)  # ← not awaited, just called
-            await asyncio.gather(*tasks.values())  # never returns unless cancelled
 
     def _timestamp_event_error(self, event: WebhookEvent) -> None:
         """Timestamp an event as having an error"""
