@@ -1,7 +1,6 @@
 from collections import defaultdict
 import urllib.parse
 from typing import Any, AsyncGenerator, Generator, Iterable
-import asyncio
 
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
@@ -104,59 +103,42 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         repo_mapping = options["repo_mapping"]
         repos = repo_mapping.keys()
 
-        repo_data: dict[str, Any] = {}
-        trees_to_fetch: set[tuple[str, bool]] = set()
-
-        # Part 1: Collect all unique trees to fetch across all repositories
         async for search_result in self._search_for_repositories(repos):
             for repository in search_result:
                 repo_name = repository["name"]
                 repo_map = repo_mapping.get(repo_name)
-
                 if not repo_map:
                     continue
 
-                repo_data[repo_name] = repository
-
                 for branch, paths in repo_map.items():
-                    branch_ref = (
-                        branch
-                        if branch != _DEFAULT_BRANCH
-                        else repository["default_branch"]
-                    )
-                    url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
                     for path in paths:
-                        is_recursive_api_call = self._needs_recursive_search(path)
-                        trees_to_fetch.add((url, is_recursive_api_call))
-
-        # Part 2: Fetch all trees concurrently to warm up the cache
-        if trees_to_fetch:
-            await asyncio.gather(*(self._get_tree(url, r) for url, r in trees_to_fetch))
-
-        # Part 3: Process results from warmed cache
-        for repo_name, repository in repo_data.items():
-            repo_map = repo_mapping.get(repo_name)
-            if not repo_map:
-                continue
-
-            for branch, paths in repo_map.items():
-                branch_ref = (
-                    branch
-                    if branch != _DEFAULT_BRANCH
-                    else repository["default_branch"]
-                )
-                url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
-                for path in paths:
-                    is_recursive_api_call = self._needs_recursive_search(path)
-                    tree = await self._get_tree(url, recursive=is_recursive_api_call)
-
-                    folders = self._filter_folder_contents(tree, path)
-
-                    if folders:
-                        logger.info(f"fetched {len(folders)} folders from {repo_name}")
-                        yield self._enrich_folder_with_repository(
-                            folders, repo=repository
+                        branch_ref = (
+                            branch
+                            if branch != _DEFAULT_BRANCH
+                            else repository["default_branch"]
                         )
+                        url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
+
+                        is_recursive_api_call = self._needs_recursive_search(path)
+                        tree = await self._get_tree(
+                            url, recursive=is_recursive_api_call
+                        )
+                        folders = self._retrieve_relevant_tree(
+                            tree, path=path, repo=repository
+                        )
+                        if folders:
+                            yield folders
+
+    def _retrieve_relevant_tree(
+        self, tree: list[dict[str, Any]], path: str, repo: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        folders = self._filter_folder_contents(tree, path)
+        logger.info(f"fetched {len(folders)} folders from {repo['name']}")
+        if folders:
+            formatted = self._enrich_folder_with_repository(folders, repo=repo)
+            return formatted
+        else:
+            return []
 
     def _enrich_folder_with_repository(
         self, folders: list[dict[str, Any]], repo: dict[str, Any] | None = None
