@@ -240,21 +240,38 @@ def test_create_search_params() -> None:
     expected = ["repo1+in+nameORrepo2+in+nameORrepo3+in+name"]
     assert list(create_search_params(repos)) == expected
 
-
-def test_create_search_params_with_long_repo_name() -> None:
-    # Test case: search string with a single repo is longer than 256 characters
-    long_repo_name = "a" * 300
-    repos = [long_repo_name]
-    # This should cause a RecursionError due to the implementation of create_search_params
-    with pytest.raises(RecursionError):
-        list(create_search_params(repos))
-
-    # Test case 3: List with more than max_operators repos (default is 5)
-    # The function has a bug where it will skip an element and yield multiple times
+    # Test case 3: List with exactly max_operators + 1 repos (default is 5+1=6).
+    # All repo names are short, so they should fit in one query.
     repos = ["r1", "r2", "r3", "r4", "r5", "r6"]
     expected = [
-        "r1+in+nameORr2+in+nameORr3+in+nameORr4+in+name",
-        "r6+in+name",
-        "r1+in+nameORr2+in+nameORr3+in+nameORr4+in+nameORr5+in+nameORr6+in+name",
+        "r1+in+nameORr2+in+nameORr3+in+nameORr4+in+nameORr5+in+nameORr6+in+name"
     ]
     assert list(create_search_params(repos)) == expected
+
+    # Test case 4: List with more than max_operators + 1 repos.
+    repos = ["r1", "r2", "r3", "r4", "r5", "r6", "r7"]
+    expected = [
+        "r1+in+nameORr2+in+nameORr3+in+nameORr4+in+nameORr5+in+nameORr6+in+name",
+        "r7+in+name",
+    ]
+    assert list(create_search_params(repos)) == expected
+
+    # Test case 5: List of repos where the total length exceeds the character limit.
+    # A repo name of length 42, becomes 50 characters with "+in+name".
+    # 5 such repos with 4 "OR"s is 5 * 50 + 4 * 2 = 258 characters, which is > 256.
+    # So the query should be split into a chunk of 4 and a chunk of 3.
+    repo_base = "a" * 40
+    repos = [f"{repo_base}-{i}" for i in range(7)]
+    expected = [
+        "OR".join([f"{r}+in+name" for r in repos[:4]]),
+        "OR".join([f"{r}+in+name" for r in repos[4:]]),
+    ]
+    assert list(create_search_params(repos)) == expected
+
+    # Test case 6: A single repo name that is too long to fit in a query.
+    long_repo_name = "a" * 250
+    repos = [long_repo_name]
+    with pytest.raises(
+        ValueError, match=f"Repository name '{long_repo_name}' is too long"
+    ):
+        list(create_search_params(repos))
