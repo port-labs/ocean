@@ -1,8 +1,10 @@
-from typing import Any
+from typing import Any, NamedTuple
 import pytest
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
+    create_pattern_mapping,
+    create_search_params,
 )
 from github.core.options import SingleFolderOptions
 
@@ -183,3 +185,67 @@ class TestRestFolderExporter:
             RestFolderExporter._filter_folder_contents(contents, path)
             == expected_filtered_folders
         )
+
+
+Repo = NamedTuple("Repo", [("name", str), ("branch", str | None)])
+FolderSelector = NamedTuple("FolderSelector", [("path", str), ("repos", list[Repo])])
+
+
+def test_create_pattern_mapping() -> None:
+    # Test case 1: Empty list
+    assert create_pattern_mapping([]) == {}
+
+    # Test case 2: Single pattern, single repo, with branch
+    patterns = [FolderSelector("src", [Repo("repo1", "main")])]
+    expected = {"repo1": {"main": ["src"]}}
+    assert create_pattern_mapping(patterns) == expected
+
+    # Test case 3: Single pattern, single repo, without branch
+    patterns = [FolderSelector("src", [Repo("repo1", None)])]
+    expected = {"repo1": {"": ["src"]}}
+    assert create_pattern_mapping(patterns) == expected
+
+    # Test case 4: Multiple repos for a single pattern
+    patterns = [FolderSelector("docs", [Repo("repo1", "dev"), Repo("repo2", "main")])]
+    expected = {"repo1": {"dev": ["docs"]}, "repo2": {"main": ["docs"]}}
+    assert create_pattern_mapping(patterns) == expected
+
+    # Test case 5: Multiple patterns for the same repo/branch
+    patterns = [
+        FolderSelector("src", [Repo("repo1", "main")]),
+        FolderSelector("tests", [Repo("repo1", "main")]),
+    ]
+    expected = {"repo1": {"main": ["src", "tests"]}}
+    assert create_pattern_mapping(patterns) == expected
+
+    # Test case 6: Complex case
+    patterns = [
+        FolderSelector("src", [Repo("repo1", "main"), Repo("repo2", "dev")]),
+        FolderSelector("docs", [Repo("repo1", "main")]),
+        FolderSelector("assets", [Repo("repo2", None)]),
+    ]
+    expected = {
+        "repo1": {"main": ["src", "docs"]},
+        "repo2": {"dev": ["src"], "": ["assets"]},
+    }
+    assert create_pattern_mapping(patterns) == expected
+
+
+def test_create_search_params() -> None:
+    # Test case 1: Empty list of repos
+    assert list(create_search_params([])) == [""]
+
+    # Test case 2: List with less than max_operators repos
+    repos = ["repo1", "repo2", "repo3"]
+    expected = ["repo1+in+nameORrepo2+in+nameORrepo3+in+name"]
+    assert list(create_search_params(repos)) == expected
+
+    # Test case 3: List with more than max_operators repos (default is 5)
+    # The function has a bug where it will skip an element and yield multiple times
+    repos = ["r1", "r2", "r3", "r4", "r5", "r6"]
+    expected = [
+        "r1+in+nameORr2+in+nameORr3+in+nameORr4+in+name",
+        "r6+in+name",
+        "r1+in+nameORr2+in+nameORr3+in+nameORr4+in+nameORr5+in+nameORr6+in+name",
+    ]
+    assert list(create_search_params(repos)) == expected

@@ -13,7 +13,6 @@ from wcmatch import glob
 from integration import FolderSelector
 
 
-# AI! create test cases for this function in test_folder_exporter
 def create_pattern_mapping(
     folder_patterns: list[FolderSelector],
 ) -> dict[str, dict[str, list[str]]]:
@@ -31,7 +30,6 @@ def create_pattern_mapping(
     return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
 
 
-# AI! create test cases for this function in test_folder_exporter
 def create_search_params(repos: list[str], max_operators: int = 5) -> Generator[str]:
     """Create search query strings that fits into Github search string limitations.
 
