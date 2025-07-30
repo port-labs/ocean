@@ -271,7 +271,5 @@ def test_create_search_params() -> None:
     # Test case 6: A single repo name that is too long to fit in a query.
     long_repo_name = "a" * 250
     repos = [long_repo_name]
-    with pytest.raises(
-        ValueError, match=f"Repository name '{long_repo_name}' is too long"
-    ):
-        list(create_search_params(repos))
+    # The function logs a warning and aborts by yielding an empty string.
+    assert list(create_search_params(repos)) == [""]

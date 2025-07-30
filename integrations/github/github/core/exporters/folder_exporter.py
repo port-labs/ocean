@@ -58,10 +58,11 @@ def create_search_params(
         ):
             if not chunk:
                 # A single repo name is too long to ever fit in a search query
-                # Ai! I don't want to raise an exeception in this case, let's instead add a log, yield an empty string, then return, also update test case to match
-                raise ValueError(
+                logger.warning(
                     f"Repository name '{repo}' is too long to fit in a search query."
                 )
+                yield ""
+                return
 
             yield "OR".join([f"{r}+in+name" for r in chunk])
             chunk = [repo]
