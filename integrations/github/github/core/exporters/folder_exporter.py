@@ -1,4 +1,5 @@
-from typing import Any
+from collections import defaultdict
+from typing import Any, Generator
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -9,15 +10,59 @@ from github.core.options import ListFolderOptions, SingleFolderOptions
 from github.helpers.utils import IgnoredError
 from wcmatch import glob
 
+from integration import FolderSelector
+
+
+# AI! create test cases for this function in test_folder_exporter
+def create_pattern_mapping(
+    folder_patterns: list[FolderSelector],
+) -> dict[str, dict[str, list[str]]]:
+    """
+    Create a mapping of repository names to branch names to folder paths.
+    """
+    pattern_by_repo_branch: dict[str, dict[str, list[str]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+
+    for pattern in folder_patterns:
+        p = pattern.path
+        for repo in pattern.repos:
+            pattern_by_repo_branch[repo.name][repo.branch or ""].append(p)
+    return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
+
+
+# AI! create test cases for this function in test_folder_exporter
+def create_search_params(repos: list[str], max_operators: int = 5) -> Generator[str]:
+    """Create search query strings that fits into Github search string limitations.
+
+    Limitations:
+        - max of 256 characters (not including operators)
+        - max of 5 operators (OR, NOT, etc)
+
+    """
+    max_search_characters = 256 + (2 * max_operators)
+
+    if len(repos) > max_operators:
+        yield from create_search_params(repos[: max_operators - 1], max_operators)
+        yield from create_search_params(repos[max_operators:], max_operators)
+
+    search_string = "OR".join([f"{repo}+in+name" for repo in repos])
+    if len(search_string) > max_search_characters:
+        max_operators = max_operators - 1
+        yield from create_search_params(repos[: max_operators - 1], max_operators)
+        yield from create_search_params(repos[max_operators:], max_operators)
+
+    yield search_string
+
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     _IGNORED_ERRORS = [
         IgnoredError(status=409, message="empty repository"),
     ]
 
-    async def get_resource[
-        ExporterOptionsT: SingleFolderOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         raise NotImplementedError
 
     @cache_coroutine_result()
@@ -29,9 +74,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         )
         return tree.get("tree", [])
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListFolderOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path = options["path"]
         branch_ref = options.get("branch") or options["repo"]["default_branch"]
         repo_name = options["repo"]["name"]
@@ -95,3 +140,10 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             return formatted
         else:
             return []
+
+    async def _search_for_repositories(
+        self, repos: list[str], max_operators: int = 5
+    ) -> list[dict[str, Any]]:
+        search_params = "OR".join([f"{repo}+in+name" for repo in repos])
+        query = f"org:{self.client.organization} {search_params} forks:true"
+        pass
