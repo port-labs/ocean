@@ -202,7 +202,7 @@ def test_create_pattern_mapping() -> None:
 
     # Test case 3: Single pattern, single repo, without branch
     patterns = [FolderSelector("src", [Repo("repo1", None)])]
-    expected = {"repo1": {"": ["src"]}}
+    expected = {"repo1": {"default": ["src"]}}
     assert create_pattern_mapping(patterns) == expected
 
     # Test case 4: Multiple repos for a single pattern
@@ -226,7 +226,7 @@ def test_create_pattern_mapping() -> None:
     ]
     expected = {
         "repo1": {"main": ["src", "docs"]},
-        "repo2": {"dev": ["src"], "": ["assets"]},
+        "repo2": {"dev": ["src"], "default": ["assets"]},
     }
     assert create_pattern_mapping(patterns) == expected
 
