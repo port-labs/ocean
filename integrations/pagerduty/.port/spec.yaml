@@ -38,3 +38,21 @@ saas:
     valuesOverride:
       integrationSpec:
         apiUrl: '"https://api.pagerduty.com"'
+installationDocs:
+  Saas__SaasOAuth2:
+    enabled: false
+  Saas__Saas:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?oauth=manual
+    jumpTo: setup
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?manual-installation-methods=one-time-ci&deploy=helm&cicd-method=github
+  gitlabCI:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?manual-installation-methods=one-time-ci&deploy=helm&cicd-method=gitlab
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?manual-installation-methods=real-time-self-hosted&deploy=helm
+  docker:
+    enabled: false
