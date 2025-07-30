@@ -15,7 +15,6 @@ class ObjectKind(StrEnum):
     SERVICE_METRIC = "serviceMetric"
     TEAM = "team"
     USER = "user"
-    SERVICE_DEPENDENCY = "serviceDependency"
 
 
 class DatadogIntegration(BaseIntegration):

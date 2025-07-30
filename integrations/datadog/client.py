@@ -674,5 +674,5 @@ class DatadogClient:
 
     async def get_single_service_dependency(
         self, service_id: str
-) -> dict[str, Any] | None:
-    pass
+    ) -> dict[str, Any] | None:
+        pass
