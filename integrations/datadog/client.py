@@ -673,6 +673,6 @@ class DatadogClient:
             yield items[i : i + MAX_PAGE_SIZE]
 
     async def get_single_service_dependency(
-        self, service_id: str
+        self, env: str, start_time: float, service_id: str
     ) -> dict[str, Any] | None:
         pass

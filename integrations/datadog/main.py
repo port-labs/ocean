@@ -5,6 +5,10 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+from utils import (
+    get_start_of_the_day_in_seconds_x_day_back,
+    get_start_of_the_month_in_seconds_x_months_back,
+)
 from initialize_client import init_client
 from integration import ObjectKind
 from overrides import (
