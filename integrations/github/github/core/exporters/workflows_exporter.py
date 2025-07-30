@@ -11,9 +11,9 @@ from github.helpers.utils import enrich_with_repository
 
 
 class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionsT: SingleWorkflowOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleWorkflowOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}"
         response = await self.client.send_api_request(endpoint)
         workflow = enrich_with_repository(response, options["repo_name"])
@@ -23,16 +23,16 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
 
         return workflow
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListWorkflowOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListWorkflowOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
 
         url = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/workflows"
         async for workflows in self.client.send_paginated_request(url):
             workflow_batch = cast(dict[str, Any], workflows)
             logger.info(
-                f"Fetched batch of {workflow_batch['total_count']} workflows from {options['repo_name']}"
+                f"Fetched batch of {len(workflow_batch['workflows'])} workflows from {options['repo_name']}"
             )
             batch = [
                 enrich_with_repository(workflow, options["repo_name"])
