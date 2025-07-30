@@ -35,16 +35,16 @@ An integration used to import gcp resources into Port.
         1. Insert the url to the ocean app on this format: `https://<your-url>/integration/events`
         2. You can use ngrok as a local ingress
 3. Create Assets feed pointing to this topic:
-    
+
     ```
-    gcloud asset feeds create <FEED_ID> 
-    	--pubsub-topic=<your_pubsub_topic> 
+    gcloud asset feeds create <FEED_ID>
+    	--pubsub-topic=<your_pubsub_topic>
     	--asset-types=<ASSET_TYPES>
     	--content-type=resource
-    	--condition-expression=<CONDITION_EXPRESSION> 
+    	--condition-expression=<CONDITION_EXPRESSION>
     	<--folder=FOLDER_ID | --organization=ORGANIZATION_ID | --project=PROJECT_ID>
     ```
-    
+
     - **ASSETS_FEED_TOPIC_NAME** - The name of the topic created for real-time events. The format is: `projects/<your-project-id>/topics/<your-topic-name>`
     - **ASSET_TYPES** - Comma separated list of the types you want to have real-time events for. The types can be found here: https://cloud.google.com/asset-inventory/docs/supported-asset-types . For example, if I want to fetch real-time events for buckets, VM instances and subscriptions, the ASSETS_FEED_ASSETS_TYPES should be:
         - `[storage.googleapis.com/Bucket,compute.googleapis.com/Instance,pubsub.googleapis.com/Subscription]`
@@ -55,13 +55,13 @@ An integration used to import gcp resources into Port.
 ### Starting up Ocean
 
 1. Use service account’s permissions
-    1. Create a key from the Service-account window (this will download a json file) 
+    1. Create a key from the Service-account window (this will download a json file)
     2. export the location of this file in an environment variable:
         1. `export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service_account_file.json`
 2. Export Port’s credentials
     1. `export PORT_CLIENT_ID=<your_port_client_id>`
     2. `export PORT_CLIENT_SECRET=<your_port_client_secret>`
-3. Run Ocean! 
+3. Run Ocean!
     1. clone the Ocean repo https://github.com/port-labs/ocean
     2. `cd integrations/gcp`
     3. `ocean sail -l DEBUG`
