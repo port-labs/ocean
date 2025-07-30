@@ -1,5 +1,8 @@
 from collections import defaultdict
-from typing import Any, Generator
+import urllib.parse
+from typing import Any, AsyncGenerator, Generator, Iterable
+
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -11,6 +14,8 @@ from github.helpers.utils import IgnoredError
 from wcmatch import glob
 
 from integration import FolderSelector
+
+_DEFAULT_BRANCH = "hard_to_replicate_name"
 
 
 def create_pattern_mapping(
@@ -26,12 +31,12 @@ def create_pattern_mapping(
     for pattern in folder_patterns:
         p = pattern.path
         for repo in pattern.repos:
-            pattern_by_repo_branch[repo.name][repo.branch or "default"].append(p)
+            pattern_by_repo_branch[repo.name][repo.branch or _DEFAULT_BRANCH].append(p)
     return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
 
 
 def create_search_params(
-    repos: list[str], max_operators: int = 5
+    repos: Iterable[str], max_operators: int = 5
 ) -> Generator[str, None, None]:
     """Create search query strings that fits into Github search string limitations.
 
@@ -92,19 +97,36 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         )
         return tree.get("tree", [])
 
+    # AI! can this function be improved to fetch trees concurrently without cache race issues?
     async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        path = options["path"]
-        branch_ref = options.get("branch") or options["repo"]["default_branch"]
-        repo_name = options["repo"]["name"]
+        repo_mapping = options["repo_mapping"]
+        repos = repo_mapping.keys()
 
-        is_recursive_api_call = self._needs_recursive_search(path)
-        url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
+        async for search_result in self._search_for_repositories(repos):
+            for repository in search_result:
+                repo_map = repo_mapping.get(repository["name"])
+                if not repo_map:
+                    continue
 
-        tree = await self._get_tree(url, recursive=is_recursive_api_call)
-        folders = self._retrieve_relevant_tree(tree, options)
-        yield folders
+                for branch in repo_map.keys():
+                    for path in repo_map[branch]:
+                        branch_ref = (
+                            branch
+                            if branch != _DEFAULT_BRANCH
+                            else repository["default_branch"]
+                        )
+                        repo_name = repository["name"]
+
+                        is_recursive_api_call = self._needs_recursive_search(path)
+                        url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
+
+                        tree = await self._get_tree(
+                            url, recursive=is_recursive_api_call
+                        )
+                        folders = self._retrieve_relevant_tree(tree, options)
+                        yield folders
 
     def _enrich_folder_with_repository(
         self, folders: list[dict[str, Any]], repo: dict[str, Any] | None = None
@@ -160,8 +182,22 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             return []
 
     async def _search_for_repositories(
-        self, repos: list[str], max_operators: int = 5
-    ) -> list[dict[str, Any]]:
-        search_params = "OR".join([f"{repo}+in+name" for repo in repos])
-        query = f"org:{self.client.organization} {search_params} forks:true"
-        pass
+        self, repos: Iterable[str]
+    ) -> AsyncGenerator[list[dict[str, Any]]]:
+        tasks = []
+        for search_string in create_search_params(repos):
+            if search_string == "":
+                continue
+
+            logger.debug(f"creating a search task for search string: {search_string}")
+            query = urllib.parse.quote_plus(
+                f"org:{self.client.organization} {search_string} forks:true"
+            )
+            url = f"{self.client.base_url}/search/repositories?q={query}"
+            tasks.append(self.client.send_paginated_request(url))
+
+        async for search_result in stream_async_iterators_tasks(*tasks):
+            valid_repos = [
+                repo for repo in search_result["items"] if repo["name"] in repos
+            ]
+            yield valid_repos
