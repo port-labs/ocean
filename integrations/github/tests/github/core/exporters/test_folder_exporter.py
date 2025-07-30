@@ -3,7 +3,7 @@ import pytest
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
-    create_pattern_mapping,
+    create_path_mapping,
     create_search_params,
 )
 from github.core.options import SingleFolderOptions
@@ -193,22 +193,22 @@ FolderSelector = NamedTuple("FolderSelector", [("path", str), ("repos", list[Rep
 
 def test_create_pattern_mapping() -> None:
     # Test case 1: Empty list
-    assert create_pattern_mapping([]) == {}
+    assert create_path_mapping([]) == {}
 
     # Test case 2: Single pattern, single repo, with branch
     patterns = [FolderSelector("src", [Repo("repo1", "main")])]
     expected = {"repo1": {"main": ["src"]}}
-    assert create_pattern_mapping(patterns) == expected
+    assert create_path_mapping(patterns) == expected
 
     # Test case 3: Single pattern, single repo, without branch
     patterns = [FolderSelector("src", [Repo("repo1", None)])]
     expected = {"repo1": {"default": ["src"]}}
-    assert create_pattern_mapping(patterns) == expected
+    assert create_path_mapping(patterns) == expected
 
     # Test case 4: Multiple repos for a single pattern
     patterns = [FolderSelector("docs", [Repo("repo1", "dev"), Repo("repo2", "main")])]
     expected = {"repo1": {"dev": ["docs"]}, "repo2": {"main": ["docs"]}}
-    assert create_pattern_mapping(patterns) == expected
+    assert create_path_mapping(patterns) == expected
 
     # Test case 5: Multiple patterns for the same repo/branch
     patterns = [
@@ -216,7 +216,7 @@ def test_create_pattern_mapping() -> None:
         FolderSelector("tests", [Repo("repo1", "main")]),
     ]
     expected = {"repo1": {"main": ["src", "tests"]}}
-    assert create_pattern_mapping(patterns) == expected
+    assert create_path_mapping(patterns) == expected
 
     # Test case 6: Complex case
     patterns = [
@@ -228,7 +228,7 @@ def test_create_pattern_mapping() -> None:
         "repo1": {"main": ["src", "docs"]},
         "repo2": {"dev": ["src"], "default": ["assets"]},
     }
-    assert create_pattern_mapping(patterns) == expected
+    assert create_path_mapping(patterns) == expected
 
 
 def test_create_search_params() -> None:
@@ -271,5 +271,7 @@ def test_create_search_params() -> None:
     # Test case 6: A single repo name that is too long to fit in a query.
     long_repo_name = "a" * 250
     repos = [long_repo_name]
-    # The function logs a warning and aborts by yielding an empty string.
-    assert list(create_search_params(repos)) == [""]
+    with pytest.raises(
+        ValueError, match=f"Repository name '{long_repo_name}' is too long"
+    ):
+        list(create_search_params(repos))

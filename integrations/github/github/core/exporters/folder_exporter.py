@@ -18,7 +18,7 @@ from integration import FolderSelector
 _DEFAULT_BRANCH = "hard_to_replicate_name"
 
 
-def create_pattern_mapping(
+def create_path_mapping(
     folder_patterns: list[FolderSelector],
 ) -> dict[str, dict[str, list[str]]]:
     """
@@ -179,7 +179,6 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             for item in just_trees
             if glob.globmatch(item["path"], path, flags=glob.GLOBSTAR | glob.DOTMATCH)
         ]
-
 
     async def _search_for_repositories(
         self, repos: Iterable[str]

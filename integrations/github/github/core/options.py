@@ -19,9 +19,7 @@ class SingleFolderOptions(TypedDict):
 
 
 class ListFolderOptions(TypedDict):
-    repo: Required[dict[str, Any]]
-    path: Required[str]
-    branch: NotRequired[Optional[str]]
+    repo_mapping: Required[dict[str, dict[str, list[str]]]]
 
 
 class RepositoryIdentifier(TypedDict):
