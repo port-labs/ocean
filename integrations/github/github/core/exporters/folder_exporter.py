@@ -30,27 +30,45 @@ def create_pattern_mapping(
     return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
 
 
-def create_search_params(repos: list[str], max_operators: int = 5) -> Generator[str]:
+def create_search_params(
+    repos: list[str], max_operators: int = 5
+) -> Generator[str, None, None]:
     """Create search query strings that fits into Github search string limitations.
 
     Limitations:
-        - max of 256 characters (not including operators)
-        - max of 5 operators (OR, NOT, etc)
+        - A search query can be up to 256 characters.
+        - A query can contain a maximum of 5 `OR` operators.
 
     """
-    max_search_characters = 256 + (2 * max_operators)
+    if not repos:
+        yield ""
+        return
 
-    if len(repos) > max_operators:
-        yield from create_search_params(repos[: max_operators - 1], max_operators)
-        yield from create_search_params(repos[max_operators:], max_operators)
+    max_repos_in_query = max_operators + 1
+    max_search_string_len = 256
 
-    search_string = "OR".join([f"{repo}+in+name" for repo in repos])
-    if len(search_string) > max_search_characters:
-        max_operators = max_operators - 1
-        yield from create_search_params(repos[: max_operators - 1], max_operators)
-        yield from create_search_params(repos[max_operators:], max_operators)
+    chunk: list[str] = []
+    for repo in repos:
+        new_chunk = chunk + [repo]
+        search_string = "OR".join([f"{r}+in+name" for r in new_chunk])
 
-    yield search_string
+        if (
+            len(new_chunk) > max_repos_in_query
+            or len(search_string) > max_search_string_len
+        ):
+            if not chunk:
+                # A single repo name is too long to ever fit in a search query
+                raise ValueError(
+                    f"Repository name '{repo}' is too long to fit in a search query."
+                )
+
+            yield "OR".join([f"{r}+in+name" for r in chunk])
+            chunk = [repo]
+        else:
+            chunk = new_chunk
+
+    if chunk:
+        yield "OR".join([f"{r}+in+name" for r in chunk])
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
