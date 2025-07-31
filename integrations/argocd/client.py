@@ -3,7 +3,6 @@ from typing import Any, Optional
 
 import httpx
 from loguru import logger
-
 from port_ocean.utils import http_async_client
 
 
@@ -100,10 +99,16 @@ class ArgocdClient:
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        if applications is None:
+            logger.error(
+                "No applications were found. Skipping deployment history ingestion"
+            )
+            return []
         all_history = [
-            {**history_item, "__applicationId": application["metadata"]["uid"]}
+            {**history_item}
             for application in applications
-            for history_item in application["status"].get("history", [])
+            if application
+            for history_item in application.get("status", {}).get("history", [])
         ]
         return all_history
 
@@ -113,17 +118,47 @@ class ArgocdClient:
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        if applications is None:
+            logger.error(
+                "No applications were found. Skipping managed resources ingestion"
+            )
+            return []
         all_k8s_resources = [
-            {**resource, "__applicationId": application["metadata"]["uid"]}
+            {**resource}
             for application in applications
-            for resource in application["status"].get("resources", [])
+            if application and application["metadata"]["uid"]
+            for resource in application.get("status", {}).get("resources", [])
         ]
         return all_k8s_resources
 
     async def get_managed_resources(
-        self, application_name: str
-    ) -> list[dict[str, Any]]:
-        logger.info(f"Fetching managed resources for application: {application_name}")
-        url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
-        managed_resources = (await self._send_api_request(url=url)).get("items", [])
-        return managed_resources
+        self, application: dict[str, Any]
+    ) -> list[dict[str, Any]] | None:
+        errors = []
+        try:
+            application_name = application["metadata"]["name"]
+            logger.info(
+                f"Fetching managed resources for application: {application_name}"
+            )
+            url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
+            managed_resources = (await self._send_api_request(url=url)).get("items", [])
+            application_resource = [
+                {
+                    **managed_resource,
+                    "__application": application,
+                }
+                for managed_resource in managed_resources
+                if managed_resource
+            ]
+            return application_resource
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch managed resources for application {application['metadata']['name']}: {e}"
+            )
+            errors.append(e)
+
+        if errors and not self.ignore_server_error:
+            raise ExceptionGroup(
+                "Errors occurred during managed resource ingestion", errors
+            )
+        return None
