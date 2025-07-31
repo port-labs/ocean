@@ -1,9 +1,12 @@
+from typing import cast
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from checkmarx_one.exporter_factory import create_project_exporter, create_scan_exporter
 from checkmarx_one.core.options import ListProjectOptions, ListScanOptions
+from checkmarx_one.integration import CheckmarxOneScanResourcesConfig
 from utils import ObjectKind
 
 
@@ -43,7 +46,12 @@ async def on_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     try:
         scan_exporter = create_scan_exporter()
-        options = ListScanOptions()
+        selector = cast(CheckmarxOneScanResourcesConfig, event.resource_config).selector
+        options = ListScanOptions(
+            project_ids=selector.project_ids,
+            limit=selector.limit,
+            offset=selector.offset,
+        )
 
         async for scans_batch in scan_exporter.get_scans(options):
             logger.debug(f"Received batch with {len(scans_batch)} scans")

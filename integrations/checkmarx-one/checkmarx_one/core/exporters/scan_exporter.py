@@ -3,6 +3,7 @@ from typing import Any, List, Optional
 from loguru import logger
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
+from port_ocean.utils.cache import cache_iterator_result
 
 
 class CheckmarxScanExporter(AbstractCheckmarxExporter):
@@ -14,6 +15,7 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
         logger.info(f"Fetched scan with ID: {scan_id}")
         return response
 
+    @cache_iterator_result()
     async def get_scans(
         self,
         project_ids: Optional[List[str]] = None,
