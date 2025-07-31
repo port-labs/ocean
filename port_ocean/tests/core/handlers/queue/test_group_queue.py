@@ -578,3 +578,226 @@ class TestGroupQueue:
         assert len(queue._current_items) == 0
         assert len(queue._group_to_worker) == 0
         assert await queue.size() == 0
+
+    @pytest.mark.asyncio
+    async def test_frozen_lock_timeout_recovery(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
+        """Test that frozen locks are released after timeout and processing can resume"""
+        # Create queue with short timeout for testing
+        queue = GroupQueue(group_key="group_id", name="test_queue", lock_timeout=0.3)
+
+        processed_items = []
+
+        async def normal_worker(worker_id: int) -> Any:
+            """Worker that processes items normally"""
+            try:
+                item = await queue.get()
+                processed_items.append((worker_id, item))
+                await asyncio.sleep(0.1)  # Normal processing time
+                await queue.commit()
+                return item
+            except Exception as e:
+                return f"Worker {worker_id} error: {e}"
+
+        async def hanging_worker(worker_id: int) -> Any:
+            """Worker that gets item but never commits (simulates hung worker)"""
+            try:
+                item = await queue.get()
+                processed_items.append((worker_id, item))
+                # Hang for longer than lock timeout without committing
+                await asyncio.sleep(1.0)  # Longer than 0.5s timeout
+                # Don't commit - simulates hung worker
+                return f"Worker {worker_id} hung"
+            except Exception as e:
+                return f"Worker {worker_id} error: {e}"
+
+        # Add items to same group
+        items = [TestItem(group_id="group_a", value=i) for i in range(3)]
+        for item in items:
+            await queue.put(item)
+
+        # Start hanging worker first - it will lock the group and hang
+        hanging_task = asyncio.create_task(hanging_worker(999))
+
+        # Give hanging worker time to grab an item and lock the group
+        await asyncio.sleep(0.1)
+
+        # Verify group is locked
+        assert "group_a" in queue._locked
+        assert len(queue._current_items) == 1
+
+        # Normal worker should be blocked initially
+        normal_task = asyncio.create_task(normal_worker(1))
+
+        # Give normal worker a chance to try - should be blocked
+        await asyncio.sleep(0.2)
+        assert not normal_task.done()  # Still waiting
+
+        # Wait for timeout to kick in (0.5s timeout + some buffer)
+        await asyncio.sleep(0.4)
+
+        # Now the normal worker should be able to proceed
+        await asyncio.wait_for(normal_task, timeout=2.0)
+
+        # Verify the lock was released and normal worker processed an item
+        normal_result = await normal_task
+        assert isinstance(normal_result, TestItem)
+
+        # Clean up hanging task
+        hanging_task.cancel()
+        try:
+            await hanging_task
+        except asyncio.CancelledError:
+            pass
+
+        # Verify state is clean after timeout recovery
+        assert (
+            len(queue._locked) <= 1
+        )  # At most one item being processed by normal worker
+
+        # Should be able to process remaining items normally
+        remaining_worker = asyncio.create_task(normal_worker(2))
+        remaining_result = await asyncio.wait_for(remaining_worker, timeout=1.0)
+        assert isinstance(remaining_result, TestItem)
+
+        # Final cleanup check
+        await asyncio.sleep(0.1)  # Let any pending operations complete
+
+        # Should have processed 2 items (one by normal worker, one by remaining worker)
+        # The hanging worker grabbed one but timeout should have made it available again
+        processed_values = {
+            item.value for _, item in processed_items if isinstance(item, TestItem)
+        }
+        assert len(processed_values) >= 2  # At least 2 items processed
+
+    @pytest.mark.asyncio
+    async def test_lock_timeout_doesnt_affect_normal_processing(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
+        """Test that lock timeout doesn't interfere with normal fast processing"""
+        # Create queue with reasonable timeout
+        queue = GroupQueue(group_key="group_id", name="test_queue", lock_timeout=2.0)
+
+        processed_items = []
+
+        async def fast_worker(worker_id: int) -> Any:
+            """Worker that processes quickly (well under timeout)"""
+            try:
+                item = await queue.get()
+                processed_items.append((worker_id, item))
+                await asyncio.sleep(0.1)  # Fast processing
+                await queue.commit()
+                return item
+            except Exception as e:
+                return f"Worker {worker_id} error: {e}"
+
+        # Add items to same group
+        items = [TestItem(group_id="group_a", value=i) for i in range(5)]
+        for item in items:
+            await queue.put(item)
+
+        # Process all items with single worker (should be sequential)
+        results = []
+        for i in range(5):
+            task = asyncio.create_task(fast_worker(i))
+            result = await asyncio.wait_for(task, timeout=1.0)
+            results.append(result)
+
+        # All should succeed
+        assert len([r for r in results if isinstance(r, TestItem)]) == 5
+
+        # All items should be processed
+        processed_values = {item.value for _, item in processed_items}
+        assert processed_values == {0, 1, 2, 3, 4}
+
+        # Perfect cleanup
+        assert len(queue._locked) == 0
+        assert len(queue._current_items) == 0
+        assert len(queue._group_to_worker) == 0
+
+    @pytest.mark.asyncio
+    async def test_multiple_frozen_locks_recovery(
+        self, queue_with_group_key: GroupQueue[Any]
+    ) -> None:
+        """Test recovery when multiple groups have frozen locks"""
+        queue = GroupQueue(group_key="group_id", name="test_queue", lock_timeout=0.3)
+
+        async def hanging_worker(worker_id: int, group: str) -> Any:
+            """Worker that grabs item from specific group and hangs"""
+            try:
+                # Keep trying until we get an item from the target group
+                while True:
+                    item = await queue.get()
+                    if item.group_id == group:
+                        # Hang without committing
+                        await asyncio.sleep(1.0)
+                        return f"Worker {worker_id} hung with {group}"
+                    else:
+                        # Not our target group, commit and continue
+                        await queue.commit()
+            except Exception as e:
+                return f"Worker {worker_id} error: {e}"
+
+        async def recovery_worker(worker_id: int) -> Any:
+            """Worker that should be able to process after timeout"""
+            try:
+                item = await queue.get()
+                await asyncio.sleep(0.05)
+                await queue.commit()
+                return item
+            except Exception as e:
+                return f"Worker {worker_id} error: {e}"
+
+        # Add items to multiple groups
+        for group in ["group_a", "group_b", "group_c"]:
+            for i in range(2):
+                await queue.put(TestItem(group_id=group, value=f"{group}_{i}"))
+
+        # Start hanging workers for each group
+        hanging_tasks = [
+            asyncio.create_task(hanging_worker(i, f"group_{chr(97+i)}"))
+            for i in range(3)
+        ]
+
+        # Give them time to grab locks
+        await asyncio.sleep(0.1)
+
+        # Should have 3 locked groups
+        assert len(queue._locked) == 3
+
+        # Start recovery workers - should initially be blocked
+        recovery_tasks = [
+            asyncio.create_task(recovery_worker(100 + i)) for i in range(3)
+        ]
+
+        # Give recovery workers time to try (should be blocked)
+        await asyncio.sleep(0.1)
+
+        # None should be done yet
+        for task in recovery_tasks:
+            assert not task.done()
+
+        # Wait for timeouts to kick in
+        await asyncio.sleep(0.4)
+
+        # Now recovery workers should be able to proceed
+        results = await asyncio.gather(*recovery_tasks, return_exceptions=True)
+
+        # Should have processed 3 items (one from each group)
+        successful_results = [r for r in results if isinstance(r, TestItem)]
+        assert len(successful_results) == 3
+
+        # Clean up hanging tasks
+        for task in hanging_tasks:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        # Final state should be clean
+        await asyncio.sleep(0.1)
+        assert len(queue._locked) == 0
+        assert len(queue._current_items) == 0
+        assert len(queue._group_to_worker) == 0
