@@ -19,8 +19,6 @@ from .abstract_webhook_processor import AbstractWebhookProcessor
 from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import LocalQueue
 
-CONCURRENCY_PER_PATH = 3
-
 
 class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     """Manages webhook processors and their routes"""
