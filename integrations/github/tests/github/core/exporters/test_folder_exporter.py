@@ -1,4 +1,5 @@
 from typing import Any
+from unittest.mock import AsyncMock
 import pytest
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.folder_exporter import (
@@ -190,7 +191,7 @@ class TestRestFolderExporter:
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources(
-        self, rest_client: GithubRestClient, mocker: Any
+        self, rest_client: GithubRestClient, monkeypatch: Any
     ) -> None:
         exporter = RestFolderExporter(rest_client)
         repo_mapping = {"test-repo": {"main": ["src/*"], _DEFAULT_BRANCH: ["docs"]}}
@@ -204,12 +205,13 @@ class TestRestFolderExporter:
         async def search_results_gen(*args: Any, **kwargs: Any) -> Any:
             yield mock_repos
 
-        search_repositories_mock = mocker.patch.object(
-            exporter, "_search_for_repositories", side_effect=search_results_gen
+        search_repositories_mock = AsyncMock(side_effect=search_results_gen)
+        monkeypatch.setattr(
+            exporter, "_search_for_repositories", search_repositories_mock
         )
-        get_tree_mock = mocker.patch.object(
-            exporter, "_get_tree", return_value=TEST_FULL_CONTENTS
-        )
+
+        get_tree_mock = AsyncMock(return_value=TEST_FULL_CONTENTS)
+        monkeypatch.setattr(exporter, "_get_tree", get_tree_mock)
 
         results = [res async for res in exporter.get_paginated_resources(options)]
 
