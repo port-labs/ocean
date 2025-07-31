@@ -8,7 +8,7 @@ from github.core.exporters.folder_exporter import (
     create_search_params,
 )
 from github.core.options import SingleFolderOptions
-from integration import FolderSelector, Repo
+from integration import FolderSelector, RepositoryBranchMapping as Repo
 
 TEST_FILE = {
     "path": "README.md",
@@ -194,33 +194,41 @@ def test_create_path_mapping() -> None:
     assert create_path_mapping([]) == {}
 
     # Test case 2: Single pattern, single repo, with branch
-    patterns = [FolderSelector("src", [Repo("repo1", "main")])]
+    patterns = [FolderSelector(path="src", repos=[Repo(name="repo1", branch="main")])]
     expected = {"repo1": {"main": ["src"]}}
     assert create_path_mapping(patterns) == expected
 
     # Test case 3: Single pattern, single repo, without branch
-    patterns = [FolderSelector("src", [Repo("repo1", None)])]
+    patterns = [FolderSelector(path="src", repos=[Repo(name="repo1", branch=None)])]
     expected = {"repo1": {_DEFAULT_BRANCH: ["src"]}}
     assert create_path_mapping(patterns) == expected
 
     # Test case 4: Multiple repos for a single pattern
-    patterns = [FolderSelector("docs", [Repo("repo1", "dev"), Repo("repo2", "main")])]
+    patterns = [
+        FolderSelector(
+            path="docs",
+            repos=[Repo(name="repo1", branch="dev"), Repo(name="repo2", branch="main")],
+        )
+    ]
     expected = {"repo1": {"dev": ["docs"]}, "repo2": {"main": ["docs"]}}
     assert create_path_mapping(patterns) == expected
 
     # Test case 5: Multiple patterns for the same repo/branch
     patterns = [
-        FolderSelector("src", [Repo("repo1", "main")]),
-        FolderSelector("tests", [Repo("repo1", "main")]),
+        FolderSelector(path="src", repos=[Repo(name="repo1", branch="main")]),
+        FolderSelector(path="tests", repos=[Repo(name="repo1", branch="main")]),
     ]
     expected = {"repo1": {"main": ["src", "tests"]}}
     assert create_path_mapping(patterns) == expected
 
     # Test case 6: Complex case
     patterns = [
-        FolderSelector("src", [Repo("repo1", "main"), Repo("repo2", "dev")]),
-        FolderSelector("docs", [Repo("repo1", "main")]),
-        FolderSelector("assets", [Repo("repo2", None)]),
+        FolderSelector(
+            path="src",
+            repos=[Repo(name="repo1", branch="main"), Repo(name="repo2", branch="dev")],
+        ),
+        FolderSelector(path="docs", repos=[Repo(name="repo1", branch="main")]),
+        FolderSelector(path="assets", repos=[Repo(name="repo2", branch=None)]),
     ]
     expected = {
         "repo1": {"main": ["src", "docs"]},
