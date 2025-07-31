@@ -7,6 +7,7 @@ from port_ocean.utils import http_async_client
 API_VERSION = "v1"
 PAGE_SIZE = 100
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
+ISSUE_DETAILS_ENDPOINT = f"api/public/{API_VERSION}/issues"
 REPOSITORIES_ENDPOINT = f"api/public/{API_VERSION}/repositories/code"
 REPO_FIRST_PAGE = 0
 
@@ -124,7 +125,7 @@ class AikidoClient:
         """
         Fetch details for a single issue by ID.
         """
-        endpoint = f"issues/{issue_id}"
+        endpoint = f"{ISSUE_DETAILS_ENDPOINT}/{issue_id}"
         try:
             return await self._send_api_request(endpoint, method="GET")
         except Exception as e:

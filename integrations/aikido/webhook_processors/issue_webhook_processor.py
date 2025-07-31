@@ -31,7 +31,7 @@ class IssueWebhookProcessor(BaseAikidoWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        logger.info(f"Processing issue: {issue_data.get('id', 'unknown')}")
+        logger.info(f"Processing issue: {issue_id}")
 
         return WebhookEventRawResults(
             updated_raw_results=[issue_data],
