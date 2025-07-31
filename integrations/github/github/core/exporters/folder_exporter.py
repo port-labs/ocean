@@ -50,6 +50,7 @@ def create_search_params(repos: Iterable[str], max_operators: int = 5) -> list[s
     max_search_string_len = 256
 
     chunk: list[str] = []
+    # AI! can this be made shorter?
     for repo in repos:
         new_chunk = chunk + [repo]
         search_string = " OR ".join([f"{r} in:name" for r in new_chunk])
