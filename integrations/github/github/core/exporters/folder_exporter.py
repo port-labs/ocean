@@ -182,7 +182,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def _search_for_repositories(
         self, repos: Iterable[str]
-    ) -> AsyncGenerator[list[dict[str, Any]]]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         tasks = []
         for search_string in create_search_params(repos):
             if search_string == "":

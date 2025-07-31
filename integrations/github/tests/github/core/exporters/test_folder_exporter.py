@@ -7,7 +7,7 @@ from github.core.exporters.folder_exporter import (
     create_path_mapping,
     create_search_params,
 )
-from github.core.options import SingleFolderOptions
+from github.core.options import ListFolderOptions, SingleFolderOptions
 from integration import FolderSelector, RepositoryBranchMapping as Repo
 
 TEST_FILE = {
@@ -187,6 +187,53 @@ class TestRestFolderExporter:
             RestFolderExporter._filter_folder_contents(contents, path)
             == expected_filtered_folders
         )
+
+    @pytest.mark.asyncio
+    async def test_get_paginated_resources(
+        self, rest_client: GithubRestClient, mocker: Any
+    ) -> None:
+        exporter = RestFolderExporter(rest_client)
+        repo_mapping = {"test-repo": {"main": ["src/*"], _DEFAULT_BRANCH: ["docs"]}}
+        options = ListFolderOptions(repo_mapping=repo_mapping)
+
+        mock_repos = [
+            {"name": "test-repo", "default_branch": "develop"},
+            {"name": "another-repo", "default_branch": "main"},
+        ]
+
+        async def search_results_gen(*args: Any, **kwargs: Any) -> Any:
+            yield mock_repos
+
+        search_repositories_mock = mocker.patch.object(
+            exporter, "_search_for_repositories", side_effect=search_results_gen
+        )
+        get_tree_mock = mocker.patch.object(
+            exporter, "_get_tree", return_value=TEST_FULL_CONTENTS
+        )
+
+        results = [res async for res in exporter.get_paginated_resources(options)]
+
+        search_repositories_mock.assert_called_once_with(repo_mapping.keys())
+
+        # it is called for 'main' and for default branch 'develop' for 'test-repo'
+        assert get_tree_mock.call_count == 2
+        assert len(results) == 2
+
+        # sort results to have a predictable order for assertions
+        results.sort(key=len, reverse=True)
+
+        # Check src/* results
+        src_results = results[0]
+        assert len(src_results) == 2
+        assert src_results[0]["folder"]["path"] == "src/components"
+        assert src_results[1]["folder"]["path"] == "src/hooks"
+        assert src_results[0]["__repository"]["name"] == "test-repo"
+
+        # Check docs results
+        docs_results = results[1]
+        assert len(docs_results) == 1
+        assert docs_results[0]["folder"]["path"] == "docs"
+        assert docs_results[0]["__repository"]["name"] == "test-repo"
 
 
 def test_create_path_mapping() -> None:
