@@ -104,9 +104,15 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 for _, proc in matching:
                     self._timestamp_event_error(proc.event)
             finally:
-                if event is not None:
-                    logger.info(f"{event.group_id}")
-                    await queue.commit()
+                try:
+                    if event is not None:
+                        logger.info(f"{event.group_id}")
+                        await queue.commit()
+
+                except Exception as e:
+                    logger.exception(
+                        f"Unexpected error in queue commit in worker {worker_id} for {path}: {e}"
+                    )
 
     async def _extract_matching_processors(
         self, webhook_event: WebhookEvent, path: str
