@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, AsyncGenerator, Generator, Iterable
+from typing import Any, AsyncGenerator, Iterable
 
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
@@ -34,9 +34,7 @@ def create_path_mapping(
     return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
 
 
-def create_search_params(
-    repos: Iterable[str], max_operators: int = 5
-) -> Generator[str, None, None]:
+def create_search_params(repos: Iterable[str], max_operators: int = 5) -> list[str]:
     """Create search query strings that fits into Github search string limitations.
 
     Limitations:
@@ -44,9 +42,9 @@ def create_search_params(
         - A query can contain a maximum of 5 `OR` operators.
 
     """
+    search_strings = []
     if not repos:
-        yield ""
-        return
+        return []
 
     max_repos_in_query = max_operators + 1
     max_search_string_len = 256
@@ -64,16 +62,17 @@ def create_search_params(
                 logger.warning(
                     f"Repository name '{repo}' is too long to fit in a search query."
                 )
-                yield ""
-                return
+                continue
 
-            yield " OR ".join([f"{r} in:name" for r in chunk])
+            search_strings.append(" OR ".join([f"{r} in:name" for r in chunk]))
             chunk = [repo]
         else:
             chunk = new_chunk
 
     if chunk:
-        yield " OR ".join([f"{r} in:name" for r in chunk])
+        search_strings.append(" OR ".join([f"{r} in:name" for r in chunk]))
+
+    return search_strings
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
@@ -81,9 +80,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         IgnoredError(status=409, message="empty repository"),
     ]
 
-    async def get_resource[
-        ExporterOptionsT: SingleFolderOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         raise NotImplementedError
 
     @cache_coroutine_result()
@@ -95,9 +94,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         )
         return tree.get("tree", [])
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListFolderOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_mapping = options["repo_mapping"]
         repos = repo_mapping.keys()
 
@@ -183,9 +182,6 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         tasks = []
         for search_string in create_search_params(repos):
-            if search_string == "":
-                continue
-
             logger.debug(f"creating a search task for search string: {search_string}")
             query = f"org:{self.client.organization} {search_string} fork:true"
             url = f"{self.client.base_url}/search/repositories"

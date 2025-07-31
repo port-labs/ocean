@@ -288,7 +288,7 @@ def test_create_path_mapping() -> None:
 
 def test_create_search_params() -> None:
     # Test case 1: Empty list of repos
-    assert list(create_search_params([])) == [""]
+    assert list(create_search_params([])) == []
 
     # Test case 2: List with less than max_operators repos
     repos = ["repo1", "repo2", "repo3"]
@@ -326,5 +326,5 @@ def test_create_search_params() -> None:
     # Test case 6: A single repo name that is too long to fit in a query.
     long_repo_name = "a" * 250
     repos = [long_repo_name]
-    # The function logs a warning and aborts by yielding an empty string.
-    assert list(create_search_params(repos)) == [""]
+    # The function logs a warning and does not add long repo to search string
+    assert list(create_search_params(repos)) == []
