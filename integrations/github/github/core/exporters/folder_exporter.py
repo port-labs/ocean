@@ -50,28 +50,34 @@ def create_search_params(repos: Iterable[str], max_operators: int = 5) -> list[s
     max_search_string_len = 256
 
     chunk: list[str] = []
-    # AI! can this be made shorter?
+    current_query = ""
     for repo in repos:
-        new_chunk = chunk + [repo]
-        search_string = " OR ".join([f"{r} in:name" for r in new_chunk])
+        repo_query_part = f"{repo} in:name"
+
+        if len(repo_query_part) > max_search_string_len:
+            logger.warning(
+                f"Repository name '{repo}' is too long to fit in a search query."
+            )
+            continue
+
+        if not chunk:
+            chunk.append(repo)
+            current_query = repo_query_part
+            continue
 
         if (
-            len(new_chunk) > max_repos_in_query
-            or len(search_string) > max_search_string_len
+            len(chunk) + 1 > max_repos_in_query
+            or len(f"{current_query} OR {repo_query_part}") > max_search_string_len
         ):
-            if not chunk:
-                logger.warning(
-                    f"Repository name '{repo}' is too long to fit in a search query."
-                )
-                continue
-
-            search_strings.append(" OR ".join([f"{r} in:name" for r in chunk]))
+            search_strings.append(current_query)
             chunk = [repo]
+            current_query = repo_query_part
         else:
-            chunk = new_chunk
+            chunk.append(repo)
+            current_query = f"{current_query} OR {repo_query_part}"
 
     if chunk:
-        search_strings.append(" OR ".join([f"{r} in:name" for r in chunk]))
+        search_strings.append(current_query)
 
     return search_strings
 
