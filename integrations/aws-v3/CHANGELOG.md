@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0-dev (2025-07-20)
+
+
+### Improvements
+
+- Add assume role with web identity provider
+
 ## 0.1.2-dev (2025-07-20)
 
 
