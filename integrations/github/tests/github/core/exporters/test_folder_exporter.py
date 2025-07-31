@@ -292,22 +292,22 @@ def test_create_search_params() -> None:
 
     # Test case 2: List with less than max_operators repos
     repos = ["repo1", "repo2", "repo3"]
-    expected = ["repo1+in+nameORrepo2+in+nameORrepo3+in+name"]
+    expected = ["repo1 in:name OR repo2 in:name OR repo3 in:name"]
     assert list(create_search_params(repos)) == expected
 
     # Test case 3: List with exactly max_operators + 1 repos (default is 5+1=6).
     # All repo names are short, so they should fit in one query.
     repos = ["r1", "r2", "r3", "r4", "r5", "r6"]
     expected = [
-        "r1+in+nameORr2+in+nameORr3+in+nameORr4+in+nameORr5+in+nameORr6+in+name"
+        "r1 in:name OR r2 in:name OR r3 in:name OR r4 in:name OR r5 in:name OR r6 in:name"
     ]
     assert list(create_search_params(repos)) == expected
 
     # Test case 4: List with more than max_operators + 1 repos.
     repos = ["r1", "r2", "r3", "r4", "r5", "r6", "r7"]
     expected = [
-        "r1+in+nameORr2+in+nameORr3+in+nameORr4+in+nameORr5+in+nameORr6+in+name",
-        "r7+in+name",
+        "r1 in:name OR r2 in:name OR r3 in:name OR r4 in:name OR r5 in:name OR r6 in:name",
+        "r7 in:name",
     ]
     assert list(create_search_params(repos)) == expected
 
@@ -318,8 +318,8 @@ def test_create_search_params() -> None:
     repo_base = "a" * 40
     repos = [f"{repo_base}-{i}" for i in range(7)]
     expected = [
-        "OR".join([f"{r}+in+name" for r in repos[:4]]),
-        "OR".join([f"{r}+in+name" for r in repos[4:]]),
+        " OR ".join([f"{r} in:name" for r in repos[:4]]),
+        " OR ".join([f"{r} in:name" for r in repos[4:]]),
     ]
     assert list(create_search_params(repos)) == expected
 
