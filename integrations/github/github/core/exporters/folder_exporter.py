@@ -55,7 +55,7 @@ def create_search_params(
     chunk: list[str] = []
     for repo in repos:
         new_chunk = chunk + [repo]
-        search_string = "OR".join([f"{r}+in+name" for r in new_chunk])
+        search_string = " OR ".join([f"{r} in:name" for r in new_chunk])
 
         if (
             len(new_chunk) > max_repos_in_query
@@ -69,13 +69,13 @@ def create_search_params(
                 yield ""
                 return
 
-            yield "OR".join([f"{r}+in+name" for r in chunk])
+            yield " OR ".join([f"{r} in:name" for r in chunk])
             chunk = [repo]
         else:
             chunk = new_chunk
 
     if chunk:
-        yield "OR".join([f"{r}+in+name" for r in chunk])
+        yield " OR ".join([f"{r} in:name" for r in chunk])
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
@@ -189,11 +189,10 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
                 continue
 
             logger.debug(f"creating a search task for search string: {search_string}")
-            query = urllib.parse.quote_plus(
-                f"org:{self.client.organization} {search_string} forks:true"
-            )
-            url = f"{self.client.base_url}/search/repositories?q={query}"
-            tasks.append(self.client.send_paginated_request(url))
+            query = f"org:{self.client.organization} {search_string} fork:true"
+            url = f"{self.client.base_url}/search/repositories"
+            params = {"q": query}
+            tasks.append(self.client.send_paginated_request(url, params=params))
 
         async for search_result in stream_async_iterators_tasks(*tasks):
             valid_repos = [
