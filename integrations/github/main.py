@@ -59,7 +59,6 @@ from github.core.options import (
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
     ListCollaboratorOptions,
-    SingleRepositoryOptions,
 )
 from github.helpers.utils import ObjectKind, GithubClientType
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
