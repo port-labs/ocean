@@ -6,7 +6,11 @@ from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from aiobotocore.session import AioSession
-from typing import TypedDict, AsyncIterator
+from typing import Any, TypedDict, AsyncIterator
+from aws.auth.providers.assume_role_with_web_identity_provider import (
+    AssumeRoleWithWebIdentityProvider,
+)
+import os
 
 StrategyType = SingleAccountStrategy | MultiAccountStrategy
 
@@ -15,6 +19,23 @@ class ResyncStrategyFactory:
     """A factory for creating resync strategies based on the global configuration."""
 
     _cached_strategy: StrategyType | None = None
+
+    @classmethod
+    def _detect_provider_type(cls, config: dict[str, Any]) -> CredentialProvider:
+        """
+        Detect the appropriate provider type based on environment variables and config.
+        Returns a tuple of (provider_instance, provider_type_name, strategy_class)
+        """
+
+        # Check for web identity token first (highest priority)
+        if os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"):
+            logger.info(
+                "[SessionStrategyFactory] Using AssumeRoleWithWebIdentityProvider (found AWS_WEB_IDENTITY_TOKEN_FILE)"
+            )
+            return AssumeRoleWithWebIdentityProvider(config=config)
+
+        logger.info("[SessionStrategyFactory] Using AssumeRoleProvider")
+        return AssumeRoleProvider(config=config)
 
     @classmethod
     async def create(cls) -> StrategyType:
@@ -28,10 +49,8 @@ class ResyncStrategyFactory:
         strategy_cls: type[StrategyType]
 
         if is_multi_account:
-            logger.info(
-                "[SessionStrategyFactory] Using AssumeRoleProvider for multi-account"
-            )
-            provider = AssumeRoleProvider(config=config)
+            logger.info("[SessionStrategyFactory] Using MultiAccountStrategy")
+            provider = cls._detect_provider_type(config=config)
             strategy_cls = MultiAccountStrategy
         else:
             logger.info(
