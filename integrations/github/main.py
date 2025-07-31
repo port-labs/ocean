@@ -40,7 +40,7 @@ from github.core.exporters.code_scanning_alert_exporter import (
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
-    create_pattern_mapping,
+    create_path_mapping,
 )
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 
@@ -467,7 +467,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         return
 
-    repo_path_map = create_pattern_mapping(selector.folders)
+    repo_path_map = create_path_mapping(selector.folders)
     folder_options = ListFolderOptions(repo_mapping=repo_path_map)
 
     async for folders in folder_exporter.get_paginated_resources(folder_options):

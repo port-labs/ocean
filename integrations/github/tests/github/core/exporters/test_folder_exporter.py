@@ -1,12 +1,14 @@
-from typing import Any, NamedTuple
+from typing import Any
 import pytest
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
+    _DEFAULT_BRANCH,
     create_path_mapping,
     create_search_params,
 )
 from github.core.options import SingleFolderOptions
+from integration import FolderSelector, Repo
 
 TEST_FILE = {
     "path": "README.md",
@@ -187,11 +189,7 @@ class TestRestFolderExporter:
         )
 
 
-Repo = NamedTuple("Repo", [("name", str), ("branch", str | None)])
-FolderSelector = NamedTuple("FolderSelector", [("path", str), ("repos", list[Repo])])
-
-
-def test_create_pattern_mapping() -> None:
+def test_create_path_mapping() -> None:
     # Test case 1: Empty list
     assert create_path_mapping([]) == {}
 
@@ -202,7 +200,7 @@ def test_create_pattern_mapping() -> None:
 
     # Test case 3: Single pattern, single repo, without branch
     patterns = [FolderSelector("src", [Repo("repo1", None)])]
-    expected = {"repo1": {"default": ["src"]}}
+    expected = {"repo1": {_DEFAULT_BRANCH: ["src"]}}
     assert create_path_mapping(patterns) == expected
 
     # Test case 4: Multiple repos for a single pattern
@@ -226,7 +224,7 @@ def test_create_pattern_mapping() -> None:
     ]
     expected = {
         "repo1": {"main": ["src", "docs"]},
-        "repo2": {"dev": ["src"], "default": ["assets"]},
+        "repo2": {"dev": ["src"], _DEFAULT_BRANCH: ["assets"]},
     }
     assert create_path_mapping(patterns) == expected
 
@@ -271,7 +269,5 @@ def test_create_search_params() -> None:
     # Test case 6: A single repo name that is too long to fit in a query.
     long_repo_name = "a" * 250
     repos = [long_repo_name]
-    with pytest.raises(
-        ValueError, match=f"Repository name '{long_repo_name}' is too long"
-    ):
-        list(create_search_params(repos))
+    # The function logs a warning and aborts by yielding an empty string.
+    assert list(create_search_params(repos)) == [""]
