@@ -101,6 +101,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: ListFolderOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_mapping = options["repo_mapping"]
+        print(repo_mapping)
         repos = repo_mapping.keys()
 
         async for search_result in self._search_for_repositories(repos):
