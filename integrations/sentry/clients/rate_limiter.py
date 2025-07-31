@@ -5,7 +5,7 @@ from typing import Optional, Callable, Awaitable, Type, Any
 import httpx
 from loguru import logger
 
-MINIMUM_LIMIT_REMAINING = 10
+MINIMUM_LIMIT_REMAINING = 5
 MAXIMUM_LIMIT_ON_RETRIES = 3
 
 
@@ -43,6 +43,7 @@ class SentryRateLimiter:
         self._rate_limit_reset: Optional[float] = None
 
     async def __aenter__(self) -> "SentryRateLimiter":
+        await self._wait_if_needed()
         return self
 
     async def __aexit__(
@@ -145,7 +146,6 @@ class SentryRateLimiter:
         retries = 0
         while True:
             try:
-                await self._wait_if_needed()
                 response = await request_func()
                 await self._update_rate_limit_state(response)
 

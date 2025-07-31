@@ -34,6 +34,7 @@ class SentryClient:
         self._client = http_async_client
         self._client.headers.update(self.base_headers)
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
+        self._rate_limiter = SentryRateLimiter()
 
     @staticmethod
     def get_next_link(link_header: str) -> str:
@@ -59,8 +60,8 @@ class SentryClient:
         logger.debug(f"Getting paginated resource from Sentry for URL: {url}")
 
         while url:
-            async with SentryRateLimiter() as limiter:
-                response = await limiter.execute(
+            async with self._rate_limiter:
+                response = await self._rate_limiter.execute(
                     lambda: self._client.get(url=url, params=params)
                 )
                 records = response.json()
@@ -74,8 +75,10 @@ class SentryClient:
     async def _get_single_resource(self, url: str) -> list[dict[str, Any]]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")
         try:
-            async with SentryRateLimiter() as limiter:
-                response = await limiter.execute(lambda: self._client.get(url=url))
+            async with self._rate_limiter:
+                response = await self._rate_limiter.execute(
+                    lambda: self._client.get(url=url)
+                )
                 return response.json()
         except httpx.HTTPStatusError as e:
             if e.response.status_code:
