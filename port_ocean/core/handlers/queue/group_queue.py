@@ -45,7 +45,7 @@ class GroupQueue(AbstractQueue[T]):
         self._queue_not_empty = asyncio.Condition()
         self.lock_timeout = lock_timeout
         self._lock_timestamps: Dict[MaybeStr, float] = {}
-        self._timeout_task: asyncio.Task | None = None
+        self._timeout_task: asyncio.Task[None] | None = None
 
         # FIX: Track multiple concurrent items instead of single _current_item
         self._current_items: Dict[str, Tuple[MaybeStr, T]] = (
@@ -55,7 +55,7 @@ class GroupQueue(AbstractQueue[T]):
             {}
         )  # group -> worker_id processing it
 
-    async def _background_timeout_check(self):
+    async def _background_timeout_check(self) -> None:
         """Actively check for expired locks every N seconds"""
         while True:
             try:
@@ -88,7 +88,7 @@ class GroupQueue(AbstractQueue[T]):
             self._queues[group_key].append(item)
             self._queue_not_empty.notify_all()
 
-    async def _release_expired_locks(self):
+    async def _release_expired_locks(self) -> None:
         """Release locks older than timeout"""
         now = time.time()
         expired_groups = []

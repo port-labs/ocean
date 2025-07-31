@@ -34,7 +34,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that getting an item locks the group"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         # Add items to the same group
         item1 = TestItem(group_id="group_a", value=1)
@@ -59,7 +59,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that locked groups cannot have items retrieved"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         # Add multiple items to same group
         item1 = TestItem(group_id="group_a", value=1)
@@ -86,7 +86,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that commit() unlocks the group and allows next item retrieval"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         item1 = TestItem(group_id="group_a", value=1)
         item2 = TestItem(group_id="group_a", value=2)
@@ -115,7 +115,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that different groups can be processed concurrently"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         # Add items to different groups
         item_a1 = TestItem(group_id="group_a", value=1)
@@ -149,7 +149,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that get() blocks when all available groups are locked"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         # Add items to single group
         item1 = TestItem(group_id="group_a", value=1)
@@ -172,7 +172,7 @@ class TestGroupQueue:
         self, queue_no_group_key: GroupQueue[Any]
     ) -> None:
         """Test behavior when group_key is None (all items in same group)"""
-        queue = queue_no_group_key
+        queue: GroupQueue[TestItemNoGroup] = queue_no_group_key
 
         item1 = TestItemNoGroup(value=1)
         item2 = TestItemNoGroup(value=2)
@@ -201,7 +201,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that calling commit() without get() doesn't break anything"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         # Should not raise any exceptions
         await queue.commit()
@@ -214,7 +214,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that multiple commits after a single get are safe"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         item = TestItem(group_id="group_a", value=1)
         await queue.put(item)
@@ -236,7 +236,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that items within a group are processed in FIFO order"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         # Add items to same group
         items = [TestItem(group_id="group_a", value=i) for i in range(5)]
@@ -257,7 +257,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that locked groups prevent queue cleanup until unlocked"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         item = TestItem(group_id="group_a", value=1)
         await queue.put(item)
@@ -277,7 +277,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that missing group key attribute raises ValueError"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItemNoGroup] = queue_with_group_key
 
         # Item without group_id attribute
         bad_item = TestItemNoGroup(value=1)
@@ -290,7 +290,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that size() excludes the currently processed item"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         items = [TestItem(group_id="group_a", value=i) for i in range(3)]
         for item in items:
@@ -315,7 +315,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test multiple workers processing items from different groups concurrently"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
         processed_items = []
         processing_times = {}
 
@@ -371,7 +371,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test that multiple workers cannot process items from same group concurrently"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
         processing_log = []
 
         async def worker(worker_id: int, process_time: float = 0.2) -> Any:
@@ -441,7 +441,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test workers processing mixed groups - some concurrent, some sequential"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
         processing_events = []
 
         async def worker(worker_id: int) -> Any:
@@ -518,7 +518,7 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Stress test with many workers and items"""
-        queue = queue_with_group_key
+        queue: GroupQueue[TestItem] = queue_with_group_key
 
         async def worker(worker_id: int) -> Any:
             """Simple worker"""
@@ -585,7 +585,9 @@ class TestGroupQueue:
     ) -> None:
         """Test that frozen locks are released after timeout and processing can resume"""
         # Create queue with short timeout for testing
-        queue = GroupQueue(group_key="group_id", name="test_queue", lock_timeout=0.3)
+        queue: GroupQueue[TestItem] = GroupQueue(
+            group_key="group_id", name="test_queue", lock_timeout=0.3
+        )
 
         processed_items = []
 
@@ -677,7 +679,9 @@ class TestGroupQueue:
     ) -> None:
         """Test that lock timeout doesn't interfere with normal fast processing"""
         # Create queue with reasonable timeout
-        queue = GroupQueue(group_key="group_id", name="test_queue", lock_timeout=2.0)
+        queue: GroupQueue[TestItem] = GroupQueue(
+            group_key="group_id", name="test_queue", lock_timeout=2.0
+        )
 
         processed_items = []
 
@@ -721,7 +725,9 @@ class TestGroupQueue:
         self, queue_with_group_key: GroupQueue[Any]
     ) -> None:
         """Test recovery when multiple groups have frozen locks"""
-        queue = GroupQueue(group_key="group_id", name="test_queue", lock_timeout=0.3)
+        queue: GroupQueue[TestItem] = GroupQueue(
+            group_key="group_id", name="test_queue", lock_timeout=0.3
+        )
 
         async def hanging_worker(worker_id: int, group: str) -> Any:
             """Worker that grabs item from specific group and hangs"""
@@ -752,7 +758,7 @@ class TestGroupQueue:
         # Add items to multiple groups
         for group in ["group_a", "group_b", "group_c"]:
             for i in range(2):
-                await queue.put(TestItem(group_id=group, value=f"{group}_{i}"))
+                await queue.put(TestItem(group_id=group, value=i))
 
         # Start hanging workers for each group
         hanging_tasks = [
