@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.2.1-beta (2025-07-31)
+
+
+### Improvements
+
+- Use Github search API while retrieving repositories in folder kind # AI! improve this
+
+
 ## 1.2.0-beta (2025-07-28)
 
 
