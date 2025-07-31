@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 import pytest
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.folder_exporter import (
@@ -205,7 +205,7 @@ class TestRestFolderExporter:
         async def search_results_gen(*args: Any, **kwargs: Any) -> Any:
             yield mock_repos
 
-        search_repositories_mock = AsyncMock(side_effect=search_results_gen)
+        search_repositories_mock = MagicMock(return_value=search_results_gen())
         monkeypatch.setattr(
             exporter, "_search_for_repositories", search_repositories_mock
         )
