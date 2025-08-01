@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Any, AsyncGenerator, AsyncIterator, cast
+from typing import Any, AsyncGenerator, AsyncIterator, cast, Optional
 
 import httpx
 from integration import SentryResourceConfig
@@ -8,6 +8,7 @@ from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
+from .exceptions import IgnoredErrors, ResourceNotFoundError
 
 from .rate_limiter import SentryRateLimiter
 
@@ -16,10 +17,6 @@ PAGE_SIZE = 100
 
 def flatten_list(lst: list[Any]) -> list[Any]:
     return list(chain.from_iterable(lst))
-
-
-class ResourceNotFoundError(Exception):
-    pass
 
 
 class SentryClient:
@@ -32,7 +29,6 @@ class SentryClient:
         self.api_url = f"{self.sentry_base_url}/api/0"
         self.organization = sentry_organization
         self._client = http_async_client
-        self._client.headers.update(self.base_headers)
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
         self._rate_limiter = SentryRateLimiter()
 
@@ -53,6 +49,59 @@ class SentryClient:
                     return url
         return ""
 
+    async def send_api_request(
+        self,
+        method: str,
+        url: str,
+        *,
+        params: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> httpx.Response:
+        """
+        Sends an API request with rate limiting and robust error handling.
+        This method centralizes all Sentry API calls.
+
+        Args:
+            method (str): The HTTP method (e.g., "GET", "POST").
+            url (str): The URL endpoint (relative or absolute).
+            params (dict[str, Any]): Optional query parameters.
+            **kwargs: Additional keyword arguments for httpx.AsyncClient.request.
+
+        Returns:
+            httpx.Response: The response from the API.
+
+        Raises:
+            ResourceNotFoundError: If the response status code is 404.
+            httpx.HTTPStatusError: For any other non-2xx status codes
+                                   (except 401, 403, and 404).
+        """
+        async with self._rate_limiter:
+            full_url = (
+                url if url.startswith("http") else f"{self.api_url}/{url.lstrip('/')}"
+            )
+            try:
+                response = await self._client.request(
+                    method, full_url, params=params, headers=self.base_headers, **kwargs
+                )
+                response.raise_for_status()
+                return response
+            except httpx.HTTPStatusError as e:
+                # Handle 404 specifically for ResourceNotFoundError
+                if e.response.status_code == 404:
+                    raise ResourceNotFoundError(f"Resource not found at {full_url}")
+                # Handle other known "ignored" errors
+                elif e.response.status_code in [401, 403]:
+                    logger.warning(
+                        f"Ignoring HTTP {e.response.status_code} for URL: {full_url}. Reason: {e.response.text}"
+                    )
+                    raise IgnoredErrors()
+                # Re-raise all other HTTP errors
+                else:
+                    raise
+            except httpx.HTTPError:
+                # Re-raise non-HTTP status errors
+                raise
+
     async def _get_paginated_resource(
         self, url: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -60,10 +109,8 @@ class SentryClient:
         logger.debug(f"Getting paginated resource from Sentry for URL: {url}")
 
         while url:
-            async with self._rate_limiter:
-                response = await self._rate_limiter.execute(
-                    lambda: self._client.get(url=url, params=params)
-                )
+            try:
+                response = await self.send_api_request("GET", url, params=params)
                 records = response.json()
                 logger.debug(
                     f"Received {len(records)} records from Sentry for URL: {url}"
@@ -71,20 +118,17 @@ class SentryClient:
                 yield records
 
                 url = self.get_next_link(response.headers.get("link", ""))
+            except IgnoredErrors:
+                logger.debug(f"Ignoring non-fatal error for paginated resource: {url}")
+                return
 
     async def _get_single_resource(self, url: str) -> list[dict[str, Any]]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")
         try:
-            async with self._rate_limiter:
-                response = await self._rate_limiter.execute(
-                    lambda: self._client.get(url=url)
-                )
-                return response.json()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code:
-                raise ResourceNotFoundError()
-            return []
-        except httpx.HTTPError:
+            response = await self.send_api_request("GET", url)
+            return response.json()
+        except IgnoredErrors:
+            logger.debug(f"Ignoring non-fatal error for single resource: {url}")
             return []
 
     async def _get_project_tags_iterator(

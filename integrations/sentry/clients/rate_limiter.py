@@ -1,23 +1,20 @@
 import asyncio
 import time
-from typing import Optional, Callable, Awaitable, Type, Any
+from typing import Optional, Type, Any
 
 import httpx
 from loguru import logger
-
-MINIMUM_LIMIT_REMAINING = 5
-MAXIMUM_LIMIT_ON_RETRIES = 3
 
 
 class SentryRateLimiter:
     """
     Orchestrates Sentry API requests to handle rate limits gracefully.
 
-    This class provides a method to execute a request function, wrapping it
-    in rate-limiting logic. It inspects Sentry's rate-limiting headers on each
-    response and introduces delays to prevent hitting the rate limit. It handles
-    both proactive (based on X-Sentry-Rate-Limit-Remaining) and reactive
-    (based on 429 Too Many Requests with a Retry-After header) rate limiting.
+    This class provides a context manager to handle rate-limiting. It inspects
+    Sentry's rate-limiting headers on each response and introduces delays to
+    prevent hitting the rate limit. It handles both proactive (based on
+    X-Sentry-Rate-Limit-Remaining) and reactive (based on 429 Too Many Requests
+    with a Retry-After header) rate limiting.
 
     Sentry Rate Limit Headers:
     - X-Sentry-Rate-Limit-Limit: The total number of requests allowed in the window.
@@ -29,20 +26,44 @@ class SentryRateLimiter:
     Usage:
         limiter = SentryRateLimiter()
         client = httpx.AsyncClient()
-        request_func = lambda: client.get("https://sentry.io/api/...")
-        response = await limiter.execute(request_func)
+        async with limiter:
+            response = await client.get("https://sentry.io/api/...")
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        maximum_retries: int = 3,
+        minimum_limit_remaining: int = 5,
+        concurrent_requests: int = 10,
+    ) -> None:
         """
         Initializes the SentryRateLimiter.
+
+        Args:
+            maximum_retries (int): The maximum number of times to retry a
+                rate-limited request (429).
+            minimum_limit_remaining (int): The threshold for the number of
+                remaining requests before a proactive sleep is triggered.
+            concurrent_requests (int): The maximum number of coroutines that
+                can simultaneously access the Sentry API.
         """
-        # Rate limit state, protected by a lock for thread safety
         self._lock = asyncio.Lock()
         self._rate_limit_remaining: Optional[int] = None
         self._rate_limit_reset: Optional[float] = None
 
+        self._semaphore = asyncio.Semaphore(concurrent_requests)
+        self._maximum_retries = maximum_retries
+        self._minimum_limit_remaining = minimum_limit_remaining
+
+        # We will store the last response here to handle 429 in __aexit__
+        self._last_response: Optional[httpx.Response] = None
+        self._retries = 0
+
     async def __aenter__(self) -> "SentryRateLimiter":
+        """
+        Pre-request rate limit check.
+        """
+        await self._semaphore.acquire()
         await self._wait_if_needed()
         return self
 
@@ -52,14 +73,45 @@ class SentryRateLimiter:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> Optional[bool]:
-        # No-op or post-request cleanup
-        return None
+        """
+        Handles 429 responses and backoff logic.
+        """
+        try:
+            if self._last_response and self._last_response.status_code == 429:
+                self._retries += 1
+                if self._retries > self._maximum_retries:
+                    logger.error("Max retries exceeded for rate-limited request.")
+                    self._last_response.raise_for_status()
+
+                sleep_time = self._get_sleep_retry_duration(
+                    self._last_response, self._retries
+                )
+                logger.info(
+                    f"Retrying request after {sleep_time:.2f} seconds due to 429."
+                )
+                self._semaphore.release()
+                await asyncio.sleep(sleep_time)
+                return True
+
+            if self._last_response:
+                await self._update_rate_limit_state(self._last_response)
+
+            if exc_type and exc_type is not httpx.HTTPStatusError:
+                self._semaphore.release()
+                return False
+
+        except Exception as e:
+            logger.error(f"Error in aexit: {e}")
+            self._semaphore.release()
+            return False
+
+        self._semaphore.release()
+        return False
 
     async def _update_rate_limit_state(self, response: httpx.Response) -> None:
         """Updates the internal rate limit state from response headers."""
         headers = response.headers
         async with self._lock:
-            # Persist the last known values if headers are absent in a response
             remaining = headers.get("X-Sentry-Rate-Limit-Remaining")
             reset = headers.get("X-Sentry-Rate-Limit-Reset")
 
@@ -80,14 +132,11 @@ class SentryRateLimiter:
         sleep_duration = None
 
         async with self._lock:
-            # If we have no rate limit info yet, proceed with the request
             if self._rate_limit_remaining is None or self._rate_limit_reset is None:
                 return
 
-            # Proactive sleep if we are close to the limit
-            if self._rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
+            if self._rate_limit_remaining <= self._minimum_limit_remaining:
                 current_time = time.time()
-                # Only sleep if the reset time is in the future
                 if self._rate_limit_reset > current_time:
                     sleep_duration = self._rate_limit_reset - current_time
 
@@ -109,76 +158,15 @@ class SentryRateLimiter:
                 sleep_duration = float(retry_after_str)
                 logger.warning(
                     f"Received 429 Too Many Requests. "
-                    f"Retrying after {sleep_duration:.2f}s (attempt {retry_count}/{MAXIMUM_LIMIT_ON_RETRIES})."
+                    f"Retrying after {sleep_duration:.2f}s (attempt {retry_count})."
                 )
                 return sleep_duration
             except (ValueError, TypeError):
                 pass
 
-        # Fallback to exponential backoff if Retry-After is missing/invalid
         sleep_duration = 2**retry_count
         logger.warning(
             f"Received 429 status without a valid 'Retry-After' header. "
             f"Using exponential backoff. Sleeping for {sleep_duration:.2f}s."
         )
         return sleep_duration
-
-    async def execute(
-        self, request_func: Callable[[], Awaitable[httpx.Response]]
-    ) -> httpx.Response:
-        """
-        Executes a request function with rate-limiting logic.
-
-        This is the core method that wraps the actual HTTP call, applying
-        rate-limiting logic before and after the request.
-
-        Args:
-            request_func (Callable[[], Awaitable[httpx.Response]]): An async function
-                that takes no arguments and returns an awaitable httpx.Response. This function
-                is responsible for making the actual HTTP request.
-
-        Returns:
-            httpx.Response: The response object from the successful request.
-
-        Raises:
-            httpx.HTTPStatusError: If the request fails after all retries.
-        """
-        retries = 0
-        while True:
-            try:
-                response = await request_func()
-                await self._update_rate_limit_state(response)
-
-                request = response.request
-                logger.debug(
-                    f"Received response with status code: {response.status_code} for {request.method} {request.url}"
-                )
-
-                if response.status_code == 429:
-                    retries += 1
-                    if retries > MAXIMUM_LIMIT_ON_RETRIES:
-                        logger.error("Max retries exceeded for rate-limited request.")
-                        response.raise_for_status()  # Raise the final httpx.HTTPStatusError
-
-                    sleep_time = self._get_sleep_retry_duration(response, retries)
-                    logger.info(
-                        f"Retrying request for {request.method} {request.url} after {sleep_time:.2f} seconds due to 429."
-                    )
-                    await asyncio.sleep(sleep_time)
-                    continue  # Retry the request
-
-                # For any other non-2xx status, raise an exception immediately
-                response.raise_for_status()
-                return response
-            except httpx.HTTPStatusError as e:
-                req = e.request
-                logger.error(
-                    f"Got HTTP error to url: {req.url} with status code: {e.response.status_code} and response text: {e.response.text}"
-                )
-                raise
-            except httpx.HTTPError as e:
-                req = e.request
-                logger.error(
-                    f"HTTP error occurred while requesting {req.method} {req.url}: {e}"
-                )
-                raise
