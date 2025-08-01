@@ -1,9 +1,10 @@
 from collections.abc import AsyncGenerator
-from typing import Any, List, Optional
+from typing import Any
 from loguru import logger
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
+from checkmarx_one.core.options import ListScanOptions
 
 
 class CheckmarxScanExporter(AbstractCheckmarxExporter):
@@ -18,9 +19,7 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
     @cache_iterator_result()
     async def get_scans(
         self,
-        project_ids: Optional[List[str]] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
+        options: ListScanOptions,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get scans from Checkmarx One.
@@ -34,7 +33,11 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
             Batches of scans
         """
         params: dict[str, Any] = {}
-        if project_ids:
+        project_ids = options.get("project_ids")
+        limit = options.get("limit")
+        offset = options.get("offset")
+
+        if project_ids and len(project_ids) > 0:
             params["project-ids"] = ",".join(project_ids)
         if limit is not None:
             params["limit"] = limit

@@ -13,31 +13,31 @@ from pydantic import Field
 class CheckmarxOneResultSelector(Selector):
     limit: Optional[int] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string"
+        description="Limit search to component names that contain the supplied string",
     )
     offset: Optional[int] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string"
+        description="Limit search to component names that contain the supplied string",
     )
     severity: Optional[str] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string"
+        description="Limit search to component names that contain the supplied string",
     )
     state: Optional[str] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string"
+        description="Limit search to component names that contain the supplied string",
     )
     sort: Optional[str] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string"
+        description="Limit search to component names that contain the supplied string",
     )
     status: Optional[str] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string"
+        description="Limit search to component names that contain the supplied string",
     )
     exclude_result_types: Optional[str] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string"
+        description="Limit search to component names that contain the supplied string",
     )
 
 

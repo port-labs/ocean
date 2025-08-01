@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
-from typing import Any, Optional
+from typing import Any
 from loguru import logger
+from checkmarx_one.core.options import ListProjectOptions
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 
@@ -16,8 +17,7 @@ class CheckmarxProjectExporter(AbstractCheckmarxExporter):
 
     async def get_projects(
         self,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
+        options: ListProjectOptions,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get projects from Checkmarx One.
@@ -30,9 +30,11 @@ class CheckmarxProjectExporter(AbstractCheckmarxExporter):
             Batches of projects
         """
         params = {}
+        limit = options.get("limit")
+        offset = options.get("offset")
         if limit is not None:
             params["limit"] = limit
-        if offset is not None:
+        if offset is not None and offset > 0:
             params["offset"] = offset
 
         async for projects in self.client._get_paginated_resources(

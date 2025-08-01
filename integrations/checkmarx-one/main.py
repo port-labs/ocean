@@ -74,7 +74,9 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     scan_exporter = create_scan_exporter()
     scan_result_exporter = create_scan_result_exporter()
-    selector = cast(CheckmarxOneScanResultResourcesConfig, event.resource_config).selector
+    selector = cast(
+        CheckmarxOneScanResultResourcesConfig, event.resource_config
+    ).selector
     options = ListScanResultOptions(
         limit=selector.limit,
         offset=selector.offset,
@@ -85,11 +87,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         exclude_result_types=selector.exclude_result_types,
     )
 
-    scan_options = ListScanOptions(
-        # project_ids=selector.project_ids,
-        # limit=selector.limit,
-        # offset=selector.offset,
-    )
+    scan_options = ListScanOptions()
 
     async for scan_data_list in scan_exporter.get_scans(scan_options):
         for scan_data in scan_data_list:
