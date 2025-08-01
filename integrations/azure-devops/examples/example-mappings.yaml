@@ -136,3 +136,20 @@ resources:
             defaultBranch: .__repository.defaultBranch
           relations:
             project: .__repository.project.id | gsub(" "; "")
+  - kind: branch
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .__repository.project.name + "/" + .__repository.name + "/" + .name | gsub(" "; "") | gsub("/"; "-") | ascii_downcase
+          title: .name
+          blueprint: '"branch"'
+          properties:
+            objectId: .objectId
+            creator: .creator.displayName
+            url: .url
+          relations:
+            repository: >-
+              "\(.__repository.project.name | ascii_downcase | gsub("[ ();]";
+              ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
