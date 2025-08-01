@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.183 (2025-07-29)
+
+
+### Improvements
+
+- Fixed the issue with rate limiting looping infinitely when the rate limit is reached
+
+
 ## 0.1.182 (2025-07-20)
 
 
