@@ -51,11 +51,13 @@ class WebhookEvent(LiveEvent):
         payload: EventPayload,
         headers: EventHeaders,
         original_request: Request | None = None,
+        group_id: str | None = None,
     ) -> None:
         self.trace_id = trace_id
         self.payload = payload
         self.headers = headers
         self._original_request = original_request
+        self.group_id = group_id
 
     @classmethod
     async def from_request(
