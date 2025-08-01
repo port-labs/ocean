@@ -132,9 +132,9 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             logger.debug(
                 f"Fetching folders for path '{pattern.path}' in {repository['name']} on branch {branch}"
             )
-            async for folder_batch in exporter.get_paginated_resources(
-                ListFolderOptions(repo=repository, path=pattern.path, branch=branch)
-            ):
+            repo_mapping = {repository["name"]: {branch: [pattern.path]}}
+            options = ListFolderOptions(repo_mapping=repo_mapping)
+            async for folder_batch in exporter.get_paginated_resources(options):
                 changed_folders.extend(
                     self._filter_changed_folders(
                         folder_batch,

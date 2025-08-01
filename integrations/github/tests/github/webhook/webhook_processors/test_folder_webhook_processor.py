@@ -220,15 +220,14 @@ class TestFolderWebhookProcessor:
         )
         mock_extract_changed_files.assert_called_once_with([{"filename": "dummy"}])
 
+        repo_mapping1 = {repo_name: {branch_name: ["folder1/*"]}}
         mock_exporter_instance.get_paginated_resources.assert_any_call(
-            ListFolderOptions(
-                repo=dict(payload["repository"]), path="folder1/*", branch=branch_name
-            )
+            ListFolderOptions(repo_mapping=repo_mapping1)
         )
+
+        repo_mapping2 = {repo_name: {branch_name: ["folder2/*"]}}
         mock_exporter_instance.get_paginated_resources.assert_any_call(
-            ListFolderOptions(
-                repo=dict(payload["repository"]), path="folder2/*", branch=branch_name
-            )
+            ListFolderOptions(repo_mapping=repo_mapping2)
         )
         assert mock_exporter_instance.get_paginated_resources.call_count == 2
 

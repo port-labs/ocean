@@ -1,4 +1,7 @@
-from typing import Any
+from collections import defaultdict
+from typing import Any, AsyncGenerator, Iterable
+
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -8,6 +11,75 @@ from loguru import logger
 from github.core.options import ListFolderOptions, SingleFolderOptions
 from github.helpers.utils import IgnoredError
 from wcmatch import glob
+
+from integration import FolderSelector
+
+_DEFAULT_BRANCH = "hard_to_replicate_name"
+
+
+def create_path_mapping(
+    folder_patterns: list[FolderSelector],
+) -> dict[str, dict[str, list[str]]]:
+    """
+    Create a mapping of repository names to branch names to folder paths.
+    """
+    pattern_by_repo_branch: dict[str, dict[str, list[str]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+
+    for pattern in folder_patterns:
+        p = pattern.path
+        for repo in pattern.repos:
+            pattern_by_repo_branch[repo.name][repo.branch or _DEFAULT_BRANCH].append(p)
+    return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
+
+
+def create_search_params(repos: Iterable[str], max_operators: int = 5) -> list[str]:
+    """Create search query strings that fits into Github search string limitations.
+
+    Limitations:
+        - A search query can be up to 256 characters.
+        - A query can contain a maximum of 5 `OR` operators.
+
+    """
+    search_strings = []
+    if not repos:
+        return []
+
+    max_repos_in_query = max_operators + 1
+    max_search_string_len = 256
+
+    chunk: list[str] = []
+    current_query = ""
+    for repo in repos:
+        repo_query_part = f"{repo} in:name"
+
+        if len(repo_query_part) > max_search_string_len:
+            logger.warning(
+                f"Repository name '{repo}' is too long to fit in a search query."
+            )
+            continue
+
+        if not chunk:
+            chunk.append(repo)
+            current_query = repo_query_part
+            continue
+
+        if (
+            len(chunk) + 1 > max_repos_in_query
+            or len(f"{current_query} OR {repo_query_part}") > max_search_string_len
+        ):
+            search_strings.append(current_query)
+            chunk = [repo]
+            current_query = repo_query_part
+        else:
+            chunk.append(repo)
+            current_query = f"{current_query} OR {repo_query_part}"
+
+    if chunk:
+        search_strings.append(current_query)
+
+    return search_strings
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
@@ -32,16 +104,45 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources[
         ExporterOptionsT: ListFolderOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        path = options["path"]
-        branch_ref = options.get("branch") or options["repo"]["default_branch"]
-        repo_name = options["repo"]["name"]
+        repo_mapping = options["repo_mapping"]
+        repos = repo_mapping.keys()
 
-        is_recursive_api_call = self._needs_recursive_search(path)
-        url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
+        async for search_result in self._search_for_repositories(repos):
+            for repository in search_result:
+                repo_name = repository["name"]
+                repo_map = repo_mapping.get(repo_name)
+                if not repo_map:
+                    continue
 
-        tree = await self._get_tree(url, recursive=is_recursive_api_call)
-        folders = self._retrieve_relevant_tree(tree, options)
-        yield folders
+                for branch, paths in repo_map.items():
+                    for path in paths:
+                        branch_ref = (
+                            branch
+                            if branch != _DEFAULT_BRANCH
+                            else repository["default_branch"]
+                        )
+                        url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
+
+                        is_recursive_api_call = self._needs_recursive_search(path)
+                        tree = await self._get_tree(
+                            url, recursive=is_recursive_api_call
+                        )
+                        folders = self._retrieve_relevant_tree(
+                            tree, path=path, repo=repository
+                        )
+                        if folders:
+                            yield folders
+
+    def _retrieve_relevant_tree(
+        self, tree: list[dict[str, Any]], path: str, repo: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        folders = self._filter_folder_contents(tree, path)
+        logger.info(f"fetched {len(folders)} folders from {repo['name']}")
+        if folders:
+            formatted = self._enrich_folder_with_repository(folders, repo=repo)
+            return formatted
+        else:
+            return []
 
     def _enrich_folder_with_repository(
         self, folders: list[dict[str, Any]], repo: dict[str, Any] | None = None
@@ -83,15 +184,19 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             if glob.globmatch(item["path"], path, flags=glob.GLOBSTAR | glob.DOTMATCH)
         ]
 
-    def _retrieve_relevant_tree(
-        self, tree: list[dict[str, Any]], options: ListFolderOptions
-    ) -> list[dict[str, Any]]:
-        folders = self._filter_folder_contents(tree, options["path"])
-        logger.info(f"fetched {len(folders)} folders from {options['repo']['name']}")
-        if folders:
-            formatted = self._enrich_folder_with_repository(
-                folders, repo=options["repo"]
-            )
-            return formatted
-        else:
-            return []
+    async def _search_for_repositories(
+        self, repos: Iterable[str]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        tasks = []
+        for search_string in create_search_params(repos):
+            logger.debug(f"creating a search task for search string: {search_string}")
+            query = f"org:{self.client.organization} {search_string} fork:true"
+            url = f"{self.client.base_url}/search/repositories"
+            params = {"q": query}
+            tasks.append(self.client.send_paginated_request(url, params=params))
+
+        async for search_result in stream_async_iterators_tasks(*tasks):
+            valid_repos = [
+                repo for repo in search_result["items"] if repo["name"] in repos
+            ]
+            yield valid_repos
