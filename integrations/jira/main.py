@@ -13,10 +13,18 @@ from jira.overrides import (
     JiraIssueConfig,
     JiraProjectResourceConfig,
     TeamResourceConfig,
+    JiraIncidentResourceConfig,
+    JiraRequestResourceConfig,
+    JiraAssetResourceConfig,
+    JiraScheduleResourceConfig,
 )
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
+from webhook_processors.jsm_request_webhook_processor import JSMRequestWebhookProcessor
+from webhook_processors.jsm_incident_webhook_processor import (
+    JSMIncidentWebhookProcessor,
+)
 
 
 async def setup_application() -> None:
@@ -89,6 +97,90 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield users_batch
 
 
+# Jira Service Management resource handlers
+@ocean.on_resync(Kinds.SERVICE)
+async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
+
+    params: dict[str, str] = {}
+
+    async for service_desks in client.get_paginated_service_desks(params):
+        logger.info(
+            f"Received service desk batch with {len(service_desks)} service desks"
+        )
+        yield service_desks
+
+
+@ocean.on_resync(Kinds.INCIDENT)
+async def on_resync_incidents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
+
+    selector = cast(JiraIncidentResourceConfig, event.resource_config).selector
+    params: dict[str, str] = {}
+
+    # Add status filter if specified
+    if selector.status:
+        params["status"] = selector.status
+
+    async for incidents in client.get_paginated_incidents(params):
+        logger.info(f"Received incident batch with {len(incidents)} incidents")
+        yield incidents
+
+
+@ocean.on_resync(Kinds.REQUEST)
+async def on_resync_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
+
+    selector = cast(JiraRequestResourceConfig, event.resource_config).selector
+    params: dict[str, str] = {}
+
+    # Add request type filter if specified
+    if selector.request_type_id:
+        params["requestTypeId"] = selector.request_type_id
+
+    async for requests in client.get_paginated_requests(
+        service_desk_id=selector.service_desk_id, params=params
+    ):
+        logger.info(f"Received request batch with {len(requests)} requests")
+        yield requests
+
+
+@ocean.on_resync(Kinds.ASSET)
+async def on_resync_assets(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
+
+    selector = cast(JiraAssetResourceConfig, event.resource_config).selector
+    params: dict[str, str] = {}
+
+    # Add object type filter if specified
+    if selector.object_type_id:
+        params["objectTypeId"] = selector.object_type_id
+
+    async for assets in client.get_paginated_assets(
+        schema_id=selector.schema_id, params=params
+    ):
+        logger.info(f"Received asset batch with {len(assets)} assets")
+        yield assets
+
+
+@ocean.on_resync(Kinds.SCHEDULE)
+async def on_resync_schedules(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
+
+    selector = cast(JiraScheduleResourceConfig, event.resource_config).selector
+    params: dict[str, str] = {}
+
+    async for schedules in client.get_paginated_schedules(params):
+        logger.info(f"Received schedule batch with {len(schedules)} schedules")
+
+        # Enrich with team information if requested
+        if selector.include_teams:
+            # Add team enrichment logic here if needed
+            pass
+
+        yield schedules
+
+
 # Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
@@ -104,3 +196,5 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
+ocean.add_webhook_processor("/webhook", JSMRequestWebhookProcessor)
+ocean.add_webhook_processor("/webhook", JSMIncidentWebhookProcessor)
