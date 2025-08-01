@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Any, AsyncGenerator, AsyncIterator, cast, Optional
+from typing import Any, AsyncGenerator, AsyncIterator, cast, Optional, List
 
 import httpx
 from integration import SentryResourceConfig
@@ -8,8 +8,8 @@ from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
-from .exceptions import IgnoredErrors, ResourceNotFoundError
 
+from .exceptions import IgnoredError, ResourceNotFoundError
 from .rate_limiter import SentryRateLimiter
 
 PAGE_SIZE = 100
@@ -20,6 +20,19 @@ def flatten_list(lst: list[Any]) -> list[Any]:
 
 
 class SentryClient:
+    _DEFAULT_IGNORED_ERRORS = [
+        IgnoredError(
+            status=401,
+            message="Unauthorized access to endpoint — authentication required or token invalid",
+            type="UNAUTHORIZED",
+        ),
+        IgnoredError(
+            status=403,
+            message="Forbidden access to endpoint — insufficient permissions",
+            type="FORBIDDEN",
+        ),
+    ]
+
     def __init__(
         self, sentry_base_url: str, auth_token: str, sentry_organization: str
     ) -> None:
@@ -49,12 +62,30 @@ class SentryClient:
                     return url
         return ""
 
+    def _should_ignore_error(
+        self,
+        error: httpx.HTTPStatusError,
+        resource: str,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+    ) -> bool:
+        all_ignored_errors = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
+        status_code = error.response.status_code
+
+        for ignored_error in all_ignored_errors:
+            if str(status_code) == str(ignored_error.status):
+                logger.warning(
+                    f"Failed to fetch resources at {resource} due to {ignored_error.message}"
+                )
+                return True
+        return False
+
     async def send_api_request(
         self,
         method: str,
         url: str,
         *,
         params: Optional[dict[str, Any]] = None,
+        ignored_errors: Optional[List[IgnoredError]] = None,
         **kwargs: Any,
     ) -> httpx.Response:
         """
@@ -65,6 +96,7 @@ class SentryClient:
             method (str): The HTTP method (e.g., "GET", "POST").
             url (str): The URL endpoint (relative or absolute).
             params (dict[str, Any]): Optional query parameters.
+            ignored_errors (List[IgnoredError]): Optional list of ignored errors.
             **kwargs: Additional keyword arguments for httpx.AsyncClient.request.
 
         Returns:
@@ -86,16 +118,11 @@ class SentryClient:
                 response.raise_for_status()
                 return response
             except httpx.HTTPStatusError as e:
+                if self._should_ignore_error(e, url, ignored_errors):
+                    return httpx.Response(200, content=b"{}")
                 # Handle 404 specifically for ResourceNotFoundError
                 if e.response.status_code == 404:
                     raise ResourceNotFoundError(f"Resource not found at {full_url}")
-                # Handle other known "ignored" errors
-                elif e.response.status_code in [401, 403]:
-                    logger.warning(
-                        f"Ignoring HTTP {e.response.status_code} for URL: {full_url}. Reason: {e.response.text}"
-                    )
-                    raise IgnoredErrors()
-                # Re-raise all other HTTP errors
                 else:
                     raise
             except httpx.HTTPError:
@@ -103,14 +130,19 @@ class SentryClient:
                 raise
 
     async def _get_paginated_resource(
-        self, url: str
+        self, url: str, ignored_errors: Optional[List[IgnoredError]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params: dict[str, Any] = {"per_page": PAGE_SIZE}
         logger.debug(f"Getting paginated resource from Sentry for URL: {url}")
 
         while url:
             try:
-                response = await self.send_api_request("GET", url, params=params)
+                response = await self.send_api_request(
+                    "GET", url, params=params, ignored_errors=ignored_errors
+                )
+                params["cursor"] = response.headers.get(
+                    "X-Sentry-Next-Cursor"
+                ) or response.headers.get("X-Sentry-Cursor")
                 records = response.json()
                 logger.debug(
                     f"Received {len(records)} records from Sentry for URL: {url}"
@@ -118,7 +150,7 @@ class SentryClient:
                 yield records
 
                 url = self.get_next_link(response.headers.get("link", ""))
-            except IgnoredErrors:
+            except httpx.HTTPStatusError:
                 logger.debug(f"Ignoring non-fatal error for paginated resource: {url}")
                 return
 
@@ -127,7 +159,7 @@ class SentryClient:
         try:
             response = await self.send_api_request("GET", url)
             return response.json()
-        except IgnoredErrors:
+        except httpx.HTTPStatusError:
             logger.debug(f"Ignoring non-fatal error for single resource: {url}")
             return []
 

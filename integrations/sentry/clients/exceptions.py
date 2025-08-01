@@ -1,13 +1,10 @@
-class IgnoredErrors(Exception):
-    """
-    A custom exception for HTTP errors that should be ignored,
-    such as 401, 403, and 404, when a resource might not exist or be
-    accessible.
-    """
+from typing import NamedTuple, Optional
 
-    #!todo: add more specific exceptions for each resource
 
-    pass
+class IgnoredError(NamedTuple):
+    status: int | str
+    message: Optional[str] = None
+    type: Optional[str] = None
 
 
 class ResourceNotFoundError(Exception):
