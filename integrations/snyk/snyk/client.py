@@ -21,6 +21,12 @@ PAGE_SIZE = 100
 
 
 class SnykClient:
+    _IGNORED_ERRORS = {
+        404: "Resource not found",
+        403: "Request forbidden",
+        401: "Request unauthorized",
+    }
+
     def __init__(
         self,
         token: str,
@@ -69,9 +75,11 @@ class SnykClient:
                 return response.json()
 
             except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
+                response_status = e.response.status_code
+                if response_status in self._IGNORED_ERRORS:
+                    log_message = self._IGNORED_ERRORS[response_status]
                     logger.warning(
-                        f"Resource not found for url: {e.response.url}; Error message: {e.response.text}"
+                        f"{log_message}: {e.response.url}; Error message: {e.response.text}"
                     )
                     return {}
                 logger.error(
@@ -131,7 +139,6 @@ class SnykClient:
         return issues
 
     async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         all_organizations = await self.get_organizations_in_groups()
         for org in all_organizations:
             logger.info(f"Fetching paginated issues for organization: {org['id']}")
@@ -183,7 +190,6 @@ class SnykClient:
             async for projects in self._get_paginated_resources(
                 url_path=url, query_params=query_params
             ):
-
                 event.attributes.setdefault(CacheKeys.PROJECT, []).extend(projects)
 
                 projects_to_yield = self._get_projects_by_target(
