@@ -120,3 +120,11 @@ class OpsGenieClient:
         api_version = await self.get_resource_api_version(ObjectKind.TEAM)
         url = f"{self.api_url}/{api_version}/teams/{team_identifier}"
         return (await self._get_single_resource(url))["data"].get("members", [])
+
+    async def get_alert_comments(self, alert_identifier: str) -> list[dict[str, Any]]:
+        logger.debug(f"Fetching comments for alert {alert_identifier}")
+
+        api_version = await self.get_resource_api_version(ObjectKind.COMMENT)
+        url = f"{self.api_url}/{api_version}/alerts/{alert_identifier}/comments"
+        response = await self._get_single_resource(url)
+        return response.get("data", [])
