@@ -226,17 +226,6 @@
       "python": "${workspaceFolder}/integrations/komodor/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
-    },
-    {
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/aikido",
-      "envFile": "${workspaceFolder}/integrations/aikido/.env",
-      "justMyCode": true,
-      "name": "Run aikido integration",
-      "program": "${workspaceFolder}/integrations/aikido/debug.py",
-      "python": "${workspaceFolder}/integrations/aikido/.venv/bin/python",
-      "request": "launch",
-      "type": "debugpy"
     }
   ]
 }
