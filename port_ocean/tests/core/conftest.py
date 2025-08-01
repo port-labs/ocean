@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import Response
 
+from port_ocean.cache.memory import InMemoryCacheProvider
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import IntegrationSettings, MetricsSettings
 from port_ocean.context.event import EventContext
@@ -26,7 +27,6 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.models import Entity, ProcessExecutionMode
 from port_ocean.helpers.metric.metric import Metrics
 from port_ocean.ocean import Ocean
-from port_ocean.cache.memory import InMemoryCacheProvider
 
 
 @pytest.fixture
@@ -107,6 +107,7 @@ def mock_port_client(mock_http_client: MagicMock) -> PortClient:
     )
 
     mock_port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+    mock_port_client.get_organization_feature_flags = AsyncMock(return_value=[])  # type: ignore
     mock_port_client.client = mock_http_client
     return mock_port_client
 
