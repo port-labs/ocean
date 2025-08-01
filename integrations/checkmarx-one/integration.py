@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -7,48 +7,59 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic.fields import Field
+from pydantic import Field
 
 
 class CheckmarxOneResultSelector(Selector):
-    limit: int | None = Field(
+    limit: Optional[int] = Field(
+        default=None,
         description="Limit search to component names that contain the supplied string"
     )
-    offset: int | None = Field(
+    offset: Optional[int] = Field(
+        default=None,
         description="Limit search to component names that contain the supplied string"
     )
-    severity: str | None = Field(
+    severity: Optional[str] = Field(
+        default=None,
         description="Limit search to component names that contain the supplied string"
     )
-    state: str | None = Field(
+    state: Optional[str] = Field(
+        default=None,
         description="Limit search to component names that contain the supplied string"
     )
-    sort: str | None = Field(
+    sort: Optional[str] = Field(
+        default=None,
         description="Limit search to component names that contain the supplied string"
     )
-    status: str | None = Field(
+    status: Optional[str] = Field(
+        default=None,
         description="Limit search to component names that contain the supplied string"
     )
-    exclude_result_types: str | None = Field(
+    exclude_result_types: Optional[str] = Field(
+        default=None,
         description="Limit search to component names that contain the supplied string"
     )
 
 
-class CheckmarxOneResultResourcesConfig(ResourceConfig):
-    kind: Literal["scan_result"] = "scan_result"
-    selector: CheckmarxOneResultSelector = CheckmarxOneResultSelector
+class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
+    kind: Literal["scan_result"]
+    selector: CheckmarxOneResultSelector
 
 
 class CheckmarxOneScanSelector(Selector):
-    project_ids: list[str] | None = Field(
-        description="Limit search to specific project IDs",
+    project_ids: list[str] = Field(
         default_factory=list,
-        alias="projectids",
+        alias="projectIds",
+        description="Limit search to specific project IDs",
     )
-    limit: int | None = Field(
-        description="Limit the number of results returned", default=None
+    limit: int = Field(
+        default=None,
+        description="Limit the number of results returned",
     )
-    offset: int | None = Field(description="Offset for pagination", default=None)
+    offset: int = Field(
+        default=None,
+        description="Offset for pagination",
+    )
 
 
 class CheckmarxOneScanResourcesConfig(ResourceConfig):
@@ -58,8 +69,8 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
 
 class CheckmarxOnePortAppConfig(PortAppConfig):
     resources: list[
-        CheckmarxOneScanResourcesConfig
-        | CheckmarxOneResultResourcesConfig
+        CheckmarxOneScanResultResourcesConfig
+        | CheckmarxOneScanResourcesConfig
         | ResourceConfig
     ]
 

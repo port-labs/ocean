@@ -14,9 +14,9 @@ from checkmarx_one.core.options import (
     ListScanOptions,
     ListScanResultOptions,
 )
-from checkmarx_one.integration import (
+from integration import (
     CheckmarxOneScanResourcesConfig,
-    CheckmarxOneResultResourcesConfig,
+    CheckmarxOneScanResultResourcesConfig,
 )
 from utils import ObjectKind
 
@@ -52,7 +52,8 @@ async def on_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     scan_exporter = create_scan_exporter()
     # logger.info(event.resource_config)
-    selector = cast(CheckmarxOneScanResourcesConfig, event.resource_config).selector
+    config = cast(CheckmarxOneScanResourcesConfig, event.resource_config)
+    selector = config.selector
 
     logger.info(selector)
     options = ListScanOptions(
@@ -73,7 +74,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     scan_exporter = create_scan_exporter()
     scan_result_exporter = create_scan_result_exporter()
-    selector = cast(CheckmarxOneResultResourcesConfig, event.resource_config).selector
+    selector = cast(CheckmarxOneScanResultResourcesConfig, event.resource_config).selector
     options = ListScanResultOptions(
         limit=selector.limit,
         offset=selector.offset,
