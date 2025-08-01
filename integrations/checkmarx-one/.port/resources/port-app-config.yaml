@@ -1,0 +1,42 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"checkmarxProject"'
+          identifier: .id
+          title: .name
+          properties:
+            name: .name
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            tags: (.tags // {})
+            repoUrl: .repoUrl
+            mainBranch: .mainBranch
+            origin: .origin
+            criticality: .criticality
+
+  - kind: scan
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"checkmarxScan"'
+          identifier: .id
+          title: '(.projectId + "-" + .id)'
+          properties:
+            status: .status
+            branch: .branch
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            projectId: .projectId
+            userAgent: .userAgent
+            configs: (.configs // {})
+            statusDetails: (.statusDetails // [])
+          relations:
+            project: .projectId

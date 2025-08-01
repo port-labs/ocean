@@ -1,0 +1,105 @@
+[
+  {
+    "identifier": "checkmarxProject",
+    "title": "Checkmarx Project",
+    "icon": "Checkmarx",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Project Name"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags"
+        },
+        "repoUrl": {
+          "type": "string",
+          "format": "url",
+          "title": "Repository URL"
+        },
+        "mainBranch": {
+          "type": "string",
+          "title": "Main Branch"
+        },
+        "origin": {
+          "type": "string",
+          "title": "Origin"
+        },
+        "criticality": {
+          "type": "string",
+          "title": "Criticality",
+          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+        }
+      },
+      "required": ["name"]
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "checkmarxScan",
+    "title": "Checkmarx Scan",
+    "icon": "Checkmarx",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["Running", "Completed", "Failed", "Canceled", "Queued"]
+        },
+        "branch": {
+          "type": "string",
+          "title": "Branch"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At"
+        },
+        "projectId": {
+          "type": "string",
+          "title": "Project ID"
+        },
+        "userAgent": {
+          "type": "string",
+          "title": "User Agent"
+        },
+        "configs": {
+          "type": "object",
+          "title": "Configurations"
+        },
+        "statusDetails": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "title": "Status Details"
+        }
+      },
+      "required": ["status", "projectId"]
+    },
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "checkmarxProject",
+        "many": false,
+        "required": true
+      }
+    }
+  }
+]
