@@ -72,7 +72,24 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         self.started = True
 
-        if self.event_strategy["start"]:
+        # Collect start functions to execute
+        start_functions = []
+        current_listener_type = self.context.config.event_listener.type
+
+        # Get event listener-specific start functions (preferred)
+        listener_specific_functions = self.event_strategy["start_for_listener"].get(current_listener_type, [])
+
+        if listener_specific_functions:
+            # Use event listener-specific functions if available
+            logger.debug(f"Using {len(listener_specific_functions)} event listener-specific start functions for {current_listener_type}")
+            start_functions.extend(listener_specific_functions)
+        else:
+            # Fall back to general start functions for backwards compatibility
+            if self.event_strategy["start"]:
+                logger.debug(f"Using {len(self.event_strategy['start'])} general start functions (backwards compatibility)")
+                start_functions.extend(self.event_strategy["start"])
+
+        if start_functions:
             async def run_on_start_tasks() -> None:
                 try:
                     async with event_context(
@@ -80,7 +97,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
                         trigger_type="machine",
                     ):
                         await asyncio.gather(
-                            *(listener() for listener in self.event_strategy["start"])
+                            *(listener() for listener in start_functions)
                         )
                 except Exception as e:
                     logger.exception("Error in start event listeners: %s", str(e))
