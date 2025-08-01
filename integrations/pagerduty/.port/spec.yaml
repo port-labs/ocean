@@ -48,11 +48,14 @@ installationDocs:
   githubWorkflow:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?manual-installation-methods=one-time-ci&deploy=helm&cicd-method=github
+    jumpTo: setup
   gitlabCI:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?manual-installation-methods=one-time-ci&deploy=helm&cicd-method=gitlab
+    jumpTo: setup
   helm:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?manual-installation-methods=real-time-self-hosted&deploy=helm
+    jumpTo: setup
   docker:
     enabled: false
