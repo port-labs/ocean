@@ -4,9 +4,20 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from checkmarx_one.exporter_factory import create_project_exporter, create_scan_exporter
-from checkmarx_one.core.options import ListProjectOptions, ListScanOptions
-from checkmarx_one.integration import CheckmarxOneScanResourcesConfig
+from checkmarx_one.exporter_factory import (
+    create_project_exporter,
+    create_scan_exporter,
+    create_scan_result_exporter,
+)
+from checkmarx_one.core.options import (
+    ListProjectOptions,
+    ListScanOptions,
+    ListScanResultOptions,
+)
+from checkmarx_one.integration import (
+    CheckmarxOneScanResourcesConfig,
+    CheckmarxOneResultResourcesConfig,
+)
 from utils import ObjectKind
 
 
@@ -26,17 +37,12 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync projects from Checkmarx One."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    try:
-        project_exporter = create_project_exporter()
-        options = ListProjectOptions()
+    project_exporter = create_project_exporter()
+    options = ListProjectOptions()
 
-        async for projects_batch in project_exporter.get_projects(options):
-            logger.debug(f"Received batch with {len(projects_batch)} projects")
-            yield projects_batch
-
-    except Exception as e:
-        logger.error(f"Error during project resync: {str(e)}")
-        raise
+    async for projects_batch in project_exporter.get_projects(options):
+        logger.debug(f"Received batch with {len(projects_batch)} projects")
+        yield projects_batch
 
 
 @ocean.on_resync(ObjectKind.SCAN)
@@ -44,19 +50,49 @@ async def on_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync scans from Checkmarx One."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    try:
-        scan_exporter = create_scan_exporter()
-        selector = cast(CheckmarxOneScanResourcesConfig, event.resource_config).selector
-        options = ListScanOptions(
-            project_ids=selector.project_ids,
-            limit=selector.limit,
-            offset=selector.offset,
-        )
+    scan_exporter = create_scan_exporter()
+    # logger.info(event.resource_config)
+    selector = cast(CheckmarxOneScanResourcesConfig, event.resource_config).selector
 
-        async for scans_batch in scan_exporter.get_scans(options):
-            logger.debug(f"Received batch with {len(scans_batch)} scans")
-            yield scans_batch
+    logger.info(selector)
+    options = ListScanOptions(
+        project_ids=selector.project_ids,
+        limit=selector.limit,
+        offset=selector.offset,
+    )
 
-    except Exception as e:
-        logger.error(f"Error during scan resync: {str(e)}")
-        raise
+    async for scans_batch in scan_exporter.get_scans(options):
+        logger.debug(f"Received batch with {len(scans_batch)} scans")
+        yield scans_batch
+
+
+@ocean.on_resync(ObjectKind.SCAN_RESULT)
+async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync scan results from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    scan_exporter = create_scan_exporter()
+    scan_result_exporter = create_scan_result_exporter()
+    selector = cast(CheckmarxOneResultResourcesConfig, event.resource_config).selector
+    options = ListScanResultOptions(
+        limit=selector.limit,
+        offset=selector.offset,
+        severity=selector.severity,
+        state=selector.state,
+        sort=selector.sort,
+        status=selector.status,
+        exclude_result_types=selector.exclude_result_types,
+    )
+
+    scan_options = ListScanOptions(
+        # project_ids=selector.project_ids,
+        # limit=selector.limit,
+        # offset=selector.offset,
+    )
+
+    async for scan_data_list in scan_exporter.get_scans(scan_options):
+        for scan_data in scan_data_list:
+            async for results_batch in scan_result_exporter.get_scan_results(
+                scan_data["id"], options
+            ):
+                yield results_batch

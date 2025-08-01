@@ -8,6 +8,7 @@ features:
     resources:
       - kind: project
       - kind: scan
+      - kind: scan_result
 configurations:
   - name: checkmarxBaseUrl
     required: true

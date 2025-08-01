@@ -26,3 +26,23 @@ class SingleScanOptions(TypedDict):
     """Options for fetching a single scan."""
 
     scan_id: Required[str]
+
+
+class ListScanResultOptions(TypedDict):
+    """Options for listing scan results."""
+
+    scan_id: Required[str]
+    limit: NotRequired[Optional[int]]
+    offset: NotRequired[Optional[int]]
+    severity: NotRequired[Optional[List[str]]]
+    state: NotRequired[Optional[List[str]]]
+    status: NotRequired[Optional[List[str]]]
+    sort: NotRequired[Optional[List[str]]]
+    exclude_result_types: NotRequired[Optional[str]]
+
+
+class SingleScanResultOptions(TypedDict):
+    """Options for fetching a single scan result."""
+
+    scan_id: Required[str]
+    result_id: Required[str]

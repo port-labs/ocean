@@ -40,3 +40,29 @@ resources:
             statusDetails: (.statusDetails // [])
           relations:
             project: .projectId
+
+
+  - kind: scan_result
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .description
+          # Blueprint name → checkmarx + Type (with leading char upper‑cased)
+          blueprint: >
+            "checkmarx" +
+            (.type        | .[0:1] | ascii_upcase) +
+            (.type        | .[1:])
+          properties:
+            type: .type
+            severity: .severity
+            state: .state
+            confidenceLevel: .confidenceLevel
+            description: .description
+            cweId: .vulnerabilityDetails.cweId
+            fileName: .data.nodes[0].fileName
+            line: .data.nodes[0].line
+        relations:
+          scan: .__scan_id

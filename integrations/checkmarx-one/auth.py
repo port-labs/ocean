@@ -1,10 +1,35 @@
 from typing import Optional
+import threading
+from functools import wraps
 
 
 from auth_factory import CheckmarxAuthenticatorFactory
 from base_auth import BaseCheckmarxAuthenticator
 
 
+def singleton(cls):
+    """
+    Decorator to make a class a singleton.
+    Creates unique instances based on constructor parameters.
+    """
+    instances = {}
+    lock = threading.Lock()
+
+    @wraps(cls)
+    def get_instance(*args, **kwargs):
+        # Create a key based on the constructor parameters
+        key = (cls, args, tuple(sorted(kwargs.items())))
+
+        if key not in instances:
+            with lock:
+                if key not in instances:
+                    instances[key] = cls(*args, **kwargs)
+        return instances[key]
+
+    return get_instance
+
+
+@singleton
 class CheckmarxAuthenticator(BaseCheckmarxAuthenticator):
     """
     Handles authentication for Checkmarx One API.
@@ -12,6 +37,9 @@ class CheckmarxAuthenticator(BaseCheckmarxAuthenticator):
 
     This class maintains backward compatibility with the original interface.
     For new code, consider using the factory pattern directly.
+
+    This class is implemented as a singleton to ensure only one instance
+    per unique set of authentication parameters exists.
     """
 
     def __init__(

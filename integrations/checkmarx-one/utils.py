@@ -6,3 +6,4 @@ class ObjectKind(StrEnum):
 
     PROJECT = "project"
     SCAN = "scan"
+    SCAN_RESULT = "scan_result"
