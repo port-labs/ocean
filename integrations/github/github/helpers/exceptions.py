@@ -29,3 +29,7 @@ class GraphQLErrorGroup(Exception):
 
 class CheckRunsException(Exception):
     """Exception for check runs errors."""
+
+
+class RateLimitExceededError(Exception):
+    """Exception for rate limit exceeded errors."""
