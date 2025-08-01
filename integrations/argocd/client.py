@@ -108,7 +108,9 @@ class ArgocdClient:
         for application in applications:
             if not application or not application["metadata"]["uid"]:
                 continue
-            all_history.extend(application.get("status", {}).get("history", []))
+            history = application.get("status", {}).get("history", [])
+            if history:
+                all_history.extend(history)
 
         logger.debug(f"Total number of deployment history fetched: {len(all_history)}")
         return all_history
@@ -124,11 +126,14 @@ class ArgocdClient:
                 "No applications were found. Skipping managed resources ingestion"
             )
             return []
+
         all_k8s_resources: list[dict[str, Any]] = []
         for app in applications:
             if not app or not app["metadata"]["uid"]:
                 continue
-            all_k8s_resources.extend(app.get("status", {}).get("resources", []))
+            resources = app.get("status", {}).get("resources", [])
+            if resources:
+                all_k8s_resources.extend(resources)
 
         logger.debug(f"Total number of resources fetched: {len(all_k8s_resources)}")
         return all_k8s_resources
