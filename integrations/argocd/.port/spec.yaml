@@ -48,6 +48,6 @@ installationDocs:
     docs: build-your-software-catalog/sync-data-to-catalog/argocd/?deploy=helm&installation-methods=one-time-ci&cicd-method=gitlab#prerequisites
   helm:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/argocd/?deploy=helm#prerequisites
+    docs: build-your-software-catalog/sync-data-to-catalog/argocd/?deploy=helm&installation-methods=real-time-self-hosted#prerequisites
   docker:
     enabled: false
