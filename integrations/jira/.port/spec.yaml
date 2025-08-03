@@ -51,3 +51,21 @@ saas:
         jiraHost: '"https://api.atlassian.com/ex/jira/" + .oauthData.profile.accessibleResources[0].id'
       appSpec:
         minimumScheduledResyncInterval: '2h'
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: true
+      docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?oauth=manual#setup
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?manual-installation-methods=one-time-ci&deploy=helm&cicd-method=github#setup
+  gitlabCI:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?manual-installation-methods=one-time-ci&deploy=helm&cicd-method=gitlab#setup
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?manual-installation-methods=real-time-self-hosted&deploy=helm#setup
+  docker:
+    enabled: false
