@@ -1,3 +1,4 @@
+from aws.auth.strategies.organizations_strategy import OrganizationsStrategy
 from aws.auth.providers.base import CredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.providers.static_provider import StaticCredentialProvider
@@ -12,7 +13,7 @@ from aws.auth.providers.assume_role_with_web_identity_provider import (
 )
 import os
 
-StrategyType = SingleAccountStrategy | MultiAccountStrategy
+StrategyType = SingleAccountStrategy | MultiAccountStrategy | OrganizationsStrategy
 
 
 class ResyncStrategyFactory:
@@ -51,7 +52,8 @@ class ResyncStrategyFactory:
         if is_multi_account:
             logger.info("[SessionStrategyFactory] Using MultiAccountStrategy")
             provider = cls._detect_provider_type(config=config)
-            strategy_cls = MultiAccountStrategy
+            # strategy_cls = MultiAccountStrategy
+            strategy_cls = OrganizationsStrategy
         else:
             logger.info(
                 "[SessionStrategyFactory] Using StaticCredentialProvider (no org role ARN found)"
