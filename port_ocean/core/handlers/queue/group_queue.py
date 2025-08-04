@@ -30,7 +30,6 @@ class GroupQueue(AbstractQueue[T]):
       to workers concurrently.
     """
 
-    # ---------- construction ----------
     def __init__(
         self,
         group_key: MaybeStr = None,
