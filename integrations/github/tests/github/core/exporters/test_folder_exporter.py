@@ -215,7 +215,9 @@ class TestRestFolderExporter:
 
         results = [res async for res in exporter.get_paginated_resources(options)]
 
-        search_repositories_mock.assert_called_once_with(repo_mapping.keys())
+        search_repositories_mock.assert_called_once_with(
+            rest_client, repo_mapping.keys()
+        )
 
         # it is called for 'main' and for default branch 'develop' for 'test-repo'
         assert get_tree_mock.call_count == 2
