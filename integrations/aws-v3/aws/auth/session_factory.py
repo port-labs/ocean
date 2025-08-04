@@ -50,11 +50,17 @@ class ResyncStrategyFactory:
         Detect the appropriate strategy type based on the global configuration.
         """
         account_role_arn = config.get("account_role_arn")
-        is_multi_account = bool(account_role_arn and len(account_role_arn) > 0)
-        if is_multi_account:
+        use_organizations = config.get("use_organizations", False)
+
+        # If organizations flag is enabled and we have at least one role ARN
+        if use_organizations and account_role_arn and len(account_role_arn) > 0:
+            return OrganizationsStrategy
+
+        # If we have multiple role ARNs, use multi-account strategy
+        if account_role_arn and len(account_role_arn) > 1:
             return MultiAccountStrategy
-        if account_role_arn and len(account_role_arn) == 1:
-            return SingleAccountStrategy
+
+        # Default to single account strategy
         return SingleAccountStrategy
 
     @classmethod
@@ -68,16 +74,8 @@ class ResyncStrategyFactory:
         provider: CredentialProvider
         strategy_cls: type[StrategyType]
 
-        if is_multi_account:
-            logger.info("[SessionStrategyFactory] Using MultiAccountStrategy")
-            provider = cls._detect_provider_type(config=config)
-            strategy_cls = MultiAccountStrategy
-        else:
-            logger.info(
-                "[SessionStrategyFactory] Using StaticCredentialProvider (no org role ARN found)"
-            )
-            provider = StaticCredentialProvider(config=config)
-            strategy_cls = SingleAccountStrategy
+        provider = cls._detect_provider_type(config)
+        strategy_cls = cls._detect_strategy_type(config)
 
         logger.info(f"Initializing {strategy_cls.__name__}")
         strategy = strategy_cls(provider=provider, config=config)
