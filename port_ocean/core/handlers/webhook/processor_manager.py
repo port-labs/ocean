@@ -90,7 +90,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                                 ok=len(good),
                             )
                         await self.sync_raw_results(good)
-                        # handle good/bad, sync results…
             except asyncio.CancelledError:
                 logger.info(f"Worker {worker_id} for {path} shutting down")
                 for _, proc in matching:
