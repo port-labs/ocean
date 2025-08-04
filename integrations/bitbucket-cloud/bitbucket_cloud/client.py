@@ -141,7 +141,7 @@ class BitbucketClient:
             if not url:
                 break
 
-    async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_projects(self, query: Optional[str] = None) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all projects in the workspace."""
         async for projects in self._send_paginated_api_request(
             f"{self.base_url}/workspaces/{self.workspace}/projects"
@@ -149,20 +149,70 @@ class BitbucketClient:
             logger.info(
                 f"Fetched batch of {len(projects)} projects from workspace {self.workspace}"
             )
-            yield projects
+
+            # Apply JQ filtering if query is provided
+            if query:
+                try:
+                    import jq
+                    jq_filter = jq.compile(query)
+                    filtered_projects = []
+                    for project in projects:
+                        try:
+                            # JQ filter returns iterator, check if it yields any results
+                            result = jq_filter.input(project).first()
+                            if result:
+                                filtered_projects.append(project)
+                        except (StopIteration, ValueError):
+                            # Filter didn't match, skip this project
+                            continue
+                    yield filtered_projects
+                except ImportError:
+                    logger.warning("jq library not available, skipping query filtering")
+                    yield projects
+                except Exception as e:
+                    logger.error(f"Error applying JQ filter '{query}': {e}")
+                    yield projects
+            else:
+                yield projects
 
     @cache_iterator_result()
     async def get_repositories(
-        self, params: Optional[dict[str, Any]] = None
+        self, params: Optional[dict[str, Any]] = None, query: Optional[str] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all repositories in the workspace."""
+        if params is None:
+            params = {}
         async for repos in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}", params=params
         ):
             logger.info(
                 f"Fetched batch of {len(repos)} repositories from workspace {self.workspace}"
             )
-            yield repos
+
+            # Apply JQ filtering if query is provided
+            if query:
+                try:
+                    import jq
+                    jq_filter = jq.compile(query)
+                    filtered_repos = []
+                    for repo in repos:
+                        try:
+                            # JQ filter returns iterator, check if it yields any results
+                            result = jq_filter.input(repo).first()
+                            if result:
+                                filtered_repos.append(repo)
+                        except (StopIteration, ValueError):
+                            # Filter didn't match, skip this repo
+                            continue
+                    yield filtered_repos
+                except ImportError:
+                    logger.warning("jq library not available, skipping query filtering")
+                    yield repos
+                except Exception as e:
+                    logger.error(f"Error applying JQ filter '{query}': {e}")
+                    yield repos
+            else:
+                yield repos
 
     async def get_directory_contents(
         self,
@@ -188,11 +238,11 @@ class BitbucketClient:
             yield contents
 
     async def get_pull_requests(
-        self, repo_slug: str
+        self, repo_slug: str, state: str = PULL_REQUEST_STATE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get pull requests for a repository."""
         params = {
-            "state": PULL_REQUEST_STATE,
+            "state": state,
             "pagelen": PULL_REQUEST_PAGE_SIZE,
         }
         async for pull_requests in self._fetch_paginated_api_with_rate_limiter(
