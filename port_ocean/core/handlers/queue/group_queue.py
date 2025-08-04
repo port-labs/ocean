@@ -47,7 +47,6 @@ class GroupQueue(AbstractQueue[T]):
         self._lock_timestamps: Dict[MaybeStr, float] = {}
         self._timeout_task: asyncio.Task[None] | None = None
 
-        # FIX: Track multiple concurrent items instead of single _current_item
         self._current_items: Dict[str, Tuple[MaybeStr, T]] = (
             {}
         )  # worker_id -> (group, item)
