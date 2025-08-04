@@ -38,7 +38,7 @@ class GroupQueue(AbstractQueue[T]):
         lock_timeout: float = 300,
     ):
         super().__init__(name)
-        self.group_key = group_key  # str | None
+        self.group_key = group_key 
         self._queues: Dict[MaybeStr, Deque[T]] = defaultdict(deque)
         self._locked: Set[MaybeStr] = set()
         self._queue_not_empty = asyncio.Condition()
