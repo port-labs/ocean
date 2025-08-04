@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Improved folder kind ingestion performance by using the GitHub Search API to efficiently retrieve repository information.
+- Bumped ocean version to ^0.26.3
 
 
 ## 1.2.1-beta (2025-08-03)
