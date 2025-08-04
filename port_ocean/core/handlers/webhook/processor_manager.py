@@ -33,7 +33,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         self._router = router
         self._processors_classes: Dict[str, list[Type[AbstractWebhookProcessor]]] = {}
         self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
-        self._webhook_processor_tasks: Set[asyncio.Task[None]] = set()
+        self._event_processor_tasks: Set[asyncio.Task[None]] = (
+            set()
+        )  # Renamed from _webhook_processor_tasks
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
         signal_handler.register(self.shutdown)
@@ -46,16 +48,22 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
         for path in self._event_queues.keys():
             for worker_id in range(0, config.event_workers_num):
-                task = loop.create_task(self._queue_worker(path, worker_id))
-                self._webhook_processor_tasks.add(task)
-                task.add_done_callback(self._webhook_processor_tasks.discard)
+                task = loop.create_task(
+                    self._process_webhook_events(path, worker_id)
+                )  # Renamed method
+                self._event_processor_tasks.add(task)
+                task.add_done_callback(self._event_processor_tasks.discard)
 
-    async def _queue_worker(self, path: str, worker_id: int) -> None:
-        """Single‐worker loop pulling from the queue for a given path."""
+    async def _process_webhook_events(
+        self, path: str, worker_id: int
+    ) -> None:  # Renamed from _queue_worker
+        """Process webhook events from the queue for a given path."""
         queue = self._event_queues[path]
         while True:
             event = None
-            matching: List[Tuple[ResourceConfig, AbstractWebhookProcessor]] = []
+            matching_processors: List[
+                Tuple[ResourceConfig, AbstractWebhookProcessor]
+            ] = []  # Better name than 'matching'
             try:
                 event = await queue.get()
                 with logger.contextualize(
@@ -71,28 +79,49 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                         await ocean.integration.port_app_config_handler.get_port_app_config(
                             use_cache=False
                         )
-                        matching = await self._extract_matching_processors(event, path)
-                        results = await asyncio.gather(
+                        matching_processors = await self._extract_matching_processors(
+                            event, path
+                        )
+
+                        # Process all matching processors
+                        processing_results = await asyncio.gather(
                             *(
                                 self._process_single_event(proc, path, res)
-                                for res, proc in matching
+                                for res, proc in matching_processors
                             ),
                             return_exceptions=True,
                         )
 
-                        good = [
-                            r for r in results if isinstance(r, WebhookEventRawResults)
-                        ]
+                        # Separate successful and failed results
+                        successful_results: List[WebhookEventRawResults] = []
+                        failed_exceptions: List[Exception] = []
 
-                        if good:
+                        for result in processing_results:
+                            if isinstance(result, WebhookEventRawResults):
+                                successful_results.append(result)
+                            elif isinstance(result, Exception):
+                                failed_exceptions.append(result)
+
+                        # Log results
+                        if successful_results:
                             logger.info(
-                                "Exporting raw event results to entities",
-                                ok=len(good),
+                                "Successfully processed webhook events",
+                                success_count=len(successful_results),
+                                failure_count=len(failed_exceptions),
                             )
-                        await self.sync_raw_results(good)
+
+                        if failed_exceptions:
+                            logger.warning(
+                                "Some webhook events failed processing",
+                                failures=[str(e) for e in failed_exceptions],
+                            )
+
+                        # Export successful results
+                        await self.sync_raw_results(successful_results)
+
             except asyncio.CancelledError:
                 logger.info(f"Worker {worker_id} for {path} shutting down")
-                for _, proc in matching:
+                for _, proc in matching_processors:
                     await proc.cancel()
                     self._timestamp_event_error(proc.event)
                 break
@@ -100,7 +129,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 logger.exception(
                     f"Unexpected error in worker {worker_id} for {path}: {e}"
                 )
-                for _, proc in matching:
+                for _, proc in matching_processors:
                     self._timestamp_event_error(proc.event)
             finally:
                 try:
@@ -280,12 +309,14 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             methods=["POST"],
         )
 
-    async def _cancel_all_tasks(self) -> None:
-        """Cancel all webhook processor tasks"""
-        for task in self._webhook_processor_tasks:
+    async def _cancel_all_event_processors(
+        self,
+    ) -> None:  # Renamed from _cancel_all_tasks
+        """Cancel all event processor tasks"""
+        for task in self._event_processor_tasks:
             task.cancel()
 
-        await asyncio.gather(*self._webhook_processor_tasks, return_exceptions=True)
+        await asyncio.gather(*self._event_processor_tasks, return_exceptions=True)
 
     async def shutdown(self) -> None:
         """Gracefully shutdown all queue processors"""
@@ -300,5 +331,3 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             )
         except asyncio.TimeoutError:
             logger.warning("Shutdown timed out waiting for queues to empty")
-
-        await self._cancel_all_tasks()
