@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "newrelic"
-version = "0.1.190"
+version = "0.1.191"
 description = "New Relic Integration"
 authors = ["Tom Tankilevitch <tomtankilevitch@gmail.com>"]
 
