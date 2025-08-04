@@ -44,15 +44,15 @@ installationDocs:
       enabled: false
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?oauth=manual#setup
+      docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?oauth=manual&installation-methods=hosted-by-port#setup
   githubWorkflow:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?manual-installation-methods=one-time-ci&deploy=helm&cicd-method=github#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?installation-methods=one-time-ci&cicd-method=github#setup
   gitlabCI:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?manual-installation-methods=one-time-ci&deploy=helm&cicd-method=gitlab#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?installation-methods=one-time-ci&cicd-method=gitlab#setup
   helm:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?manual-installation-methods=real-time-self-hosted&deploy=helm#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?installation-methods=real-time-self-hosted#setup
   docker:
     enabled: false

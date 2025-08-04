@@ -57,15 +57,15 @@ installationDocs:
       enabled: false
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?oauth=manual#setup
+      docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=hosted-by-port&oauth=manual#setup
   githubWorkflow:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?manual-installation-methods=one-time-ci&deploy=helm&cicd-method=github#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=one-time-ci&deploy=helm&cicd-method=github#setup
   gitlabCI:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?manual-installation-methods=one-time-ci&deploy=helm&cicd-method=gitlab#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=one-time-ci&deploy=helm&cicd-method=gitlab#setup
   helm:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?manual-installation-methods=real-time-self-hosted&deploy=helm#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=real-time-self-hosted#setup
   docker:
     enabled: false
