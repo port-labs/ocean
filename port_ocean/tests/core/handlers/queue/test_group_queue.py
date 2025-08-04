@@ -48,12 +48,6 @@ class TestGroupQueue:
         assert retrieved_item == item1
         assert "group_a" in queue._locked
 
-        # Check worker tracking (new implementation)
-        worker_id = queue._get_worker_id()
-        assert worker_id in queue._current_items
-        assert queue._current_items[worker_id] == ("group_a", item1)
-        assert queue._group_to_worker["group_a"] == worker_id
-
     @pytest.mark.asyncio
     async def test_locked_group_blocks_retrieval(
         self, queue_with_group_key: GroupQueue[Any]
@@ -99,11 +93,8 @@ class TestGroupQueue:
         assert retrieved_item1 == item1
         assert "group_a" in queue._locked
 
-        worker_id = queue._get_worker_id()
         await queue.commit()
         assert "group_a" not in queue._locked
-        assert worker_id not in queue._current_items
-        assert "group_a" not in queue._group_to_worker
 
         # Now we should be able to get the second item from group_a
         retrieved_item2 = await queue.get()
@@ -205,8 +196,6 @@ class TestGroupQueue:
 
         # Should not raise any exceptions
         await queue.commit()
-        assert len(queue._current_items) == 0
-        assert len(queue._group_to_worker) == 0
         assert len(queue._locked) == 0
 
     @pytest.mark.asyncio
@@ -229,7 +218,6 @@ class TestGroupQueue:
         # Second commit should be safe
         await queue.commit()
         assert "group_a" not in queue._locked
-        assert len(queue._current_items) == 0
 
     @pytest.mark.asyncio
     async def test_fifo_within_group(
@@ -299,10 +287,9 @@ class TestGroupQueue:
         # Before get: size should be 3
         assert await queue.size() == 3
 
-        # After get: size should be 2 (current item excluded)
+        # After get: size should still be 3 (head item not removed until commit)
         await queue.get()
-        await queue.commit()
-        assert await queue.size() == 2
+        assert await queue.size() == 3
 
         # After commit: size should be 2 (item removed)
         await queue.commit()
@@ -317,21 +304,13 @@ class TestGroupQueue:
         """Test multiple workers processing items from different groups concurrently"""
         queue: GroupQueue[TestItem] = queue_with_group_key
         processed_items = []
-        processing_times = {}
 
         async def worker(worker_id: int, process_time: float = 0.1) -> Any:
             """Simulate a worker that processes items"""
             try:
                 item = await queue.get()
-                start_time = asyncio.get_event_loop().time()
-
-                # Record when processing started
-                processing_times[item.value] = start_time
                 processed_items.append((worker_id, item))
-
-                # Simulate processing time
                 await asyncio.sleep(process_time)
-
                 await queue.commit()
                 return item
             except Exception as e:
@@ -361,10 +340,8 @@ class TestGroupQueue:
         processed_values = {item.value for _, item in processed_items}
         assert processed_values == {1, 2, 3, 4}
 
-        # With the fixed implementation, no groups should be locked after completion
+        # No groups should be locked after completion
         assert len(queue._locked) == 0
-        assert len(queue._current_items) == 0
-        assert len(queue._group_to_worker) == 0
 
     @pytest.mark.asyncio
     async def test_multiple_workers_same_group_exclusivity(
@@ -431,10 +408,8 @@ class TestGroupQueue:
                 current_start >= previous_end - 0.01
             ), f"Item {current_value} started before item {previous_value} finished"
 
-        # With fixed implementation, perfect cleanup
+        # Perfect cleanup
         assert len(queue._locked) == 0
-        assert len(queue._current_items) == 0
-        assert len(queue._group_to_worker) == 0
 
     @pytest.mark.asyncio
     async def test_mixed_groups_with_multiple_workers(
@@ -508,10 +483,8 @@ class TestGroupQueue:
         for i in range(1, len(starts)):
             assert starts[i][4] >= ends[i - 1][4] - 0.01
 
-        # Perfect cleanup with fixed implementation
+        # Perfect cleanup
         assert len(queue._locked) == 0
-        assert len(queue._current_items) == 0
-        assert len(queue._group_to_worker) == 0
 
     @pytest.mark.asyncio
     async def test_high_concurrency_stress_test(
@@ -573,10 +546,8 @@ class TestGroupQueue:
         ]
         assert sorted(processed_values) == sorted(expected_values)
 
-        # Perfect cleanup with fixed implementation
+        # Perfect cleanup
         assert len(queue._locked) == 0
-        assert len(queue._current_items) == 0
-        assert len(queue._group_to_worker) == 0
         assert await queue.size() == 0
 
     @pytest.mark.asyncio
@@ -608,7 +579,7 @@ class TestGroupQueue:
                 item = await queue.get()
                 processed_items.append((worker_id, item))
                 # Hang for longer than lock timeout without committing
-                await asyncio.sleep(1.0)  # Longer than 0.5s timeout
+                await asyncio.sleep(1.0)  # Longer than 0.3s timeout
                 # Don't commit - simulates hung worker
                 return f"Worker {worker_id} hung"
             except Exception as e:
@@ -627,7 +598,6 @@ class TestGroupQueue:
 
         # Verify group is locked
         assert "group_a" in queue._locked
-        assert len(queue._current_items) == 1
 
         # Normal worker should be blocked initially
         normal_task = asyncio.create_task(normal_worker(1))
@@ -636,7 +606,7 @@ class TestGroupQueue:
         await asyncio.sleep(0.2)
         assert not normal_task.done()  # Still waiting
 
-        # Wait for timeout to kick in (0.5s timeout + some buffer)
+        # Wait for timeout to kick in (0.3s timeout + some buffer)
         await asyncio.sleep(0.4)
 
         # Now the normal worker should be able to proceed
@@ -717,8 +687,6 @@ class TestGroupQueue:
 
         # Perfect cleanup
         assert len(queue._locked) == 0
-        assert len(queue._current_items) == 0
-        assert len(queue._group_to_worker) == 0
 
     @pytest.mark.asyncio
     async def test_multiple_frozen_locks_recovery(
@@ -805,5 +773,3 @@ class TestGroupQueue:
         # Final state should be clean
         await asyncio.sleep(0.1)
         assert len(queue._locked) == 0
-        assert len(queue._current_items) == 0
-        assert len(queue._group_to_worker) == 0

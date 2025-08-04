@@ -1,34 +1,22 @@
 import asyncio
 from collections import defaultdict, deque
 import time
-from typing import Deque, Dict, Optional, Set, Tuple, TypeVar
+from typing import Deque, Dict, Optional, Set, TypeVar, Any
+from contextvars import ContextVar
 
 from loguru import logger
 
-from .abstract_queue import AbstractQueue  # unchanged
-from contextvars import ContextVar
-import uuid
+from .abstract_queue import AbstractQueue
 
 T = TypeVar("T")
 MaybeStr = str | None
 
-
-_worker_context: ContextVar[Optional[str]] = ContextVar("worker_context", default=None)
+_NO_GROUP = object()
+_current_group: ContextVar[Any] = ContextVar("current_group", default=_NO_GROUP)
 
 
 class GroupQueue(AbstractQueue[T]):
-    """
-    A queue that guarantees *exclusive* processing per group.
-
-    Every item `T` must expose the attribute named in `group_key`
-    (or `group_key is None` → all items share the same group).
-
-    Rules
-    -----
-    • FIFO within each group.
-    • No two items with the same group key are ever handed
-      to workers concurrently.
-    """
+    """Queue with exclusive processing per group."""
 
     def __init__(
         self,
@@ -37,33 +25,26 @@ class GroupQueue(AbstractQueue[T]):
         lock_timeout: float = 300,
     ):
         super().__init__(name)
-        self.group_key = group_key 
+        self.group_key = group_key
         self._queues: Dict[MaybeStr, Deque[T]] = defaultdict(deque)
         self._locked: Set[MaybeStr] = set()
         self._queue_not_empty = asyncio.Condition()
         self.lock_timeout = lock_timeout
         self._lock_timestamps: Dict[MaybeStr, float] = {}
-        self._timeout_task: asyncio.Task[None] | None = None
-
-        self._current_items: Dict[str, Tuple[MaybeStr, T]] = (
-            {}
-        )  # worker_id -> (group, item)
-        self._group_to_worker: Dict[MaybeStr, str] = (
-            {}
-        )  # group -> worker_id processing it
+        self._timeout_task: Optional[asyncio.Task[None]] = None
 
     async def _background_timeout_check(self) -> None:
-        """Actively check for expired locks every N seconds"""
+        """Periodically release locks that have timed out."""
         while True:
             try:
-                await asyncio.sleep(self.lock_timeout / 4)  # Check frequently
+                await asyncio.sleep(self.lock_timeout / 4)
                 async with self._queue_not_empty:
-                    await self._release_expired_locks()  # This will notify_all() if needed
+                    await self._release_expired_locks()
             except asyncio.CancelledError:
                 break
 
-    # ---------- helpers ----------
     def _extract_group_key(self, item: T) -> MaybeStr:
+        """Extract the group key from an item."""
         if self.group_key is None:
             return None
         if not hasattr(item, self.group_key):
@@ -72,142 +53,86 @@ class GroupQueue(AbstractQueue[T]):
             )
         return getattr(item, self.group_key)
 
-    def _get_worker_id(self) -> str:
-        """Get stable worker ID based on current task"""
-        task = asyncio.current_task()
-        return f"worker-{id(task)}" if task else f"fallback-{uuid.uuid4()}"
-
-    # ---------- AbstractQueue API ----------
     async def put(self, item: T) -> None:
-        """Put a single item into its group‑FIFO."""
+        """Add item to its group's queue."""
         group_key = self._extract_group_key(item)
         async with self._queue_not_empty:
             self._queues[group_key].append(item)
             self._queue_not_empty.notify_all()
 
     async def _release_expired_locks(self) -> None:
-        """Release locks older than timeout"""
+        """Release locks that have exceeded the timeout."""
         now = time.time()
         expired_groups = []
 
-        for group, timestamp in self._lock_timestamps.items():
+        for group, timestamp in list(self._lock_timestamps.items()):
             if now - timestamp > self.lock_timeout:
                 expired_groups.append(group)
+                logger.warning(f"Releasing expired lock for group {group}")
+                self._locked.discard(group)
+                del self._lock_timestamps[group]
 
-        for group in expired_groups:
-            logger.warning(f"Releasing expired lock for group {group}")
-            self._locked.discard(group)
-            self._lock_timestamps.pop(group, None)
-
-            # Clean up worker tracking
-            worker_to_remove = None
-            for worker_id, (g, item) in self._current_items.items():
-                if g == group:
-                    worker_to_remove = worker_id
-                    break
-
-            if worker_to_remove:
-                del self._current_items[worker_to_remove]
-                self._group_to_worker.pop(group, None)
-        # CRITICAL: Notify waiting workers that locks were released
         if expired_groups:
             self._queue_not_empty.notify_all()
 
     async def get(self) -> T:
-        """
-        Get the head item of the first *unlocked* group.
-        Locks that group until `commit()` is called.
-        """
-
+        """Get the next item from an unlocked group, locking that group."""
         if self._timeout_task is None or self._timeout_task.done():
             self._timeout_task = asyncio.create_task(self._background_timeout_check())
 
-        worker_id = self._get_worker_id()
-
         async with self._queue_not_empty:
             while True:
-
                 await self._release_expired_locks()
 
-                for g, q in self._queues.items():
-                    if not q or g in self._locked:
-                        continue
-
-                    # Lock the group and track which worker is processing it
-                    self._locked.add(g)
-                    item = q[0]  # peek without pop
-                    self._current_items[worker_id] = (g, item)
-                    self._lock_timestamps[g] = time.time()
-                    self._group_to_worker[g] = worker_id
-
-                    return item
+                for group, queue in self._queues.items():
+                    if queue and group not in self._locked:
+                        self._locked.add(group)
+                        self._lock_timestamps[group] = time.time()
+                        _current_group.set(group)
+                        return queue[0]
 
                 await self._queue_not_empty.wait()
 
     async def commit(self) -> None:
-        worker_id = self._get_worker_id()
+        """Remove the current item and unlock its group."""
+        group = _current_group.get()
+        if group is _NO_GROUP:
+            logger.warning("commit() called without active get()")
+            return
 
         async with self._queue_not_empty:
-            if worker_id not in self._current_items:
-                logger.warning(
-                    f"Worker {worker_id} attempted commit with no current item"
-                )
-                return
+            queue = self._queues.get(group)
+            if queue:
+                queue.popleft()
+                if not queue:
+                    del self._queues[group]
 
-            g, item = self._current_items[worker_id]
-
-            try:
-                q = self._queues.get(g)
-                if q and q[0] == item:
-                    q.popleft()
-                    if not q:
-                        del self._queues[g]
-                else:
-                    logger.warning(
-                        f"Queue state mismatch for group {g}, forcing cleanup"
-                    )
-
-            except Exception as e:
-                logger.error(f"Error during queue cleanup for group {g}: {e}")
-
-            finally:
-                self._locked.discard(g)
-                self._lock_timestamps.pop(g, None)
-
-                del self._current_items[worker_id]
-                self._group_to_worker.pop(g, None)
-
-                self._queue_not_empty.notify_all()
+            self._locked.discard(group)
+            self._lock_timestamps.pop(group, None)
+            _current_group.set(_NO_GROUP)
+            self._queue_not_empty.notify_all()
 
     async def teardown(self) -> None:
-        """
-        Wait until **all items** are processed and no group is locked.
-        """
+        """Wait until all queues are empty and no groups are locked."""
         async with self._queue_not_empty:
             while any(self._queues.values()) or self._locked:
                 await self._queue_not_empty.wait()
 
-    async def size(self) -> int:
-        """
-        Return **the current number of batched items waiting in the queue**,
-        aggregated across every group.
+        if self._timeout_task and not self._timeout_task.done():
+            self._timeout_task.cancel()
+            try:
+                await self._timeout_task
+            except asyncio.CancelledError:
+                pass
 
-        • Excludes the batches that are being processed right now
-          (i.e. those referenced by ``self._current_items``).
-        • Safe to call from multiple coroutines concurrently.
-        • Runs in O(#groups) time – negligible unless you have
-          millions of distinct group keys.
-        """
+    async def size(self) -> int:
+        """Return total number of items across all groups."""
         async with self._queue_not_empty:
-            return sum(len(dq) for dq in self._queues.values())
+            return sum(len(queue) for queue in self._queues.values())
 
     async def force_unlock_all(self) -> None:
-        """
-        Emergency method to unlock all groups and clear worker tracking.
-        Use only for cleanup in exceptional situations.
-        """
+        """Force unlock all groups."""
         async with self._queue_not_empty:
             self._locked.clear()
-            self._current_items.clear()
-            self._group_to_worker.clear()
+            self._lock_timestamps.clear()
             self._queue_not_empty.notify_all()
