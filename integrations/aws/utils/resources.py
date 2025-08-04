@@ -247,8 +247,10 @@ async def resync_sqs_queue(
         except sqs_client.exceptions.ClientError as e:
             if is_access_denied_exception(e):
                 logger.warning(
-                    f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
+                    f"Access denied for {kind} in region {region} in account {account_id}: {e}"
                 )
+                yield []
+                return
             else:
                 raise e
 
@@ -337,8 +339,10 @@ async def resync_resource_group(
         except client.exceptions.ClientError as e:
             if is_access_denied_exception(e):
                 logger.warning(
-                    f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
+                    f"Access denied for {kind} in region {region} in account {account_id}: {e}"
                 )
+                yield []
+                return
             else:
                 raise e
 
@@ -395,10 +399,9 @@ async def resync_custom_kind(
                     break
             except client.exceptions.ClientError as e:
                 if is_access_denied_exception(e):
-                    logger.warning(
-                        f"Skipping resyncing {kind} in region {region} due to missing access permissions"
-                    )
-                    break
+                    logger.warning(f"Access denied for {kind} in region {region}: {e}")
+                    yield []
+                    return
                 else:
                     raise e
 
@@ -477,8 +480,10 @@ async def resync_cloudcontrol(
         except Exception as e:
             if is_access_denied_exception(e):
                 logger.warning(
-                    f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
+                    f"Access denied for {kind} in region {region} in account {account_id}: {e}"
                 )
+                yield []
+                return
             else:
                 logger.error(f"Error resyncing {kind} in region {region}: {e}")
-            raise e
+                raise e

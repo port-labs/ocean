@@ -5,6 +5,7 @@ from utils.resources import (
     resync_custom_kind,
     resync_cloudcontrol,
     resync_resource_group,
+    resync_sqs_queue,
     enrich_group_with_resources,
     fetch_group_resources,
 )
@@ -217,3 +218,270 @@ async def test_resync_resource_group(
             assert group["GroupName"] == "test-group"
             assert group["GroupArn"] == "test-group-arn"
             assert group["__Resources"] == [{"ResourceArn": "test-arn"}]
+
+
+@pytest.mark.asyncio
+async def test_resync_custom_kind_yields_empty_list_when_permission_denied(
+    mock_session: AsyncMock,
+    mock_account_id: str,
+) -> None:
+    """Test that resync_custom_kind yields empty list on permission denied."""
+    from botocore.exceptions import ClientError
+
+    # Arrange
+    error_response = {"Error": {"Code": "AccessDenied"}}
+    mock_client = AsyncMock()
+    mock_client.describe_cache_clusters.side_effect = ClientError(
+        error_response, "DescribeCacheClusters"
+    )
+
+    mock_exceptions = MagicMock()
+    mock_exceptions.ClientError = ClientError
+    mock_client.exceptions = mock_exceptions
+
+    mock_context_manager = AsyncMock()
+    mock_context_manager.__aenter__.return_value = mock_client
+
+    # Act
+    with patch.object(mock_session, "client", return_value=mock_context_manager):
+        with patch(
+            "utils.resources._session_manager.find_account_id_by_session",
+            return_value=mock_account_id,
+        ):
+            results = []
+            async for batch in resync_custom_kind(
+                kind="AWS::ElastiCache::Cluster",
+                session=mock_session,
+                service_name="elasticache",
+                describe_method="describe_cache_clusters",
+                list_param="CacheClusters",
+                marker_param="Marker",
+            ):
+                results.append(batch)
+
+    # Assert
+    assert len(results) == 1, "Should yield exactly one batch"
+    assert results[0] == [], "Should yield empty list for permission denied"
+
+
+@pytest.mark.asyncio
+async def test_resync_cloudcontrol_yields_empty_list_when_permission_denied(
+    mock_session: AsyncMock,
+    mock_account_id: str,
+) -> None:
+    """Test that resync_cloudcontrol yields empty list on permission denied."""
+    from botocore.exceptions import ClientError
+
+    # Arrange
+    error_response = {"Error": {"Code": "AccessDenied"}}
+    mock_client = AsyncMock()
+
+    mock_paginator = AsyncMock()
+
+    async def mock_paginate_generator(**kwargs):
+        raise ClientError(error_response, "ListResources")
+        yield
+
+    mock_paginator.paginate = mock_paginate_generator
+    mock_client.get_paginator = MagicMock(return_value=mock_paginator)
+
+    mock_exceptions = MagicMock()
+    mock_exceptions.ClientError = ClientError
+    mock_client.exceptions = mock_exceptions
+
+    mock_context_manager = AsyncMock()
+    mock_context_manager.__aenter__.return_value = mock_client
+
+    # Act
+    with patch.object(mock_session, "client", return_value=mock_context_manager):
+        with patch(
+            "utils.resources._session_manager.find_account_id_by_session",
+            return_value=mock_account_id,
+        ):
+            results = []
+            async for batch in resync_cloudcontrol(
+                kind="AWS::S3::Bucket",
+                session=mock_session,
+                use_get_resource_api=False,
+            ):
+                results.append(batch)
+
+    # Assert
+    assert len(results) == 1, "Should yield exactly one batch"
+    assert results[0] == [], "Should yield empty list for permission denied"
+
+
+@pytest.mark.asyncio
+async def test_resync_sqs_queue_yields_empty_list_when_permission_denied(
+    mock_session: AsyncMock,
+    mock_account_id: str,
+) -> None:
+    """Test that resync_sqs_queue yields empty list on permission denied."""
+    from botocore.exceptions import ClientError
+
+    # Arrange
+    error_response = {"Error": {"Code": "AccessDenied"}}
+    mock_client = AsyncMock()
+    mock_client.list_queues.side_effect = ClientError(error_response, "ListQueues")
+
+    mock_paginator = AsyncMock()
+
+    async def mock_paginate_generator(**kwargs):
+        raise ClientError(error_response, "ListQueues")
+        yield
+
+    mock_paginator.paginate = mock_paginate_generator
+    mock_client.get_paginator = MagicMock(return_value=mock_paginator)
+
+    mock_exceptions = MagicMock()
+    mock_exceptions.ClientError = ClientError
+    mock_client.exceptions = mock_exceptions
+
+    mock_context_manager = AsyncMock()
+    mock_context_manager.__aenter__.return_value = mock_client
+
+    # Act
+    with patch.object(mock_session, "client", return_value=mock_context_manager):
+        with patch(
+            "utils.resources._session_manager.find_account_id_by_session",
+            return_value=mock_account_id,
+        ):
+            results = []
+            async for batch in resync_sqs_queue(
+                kind="AWS::SQS::Queue",
+                session=mock_session,
+            ):
+                results.append(batch)
+
+    # Assert
+    assert len(results) == 1, "Should yield exactly one batch"
+    assert results[0] == [], "Should yield empty list for permission denied"
+
+
+@pytest.mark.asyncio
+async def test_resync_resource_group_yields_empty_list_when_permission_denied(
+    mock_session: AsyncMock,
+    mock_account_id: str,
+) -> None:
+    """Test that resync_resource_group yields empty list on permission denied."""
+    from botocore.exceptions import ClientError
+
+    # Arrange
+    error_response = {"Error": {"Code": "AccessDenied"}}
+    mock_client = AsyncMock()
+
+    mock_paginator = AsyncMock()
+
+    async def mock_paginate_generator(**kwargs):
+        raise ClientError(error_response, "ListGroups")
+        yield
+
+    mock_paginator.paginate = mock_paginate_generator
+    mock_client.get_paginator = MagicMock(return_value=mock_paginator)
+
+    mock_exceptions = MagicMock()
+    mock_exceptions.ClientError = ClientError
+    mock_client.exceptions = mock_exceptions
+
+    mock_context_manager = AsyncMock()
+    mock_context_manager.__aenter__.return_value = mock_client
+
+    # Act
+    with patch.object(mock_session, "client", return_value=mock_context_manager):
+        with patch(
+            "utils.resources._session_manager.find_account_id_by_session",
+            return_value=mock_account_id,
+        ):
+            results = []
+            async for batch in resync_resource_group(
+                kind="AWS::ResourceGroups::Group",
+                session=mock_session,
+            ):
+                results.append(batch)
+
+    # Assert
+    assert len(results) == 1, "Should yield exactly one batch"
+    assert results[0] == [], "Should yield empty list for permission denied"
+
+
+@pytest.mark.asyncio
+async def test_resync_custom_kind_yields_resources_when_permission_granted(
+    mock_session: AsyncMock,
+    mock_account_id: str,
+) -> None:
+    """Test that resync_custom_kind yields resources when permission is granted."""
+    # Arrange
+    mock_client = AsyncMock()
+    mock_response = {
+        "CacheClusters": [
+            {"CacheClusterId": "cluster1", "Engine": "redis"},
+            {"CacheClusterId": "cluster2", "Engine": "redis"},
+        ]
+    }
+    mock_client.describe_cache_clusters.return_value = mock_response
+
+    mock_context_manager = AsyncMock()
+    mock_context_manager.__aenter__.return_value = mock_client
+
+    # Act
+    with patch.object(mock_session, "client", return_value=mock_context_manager):
+        with patch(
+            "utils.resources._session_manager.find_account_id_by_session",
+            return_value=mock_account_id,
+        ):
+            results = []
+            async for batch in resync_custom_kind(
+                kind="AWS::ElastiCache::Cluster",
+                session=mock_session,
+                service_name="elasticache",
+                describe_method="describe_cache_clusters",
+                list_param="CacheClusters",
+                marker_param="Marker",
+            ):
+                results.append(batch)
+
+    # Assert
+    assert len(results) == 1, "Should yield exactly one batch"
+    assert len(results[0]) == 2, "Should have 2 resources"
+    assert results[0][0]["CacheClusterId"] == "cluster1"
+    assert results[0][1]["CacheClusterId"] == "cluster2"
+
+
+@pytest.mark.asyncio
+async def test_resync_custom_kind_raises_exception_for_non_permission_errors(
+    mock_session: AsyncMock,
+    mock_account_id: str,
+) -> None:
+    """Test that resync_custom_kind raises exceptions for non-permission errors."""
+    from botocore.exceptions import ClientError
+
+    # Arrange
+    error_response = {"Error": {"Code": "SomeOtherError"}}
+    mock_client = AsyncMock()
+    mock_client.describe_cache_clusters.side_effect = ClientError(
+        error_response, "DescribeCacheClusters"
+    )
+
+    mock_exceptions = MagicMock()
+    mock_exceptions.ClientError = ClientError
+    mock_client.exceptions = mock_exceptions
+
+    mock_context_manager = AsyncMock()
+    mock_context_manager.__aenter__.return_value = mock_client
+
+    # Act & Assert
+    with patch.object(mock_session, "client", return_value=mock_context_manager):
+        with patch(
+            "utils.resources._session_manager.find_account_id_by_session",
+            return_value=mock_account_id,
+        ):
+            with pytest.raises(ClientError):
+                async for batch in resync_custom_kind(
+                    kind="AWS::ElastiCache::Cluster",
+                    session=mock_session,
+                    service_name="elasticache",
+                    describe_method="describe_cache_clusters",
+                    list_param="CacheClusters",
+                    marker_param="Marker",
+                ):
+                    pass  # Should not reach here
