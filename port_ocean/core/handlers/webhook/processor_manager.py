@@ -134,7 +134,14 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             finally:
                 try:
                     if event is not None:
-                        logger.info(f"{event.group_id}")
+                        logger.info(
+                            f"Worker {worker_id} committing webhook event for group '{event.group_id}' on path '{path}'. "
+                            f"Unlocking group to allow next event processing.",
+                            worker_id=worker_id,
+                            group_id=event.group_id,
+                            webhook_path=path,
+                            trace_id=event.trace_id,
+                        )
                         await queue.commit()
 
                 except Exception as e:
