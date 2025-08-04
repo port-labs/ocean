@@ -23,13 +23,13 @@ class TestObjectKind:
 
     def test_enum_members(self) -> None:
         """Test that enum has expected members."""
-        expected_members = {"PROJECT", "SCAN"}
+        expected_members = {"PROJECT", "SCAN_RESULT", "SCAN"}
         actual_members = set(ObjectKind.__members__.keys())
         assert actual_members == expected_members
 
     def test_enum_values(self) -> None:
         """Test that enum has expected values."""
-        expected_values = {"project", "scan"}
+        expected_values = {"project", "scan_result", "scan"}
         actual_values = set(member.value for member in ObjectKind)
         assert actual_values == expected_values
 
@@ -43,7 +43,7 @@ class TestObjectKind:
     def test_enum_iteration(self) -> None:
         """Test iterating over enum members."""
         members = list(ObjectKind)
-        assert len(members) == 2
+        assert len(members) == 3
         assert ObjectKind.PROJECT in members
         assert ObjectKind.SCAN in members
 

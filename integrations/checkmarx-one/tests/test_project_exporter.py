@@ -4,6 +4,7 @@ from typing import Any, List
 
 from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
 from base_client import BaseCheckmarxClient
+from checkmarx_one.core.options import ListProjectOptions
 
 
 class TestCheckmarxProjectExporter:
@@ -101,7 +102,8 @@ class TestCheckmarxProjectExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in project_exporter.get_projects():
+        list_options = ListProjectOptions()
+        async for batch in project_exporter.get_projects(list_options):
             results.append(batch)
 
         assert len(results) == 1
@@ -122,7 +124,8 @@ class TestCheckmarxProjectExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in project_exporter.get_projects(limit=50):
+        list_options = ListProjectOptions(limit=50)
+        async for batch in project_exporter.get_projects(list_options):
             results.append(batch)
 
         assert len(results) == 1
@@ -142,7 +145,8 @@ class TestCheckmarxProjectExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in project_exporter.get_projects(offset=100):
+        list_options = ListProjectOptions(offset=100)
+        async for batch in project_exporter.get_projects(list_options):
             results.append(batch)
 
         assert len(results) == 1
@@ -162,7 +166,8 @@ class TestCheckmarxProjectExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in project_exporter.get_projects(limit=25, offset=50):
+        list_options = ListProjectOptions(limit=25, offset=50)
+        async for batch in project_exporter.get_projects(list_options):
             results.append(batch)
 
         assert len(results) == 1
@@ -185,7 +190,8 @@ class TestCheckmarxProjectExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in project_exporter.get_projects():
+        list_options = ListProjectOptions()
+        async for batch in project_exporter.get_projects(list_options):
             results.append(batch)
 
         assert len(results) == 2
@@ -206,7 +212,8 @@ class TestCheckmarxProjectExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in project_exporter.get_projects():
+        list_options = ListProjectOptions()
+        async for batch in project_exporter.get_projects(list_options):
             results.append(batch)
 
         assert len(results) == 0
@@ -235,7 +242,8 @@ class TestCheckmarxProjectExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         with pytest.raises(Exception, match="Pagination Error"):
-            async for batch in project_exporter.get_projects():
+            list_options = ListProjectOptions()
+            async for batch in project_exporter.get_projects(list_options):
                 pass
 
     def test_project_exporter_inheritance(

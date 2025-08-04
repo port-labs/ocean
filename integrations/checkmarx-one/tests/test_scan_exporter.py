@@ -101,7 +101,7 @@ class TestCheckmarxScanExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in scan_exporter.get_scans():
+        async for batch in scan_exporter.get_scans({}):
             results.append(batch)
 
         assert len(results) == 1
@@ -123,7 +123,7 @@ class TestCheckmarxScanExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in scan_exporter.get_scans(project_ids=project_ids):
+        async for batch in scan_exporter.get_scans({"project_ids": project_ids}):
             results.append(batch)
 
         assert len(results) == 1
@@ -144,7 +144,7 @@ class TestCheckmarxScanExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in scan_exporter.get_scans(project_ids=project_ids):
+        async for batch in scan_exporter.get_scans({"project_ids": project_ids}):
             results.append(batch)
 
         assert len(results) == 1
@@ -164,7 +164,7 @@ class TestCheckmarxScanExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in scan_exporter.get_scans(limit=50):
+        async for batch in scan_exporter.get_scans({"limit": 50}):
             results.append(batch)
 
         assert len(results) == 1
@@ -184,7 +184,7 @@ class TestCheckmarxScanExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in scan_exporter.get_scans(offset=100):
+        async for batch in scan_exporter.get_scans({"offset": 100}):
             results.append(batch)
 
         assert len(results) == 1
@@ -206,7 +206,7 @@ class TestCheckmarxScanExporter:
 
         results = []
         async for batch in scan_exporter.get_scans(
-            project_ids=project_ids, limit=25, offset=50
+            {"project_ids": project_ids, "limit": 25, "offset": 50}
         ):
             results.append(batch)
 
@@ -230,7 +230,7 @@ class TestCheckmarxScanExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in scan_exporter.get_scans():
+        async for batch in scan_exporter.get_scans({}):
             results.append(batch)
 
         assert len(results) == 2
@@ -251,7 +251,7 @@ class TestCheckmarxScanExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in scan_exporter.get_scans():
+        async for batch in scan_exporter.get_scans({}):
             results.append(batch)
 
         assert len(results) == 0
@@ -280,7 +280,7 @@ class TestCheckmarxScanExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         with pytest.raises(Exception, match="Pagination Error"):
-            async for batch in scan_exporter.get_scans():
+            async for batch in scan_exporter.get_scans({}):
                 pass
 
     def test_scan_exporter_inheritance(
@@ -325,7 +325,7 @@ class TestCheckmarxScanExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in scan_exporter.get_scans(project_ids=None):
+        async for batch in scan_exporter.get_scans({"project_ids": None}):
             results.append(batch)
 
         assert len(results) == 1
@@ -345,7 +345,7 @@ class TestCheckmarxScanExporter:
         mock_client._get_paginated_resources = mock_paginated_resources
 
         results = []
-        async for batch in scan_exporter.get_scans(project_ids=[]):
+        async for batch in scan_exporter.get_scans({"project_ids": []}):
             results.append(batch)
 
         assert len(results) == 1
