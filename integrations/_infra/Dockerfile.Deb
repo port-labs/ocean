@@ -35,8 +35,8 @@ ENV LIBRDKAFKA_VERSION=2.8.2 \
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
 RUN chown -R ocean:appgroup /tmp/ocean && chmod -R 755 /tmp/ocean
 
-RUN mkdir -p /app/.config
-RUN chown -R ocean:appgroup /app/.config
+RUN mkdir -p ${OAUTH_CONFIG_DIR}
+RUN chown -R ocean:appgroup ${OAUTH_CONFIG_DIR}
 
 RUN apt-get update \
     && apt-get install -y \
