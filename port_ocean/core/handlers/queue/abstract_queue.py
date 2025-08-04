@@ -27,7 +27,7 @@ class AbstractQueue(ABC, Generic[T]):
 
     @abstractmethod
     async def size(self) -> int:
-        """Wait for all items to be processed"""
+        """Size of the queue"""
         pass
 
     @abstractmethod
