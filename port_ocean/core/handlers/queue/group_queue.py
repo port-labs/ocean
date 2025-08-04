@@ -28,7 +28,6 @@ class GroupQueue(AbstractQueue[T]):
     • FIFO within each group.
     • No two items with the same group key are ever handed
       to workers concurrently.
-    • FIXED: Now properly supports multiple concurrent workers.
     """
 
     # ---------- construction ----------
