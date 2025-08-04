@@ -1,16 +1,10 @@
 from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
-from aws.auth.strategies.multi_account_strategy import MultiAccountHealthCheckMixin
-from aws.auth.utils import (
-    normalize_arn_list,
-    AWSSessionError,
-    extract_account_from_arn,
-)
+from aws.auth.utils import AWSSessionError, extract_account_from_arn
 from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from loguru import logger
 import asyncio
 from typing import Any, AsyncIterator, Dict, List
-from port_ocean.context.ocean import ocean
 
 
 class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
@@ -23,6 +17,7 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
         self.provider = provider
         self.config = config
 
+        self._organization_role_name: str | None = None
         self._valid_arns: list[str] = []
         self._valid_sessions: dict[str, AioSession] = {}
         self._organization_session: AioSession | None = None
@@ -33,19 +28,44 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
         """Get the list of valid ARNs that passed health check."""
         return getattr(self, "_valid_arns", [])
 
+    def _get_organization_account_role_arn(self) -> str:
+        """Get the organization account role ARN from the configuration."""
+        account_role_arn: list[str] | None = self.config.get("account_role_arn")
+        if (
+            not account_role_arn
+            or not isinstance(account_role_arn, list)
+            or len(account_role_arn) == 0
+        ):
+            raise AWSSessionError(
+                "account_role_arn is required and must be a non-empty list"
+            )
+
+        return account_role_arn[0]
+
+    def _get_organization_account_role_name(self) -> str:
+        """Get the account role ARN from the configuration."""
+        if self._organization_role_name:
+            return self._organization_role_name
+
+        organization_role_arn = self._get_organization_account_role_arn()
+
+        # validate role arn format
+        if not organization_role_arn.startswith("arn:aws:iam::"):
+            raise AWSSessionError("account_role_arn must be a valid ARN")
+
+        # ARN format: arn:aws:iam::account:role/role-name
+        self._organization_role_name = organization_role_arn.split("/")[-1]
+        return self._organization_role_name
+
     async def _get_organization_session(self) -> AioSession:
         """Get or create the organization session for the management account."""
         if self._organization_session:
             return self._organization_session
 
-        organization_role_arn = self.config.get("organizationRoleArn")
-        if not organization_role_arn:
-            raise AWSSessionError(
-                "organizationRoleArn is required for OrganizationsStrategy"
-            )
+        organization_role_name = self._get_organization_account_role_name()
+        logger.info(f"Assuming organization role: {organization_role_name}")
 
-        logger.info(f"Assuming organization role: {organization_role_arn}")
-
+        organization_role_arn = self._get_organization_account_role_arn()
         try:
             session_kwargs = {
                 "role_arn": organization_role_arn,
@@ -110,10 +130,8 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 
     async def _can_assume_role_in_account(self, account_id: str) -> AioSession | None:
         """Check if we can assume the specified role in a given account."""
-        account_read_role_name = self.config.get(
-            "accountReadRoleName", "AwsPortOceanIntegrationReadOnlyRole"
-        )
-        role_arn = f"arn:aws:iam::{account_id}:role/{account_read_role_name}"
+        role_name = self._get_organization_account_role_name()
+        role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
 
         try:
             session_kwargs = {
@@ -125,10 +143,14 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 session_kwargs["external_id"] = self.config["external_id"]
 
             session = await self.provider.get_session(**session_kwargs)
-            logger.debug(f"Successfully assumed role in account {account_id}")
+            logger.debug(
+                f"Successfully assumed role '{role_name}' in account {account_id}"
+            )
             return session
         except Exception as e:
-            logger.debug(f"Cannot assume role in account {account_id}: {e}")
+            logger.debug(
+                f"Cannot assume role '{role_name}' in account {account_id}: {e}"
+            )
             return None
 
     async def healthcheck(self) -> bool:
@@ -140,8 +162,10 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 logger.warning("No accounts discovered in the organization")
                 return False
 
+            role_name = self._get_organization_account_role_name()
+
             logger.info(
-                f"Starting health check for {len(accounts)} discovered accounts"
+                f"Starting health check for {len(accounts)} discovered accounts using role name: {role_name}"
             )
 
             # Validate role assumption for each account
@@ -174,19 +198,31 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                     try:
                         account_id, session = await task
                         if session:
-                            role_arn = f"arn:aws:iam::{account_id}:role/{self.config.get('accountReadRoleName', 'AwsPortOceanIntegrationReadOnlyRole')}"
+                            # Use the same role name as the management account
+                            account_role_arn = self.config.get("account_role_arn")
+                            if (
+                                not account_role_arn
+                                or not isinstance(account_role_arn, list)
+                                or len(account_role_arn) == 0
+                            ):
+                                raise AWSSessionError(
+                                    "account_role_arn is required and must be a non-empty list"
+                                )
+
+                            role_name = self._get_organization_account_role_name()
+                            role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
                             self._valid_arns.append(role_arn)
                             self._valid_sessions[role_arn] = session
                             successful += 1
                             logger.debug(
-                                f"Role assumption validated for account {account_id}"
+                                f"Role '{role_name}' assumption validated for account {account_id}"
                             )
                     except Exception as e:
                         logger.warning(
                             f"Health check failed for account {account['Id']}: {e}"
                         )
 
-                logger.info(
+                logger.debug(
                     f"Batch {batch_num}/{total_batches}: {successful}/{len(batch)} accounts validated"
                 )
 
