@@ -1,17 +1,15 @@
 from collections import defaultdict
-from typing import Any, AsyncGenerator, Iterable
+from typing import Any
 
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from loguru import logger
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.utils.cache import cache_coroutine_result
+from wcmatch import glob
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-from port_ocean.utils.cache import cache_coroutine_result
-from loguru import logger
 from github.core.options import ListFolderOptions, SingleFolderOptions
-from github.helpers.utils import IgnoredError
-from wcmatch import glob
-
+from github.helpers.utils import IgnoredError, search_for_repositories
 from integration import FolderSelector
 
 _DEFAULT_BRANCH = "hard_to_replicate_name"
@@ -34,62 +32,14 @@ def create_path_mapping(
     return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
 
 
-def create_search_params(repos: Iterable[str], max_operators: int = 5) -> list[str]:
-    """Create search query strings that fits into Github search string limitations.
-
-    Limitations:
-        - A search query can be up to 256 characters.
-        - A query can contain a maximum of 5 `OR` operators.
-
-    """
-    search_strings = []
-    if not repos:
-        return []
-
-    max_repos_in_query = max_operators + 1
-    max_search_string_len = 256
-
-    chunk: list[str] = []
-    current_query = ""
-    for repo in repos:
-        repo_query_part = f"{repo} in:name"
-
-        if len(repo_query_part) > max_search_string_len:
-            logger.warning(
-                f"Repository name '{repo}' is too long to fit in a search query."
-            )
-            continue
-
-        if not chunk:
-            chunk.append(repo)
-            current_query = repo_query_part
-            continue
-
-        if (
-            len(chunk) + 1 > max_repos_in_query
-            or len(f"{current_query} OR {repo_query_part}") > max_search_string_len
-        ):
-            search_strings.append(current_query)
-            chunk = [repo]
-            current_query = repo_query_part
-        else:
-            chunk.append(repo)
-            current_query = f"{current_query} OR {repo_query_part}"
-
-    if chunk:
-        search_strings.append(current_query)
-
-    return search_strings
-
-
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     _IGNORED_ERRORS = [
         IgnoredError(status=409, message="empty repository"),
     ]
 
-    async def get_resource[
-        ExporterOptionsT: SingleFolderOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         raise NotImplementedError
 
     @cache_coroutine_result()
@@ -101,13 +51,13 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         )
         return tree.get("tree", [])
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListFolderOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_mapping = options["repo_mapping"]
         repos = repo_mapping.keys()
 
-        async for search_result in self._search_for_repositories(repos):
+        async for search_result in search_for_repositories(self.client, repos):
             for repository in search_result:
                 repo_name = repository["name"]
                 repo_map = repo_mapping.get(repo_name)
@@ -183,20 +133,3 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             for item in just_trees
             if glob.globmatch(item["path"], path, flags=glob.GLOBSTAR | glob.DOTMATCH)
         ]
-
-    async def _search_for_repositories(
-        self, repos: Iterable[str]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        tasks = []
-        for search_string in create_search_params(repos):
-            logger.debug(f"creating a search task for search string: {search_string}")
-            query = f"org:{self.client.organization} {search_string} fork:true"
-            url = f"{self.client.base_url}/search/repositories"
-            params = {"q": query}
-            tasks.append(self.client.send_paginated_request(url, params=params))
-
-        async for search_result in stream_async_iterators_tasks(*tasks):
-            valid_repos = [
-                repo for repo in search_result["items"] if repo["name"] in repos
-            ]
-            yield valid_repos
