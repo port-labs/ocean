@@ -47,7 +47,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         config = ocean.integration.context.config
 
         for path in self._event_queues.keys():
-            for worker_id in range(0, config.event_workers_num):
+            for worker_id in range(0, config.event_workers_count):
                 task = loop.create_task(
                     self._process_webhook_events(path, worker_id)
                 )  # Renamed method
