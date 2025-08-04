@@ -65,6 +65,11 @@ class GithubPullRequestSelector(Selector):
         default="open",
         description="Filter by pull request state (e.g., open, closed, all)",
     )
+    closed_pull_requests: bool = Field(
+        alias="closedPullRequests",
+        default=False,
+        description="Include closed pull requests in the export",
+    )
 
 
 class GithubPullRequestConfig(ResourceConfig):
