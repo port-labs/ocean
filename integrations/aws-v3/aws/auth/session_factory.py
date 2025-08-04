@@ -35,8 +35,27 @@ class ResyncStrategyFactory:
             )
             return AssumeRoleWithWebIdentityProvider(config=config)
 
+        if config.get("aws_access_key_id") and config.get("aws_secret_access_key"):
+            logger.info(
+                "[SessionStrategyFactory] Using StaticCredentialProvider (found aws_access_key_id and aws_secret_access_key)"
+            )
+            return StaticCredentialProvider(config=config)
+
         logger.info("[SessionStrategyFactory] Using AssumeRoleProvider")
         return AssumeRoleProvider(config=config)
+
+    @classmethod
+    def _detect_strategy_type(cls, config: dict[str, Any]) -> type[StrategyType]:
+        """
+        Detect the appropriate strategy type based on the global configuration.
+        """
+        account_role_arn = config.get("account_role_arn")
+        is_multi_account = bool(account_role_arn and len(account_role_arn) > 0)
+        if is_multi_account:
+            return MultiAccountStrategy
+        if account_role_arn and len(account_role_arn) == 1:
+            return SingleAccountStrategy
+        return SingleAccountStrategy
 
     @classmethod
     async def create(cls) -> StrategyType:
@@ -52,8 +71,7 @@ class ResyncStrategyFactory:
         if is_multi_account:
             logger.info("[SessionStrategyFactory] Using MultiAccountStrategy")
             provider = cls._detect_provider_type(config=config)
-            # strategy_cls = MultiAccountStrategy
-            strategy_cls = OrganizationsStrategy
+            strategy_cls = MultiAccountStrategy
         else:
             logger.info(
                 "[SessionStrategyFactory] Using StaticCredentialProvider (no org role ARN found)"
