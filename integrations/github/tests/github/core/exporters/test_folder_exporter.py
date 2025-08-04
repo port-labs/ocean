@@ -206,7 +206,8 @@ class TestRestFolderExporter:
 
         search_repositories_mock = MagicMock(return_value=search_results_gen())
         monkeypatch.setattr(
-            exporter, "_search_for_repositories", search_repositories_mock
+            "github.core.exporters.folder_exporter.search_for_repositories",
+            search_repositories_mock,
         )
 
         get_tree_mock = AsyncMock(return_value=TEST_FULL_CONTENTS)
