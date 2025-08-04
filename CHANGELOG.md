@@ -9,7 +9,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## 0.27.0 (2025-08-03)
 ### Improvements
 
-- Parallel queue implementation for better performance
+- Enhanced webhook event processing with GroupQueue implementation
+
+Introduced GroupQueue to ensure exclusive processing per group while allowing parallel processing across different groups
+Multiple workers can now process webhook events from different groups concurrently, improving throughput
+FIFO ordering is maintained within each group to preserve event sequence integrity
+Added automatic lock timeout mechanism to recover from frozen or hung workers
+Implemented context-based group tracking using ContextVar for cleaner worker-to-group association
+
+- Performance optimizations
+Configurable number of workers per webhook path (event_workers_count)
+Reduced contention by allowing concurrent processing of independent groups
+Improved resource cleanup and state management after processing
 
 ## 0.26.1 (2025-07-20)
 
