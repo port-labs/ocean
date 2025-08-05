@@ -35,7 +35,6 @@ class CheckmarxAuthenticator(BaseCheckmarxAuthenticator):
             client_id: OAuth client ID (alternative to API key)
             client_secret: OAuth client secret (required with client_id)
         """
-        # Create the appropriate authenticator using the factory
         authenticator = CheckmarxAuthenticatorFactory.create_authenticator(
             iam_url=iam_url,
             tenant=tenant,
@@ -44,10 +43,7 @@ class CheckmarxAuthenticator(BaseCheckmarxAuthenticator):
             client_secret=client_secret,
         )
 
-        # Copy all attributes from the created authenticator
         self.__dict__.update(authenticator.__dict__)
-
-        # Store the underlying authenticator for method delegation
         self._authenticator = authenticator
 
     async def _authenticate(self):

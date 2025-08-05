@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, Dict
 from loguru import logger
 from checkmarx_one.core.options import ListProjectOptions
 
@@ -9,15 +9,17 @@ from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExpo
 class CheckmarxProjectExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One projects."""
 
-    async def get_project_by_id(self, project_id: str) -> dict[str, Any]:
+    async def get_resource(self, options: Dict[str, Any]) -> dict[str, Any]:
         """Get a specific project by ID."""
-        response = await self.client._send_api_request(f"/projects/{project_id}")
-        logger.info(f"Fetched project with ID: {project_id}")
+        response = await self.client.send_api_request(
+            f"/projects/{options['project_id']}"
+        )
+        logger.info(f"Fetched project with ID: {options['project_id']}")
         return response
 
-    async def get_projects(
+    async def get_paginated_resources(
         self,
-        options: ListProjectOptions,
+        options: Dict[str, Any],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get projects from Checkmarx One.
@@ -37,7 +39,7 @@ class CheckmarxProjectExporter(AbstractCheckmarxExporter):
         if offset is not None and offset > 0:
             params["offset"] = offset
 
-        async for projects in self.client._get_paginated_resources(
+        async for projects in self.client.send_paginated_request(
             "/projects", "projects", params
         ):
             logger.info(f"Fetched batch of {len(projects)} projects")

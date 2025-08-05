@@ -1,4 +1,5 @@
-from abc import ABC
+from abc import ABC, abstractmethod
+from typing import Any, AsyncGenerator, Dict, Optional
 
 from base_client import BaseCheckmarxClient
 
@@ -8,3 +9,13 @@ class AbstractCheckmarxExporter(ABC):
 
     def __init__(self, client: BaseCheckmarxClient) -> None:
         self.client = client
+
+    @abstractmethod
+    async def get_paginated_resources(
+        self, options: Optional[Dict[str, Any]]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        pass
+
+    @abstractmethod
+    async def get_resource(self, options: Optional[Dict[str, Any]]) -> dict[str, Any]:
+        pass

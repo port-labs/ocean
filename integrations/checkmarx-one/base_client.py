@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Optional
+from typing import Any, Optional, AsyncGenerator, List, Dict
 
 import httpx
 from aiolimiter import AsyncLimiter
@@ -9,23 +9,46 @@ from port_ocean.utils import http_async_client
 from exceptions import CheckmarxAuthenticationError, CheckmarxAPIError
 from auth import CheckmarxAuthenticator
 
+from typing import NamedTuple
+from urllib.parse import urljoin
+
 
 PAGE_SIZE = 100
-MAXIMUM_CONCURRENT_REQUESTS = 10
-DEFAULT_RATE_LIMIT_PER_HOUR = 3600  # Conservative default
 
 
-class BaseCheckmarxClient:
+class IgnoredError(NamedTuple):  # TODO: Move to utils
+    status: int | str
+    message: Optional[str] = None
+    type: Optional[str] = None
+
+
+class CheckmarxOneClient:
     """
     Base HTTP client for Checkmarx One API.
     Handles common HTTP operations, error handling, and rate limiting.
     """
 
+    _DEFAULT_IGNORED_ERRORS = [
+        IgnoredError(
+            status=401,
+            message="Unauthorized access to endpoint — authentication required or token invalid",
+            type="UNAUTHORIZED",
+        ),
+        IgnoredError(
+            status=403,
+            message="Forbidden access to endpoint — insufficient permissions",
+            type="FORBIDDEN",
+        ),
+        IgnoredError(
+            status=404,
+            message="Resource not found at endpoint",
+        ),
+    ]
+
     def __init__(
         self,
         base_url: str,
         authenticator: CheckmarxAuthenticator,
-        rate_limiter: Optional[AsyncLimiter] = None,
     ):
         """
         Initialize the base client.
@@ -33,33 +56,40 @@ class BaseCheckmarxClient:
         Args:
             base_url: Base URL for API calls (e.g., https://ast.checkmarx.net)
             authenticator: Authentication instance
-            rate_limiter: Custom rate limiter instance
         """
         self.base_url = base_url.rstrip("/")
         self.authenticator = authenticator
-
-        # HTTP client setup
-        self.http_client = http_async_client
-        self.http_client.timeout = httpx.Timeout(30)
-
-        # Rate limiting
-        if rate_limiter is None:
-            rate_limiter = AsyncLimiter(DEFAULT_RATE_LIMIT_PER_HOUR, 3600)
-        self.rate_limiter = rate_limiter
-        self._semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS)
 
     @property
     async def auth_headers(self) -> dict[str, str]:
         """Get authentication headers for API requests."""
         return await self.authenticator.get_auth_headers()
 
-    async def _send_api_request(
+    def _should_ignore_error(
+        self,
+        error: httpx.HTTPStatusError,
+        resource: str,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+    ) -> bool:
+        all_ignored_errors = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
+        status_code = error.response.status_code
+
+        for ignored_error in all_ignored_errors:
+            if str(status_code) == str(ignored_error.status):
+                logger.warning(
+                    f"Failed to fetch resources at {resource} due to {ignored_error.message}"
+                )
+                return True
+        return False
+
+    async def send_api_request(
         self,
         endpoint: str,
         method: str = "GET",
         params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
+        ignored_errors: Optional[List[IgnoredError]] = None,
+    ) -> Dict[str, Any]:
         """
         Send a request to the Checkmarx One API with proper error handling.
 
@@ -72,81 +102,68 @@ class BaseCheckmarxClient:
         Returns:
             API response as dictionary
         """
-        from urllib.parse import urljoin
 
         url = urljoin(f"{self.base_url}/api", endpoint.lstrip("/"))
 
-        async with self.rate_limiter:
-            async with self._semaphore:
-                try:
-                    logger.debug(f"Making {method} request to {url}")
+        try:
+            logger.debug(f"Making {method} request to {url}")
 
-                    response = await self.http_client.request(
+            response = await http_async_client.request(
+                method=method,
+                url=url,
+                params=params,
+                json=json_data,
+                headers=await self.auth_headers,
+            )
+
+            response.raise_for_status()
+            return response.json()
+
+        except httpx.HTTPStatusError as e:
+            status_code = e.response.status_code
+            response_text = e.response.text
+
+            logger.error(
+                f"HTTP error {status_code} for {method} {url}: {response_text}"
+            )
+
+            if status_code == 401:
+                # Try to refresh token once
+                logger.info("Received 401, attempting to refresh token")
+                try:
+                    await self.authenticator.refresh_token()
+                    # Retry the request with new token
+                    response = await http_async_client.request(
                         method=method,
                         url=url,
                         params=params,
                         json=json_data,
                         headers=await self.auth_headers,
                     )
-
                     response.raise_for_status()
                     return response.json()
-
-                except httpx.HTTPStatusError as e:
-                    status_code = e.response.status_code
-                    response_text = e.response.text
-
-                    logger.error(
-                        f"HTTP error {status_code} for {method} {url}: {response_text}"
+                except Exception:
+                    raise CheckmarxAuthenticationError(
+                        "Authentication failed after token refresh"
                     )
 
-                    if status_code == 401:
-                        # Try to refresh token once
-                        logger.info("Received 401, attempting to refresh token")
-                        try:
-                            await self.authenticator.refresh_token()
-                            # Retry the request with new token
-                            response = await self.http_client.request(
-                                method=method,
-                                url=url,
-                                params=params,
-                                json=json_data,
-                                headers=await self.auth_headers,
-                            )
-                            response.raise_for_status()
-                            return response.json()
-                        except Exception:
-                            raise CheckmarxAuthenticationError(
-                                "Authentication failed after token refresh"
-                            )
+            elif self._should_ignore_error(e, url, ignored_errors):
+                return {}
 
-                    elif status_code == 403:
-                        raise CheckmarxAPIError(
-                            "Access denied. Please check your permissions."
-                        )
-                    elif status_code == 404:
-                        logger.warning(f"Resource not found: {url}")
-                        return {}
-                    elif status_code == 429:
-                        logger.warning(
-                            "Rate limit exceeded. Consider reducing request frequency."
-                        )
-                        raise CheckmarxAPIError("Rate limit exceeded")
-                    else:
-                        raise CheckmarxAPIError(f"API request failed: {response_text}")
+            raise
 
-                except Exception as e:
-                    logger.error(
-                        f"Unexpected error during API request to {url}: {str(e)}"
-                    )
-                    raise CheckmarxAPIError(f"Request failed: {str(e)}")
+        except httpx.HTTPError as e:
+            logger.error(
+                f"Unexpected HTTP error occurred while making {method} request to {url}: {str(e)}"
+            )
+            raise
 
-    async def _get_paginated_resources(
+    async def send_paginated_request(
         self,
         endpoint: str,
         object_key: str,
         params: Optional[dict[str, Any]] = None,
-    ):
+    ) -> AsyncGenerator[List[dict[str, Any]], None]:
         """
         Get paginated resources from Checkmarx One API.
 
@@ -171,23 +188,19 @@ class BaseCheckmarxClient:
             }
 
             try:
-                response = await self._send_api_request(endpoint, params=page_params)
-                # Handle different response formats
-                items: list[dict[str, Any]] = []
+                response = await self.send_api_request(endpoint, params=page_params)
+                items: List[dict[str, Any]] = []
                 if isinstance(response, list):
                     items = response
                 elif isinstance(response, dict):
                     # Try common pagination patterns
-                    items = (
-                        response.get("data", []) or response.get(object_key, []) or []
-                    )
+                    items = response.get("data", []) or response.get(object_key, [])
 
                 if not items:
                     break
 
                 yield items
 
-                # Check if we have more data
                 if len(items) < PAGE_SIZE:
                     break
 
