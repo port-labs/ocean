@@ -57,6 +57,11 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
         self._organization_role_name = organization_role_arn.split("/")[-1]
         return self._organization_role_name
 
+    def _build_role_arn(self, account_id: str) -> str:
+        """Build the role ARN for the organization account."""
+        role_name = self._get_organization_account_role_name()
+        return f"arn:aws:iam::{account_id}:role/{role_name}"
+
     async def _get_organization_session(self) -> AioSession:
         """Get or create the organization session for the management account."""
         if self._organization_session:
@@ -79,9 +84,6 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 **session_kwargs
             )
             logger.info("Successfully created organization session")
-            # Add the organization role ARN to the valid ARNs and sessions
-            self._valid_arns.append(organization_role_arn)
-            self._valid_sessions[organization_role_arn] = self._organization_session
             return self._organization_session
         except Exception as e:
             logger.error(f"Failed to assume organization role: {e}")
@@ -136,8 +138,7 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 
     async def _can_assume_role_in_account(self, account_id: str) -> AioSession | None:
         """Check if we can assume the specified role in a given account."""
-        role_name = self._get_organization_account_role_name()
-        role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
+        role_arn = self._build_role_arn(account_id)
 
         try:
             session_kwargs = {
@@ -150,12 +151,12 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 
             session = await self.provider.get_session(**session_kwargs)
             logger.debug(
-                f"Successfully assumed role '{role_name}' in account {account_id}"
+                f"Successfully assumed role '{role_arn}' in account {account_id}"
             )
             return session
         except Exception as e:
             logger.debug(
-                f"Cannot assume role '{role_name}' in account {account_id}: {e}"
+                f"Cannot assume role '{role_arn}' in account {account_id}: {e}"
             )
             return None
 
@@ -168,10 +169,8 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 logger.warning("No accounts discovered in the organization")
                 return False
 
-            role_name = self._get_organization_account_role_name()
-
             logger.info(
-                f"Starting health check for {len(accounts)} discovered accounts using role name: {role_name}"
+                f"Starting health check for {len(accounts)} discovered accounts"
             )
 
             # Validate role assumption for each account
@@ -204,24 +203,12 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                     try:
                         account_id, session = await task
                         if session:
-                            # Use the same role name as the management account
-                            account_role_arn = self.config.get("account_role_arn")
-                            if (
-                                not account_role_arn
-                                or not isinstance(account_role_arn, list)
-                                or len(account_role_arn) == 0
-                            ):
-                                raise AWSSessionError(
-                                    "account_role_arn is required and must be a non-empty list"
-                                )
-
-                            role_name = self._get_organization_account_role_name()
-                            role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
+                            role_arn = self._build_role_arn(account_id)
                             self._valid_arns.append(role_arn)
                             self._valid_sessions[role_arn] = session
                             successful += 1
                             logger.debug(
-                                f"Role '{role_name}' assumption validated for account {account_id}"
+                                f"Role '{role_arn}' assumption validated for account {account_id}"
                             )
                     except Exception as e:
                         logger.warning(
@@ -231,7 +218,6 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 logger.debug(
                     f"Batch {batch_num}/{total_batches}: {successful}/{len(batch)} accounts validated"
                 )
-
             logger.info(
                 f"Health check complete: {len(self._valid_arns)}/{len(accounts)} accounts accessible"
             )
