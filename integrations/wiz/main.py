@@ -58,7 +58,7 @@ async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield [
                     ticket
                     for issue in _issues
-                    for ticket in issue.get("serviceTickets", [])
+                    for ticket in (issue.get("serviceTickets") or [])
                 ]
 
 

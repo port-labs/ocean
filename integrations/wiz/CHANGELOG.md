@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.166 (2025-08-05)
+
+
+### Bug Fixes
+
+- Fixed 'NoneType' object is not iterable error when processing service tickets from issues with null serviceTickets field
+
+
 ## 0.1.165 (2025-08-04)
 
 
