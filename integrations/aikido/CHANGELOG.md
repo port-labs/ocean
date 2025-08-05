@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated `spec.yaml` exporter to enable ocean sass and categorize exporter to correct section
+- Updated `spec.yaml` to enable ocean sass and categorize exporter to correct section
 
 
 ## 0.1.0-beta (2025-07-24)
