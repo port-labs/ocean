@@ -68,8 +68,6 @@ class ResyncStrategyFactory:
         if cls._cached_strategy is not None:
             return cls._cached_strategy
         config = ocean.integration_config or {}
-        account_role_arn = config.get("account_role_arn")
-        is_multi_account = bool(account_role_arn and len(account_role_arn) > 0)
 
         provider: CredentialProvider
         strategy_cls: type[StrategyType]
