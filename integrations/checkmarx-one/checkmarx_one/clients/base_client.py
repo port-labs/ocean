@@ -5,7 +5,6 @@ from loguru import logger
 from checkmarx_one.utils import IgnoredError
 from port_ocean.utils import http_async_client
 
-from checkmarx_one.exceptions import CheckmarxAuthenticationError
 from checkmarx_one.auths.auth import CheckmarxAuthenticator
 
 from urllib.parse import urljoin
@@ -119,30 +118,8 @@ class CheckmarxOneClient:
                 f"HTTP error {status_code} for {method} {url}: {response_text}"
             )
 
-            if status_code == 401:
-                # Try to refresh token once
-                logger.info("Received 401, attempting to refresh token")
-                try:
-                    await self.authenticator.refresh_token()
-                    # Retry the request with new token
-                    response = await http_async_client.request(
-                        method=method,
-                        url=url,
-                        params=params,
-                        json=json_data,
-                        headers=await self.auth_headers,
-                    )
-                    response.raise_for_status()
-                    return response.json()
-                except Exception:
-                    raise CheckmarxAuthenticationError(
-                        "Authentication failed after token refresh"
-                    )
-
-            elif self._should_ignore_error(e, url, ignored_errors):
+            if self._should_ignore_error(e, url, ignored_errors):
                 return {}
-
-            raise
 
         except httpx.HTTPError as e:
             logger.error(
