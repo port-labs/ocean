@@ -119,17 +119,20 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 self._discovered_accounts = discovered_accounts
                 return discovered_accounts
 
-        except org_client.exceptions.AccessDeniedException:
-            logger.warning("Access denied to AWS Organizations API")
-            raise AWSSessionError(
-                "Cannot access AWS Organizations API - check permissions"
-            )
-        except org_client.exceptions.AWSOrganizationsNotInUseException:
-            logger.warning("AWS Organizations is not enabled in this account")
-            raise AWSSessionError("AWS Organizations is not enabled in this account")
         except Exception as e:
-            logger.error(f"Error discovering accounts: {e}")
-            raise AWSSessionError(f"Failed to discover accounts: {e}")
+            if "AccessDenied" in str(e):
+                logger.warning("Access denied to AWS Organizations API")
+                raise AWSSessionError(
+                    "Cannot access AWS Organizations API - check permissions"
+                )
+            elif "AWSOrganizationsNotInUse" in str(e):
+                logger.warning("AWS Organizations is not enabled in this account")
+                raise AWSSessionError(
+                    "AWS Organizations is not enabled in this account"
+                )
+            else:
+                logger.error(f"Error discovering accounts: {e}")
+                raise AWSSessionError(f"Failed to discover accounts: {e}")
 
     async def _can_assume_role_in_account(self, account_id: str) -> AioSession | None:
         """Check if we can assume the specified role in a given account."""
