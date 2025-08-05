@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.2-dev (2025-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.3
+
+
+## 0.2.1-dev (2025-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.2
+
+
+## 0.2.0-dev (2025-07-20)
+
+
+### Improvements
+
+- Add assume role with web identity provider
+
 ## 0.1.2-dev (2025-07-20)
 
 

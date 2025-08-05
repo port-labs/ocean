@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.3.0-beta (2025-07-30)
+## 1.3.0-beta (2025-08-05)
 
 
 - Added GitHub API rate limiting with concurrency control
@@ -21,6 +21,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced API reliability by automatically handling 403/429 rate limit responses
 - Improved error handling to distinguish between rate limit and permission errors
 - Added rate limit monitoring and comprehensive logging
+
+
+## 1.2.2-beta (2025-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.3
+
+
+## 1.2.1-beta (2025-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.2
 
 
 ## 1.2.0-beta (2025-07-28)
