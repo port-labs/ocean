@@ -21,24 +21,43 @@ class TestSentryRateLimiter:
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_proactive_wait_when_threshold_reached(
-        self,
-        mock_sleep: AsyncMock,
+        self, mock_sleep: AsyncMock, mock_client: AsyncMock
     ) -> None:
         """
         Tests that the client proactively sleeps when the remaining requests
-        are below the configured threshold upon entering the context manager.
+        are at or below the configured threshold upon entering the context manager.
         """
-        reset_time = time.time() + 10
+        # 1. Setup: Define a reset time in the future.
+        reset_time = time.time() + 10.0
         rate_limiter = SentryRateLimiter(minimum_limit_remaining=5)
-        rate_limiter._rate_limit_remaining = rate_limiter._minimum_limit_remaining - 1
+
+        # Manually set the limiter's state to simulate it being near the rate limit.
+        rate_limiter._rate_limit_remaining = (
+            rate_limiter._minimum_limit_remaining - 1
+        )  # e.g., 4
         rate_limiter._rate_limit_reset = reset_time
 
-        with patch("time.time", return_value=reset_time - 10):
-            async with rate_limiter:
-                pass  # The sleep should happen here, before the request.
+        # The response for the upcoming request should be successful (not 429).
+        response = create_autospec(httpx.Response, instance=True)
+        response.status_code = 200
+        mock_client.get.return_value = response
 
+        # 2. Execution: Patch time.time() to have a predictable sleep duration.
+        # The proactive sleep should be triggered in __aenter__ before the request is made.
+        with patch("time.time", return_value=reset_time - 10.0):
+            async with rate_limiter as limiter:
+                # The sleep happens on entry, before this line is executed.
+                resp = await mock_client.get("https://test.com")
+                # The limiter requires the response to be set for __aexit__ to process it.
+                limiter._last_response = resp
+
+        # 3. Assertion: Verify that sleep was called once with the correct duration.
         mock_sleep.assert_awaited_once()
-        assert abs(mock_sleep.call_args[0][0] - 10) < 0.01
+
+        # Check that the sleep duration is correct (reset_time - current_time).
+        # We expect abs(10.0 - calculated_sleep) to be very small.
+        calculated_sleep_duration = mock_sleep.call_args[0][0]
+        assert abs(calculated_sleep_duration - 10.0) < 0.01
 
     async def test_successful_request_updates_state(
         self, mock_client: AsyncMock
@@ -216,6 +235,6 @@ class TestSentryRateLimiter:
             async with rate_limiter:
                 rate_limiter._last_response = mock_response
 
-            # The lock is acquired in __aenter__ and __aexit__
+            # The lock is acquired in __aenter__ and released in __aexit__
             assert mock_acquire.call_count == 2
             assert mock_release.call_count == 2

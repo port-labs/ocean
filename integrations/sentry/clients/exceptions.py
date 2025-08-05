@@ -1,5 +1,7 @@
 from typing import NamedTuple, Optional
 
+from loguru import logger
+
 
 class IgnoredError(NamedTuple):
     status: int | str
@@ -8,4 +10,7 @@ class IgnoredError(NamedTuple):
 
 
 class ResourceNotFoundError(Exception):
-    pass
+
+    def __init__(self, message: str) -> None:
+        logger.warning(message)
+        super().__init__(message)

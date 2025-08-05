@@ -63,8 +63,23 @@ class SentryRateLimiter:
         """
         Pre-request rate limit check.
         """
+        async with self._lock:
+            if (
+                self._rate_limit_remaining is not None
+                and self._rate_limit_reset is not None
+                and self._rate_limit_remaining <= self._minimum_limit_remaining
+            ):
+                current_time = time.time()
+                sleep_duration = self._rate_limit_reset - current_time
+                if sleep_duration > 0:
+                    logger.info(
+                        f"Proactively sleeping for {sleep_duration:.2f} seconds "
+                        f"as rate limit remaining ({self._rate_limit_remaining}) "
+                        f"is at or below threshold ({self._minimum_limit_remaining})."
+                    )
+                    await asyncio.sleep(sleep_duration)
+
         await self._semaphore.acquire()
-        await self._wait_if_needed()
         return self
 
     async def __aexit__(
@@ -126,26 +141,6 @@ class SentryRateLimiter:
                     f"Remaining={self._rate_limit_remaining}, "
                     f"ResetAt={time.ctime(self._rate_limit_reset)}"
                 )
-
-    async def _wait_if_needed(self) -> None:
-        """Checks the current rate limit state and sleeps if necessary."""
-        sleep_duration = None
-
-        async with self._lock:
-            if self._rate_limit_remaining is None or self._rate_limit_reset is None:
-                return
-
-            if self._rate_limit_remaining <= self._minimum_limit_remaining:
-                current_time = time.time()
-                if self._rate_limit_reset > current_time:
-                    sleep_duration = self._rate_limit_reset - current_time
-
-        if sleep_duration:
-            logger.info(
-                f"Rate limit threshold reached ({self._rate_limit_remaining} remaining). "
-                f"Sleeping for {sleep_duration:.2f} seconds."
-            )
-            await asyncio.sleep(sleep_duration)
 
     @staticmethod
     def _get_sleep_retry_duration(response: httpx.Response, retry_count: int) -> float:
