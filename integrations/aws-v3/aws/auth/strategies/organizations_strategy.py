@@ -79,6 +79,9 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 **session_kwargs
             )
             logger.info("Successfully created organization session")
+            # Add the organization role ARN to the valid ARNs and sessions
+            self._valid_arns.append(organization_role_arn)
+            self._valid_sessions[organization_role_arn] = self._organization_session
             return self._organization_session
         except Exception as e:
             logger.error(f"Failed to assume organization role: {e}")
