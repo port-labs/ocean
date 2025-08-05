@@ -52,23 +52,20 @@ saas:
       appSpec:
         minimumScheduledResyncInterval: '2h'
 installationDocs:
-  Saas__SaasOAuth2:
-    enabled: false
-  Saas__Saas:
-    enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=hosted-by-port&oauth=manual
-    jumpTo: setup
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: true
+      docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=hosted-by-port&oauth=manual#setup
   githubWorkflow:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=one-time-ci&oauth=manual&deploy=helm&cicd-method=github
-    jumpTo: setup
+    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=one-time-ci&deploy=helm&cicd-method=github#setup
   gitlabCI:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=one-time-ci&oauth=manual&deploy=helm&cicd-method=gitlab
-    jumpTo: setup
+    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=one-time-ci&deploy=helm&cicd-method=gitlab#setup
   helm:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=real-time-self-hosted&oauth=manual
-    jumpTo: setup
+    docs: build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=real-time-self-hosted#setup
   docker:
     enabled: false
