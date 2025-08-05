@@ -4,7 +4,6 @@ import httpx
 from aiolimiter import AsyncLimiter
 
 from checkmarx_one.clients.base_client import CheckmarxOneClient
-from checkmarx_one.exceptions import CheckmarxAuthenticationError
 from checkmarx_one.auths.auth import CheckmarxAuthenticator
 
 
@@ -162,39 +161,8 @@ class TestCheckmarxOneClient:
             assert call_args[1]["json"] == json_data
 
     @pytest.mark.asyncio
-    async def test_send_api_request_401_with_token_refresh_success(
-        self, client: CheckmarxOneClient
-    ) -> None:
-        """Test API request with 401 error and successful token refresh."""
-        # First call returns 401, second call succeeds
-        mock_response_401 = MagicMock()
-        mock_response_401.status_code = 401
-        mock_response_401.text = "Unauthorized"
-        mock_response_401.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "401 Unauthorized", request=MagicMock(), response=mock_response_401
-        )
-
-        mock_response_success = MagicMock()
-        mock_response_success.json.return_value = {"data": "test_data"}
-        mock_response_success.raise_for_status.return_value = None
-
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.side_effect = [
-                mock_response_401,
-                mock_response_success,
-            ]
-            with patch.object(client.authenticator, "refresh_token"):
-                result = await client.send_api_request("/test-endpoint")
-
-                assert result == {"data": "test_data"}
-
-    @pytest.mark.asyncio
-    async def test_send_api_request_401_with_token_refresh_failure(
-        self, client: CheckmarxOneClient
-    ) -> None:
-        """Test API request with 401 error and failed token refresh."""
+    async def test_send_api_request_401_error(self, client: CheckmarxOneClient) -> None:
+        """Test API request with 401 error."""
         mock_response = MagicMock()
         mock_response.status_code = 401
         mock_response.text = "Unauthorized"
@@ -206,16 +174,10 @@ class TestCheckmarxOneClient:
             "checkmarx_one.clients.base_client.http_async_client"
         ) as mock_http_client:
             mock_http_client.request.return_value = mock_response
-            with patch.object(
-                client.authenticator,
-                "refresh_token",
-                side_effect=Exception("Refresh failed"),
-            ):
-                with pytest.raises(
-                    CheckmarxAuthenticationError,
-                    match="Authentication failed after token refresh",
-                ):
-                    await client.send_api_request("/test-endpoint")
+            result = await client.send_api_request("/test-endpoint")
+
+            # 401 errors are ignored and return empty dict
+            assert result == {}
 
     @pytest.mark.asyncio
     async def test_send_api_request_403_error(self, client: CheckmarxOneClient) -> None:

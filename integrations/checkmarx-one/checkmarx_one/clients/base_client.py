@@ -121,6 +121,9 @@ class CheckmarxOneClient:
             if self._should_ignore_error(e, url, ignored_errors):
                 return {}
 
+            # Re-raise the original error for non-ignored errors
+            raise
+
         except httpx.HTTPError as e:
             logger.error(
                 f"Unexpected HTTP error occurred while making {method} request to {url}: {str(e)}"
