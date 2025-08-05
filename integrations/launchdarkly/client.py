@@ -56,7 +56,7 @@ class LaunchDarklyClient:
 
         url = kind if not resource_path else f"{kind}/{resource_path}"
         url = url.replace("auditlogs", ObjectKind.AUDITLOG)
-        params = {"limit": page_size}
+        params: Optional[dict[str, Any]] = {"limit": page_size}
 
         while url:
             try:
@@ -69,6 +69,7 @@ class LaunchDarklyClient:
 
                 if "_links" in response and "next" in response["_links"]:
                     url = response["_links"]["next"]["href"]
+                    params = None  # reset the params after each request to prevent duplicates
                 else:
                     total_count = response.get("totalCount")
                     logger.info(f"Fetched {total_count} {kind} from Launchdarkly")

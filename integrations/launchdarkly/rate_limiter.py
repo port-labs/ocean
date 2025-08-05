@@ -32,8 +32,8 @@ class LaunchDarklyRateLimiter:
     def __init__(
         self,
         maximum_retries: int = 3,
-        minimum_limit_remaining: int = 5,
-        concurrent_requests: int = 10,
+        minimum_limit_remaining: int = 1,
+        concurrent_requests: int = 5,
     ) -> None:
         """
         Initializes the LaunchDarklyRateLimiter.
