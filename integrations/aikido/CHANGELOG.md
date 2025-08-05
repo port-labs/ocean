@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.1-beta (2025-08-05)
 
-### Features
+### Improvements
 
-- Updated exporter
+- Updated `spec.yaml` exporter to enable ocean sass and categorize exporter to correct section
 
 
 ## 0.1.0-beta (2025-07-24)
