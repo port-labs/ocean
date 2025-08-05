@@ -33,9 +33,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         self._router = router
         self._processors_classes: Dict[str, list[Type[AbstractWebhookProcessor]]] = {}
         self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
-        self._event_processor_tasks: Set[asyncio.Task[None]] = (
-            set()
-        )  # Renamed from _webhook_processor_tasks
+        self._event_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
         signal_handler.register(self.shutdown)
@@ -48,22 +46,18 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
         for path in self._event_queues.keys():
             for worker_id in range(0, config.event_workers_count):
-                task = loop.create_task(
-                    self._process_webhook_events(path, worker_id)
-                )  # Renamed method
+                task = loop.create_task(self._process_webhook_events(path, worker_id))
                 self._event_processor_tasks.add(task)
                 task.add_done_callback(self._event_processor_tasks.discard)
 
-    async def _process_webhook_events(
-        self, path: str, worker_id: int
-    ) -> None:  # Renamed from _queue_worker
+    async def _process_webhook_events(self, path: str, worker_id: int) -> None:
         """Process webhook events from the queue for a given path."""
         queue = self._event_queues[path]
         while True:
             event = None
             matching_processors: List[
                 Tuple[ResourceConfig, AbstractWebhookProcessor]
-            ] = []  # Better name than 'matching'
+            ] = []
             try:
                 event = await queue.get()
                 with logger.contextualize(
@@ -75,7 +69,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                         EventType.HTTP_REQUEST,
                         trigger_type="machine",
                     ):
-                        # refresh config, find processors, execute, etc.
+
                         await ocean.integration.port_app_config_handler.get_port_app_config(
                             use_cache=False
                         )
@@ -83,7 +77,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                             event, path
                         )
 
-                        # Process all matching processors
                         processing_results = await asyncio.gather(
                             *(
                                 self._process_single_event(proc, path, res)
@@ -92,7 +85,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                             return_exceptions=True,
                         )
 
-                        # Separate successful and failed results
                         successful_results: List[WebhookEventRawResults] = []
                         failed_exceptions: List[Exception] = []
 
@@ -102,7 +94,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                             elif isinstance(result, Exception):
                                 failed_exceptions.append(result)
 
-                        # Log results
                         if successful_results:
                             logger.info(
                                 "Successfully processed webhook events",
@@ -116,7 +107,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                                 failures=[str(e) for e in failed_exceptions],
                             )
 
-                        # Export successful results
                         await self.sync_raw_results(successful_results)
 
             except asyncio.CancelledError:
@@ -134,14 +124,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             finally:
                 try:
                     if event is not None:
-                        logger.info(
-                            f"Worker {worker_id} committing webhook event for group '{event.group_id}' on path '{path}'. "
-                            f"Unlocking group to allow next event processing.",
-                            worker_id=worker_id,
-                            group_id=event.group_id,
-                            webhook_path=path,
-                            trace_id=event.trace_id,
-                        )
                         await queue.commit()
 
                 except Exception as e:
@@ -318,7 +300,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
     async def _cancel_all_event_processors(
         self,
-    ) -> None:  # Renamed from _cancel_all_tasks
+    ) -> None:
         """Cancel all event processor tasks"""
         for task in self._event_processor_tasks:
             task.cancel()
