@@ -13,8 +13,8 @@ from port_ocean.core.event_listener import EventListenerSettingsType
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
-    Runtime,
     ProcessExecutionMode,
+    Runtime,
 )
 from port_ocean.utils.misc import get_integration_name, get_spec_file
 
@@ -110,6 +110,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
+    lakehouse_enabled: bool = False
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(

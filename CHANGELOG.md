@@ -22,6 +22,18 @@ Configurable number of workers per webhook path (event_workers_count)
 Reduced contention by allowing concurrent processing of independent groups
 Improved resource cleanup and state management after processing
 
+## 0.26.3 (2025-08-04)
+
+### Bug Fixes
+
+- Added permissions for the ocean user to access and write to the /app/.config directory for OAuth configuration.
+
+## 0.26.2 (2025-08-03)
+
+### Improvements
+
+- Add posting integration raw data to lakehouse
+
 ## 0.26.1 (2025-07-20)
 
 ### Improvements
