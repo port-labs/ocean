@@ -8,7 +8,7 @@ from checkmarx_one.exporter_factory import (
 )
 from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
 from checkmarx_one.core.exporters.scan_exporter import CheckmarxScanExporter
-from client import CheckmarxClient
+from checkmarx_one.clients.client import CheckmarxClient
 
 
 class TestExporterFactory:

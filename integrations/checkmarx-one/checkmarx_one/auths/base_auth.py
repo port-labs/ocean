@@ -6,7 +6,7 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-from exceptions import CheckmarxAuthenticationError
+from checkmarx_one.exceptions import CheckmarxAuthenticationError
 
 
 class BaseCheckmarxAuthenticator(ABC):

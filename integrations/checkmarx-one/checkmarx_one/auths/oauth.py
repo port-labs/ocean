@@ -3,8 +3,8 @@ from typing import Any
 import httpx
 from loguru import logger
 
-from base_auth import BaseCheckmarxAuthenticator
-from exceptions import CheckmarxAuthenticationError
+from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator
+from checkmarx_one.exceptions import CheckmarxAuthenticationError
 
 
 class OAuthAuthenticator(BaseCheckmarxAuthenticator):

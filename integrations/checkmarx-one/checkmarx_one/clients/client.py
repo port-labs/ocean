@@ -1,12 +1,10 @@
 from typing import Optional
 
-from aiolimiter import AsyncLimiter
-
-from auth import CheckmarxAuthenticator
-from base_client import BaseCheckmarxClient
+from checkmarx_one.auths.auth import CheckmarxAuthenticator
+from checkmarx_one.clients.base_client import CheckmarxOneClient
 
 
-class CheckmarxClient(BaseCheckmarxClient):
+class CheckmarxClient(CheckmarxOneClient):
     """
     Client for interacting with Checkmarx One API.
     Supports both OAuth client and API key authentication methods.
@@ -23,7 +21,6 @@ class CheckmarxClient(BaseCheckmarxClient):
         api_key: Optional[str] = None,
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
-        rate_limiter: Optional[AsyncLimiter] = None,
     ):
         """
         Initialize the Checkmarx One client.
@@ -35,7 +32,6 @@ class CheckmarxClient(BaseCheckmarxClient):
             api_key: API key for authentication
             client_id: OAuth client ID (alternative to API key)
             client_secret: OAuth client secret (required with client_id)
-            rate_limiter: Custom rate limiter instance
         """
         # Initialize authenticator
         authenticator = CheckmarxAuthenticator(
@@ -47,4 +43,4 @@ class CheckmarxClient(BaseCheckmarxClient):
         )
 
         # Initialize base client
-        super().__init__(base_url, authenticator, rate_limiter)
+        super().__init__(base_url, authenticator)

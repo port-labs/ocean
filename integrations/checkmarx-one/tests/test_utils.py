@@ -1,7 +1,7 @@
 import pytest
 from enum import StrEnum
 
-from utils import ObjectKind
+from checkmarx_one.utils import ObjectKind
 
 
 class TestObjectKind:

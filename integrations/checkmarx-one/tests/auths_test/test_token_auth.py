@@ -3,22 +3,21 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from httpx import HTTPStatusError, Response
 from loguru import logger
 
-from oauth import OAuthAuthenticator
-from exceptions import CheckmarxAuthenticationError
+from checkmarx_one.auths.token_auth import TokenAuthenticator
+from checkmarx_one.exceptions import CheckmarxAuthenticationError
 
 
-class TestOAuthAuthenticator:
-    """Test cases for OAuthAuthenticator class."""
+class TestTokenAuthenticator:
+    """Test cases for TokenAuthenticator class."""
 
     @pytest.fixture
-    def oauth_authenticator(self) -> OAuthAuthenticator:
-        """Create an OAuthAuthenticator instance for testing."""
-        with patch("base_auth.http_async_client", AsyncMock()):
-            return OAuthAuthenticator(
+    def token_authenticator(self) -> TokenAuthenticator:
+        """Create a TokenAuthenticator instance for testing."""
+        with patch("checkmarx_one.auths.base_auth.http_async_client", AsyncMock()):
+            return TokenAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
-                client_id="test-client-id",
-                client_secret="test-client-secret",
+                api_key="test-api-key",
             )
 
     @pytest.fixture
@@ -39,28 +38,27 @@ class TestOAuthAuthenticator:
         mock_response.raise_for_status.return_value = None
         return mock_response
 
-    def test_init(self, oauth_authenticator: OAuthAuthenticator) -> None:
-        """Test OAuthAuthenticator initialization."""
-        assert oauth_authenticator.iam_url == "https://iam.checkmarx.net"
-        assert oauth_authenticator.tenant == "test-tenant"
-        assert oauth_authenticator.client_id == "test-client-id"
-        assert oauth_authenticator.client_secret == "test-client-secret"
+    def test_init(self, token_authenticator: TokenAuthenticator) -> None:
+        """Test TokenAuthenticator initialization."""
+        assert token_authenticator.iam_url == "https://iam.checkmarx.net"
+        assert token_authenticator.tenant == "test-tenant"
+        assert token_authenticator.api_key == "test-api-key"
         assert (
-            oauth_authenticator.auth_url
+            token_authenticator.auth_url
             == "https://iam.checkmarx.net/auth/realms/test-tenant/protocol/openid-connect/token"
         )
 
     @pytest.mark.asyncio
     async def test_authenticate_success(
-        self, oauth_authenticator: OAuthAuthenticator, mock_response: MagicMock
+        self, token_authenticator: TokenAuthenticator, mock_response: MagicMock
     ) -> None:
-        """Test successful OAuth authentication."""
+        """Test successful authentication."""
         with patch.object(
-            oauth_authenticator, "http_client", AsyncMock()
+            token_authenticator, "http_client", AsyncMock()
         ) as mock_client:
             mock_client.post.return_value = mock_response
 
-            result = await oauth_authenticator._authenticate()
+            result = await token_authenticator._authenticate()
 
             # Verify the result
             assert result == {
@@ -72,20 +70,20 @@ class TestOAuthAuthenticator:
 
             # Verify the HTTP call
             mock_client.post.assert_called_once_with(
-                oauth_authenticator.auth_url,
+                token_authenticator.auth_url,
                 data={
-                    "grant_type": "client_credentials",
-                    "client_id": "test-client-id",
-                    "client_secret": "test-client-secret",
+                    "grant_type": "refresh_token",
+                    "client_id": "ast-app",
+                    "refresh_token": "test-api-key",
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
 
     @pytest.mark.asyncio
     async def test_authenticate_http_error(
-        self, oauth_authenticator: OAuthAuthenticator
+        self, token_authenticator: TokenAuthenticator
     ) -> None:
-        """Test OAuth authentication with HTTP error."""
+        """Test authentication with HTTP error."""
         mock_response = MagicMock(spec=Response)
         mock_response.status_code = 401
         mock_response.text = "Unauthorized"
@@ -94,20 +92,20 @@ class TestOAuthAuthenticator:
         )
 
         with patch.object(
-            oauth_authenticator, "http_client", AsyncMock()
+            token_authenticator, "http_client", AsyncMock()
         ) as mock_client:
             mock_client.post.return_value = mock_response
 
             with pytest.raises(CheckmarxAuthenticationError) as exc_info:
-                await oauth_authenticator._authenticate()
+                await token_authenticator._authenticate()
 
-            assert "OAuth authentication failed: Unauthorized" in str(exc_info.value)
+            assert "API key authentication failed: Unauthorized" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_authenticate_network_error(
-        self, oauth_authenticator: OAuthAuthenticator
+        self, token_authenticator: TokenAuthenticator
     ) -> None:
-        """Test OAuth authentication with network error."""
+        """Test authentication with network error."""
         mock_response = MagicMock(spec=Response)
         mock_response.status_code = 500
         mock_response.text = "Network error"
@@ -116,61 +114,60 @@ class TestOAuthAuthenticator:
         )
 
         with patch.object(
-            oauth_authenticator, "http_client", AsyncMock()
+            token_authenticator, "http_client", AsyncMock()
         ) as mock_client:
             mock_client.post.return_value = mock_response
 
             with pytest.raises(CheckmarxAuthenticationError) as exc_info:
-                await oauth_authenticator._authenticate()
+                await token_authenticator._authenticate()
 
-            assert "OAuth authentication failed: Network error" in str(exc_info.value)
+            assert "API key authentication failed: Network error" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_authenticate_invalid_response(
-        self, oauth_authenticator: OAuthAuthenticator
+        self, token_authenticator: TokenAuthenticator
     ) -> None:
-        """Test OAuth authentication with invalid response format."""
+        """Test authentication with invalid response format."""
         mock_response = MagicMock(spec=Response)
-        mock_response.json.return_value = {"error": "invalid_client"}
+        mock_response.json.return_value = {"error": "invalid_grant"}
         mock_response.raise_for_status.return_value = None
 
         with patch.object(
-            oauth_authenticator, "http_client", AsyncMock()
+            token_authenticator, "http_client", AsyncMock()
         ) as mock_client:
             mock_client.post.return_value = mock_response
 
-            result = await oauth_authenticator._authenticate()
+            result = await token_authenticator._authenticate()
 
             # Should still return the response even if it contains an error
-            assert result == {"error": "invalid_client"}
+            assert result == {"error": "invalid_grant"}
 
     @pytest.mark.asyncio
     async def test_authenticate_empty_response(
-        self, oauth_authenticator: OAuthAuthenticator
+        self, token_authenticator: TokenAuthenticator
     ) -> None:
-        """Test OAuth authentication with empty response."""
+        """Test authentication with empty response."""
         mock_response = MagicMock(spec=Response)
         mock_response.json.return_value = {}
         mock_response.raise_for_status.return_value = None
 
         with patch.object(
-            oauth_authenticator, "http_client", AsyncMock()
+            token_authenticator, "http_client", AsyncMock()
         ) as mock_client:
             mock_client.post.return_value = mock_response
 
-            result = await oauth_authenticator._authenticate()
+            result = await token_authenticator._authenticate()
 
             assert result == {}
 
     @pytest.mark.asyncio
-    async def test_authenticate_with_different_credentials(self) -> None:
-        """Test OAuth authentication with different credentials."""
-        with patch("base_auth.http_async_client", AsyncMock()):
-            authenticator = OAuthAuthenticator(
+    async def test_authenticate_with_different_api_key(self) -> None:
+        """Test authentication with different API key."""
+        with patch("checkmarx_one.auths.base_auth.http_async_client", AsyncMock()):
+            authenticator = TokenAuthenticator(
                 iam_url="https://custom.iam.checkmarx.net",
                 tenant="custom-tenant",
-                client_id="custom-client-id",
-                client_secret="custom-client-secret",
+                api_key="custom-api-key",
             )
 
         mock_response = MagicMock(spec=Response)
@@ -186,35 +183,33 @@ class TestOAuthAuthenticator:
             mock_client.post.assert_called_once_with(
                 "https://custom.iam.checkmarx.net/auth/realms/custom-tenant/protocol/openid-connect/token",
                 data={
-                    "grant_type": "client_credentials",
-                    "client_id": "custom-client-id",
-                    "client_secret": "custom-client-secret",
+                    "grant_type": "refresh_token",
+                    "client_id": "ast-app",
+                    "refresh_token": "custom-api-key",
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
 
     @pytest.mark.asyncio
     async def test_authenticate_logs_debug_message(
-        self, oauth_authenticator: OAuthAuthenticator, mock_response: MagicMock
+        self, token_authenticator: TokenAuthenticator, mock_response: MagicMock
     ) -> None:
-        """Test that debug message is logged during OAuth authentication."""
+        """Test that debug message is logged during authentication."""
         with patch.object(
-            oauth_authenticator, "http_client", AsyncMock()
+            token_authenticator, "http_client", AsyncMock()
         ) as mock_client:
             mock_client.post.return_value = mock_response
 
             with patch.object(logger, "debug") as mock_logger:
-                await oauth_authenticator._authenticate()
+                await token_authenticator._authenticate()
 
-                mock_logger.assert_called_with(
-                    "Authenticating with OAuth client: test-client-id"
-                )
+                mock_logger.assert_called_with("Authenticating with API key")
 
     @pytest.mark.asyncio
     async def test_authenticate_logs_error_on_failure(
-        self, oauth_authenticator: OAuthAuthenticator
+        self, token_authenticator: TokenAuthenticator
     ) -> None:
-        """Test that error is logged on OAuth authentication failure."""
+        """Test that error is logged on authentication failure."""
         mock_response = MagicMock(spec=Response)
         mock_response.status_code = 400
         mock_response.text = "Bad Request"
@@ -223,45 +218,14 @@ class TestOAuthAuthenticator:
         )
 
         with patch.object(
-            oauth_authenticator, "http_client", AsyncMock()
+            token_authenticator, "http_client", AsyncMock()
         ) as mock_client:
             mock_client.post.return_value = mock_response
 
             with patch.object(logger, "error") as mock_logger:
                 with pytest.raises(CheckmarxAuthenticationError):
-                    await oauth_authenticator._authenticate()
+                    await token_authenticator._authenticate()
 
                 mock_logger.assert_called_with(
-                    "OAuth authentication failed: 400 - Bad Request"
+                    "API key authentication failed: 400 - Bad Request"
                 )
-
-    @pytest.mark.asyncio
-    async def test_authenticate_with_special_characters_in_credentials(self) -> None:
-        """Test OAuth authentication with special characters in credentials."""
-        with patch("base_auth.http_async_client", AsyncMock()):
-            authenticator = OAuthAuthenticator(
-                iam_url="https://iam.checkmarx.net",
-                tenant="test-tenant",
-                client_id="client@id",
-                client_secret="secret@123!",
-            )
-
-        mock_response = MagicMock(spec=Response)
-        mock_response.json.return_value = {"access_token": "special-token"}
-        mock_response.raise_for_status.return_value = None
-
-        with patch.object(authenticator, "http_client", AsyncMock()) as mock_client:
-            mock_client.post.return_value = mock_response
-
-            result = await authenticator._authenticate()
-
-            assert result == {"access_token": "special-token"}
-            mock_client.post.assert_called_once_with(
-                "https://iam.checkmarx.net/auth/realms/test-tenant/protocol/openid-connect/token",
-                data={
-                    "grant_type": "client_credentials",
-                    "client_id": "client@id",
-                    "client_secret": "secret@123!",
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )

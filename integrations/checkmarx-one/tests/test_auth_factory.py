@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import patch, MagicMock
 from loguru import logger
 
-from auth_factory import CheckmarxAuthenticatorFactory
-from exceptions import CheckmarxAuthenticationError
+from checkmarx_one.auths.auth_factory import CheckmarxAuthenticatorFactory
+from checkmarx_one.exceptions import CheckmarxAuthenticationError
 
 
 class TestCheckmarxAuthenticatorFactory:
@@ -11,8 +11,10 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_api_key(self) -> None:
         """Test creating authenticator with API key."""
-        with patch("base_auth.http_async_client", MagicMock()):
-            with patch("auth_factory.TokenAuthenticator") as mock_token_class:
+        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+            with patch(
+                "checkmarx_one.auths.auth_factory.TokenAuthenticator"
+            ) as mock_token_class:
                 mock_authenticator = MagicMock()
                 mock_token_class.return_value = mock_authenticator
 
@@ -29,8 +31,10 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_oauth(self) -> None:
         """Test creating authenticator with OAuth credentials."""
-        with patch("base_auth.http_async_client", MagicMock()):
-            with patch("auth_factory.OAuthAuthenticator") as mock_oauth_class:
+        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+            with patch(
+                "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
+            ) as mock_oauth_class:
                 mock_authenticator = MagicMock()
                 mock_oauth_class.return_value = mock_authenticator
 
@@ -51,8 +55,10 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_both_credentials(self) -> None:
         """Test creating authenticator with both API key and OAuth credentials."""
-        with patch("base_auth.http_async_client", MagicMock()):
-            with patch("auth_factory.TokenAuthenticator") as mock_token_class:
+        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+            with patch(
+                "checkmarx_one.auths.auth_factory.TokenAuthenticator"
+            ) as mock_token_class:
                 mock_authenticator = MagicMock()
                 mock_token_class.return_value = mock_authenticator
 
@@ -162,8 +168,10 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_whitespace_only_credentials(self) -> None:
         """Test creating authenticator with whitespace-only credentials."""
-        with patch("base_auth.http_async_client", MagicMock()):
-            with patch("auth_factory.TokenAuthenticator") as mock_token_class:
+        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+            with patch(
+                "checkmarx_one.auths.auth_factory.TokenAuthenticator"
+            ) as mock_token_class:
                 mock_authenticator = MagicMock()
                 mock_token_class.return_value = mock_authenticator
 
@@ -183,8 +191,10 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_different_urls(self) -> None:
         """Test creating authenticator with different IAM URLs."""
-        with patch("base_auth.http_async_client", MagicMock()):
-            with patch("auth_factory.TokenAuthenticator") as mock_token_class:
+        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+            with patch(
+                "checkmarx_one.auths.auth_factory.TokenAuthenticator"
+            ) as mock_token_class:
                 mock_authenticator = MagicMock()
                 mock_token_class.return_value = mock_authenticator
 
@@ -203,8 +213,10 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_special_characters(self) -> None:
         """Test creating authenticator with special characters in credentials."""
-        with patch("base_auth.http_async_client", MagicMock()):
-            with patch("auth_factory.OAuthAuthenticator") as mock_oauth_class:
+        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+            with patch(
+                "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
+            ) as mock_oauth_class:
                 mock_authenticator = MagicMock()
                 mock_oauth_class.return_value = mock_authenticator
 
@@ -225,12 +237,16 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_prefers_api_key_over_oauth(self) -> None:
         """Test that API key is preferred over OAuth when both are provided."""
-        with patch("base_auth.http_async_client", MagicMock()):
-            with patch("auth_factory.TokenAuthenticator") as mock_token_class:
+        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+            with patch(
+                "checkmarx_one.auths.auth_factory.TokenAuthenticator"
+            ) as mock_token_class:
                 mock_authenticator = MagicMock()
                 mock_token_class.return_value = mock_authenticator
 
-                with patch("auth_factory.OAuthAuthenticator") as mock_oauth_class:
+                with patch(
+                    "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
+                ) as mock_oauth_class:
                     result = CheckmarxAuthenticatorFactory.create_authenticator(
                         iam_url="https://iam.checkmarx.net",
                         tenant="test-tenant",
@@ -245,12 +261,16 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_oauth_when_no_api_key(self) -> None:
         """Test that OAuth is used when no API key is provided."""
-        with patch("base_auth.http_async_client", MagicMock()):
-            with patch("auth_factory.OAuthAuthenticator") as mock_oauth_class:
+        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+            with patch(
+                "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
+            ) as mock_oauth_class:
                 mock_authenticator = MagicMock()
                 mock_oauth_class.return_value = mock_authenticator
 
-                with patch("auth_factory.TokenAuthenticator") as mock_token_class:
+                with patch(
+                    "checkmarx_one.auths.auth_factory.TokenAuthenticator"
+                ) as mock_token_class:
                     result = CheckmarxAuthenticatorFactory.create_authenticator(
                         iam_url="https://iam.checkmarx.net",
                         tenant="test-tenant",

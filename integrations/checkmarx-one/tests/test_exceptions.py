@@ -1,6 +1,6 @@
 import pytest
 
-from exceptions import CheckmarxAuthenticationError, CheckmarxAPIError
+from checkmarx_one.exceptions import CheckmarxAuthenticationError, CheckmarxAPIError
 
 
 class TestCheckmarxAuthenticationError:

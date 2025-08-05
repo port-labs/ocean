@@ -4,8 +4,7 @@ from loguru import logger
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
-from checkmarx_one.core.options import ListScanOptions
-from typing import Optional, Dict
+from typing import Dict
 
 
 class CheckmarxScanExporter(AbstractCheckmarxExporter):
@@ -15,7 +14,8 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
         self,
         options: Dict[str, Any],
     ) -> Dict[str, Any]:
-        response = await self.client._send_api_request(f"/scans/{options['scan_id']}")
+        """Get a specific scan by ID."""
+        response = await self.client.send_api_request(f"/scans/{options['scan_id']}")
         logger.info(f"Fetched scan with ID: {options['scan_id']}")
         return response
 
@@ -47,7 +47,7 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
         if offset is not None:
             params["offset"] = offset
 
-        async for scans in self.client._get_paginated_resources(
+        async for scans in self.client.send_paginated_request(
             "/scans", "scans", params
         ):
             logger.info(f"Fetched batch of {len(scans)} scans")

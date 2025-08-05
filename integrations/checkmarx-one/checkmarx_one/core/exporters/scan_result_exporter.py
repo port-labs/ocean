@@ -1,10 +1,9 @@
 from collections.abc import AsyncGenerator
-from typing import Any, Optional
+from typing import Any, Dict
 from loguru import logger
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
-from typing import Any, Dict
 
 
 class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
@@ -36,7 +35,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
             "limit": 1,
         }
 
-        response = await self.client._send_api_request("/results", params=params)
+        response = await self.client.send_api_request("/results", params=params)
         logger.info(
             f"Fetched scan result {options['result_id']} for scan {options['scan_id']}"
         )
@@ -90,7 +89,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         if "exclude_result_types" in options:
             params["exclude-result-types"] = options["exclude_result_types"]
 
-        async for results in self.client._get_paginated_resources(
+        async for results in self.client.send_paginated_request(
             "/results", "results", params
         ):
             logger.info(

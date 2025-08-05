@@ -1,8 +1,8 @@
 from typing import Optional
 
 
-from auth_factory import CheckmarxAuthenticatorFactory
-from base_auth import BaseCheckmarxAuthenticator
+from checkmarx_one.auths.auth_factory import CheckmarxAuthenticatorFactory
+from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator
 
 
 class CheckmarxAuthenticator(BaseCheckmarxAuthenticator):

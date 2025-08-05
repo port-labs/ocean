@@ -4,8 +4,7 @@ from typing import List, NotRequired, Optional, Required, TypedDict
 class ListProjectOptions(TypedDict):
     """Options for listing projects."""
 
-    limit: NotRequired[Optional[int]]
-    offset: NotRequired[Optional[int]]
+    pass
 
 
 class SingleProjectOptions(TypedDict):
@@ -18,8 +17,6 @@ class ListScanOptions(TypedDict):
     """Options for listing scans."""
 
     project_ids: NotRequired[Optional[List[str]]]
-    limit: NotRequired[Optional[int]]
-    offset: NotRequired[Optional[int]]
 
 
 class SingleScanOptions(TypedDict):
@@ -32,8 +29,6 @@ class ListScanResultOptions(TypedDict):
     """Options for listing scan results."""
 
     scan_id: Required[str]
-    limit: NotRequired[Optional[int]]
-    offset: NotRequired[Optional[int]]
     severity: NotRequired[Optional[List[str]]]
     state: NotRequired[Optional[List[str]]]
     status: NotRequired[Optional[List[str]]]

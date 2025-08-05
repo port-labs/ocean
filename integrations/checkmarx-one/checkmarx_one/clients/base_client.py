@@ -1,31 +1,23 @@
-import asyncio
 from typing import Any, Optional, AsyncGenerator, List, Dict
 
 import httpx
-from aiolimiter import AsyncLimiter
 from loguru import logger
+from checkmarx_one.utils import IgnoredError
 from port_ocean.utils import http_async_client
 
-from exceptions import CheckmarxAuthenticationError, CheckmarxAPIError
-from auth import CheckmarxAuthenticator
+from checkmarx_one.exceptions import CheckmarxAuthenticationError
+from checkmarx_one.auths.auth import CheckmarxAuthenticator
 
-from typing import NamedTuple
 from urllib.parse import urljoin
 
 
 PAGE_SIZE = 100
 
 
-class IgnoredError(NamedTuple):  # TODO: Move to utils
-    status: int | str
-    message: Optional[str] = None
-    type: Optional[str] = None
-
-
 class CheckmarxOneClient:
     """
     Base HTTP client for Checkmarx One API.
-    Handles common HTTP operations, error handling, and rate limiting.
+    Handles common HTTP operations, error handling.
     """
 
     _DEFAULT_IGNORED_ERRORS = [
@@ -193,7 +185,6 @@ class CheckmarxOneClient:
                 if isinstance(response, list):
                     items = response
                 elif isinstance(response, dict):
-                    # Try common pagination patterns
                     items = response.get("data", []) or response.get(object_key, [])
 
                 if not items:

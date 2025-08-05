@@ -3,8 +3,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Any, Dict
 
-from base_auth import BaseCheckmarxAuthenticator
-from exceptions import CheckmarxAuthenticationError
+from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator
+from checkmarx_one.exceptions import CheckmarxAuthenticationError
 
 
 class MockAuthenticator(BaseCheckmarxAuthenticator):
@@ -32,7 +32,7 @@ class TestBaseCheckmarxAuthenticator:
     @pytest.fixture
     def authenticator(self, mock_http_client: MagicMock) -> MockAuthenticator:
         """Create a mock authenticator instance for testing."""
-        with patch("base_auth.http_async_client", mock_http_client):
+        with patch("checkmarx_one.auths.base_auth.http_async_client", mock_http_client):
             return MockAuthenticator(
                 iam_url="https://iam.checkmarx.net", tenant="test-tenant"
             )
@@ -64,7 +64,7 @@ class TestBaseCheckmarxAuthenticator:
 
     def test_auth_url_with_trailing_slash(self, mock_http_client: MagicMock) -> None:
         """Test auth_url property handles trailing slashes correctly."""
-        with patch("base_auth.http_async_client", mock_http_client):
+        with patch("checkmarx_one.auths.base_auth.http_async_client", mock_http_client):
             authenticator = MockAuthenticator(
                 iam_url="https://iam.checkmarx.net/", tenant="test-tenant"
             )
@@ -250,7 +250,7 @@ class TestBaseCheckmarxAuthenticator:
     def test_abstract_method_implementation(self, mock_http_client: MagicMock) -> None:
         """Test that abstract method is properly defined."""
         # This should not raise an error since MockAuthenticator implements _authenticate
-        with patch("base_auth.http_async_client", mock_http_client):
+        with patch("checkmarx_one.auths.base_auth.http_async_client", mock_http_client):
             authenticator = MockAuthenticator(
                 iam_url="https://iam.checkmarx.net", tenant="test-tenant"
             )

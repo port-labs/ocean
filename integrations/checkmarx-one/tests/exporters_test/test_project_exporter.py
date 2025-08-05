@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 from typing import Any, List
 
 from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
-from base_client import BaseCheckmarxClient
+from checkmarx_one.clients.base_client import CheckmarxOneClient
 from checkmarx_one.core.options import ListProjectOptions
 
 
@@ -13,7 +13,7 @@ class TestCheckmarxProjectExporter:
     @pytest.fixture
     def mock_client(self) -> AsyncMock:
         """Create a mock BaseCheckmarxClient for testing."""
-        mock_client = AsyncMock(spec=BaseCheckmarxClient)
+        mock_client = AsyncMock(spec=CheckmarxOneClient)
         mock_client._send_api_request = AsyncMock()
 
         # Create an async generator for _get_paginated_resources
@@ -66,11 +66,11 @@ class TestCheckmarxProjectExporter:
         sample_project: dict[str, Any],
     ) -> None:
         """Test successful project retrieval by ID."""
-        mock_client._send_api_request.return_value = sample_project
+        mock_client.send_api_request.return_value = sample_project
 
-        result = await project_exporter.get_project_by_id("proj-123")
+        result = await project_exporter.get_resource({"project_id": "proj-123"})
 
-        mock_client._send_api_request.assert_called_once_with("/projects/proj-123")
+        mock_client.send_api_request.assert_called_once_with("/projects/proj-123")
         assert result == sample_project
 
     @pytest.mark.asyncio
@@ -81,10 +81,10 @@ class TestCheckmarxProjectExporter:
         project_ids = ["proj-123", "proj-456", "proj-789"]
 
         for project_id in project_ids:
-            mock_client._send_api_request.return_value = {"id": project_id}
-            result = await project_exporter.get_project_by_id(project_id)
+            mock_client.send_api_request.return_value = {"id": project_id}
+            result = await project_exporter.get_resource({"project_id": project_id})
 
-            mock_client._send_api_request.assert_called_with(f"/projects/{project_id}")
+            mock_client.send_api_request.assert_called_with(f"/projects/{project_id}")
             assert result["id"] == project_id
 
     @pytest.mark.asyncio
@@ -99,11 +99,11 @@ class TestCheckmarxProjectExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_projects_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
         list_options = ListProjectOptions()
-        async for batch in project_exporter.get_projects(list_options):
+        async for batch in project_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
         assert len(results) == 1
@@ -121,11 +121,11 @@ class TestCheckmarxProjectExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_projects_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
         list_options = ListProjectOptions(limit=50)
-        async for batch in project_exporter.get_projects(list_options):
+        async for batch in project_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
         assert len(results) == 1
@@ -142,11 +142,11 @@ class TestCheckmarxProjectExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_projects_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
         list_options = ListProjectOptions(offset=100)
-        async for batch in project_exporter.get_projects(list_options):
+        async for batch in project_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
         assert len(results) == 1
@@ -163,11 +163,11 @@ class TestCheckmarxProjectExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_projects_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
         list_options = ListProjectOptions(limit=25, offset=50)
-        async for batch in project_exporter.get_projects(list_options):
+        async for batch in project_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
         assert len(results) == 1
@@ -187,11 +187,11 @@ class TestCheckmarxProjectExporter:
             yield batch1
             yield batch2
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
         list_options = ListProjectOptions()
-        async for batch in project_exporter.get_projects(list_options):
+        async for batch in project_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
         assert len(results) == 2
@@ -209,11 +209,11 @@ class TestCheckmarxProjectExporter:
             if False:  # This ensures it's an async generator
                 yield []
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
         list_options = ListProjectOptions()
-        async for batch in project_exporter.get_projects(list_options):
+        async for batch in project_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
         assert len(results) == 0
@@ -223,10 +223,10 @@ class TestCheckmarxProjectExporter:
         self, project_exporter: CheckmarxProjectExporter, mock_client: AsyncMock
     ) -> None:
         """Test exception handling in get_project_by_id."""
-        mock_client._send_api_request.side_effect = Exception("API Error")
+        mock_client.send_api_request.side_effect = Exception("API Error")
 
         with pytest.raises(Exception, match="API Error"):
-            await project_exporter.get_project_by_id("proj-123")
+            await project_exporter.get_resource({"project_id": "proj-123"})
 
     @pytest.mark.asyncio
     async def test_get_projects_exception_handling(
@@ -239,11 +239,11 @@ class TestCheckmarxProjectExporter:
                 raise Exception("Pagination Error")
             yield []
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         with pytest.raises(Exception, match="Pagination Error"):
             list_options = ListProjectOptions()
-            async for batch in project_exporter.get_projects(list_options):
+            async for batch in project_exporter.get_paginated_resources(list_options):
                 pass
 
     def test_project_exporter_inheritance(
@@ -261,18 +261,18 @@ class TestCheckmarxProjectExporter:
         assert CheckmarxProjectExporter.__doc__ is not None
         assert "Exporter for Checkmarx One projects" in CheckmarxProjectExporter.__doc__
 
-    def test_get_project_by_id_docstring(self) -> None:
-        """Test that get_project_by_id method has proper documentation."""
-        assert CheckmarxProjectExporter.get_project_by_id.__doc__ is not None
+    def test_get_resource_docstring(self) -> None:
+        """Test that get_resource method has proper documentation."""
+        assert CheckmarxProjectExporter.get_resource.__doc__ is not None
         assert (
             "Get a specific project by ID"
-            in CheckmarxProjectExporter.get_project_by_id.__doc__
+            in CheckmarxProjectExporter.get_resource.__doc__
         )
 
-    def test_get_projects_docstring(self) -> None:
-        """Test that get_projects method has proper documentation."""
-        assert CheckmarxProjectExporter.get_projects.__doc__ is not None
+    def test_get_paginated_resources_docstring(self) -> None:
+        """Test that get_paginated_resources method has proper documentation."""
+        assert CheckmarxProjectExporter.get_paginated_resources.__doc__ is not None
         assert (
             "Get projects from Checkmarx One"
-            in CheckmarxProjectExporter.get_projects.__doc__
+            in CheckmarxProjectExporter.get_paginated_resources.__doc__
         )

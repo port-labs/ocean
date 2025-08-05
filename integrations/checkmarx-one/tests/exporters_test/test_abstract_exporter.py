@@ -1,8 +1,9 @@
 import pytest
 from unittest.mock import MagicMock
+from typing import Any, AsyncGenerator, Dict, Optional
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from base_client import BaseCheckmarxClient
+from checkmarx_one.clients.base_client import CheckmarxOneClient
 
 
 class TestAbstractCheckmarxExporter:
@@ -11,7 +12,7 @@ class TestAbstractCheckmarxExporter:
     @pytest.fixture
     def mock_base_client(self) -> MagicMock:
         """Create a mock BaseCheckmarxClient for testing."""
-        return MagicMock(spec=BaseCheckmarxClient)
+        return MagicMock(spec=CheckmarxOneClient)
 
     @pytest.fixture
     def concrete_exporter(
@@ -22,15 +23,36 @@ class TestAbstractCheckmarxExporter:
         class ConcreteExporter(AbstractCheckmarxExporter):
             """Concrete implementation for testing."""
 
-            pass
+            async def get_paginated_resources(
+                self, options: Optional[Dict[str, Any]]
+            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                """Mock implementation."""
+                yield []
+
+            async def get_resource(
+                self, options: Optional[Dict[str, Any]]
+            ) -> dict[str, Any]:
+                """Mock implementation."""
+                return {}
 
         return ConcreteExporter(mock_base_client)
 
     def test_init_with_client(self, mock_base_client: MagicMock) -> None:
         """Test that exporter is initialized with the provided client."""
-        exporter = AbstractCheckmarxExporter.__new__(AbstractCheckmarxExporter)
-        exporter.__init__(mock_base_client)
 
+        # Create a concrete implementation for testing
+        class TestExporter(AbstractCheckmarxExporter):
+            async def get_paginated_resources(
+                self, options: Optional[Dict[str, Any]]
+            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                yield []
+
+            async def get_resource(
+                self, options: Optional[Dict[str, Any]]
+            ) -> dict[str, Any]:
+                return {}
+
+        exporter = TestExporter(mock_base_client)
         assert exporter.client == mock_base_client
 
     def test_client_attribute_access(
@@ -43,12 +65,24 @@ class TestAbstractCheckmarxExporter:
         self, concrete_exporter: AbstractCheckmarxExporter
     ) -> None:
         """Test that the client attribute is of the correct type."""
-        assert isinstance(concrete_exporter.client, BaseCheckmarxClient)
+        assert isinstance(concrete_exporter.client, CheckmarxOneClient)
 
     def test_exporter_is_abstract(self) -> None:
-        """Test that AbstractCheckmarxExporter can be instantiated since it has no abstract methods."""
-        # The class is not actually abstract since it has no abstract methods
-        exporter = AbstractCheckmarxExporter(MagicMock(spec=BaseCheckmarxClient))
+        """Test that AbstractCheckmarxExporter is abstract and requires implementation."""
+
+        # The class is abstract and requires implementation of abstract methods
+        class TestExporter(AbstractCheckmarxExporter):
+            async def get_paginated_resources(
+                self, options: Optional[Dict[str, Any]]
+            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                yield []
+
+            async def get_resource(
+                self, options: Optional[Dict[str, Any]]
+            ) -> dict[str, Any]:
+                return {}
+
+        exporter = TestExporter(MagicMock(spec=CheckmarxOneClient))
         assert exporter is not None
         assert hasattr(exporter, "client")
 
@@ -58,7 +92,15 @@ class TestAbstractCheckmarxExporter:
         class TestExporter(AbstractCheckmarxExporter):
             """Test implementation."""
 
-            pass
+            async def get_paginated_resources(
+                self, options: Optional[Dict[str, Any]]
+            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                yield []
+
+            async def get_resource(
+                self, options: Optional[Dict[str, Any]]
+            ) -> dict[str, Any]:
+                return {}
 
         exporter = TestExporter(mock_base_client)
         assert isinstance(exporter, AbstractCheckmarxExporter)
@@ -81,11 +123,19 @@ class TestAbstractCheckmarxExporter:
         class TestExporter(AbstractCheckmarxExporter):
             """Test implementation."""
 
-            pass
+            async def get_paginated_resources(
+                self, options: Optional[Dict[str, Any]]
+            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                yield []
+
+            async def get_resource(
+                self, options: Optional[Dict[str, Any]]
+            ) -> dict[str, Any]:
+                return {}
 
         # Test with different mock configurations
-        mock_client_1 = MagicMock(spec=BaseCheckmarxClient)
-        mock_client_2 = MagicMock(spec=BaseCheckmarxClient)
+        mock_client_1 = MagicMock(spec=CheckmarxOneClient)
+        mock_client_2 = MagicMock(spec=CheckmarxOneClient)
 
         exporter_1 = TestExporter(mock_client_1)
         exporter_2 = TestExporter(mock_client_2)
@@ -101,7 +151,7 @@ class TestAbstractCheckmarxExporter:
         original_client = concrete_exporter.client
 
         # Attempt to change the client (this should not affect the original)
-        new_client = MagicMock(spec=BaseCheckmarxClient)
+        new_client = MagicMock(spec=CheckmarxOneClient)
         concrete_exporter.client = new_client
 
         # The client should now be the new one
@@ -114,7 +164,15 @@ class TestAbstractCheckmarxExporter:
         class TestExporter(AbstractCheckmarxExporter):
             """Test implementation."""
 
-            pass
+            async def get_paginated_resources(
+                self, options: Optional[Dict[str, Any]]
+            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                yield []
+
+            async def get_resource(
+                self, options: Optional[Dict[str, Any]]
+            ) -> dict[str, Any]:
+                return {}
 
         # This should work as the client is just stored as an attribute
         exporter = TestExporter(None)

@@ -5,7 +5,7 @@ from typing import Any, List
 from checkmarx_one.core.exporters.scan_result_exporter import (
     CheckmarxScanResultExporter,
 )
-from base_client import BaseCheckmarxClient
+from checkmarx_one.clients.base_client import CheckmarxOneClient
 
 
 class TestCheckmarxScanResultExporter:
@@ -13,16 +13,16 @@ class TestCheckmarxScanResultExporter:
 
     @pytest.fixture
     def mock_client(self) -> AsyncMock:
-        """Create a mock BaseCheckmarxClient for testing."""
-        mock_client = AsyncMock(spec=BaseCheckmarxClient)
-        mock_client._send_api_request = AsyncMock()
+        """Create a mock CheckmarxOneClient for testing."""
+        mock_client = AsyncMock(spec=CheckmarxOneClient)
+        mock_client.send_api_request = AsyncMock()
 
-        # Create an async generator for _get_paginated_resources
+        # Create an async generator for send_paginated_request
         async def mock_paginated_resources(*args, **kwargs):
             # This will be set up in individual tests
             pass
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
         return mock_client
 
     @pytest.fixture
@@ -139,7 +139,7 @@ class TestCheckmarxScanResultExporter:
         ]
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_without_parameters(
+    async def testsend_paginated_request_without_parameters(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
@@ -151,17 +151,17 @@ class TestCheckmarxScanResultExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_scan_results_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 1
         assert results[0] == sample_scan_results_batch
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_with_limit(
+    async def testsend_paginated_request_with_limit(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
@@ -173,16 +173,16 @@ class TestCheckmarxScanResultExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_scan_results_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 1
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_with_offset(
+    async def testsend_paginated_request_with_offset(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
@@ -194,16 +194,16 @@ class TestCheckmarxScanResultExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_scan_results_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 1
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_with_severity_filter(
+    async def testsend_paginated_request_with_severity_filter(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
@@ -215,16 +215,16 @@ class TestCheckmarxScanResultExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_scan_results_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 1
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_with_state_filter(
+    async def testsend_paginated_request_with_state_filter(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
@@ -236,16 +236,16 @@ class TestCheckmarxScanResultExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_scan_results_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 1
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_with_status_filter(
+    async def testsend_paginated_request_with_status_filter(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
@@ -257,16 +257,16 @@ class TestCheckmarxScanResultExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_scan_results_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 1
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_with_sort(
+    async def testsend_paginated_request_with_sort(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
@@ -278,16 +278,16 @@ class TestCheckmarxScanResultExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_scan_results_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 1
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_with_exclude_result_types(
+    async def testsend_paginated_request_with_exclude_result_types(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
@@ -299,16 +299,16 @@ class TestCheckmarxScanResultExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_scan_results_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 1
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_with_all_parameters(
+    async def testsend_paginated_request_with_all_parameters(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
@@ -329,16 +329,16 @@ class TestCheckmarxScanResultExporter:
         async def mock_paginated_resources(*args, **kwargs):
             yield sample_scan_results_batch
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 1
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_multiple_batches(
+    async def testsend_paginated_request_multiple_batches(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
@@ -352,11 +352,11 @@ class TestCheckmarxScanResultExporter:
             yield batch1
             yield batch2
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         options = {"scan_id": "scan-123"}
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 2
@@ -364,7 +364,7 @@ class TestCheckmarxScanResultExporter:
         assert results[1] == batch2
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_empty_result(
+    async def testsend_paginated_request_empty_result(
         self, scan_result_exporter: CheckmarxScanResultExporter, mock_client: AsyncMock
     ) -> None:
         """Test getting scan results with empty result."""
@@ -375,16 +375,16 @@ class TestCheckmarxScanResultExporter:
             if False:  # This ensures it's an async generator
                 yield []
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        async for batch in scan_result_exporter.get_scan_results(options):
+        async for batch in scan_result_exporter.get_paginated_resources(options):
             results.append(batch)
 
         assert len(results) == 0
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_missing_scan_id(
+    async def testsend_paginated_request_missing_scan_id(
         self, scan_result_exporter: CheckmarxScanResultExporter
     ) -> None:
         """Test getting scan results without scan_id raises ValueError."""
@@ -393,25 +393,25 @@ class TestCheckmarxScanResultExporter:
         with pytest.raises(
             ValueError, match="scan_id is required for getting scan results"
         ):
-            async for batch in scan_result_exporter.get_scan_results(options):
+            async for batch in scan_result_exporter.get_paginated_resources(options):
                 pass
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_none_options(
+    async def testsend_paginated_request_none_options(
         self, scan_result_exporter: CheckmarxScanResultExporter
     ) -> None:
         """Test getting scan results with None options raises ValueError."""
         with pytest.raises(
             ValueError, match="scan_id is required for getting scan results"
         ):
-            async for batch in scan_result_exporter.get_scan_results(None):
+            async for batch in scan_result_exporter.get_paginated_resources(None):
                 pass
 
     @pytest.mark.asyncio
-    async def test_get_scan_results_exception_handling(
+    async def testsend_paginated_request_exception_handling(
         self, scan_result_exporter: CheckmarxScanResultExporter, mock_client: AsyncMock
     ) -> None:
-        """Test exception handling in get_scan_results."""
+        """Test exception handling in get_paginated_resources."""
         options = {"scan_id": "scan-123"}
 
         async def mock_paginated_resources(*args, **kwargs):
@@ -419,27 +419,27 @@ class TestCheckmarxScanResultExporter:
                 raise Exception("Pagination Error")
             yield []
 
-        mock_client._get_paginated_resources = mock_paginated_resources
+        mock_client.send_paginated_request = mock_paginated_resources
 
         with pytest.raises(Exception, match="Pagination Error"):
-            async for batch in scan_result_exporter.get_scan_results(options):
+            async for batch in scan_result_exporter.get_paginated_resources(options):
                 pass
 
     @pytest.mark.asyncio
-    async def test_get_scan_result_by_id(
+    async def test_get_resource(
         self,
         scan_result_exporter: CheckmarxScanResultExporter,
         mock_client: AsyncMock,
         sample_scan_result: dict[str, Any],
     ) -> None:
         """Test getting a specific scan result by ID."""
-        mock_client._send_api_request.return_value = sample_scan_result
+        mock_client.send_api_request.return_value = sample_scan_result
 
-        result = await scan_result_exporter.get_scan_result_by_id(
-            "scan-123", "result-456"
+        result = await scan_result_exporter.get_resource(
+            {"scan_id": "scan-123", "result_id": "result-456"}
         )
 
-        mock_client._send_api_request.assert_called_once_with(
+        mock_client.send_api_request.assert_called_once_with(
             "/results", params={"scan-id": "scan-123", "limit": 1}
         )
         assert result == sample_scan_result
@@ -462,18 +462,18 @@ class TestCheckmarxScanResultExporter:
             in CheckmarxScanResultExporter.__doc__
         )
 
-    def test_get_scan_results_docstring(self) -> None:
-        """Test that get_scan_results method has proper documentation."""
-        assert CheckmarxScanResultExporter.get_scan_results.__doc__ is not None
+    def testsend_paginated_request_docstring(self) -> None:
+        """Test that get_paginated_resources method has proper documentation."""
+        assert CheckmarxScanResultExporter.get_paginated_resources.__doc__ is not None
         assert (
             "Get scan results from Checkmarx One"
-            in CheckmarxScanResultExporter.get_scan_results.__doc__
+            in CheckmarxScanResultExporter.get_paginated_resources.__doc__
         )
 
-    def test_get_scan_result_by_id_docstring(self) -> None:
-        """Test that get_scan_result_by_id method has proper documentation."""
-        assert CheckmarxScanResultExporter.get_scan_result_by_id.__doc__ is not None
+    def test_get_resource_docstring(self) -> None:
+        """Test that get_resource method has proper documentation."""
+        assert CheckmarxScanResultExporter.get_resource.__doc__ is not None
         assert (
             "Get a specific scan result by ID"
-            in CheckmarxScanResultExporter.get_scan_result_by_id.__doc__
+            in CheckmarxScanResultExporter.get_resource.__doc__
         )

@@ -1,7 +1,6 @@
 from collections.abc import AsyncGenerator
 from typing import Any, Dict
 from loguru import logger
-from checkmarx_one.core.options import ListProjectOptions
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 

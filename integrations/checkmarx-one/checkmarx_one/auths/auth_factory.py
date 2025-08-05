@@ -2,10 +2,10 @@ from typing import Optional
 
 from loguru import logger
 
-from base_auth import BaseCheckmarxAuthenticator
-from exceptions import CheckmarxAuthenticationError
-from oauth import OAuthAuthenticator
-from token_auth import TokenAuthenticator
+from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator
+from checkmarx_one.exceptions import CheckmarxAuthenticationError
+from checkmarx_one.auths.oauth import OAuthAuthenticator
+from checkmarx_one.auths.token_auth import TokenAuthenticator
 
 
 class CheckmarxAuthenticatorFactory:

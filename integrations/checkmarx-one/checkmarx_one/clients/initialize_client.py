@@ -1,14 +1,9 @@
 from typing import cast
-from aiolimiter import AsyncLimiter
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
-from client import CheckmarxClient
-from exceptions import CheckmarxAuthenticationError
-
-# Conservative rate limiting
-CHECKMARX_MAX_REQUESTS_PER_HOUR = 3600
-RATE_LIMITER = AsyncLimiter(CHECKMARX_MAX_REQUESTS_PER_HOUR, 3600)
+from checkmarx_one.clients.client import CheckmarxClient
+from checkmarx_one.exceptions import CheckmarxAuthenticationError
 
 
 def init_client() -> CheckmarxClient:
@@ -48,7 +43,6 @@ def init_client() -> CheckmarxClient:
             api_key=api_key,
             client_id=client_id,
             client_secret=client_secret,
-            rate_limiter=RATE_LIMITER,
         )
 
         # Log authentication method

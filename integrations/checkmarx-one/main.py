@@ -18,7 +18,7 @@ from integration import (
     CheckmarxOneScanResourcesConfig,
     CheckmarxOneScanResultResourcesConfig,
 )
-from utils import ObjectKind
+from checkmarx_one.utils import ObjectKind
 
 
 @ocean.on_start()
@@ -40,7 +40,7 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     project_exporter = create_project_exporter()
     options = ListProjectOptions()
 
-    async for projects_batch in project_exporter.get_projects(options):
+    async for projects_batch in project_exporter.get_paginated_resources(options):
         logger.debug(f"Received batch with {len(projects_batch)} projects")
         yield projects_batch
 
@@ -51,18 +51,14 @@ async def on_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     scan_exporter = create_scan_exporter()
-    # logger.info(event.resource_config)
+
     config = cast(CheckmarxOneScanResourcesConfig, event.resource_config)
     selector = config.selector
 
     logger.info(selector)
-    options = ListScanOptions(
-        project_ids=selector.project_ids,
-        limit=selector.limit,
-        offset=selector.offset,
-    )
+    options = ListScanOptions(project_ids=selector.project_ids)
 
-    async for scans_batch in scan_exporter.get_scans(options):
+    async for scans_batch in scan_exporter.get_paginated_resources(options):
         logger.debug(f"Received batch with {len(scans_batch)} scans")
         yield scans_batch
 
@@ -78,8 +74,6 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         CheckmarxOneScanResultResourcesConfig, event.resource_config
     ).selector
     options = ListScanResultOptions(
-        limit=selector.limit,
-        offset=selector.offset,
         severity=selector.severity,
         state=selector.state,
         sort=selector.sort,
@@ -89,9 +83,9 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     scan_options = ListScanOptions()
 
-    async for scan_data_list in scan_exporter.get_scans(scan_options):
+    async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
         for scan_data in scan_data_list:
-            async for results_batch in scan_result_exporter.get_scan_results(
-                scan_data["id"], options
+            async for results_batch in scan_result_exporter.get_paginated_resources(
+                {"scan_id": scan_data["id"], **options}
             ):
                 yield results_batch

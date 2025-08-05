@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from auth import CheckmarxAuthenticator
-from token_auth import TokenAuthenticator
-from oauth import OAuthAuthenticator
-from exceptions import CheckmarxAuthenticationError
+from checkmarx_one.auths.auth import CheckmarxAuthenticator
+from checkmarx_one.auths.token_auth import TokenAuthenticator
+from checkmarx_one.auths.oauth import OAuthAuthenticator
+from checkmarx_one.exceptions import CheckmarxAuthenticationError
 
 
 class TestCheckmarxAuthenticator:
@@ -13,7 +13,7 @@ class TestCheckmarxAuthenticator:
     @pytest.fixture
     def api_key_authenticator(self) -> CheckmarxAuthenticator:
         """Create a CheckmarxAuthenticator instance with API key."""
-        with patch("base_auth.http_async_client", AsyncMock()):
+        with patch("checkmarx_one.auths.base_auth.http_async_client", AsyncMock()):
             return CheckmarxAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
@@ -23,7 +23,7 @@ class TestCheckmarxAuthenticator:
     @pytest.fixture
     def oauth_authenticator(self) -> CheckmarxAuthenticator:
         """Create a CheckmarxAuthenticator instance with OAuth credentials."""
-        with patch("base_auth.http_async_client", AsyncMock()):
+        with patch("checkmarx_one.auths.base_auth.http_async_client", AsyncMock()):
             return CheckmarxAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
@@ -65,7 +65,7 @@ class TestCheckmarxAuthenticator:
 
     def test_init_with_both_credentials(self) -> None:
         """Test initialization with both API key and OAuth credentials."""
-        with patch("base_auth.http_async_client", AsyncMock()):
+        with patch("checkmarx_one.auths.base_auth.http_async_client", AsyncMock()):
             authenticator = CheckmarxAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",

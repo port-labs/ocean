@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Dict, Optional
 
-from base_client import BaseCheckmarxClient
+from checkmarx_one.clients.base_client import CheckmarxOneClient as BaseCheckmarxClient
 
 
 class AbstractCheckmarxExporter(ABC):
