@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.26.3 (2025-08-04)
+
+### Bug Fixes
+
+- Added permissions for the ocean user to access and write to the /app/.config directory for OAuth configuration.
+
+## 0.26.2 (2025-08-03)
+
+### Improvements
+
+- Add posting integration raw data to lakehouse
+
 ## 0.26.1 (2025-07-20)
 
 ### Improvements
