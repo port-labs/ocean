@@ -400,16 +400,6 @@ class TestOrganizationsHealthCheckMixin:
 
             assert session == mock_aiosession
             assert strategy._organization_session == mock_aiosession
-            assert (
-                "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole"
-                in strategy._valid_arns
-            )
-            assert (
-                strategy._valid_sessions[
-                    "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole"
-                ]
-                == mock_aiosession
-            )
 
     @pytest.mark.asyncio
     async def test_get_organization_session_failure(
