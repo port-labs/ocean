@@ -16,10 +16,10 @@ from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
 
 from azure_devops.client.file_processing import (
-    RECURSION_PRIORITY,
     PathDescriptor,
     RecursionLevel,
     extract_descriptor_from_pattern,
+    get_priority,
     group_descriptors_by_base,
     filter_files_by_glob,
     parse_file_content,
@@ -634,15 +634,16 @@ class AzureDevopsClient(HTTPBaseClient):
         literal_paths, glob_patterns = separate_glob_and_literal_paths(paths)
 
         if literal_paths:
-            files += await self._get_files_by_explicit_paths(repository, literal_paths, branch)
+            files += await self._get_files_by_explicit_paths(
+                repository, literal_paths, branch
+            )
 
-        
         if glob_patterns:
             descriptors = [extract_descriptor_from_pattern(p) for p in glob_patterns]
             grouped = group_descriptors_by_base(descriptors)
 
             for base_path, group in grouped.items():
-                recursion = sorted({d.recursion for d in group}, key=RECURSION_PRIORITY.get)[-1]
+                recursion = sorted({d.recursion for d in group}, key=get_priority)[-1]
                 descriptor = [
                     PathDescriptor(
                         base_path=base_path,
@@ -650,12 +651,14 @@ class AzureDevopsClient(HTTPBaseClient):
                         pattern=group[0].pattern,
                     )
                 ]
-                raw_files = await self._get_files_by_descriptors(repository, descriptor, branch)
+                raw_files = await self._get_files_by_descriptors(
+                    repository, descriptor, branch
+                )
                 matched = filter_files_by_glob(raw_files, descriptor[0])
                 files += matched
 
         logger.info(f"Found {len(files)} files in repository {repository['name']}")
-                    
+
         downloaded_files = await process_in_queue(
             files,
             self.download_single_file,
@@ -666,7 +669,6 @@ class AzureDevopsClient(HTTPBaseClient):
 
         for file in downloaded_files:
             yield [file]
-
 
     async def _get_files_by_explicit_paths(
         self,
@@ -682,8 +684,9 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             for path in paths
         ]
-        return await self._get_files_by_descriptors(repository, item_descriptors, branch)
-
+        return await self._get_files_by_descriptors(
+            repository, item_descriptors, branch
+        )
 
     async def _get_files_by_descriptors(
         self,
@@ -722,8 +725,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
             batch_results = response.json()
             return [
-                file for sublist in batch_results.get("value", [])
-                for file in sublist
+                file for sublist in batch_results.get("value", []) for file in sublist
             ]
 
         except HTTPStatusError as e:
@@ -733,6 +735,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 logger.warning(
                     f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
                 )
+                return []
             else:
                 raise
         except Exception as e:
@@ -740,7 +743,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 f"Unexpected error processing files in {repository['name']}: {e}"
             )
             raise
-
 
     async def download_single_file(
         self, file: dict[str, Any], repository: dict[str, Any], branch: str

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.35 (2025-08-05)
+
+
+## Improvements
+
+- Added glob pattern support in AzureDevopsClient
+- Optimized file fetching using itemsbatch API and path descriptors
+
+
 ## 0.2.34 (2025-07-20)
 
 

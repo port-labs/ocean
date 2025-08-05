@@ -1,4 +1,3 @@
-import fnmatch
 from typing import Any, Dict, List, Optional, cast
 import asyncio
 from loguru import logger
@@ -131,7 +130,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 path_to_track = [config.selector.files.path]
             else:
                 path_to_track = config.selector.files.path
-            
+
             path_to_track = [p.strip("/") for p in path_to_track]
 
             response = await client.get_commit_changes(project_id, repo_id, commit_id)
@@ -145,7 +144,10 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
             for changed_file in changed_files:
                 file_path = changed_file["item"]["path"]
-                if not any(matches_glob_pattern(file_path, pattern) for pattern in path_to_track):
+                if not any(
+                    matches_glob_pattern(file_path, pattern)
+                    for pattern in path_to_track
+                ):
                     logger.info(
                         f"Skipping file {file_path} as it doesn't match glob patterns {path_to_track}"
                     )
@@ -229,7 +231,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             "kind": Kind.FILE,
             "file": {
                 **changed_file.get("item", {}),
-                "path": changed_file["item"]["path"].lstrip("/")
+                "path": changed_file["item"]["path"].lstrip("/"),
             },
             "repo": repo_info,
         }

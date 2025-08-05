@@ -19,6 +19,7 @@ class RecursionLevel(StrEnum):
     ONE_LEVEL = "oneLevel"
     FULL = "full"
 
+
 class PathDescriptor(NamedTuple):
     base_path: str
     recursion: RecursionLevel
@@ -130,10 +131,15 @@ async def generate_file_object_from_repository_file(
             f"Failed to process file {file_metadata.get('path', 'unknown')}: {str(e)}"
         )
         return None
-    
-def is_glob_pattern(pattern):
-    glob_chars = r'(?<!\\)([*?\[\]{}!@+])'
+
+
+def is_glob_pattern(pattern: str) -> bool:
+    glob_chars = r"(?<!\\)([*?\[\]{}!@+])"
     return bool(re.search(glob_chars, pattern))
+
+
+def get_priority(recursion: RecursionLevel) -> int:
+    return RECURSION_PRIORITY.get(recursion, 0)
 
 
 def extract_descriptor_from_pattern(pattern: str) -> PathDescriptor:
@@ -151,7 +157,7 @@ def extract_descriptor_from_pattern(pattern: str) -> PathDescriptor:
 
     for part in parts:
         if is_glob_pattern(part):
-            globstar_pattern = r'(?<!\\)\*\*(?![\*\\])'
+            globstar_pattern = r"(?<!\\)\*\*(?![\*\\])"
             if bool(re.search(globstar_pattern, pattern)):
                 recursion = RecursionLevel.FULL
             else:
@@ -163,7 +169,9 @@ def extract_descriptor_from_pattern(pattern: str) -> PathDescriptor:
     return PathDescriptor(base_path=base_path, recursion=recursion, pattern=pattern)
 
 
-def group_descriptors_by_base(descriptors: List[PathDescriptor]) -> Dict[str, List[PathDescriptor]]:
+def group_descriptors_by_base(
+    descriptors: List[PathDescriptor],
+) -> Dict[str, List[PathDescriptor]]:
     """
     Group multiple PathDescriptors by their base_path.
     """
@@ -190,10 +198,14 @@ def matches_glob_pattern(path: str, pattern: str) -> bool:
     Returns True if the path matches the given glob pattern.
     Supports ** and other extended glob syntax via wcmatch.
     """
-    return glob.globmatch(path.strip("/"), pattern.strip("/"), flags=glob.GLOBSTAR | glob.IGNORECASE)
+    return glob.globmatch(
+        path.strip("/"), pattern.strip("/"), flags=glob.GLOBSTAR | glob.IGNORECASE
+    )
 
 
-def filter_files_by_glob(files: list[dict[str, Any]], pattern: PathDescriptor) -> list[dict[str, Any]]:
+def filter_files_by_glob(
+    files: list[dict[str, Any]], pattern: PathDescriptor
+) -> list[dict[str, Any]]:
     """
     Return only the files that match the given PathDescriptor pattern.
     Skips folders.
