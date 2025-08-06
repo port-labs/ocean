@@ -141,15 +141,15 @@ class GithubFilePattern(BaseModel):
         alias="skipParsing",
         description="Skip parsing the files and just return the raw file content",
     )
-
-
-class GithubFileSelector(Selector):
-    files: list[GithubFilePattern]
     validation_check: bool = Field(
         default=False,
         alias="validationCheck",
         description="Enable validation for this file pattern during pull request processing",
     )
+
+
+class GithubFileSelector(Selector):
+    files: list[GithubFilePattern]
 
 
 class GithubFileResourceConfig(ResourceConfig):
@@ -255,6 +255,12 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
     def __init__(self, context: PortOceanContext):
         logger.info("Initializing Github Integration")
         super().__init__(context)
+
+        # Override the Ocean's default webhook manager with our custom one
+        # This is necessary because we need GithubHandlerMixin which provides
+        # GitManipulationHandler to handle file:// prefixed properties and enable
+        # dynamic switching between JQEntityProcessor and FileEntityProcessor
+        # for GitHub-specific file content processing.
         event_workers_count = context.config.event_workers_count
         ProcessManager = (
             GithubLiveEventsGroupProcessorManager
