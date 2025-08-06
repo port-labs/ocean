@@ -7,11 +7,40 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.26.2 (2025-07-16)
+## 0.27.1 (2025-08-06)
 
 ### Bug Fixes
 
 - Fixed error handling issues around pickle file load
+
+## 0.27.0 (2025-08-03)
+
+### Improvements
+
+- Enhanced webhook event processing with GroupQueue implementation
+
+Introduced GroupQueue to ensure exclusive processing per group while allowing parallel processing across different groups
+Multiple workers can now process webhook events from different groups concurrently, improving throughput
+FIFO ordering is maintained within each group to preserve event sequence integrity
+Added automatic lock timeout mechanism to recover from frozen or hung workers
+Implemented context-based group tracking using ContextVar for cleaner worker-to-group association
+
+- Performance optimizations
+Configurable number of workers per webhook path (event_workers_count)
+Reduced contention by allowing concurrent processing of independent groups
+Improved resource cleanup and state management after processing
+
+## 0.26.3 (2025-08-04)
+
+### Bug Fixes
+
+- Added permissions for the ocean user to access and write to the /app/.config directory for OAuth configuration.
+
+## 0.26.2 (2025-08-03)
+
+### Improvements
+
+- Add posting integration raw data to lakehouse
 
 ## 0.26.1 (2025-07-20)
 

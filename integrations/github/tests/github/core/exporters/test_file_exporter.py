@@ -11,6 +11,7 @@ from github.core.exporters.file_exporter.utils import (
     get_graphql_file_metadata,
     build_batch_file_query,
     match_file_path_against_glob_pattern,
+    group_file_patterns_by_repositories_in_selector,
     MAX_FILE_SIZE,
     GRAPHQL_MAX_FILE_SIZE,
 )
@@ -20,9 +21,12 @@ from github.core.options import (
     FileSearchOptions,
     ListFileSearchOptions,
 )
-from github.helpers.utils import GithubClientType
+from github.helpers.utils import GithubClientType, IgnoredError
 from port_ocean.context.event import event_context
 from typing import AsyncGenerator, List, Dict, Any
+
+from integration import GithubFilePattern, RepositoryBranchMapping
+
 
 TEST_FILE_CONTENT = "Hello, World!"
 TEST_FILE_CONTENT_BASE64 = base64.b64encode(TEST_FILE_CONTENT.encode()).decode()
@@ -77,7 +81,7 @@ TEST_TREE_ENTRIES: List[Dict[str, Any]] = [
     },
 ]
 
-TEST_JSON_CONTENT = '{"name": "test", "value": 123}'
+TEST_JSON_CONTENT = """{"name": "test", "value": 123}"""
 TEST_YAML_CONTENT = "name: test\nvalue: 123"
 
 
@@ -241,9 +245,6 @@ class TestRestFileExporter:
 
         with (
             patch.object(
-                exporter, "get_branch_tree_sha", AsyncMock(return_value="tree-sha")
-            ),
-            patch.object(
                 exporter,
                 "get_tree_recursive",
                 AsyncMock(return_value=TEST_TREE_ENTRIES),
@@ -302,9 +303,6 @@ class TestRestFileExporter:
 
         with (
             patch.object(
-                exporter, "get_branch_tree_sha", AsyncMock(return_value="tree-sha")
-            ),
-            patch.object(
                 exporter,
                 "get_tree_recursive",
                 AsyncMock(return_value=tree_entries_with_sizes),
@@ -339,9 +337,6 @@ class TestRestFileExporter:
         exporter = RestFileExporter(rest_client)
 
         with (
-            patch.object(
-                exporter, "get_branch_tree_sha", AsyncMock(return_value="tree-sha")
-            ),
             patch.object(
                 exporter,
                 "get_tree_recursive",
@@ -423,29 +418,6 @@ class TestRestFileExporter:
 
             assert len(results) == 0
 
-    async def test_get_branch_tree_sha(self, rest_client: GithubRestClient) -> None:
-        exporter = RestFileExporter(rest_client)
-
-        # Fix the mock response structure to match what the method expects
-        branch_response = {
-            "sha": "commit-sha",
-            "commit": {
-                "tree": {
-                    "sha": "tree-sha",
-                }
-            },
-        }
-
-        with patch.object(
-            rest_client, "send_api_request", AsyncMock(return_value=branch_response)
-        ) as mock_request:
-            tree_sha = await exporter.get_branch_tree_sha("repo1", "main")
-
-            assert tree_sha == "tree-sha"
-            mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/commits/main"
-            )
-
     async def test_get_tree_recursive(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
 
@@ -454,11 +426,28 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=tree_response)
         ) as mock_request:
-            tree = await exporter.get_tree_recursive("repo1", "tree-sha")
+            tree = await exporter.get_tree_recursive("repo1", "main")
 
             assert tree == TEST_TREE_ENTRIES
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/tree-sha?recursive=1"
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/main?recursive=1",
+                ignored_errors=[IgnoredError(status=409, message="empty repository")],
+            )
+
+    async def test_get_tree_recursive_empty_repo(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(return_value=None)
+        ) as mock_request:
+            tree = await exporter.get_tree_recursive("repo1", "main")
+
+            assert tree == []
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/main?recursive=1",
+                ignored_errors=[IgnoredError(status=409, message="empty repository")],
             )
 
     async def test_fetch_commit_diff(self, rest_client: GithubRestClient) -> None:
@@ -488,6 +477,94 @@ class TestRestFileExporter:
 
 
 class TestFileExporterUtils:
+    @pytest.mark.asyncio
+    async def test_group_file_patterns_by_repositories_in_selector_no_repos_specified(
+        self,
+    ) -> None:
+        """
+        Test that when a file selector has no repositories specified, it defaults to all available repositories from the exporter.
+        """
+        # Arrange
+        mock_file_pattern = GithubFilePattern(
+            path="**/*.yaml", skipParsing=False, repos=None
+        )
+        files = [mock_file_pattern]
+
+        repo_exporter = MagicMock()
+
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [
+                {"name": "repo1", "default_branch": "main"},
+                {"name": "repo2", "default_branch": "master"},
+            ]
+
+        repo_exporter.get_paginated_resources = mock_paginated_resources
+
+        repo_type = "private"
+
+        # Act
+        result = await group_file_patterns_by_repositories_in_selector(
+            files, repo_exporter, repo_type
+        )
+
+        # Assert
+        assert len(result) == 2
+
+        repo1_result = next(item for item in result if item["repo_name"] == "repo1")
+        repo1_files = repo1_result["files"]
+        assert repo1_files[0]["path"] == "**/*.yaml"
+        assert repo1_files[0]["branch"] == "main"
+        assert repo1_files[0]["skip_parsing"] is False
+
+        repo2_result = next(item for item in result if item["repo_name"] == "repo2")
+        repo2_files = repo2_result["files"]
+        assert repo2_files[0]["path"] == "**/*.yaml"
+        assert repo2_files[0]["branch"] == "master"
+        assert repo2_files[0]["skip_parsing"] is False
+
+    @pytest.mark.asyncio
+    async def test_group_file_patterns_by_repositories_in_selector_with_repos_specified(
+        self,
+    ) -> None:
+        """
+        Test that when a file selector has repositories specified, it uses those repositories.
+        """
+        # Arrange
+        mock_file_pattern = GithubFilePattern(
+            path="**/*.yaml",
+            skipParsing=False,
+            repos=[
+                RepositoryBranchMapping(name="repo3", branch="dev"),
+                RepositoryBranchMapping(name="repo4", branch="main"),
+            ],
+        )
+        files = [mock_file_pattern]
+
+        repo_exporter = MagicMock()  # This should not be used
+        repo_type = "private"
+
+        # Act
+        result = await group_file_patterns_by_repositories_in_selector(
+            files, repo_exporter, repo_type
+        )
+
+        # Assert
+        assert len(result) == 2
+
+        repo3_result = next(item for item in result if item["repo_name"] == "repo3")
+        repo3_files = repo3_result["files"]
+        assert repo3_files[0]["path"] == "**/*.yaml"
+        assert repo3_files[0]["branch"] == "dev"
+        assert repo3_files[0]["skip_parsing"] is False
+
+        repo4_result = next(item for item in result if item["repo_name"] == "repo4")
+        repo4_files = repo4_result["files"]
+        assert repo4_files[0]["path"] == "**/*.yaml"
+        assert repo4_files[0]["branch"] == "main"
+        assert repo4_files[0]["skip_parsing"] is False
+
     def test_decode_content_base64(self) -> None:
         content = decode_content(TEST_FILE_CONTENT_BASE64, "base64")
         assert content == TEST_FILE_CONTENT
