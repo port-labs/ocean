@@ -12,6 +12,7 @@ from github.core.options import ListFolderOptions, SingleFolderOptions
 from github.helpers.utils import IgnoredError, search_for_repositories
 from integration import FolderSelector
 
+# default key in path mapping when branch is not passed
 _DEFAULT_BRANCH = "hard_to_replicate_name"
 
 
