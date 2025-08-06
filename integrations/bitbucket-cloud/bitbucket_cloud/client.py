@@ -2,16 +2,12 @@ from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPError, HTTPStatusError
 from loguru import logger
 from port_ocean.utils import http_async_client
-from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
 from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
-from bitbucket_cloud.helpers.utils import (
-    BitbucketRateLimiterConfig,
-    BitbucketFileRateLimiterConfig,
-)
-from bitbucket_cloud.helpers.token_manager import TokenManager, TokenRateLimiterContext
-import base64
+from bitbucket_cloud.helpers.auth import BitbucketAuthFacade, AbstractAuth
+from bitbucket_cloud.helpers.token_manager import TokenRateLimiterContext, TokenManager
+from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
 
 PULL_REQUEST_STATE = "OPEN"
 PULL_REQUEST_PAGE_SIZE = 50
@@ -35,67 +31,37 @@ class BitbucketClient:
         self.base_url = host
         self.workspace = workspace
         self.client = http_async_client
-        self.token_manager: Optional[TokenManager] = None
-        self.file_token_manager: Optional[TokenManager] = None
-
-        if workspace_token:
-            tokens = [
-                token.strip() for token in workspace_token.split(",") if token.strip()
-            ]
-
-            if not tokens:
-                raise MissingIntegrationCredentialException(
-                    "No valid tokens found in workspace_token. Please provide valid comma-separated tokens."
-                )
-            elif len(tokens) > 1:
-                self.token_manager = TokenManager(
-                    tokens,
-                    BitbucketRateLimiterConfig.LIMIT,
-                    BitbucketRateLimiterConfig.WINDOW,
-                )
-                self.file_token_manager = TokenManager(
-                    tokens,
-                    BitbucketFileRateLimiterConfig.LIMIT,
-                    BitbucketFileRateLimiterConfig.WINDOW,
-                )
-                self.headers = self.get_headers(
-                    bearer_token=self.token_manager.current_token
-                )
-                logger.info(
-                    f"Initialized BitbucketClient with {len(tokens)} tokens for rotation"
-                )
-            else:
-                single_token = tokens[0]
-                self.headers = self.get_headers(bearer_token=single_token)
-                logger.info("Initialized BitbucketClient with single token")
-        elif app_password and username:
-            self.encoded_credentials = base64.b64encode(
-                f"{username}:{app_password}".encode()
-            ).decode()
-            self.headers = self.get_headers(basic_auth=self.encoded_credentials)
-            logger.info(
-                "Initialized BitbucketClient with username/password authentication"
-            )
-        else:
-            raise MissingIntegrationCredentialException(
-                "Either workspace token or both username and app password must be provided"
-            )
+        
+        # Initialize authentication using the facade
+        self.auth: AbstractAuth = BitbucketAuthFacade.create(
+            username=username,
+            app_password=app_password,
+            workspace_token=workspace_token,
+        )
+        
+        # Set headers from authentication
+        self.headers = self.auth.get_headers().dict(by_alias=True)
         self.client.headers.update(self.headers)
-
-    def get_headers(
-        self, bearer_token: Optional[str] = None, basic_auth: Optional[str] = None
-    ) -> dict[str, str]:
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
-
-        if bearer_token:
-            headers["Authorization"] = f"Bearer {bearer_token}"
-        elif basic_auth:
-            headers["Authorization"] = f"Basic {basic_auth}"
-
-        return headers
+    
+    @property
+    def token_manager(self) -> Optional[TokenManager]:
+        """Get the token manager if using multi-token authentication."""
+        if hasattr(self.auth, 'token_manager'):
+            return self.auth.token_manager
+        return None
+    
+    @token_manager.setter
+    def token_manager(self, value: TokenManager) -> None:
+        """Set the token manager for testing purposes."""
+        if hasattr(self.auth, 'token_manager'):
+            self.auth._token_manager = value
+    
+    @property
+    def file_token_manager(self) -> Optional[TokenManager]:
+        """Get the file token manager if using multi-token authentication."""
+        if hasattr(self.auth, 'file_token_manager'):
+            return self.auth.file_token_manager
+        return None
 
     def _update_authorization_header(self, token: str) -> None:
         """Update the authorization header with a new token."""
@@ -151,8 +117,8 @@ class BitbucketClient:
                 "pagelen": PAGE_SIZE,
             }
         while True:
-            if self.token_manager:
-                async with TokenRateLimiterContext(self.token_manager) as ctx:
+            if hasattr(self.auth, 'token_manager') and self.auth.token_manager:
+                async with TokenRateLimiterContext(self.auth.token_manager) as ctx:
                     current_token = ctx.get_token()
                     self._update_authorization_header(current_token)
                     response = await self._send_api_request(
@@ -178,8 +144,8 @@ class BitbucketClient:
         return_full_response: bool = False,
     ) -> Any:
         """Send file-specific API request with dedicated file rate limiter."""
-        if self.file_token_manager:
-            async with TokenRateLimiterContext(self.file_token_manager) as ctx:
+        if hasattr(self.auth, 'file_token_manager') and self.auth.file_token_manager:
+            async with TokenRateLimiterContext(self.auth.file_token_manager) as ctx:
                 current_token = ctx.get_token()
                 self._update_authorization_header(current_token)
                 response = await self._send_api_request(

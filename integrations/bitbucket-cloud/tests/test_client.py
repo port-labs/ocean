@@ -332,27 +332,31 @@ async def test_token_manager_rotation() -> None:
 
 
 @pytest.mark.asyncio
-async def test_fetch_with_token_rotation(mock_client: BitbucketClient) -> None:
+async def test_fetch_with_token_rotation() -> None:
     """Test that fetch_paginated_api_with_rate_limiter works with token rotation."""
-    # Mock multiple tokens
-    mock_client.token_manager = TokenManager(["token1", "token2"], 100, 100)
+    # Create a client with multiple tokens
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        workspace_token="token1,token2",
+    )
 
     mock_data = {"values": [{"id": 1}, {"id": 2}], "next": None}
 
     async with event_context("test_event"):
         with (
             patch.object(
-                mock_client, "_send_api_request", new_callable=AsyncMock
+                client, "_send_api_request", new_callable=AsyncMock
             ) as mock_request,
             patch.object(
-                mock_client, "_update_authorization_header"
+                client, "_update_authorization_header"
             ) as mock_update_header,
         ):
             mock_request.return_value = mock_data
 
             batches = []
-            async for batch in mock_client._fetch_paginated_api_with_rate_limiter(
-                f"{mock_client.base_url}/test/endpoint"
+            async for batch in client._fetch_paginated_api_with_rate_limiter(
+                f"{client.base_url}/test/endpoint"
             ):
                 batches.append(batch)
 
@@ -402,38 +406,32 @@ async def test_token_rate_limiter_context_direct_usage() -> None:
 
 @pytest.mark.asyncio
 async def test_get_headers() -> None:
-    """Test the get_headers method with different authentication types."""
+    """Test the authentication headers with different authentication types."""
+    # Test bearer token headers
     client = BitbucketClient(
         workspace="test_workspace",
         host="https://api.bitbucket.org/2.0",
         workspace_token="test_token",
     )
-
-    # Test bearer token headers
-    bearer_headers = client.get_headers(bearer_token="test_bearer_token")
     expected_bearer = {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Authorization": "Bearer test_bearer_token",
+        "Authorization": "Bearer test_token",
     }
-    assert bearer_headers == expected_bearer
+    assert client.headers == expected_bearer
 
     # Test basic auth headers
-    basic_headers = client.get_headers(basic_auth="encoded_credentials")
-    expected_basic = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "Authorization": "Basic encoded_credentials",
-    }
-    assert basic_headers == expected_basic
-
-    # Test no auth headers
-    no_auth_headers = client.get_headers()
-    expected_no_auth = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
-    assert no_auth_headers == expected_no_auth
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        username="test_user",
+        app_password="test_password",
+    )
+    # Basic auth headers should contain Authorization with Basic prefix
+    assert "Authorization" in client.headers
+    assert client.headers["Authorization"].startswith("Basic ")
+    assert client.headers["Accept"] == "application/json"
+    assert client.headers["Content-Type"] == "application/json"
 
 
 @pytest.mark.asyncio
