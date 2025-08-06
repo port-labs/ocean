@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.4-beta (2025-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
+
+
+## 0.1.3-beta (2025-08-05)
+
+
+### Improvements
+
+- Updated `spec.yaml` to enable ocean sass and categorize exporter to correct section
+
+
 ## 0.1.2-beta (2025-08-04)
 
 
