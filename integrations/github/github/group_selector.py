@@ -46,18 +46,18 @@ def primary_id(event: WebhookEvent) -> str | None:
     Return the most relevant entity‑ID for a GitHub webhook / Events API object.
     """
     event_type = (
-        event.headers.get("x-github-event")  # when you kept the HTTP header
-        or event.payload.get("type")  # REST Events API objects
-        or event.payload.get("event")  # some tooling puts it here
+        event.headers.get("x-github-event")
+        or event.payload.get("type")
+        or event.payload.get("event")
     )
     if event_type in ENTITY_ID:
         try:
             event_id = str(ENTITY_ID[event_type](event.payload))
             return f"{event_type}-{event_id}"
         except (KeyError, TypeError):
-            pass  # malformed payload – fall through to heuristic
+            pass
 
-    # --- fallback heuristic: first sensible "number / id / sha" we see ---
+
     stack = [event]
     while stack:
         node = stack.pop()
@@ -68,4 +68,4 @@ def primary_id(event: WebhookEvent) -> str | None:
                 stack.append(v)
         elif isinstance(node, list):
             stack.extend(node)
-    return None  # couldn't decide
+    return None

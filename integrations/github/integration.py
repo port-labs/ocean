@@ -145,7 +145,11 @@ class GithubFilePattern(BaseModel):
 
 class GithubFileSelector(Selector):
     files: list[GithubFilePattern]
-
+    validation_check: bool = Field(
+        default=False,
+        alias="validationCheck",
+        description="Enable validation for this file pattern during pull request processing",
+    )
 
 class GithubFileResourceConfig(ResourceConfig):
     kind: Literal["file"]
@@ -251,11 +255,11 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
         logger.info("Initializing Github Integration")
         super().__init__(context)
 
-        # Override the Ocean's default webhook manager with our custom one
-        # This is necessary because we need GithubHandlerMixin which provides
-        # GitManipulationHandler to handle file:// prefixed properties and enable
-        # dynamic switching between JQEntityProcessor and FileEntityProcessor
-        # for GitHub-specific file content processing.
+
+
+
+
+
 
         event_workers_count = context.config.event_workers_count
 
