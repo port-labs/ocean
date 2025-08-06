@@ -24,6 +24,18 @@ from github.helpers.utils import ObjectKind
 FILE_PROPERTY_PREFIX = "file://"
 
 
+class GithubRepositorySelector(Selector):
+    include: Optional[Literal["collaborators", "teams"]] = Field(
+        default=None,
+        description="Specify the relationship to include in the repository",
+    )
+
+
+class GithubRepositoryConfig(ResourceConfig):
+    selector: GithubRepositorySelector
+    kind: Literal["repository"]
+
+
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
         description="Specify the repository name",
@@ -120,6 +132,11 @@ class GithubFilePattern(BaseModel):
         alias="skipParsing",
         description="Skip parsing the files and just return the raw file content",
     )
+    validation_check: bool = Field(
+        default=False,
+        alias="validationCheck",
+        description="Enable validation for this file pattern during pull request processing",
+    )
 
 
 class GithubFileSelector(Selector):
@@ -134,7 +151,8 @@ class GithubFileResourceConfig(ResourceConfig):
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
-        GithubPullRequestConfig
+        GithubRepositoryConfig
+        | GithubPullRequestConfig
         | GithubIssueConfig
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig

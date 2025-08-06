@@ -1,4 +1,4 @@
-from pydantic import Field, BaseModel, validator
+from pydantic import Field, BaseModel
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.webhook.processor_manager import (
@@ -59,6 +59,7 @@ class FilePattern(BaseModel):
         Explicit file path(s) to fetch. Can be a single path or list of paths.
 
         Examples of valid paths:
+        Literal Paths:
         - "src/config.yaml"
         - "deployment/helm/values.yaml"
         - "config/settings.json"
@@ -67,57 +68,21 @@ class FilePattern(BaseModel):
         - "src/main.py"
         - "images/logo.png"
 
-        Invalid paths:
-        - "*" : glob patterns not allowed
-        - "*.yaml" : glob patterns not allowed
-        - "src/*.js" : glob patterns not allowed
-        - "config/**/*.yaml" : glob patterns not allowed
-        - "**/*" : glob patterns not allowed
-        - "**" : glob patterns not allowed
+        Glob patterns:
+        - "*"
+        - "*.yaml"
+        - "src/*.js"
+        - "config/**/*.yaml"
+        - "**/*"
+        - "**"
 
-        Each path must be an explicit file path relative to the repository root.
-        Glob patterns are not supported to prevent overly broad file fetching.
+        Each path can be an explicit file path relative to the repository root or a glob pattern.
         """,
     )
     repos: Optional[List[str]] = Field(
         default=None,
         description="List of repository names to scan. If None, scans all repositories.",
     )
-
-    @validator("path", allow_reuse=True)
-    def validate_path_patterns(cls, v: Union[str, List[str]]) -> Union[str, List[str]]:
-        patterns = [v] if isinstance(v, str) else v
-
-        if not patterns:
-            raise ValueError("At least one file path must be specified")
-
-        invalid_chars = {"*", "?", "[", "]", "{", "}", "**"}
-        valid_paths = []
-
-        for path in patterns:
-            # Skip empty paths
-            if not path or not path.strip():
-                continue
-
-            # Remove leading/trailing slashes and spaces
-            cleaned_path = path.strip().strip("/")
-
-            # Check for invalid glob characters
-            if any(char in cleaned_path for char in invalid_chars):
-                raise ValueError(
-                    f"Path '{path}' contains glob patterns which are not allowed. "
-                    "Please provide explicit file paths like 'src/config.yaml' or 'docs/README.md'"
-                )
-
-            valid_paths.append(cleaned_path)
-
-        if not valid_paths:
-            raise ValueError(
-                "No valid file paths provided. Please provide explicit file paths "
-                "like 'src/config.yaml' or 'docs/README.md'"
-            )
-
-        return valid_paths
 
 
 class AzureDevopsFileSelector(Selector):
@@ -126,7 +91,7 @@ class AzureDevopsFileSelector(Selector):
     files: FilePattern = Field(
         description="""Configuration for file selection and scanning.
 
-        Specify explicit file paths to fetch from repositories.
+        Specify file paths to fetch from repositories.
         Example:
         ```yaml
         selector:

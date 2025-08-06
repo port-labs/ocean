@@ -58,6 +58,30 @@ def resource_config() -> ResourceConfig:
 
 
 @pytest.fixture
+def issue_resource_config() -> ResourceConfig:
+    # Create a mock selector with the required generate_request_params method
+    class MockIssueSelector(Selector):
+        def generate_request_params(self) -> dict[str, Any]:
+            return {}
+
+    return ResourceConfig(
+        kind="issues",
+        selector=MockIssueSelector(query="test"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".name",
+                    blueprint='"issue"',
+                    properties={},
+                    relations={},
+                )
+            )
+        ),
+    )
+
+
+@pytest.fixture
 def mock_context(monkeypatch: Any) -> MagicMock:
     mock_context = MagicMock()
     monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_context)
@@ -143,7 +167,7 @@ async def test_issue_get_matching_kinds(
 
 @pytest.mark.asyncio
 async def test_issue_handle_event(
-    issue_processor: IssueWebhookProcessor, resource_config: ResourceConfig
+    issue_processor: IssueWebhookProcessor, issue_resource_config: ResourceConfig
 ) -> None:
     with patch(
         "webhook_processors.issue_webhook_processor.init_sonar_client"
@@ -156,9 +180,9 @@ async def test_issue_handle_event(
         test_issues = [[{"issue": "1"}, {"issue": "2"}], [{"issue": "3"}]]
 
         async def mock_issues_generator(
-            project: Dict[str, Any]
+            component: Dict[str, Any], query_params: Dict[str, Any] = {}
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-            assert project == mock_component
+            assert component == mock_component
             for batch in test_issues:
                 yield batch
 
@@ -166,13 +190,13 @@ async def test_issue_handle_event(
         mock_init.return_value = mock_client
 
         result = await issue_processor.handle_event(
-            {"project": "test-project-key"}, resource_config
+            {"project": "test-project-key"}, issue_resource_config
         )
 
         mock_client.get_single_component.assert_awaited_once_with("test-project-key")
 
         expected_issues = []
-        async for batch in mock_issues_generator(mock_component):
+        async for batch in mock_issues_generator(mock_component, {}):
             expected_issues.extend(batch)
 
         assert len(result.updated_raw_results) == 3

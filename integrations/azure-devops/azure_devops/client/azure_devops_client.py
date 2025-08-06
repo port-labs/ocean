@@ -16,7 +16,14 @@ from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
 
 from azure_devops.client.file_processing import (
+    PathDescriptor,
+    RecursionLevel,
+    extract_descriptor_from_pattern,
+    get_priority,
+    group_descriptors_by_base,
+    filter_files_by_glob,
     parse_file_content,
+    separate_glob_and_literal_paths,
 )
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -622,23 +629,84 @@ class AzureDevopsClient(HTTPBaseClient):
             return
 
         branch = branch.replace("refs/heads/", "")
-        project_id = repository["project"]["id"]
-        repository_id = repository["id"]
 
-        items_batch_url = f"{self._organization_base_url}/{project_id}/_apis/git/repositories/{repository_id}/itemsbatch"
-        logger.debug(f"Items batch URL: {items_batch_url}")
+        files = []
+        literal_paths, glob_patterns = separate_glob_and_literal_paths(paths)
 
+        if literal_paths:
+            files += await self._get_files_by_explicit_paths(
+                repository, literal_paths, branch
+            )
+
+        if glob_patterns:
+            descriptors = [extract_descriptor_from_pattern(p) for p in glob_patterns]
+            grouped = group_descriptors_by_base(descriptors)
+
+            for base_path, group in grouped.items():
+                recursion = sorted({d.recursion for d in group}, key=get_priority)[-1]
+                descriptor = [
+                    PathDescriptor(
+                        base_path=base_path,
+                        recursion=recursion,
+                        pattern=group[0].pattern,
+                    )
+                ]
+                raw_files = await self._get_files_by_descriptors(
+                    repository, descriptor, branch
+                )
+                matched = filter_files_by_glob(raw_files, descriptor[0])
+                files += matched
+
+        logger.info(f"Found {len(files)} files in repository {repository['name']}")
+
+        downloaded_files = await process_in_queue(
+            files,
+            self.download_single_file,
+            repository,
+            branch,
+            concurrency=MAX_CONCURRENT_FILE_DOWNLOADS,
+        )
+
+        for file in downloaded_files:
+            yield [file]
+
+    async def _get_files_by_explicit_paths(
+        self,
+        repository: dict[str, Any],
+        paths: list[str],
+        branch: str,
+    ) -> list[dict[str, Any]]:
         item_descriptors = [
-            {
-                "path": path if path.startswith("/") else f"/{path}",
-                "recursionLevel": "none",
-                "versionDescriptor": {"version": branch, "versionType": "branch"},
-            }
+            PathDescriptor(
+                base_path=path if path.startswith("/") else f"/{path}",
+                recursion=RecursionLevel.NONE,
+                pattern=path,
+            )
             for path in paths
         ]
+        return await self._get_files_by_descriptors(
+            repository, item_descriptors, branch
+        )
+
+    async def _get_files_by_descriptors(
+        self,
+        repository: dict[str, Any],
+        descriptors: list[PathDescriptor],
+        branch: str,
+    ) -> list[dict[str, Any]]:
+        project_id = repository["project"]["id"]
+        repository_id = repository["id"]
+        items_batch_url = f"{self._organization_base_url}/{project_id}/_apis/git/repositories/{repository_id}/itemsbatch"
 
         request_data = {
-            "itemDescriptors": item_descriptors,
+            "itemDescriptors": [
+                {
+                    "path": d.base_path,
+                    "recursionLevel": d.recursion,
+                    "versionDescriptor": {"version": branch, "versionType": "branch"},
+                }
+                for d in descriptors
+            ],
             "includeContentMetadata": True,
             "latestProcessedChange": True,
         }
@@ -651,47 +719,23 @@ class AzureDevopsClient(HTTPBaseClient):
                 data=json.dumps(request_data),
                 headers={"Content-Type": "application/json"},
             )
-
-            if response is None:
-                logger.warning(
-                    f"No response from itemsbatch API for repository {repository['name']}"
-                )
-                return
-
-            if response.status_code == 400:
-                logger.warning(
-                    f"Bad request (400) for repository {repository['name']}: {response.json().get('message')}"
-                )
-                return
+            if not response or response.status_code >= 400:
+                logger.warning(f"Failed to fetch items from {items_batch_url}")
+                return []
 
             batch_results = response.json()
-
-            # Flatten nested arrays to get a single list of file dictionaries
-            files = [
-                file_info
-                for sublist in batch_results.get("value", [])
-                for file_info in sublist
+            return [
+                file for sublist in batch_results.get("value", []) for file in sublist
             ]
-            logger.info(f"Found {len(files)} files in repository {repository['name']}")
-
-            downloaded_files = await process_in_queue(
-                files,
-                self.download_single_file,
-                repository,
-                branch,
-                concurrency=MAX_CONCURRENT_FILE_DOWNLOADS,
-            )
-
-            for file in downloaded_files:
-                yield [file]
 
         except HTTPStatusError as e:
             logger.error(e.response.status_code)
             logger.error(e.response.text)
             if e.response.status_code == 400:
                 logger.warning(
-                    f"None of the paths {paths} were found in repository {repository['name']}"
+                    f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
                 )
+                return []
             else:
                 raise
         except Exception as e:
