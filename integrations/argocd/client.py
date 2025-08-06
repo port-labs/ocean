@@ -20,6 +20,8 @@ class ResourceKindsWithSpecialHandling(StrEnum):
 
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
 
+PAGE_SIZE = 100
+
 
 class ArgocdClient:
     def __init__(
@@ -95,7 +97,7 @@ class ArgocdClient:
 
     async def get_deployment_history(
         self,
-    ) -> AsyncGenerator[dict[str, Any], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """The ArgoCD application route returns a history of all deployments. This function reuses the output of the application endpoint"""
         logger.warning(
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
@@ -106,9 +108,18 @@ class ArgocdClient:
                 "No applications were found. Skipping deployment history ingestion"
             )
         else:
+            batch: list[dict[str, Any]] = []
             for application in applications:
                 history = application.get("status", {}).get("history", [])
-                yield history
+                if history:
+                    for item in history:
+                        batch.append(item)
+                        if len(batch) >= PAGE_SIZE:
+                            yield batch
+                            batch = []
+
+            if batch:
+                yield batch
 
     async def get_kubernetes_resource(
         self,
@@ -124,12 +135,14 @@ class ArgocdClient:
             )
             return
 
+        batch: list[dict[str, Any]] = []
         for app in applications:
             if not app["metadata"]["uid"]:
                 logger.warning(
                     f"Skipping application without UID: {app.get('metadata', {}).get('name', 'unknown')}"
                 )
                 continue
+
             resources = [
                 {
                     **resource,
@@ -138,7 +151,15 @@ class ArgocdClient:
                 for resource in app.get("status", {}).get("resources", [])
                 if resource
             ]
-            yield resources
+
+            for resource in resources:
+                batch.append(resource)
+                if len(batch) >= PAGE_SIZE:
+                    yield batch
+                    batch = []
+
+        if batch:
+            yield batch
 
     async def get_managed_resources(
         self, application: dict[str, Any]
@@ -151,15 +172,23 @@ class ArgocdClient:
             )
             url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
             managed_resources = (await self._send_api_request(url=url)).get("items", [])
-            resources: list[dict[str, Any]] = [
-                {
-                    **managed_resource,
-                    "__application": application,
-                }
-                for managed_resource in managed_resources
-                if managed_resource
-            ]
-            yield resources
+
+            batch: list[dict[str, Any]] = []
+            for managed_resource in managed_resources:
+                if managed_resource:
+                    resource = {
+                        **managed_resource,
+                        "__application": application,
+                    }
+                    batch.append(resource)
+
+                    if len(batch) >= PAGE_SIZE:
+                        yield batch
+                        batch = []
+
+            if batch:
+                yield batch
+
         except Exception as e:
             logger.error(
                 f"Failed to fetch managed resources for application {application['metadata']['name']}: {e}"
