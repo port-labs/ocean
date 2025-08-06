@@ -40,6 +40,10 @@ class TestSentryRateLimiter:
         # The response for the upcoming request should be successful (not 429).
         response = create_autospec(httpx.Response, instance=True)
         response.status_code = 200
+        response.headers = {
+            "X-Sentry-Rate-Limit-Remaining": "1",
+            "X-Sentry-Rate-Limit-Reset": str(reset_time),
+        }
         mock_client.get.return_value = response
 
         # 2. Execution: Patch time.time() to have a predictable sleep duration.

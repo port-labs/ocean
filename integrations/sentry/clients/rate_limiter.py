@@ -89,14 +89,15 @@ class SentryRateLimiter:
         exc_tb: Optional[Any],
     ) -> Optional[bool]:
         """
-        Handles 429 responses and backoff logic.
+        Handles 429 responses and backoff logic, ensuring the semaphore is always released.
         """
         try:
             if self._last_response and self._last_response.status_code == 429:
                 self._retries += 1
                 if self._retries > self._maximum_retries:
                     logger.error("Max retries exceeded for rate-limited request.")
-                    self._last_response.raise_for_status()
+                    # Allow the original 429 exception to be raised by returning False
+                    return False
 
                 sleep_time = self._get_sleep_retry_duration(
                     self._last_response, self._retries
@@ -104,24 +105,18 @@ class SentryRateLimiter:
                 logger.info(
                     f"Retrying request after {sleep_time:.2f} seconds due to 429."
                 )
-                self._semaphore.release()
                 await asyncio.sleep(sleep_time)
+                # Suppress the exception and signal the context manager to retry
                 return True
 
             if self._last_response:
                 await self._update_rate_limit_state(self._last_response)
 
-            if exc_type and exc_type is not httpx.HTTPStatusError:
-                self._semaphore.release()
-                return False
-
-        except Exception as e:
-            logger.error(f"Error in aexit: {e}")
-            self._semaphore.release()
+            # For any other exception, allow it to propagate
             return False
 
-        self._semaphore.release()
-        return False
+        finally:
+            self._semaphore.release()
 
     async def _update_rate_limit_state(self, response: httpx.Response) -> None:
         """Updates the internal rate limit state from response headers."""
