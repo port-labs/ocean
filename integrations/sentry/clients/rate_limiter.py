@@ -166,7 +166,7 @@ class SentryRateLimiter:
         self._maximum_sleep_duration.
         """
         # 1. Default to exponential backoff as the base sleep duration.
-        #    The retry_count is passed in for this calculation.
+        #    The number of retries is used for this calculation. (2^1, 2^2, ...)
         sleep_duration = 2**self._retries
         log_reason = f"exponential backoff, resulting in {sleep_duration:.2f}s"
 
