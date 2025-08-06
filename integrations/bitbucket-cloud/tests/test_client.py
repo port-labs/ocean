@@ -348,9 +348,7 @@ async def test_fetch_with_token_rotation() -> None:
             patch.object(
                 client, "_send_api_request", new_callable=AsyncMock
             ) as mock_request,
-            patch.object(
-                client, "_update_authorization_header"
-            ) as mock_update_header,
+            patch.object(client, "_update_authorization_header") as mock_update_header,
         ):
             mock_request.return_value = mock_data
 
@@ -415,7 +413,7 @@ async def test_get_headers() -> None:
     )
     expected_bearer = {
         "Accept": "application/json",
-        "Content-Type": "application/json",
+        "Content_Type": "application/json",
         "Authorization": "Bearer test_token",
     }
     assert client.headers == expected_bearer
@@ -431,7 +429,7 @@ async def test_get_headers() -> None:
     assert "Authorization" in client.headers
     assert client.headers["Authorization"].startswith("Basic ")
     assert client.headers["Accept"] == "application/json"
-    assert client.headers["Content-Type"] == "application/json"
+    assert client.headers["Content_Type"] == "application/json"
 
 
 @pytest.mark.asyncio

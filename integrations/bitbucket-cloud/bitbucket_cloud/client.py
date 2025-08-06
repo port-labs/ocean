@@ -31,35 +31,35 @@ class BitbucketClient:
         self.base_url = host
         self.workspace = workspace
         self.client = http_async_client
-        
+
         # Initialize authentication using the facade
         self.auth: AbstractAuth = BitbucketAuthFacade.create(
             username=username,
             app_password=app_password,
             workspace_token=workspace_token,
         )
-        
+
         # Set headers from authentication
         self.headers = self.auth.get_headers().dict(by_alias=True)
         self.client.headers.update(self.headers)
-    
+
     @property
     def token_manager(self) -> Optional[TokenManager]:
         """Get the token manager if using multi-token authentication."""
-        if hasattr(self.auth, 'token_manager'):
+        if hasattr(self.auth, "token_manager"):
             return self.auth.token_manager
         return None
-    
+
     @token_manager.setter
     def token_manager(self, value: TokenManager) -> None:
         """Set the token manager for testing purposes."""
-        if hasattr(self.auth, 'token_manager'):
+        if hasattr(self.auth, "_token_manager"):
             self.auth._token_manager = value
-    
+
     @property
     def file_token_manager(self) -> Optional[TokenManager]:
         """Get the file token manager if using multi-token authentication."""
-        if hasattr(self.auth, 'file_token_manager'):
+        if hasattr(self.auth, "file_token_manager"):
             return self.auth.file_token_manager
         return None
 
@@ -117,7 +117,7 @@ class BitbucketClient:
                 "pagelen": PAGE_SIZE,
             }
         while True:
-            if hasattr(self.auth, 'token_manager') and self.auth.token_manager:
+            if hasattr(self.auth, "token_manager") and self.auth.token_manager:
                 async with TokenRateLimiterContext(self.auth.token_manager) as ctx:
                     current_token = ctx.get_token()
                     self._update_authorization_header(current_token)
@@ -144,7 +144,7 @@ class BitbucketClient:
         return_full_response: bool = False,
     ) -> Any:
         """Send file-specific API request with dedicated file rate limiter."""
-        if hasattr(self.auth, 'file_token_manager') and self.auth.file_token_manager:
+        if hasattr(self.auth, "file_token_manager") and self.auth.file_token_manager:
             async with TokenRateLimiterContext(self.auth.file_token_manager) as ctx:
                 current_token = ctx.get_token()
                 self._update_authorization_header(current_token)
