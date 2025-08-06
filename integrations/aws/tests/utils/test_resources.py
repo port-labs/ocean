@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from botocore.exceptions import ClientError
 from utils.misc import CustomProperties, AsyncPaginator
 from utils.resources import (
     resync_custom_kind,
@@ -226,13 +227,9 @@ async def test_resync_custom_kind_yields_empty_list_when_permission_denied(
     mock_account_id: str,
 ) -> None:
     """Test that resync_custom_kind yields empty list on permission denied."""
-    from botocore.exceptions import ClientError
-
-    # Arrange
-    error_response = {"Error": {"Code": "AccessDenied"}}
     mock_client = AsyncMock()
     mock_client.describe_cache_clusters.side_effect = ClientError(
-        error_response, "DescribeCacheClusters"
+        {"Error": {"Code": "AccessDenied"}}, "DescribeCacheClusters"
     )
 
     mock_exceptions = MagicMock()
@@ -270,16 +267,12 @@ async def test_resync_cloudcontrol_yields_empty_list_when_permission_denied(
     mock_account_id: str,
 ) -> None:
     """Test that resync_cloudcontrol yields empty list on permission denied."""
-    from botocore.exceptions import ClientError
-
-    # Arrange
-    error_response = {"Error": {"Code": "AccessDenied"}}
     mock_client = AsyncMock()
 
     mock_paginator = AsyncMock()
 
-    async def mock_paginate_generator(**kwargs):
-        raise ClientError(error_response, "ListResources")
+    async def mock_paginate_generator(**kwargs: Any) -> AsyncGenerator[list[dict[str, Any]], None]:
+        raise ClientError({"Error": {"Code": "AccessDenied"}}, "ListResources")
         yield
 
     mock_paginator.paginate = mock_paginate_generator
@@ -317,17 +310,15 @@ async def test_resync_sqs_queue_yields_empty_list_when_permission_denied(
     mock_account_id: str,
 ) -> None:
     """Test that resync_sqs_queue yields empty list on permission denied."""
-    from botocore.exceptions import ClientError
-
-    # Arrange
-    error_response = {"Error": {"Code": "AccessDenied"}}
     mock_client = AsyncMock()
-    mock_client.list_queues.side_effect = ClientError(error_response, "ListQueues")
+    mock_client.list_queues.side_effect = ClientError(
+        {"Error": {"Code": "AccessDenied"}}, "ListQueues"
+    )
 
     mock_paginator = AsyncMock()
 
-    async def mock_paginate_generator(**kwargs):
-        raise ClientError(error_response, "ListQueues")
+    async def mock_paginate_generator(**kwargs: Any) -> AsyncGenerator[list[dict[str, Any]], None]:
+        raise ClientError({"Error": {"Code": "AccessDenied"}}, "ListQueues")
         yield
 
     mock_paginator.paginate = mock_paginate_generator
@@ -364,16 +355,12 @@ async def test_resync_resource_group_yields_empty_list_when_permission_denied(
     mock_account_id: str,
 ) -> None:
     """Test that resync_resource_group yields empty list on permission denied."""
-    from botocore.exceptions import ClientError
-
-    # Arrange
-    error_response = {"Error": {"Code": "AccessDenied"}}
     mock_client = AsyncMock()
 
     mock_paginator = AsyncMock()
 
-    async def mock_paginate_generator(**kwargs):
-        raise ClientError(error_response, "ListGroups")
+    async def mock_paginate_generator(**kwargs: Any) -> AsyncGenerator[list[dict[str, Any]], None]:
+        raise ClientError({"Error": {"Code": "AccessDenied"}}, "ListGroups")
         yield
 
     mock_paginator.paginate = mock_paginate_generator
@@ -453,13 +440,9 @@ async def test_resync_custom_kind_raises_exception_for_non_permission_errors(
     mock_account_id: str,
 ) -> None:
     """Test that resync_custom_kind raises exceptions for non-permission errors."""
-    from botocore.exceptions import ClientError
-
-    # Arrange
-    error_response = {"Error": {"Code": "SomeOtherError"}}
     mock_client = AsyncMock()
     mock_client.describe_cache_clusters.side_effect = ClientError(
-        error_response, "DescribeCacheClusters"
+        {"Error": {"Code": "SomeOtherError"}}, "DescribeCacheClusters"
     )
 
     mock_exceptions = MagicMock()
