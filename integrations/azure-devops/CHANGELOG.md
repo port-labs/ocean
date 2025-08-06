@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.37 (2025-08-06)
+## 0.2.38 (2025-08-06)
 
 
 ## Improvements
 
 - Added glob pattern support in AzureDevopsClient which allows for path in mapping to be passed as (e.g., `**/*.yaml`, `/src/**/*.json`)
 - Optimized file fetching using itemsbatch API and path descriptors
+
+
+## 0.2.37 (2025-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
 
 
 ## 0.2.36 (2025-08-04)
