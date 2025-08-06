@@ -95,79 +95,44 @@ class ArgocdClient:
 
     async def get_deployment_history(
         self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """The ArgoCD application route returns a history of all deployments. This function reuses the output of the application endpoint"""
-        errors = []
-        try:
-            logger.warning(
-                f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
-            )
-            applications = await self.get_resources(
-                resource_kind=ObjectKind.APPLICATION
-            )
-            if not applications:
-                logger.error(
-                    "No applications were found. Skipping deployment history ingestion"
-                )
-            else:
-                all_history: list[dict[str, Any]] = []
-                for application in applications:
-                    history = application.get("status", {}).get("history", [])
-                    all_history.extend(history)
-
-                logger.debug(
-                    f"Total number of deployment history fetched: {len(all_history)}"
-                )
-                yield all_history
-        except Exception as e:
+        logger.warning(
+            f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
+        )
+        applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        if not applications:
             logger.error(
-                f"Failed to fetch managed resources for application: {e}. Skipping deployment history ingestion"
+                "No applications were found. Skipping deployment history ingestion"
             )
-            errors.append(e)
-
-        if errors and not self.ignore_server_error:
-            raise ExceptionGroup(
-                "Errors occurred during deployment history ingestion", errors
-            )
+        else:
+            for application in applications:
+                history = application.get("status", {}).get("history", [])
+                yield history
 
     async def get_kubernetes_resource(
         self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """The ArgoCD application returns a list of managed kubernetes resources. This function reuses the output of the application endpoint"""
-        errors = []
-        try:
-            logger.warning(
-                f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
-            )
-            applications = await self.get_resources(
-                resource_kind=ObjectKind.APPLICATION
-            )
-            if not applications:
-                logger.error(
-                    "No applications were found. Skipping managed resources ingestion"
-                )
-            else:
-                all_k8s_resources: list[dict[str, Any]] = []
-                for app in applications:
-                    if not app["metadata"]["uid"]:
-                        continue
-                    resources = app.get("status", {}).get("resources", [])
-                    all_k8s_resources.extend(resources)
-
-                logger.debug(
-                    f"Total number of resources fetched: {len(all_k8s_resources)}"
-                )
-                yield all_k8s_resources
-        except Exception as e:
+        logger.warning(
+            f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
+        )
+        applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        if not applications:
             logger.error(
-                f"Failed to fetch kubernetes resources: {e}. Skipping managed resources ingestion"
+                "No applications were found. Skipping managed resources ingestion"
             )
-            errors.append(e)
+            return
 
-        if errors and not self.ignore_server_error:
-            raise ExceptionGroup(
-                "Errors occurred during managed resource ingestion", errors
-            )
+        for app in applications:
+            if not app["metadata"]["uid"]:
+                logger.warning(
+                    f"Skipping application without UID: {app.get('metadata', {}).get('name', 'unknown')}"
+                )
+                continue
+            resources = app.get("status", {}).get("resources", [])
+            for resource in resources:
+                yield resource
 
     async def get_managed_resources(
         self, application: dict[str, Any]
@@ -180,15 +145,11 @@ class ArgocdClient:
             )
             url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
             managed_resources = (await self._send_api_request(url=url)).get("items", [])
-            application_resource = [
-                {
-                    **managed_resource,
-                    "__application": application,
-                }
-                for managed_resource in managed_resources
-                if managed_resource
-            ]
-            yield application_resource
+            for managed_resource in managed_resources:
+                if not managed_resource:
+                    continue
+                managed_resource["__application"] = application
+                yield managed_resource
         except Exception as e:
             logger.error(
                 f"Failed to fetch managed resources for application {application['metadata']['name']}: {e}"

@@ -200,9 +200,9 @@ async def test_get_kubernetes_resource(mock_argocd_client: ArgocdClient) -> None
     ) as mock_request:
         mock_request.return_value = response_data["items"]
         kind = ObjectKind.APPLICATION
-        async for resources in mock_argocd_client.get_kubernetes_resource():
+        async for resource in mock_argocd_client.get_kubernetes_resource():
             mock_request.assert_called_with(resource_kind=kind)
-            assert len(resources) == 1
+            assert isinstance(resource, dict)
 
 
 @pytest.mark.asyncio
@@ -261,18 +261,11 @@ async def test_get_managed_resources(
         mock_request.return_value = response_data
 
         for application in response_data["items"]:
-            async for resources in mock_argocd_client.get_managed_resources(
-                application
-            ):
-                assert resources == [
-                    {
-                        **resource,
-                        "__application": application,
-                    }
-                    for resource in response_data["items"]
-                    if resource
-                ]
-
+            async for resource in mock_argocd_client.get_managed_resources(application):
+                assert (
+                    isinstance(resource, dict)
+                    and resource["__application"] == application
+                )
                 application_name = application["metadata"]["name"]
                 mock_request.assert_called_with(
                     url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
