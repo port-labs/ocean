@@ -99,18 +99,17 @@ class ArgocdClient:
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
-        if applications is None:
+        if not applications:
             logger.error(
                 "No applications were found. Skipping deployment history ingestion"
             )
             return []
         all_history: list[dict[str, Any]] = []
         for application in applications:
-            if not application or not application["metadata"]["uid"]:
+            if not application["metadata"]["uid"]:
                 continue
             history = application.get("status", {}).get("history", [])
-            if history:
-                all_history.extend(history)
+            all_history.extend(history)
 
         logger.debug(f"Total number of deployment history fetched: {len(all_history)}")
         return all_history
@@ -121,7 +120,7 @@ class ArgocdClient:
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
-        if applications is None:
+        if not applications:
             logger.error(
                 "No applications were found. Skipping managed resources ingestion"
             )
@@ -129,11 +128,10 @@ class ArgocdClient:
 
         all_k8s_resources: list[dict[str, Any]] = []
         for app in applications:
-            if not app or not app["metadata"]["uid"]:
+            if not app["metadata"]["uid"]:
                 continue
             resources = app.get("status", {}).get("resources", [])
-            if resources:
-                all_k8s_resources.extend(resources)
+            all_k8s_resources.extend(resources)
 
         logger.debug(f"Total number of resources fetched: {len(all_k8s_resources)}")
         return all_k8s_resources
