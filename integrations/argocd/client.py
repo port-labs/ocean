@@ -112,7 +112,7 @@ class ArgocdClient:
 
     async def get_kubernetes_resource(
         self,
-    ) -> AsyncGenerator[dict[str, Any], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """The ArgoCD application returns a list of managed kubernetes resources. This function reuses the output of the application endpoint"""
         logger.warning(
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
@@ -123,7 +123,6 @@ class ArgocdClient:
                 "No applications were found. Skipping managed resources ingestion"
             )
             return
-            return
 
         for app in applications:
             if not app["metadata"]["uid"]:
@@ -131,9 +130,15 @@ class ArgocdClient:
                     f"Skipping application without UID: {app.get('metadata', {}).get('name', 'unknown')}"
                 )
                 continue
-            resources = app.get("status", {}).get("resources", [])
-            for resource in resources:
-                yield resource
+            resources = [
+                {
+                    **resource,
+                    "__application": app,
+                }
+                for resource in app.get("status", {}).get("resources", [])
+                if resource
+            ]
+            yield resources
 
     async def get_managed_resources(
         self, application: dict[str, Any]
@@ -146,11 +151,15 @@ class ArgocdClient:
             )
             url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
             managed_resources = (await self._send_api_request(url=url)).get("items", [])
-            for managed_resource in managed_resources:
-                if not managed_resource:
-                    continue
-                managed_resource["__application"] = application
-                yield managed_resource
+            resources: list[dict[str, Any]] = [
+                {
+                    **managed_resource,
+                    "__application": application,
+                }
+                for managed_resource in managed_resources
+                if managed_resource
+            ]
+            yield resources
         except Exception as e:
             logger.error(
                 f"Failed to fetch managed resources for application {application['metadata']['name']}: {e}"

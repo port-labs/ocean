@@ -36,7 +36,7 @@ async def on_history_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_managed_k8s_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
     async for resources in argocd_client.get_kubernetes_resource():
-        yield [resources]
+        yield resources
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.MANAGED_RESOURCE)
