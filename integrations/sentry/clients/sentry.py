@@ -115,7 +115,6 @@ class SentryClient:
                 response = await self._client.request(
                     method, full_url, params=params, headers=self.base_headers, **kwargs
                 )
-                self._rate_limiter._last_response = response
                 response.raise_for_status()
                 return response
             except httpx.HTTPStatusError as e:
