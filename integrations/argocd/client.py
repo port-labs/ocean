@@ -123,6 +123,7 @@ class ArgocdClient:
                 "No applications were found. Skipping managed resources ingestion"
             )
             return
+            return
 
         for app in applications:
             if not app["metadata"]["uid"]:
