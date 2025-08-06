@@ -271,7 +271,9 @@ async def test_resync_cloudcontrol_yields_empty_list_when_permission_denied(
 
     mock_paginator = AsyncMock()
 
-    async def mock_paginate_generator(**kwargs: Any) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def mock_paginate_generator(
+        **kwargs: Any,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         raise ClientError({"Error": {"Code": "AccessDenied"}}, "ListResources")
         yield
 
@@ -317,7 +319,9 @@ async def test_resync_sqs_queue_yields_empty_list_when_permission_denied(
 
     mock_paginator = AsyncMock()
 
-    async def mock_paginate_generator(**kwargs: Any) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def mock_paginate_generator(
+        **kwargs: Any,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         raise ClientError({"Error": {"Code": "AccessDenied"}}, "ListQueues")
         yield
 
@@ -359,7 +363,9 @@ async def test_resync_resource_group_yields_empty_list_when_permission_denied(
 
     mock_paginator = AsyncMock()
 
-    async def mock_paginate_generator(**kwargs: Any) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def mock_paginate_generator(
+        **kwargs: Any,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         raise ClientError({"Error": {"Code": "AccessDenied"}}, "ListGroups")
         yield
 
