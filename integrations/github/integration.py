@@ -151,6 +151,7 @@ class GithubFileSelector(Selector):
         description="Enable validation for this file pattern during pull request processing",
     )
 
+
 class GithubFileResourceConfig(ResourceConfig):
     kind: Literal["file"]
     selector: GithubFileSelector
@@ -254,21 +255,12 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
     def __init__(self, context: PortOceanContext):
         logger.info("Initializing Github Integration")
         super().__init__(context)
-
-
-
-
-
-
-
         event_workers_count = context.config.event_workers_count
-
         ProcessManager = (
             GithubLiveEventsGroupProcessorManager
             if event_workers_count > 1
             else GithubLiveEventsProcessorManager
         )
-
         self.context.app.webhook_manager = ProcessManager(
             self.context.app.integration_router,
             signal_handler,
