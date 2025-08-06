@@ -98,8 +98,8 @@ class SentryRateLimiter:
         """
         try:
             if self._is_rate_limit_error(exc_val):
-                response = cast(httpx.Response, exc_val.response)
-                return self._handle_rate_limit(response)
+                response = cast(httpx.HTTPStatusError, exc_val).response
+                return await self._handle_rate_limit(response)
             return False
 
         finally:
@@ -157,9 +157,7 @@ class SentryRateLimiter:
                     f"ResetAt={time.ctime(self._rate_limit_reset)}"
                 )
 
-    def _get_sleep_retry_duration(
-        self, response: httpx.Response, retry_count: int
-    ) -> float:
+    def _get_sleep_retry_duration(self, response: httpx.Response) -> float:
         """
         Calculates the sleep duration for retries, prioritizing the 'Retry-After' header.
 
@@ -169,7 +167,7 @@ class SentryRateLimiter:
         """
         # 1. Default to exponential backoff as the base sleep duration.
         #    The retry_count is passed in for this calculation.
-        sleep_duration = 2**retry_count
+        sleep_duration = 2**self._retries
         log_reason = f"exponential backoff, resulting in {sleep_duration:.2f}s"
 
         if retry_after_str := response.headers.get("Retry-After"):
