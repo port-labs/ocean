@@ -57,7 +57,6 @@ def primary_id(event: WebhookEvent) -> str | None:
         except (KeyError, TypeError):
             pass
 
-
     stack = [event]
     while stack:
         node = stack.pop()
