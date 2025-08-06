@@ -1,8 +1,10 @@
 description: Aikido integration for Port Ocean
 icon: Aikido
+title: Aikido
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/aikido
 features:
   - type: exporter
-    section: Source Code Management
+    section: Code Quality & Security
     resources:
       - kind: repositories
       - kind: issues
@@ -27,3 +29,7 @@ configurations:
     type: string
     sensitive: true
     description: Secret used to sign and validate incoming webhooks from Aikido.
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
