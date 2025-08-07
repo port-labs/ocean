@@ -85,17 +85,17 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         entity_deletion_threshold: float | None = None,
     ) -> None:
         diff = get_port_diff(entities["before"], entities["after"])
-        ocean.metrics.inc_metric(
-            name=MetricType.OBJECT_COUNT_NAME,
-            labels=[
-                ocean.metrics.current_resource_kind(),
-                MetricPhase.DELETE,
-                MetricPhase.DeletionResult.DELETED,
-            ],
-            value=len(diff.deleted),
-        )
 
         if not diff.deleted:
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.DELETE,
+                    MetricPhase.DeletionResult.DELETED,
+                ],
+                value=0,
+            )
             return
 
         kept_entities = diff.created + diff.modified
@@ -113,6 +113,15 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             and deletion_rate <= entity_deletion_threshold
         ):
             await self._safe_delete(diff.deleted, kept_entities, user_agent_type)
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.DELETE,
+                    MetricPhase.DeletionResult.DELETED,
+                ],
+                value=len(diff.deleted),
+            )
         else:
             logger.info(
                 f"Skipping deletion of entities with deletion rate {deletion_rate}",
