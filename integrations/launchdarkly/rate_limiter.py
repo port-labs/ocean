@@ -45,7 +45,7 @@ class LaunchDarklyRateLimiter:
     def seconds_until_reset(self) -> float:
         """Calculates the time in seconds until the rate limit window resets."""
         if self._reset_time:
-            return self._reset_time - time.time()
+            return float(self._reset_time) - time.time()
         return 0.0
 
     async def __aenter__(self) -> "LaunchDarklyRateLimiter":
