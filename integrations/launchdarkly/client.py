@@ -72,7 +72,7 @@ class LaunchDarklyClient:
                 if next_link := response.get("_links", {}).get("next"):
                     url = next_link["href"]
                     logger.debug(f"Fetching next page of {kind}: {url}")
-                    params = None  # reset params for subsequent requests
+                    params = None
                 else:
                     total_count = response.get("totalCount", len(items))
                     logger.info(
