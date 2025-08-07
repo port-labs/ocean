@@ -1,4 +1,4 @@
-from aws.core.exporters.s3.models import S3Bucket, S3BucketProperties
+from aws.core.exporters.s3.bucket.models import S3Bucket, S3BucketProperties
 from typing import Dict, Any, Self
 
 

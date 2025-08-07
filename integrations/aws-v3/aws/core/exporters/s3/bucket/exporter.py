@@ -1,13 +1,14 @@
 from aws.core.interfaces.exporter import IResourceExporter
-from aws.core.options import (
-    SupportedServices,
+from aws.core.exporters.s3.bucket.options import (
     SingleS3BucketExporterOptions,
     PaginatedS3BucketExporterOptions,
 )
+
+from aws.core.helpers.types import SupportedServices
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.s3.inspector import S3BucketInspector
+from aws.core.exporters.s3.bucket.inspector import S3BucketInspector
 from typing import Any, AsyncGenerator
-from aws.core.exporters.s3.models import S3Bucket
+from aws.core.exporters.s3.bucket.models import S3Bucket
 import asyncio
 
 
@@ -23,7 +24,9 @@ class S3BucketExporter(IResourceExporter):
             self.session, options.region, self.SERVICE_NAME
         ) as proxy:
             inspector = S3BucketInspector(proxy.client)
-            response: S3Bucket = await inspector.inspect(options.bucket_name)
+            response: S3Bucket = await inspector.inspect(
+                options.bucket_name, options.include
+            )
 
             return response.dict()
 
@@ -42,8 +45,10 @@ class S3BucketExporter(IResourceExporter):
                 bucket_names = [bucket["Name"] for bucket in buckets]
 
                 async def inspect_bucket(bucket_name: str) -> dict[str, Any]:
-                    s3_bucket: S3Bucket = await inspector.inspect(bucket_name)
-                    return s3_bucket.dict()
+                    s3_bucket: S3Bucket = await inspector.inspect(
+                        bucket_name, options.include
+                    )
+                    return s3_bucket.dict(exclude_none=True)
 
                 tasks = [inspect_bucket(name) for name in bucket_names]
                 results = await asyncio.gather(*tasks)

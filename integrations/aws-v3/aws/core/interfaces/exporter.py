@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, TYPE_CHECKING, Dict
 from aiobotocore.session import AioSession
-from aws.core.options import SupportedServices
+from aws.core.helpers.types import SupportedServices
 
 if TYPE_CHECKING:
     from aiobotocore.client import AioBaseClient

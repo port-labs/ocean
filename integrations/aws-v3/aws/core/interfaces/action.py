@@ -4,6 +4,7 @@ from aiobotocore.client import AioBaseClient
 
 
 class IAction(ABC):
+    name: str
 
     def __init__(self, client: AioBaseClient) -> None:
         self.client: AioBaseClient = client

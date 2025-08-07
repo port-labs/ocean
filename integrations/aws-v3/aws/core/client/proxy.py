@@ -1,7 +1,7 @@
 from typing import Any, Self
 from aiobotocore.session import AioSession
 from aiobotocore.client import AioBaseClient
-from aws.core.options import SupportedServices
+from aws.core.helpers.types import SupportedServices
 from aws.core.client.paginator import AsyncPaginator
 
 
