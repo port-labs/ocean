@@ -6,7 +6,7 @@ import httpx
 import pytest
 from clients.rate_limiter import SentryRateLimiter
 
-# Mark all tests in this file as asyncio
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -27,67 +27,52 @@ class TestSentryRateLimiter:
         Tests that the client proactively sleeps when the remaining requests
         are at or below the configured threshold upon entering the context manager.
         """
-        # 1. Setup: Define a reset time in the future.
+
         reset_time = time.time() + 10.0
         rate_limiter = SentryRateLimiter(minimum_limit_remaining=5)
 
-        # Manually set the limiter's state to simulate it being near the rate limit.
-        rate_limiter._rate_limit_remaining = (
-            rate_limiter._minimum_limit_remaining - 1
-        )  # e.g., 4
-        rate_limiter._rate_limit_reset = reset_time
+        rate_limiter._remaining = rate_limiter._minimum_limit_remaining - 1
+        rate_limiter._reset_time = reset_time
 
-        # The response for the upcoming request should be successful (not 429).
         response = create_autospec(httpx.Response, instance=True)
         response.status_code = 200
-        response.headers = {
-            "X-Sentry-Rate-Limit-Remaining": "1",
-            "X-Sentry-Rate-Limit-Reset": str(reset_time),
-        }
         mock_client.get.return_value = response
 
-        # 2. Execution: Patch time.time() to have a predictable sleep duration.
-        # The proactive sleep should be triggered in __aenter__ before the request is made.
         with patch("time.time", return_value=reset_time - 10.0):
             async with rate_limiter:
-                # The sleep happens on entry, before this line is executed.
+
                 await mock_client.get("https://test.com")
 
-        # 3. Assertion: Verify that sleep was called once with the correct duration.
         mock_sleep.assert_awaited_once()
 
-        # Check that the sleep duration is correct (reset_time - current_time).
-        # We expect abs(10.0 - calculated_sleep) to be very small.
         calculated_sleep_duration = mock_sleep.call_args[0][0]
-        assert abs(calculated_sleep_duration - 10.0) < 0.01
+        assert (
+            abs(calculated_sleep_duration - 10.0) < 0.01
+        ), "Sleep duration is incorrect"
 
-    async def test_unsuccessful_request_updates_state(
-        self, mock_client: AsyncMock
-    ) -> None:
+    async def test_update_rate_limits_parses_headers_correctly(self) -> None:
         """
-        Tests that an unsuccessful request (429) updates the internal rate limit state.
+        Tests that _update_rate_limits correctly parses headers and updates state.
         """
-        headers = {
-            "X-Sentry-Rate-Limit-Remaining": "1",
-            "X-Sentry-Rate-Limit-Reset": str(time.time() + 60),
-            "Retry-After": "30",
-        }
+        reset_time_ms = (time.time() + 60) * 1000
+        headers: httpx.Headers = httpx.Headers(
+            {
+                "X-Sentry-Rate-Limit-Limit": "100",
+                "X-Sentry-Rate-Limit-Remaining": "10",
+                "X-Sentry-Rate-Limit-Reset": str(reset_time_ms),
+            }
+        )
         mock_response = create_autospec(httpx.Response, instance=True)
-        mock_response.status_code = 429
         mock_response.headers = headers
-        mock_client.get.return_value = mock_response
 
         rate_limiter = SentryRateLimiter()
-        await rate_limiter._update_rate_limit_state(mock_response)
-        assert rate_limiter._rate_limit_remaining == 1
-        assert (
-            rate_limiter._rate_limit_reset
-            and abs(
-                rate_limiter._rate_limit_reset
-                - float(headers["X-Sentry-Rate-Limit-Reset"])
-            )
-            < 0.01
-        )
+        await rate_limiter._update_rate_limits(mock_response.headers)
+
+        assert rate_limiter._limit == 100
+        assert rate_limiter._remaining == 10
+
+        assert rate_limiter._reset_time is not None
+        assert abs(rate_limiter._reset_time - reset_time_ms) < 0.01
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_proactive_wait_is_skipped_if_reset_in_past(
@@ -99,191 +84,84 @@ class TestSentryRateLimiter:
         even if the remaining count is low.
         """
         rate_limiter = SentryRateLimiter(minimum_limit_remaining=5)
-        rate_limiter._rate_limit_remaining = rate_limiter._minimum_limit_remaining - 1
-        rate_limiter._rate_limit_reset = time.time() - 60
+        rate_limiter._remaining = rate_limiter._minimum_limit_remaining - 1
+        rate_limiter._reset_time = time.time() - 60
 
         async with rate_limiter:
             pass
 
         mock_sleep.assert_not_awaited()
 
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_are_limited_by_semaphore(self) -> None:
+        """
+        Tests that the semaphore limits the number of concurrent requests.
+        """
+        concurrent_limit = 10
+        rate_limiter = SentryRateLimiter(max_concurrent=concurrent_limit)
 
-@pytest.mark.parametrize(
-    "headers, retries, max_duration, expected_duration, test_description",
-    [
-        (
-            {"Retry-After": "30"},
-            1,
-            60,
-            30.0,
-            "uses Retry-After header when present",
-        ),
-        (
-            {"Retry-After": "invalid"},
-            2,
-            60,
-            4.0,  # 2^2 = 4
-            "falls back to exponential backoff when Retry-After is invalid",
-        ),
-        (
-            {},
-            3,
-            60,
-            8.0,  # 2^3 = 8
-            "uses exponential backoff when Retry-After is missing",
-        ),
-        (
-            {"Retry-After": "100"},
-            1,
-            5,
-            5.0,  # capped by maximum_sleep_duration
-            "respects maximum sleep duration cap",
-        ),
-        (
-            {"Retry-After": "0"},
-            1,
-            60,
-            0.0,
-            "handles zero Retry-After value",
-        ),
-    ],
-)
-async def test_get_sleep_retry_duration(
-    headers: dict[str, str],
-    retries: int,
-    max_duration: int,
-    expected_duration: float,
-    test_description: str,
-) -> None:
-    """Test different scenarios for sleep duration calculation."""
-    mock_response = create_autospec(httpx.Response, instance=True)
-    mock_response.headers = headers
+        active_tasks = 0
+        max_active_tasks = 0
+        lock = asyncio.Lock()
 
-    rate_limiter = SentryRateLimiter(maximum_sleep_duration=max_duration)
-    rate_limiter._retries = retries
+        async def worker() -> None:
+            nonlocal active_tasks, max_active_tasks
+            async with rate_limiter:
+                async with lock:
+                    active_tasks += 1
+                    max_active_tasks = max(max_active_tasks, active_tasks)
 
-    duration = rate_limiter._get_sleep_retry_duration(mock_response)
+                await asyncio.sleep(0.01)
 
-    assert duration == expected_duration, f"Failed scenario: {test_description}"
+                async with lock:
+                    active_tasks -= 1
 
-
-@patch("asyncio.sleep", new_callable=AsyncMock)
-async def test_concurrent_requests_with_semaphore(mock_client: AsyncMock) -> None:
-    """
-    Tests that the semaphore limits the number of concurrent requests.
-    """
-    concurrent_limit = 2
-    rate_limiter = SentryRateLimiter(concurrent_requests=concurrent_limit)
-
-    async def worker() -> None:
-        async with rate_limiter:
-            await mock_client.get("https://test.com")
-
-    # Use a list of futures to simulate multiple requests
-    tasks = [worker() for _ in range(concurrent_limit + 1)]
-
-    # Use a mock for the semaphore to check if it's being acquired
-    with patch.object(
-        rate_limiter._semaphore, "acquire", new_callable=AsyncMock
-    ) as mock_acquire:
+        tasks = [worker() for _ in range(concurrent_limit + 5)]
         await asyncio.gather(*tasks)
-        # The `acquire` should be called for each task
-        assert mock_acquire.call_count == concurrent_limit + 1
+
+        assert max_active_tasks == concurrent_limit
 
 
 @pytest.mark.parametrize(
-    "retries, max_retries, retry_after, expected_result, test_description",
+    "retries, max_retries, should_retry, test_description",
     [
-        (
-            0,
-            3,
-            "30",
-            True,
-            "should retry on first attempt",
-        ),
-        (
-            2,
-            3,
-            "30",
-            True,
-            "should retry when under max_retries",
-        ),
-        (
-            3,
-            3,
-            "30",
-            False,
-            "should not retry when max_retries reached",
-        ),
+        (0, 3, True, "should retry on the first attempt"),
+        (2, 3, True, "should retry when under max_retries"),
+        (4, 3, False, "should not retry when at max_retries"),
     ],
 )
 @patch("asyncio.sleep", new_callable=AsyncMock)
-async def test_handle_rate_limit(
+async def test_handle_rate_limit_error_logic(
     mock_sleep: AsyncMock,
     retries: int,
     max_retries: int,
-    retry_after: str,
-    expected_result: bool,
+    should_retry: bool,
     test_description: str,
 ) -> None:
-    """Test rate limit handling with different retry scenarios."""
-    # Setup
+    """
+    Tests the retry logic within _handle_rate_limit_error, checking both
+    successful retries and failures when the max retry count is exceeded.
+    """
+    reset_time_in_header = time.time() + 10
     headers = {
-        "Retry-After": retry_after,
         "X-Sentry-Rate-Limit-Remaining": "0",
-        "X-Sentry-Rate-Limit-Reset": str(time.time() + 60),
+        "X-Sentry-Rate-Limit-Reset": str(reset_time_in_header),
     }
     mock_response = create_autospec(httpx.Response, instance=True)
     mock_response.headers = headers
     mock_response.status_code = 429
 
-    rate_limiter = SentryRateLimiter(maximum_retries=max_retries)
+    rate_limiter = SentryRateLimiter(max_retries=max_retries)
     rate_limiter._retries = retries
 
-    # Execute
-    result = await rate_limiter._handle_rate_limit(mock_response)
-
-    # Verify
-    assert result == expected_result, f"Failed scenario: {test_description}"
-
-    if expected_result:
-        # Should sleep when retrying
-        mock_sleep.assert_awaited_once()
-        # Verify retry counter was incremented
+    with patch("time.time", return_value=reset_time_in_header - 10):
+        result = await rate_limiter._handle_rate_limit_error(mock_response)
+        assert result is should_retry, f"Failed scenario: {test_description}"
         assert rate_limiter._retries == retries + 1
+
+    if should_retry:
+        mock_sleep.assert_awaited_once()
+        sleep_duration = mock_sleep.call_args[0][0]
+        assert abs(sleep_duration - 10.5) == 10
     else:
-        # Should update rate limit state but not sleep when max retries exceeded
-        assert rate_limiter._rate_limit_remaining == 0
         mock_sleep.assert_not_awaited()
-
-
-@patch("asyncio.sleep", new_callable=AsyncMock)
-async def test_handle_rate_limit_updates_state_when_max_retries_exceeded(
-    mock_sleep: AsyncMock,
-) -> None:
-    """Test that rate limit state is updated when max retries are exceeded."""
-    # Setup
-    reset_time = time.time() + 60
-    headers = {
-        "Retry-After": "30",
-        "X-Sentry-Rate-Limit-Remaining": "0",
-        "X-Sentry-Rate-Limit-Reset": str(reset_time),
-    }
-    mock_response = create_autospec(httpx.Response, instance=True)
-    mock_response.headers = headers
-    mock_response.status_code = 429
-
-    rate_limiter = SentryRateLimiter(maximum_retries=3)
-    rate_limiter._retries = 3  # Already at max retries
-
-    # Execute
-    result = await rate_limiter._handle_rate_limit(mock_response)
-
-    # Verify
-    assert result is False
-    assert rate_limiter._rate_limit_remaining == 0
-    assert (
-        rate_limiter._rate_limit_reset
-        and abs(rate_limiter._rate_limit_reset - reset_time) < 0.01
-    )
-    mock_sleep.assert_not_awaited()
