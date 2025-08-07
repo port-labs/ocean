@@ -3,7 +3,8 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 Json = Dict[str, Any]
 
-GITHUB_EVENT_TYPE_HEADER = 'x-github-event'
+GITHUB_EVENT_TYPE_HEADER = "x-github-event"
+
 
 def _pull_request(e: Json) -> str:
     return e["pull_request"]["number"]
