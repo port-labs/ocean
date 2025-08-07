@@ -32,7 +32,7 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
         async for workflows in self.client.send_paginated_request(url):
             workflow_batch = cast(dict[str, Any], workflows)
             logger.info(
-                f"Fetched batch of {workflow_batch['total_count']} workflows from {options['repo_name']}"
+                f"Fetched batch of {len(workflow_batch['workflows'])} workflows from {options['repo_name']}"
             )
             batch = [
                 enrich_with_repository(workflow, options["repo_name"])
