@@ -35,7 +35,8 @@ class ServicenowClient:
         self, resource_kind: str, api_query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
 
-        user_query = api_query_params.pop("sysparm_query", "")
+        safe_params = (api_query_params or {}).copy()
+        user_query = safe_params.pop("sysparm_query", "")
         default_ordering = "ORDERBYDESCsys_created_on"
         enhanced_query = (
             f"{user_query}^{default_ordering}" if user_query else default_ordering
@@ -44,7 +45,7 @@ class ServicenowClient:
         params: Optional[dict[str, Any]] = {
             "sysparm_limit": PAGE_SIZE,
             "sysparm_query": enhanced_query,
-            **(api_query_params or {}),
+            **safe_params,
         }
         logger.info(
             f"Fetching Servicenow data for resource: {resource_kind} with request params: {params}"
