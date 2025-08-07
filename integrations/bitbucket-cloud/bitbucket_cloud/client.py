@@ -2,12 +2,12 @@ from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPError, HTTPStatusError
 from loguru import logger
 from port_ocean.utils import http_async_client
-from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.context.ocean import ocean
 from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
+from bitbucket_cloud.helpers.auth import BitbucketAuthFacade, AbstractAuth
+from bitbucket_cloud.helpers.token_manager import TokenRateLimiterContext, TokenManager
 from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
-import base64
 
 PULL_REQUEST_STATE = "OPEN"
 PULL_REQUEST_PAGE_SIZE = 50
@@ -32,25 +32,40 @@ class BitbucketClient:
         self.workspace = workspace
         self.client = http_async_client
 
-        if workspace_token:
-            self.headers = {
-                "Authorization": f"Bearer {workspace_token}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            }
-        elif app_password and username:
-            self.encoded_credentials = base64.b64encode(
-                f"{username}:{app_password}".encode()
-            ).decode()
-            self.headers = {
-                "Authorization": f"Basic {self.encoded_credentials}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            }
-        else:
-            raise MissingIntegrationCredentialException(
-                "Either workspace token or both username and app password must be provided"
-            )
+        # Initialize authentication using the facade
+        self.auth: AbstractAuth = BitbucketAuthFacade.create(
+            username=username,
+            app_password=app_password,
+            workspace_token=workspace_token,
+        )
+
+        # Set headers from authentication
+        self.headers = self.auth.get_headers().dict(by_alias=True)
+        self.client.headers.update(self.headers)
+
+    @property
+    def token_manager(self) -> Optional[TokenManager]:
+        """Get the token manager if using multi-token authentication."""
+        if hasattr(self.auth, "token_manager"):
+            return self.auth.token_manager
+        return None
+
+    @token_manager.setter
+    def token_manager(self, value: TokenManager) -> None:
+        """Set the token manager for testing purposes."""
+        if hasattr(self.auth, "_token_manager"):
+            self.auth._token_manager = value
+
+    @property
+    def file_token_manager(self) -> Optional[TokenManager]:
+        """Get the file token manager if using multi-token authentication."""
+        if hasattr(self.auth, "file_token_manager"):
+            return self.auth.file_token_manager
+        return None
+
+    def _update_authorization_header(self, token: str) -> None:
+        """Update the authorization header with a new token."""
+        self.headers["Authorization"] = f"Bearer {token}"
         self.client.headers.update(self.headers)
 
     @classmethod
@@ -97,21 +112,57 @@ class BitbucketClient:
         method: str = "GET",
         data_key: str = "values",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Handle rate-limited paginated requests to Bitbucket API"""
         if params is None:
             params = {
                 "pagelen": PAGE_SIZE,
             }
         while True:
-            async with RATE_LIMITER:
+            if hasattr(self.auth, "token_manager") and self.auth.token_manager:
+                async with TokenRateLimiterContext(self.auth.token_manager) as ctx:
+                    current_token = ctx.get_token()
+                    self._update_authorization_header(current_token)
+                    response = await self._send_api_request(
+                        url, params=params, method=method
+                    )
+            else:
+                async with RATE_LIMITER:
+                    response = await self._send_api_request(
+                        url, params=params, method=method
+                    )
+
+            if values := response.get(data_key, []):
+                yield values
+            url = response.get("next")
+            if not url:
+                break
+
+    async def _send_file_api_request_with_rate_limiter(
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        method: str = "GET",
+        return_full_response: bool = False,
+    ) -> Any:
+        """Send file-specific API request with dedicated file rate limiter."""
+        if hasattr(self.auth, "file_token_manager") and self.auth.file_token_manager:
+            async with TokenRateLimiterContext(self.auth.file_token_manager) as ctx:
+                current_token = ctx.get_token()
+                self._update_authorization_header(current_token)
                 response = await self._send_api_request(
-                    url, params=params, method=method
+                    url,
+                    params=params,
+                    method=method,
+                    return_full_response=return_full_response,
                 )
-                if values := response.get(data_key, []):
-                    yield values
-                url = response.get("next")
-                if not url:
-                    break
+        else:
+            # No file token manager means single token or basic auth - just make the request
+            response = await self._send_api_request(
+                url,
+                params=params,
+                method=method,
+                return_full_response=return_full_response,
+            )
+        return response
 
     async def _send_paginated_api_request(
         self,
@@ -220,7 +271,7 @@ class BitbucketClient:
 
     async def get_repository_files(self, repo: str, branch: str, path: str) -> Any:
         """Get the content of a file."""
-        response = await self._send_api_request(
+        response = await self._send_file_api_request_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
             method="GET",
             return_full_response=True,
