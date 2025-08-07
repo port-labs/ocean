@@ -126,8 +126,12 @@ class SentryRateLimiter:
         logger.warning(
             f"calling retry logic for 429 Too Many Requests. {self._retries}"
         )
+        # Increment the retry counter for the current operation.
+        # Note: self._retries is reset to 0 in `__aenter__` for each new API call.
         self._retries += 1
 
+        # Circuit breaker: prevent infinite retries.
+        # If _maximum_retries is 3, this check allows for 3 retry attempts. The 4th attempt will fail.
         if self._retries > self._maximum_retries:
             logger.error("Max retries exceeded for rate-limited request.")
             await self._update_rate_limit_state(response)
