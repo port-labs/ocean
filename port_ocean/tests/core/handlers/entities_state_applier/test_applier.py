@@ -14,8 +14,8 @@ from port_ocean.context.event import event_context, EventType
 
 
 @pytest.mark.asyncio
-async def test_delete_diff_no_deleted_entities() -> None:
-    applier = HttpEntitiesStateApplier(Mock())
+async def test_delete_diff_no_deleted_entities(mock_context: PortOceanContext) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
     entities = EntityDiff(
         before=[Entity(identifier="1", blueprint="test")],
         after=[Entity(identifier="1", blueprint="test")],
