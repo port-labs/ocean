@@ -29,8 +29,6 @@ configurations:
     type: string
     sensitive: true
     description: Secret used to sign and validate incoming webhooks from Aikido.
-deploymentMethodOverride:
-  - type: helm
 saas:
   enabled: true
   liveEvents:
