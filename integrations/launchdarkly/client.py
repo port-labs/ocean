@@ -52,42 +52,15 @@ class LaunchDarklyClient:
         """
         Fetch and paginate through resources from a LaunchDarkly API endpoint.
         Docs: https://launchdarkly.com/docs/guides/api/api-migration-guide#working-with-paginated-endpoints
-
-        This asynchronous generator function retrieves a paginated list of resources
-        from a specified API endpoint. The function handles pagination by making
-        subsequent API requests to the full URL provided in the `_links.next.href`
-        response field. It yields each batch of resources as a list of
-        dictionaries and logs relevant details about the fetch process.
-
-        Parameters:
-            kind (str): The type of resource to fetch. The function automatically
-                pluralizes the resource kind by appending 's' or 'es' as needed.
-            resource_path (str | None): The specific resource path that appends to the
-                kind. Defaults to None.
-            page_size (int): The number of items to fetch per request. Defaults to
-                PAGE_SIZE.
-
-        Yields:
-            list[dict[str, Any]]: A batch of resources for the requested kind retrieved
-            from the API.
-
-        Raises:
-            httpx.HTTPStatusError: If the API request returns an HTTP error response
-            with a specific status code.
-            httpx.HTTPError: If any HTTP-related error occurs while making the API
-            request.
         """
         kind = f"{kind}s" if not kind.endswith("s") else f"{kind}es"
 
-        # Start with the initial resource endpoint.
         url = kind if not resource_path else f"{kind}/{resource_path}"
         url = url.replace("auditlogs", ObjectKind.AUDITLOG)
         params: Optional[dict[str, Any]] = {"limit": page_size}
 
         while url:
             try:
-                # For the first request, url and params are used.
-                # For subsequent requests, url is the full path from 'next.href' and params is None.
                 logger.debug(f"Fetching {kind} from LaunchDarkly: {url}")
                 response = await self.send_api_request(
                     endpoint=url, query_params=params
@@ -96,13 +69,11 @@ class LaunchDarklyClient:
                 logger.info(f"Received batch with {len(items)} items")
                 yield items
 
-                # follow the full 'next' link for the next page.
                 if next_link := response.get("_links", {}).get("next"):
                     url = next_link["href"]
                     logger.debug(f"Fetching next page of {kind}: {url}")
                     params = None  # reset params for subsequent requests
                 else:
-                    # No 'next' link means we have reached the end of the results.
                     total_count = response.get("totalCount", len(items))
                     logger.info(
                         f"Successfully fetched all {total_count} {kind} from LaunchDarkly."
