@@ -28,7 +28,7 @@ from typing import Any, Dict, Optional, Type, Literal
 from loguru import logger
 from port_ocean.utils.signal import signal_handler
 from github.helpers.utils import ObjectKind
-from github.group_selector import primary_id
+from github.webhook.live_event_group_selector import get_primary_id
 
 FILE_PROPERTY_PREFIX = "file://"
 
@@ -237,7 +237,7 @@ class GithubLiveEventsGroupProcessorManager(
             try:
                 webhook_event = await WebhookEvent.from_request(request)
                 webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
-                webhook_event.group_id = primary_id(webhook_event)
+                webhook_event.group_id = get_primary_id(webhook_event)
                 await self._event_queues[path].put(webhook_event)
                 return {"status": "ok"}
             except Exception as e:

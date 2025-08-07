@@ -3,8 +3,9 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 Json = Dict[str, Any]
 
+GITHUB_EVENT_TYPE_HEADER = 'x-github-event'
 
-def _pr(e: Json) -> str:
+def _pull_request(e: Json) -> str:
     return e["pull_request"]["number"]
 
 
@@ -16,7 +17,7 @@ def _push(e: Json) -> str:
     return e["after"]
 
 
-def _rel(e: Json) -> str:
+def _release(e: Json) -> str:
     return e["release"]["id"]
 
 
@@ -28,31 +29,31 @@ def _wf_run(e: Json) -> str:
     return e["workflow_run"]["id"]
 
 
-ENTITY_ID: dict[str, Callable[[Json], str]] = {
-    "pull_request": _pr,
-    "pull_request_review_comment": _pr,
-    "pull_request_review": _pr,
+GITHUB_RESOURCE_ID: dict[str, Callable[[Json], str]] = {
+    "pull_request": _pull_request,
+    "pull_request_review_comment": _pull_request,
+    "pull_request_review": _pull_request,
     "issues": _issue,
     "issue_comment": _issue,
     "push": _push,
-    "release": _rel,
+    "release": _release,
     "status": _status,
     "workflow_run": _wf_run,
 }
 
 
-def primary_id(event: WebhookEvent) -> str | None:
+def get_primary_id(event: WebhookEvent) -> str | None:
     """
     Return the most relevant entity‑ID for a GitHub webhook / Events API object.
     """
     event_type = (
-        event.headers.get("x-github-event")
+        event.headers.get(GITHUB_EVENT_TYPE_HEADER)
         or event.payload.get("type")
         or event.payload.get("event")
     )
-    if event_type in ENTITY_ID:
+    if event_type in GITHUB_RESOURCE_ID:
         try:
-            event_id = str(ENTITY_ID[event_type](event.payload))
+            event_id = str(GITHUB_RESOURCE_ID[event_type](event.payload))
             return f"{event_type}-{event_id}"
         except (KeyError, TypeError):
             pass
