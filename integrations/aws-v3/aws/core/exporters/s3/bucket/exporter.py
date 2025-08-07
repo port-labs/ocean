@@ -44,12 +44,15 @@ class S3BucketExporter(IResourceExporter):
             async for buckets in paginator.paginate():
                 bucket_names = [bucket["Name"] for bucket in buckets]
 
-                async def inspect_bucket(bucket_name: str) -> dict[str, Any]:
-                    s3_bucket: S3Bucket = await inspector.inspect(
-                        bucket_name, options.include
-                    )
-                    return s3_bucket.dict(exclude_none=True)
-
-                tasks = [inspect_bucket(name) for name in bucket_names]
+                tasks = [
+                    self.inspect_bucket(inspector, name, options.include)
+                    for name in bucket_names
+                ]
                 results = await asyncio.gather(*tasks)
                 yield results
+
+    async def inspect_bucket(
+        self, inspector: S3BucketInspector, bucket_name: str, include: list[str]
+    ) -> dict[str, Any]:
+        s3_bucket: S3Bucket = await inspector.inspect(bucket_name, include)
+        return s3_bucket.dict(exclude_none=True)

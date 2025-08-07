@@ -1,7 +1,7 @@
-from typing import Dict, Any
+from typing import Dict, Any, List, Type
 
 
-from aws.core.interfaces.action import IAction
+from aws.core.interfaces.action import IAction, IActionMap
 from loguru import logger
 
 
@@ -42,3 +42,27 @@ class GetBucketTaggingAction(IAction):
             if e.response.get("Error", {}).get("Code") == "NoSuchTagSet":
                 return {"Tags": []}
             raise
+
+
+class GetBucketNameAction(IAction):
+    async def _execute(self, bucket_name: str) -> Dict[str, Any]:
+        return {"BucketName": bucket_name}
+
+
+# map all actions to run for a bucket
+class S3BucketActionsMap(IActionMap):
+    defaults: List[Type[IAction]] = [
+        GetBucketNameAction,
+    ]
+    optional: List[Type[IAction]] = [
+        GetBucketPublicAccessBlockAction,
+        GetBucketOwnershipControlsAction,
+        GetBucketEncryptionAction,
+        GetBucketTaggingAction,
+    ]
+
+    def merge(self, include: List[str]) -> List[Type[IAction]]:
+        # Always include all defaults, and any optional whose class name is in include
+        return self.defaults + [
+            action for action in self.optional if action.__name__ in include
+        ]

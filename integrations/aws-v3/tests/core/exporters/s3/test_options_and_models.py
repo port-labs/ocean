@@ -240,10 +240,10 @@ class TestS3Bucket:
 
     def test_initialization_with_identifier(self) -> None:
         """Test initialization with required identifier."""
-        bucket = S3Bucket(Identifier="test-bucket")
+        bucket = S3Bucket(Properties=S3BucketProperties(BucketName="test-bucket"))
 
         assert bucket.Type == "AWS::S3::Bucket"
-        assert bucket.Identifier == "test-bucket"
+        assert bucket.Properties.BucketName == "test-bucket"
         assert isinstance(bucket.Properties, S3BucketProperties)
 
     def test_initialization_with_properties(self) -> None:
@@ -251,17 +251,16 @@ class TestS3Bucket:
         properties = S3BucketProperties(
             BucketName="custom-bucket", Tags=[{"Key": "Team", "Value": "engineering"}]
         )
-        bucket = S3Bucket(Identifier="custom-bucket", Properties=properties)
+        bucket = S3Bucket(Properties=properties)
 
-        assert bucket.Identifier == "custom-bucket"
         assert bucket.Properties == properties
         assert bucket.Properties.BucketName == "custom-bucket"
         assert bucket.Properties.Tags == [{"Key": "Team", "Value": "engineering"}]
 
     def test_type_is_fixed(self) -> None:
         """Test that Type is always AWS::S3::Bucket."""
-        bucket1 = S3Bucket(Identifier="bucket1")
-        bucket2 = S3Bucket(Identifier="bucket2")
+        bucket1 = S3Bucket(Properties=S3BucketProperties(BucketName="bucket1"))
+        bucket2 = S3Bucket(Properties=S3BucketProperties(BucketName="bucket2"))
 
         assert bucket1.Type == "AWS::S3::Bucket"
         assert bucket2.Type == "AWS::S3::Bucket"
@@ -269,22 +268,20 @@ class TestS3Bucket:
     def test_dict_exclude_none(self) -> None:
         """Test dict() with exclude_none=True."""
         properties = S3BucketProperties(BucketName="test-bucket")
-        bucket = S3Bucket(Identifier="test-bucket", Properties=properties)
+        bucket = S3Bucket(Properties=properties)
 
         result = bucket.dict(exclude_none=True)
 
         assert "Type" in result
-        assert "Identifier" in result
         assert "Properties" in result
 
         assert result["Type"] == "AWS::S3::Bucket"
-        assert result["Identifier"] == "test-bucket"
         assert result["Properties"]["BucketName"] == "test-bucket"
 
     def test_properties_default_factory(self) -> None:
         """Test that Properties uses default factory."""
-        bucket1 = S3Bucket(Identifier="bucket1")
-        bucket2 = S3Bucket(Identifier="bucket2")
+        bucket1 = S3Bucket(Properties=S3BucketProperties(BucketName="bucket1"))
+        bucket2 = S3Bucket(Properties=S3BucketProperties(BucketName="bucket2"))
 
         # Should be different instances
         assert bucket1.Properties is not bucket2.Properties
@@ -293,17 +290,9 @@ class TestS3Bucket:
         assert isinstance(bucket1.Properties, S3BucketProperties)
         assert isinstance(bucket2.Properties, S3BucketProperties)
 
-    def test_missing_identifier(self) -> None:
-        """Test that missing identifier raises ValidationError."""
-        with pytest.raises(ValidationError) as exc_info:
-            S3Bucket()  # type: ignore
-
-        assert "Identifier" in str(exc_info.value)
-
     def test_bucket_serialization_roundtrip(self) -> None:
         """Test that bucket can be serialized and deserialized."""
         original_bucket = S3Bucket(
-            Identifier="roundtrip-bucket",
             Properties=S3BucketProperties(
                 BucketName="roundtrip-bucket",
                 Tags=[{"Key": "Test", "Value": "roundtrip"}],
@@ -327,7 +316,6 @@ class TestS3Bucket:
 
         # Verify they're equivalent
         assert recreated_bucket.Type == original_bucket.Type
-        assert recreated_bucket.Identifier == original_bucket.Identifier
         assert (
             recreated_bucket.Properties.BucketName
             == original_bucket.Properties.BucketName

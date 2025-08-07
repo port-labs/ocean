@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html#aws-resource-s3-bucket-syntax
 
 
-class S3BucketProperties(BaseModel):
+class S3BucketProperties(BaseModel, extra="forbid"):
     AccessControl: Optional[str] = None
     VersioningConfiguration: Optional[Dict[str, Any]] = None
     Tags: Optional[List[Dict[str, Any]]] = None
@@ -22,14 +22,7 @@ class S3BucketProperties(BaseModel):
     OwnershipControls: Optional[Dict[str, Any]] = None
     CorsConfiguration: Optional[Dict[str, Any]] = None
 
-    class Config:
-        exclude_none = True
 
-
-class S3Bucket(BaseModel):
+class S3Bucket(BaseModel, extra="ignore"):
     Type: str = "AWS::S3::Bucket"
-    Identifier: str = Field(..., description="The identifier of the S3 bucket")
     Properties: S3BucketProperties = Field(default_factory=S3BucketProperties)
-
-    class Config:
-        exclude_none = True

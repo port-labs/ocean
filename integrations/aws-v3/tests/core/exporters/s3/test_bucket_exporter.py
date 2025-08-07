@@ -53,7 +53,6 @@ class TestS3BucketExporter:
 
         # Create expected S3Bucket response
         expected_bucket = S3Bucket(
-            Identifier="test-bucket",
             Properties=S3BucketProperties(
                 BucketName="test-bucket", Tags=[{"Key": "Environment", "Value": "test"}]
             ),
@@ -98,7 +97,6 @@ class TestS3BucketExporter:
         mock_inspector_class.return_value = mock_inspector
 
         expected_bucket = S3Bucket(
-            Identifier="prod-bucket",
             Properties=S3BucketProperties(
                 BucketName="prod-bucket",
                 BucketEncryption={"Rules": []},
@@ -160,15 +158,9 @@ class TestS3BucketExporter:
         mock_inspector_class.return_value = mock_inspector
 
         # Mock inspector.inspect to return bucket data
-        bucket1 = S3Bucket(
-            Identifier="bucket1", Properties=S3BucketProperties(BucketName="bucket1")
-        )
-        bucket2 = S3Bucket(
-            Identifier="bucket2", Properties=S3BucketProperties(BucketName="bucket2")
-        )
-        bucket3 = S3Bucket(
-            Identifier="bucket3", Properties=S3BucketProperties(BucketName="bucket3")
-        )
+        bucket1 = S3Bucket(Properties=S3BucketProperties(BucketName="bucket1"))
+        bucket2 = S3Bucket(Properties=S3BucketProperties(BucketName="bucket2"))
+        bucket3 = S3Bucket(Properties=S3BucketProperties(BucketName="bucket3"))
 
         # Set up side effects for inspector.inspect calls
         mock_inspector.inspect.side_effect = [bucket1, bucket2, bucket3]
@@ -296,7 +288,6 @@ class TestS3BucketExporter:
         # Setup inspector to return a normal result
         mock_inspector = AsyncMock()
         mock_bucket = S3Bucket(
-            Identifier="test-bucket",
             Properties=S3BucketProperties(BucketName="test-bucket"),
         )
         mock_inspector.inspect.return_value = mock_bucket
@@ -310,7 +301,7 @@ class TestS3BucketExporter:
         result = await exporter.get_resource(options)
 
         # Verify the result is a dictionary with the correct structure
-        assert result["Identifier"] == "test-bucket"
+        assert result["Properties"]["BucketName"] == "test-bucket"
         assert result["Type"] == "AWS::S3::Bucket"
         assert result["Properties"]["BucketName"] == "test-bucket"
 

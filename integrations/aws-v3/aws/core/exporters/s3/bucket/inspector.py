@@ -1,37 +1,29 @@
 from aws.core.exporters.s3.bucket.builder import S3BucketBuilder
-from aws.core.exporters.s3.bucket.actions import (
-    GetBucketPublicAccessBlockAction,
-    GetBucketOwnershipControlsAction,
-    GetBucketEncryptionAction,
-    GetBucketTaggingAction,
-)
 from aws.core.exporters.s3.bucket.models import S3Bucket
 from loguru import logger
-from aws.core.interfaces.action import IAction
+from aws.core.exporters.s3.bucket.actions import S3BucketActionsMap
 from typing import List, Dict, Any
 from aiobotocore.client import AioBaseClient
 import asyncio
+from aws.core.interfaces.action import IAction
 
 
 class S3BucketInspector:
     """A Facade for inspecting S3 buckets."""
 
     def __init__(self, client: AioBaseClient) -> None:
-        self.actions: List[IAction] = [
-            GetBucketPublicAccessBlockAction(client),
-            GetBucketOwnershipControlsAction(client),
-            GetBucketEncryptionAction(client),
-            GetBucketTaggingAction(client),
-        ]
+        self.client = client
+        self.actions_map = S3BucketActionsMap()
 
     async def inspect(self, bucket_name: str, include: List[str]) -> S3Bucket:
         builder = S3BucketBuilder(bucket_name)
+        action_classes = self.actions_map.merge(include)
+        actions_to_run: List[IAction] = [
+            action_cls(self.client) for action_cls in action_classes
+        ]
+
         results = await asyncio.gather(
-            *(
-                self._run_action(action, bucket_name)
-                for action in self.actions
-                if action.__class__.__name__ in include
-            )
+            *(self._run_action(action, bucket_name) for action in actions_to_run)
         )
 
         for result in results:

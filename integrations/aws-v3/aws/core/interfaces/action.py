@@ -1,6 +1,7 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from abc import ABC, abstractmethod
 from aiobotocore.client import AioBaseClient
+from typing import Type, Protocol
 
 
 class IAction(ABC):
@@ -15,3 +16,10 @@ class IAction(ABC):
 
     @abstractmethod
     async def _execute(self, identifier: str) -> Dict[str, Any]: ...
+
+
+class IActionMap(Protocol):
+    defaults: List[Type[IAction]]
+    optional: List[Type[IAction]]
+
+    def merge(self, include: List[str]) -> List[Type[IAction]]: ...

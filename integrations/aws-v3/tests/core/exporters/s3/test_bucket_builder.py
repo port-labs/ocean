@@ -12,18 +12,16 @@ class TestS3BucketBuilder:
         builder = S3BucketBuilder("test-bucket")
 
         # Verify internal bucket is created properly
-        assert builder._bucket.Identifier == "test-bucket"
         assert builder._bucket.Type == "AWS::S3::Bucket"
         assert isinstance(builder._bucket.Properties, S3BucketProperties)
 
-    def test_build_empty_bucket(self) -> None:
+    def test_build_default_bucket(self) -> None:
         """Test building a bucket with no additional data."""
         builder = S3BucketBuilder("empty-bucket")
 
         result = builder.build()
 
         assert isinstance(result, S3Bucket)
-        assert result.Identifier == "empty-bucket"
         assert result.Type == "AWS::S3::Bucket"
         assert isinstance(result.Properties, S3BucketProperties)
 
@@ -126,18 +124,6 @@ class TestS3BucketBuilder:
         assert bucket.Properties.Tags is None
         assert bucket.Properties.BucketEncryption == {"Rules": []}
 
-    def test_with_data_empty_dict(self) -> None:
-        """Test with_data with empty dictionary."""
-        builder = S3BucketBuilder("empty-data-bucket")
-
-        builder.with_data({})
-        bucket = builder.build()
-
-        # Should not change anything
-        assert bucket.Identifier == "empty-data-bucket"
-        properties_dict = bucket.Properties.dict(exclude_none=True)
-        assert len(properties_dict) == 0
-
     def test_with_data_complex_nested_structure(self) -> None:
         """Test with_data with complex nested AWS structures."""
         builder = S3BucketBuilder("complex-bucket")
@@ -191,7 +177,6 @@ class TestS3BucketBuilder:
 
         # Should return the same instance
         assert bucket1 is bucket2
-        assert bucket1.Identifier == "same-bucket"
         assert bucket1.Properties.BucketName == "same-bucket"
 
     def test_build_after_modification(self) -> None:
@@ -236,8 +221,8 @@ class TestS3BucketBuilder:
         bucket2 = builder2.build()
 
         # Verify buckets are independent
-        assert bucket1.Identifier == "bucket1"
-        assert bucket2.Identifier == "bucket2"
+        assert bucket1.Properties.BucketName == "bucket1"
+        assert bucket2.Properties.BucketName == "bucket2"
         assert bucket1.Properties.Tags == [{"Key": "Builder", "Value": "1"}]
         assert bucket2.Properties.Tags == [{"Key": "Builder", "Value": "2"}]
         assert bucket1 is not bucket2

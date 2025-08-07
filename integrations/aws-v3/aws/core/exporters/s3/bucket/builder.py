@@ -4,7 +4,7 @@ from typing import Dict, Any, Self
 
 class S3BucketBuilder:
     def __init__(self, name: str) -> None:
-        self._bucket = S3Bucket(Identifier=name, Properties=S3BucketProperties())
+        self._bucket = S3Bucket(Properties=S3BucketProperties())
 
     def with_data(self, data: Dict[str, Any]) -> Self:
         for k, v in data.items():

@@ -58,5 +58,5 @@ async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for batch in _handle_global_resource_resync(
             kind, regions, options_factory, exporter
         ):
-            logger.info(f"Yielding batch: {batch}")
+            logger.error(f"Yielding batch: {batch}")
             yield batch
