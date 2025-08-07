@@ -88,6 +88,7 @@ class LaunchDarklyClient:
             try:
                 # For the first request, url and params are used.
                 # For subsequent requests, url is the full path from 'next.href' and params is None.
+                logger.debug(f"Fetching {kind} from LaunchDarkly: {url}")
                 response = await self.send_api_request(
                     endpoint=url, query_params=params
                 )
@@ -98,7 +99,7 @@ class LaunchDarklyClient:
                 # follow the full 'next' link for the next page.
                 if next_link := response.get("_links", {}).get("next"):
                     url = next_link["href"]
-                    logger.info(f"Fetching next page of {kind}: {url}")
+                    logger.debug(f"Fetching next page of {kind}: {url}")
                     params = None  # reset params for subsequent requests
                 else:
                     # No 'next' link means we have reached the end of the results.
