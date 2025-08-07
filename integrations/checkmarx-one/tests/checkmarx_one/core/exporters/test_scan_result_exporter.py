@@ -402,7 +402,7 @@ class TestCheckmarxScanResultExporter:
     ) -> None:
         """Test getting scan results with None options raises ValueError."""
         with pytest.raises(
-            ValueError, match="scan_id is required for getting scan results"
+            AttributeError, match="'NoneType' object has no attribute 'get'"
         ):
             async for batch in scan_result_exporter.get_paginated_resources(None):
                 pass

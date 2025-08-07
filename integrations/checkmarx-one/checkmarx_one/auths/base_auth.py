@@ -2,7 +2,6 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.context.ocean import ocean
@@ -31,10 +30,7 @@ class BaseCheckmarxAuthenticator(ABC):
         """
         self.iam_url = iam_url.rstrip("/")
         self.tenant = tenant
-
-        # HTTP client setup
         self.http_client = http_async_client
-        self.http_client.timeout = httpx.Timeout(30)
 
         # Token management
         self._access_token: Optional[str] = None

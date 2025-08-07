@@ -1,14 +1,15 @@
 from collections.abc import AsyncGenerator
-from typing import Any, Dict
+from typing import Any
 from loguru import logger
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
+from checkmarx_one.core.options import ListProjectOptions, SingleProjectOptions
 
 
 class CheckmarxProjectExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One projects."""
 
-    async def get_resource(self, options: Dict[str, Any]) -> dict[str, Any]:
+    async def get_resource(self, options: SingleProjectOptions) -> dict[str, Any]:
         """Get a specific project by ID."""
         response = await self.client.send_api_request(
             f"/projects/{options['project_id']}"
@@ -18,7 +19,7 @@ class CheckmarxProjectExporter(AbstractCheckmarxExporter):
 
     async def get_paginated_resources(
         self,
-        options: Dict[str, Any],
+        options: ListProjectOptions,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get projects from Checkmarx One.

@@ -5,6 +5,7 @@ from loguru import logger
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
 from typing import Dict
+from checkmarx_one.core.options import SingleScanOptions, ListScanOptions
 
 
 class CheckmarxScanExporter(AbstractCheckmarxExporter):
@@ -12,7 +13,7 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
 
     async def get_resource(
         self,
-        options: Dict[str, Any],
+        options: SingleScanOptions,
     ) -> Dict[str, Any]:
         """Get a specific scan by ID."""
         response = await self.client.send_api_request(f"/scans/{options['scan_id']}")
@@ -22,7 +23,7 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
     @cache_iterator_result()
     async def get_paginated_resources(
         self,
-        options: Dict[str, Any],
+        options: ListScanOptions,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get scans from Checkmarx One.

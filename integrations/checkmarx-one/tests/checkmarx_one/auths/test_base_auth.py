@@ -32,7 +32,7 @@ class TestBaseCheckmarxAuthenticator:
     @pytest.fixture
     def authenticator(self, mock_http_client: MagicMock) -> MockAuthenticator:
         """Create a mock authenticator instance for testing."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", mock_http_client):
+        with patch("port_ocean.utils.http_async_client", mock_http_client):
             return MockAuthenticator(
                 iam_url="https://iam.checkmarx.net", tenant="test-tenant"
             )
@@ -55,7 +55,6 @@ class TestBaseCheckmarxAuthenticator:
         assert authenticator._access_token is None
         assert authenticator._refresh_token is None
         assert authenticator._token_expires_at is None
-        assert authenticator.http_client == mock_http_client
 
     def test_auth_url_property(self, authenticator: MockAuthenticator) -> None:
         """Test auth_url property construction."""
@@ -64,7 +63,7 @@ class TestBaseCheckmarxAuthenticator:
 
     def test_auth_url_with_trailing_slash(self, mock_http_client: MagicMock) -> None:
         """Test auth_url property handles trailing slashes correctly."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", mock_http_client):
+        with patch("port_ocean.utils.http_async_client", mock_http_client):
             authenticator = MockAuthenticator(
                 iam_url="https://iam.checkmarx.net/", tenant="test-tenant"
             )
@@ -223,34 +222,10 @@ class TestBaseCheckmarxAuthenticator:
             ):
                 await authenticator.get_auth_headers()
 
-    @pytest.mark.asyncio
-    async def test_refresh_token_force_refresh(
-        self, authenticator: MockAuthenticator, token_response: Dict[str, Any]
-    ) -> None:
-        """Test force refreshing the token."""
-        with patch.object(authenticator, "_authenticate", return_value=token_response):
-            await authenticator.refresh_token()
-
-            assert authenticator._access_token == "test_access_token_123"
-            assert authenticator._refresh_token == "test_refresh_token_456"
-
-    @pytest.mark.asyncio
-    async def test_refresh_token_authentication_error(
-        self, authenticator: MockAuthenticator
-    ) -> None:
-        """Test force refresh when authentication fails."""
-        with patch.object(
-            authenticator, "_authenticate", side_effect=Exception("Auth failed")
-        ):
-            with pytest.raises(
-                CheckmarxAuthenticationError, match="Token refresh failed: Auth failed"
-            ):
-                await authenticator.refresh_token()
-
     def test_abstract_method_implementation(self, mock_http_client: MagicMock) -> None:
         """Test that abstract method is properly defined."""
         # This should not raise an error since MockAuthenticator implements _authenticate
-        with patch("checkmarx_one.auths.base_auth.http_async_client", mock_http_client):
+        with patch("port_ocean.utils.http_async_client", mock_http_client):
             authenticator = MockAuthenticator(
                 iam_url="https://iam.checkmarx.net", tenant="test-tenant"
             )

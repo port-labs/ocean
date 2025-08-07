@@ -11,7 +11,7 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_api_key(self) -> None:
         """Test creating authenticator with API key."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+        with patch("port_ocean.utils.http_async_client", MagicMock()):
             with patch(
                 "checkmarx_one.auths.auth_factory.TokenAuthenticator"
             ) as mock_token_class:
@@ -31,7 +31,7 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_oauth(self) -> None:
         """Test creating authenticator with OAuth credentials."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+        with patch("port_ocean.utils.http_async_client", MagicMock()):
             with patch(
                 "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
             ) as mock_oauth_class:
@@ -55,7 +55,7 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_both_credentials(self) -> None:
         """Test creating authenticator with both API key and OAuth credentials."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+        with patch("port_ocean.utils.http_async_client", MagicMock()):
             with patch(
                 "checkmarx_one.auths.auth_factory.TokenAuthenticator"
             ) as mock_token_class:
@@ -168,7 +168,7 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_whitespace_only_credentials(self) -> None:
         """Test creating authenticator with whitespace-only credentials."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+        with patch("port_ocean.utils.http_async_client", MagicMock()):
             with patch(
                 "checkmarx_one.auths.auth_factory.TokenAuthenticator"
             ) as mock_token_class:
@@ -191,7 +191,7 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_different_urls(self) -> None:
         """Test creating authenticator with different IAM URLs."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+        with patch("port_ocean.utils.http_async_client", MagicMock()):
             with patch(
                 "checkmarx_one.auths.auth_factory.TokenAuthenticator"
             ) as mock_token_class:
@@ -213,7 +213,7 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_with_special_characters(self) -> None:
         """Test creating authenticator with special characters in credentials."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+        with patch("port_ocean.utils.http_async_client", MagicMock()):
             with patch(
                 "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
             ) as mock_oauth_class:
@@ -237,7 +237,7 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_prefers_api_key_over_oauth(self) -> None:
         """Test that API key is preferred over OAuth when both are provided."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+        with patch("port_ocean.utils.http_async_client", MagicMock()):
             with patch(
                 "checkmarx_one.auths.auth_factory.TokenAuthenticator"
             ) as mock_token_class:
@@ -261,7 +261,7 @@ class TestCheckmarxAuthenticatorFactory:
 
     def test_create_authenticator_oauth_when_no_api_key(self) -> None:
         """Test that OAuth is used when no API key is provided."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", MagicMock()):
+        with patch("port_ocean.utils.http_async_client", MagicMock()):
             with patch(
                 "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
             ) as mock_oauth_class:

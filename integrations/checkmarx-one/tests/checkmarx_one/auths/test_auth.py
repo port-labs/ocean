@@ -13,7 +13,7 @@ class TestCheckmarxAuthenticator:
     @pytest.fixture
     def api_key_authenticator(self) -> CheckmarxAuthenticator:
         """Create a CheckmarxAuthenticator instance with API key."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", AsyncMock()):
+        with patch("port_ocean.utils.http_async_client", AsyncMock()):
             return CheckmarxAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
@@ -23,7 +23,7 @@ class TestCheckmarxAuthenticator:
     @pytest.fixture
     def oauth_authenticator(self) -> CheckmarxAuthenticator:
         """Create a CheckmarxAuthenticator instance with OAuth credentials."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", AsyncMock()):
+        with patch("port_ocean.utils.http_async_client", AsyncMock()):
             return CheckmarxAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
@@ -65,7 +65,7 @@ class TestCheckmarxAuthenticator:
 
     def test_init_with_both_credentials(self) -> None:
         """Test initialization with both API key and OAuth credentials."""
-        with patch("checkmarx_one.auths.base_auth.http_async_client", AsyncMock()):
+        with patch("port_ocean.utils.http_async_client", AsyncMock()):
             authenticator = CheckmarxAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
@@ -176,30 +176,6 @@ class TestCheckmarxAuthenticator:
             oauth_authenticator._authenticator.get_auth_headers.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_refresh_token_with_api_key(
-        self, api_key_authenticator: CheckmarxAuthenticator
-    ) -> None:
-        """Test refresh_token delegation with API key."""
-        with patch.object(
-            api_key_authenticator._authenticator, "refresh_token", AsyncMock()
-        ) as mock_refresh:
-            await api_key_authenticator.refresh_token()
-
-            mock_refresh.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_refresh_token_with_oauth(
-        self, oauth_authenticator: CheckmarxAuthenticator
-    ) -> None:
-        """Test refresh_token delegation with OAuth."""
-        with patch.object(
-            oauth_authenticator._authenticator, "refresh_token", AsyncMock()
-        ) as mock_refresh:
-            await oauth_authenticator.refresh_token()
-
-            mock_refresh.assert_called_once()
-
-    @pytest.mark.asyncio
     async def test_authenticate_propagates_exception(
         self, api_key_authenticator: CheckmarxAuthenticator
     ) -> None:
@@ -228,21 +204,6 @@ class TestCheckmarxAuthenticator:
                 await api_key_authenticator.get_auth_headers()
 
             assert "Headers failed" in str(exc_info.value)
-
-    @pytest.mark.asyncio
-    async def test_refresh_token_propagates_exception(
-        self, api_key_authenticator: CheckmarxAuthenticator
-    ) -> None:
-        """Test that refresh_token exceptions are properly propagated."""
-        with patch.object(
-            api_key_authenticator._authenticator,
-            "refresh_token",
-            AsyncMock(side_effect=CheckmarxAuthenticationError("Refresh failed")),
-        ):
-            with pytest.raises(CheckmarxAuthenticationError) as exc_info:
-                await api_key_authenticator.refresh_token()
-
-            assert "Refresh failed" in str(exc_info.value)
 
     def test_attributes_copied_from_underlying_authenticator(
         self, api_key_authenticator: CheckmarxAuthenticator

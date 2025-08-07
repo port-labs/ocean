@@ -53,7 +53,3 @@ class CheckmarxAuthenticator(BaseCheckmarxAuthenticator):
     async def get_auth_headers(self):
         """Delegate to the underlying authenticator."""
         return await self._authenticator.get_auth_headers()
-
-    async def refresh_token(self):
-        """Delegate to the underlying authenticator."""
-        return await self._authenticator.refresh_token()

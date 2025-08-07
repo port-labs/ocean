@@ -4,6 +4,7 @@ from loguru import logger
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
+from checkmarx_one.core.options import ListScanResultOptions, SingleScanResultOptions
 
 
 class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
@@ -16,7 +17,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         scan_result["__scan_id"] = scan_id
         return scan_result
 
-    async def get_resource(self, options: Dict[str, Any]) -> dict[str, Any]:
+    async def get_resource(self, options: SingleScanResultOptions) -> dict[str, Any]:
         """
         Get a specific scan result by ID.
 
@@ -44,7 +45,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
     @cache_iterator_result()
     async def get_paginated_resources(
         self,
-        options: Dict[str, Any],
+        options: ListScanResultOptions,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get scan results from Checkmarx One.
@@ -63,8 +64,6 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         Yields:
             Batches of scan results
         """
-        if options is None:
-            options = {}
 
         if not options.get("scan_id"):
             raise ValueError("scan_id is required for getting scan results")
@@ -74,10 +73,6 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         }
 
         # Add optional parameters
-        if "limit" in options:
-            params["limit"] = options["limit"]
-        if "offset" in options:
-            params["offset"] = options["offset"]
         if "severity" in options:
             params["severity"] = options["severity"]
         if "state" in options:
