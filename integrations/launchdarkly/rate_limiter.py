@@ -20,7 +20,6 @@ class LaunchDarklyRateLimiter:
         max_concurrent: int = 10,
         max_retries: int = 3,
         minimum_limit_remaining: int = 1,
-        maximum_sleep_duration: int = 60,
     ) -> None:
         """
         Initializes the rate limiter.
@@ -30,12 +29,9 @@ class LaunchDarklyRateLimiter:
             max_retries: Max number of retries for a rate-limited request.
             minimum_limit_remaining: Proactively sleep if remaining requests fall
                 below this number.
-            maximum_sleep_duration: The maximum time in seconds to sleep during a
-                reactive backoff.
         """
-        self.max_retries = max_retries
+        self._max_retries = max_retries
         self._minimum_limit_remaining = minimum_limit_remaining
-        self._maximum_sleep_duration = maximum_sleep_duration
 
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._lock = asyncio.Lock()
@@ -84,17 +80,14 @@ class LaunchDarklyRateLimiter:
                 isinstance(exc_val, httpx.HTTPStatusError)
                 and exc_val.response.status_code == 429
             ):
-                response = exc_val.response
-                return await self._handle_rate_limit_error(response)
+                return await self._handle_rate_limit_error(exc_val.response)
             return False
         finally:
             self._semaphore.release()
 
     async def _update_rate_limits(self, headers: httpx.Headers) -> None:
         """
-        Updates the internal rate limit status from response headers. This should
-        be called by the client on every successful response to keep the limiter's
-        state accurate.
+        Updates the internal rate limit status from response header
         """
         async with self._lock:
             try:
@@ -123,18 +116,17 @@ class LaunchDarklyRateLimiter:
         self._retries += 1
         await self._update_rate_limits(response.headers)
 
-        if self._retries > self.max_retries:
+        if self._retries > self._max_retries:
             logger.error(
-                f"Max retries ({self.max_retries}) exceeded for rate-limited request."
+                f"Max retries ({self._max_retries}) exceeded for rate-limited request."
             )
             return False
 
         sleep_duration = self.seconds_until_reset + 0.5
-        final_sleep = min(sleep_duration, self._maximum_sleep_duration)
 
         logger.warning(
-            f"Rate limit hit. Retrying request in {final_sleep:.2f} seconds "
-            f"(attempt {self._retries}/{self.max_retries})."
+            f"Rate limit hit. Retrying request in {sleep_duration:.2f} seconds "
+            f"(attempt {self._retries}/{self._max_retries})."
         )
-        await asyncio.sleep(final_sleep)
+        await asyncio.sleep(sleep_duration)
         return True
