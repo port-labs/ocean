@@ -54,8 +54,8 @@ class LaunchDarklyRateLimiter:
 
     async def __aenter__(self) -> "LaunchDarklyRateLimiter":
         """Acquires semaphore and proactively sleeps if the rate limit is low."""
+        logger.warning(f"acquiring semaphore for retry attempt #{self._retries}")
         await self._semaphore.acquire()
-        self._retries = 0
 
         async with self._lock:
             if self._remaining and self._remaining <= self._minimum_limit_remaining:
@@ -85,7 +85,6 @@ class LaunchDarklyRateLimiter:
                 and exc_val.response.status_code == 429
             ):
                 response = exc_val.response
-                logger.warning(f"Rate limit hit. Handling response: {response.headers}")
                 return await self._handle_rate_limit_error(response)
             return False
         finally:
@@ -104,13 +103,15 @@ class LaunchDarklyRateLimiter:
                 reset_ms = headers.get("X-Ratelimit-Reset")
 
                 if limit and remaining and reset_ms:
-                    logger.info(
-                        f"Updating rate limit status: {remaining} / {limit} and resets in {reset_ms}"
-                    )
                     self._limit = int(limit)
                     self._remaining = int(remaining)
                     self._reset_time = float(reset_ms) / 1000.0
-                    self._log_rate_limit_status()
+                    logger.warning(
+                        f"LaunchDarkly rate limit updated. "
+                        f"Remaining: {self._remaining}. "
+                        f"Limit: {self._limit}. "
+                        f"Resets in {self.seconds_until_reset:.2f}s."
+                    )
 
             except (ValueError, TypeError) as e:
                 logger.warning(f"Could not parse LaunchDarkly rate limit headers: {e}")
@@ -137,12 +138,3 @@ class LaunchDarklyRateLimiter:
         )
         await asyncio.sleep(final_sleep)
         return True
-
-    def _log_rate_limit_status(self) -> None:
-        """Logs the current rate limit status if available."""
-        if self._remaining and self._limit:
-            logger.warning(
-                f"LaunchDarkly Rate Limit: {self._remaining} remaining. "
-                f"Limit: {self._limit}. "
-                f"Resets in {self.seconds_until_reset:.2f}s."
-            )
