@@ -37,7 +37,7 @@ class ArgocdClient:
         if self.allow_insecure:
             # This is not recommended for production use
             logger.warning(
-                "Insecure mode is enabled. This will disable SSL verification for the ArgoCD API client, which is not recommended for production use."
+                "Insecure mode is enabled. This will disable SSL verification for the Argo CD API client, which is not recommended for production use."
             )
             self.http_client = httpx.AsyncClient(verify=False)
         else:
@@ -51,7 +51,7 @@ class ArgocdClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        logger.info(f"Sending request to ArgoCD API: {method} {url}")
+        logger.info(f"Sending request to Argo CD API: {method} {url}")
         try:
             response = await self.http_client.request(
                 method=method,
@@ -94,7 +94,7 @@ class ArgocdClient:
         return application
 
     async def get_deployment_history(self) -> list[dict[str, Any]]:
-        """The ArgoCD application route returns a history of all deployments. This function reuses the output of the application endpoint"""
+        """The Argo CD application route returns a history of all deployments. This function reuses the output of the application endpoint"""
         logger.warning(
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
@@ -113,7 +113,7 @@ class ArgocdClient:
         return all_history
 
     async def get_kubernetes_resource(self) -> list[dict[str, Any]]:
-        """The ArgoCD application returns a list of managed kubernetes resources. This function reuses the output of the application endpoint"""
+        """The Argo CD application returns a list of managed kubernetes resources. This function reuses the output of the application endpoint"""
         logger.warning(
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )

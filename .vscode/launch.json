@@ -76,7 +76,7 @@
       "cwd": "${workspaceFolder}/integrations/argocd",
       "envFile": "${workspaceFolder}/integrations/argocd/.env",
       "justMyCode": true,
-      "name": "Run argocd integration",
+      "name": "Run argo cd integration",
       "program": "${workspaceFolder}/integrations/argocd/debug.py",
       "python": "${workspaceFolder}/integrations/argocd/.venv/bin/python",
       "request": "launch",
