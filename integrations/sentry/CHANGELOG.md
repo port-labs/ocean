@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.186 (2025-08-05)
+## 0.1.187 (2025-08-05)
 
 
 ### Fix
 
 - Fixed issue with pagination looping when params is not reset after initial API call
+
+
+## 0.1.186 (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
 
 
 ## 0.1.185 (2025-08-05)
