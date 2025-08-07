@@ -460,9 +460,10 @@ class GitlabService:
         if project := filtered_projects.get(project_id):
             return project
 
-        project = await AsyncFetcher.fetch_single(
+        project_obj = await AsyncFetcher.fetch_single(
             self.gitlab_client.projects.get, project_id
         )
+        project = typing.cast(Project, project_obj)
         if self.should_run_for_project(project):
             event.attributes[PROJECTS_CACHE_KEY][self.gitlab_client.private_token][
                 project_id

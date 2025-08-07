@@ -3,12 +3,34 @@ Module for file processing functions used by the Azure DevOps client.
 Handles pattern matching, content parsing, and file processing.
 """
 
+from enum import StrEnum
 import json
-from typing import Any, List, Optional, Union
+import re
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 from loguru import logger
 import yaml
 from braceexpand import braceexpand
 import fnmatch
+from wcmatch import glob
+
+
+class RecursionLevel(StrEnum):
+    NONE = "none"
+    ONE_LEVEL = "oneLevel"
+    FULL = "full"
+
+
+class PathDescriptor(NamedTuple):
+    base_path: str
+    recursion: RecursionLevel
+    pattern: str
+
+
+RECURSION_PRIORITY = {
+    RecursionLevel.NONE: 0,
+    RecursionLevel.ONE_LEVEL: 1,
+    RecursionLevel.FULL: 2,
+}
 
 
 def match_pattern(pattern: Union[str, List[str]], string: str) -> bool:
@@ -109,3 +131,93 @@ async def generate_file_object_from_repository_file(
             f"Failed to process file {file_metadata.get('path', 'unknown')}: {str(e)}"
         )
         return None
+
+
+def is_glob_pattern(pattern: str) -> bool:
+    glob_chars = r"(?<!\\)([*?\[\]{}!@+])"
+    return bool(re.search(glob_chars, pattern))
+
+
+def get_priority(recursion: RecursionLevel) -> int:
+    return RECURSION_PRIORITY.get(recursion, 0)
+
+
+def extract_descriptor_from_pattern(pattern: str) -> PathDescriptor:
+    """
+    For a given path or glob pattern, return:
+    - the static base path (before any glob)
+    - the appropriate Azure DevOps recursion level
+    - the original pattern
+    """
+    normalized = pattern.strip("/")
+    parts = normalized.split("/")
+
+    base_parts = []
+    recursion = RecursionLevel.NONE
+
+    for part in parts:
+        if is_glob_pattern(part):
+            globstar_pattern = r"(?<!\\)\*\*(?![\*\\])"
+            if bool(re.search(globstar_pattern, pattern)):
+                recursion = RecursionLevel.FULL
+            else:
+                recursion = RecursionLevel.ONE_LEVEL
+            break
+        base_parts.append(part)
+
+    base_path = "/" + "/".join(base_parts) if base_parts else "/"
+    return PathDescriptor(base_path=base_path, recursion=recursion, pattern=pattern)
+
+
+def group_descriptors_by_base(
+    descriptors: List[PathDescriptor],
+) -> Dict[str, List[PathDescriptor]]:
+    """
+    Group multiple PathDescriptors by their base_path.
+    """
+    grouped: Dict[str, List[PathDescriptor]] = {}
+    for desc in descriptors:
+        grouped.setdefault(desc.base_path, []).append(desc)
+    return grouped
+
+
+def separate_glob_and_literal_paths(paths: list[str]) -> tuple[list[str], list[str]]:
+    """Separate a list of paths into (literal_paths, glob_patterns)."""
+    literals, globs = [], []
+
+    for p in paths:
+        if is_glob_pattern(p):
+            globs.append(p)
+        else:
+            literals.append(p)
+    return literals, globs
+
+
+def matches_glob_pattern(path: str, pattern: str) -> bool:
+    """
+    Returns True if the path matches the given glob pattern.
+    Supports ** and other extended glob syntax via wcmatch.
+    """
+    return glob.globmatch(
+        path.strip("/"), pattern.strip("/"), flags=glob.GLOBSTAR | glob.IGNORECASE
+    )
+
+
+def filter_files_by_glob(
+    files: list[dict[str, Any]], pattern: PathDescriptor
+) -> list[dict[str, Any]]:
+    """
+    Return only the files that match the given PathDescriptor pattern.
+    Skips folders.
+    """
+    matched = []
+
+    for file in files:
+        if file.get("isFolder", False):
+            continue
+
+        path = file["path"].lstrip("/")
+        if matches_glob_pattern(path, pattern.pattern):
+            matched.append(file)
+
+    return matched
