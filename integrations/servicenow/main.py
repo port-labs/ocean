@@ -3,7 +3,7 @@ from port_ocean.context.ocean import ocean
 from client import ServicenowClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.event import event
-from integration import ServiceNowResourceConfig
+from integration import ServiceNowResourceConfig, APIQueryParams
 from typing import cast
 
 
@@ -22,7 +22,9 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     api_query_params = {}
     selector = cast(ServiceNowResourceConfig, event.resource_config).selector
     if selector.api_query_params:
-        api_query_params = selector.api_query_params.generate_request_params()
+        api_query_params = cast(
+            APIQueryParams, selector.api_query_params
+        ).generate_request_params()
     async for records in servicenow_client.get_paginated_resource(
         resource_kind=kind, api_query_params=api_query_params
     ):
