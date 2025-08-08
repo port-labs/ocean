@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "checkmarx_one"
+name = "checkmarx-one"
 version = "0.1.0-dev"
 description = "An integration for checkmarx project, scan and scan results types"
 authors = ["victor adebayo <victor.adebayo@port.io>"]
