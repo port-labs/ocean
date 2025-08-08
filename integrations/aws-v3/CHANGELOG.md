@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.0-dev (2025-08-05)
+## 0.3.0-dev (2025-08-08)
+
+
+### Features
+
+- Added Support S3 Exporter
+
+
+## 0.2.4-dev (2025-08-07)
 
 
 ### Improvements
 
-- Added Support S3 Exporter
+- Bumped ocean version to ^0.27.1
 
 
 ## 0.2.3-dev (2025-08-05)
