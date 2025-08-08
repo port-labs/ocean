@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.160 (2025-08-07)
 
 
-### Fix
+### Improvements
 
-- Reset query parameters after each paginated request to avoid pagination issues
+- Bumped ocean version to ^0.27.1
 
 
 ## 0.1.159 (2025-08-05)

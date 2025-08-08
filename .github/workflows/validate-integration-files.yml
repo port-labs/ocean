@@ -55,32 +55,3 @@ jobs:
               exit 1
             fi
           done
-
-      - name: Validate icons
-        run: |
-          exit 0 # THIS IS TEMPORARY
-          S3_BUCKET="port-graphical-assets"
-
-          S3_APP_ICONS_URL="https://${S3_BUCKET}.s3.amazonaws.com?prefix=icons/apps/"
-          APP_RESULTS=($(curl -s "${S3_APP_ICONS_URL}" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]'))
-          S3_GENERAL_ICONS_URL="https://${S3_BUCKET}.s3.amazonaws.com?prefix=icons/general/"
-          GENERAL_RESULTS=$(curl -s "${S3_GENERAL_ICONS_URL}" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
-          S3_SYSTEM_ICONS_URL="https://${S3_BUCKET}.s3.amazonaws.com?prefix=icons/system/"
-          SYSTEM_RESULTS=$(curl -s "${S3_SYSTEM_ICONS_URL}" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
-
-          APP_AND_SYSTEM_RESULTS=($(printf "%s\n" "${APP_RESULTS[@]}" "${SYSTEM_RESULTS[@]}" | sort -u))
-          RESULTS=($(printf "%s\n" "${APP_AND_SYSTEM_RESULTS[@]}" "${GENERAL_RESULTS[@]}" | sort -u))
-          echo "Got Port Icons ${RESULTS[@]}"
-
-          # All integration icons
-          ICONS=($(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.icon' {} | tr '[:upper:]' '[:lower:]'))
-          BP_ICONS=($(find integrations/** -name 'blueprints.json' -not -path "**/.venv/*" | xargs -I {} jq -r '.[] | .. | .icon?' {} | grep -v '^null$' | sort -u | tr '[:upper:]' '[:lower:]'))
-          MERGED_SET=($(printf "%s\n" "${ICONS[@]}" "${BP_ICONS[@]}" | sort -u))
-          echo "Required Icons: ${MERGED_SET[@]}"
-
-          for ICON in "${MERGED_SET[@]}"; do
-            if [ $(echo "${RESULTS[@]}" | grep -c "$ICON") -eq 0 ]; then
-                echo "ERROR: $ICON icon is missing in icons pool"
-                exit 1
-            fi
-          done
