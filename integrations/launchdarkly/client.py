@@ -1,4 +1,3 @@
-from port_ocean.utils import http_async_client
 import httpx
 from typing import Any, AsyncGenerator, Optional, Union
 from loguru import logger
@@ -27,7 +26,7 @@ class LaunchDarklyClient:
     ):
         self.api_url = f"{launchdarkly_url}/api/v2"
         self.api_token = api_token
-        self.http_client = http_async_client
+        self.http_client = httpx.AsyncClient()
         self.http_client.headers.update(self.api_auth_header)
         self.webhook_secret = webhook_secret
         self._rate_limiter = LaunchDarklyRateLimiter()
