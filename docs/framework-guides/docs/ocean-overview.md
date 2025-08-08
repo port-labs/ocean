@@ -71,7 +71,7 @@ The goal of Ocean is to provide a layer of abstraction for a multitude of common
   - Trigger by querying configuration from Port
   - Trigger by reading a message from a Kafka topic provided by Port
 - Support a multitude of deployment methods to account for any environment, infrastructure or architecture:
-  - Kubernetes (using helm or ArgoCD)
+  - Kubernetes (using helm or Argo CD)
   - AWS ECS (using Terraform module)
   - Azure Container App (using Terraform module)
   - Docker

@@ -1,6 +1,6 @@
-# ArgoCD
+# Argo CD
 
-An integration used to import ArgoCD resources into Port.
+An integration used to import Argo CD resources into Port.
 
 #### Install & use the integration - [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/argocd/)
 

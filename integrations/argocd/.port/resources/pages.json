@@ -1,7 +1,7 @@
 [
   {
     "icon": "Argo",
-    "title": "ArgoCD Dashboard",
+    "title": "Argo CD Dashboard",
     "protected": false,
     "widgets": [
       {

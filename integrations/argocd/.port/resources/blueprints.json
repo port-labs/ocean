@@ -1,8 +1,8 @@
 [
   {
     "identifier": "argocdCluster",
-    "description": "This blueprint represents an ArgoCD cluster",
-    "title": "ArgoCD Cluster",
+    "description": "This blueprint represents an Argo CD cluster",
+    "title": "Argo CD Cluster",
     "icon": "Argo",
     "schema": {
       "properties": {
@@ -45,8 +45,8 @@
   },
   {
     "identifier": "argocdNamespace",
-    "description": "This blueprint represents an ArgoCD namespace",
-    "title": "ArgoCD Namespace",
+    "description": "This blueprint represents an Argo CD namespace",
+    "title": "Argo CD Namespace",
     "icon": "Argo",
     "schema": {
       "properties": {},
@@ -57,7 +57,7 @@
     "calculationProperties": {},
     "relations": {
       "cluster": {
-        "title": "ArgoCD Cluster",
+        "title": "Argo CD Cluster",
         "target": "argocdCluster",
         "required": false,
         "many": false
@@ -66,8 +66,8 @@
   },
   {
     "identifier": "argocdProject",
-    "description": "This blueprint represents an ArgoCD Project",
-    "title": "ArgoCD Project",
+    "description": "This blueprint represents an Argo CD Project",
+    "title": "Argo CD Project",
     "icon": "Argo",
     "schema": {
       "properties": {
@@ -92,7 +92,7 @@
   },
   {
     "identifier": "argocdApplication",
-    "description": "This blueprint represents an ArgoCD Application",
+    "description": "This blueprint represents an Argo CD Application",
     "title": "Running Service",
     "icon": "Argo",
     "schema": {
@@ -182,19 +182,19 @@
     "calculationProperties": {},
     "relations": {
       "project": {
-        "title": "ArgoCD Project",
+        "title": "Argo CD Project",
         "target": "argocdProject",
         "required": false,
         "many": false
       },
       "cluster": {
-        "title": "ArgoCD Cluster",
+        "title": "Argo CD Cluster",
         "target": "argocdCluster",
         "required": false,
         "many": false
       },
       "namespace": {
-        "title": "ArgoCD Namespace",
+        "title": "Argo CD Namespace",
         "target": "argocdNamespace",
         "required": false,
         "many": false
@@ -203,8 +203,8 @@
   },
   {
     "identifier": "argocdDeploymentHistory",
-    "description": "This blueprint represents an ArgoCD deployment history",
-    "title": "ArgoCD Deployment History",
+    "description": "This blueprint represents an Argo CD deployment history",
+    "title": "Argo CD Deployment History",
     "icon": "Argo",
     "schema": {
       "properties": {
@@ -251,7 +251,7 @@
   },
   {
     "identifier": "argocdKubernetesResource",
-    "description": "This blueprint represents an ArgoCD kubernetes resource",
+    "description": "This blueprint represents an Argo CD kubernetes resource",
     "title": "Kubernetes Resource",
     "icon": "Argo",
     "schema": {

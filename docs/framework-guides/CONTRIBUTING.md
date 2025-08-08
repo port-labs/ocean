@@ -20,7 +20,7 @@ Contributions are very welcome. If you think you need help planning your contrib
    3. **Notice/tip/info boxes** - All letters will be capital letters.
    4. **Other** - discuss the matter with the rest of the team and decide together.
 2. **Links** - unless the link is at a start of a new sentence, it should not be with capital letters.
-3. **General product names** - well known products such as Lambda, Kubernetes, ArgoCD, etc. should follow their standard capitalization rules and styling.
+3. **General product names** - well known products such as Lambda, Kubernetes, Argo CD, etc. should follow their standard capitalization rules and styling.
 4. **Button names** - will be capitalized according to the exact way the term is written in Port.
 5. **After brackets or a colon (`:`)** - there is no need to put a capital letter.
 

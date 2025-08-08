@@ -6,7 +6,7 @@ sidebar_position: 8
 
 # 📦 Publishing Your Integration
 
-With your integration developed and tested, you have several options for deployment. You can deploy it directly using [Helm](../deployment/helm.md), [Terraform](../deployment/terraform.md), [Docker](../deployment/docker.md), or [ArgoCD](../deployment/argocd.md). However, if you want to make your integration available to other Port users, you'll need to publish it to the Ocean repository. This guide will walk you through the process of publishing your integration.
+With your integration developed and tested, you have several options for deployment. You can deploy it directly using [Helm](../deployment/helm.md), [Terraform](../deployment/terraform.md), [Docker](../deployment/docker.md), or [Argo CD](../deployment/argocd.md). However, if you want to make your integration available to other Port users, you'll need to publish it to the Ocean repository. This guide will walk you through the process of publishing your integration.
 
 ## Prerequisites
 

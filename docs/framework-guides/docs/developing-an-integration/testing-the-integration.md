@@ -95,7 +95,7 @@ You can find these credentials by following the [Find Your Port Credentials guid
 
 ## Running the Integration
 
-We will be running the integration locally using the Ocean CLI. You can run the integration with other means such as [Helm](../deployment/helm.md), [Terraform](../deployment/terraform.md), [Docker](../deployment//docker.md), and [ArgoCD](../deployment/argocd.md).
+We will be running the integration locally using the Ocean CLI. You can run the integration with other means such as [Helm](../deployment/helm.md), [Terraform](../deployment/terraform.md), [Docker](../deployment//docker.md), and [Argo CD](../deployment/argocd.md).
 
 Create a `.env` file in the integration directory to store the environment variables required to run the integration. Add the following environment variables to the file:
 
@@ -230,7 +230,7 @@ If you are satisfied with the integration and would like to deploy it, you can f
 - [Helm](../deployment/helm.md)
 - [Terraform](../deployment/terraform.md)
 - [Docker](../deployment/docker.md)
-- [ArgoCD](../deployment/argocd.md)
+- [Argo CD](../deployment/argocd.md)
 
 ## Conclusion
 Having developed and tested your integration, you can decide to use it locally or contribute to the Port community by following the guide in the next section.
