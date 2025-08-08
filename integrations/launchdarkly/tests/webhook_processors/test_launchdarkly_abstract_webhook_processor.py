@@ -144,6 +144,7 @@ class TestLaunchDarklyAbstractWebhookProcessor:
         payload = {"test": "data"}
         payload_bytes = json.dumps(payload).encode("utf-8")
 
+        ocean.integration_config["webhook_secret"] = "test-secret"
         invalid_signature = "invalid-signature"
         headers = {"x-ld-signature": invalid_signature}
 
