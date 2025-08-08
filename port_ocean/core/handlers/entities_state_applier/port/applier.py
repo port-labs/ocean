@@ -87,6 +87,15 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         diff = get_port_diff(entities["before"], entities["after"])
 
         if not diff.deleted:
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.DELETE,
+                    MetricPhase.DeletionResult.DELETED,
+                ],
+                value=0,
+            )
             return
 
         kept_entities = diff.created + diff.modified
