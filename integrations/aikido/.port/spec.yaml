@@ -1,0 +1,35 @@
+description: Aikido integration for Port Ocean
+icon: Aikido
+title: Aikido
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/aikido
+features:
+  - type: exporter
+    section: Code Quality & Security
+    resources:
+      - kind: repositories
+      - kind: issues
+configurations:
+  - name: aikidoClientId
+    required: true
+    type: string
+    sensitive: true
+    description: The Aikido OAuth client ID used to authenticate with the Aikido API.
+  - name: aikidoClientSecret
+    required: true
+    type: string
+    sensitive: true
+    description: The Aikido OAuth client secret used to authenticate with the Aikido API.
+  - name: aikidoApiUrl
+    type: string
+    required: false
+    description: The base URL for the Aikido API.
+    default: https://app.aikido.dev
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Secret used to sign and validate incoming webhooks from Aikido.
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
