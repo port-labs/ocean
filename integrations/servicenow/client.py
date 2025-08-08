@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
 import base64
 import httpx
 from loguru import logger
@@ -32,19 +32,20 @@ class ServicenowClient:
         }
 
     async def get_paginated_resource(
-        self, resource_kind: str, api_query_params: dict[str, Any] = {}
+        self, resource_kind: str, api_query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
 
-        user_query = api_query_params.pop("sysparm_query", "")
+        safe_params = (api_query_params or {}).copy()
+        user_query = safe_params.pop("sysparm_query", "")
         default_ordering = "ORDERBYDESCsys_created_on"
         enhanced_query = (
             f"{user_query}^{default_ordering}" if user_query else default_ordering
         )
 
-        params: dict[str, Any] = {
+        params: Optional[dict[str, Any]] = {
             "sysparm_limit": PAGE_SIZE,
             "sysparm_query": enhanced_query,
-            **api_query_params,
+            **safe_params,
         }
         logger.info(
             f"Fetching Servicenow data for resource: {resource_kind} with request params: {params}"
@@ -63,6 +64,7 @@ class ServicenowClient:
                 yield records
 
                 url = self.extract_next_link(response.headers.get("Link", ""))
+                params = None
 
             except httpx.HTTPStatusError as e:
                 logger.error(
