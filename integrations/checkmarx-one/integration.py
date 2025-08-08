@@ -11,33 +11,25 @@ from pydantic import Field
 
 
 class CheckmarxOneResultSelector(Selector):
-    limit: Optional[int] = Field(
-        default=None,
-        description="Limit search to component names that contain the supplied string",
-    )
-    offset: Optional[int] = Field(
-        default=None,
-        description="Limit search to component names that contain the supplied string",
-    )
     severity: Optional[str] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string",
+        description="Filter scan results by severity level",
     )
     state: Optional[str] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string",
+        description="Filter scan results by state",
     )
     sort: Optional[str] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string",
+        description="Sort order for scan results",
     )
     status: Optional[str] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string",
+        description="Filter scan results by status",
     )
     exclude_result_types: Optional[str] = Field(
         default=None,
-        description="Limit search to component names that contain the supplied string",
+        description="Exclude specific result types from the search",
     )
 
 
@@ -51,14 +43,6 @@ class CheckmarxOneScanSelector(Selector):
         default_factory=list,
         alias="projectIds",
         description="Limit search to specific project IDs",
-    )
-    limit: int = Field(
-        default=None,
-        description="Limit the number of results returned",
-    )
-    offset: int = Field(
-        default=None,
-        description="Offset for pagination",
     )
 
 
