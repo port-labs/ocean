@@ -16,6 +16,7 @@ from port_ocean.core.models import (
     ProcessExecutionMode,
     Runtime,
 )
+from port_ocean.core.ocean_types import EventListenerType
 from port_ocean.utils.misc import get_integration_name, get_spec_file
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
@@ -87,7 +88,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     base_url: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
-        default=cast(EventListenerSettingsType, {"type": "POLLING"})
+        default=cast(EventListenerSettingsType, {"type": EventListenerType.POLLING})
     )
     event_workers_count: int = 1
     # If an identifier or type is not provided, it will be generated based on the integration name

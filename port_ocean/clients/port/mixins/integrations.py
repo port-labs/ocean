@@ -83,6 +83,15 @@ class IntegrationClientMixin:
         response = await self._get_current_integration()
         handle_port_status_code(response, should_raise, should_log)
         integration = response.json().get("integration", {})
+        if should_log:
+            logger.info(
+                "Retrieved integration details",
+                integration_id=self.integration_identifier,
+                integration_type=integration.get("installationAppType"),
+                integration_version=integration.get("version"),
+                integration_status=integration.get("status"),
+                has_config=bool(integration.get("config")),
+            )
         if integration.get("config", None) or not integration:
             return integration
         is_provision_enabled_for_integration = (
@@ -153,7 +162,13 @@ class IntegrationClientMixin:
         port_app_config: Optional["PortAppConfig"] = None,
         create_port_resources_origin_in_port: Optional[bool] = False,
     ) -> Dict[str, Any]:
-        logger.info(f"Creating integration with id: {self.integration_identifier}")
+        logger.info(
+            "Creating integration",
+            integration_id=self.integration_identifier,
+            integration_type=_type,
+            integration_version=self.integration_version,
+            changelog_destination=changelog_destination,
+        )
         headers = await self.auth.headers()
         json = {
             "installationId": self.integration_identifier,
