@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.161 (2025-08-08)
+
+
+### Fix
+
+- Reset query parameters after each paginated request to avoid pagination issues
+
+
 ## 0.1.160 (2025-08-07)
 
 
