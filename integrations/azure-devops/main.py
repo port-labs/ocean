@@ -7,6 +7,7 @@ from azure_devops.misc import (
     AzureDevopsFolderResourceConfig,
 )
 from integration import (
+    AzureDevopsPipelineResourceConfig,
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
     AzureDevopsTeamResourceConfig,
@@ -84,8 +85,16 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.PIPELINE)
 async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    config = cast(AzureDevopsPipelineResourceConfig, event.resource_config)
+    include_repo = config.selector.include_repo
+    
     async for pipelines in azure_devops_client.generate_pipelines():
         logger.info(f"Resyncing {len(pipelines)} pipelines")
+        if include_repo:
+            logger.info(f"Enriching {len(pipelines)} pipelines with repository")
+            pipelines = await azure_devops_client.enrich_pipelines_with_repository(
+                pipelines
+            )
         yield pipelines
 
 

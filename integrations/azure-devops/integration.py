@@ -126,6 +126,19 @@ class AzureDevopsTeamResourceConfig(ResourceConfig):
     selector: TeamSelector
 
 
+class AzureDevopsPipelineSelector(Selector):
+    include_repo: bool = Field(
+        default=False,
+        alias="includeRepo",
+        description="Whether to include the repository for each pipeline, defaults to false",
+    )
+
+
+class AzureDevopsPipelineResourceConfig(ResourceConfig):
+    kind: Literal["pipeline"]
+    selector: AzureDevopsPipelineSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -145,6 +158,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsWorkItemResourceConfig
         | AzureDevopsTeamResourceConfig
         | AzureDevopsFileResourceConfig
+        | AzureDevopsPipelineResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
