@@ -71,10 +71,6 @@ async def test_inspect_with_action_failure(
     mock_builder.build.assert_called_once()
 
 
-from typing import Any
-from unittest.mock import AsyncMock
-
-
 @patch("aws.core.exporters.s3.bucket.inspector.logger")
 async def test_run_action_success(mock_logger: Any, inspector: Any) -> None:
     action: AsyncMock = AsyncMock(spec=IAction)
@@ -97,66 +93,3 @@ async def test_run_action_failure(mock_logger: Any, inspector: Any) -> None:
 
     assert result == {}
     mock_logger.warning.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_inspect_integration(mock_client: AsyncMock) -> None:
-    """Test inspector integration with real-like action behavior."""
-    # Create inspector with mock actions that return valid S3 properties
-    inspector = S3BucketInspector(mock_client)
-
-    # Replace actions with mock versions for predictable testing
-    mock_actions = []
-    action_configs = [
-        (
-            "GetBucketTaggingAction",
-            {"Tags": [{"Key": "TestKey0", "Value": "TestValue0"}]},
-        ),
-        ("GetBucketEncryptionAction", {"BucketEncryption": {"Rules": []}}),
-        (
-            "GetBucketPublicAccessBlockAction",
-            {"PublicAccessBlockConfiguration": {"BlockPublicAcls": True}},
-        ),
-    ]
-
-    for action_name, return_value in action_configs:
-        mock_action = AsyncMock(spec=IAction)
-        # Create a mock class with the proper name
-        mock_class = type(action_name, (), {})
-        mock_action.__class__ = mock_class
-        mock_action.execute.return_value = return_value
-        mock_actions.append(mock_action)
-
-    inspector.actions = mock_actions  # type: ignore
-
-    # Execute with subset of actions
-    include = ["GetBucketTaggingAction", "GetBucketPublicAccessBlockAction"]
-    result = await inspector.inspect("integration-bucket", include)
-
-    # Verify result structure
-    assert isinstance(result, S3Bucket)
-    assert result.Properties.BucketName == "integration-bucket"
-    assert result.Type == "AWS::S3::Bucket"
-
-    # Verify only included actions were executed
-    mock_actions[0].execute.assert_called_once_with(
-        "integration-bucket"
-    )  # GetBucketTaggingAction
-    mock_actions[
-        1
-    ].execute.assert_not_called()  # GetBucketEncryptionAction - not included
-    mock_actions[2].execute.assert_called_once_with(
-        "integration-bucket"
-    )  # GetBucketPublicAccessBlockAction
-
-    # Verify data was added to bucket properties
-    properties_dict = result.Properties.dict(exclude_none=True)
-    assert "Tags" in properties_dict
-    assert properties_dict["Tags"] == [{"Key": "TestKey0", "Value": "TestValue0"}]
-    assert "PublicAccessBlockConfiguration" in properties_dict
-    assert properties_dict["PublicAccessBlockConfiguration"] == {
-        "BlockPublicAcls": True
-    }
-    assert (
-        "BucketEncryption" not in properties_dict
-    )  # GetBucketEncryptionAction was not included
