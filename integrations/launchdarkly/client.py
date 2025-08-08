@@ -1,12 +1,14 @@
-from port_ocean.utils import http_async_client
 import httpx
 from typing import Any, AsyncGenerator, Optional, Union
 from loguru import logger
 from enum import StrEnum
 import asyncio
 from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
+from rate_limiter import LaunchDarklyRateLimiter
+from retry_transport import LaunchDarklyRetryTransport
 
 
 PAGE_SIZE = 100
@@ -26,9 +28,10 @@ class LaunchDarklyClient:
     ):
         self.api_url = f"{launchdarkly_url}/api/v2"
         self.api_token = api_token
-        self.http_client = http_async_client
+        self.http_client = OceanAsyncClient(transport_class=LaunchDarklyRetryTransport)
         self.http_client.headers.update(self.api_auth_header)
         self.webhook_secret = webhook_secret
+        self._rate_limiter = LaunchDarklyRateLimiter()
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -65,6 +68,8 @@ class LaunchDarklyClient:
                 response = await self.send_api_request(
                     endpoint=url, query_params=params
                 )
+                if not response:
+                    continue
                 items = response.get("items", [])
                 logger.info(f"Received batch with {len(items)} items")
                 yield items
@@ -99,6 +104,7 @@ class LaunchDarklyClient:
         json_data: Optional[Union[dict[str, Any], list[Any]]] = None,
     ) -> dict[str, Any]:
         try:
+            # async with self._rate_limiter:
             endpoint = endpoint.replace("/api/v2/", "")
             url = f"{self.api_url}/{endpoint}"
             logger.debug(
@@ -111,7 +117,6 @@ class LaunchDarklyClient:
                 json=json_data,
             )
             response.raise_for_status()
-
             return response.json()
 
         except httpx.HTTPStatusError as e:
