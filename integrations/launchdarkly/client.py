@@ -7,7 +7,8 @@ from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils.async_http import OceanAsyncClient
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
-from rate_limiter import LaunchDarklyRateLimiter, LaunchDarklyRetryTransport
+from rate_limiter import LaunchDarklyRateLimiter
+from retry_transport import LaunchDarklyRetryTransport
 
 
 PAGE_SIZE = 100
