@@ -115,9 +115,6 @@ class LaunchDarklyClient:
                     json=json_data,
                 )
                 response.raise_for_status()
-
-
-
                 return response.json()
 
         except httpx.HTTPStatusError as e:
