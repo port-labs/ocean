@@ -4,7 +4,7 @@ from loguru import logger
 from enum import StrEnum
 import asyncio
 from port_ocean.utils.cache import cache_iterator_result
-from port_ocean.utils.async_http import OceanAsyncClient
+from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
 from rate_limiter import LaunchDarklyRateLimiter
@@ -104,20 +104,20 @@ class LaunchDarklyClient:
         json_data: Optional[Union[dict[str, Any], list[Any]]] = None,
     ) -> dict[str, Any]:
         try:
-            async with self._rate_limiter:
-                endpoint = endpoint.replace("/api/v2/", "")
-                url = f"{self.api_url}/{endpoint}"
-                logger.debug(
-                    f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
-                )
-                response = await self.http_client.request(
-                    method=method,
-                    url=url,
-                    params=query_params,
-                    json=json_data,
-                )
-                response.raise_for_status()
-                return response.json()
+            # async with self._rate_limiter:
+            endpoint = endpoint.replace("/api/v2/", "")
+            url = f"{self.api_url}/{endpoint}"
+            logger.debug(
+                f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
+            )
+            response = await self.http_client.request(
+                method=method,
+                url=url,
+                params=query_params,
+                json=json_data,
+            )
+            response.raise_for_status()
+            return response.json()
 
         except httpx.HTTPStatusError as e:
             logger.error(

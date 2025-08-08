@@ -92,7 +92,9 @@ class LaunchDarklyRateLimiter:
         async with self._lock:
             try:
                 limit = headers.get("X-Ratelimit-Route-Limit")
-                remaining = headers.get("X-Ratelimit-Route-Remaining")
+                remaining = headers.get("X-Ratelimit-Route-Remaining") or headers.get(
+                    "X-Ratelimit-Global-Remaining"
+                )
                 reset_ms = headers.get("X-Ratelimit-Reset")
 
                 if limit and remaining and reset_ms:
