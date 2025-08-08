@@ -4,9 +4,10 @@ from loguru import logger
 from enum import StrEnum
 import asyncio
 from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.utils.async_http import OceanAsyncClient
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
-from rate_limiter import LaunchDarklyRateLimiter
+from rate_limiter import LaunchDarklyRateLimiter, LaunchDarklyRetryTransport
 
 
 PAGE_SIZE = 100
@@ -26,7 +27,7 @@ class LaunchDarklyClient:
     ):
         self.api_url = f"{launchdarkly_url}/api/v2"
         self.api_token = api_token
-        self.http_client = httpx.AsyncClient()
+        self.http_client = OceanAsyncClient(transport_class=LaunchDarklyRetryTransport)
         self.http_client.headers.update(self.api_auth_header)
         self.webhook_secret = webhook_secret
         self._rate_limiter = LaunchDarklyRateLimiter()
