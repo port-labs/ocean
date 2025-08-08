@@ -2,7 +2,7 @@
 name = "aws-v3"
 version = "0.3.0-dev"
 description = "AWS"
-authors = ["Shariff Mohammed <mohammed.s@getport.io>"]
+authors = ["Shariff Mohammed <mohammed.s@getport.io>", "Michael Armah <mikeyarmah@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
