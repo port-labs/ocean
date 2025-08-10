@@ -104,20 +104,20 @@ class LaunchDarklyClient:
         json_data: Optional[Union[dict[str, Any], list[Any]]] = None,
     ) -> dict[str, Any]:
         try:
-            # async with self._rate_limiter:
-            endpoint = endpoint.replace("/api/v2/", "")
-            url = f"{self.api_url}/{endpoint}"
-            logger.debug(
-                f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
-            )
-            response = await self.http_client.request(
-                method=method,
-                url=url,
-                params=query_params,
-                json=json_data,
-            )
-            response.raise_for_status()
-            return response.json()
+            async with self._rate_limiter:
+                endpoint = endpoint.replace("/api/v2/", "")
+                url = f"{self.api_url}/{endpoint}"
+                logger.debug(
+                    f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
+                )
+                response = await self.http_client.request(
+                    method=method,
+                    url=url,
+                    params=query_params,
+                    json=json_data,
+                )
+                response.raise_for_status()
+                return response.json()
 
         except httpx.HTTPStatusError as e:
             logger.error(
@@ -127,6 +127,9 @@ class LaunchDarklyClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP error on {endpoint}: {str(e)}")
             raise
+        finally:
+            if "response" in locals() and response:
+                await self._rate_limiter.update_from_headers(response.headers)
 
     @cache_iterator_result()
     async def get_paginated_projects(
