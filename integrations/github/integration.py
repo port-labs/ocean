@@ -67,11 +67,6 @@ class GithubPullRequestSelector(Selector):
     )
 
 
-        repo_url = f"{self._organization_base_url}/{project_name}/{API_URL_PREFIX}/git/repositories/{repo_name}"
-        response = await self.send_request(
-            "GET", repo_url, params={"api-version": "7.1"}
-        )
-    
 class GithubPullRequestConfig(ResourceConfig):
     selector: GithubPullRequestSelector
     kind: Literal["pull-request"]
