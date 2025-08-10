@@ -296,7 +296,7 @@ class IntegrationClientMixin:
         logger.info("starting POST raw data request", raw_data=raw_data)
         headers = await self.auth.headers()
         response = await self.client.post(
-            f"{self.auth.ingest_url}/lakehouse/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
+            f"{self.auth.ingest_url}/lakehouse/integration-type/{self.auth.integration_type}/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
             headers=headers,
             json={
                 "items": raw_data,
