@@ -80,6 +80,8 @@ async def resync_generator_wrapper(
                                     raw_data = raw_data[batch_size:]
                                     if len(raw_data) == 0:
                                         break
+                        else:
+                            yield validate_result(result)
             except OceanAbortException as error:
                 errors.append(error)
                 ocean.metrics.inc_metric(
