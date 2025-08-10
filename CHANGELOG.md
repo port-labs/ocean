@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Move the items to parse logic to be yielded from the generator to support ocean's logic.
 
-## 0.27.2 (2025-08-10)
+## 0.27.1 (2025-08-10)
 
 ### Bug Fixes
 
