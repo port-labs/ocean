@@ -7,7 +7,7 @@ authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <mel
 [tool.poetry.dependencies]
 python = "^3.12"
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
-port_ocean = {version = "^0.26.3", extras = ["cli"]}
+port_ocean = {version = "^0.27.1", extras = ["cli"]}
 wcmatch = "^10.1"
 types-pyyaml = "^6.0.12.20250516"
 
