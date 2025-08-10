@@ -87,7 +87,7 @@ async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     config = cast(AzureDevopsPipelineResourceConfig, event.resource_config)
     include_repo = config.selector.include_repo
-    
+
     async for pipelines in azure_devops_client.generate_pipelines():
         logger.info(f"Resyncing {len(pipelines)} pipelines")
         if include_repo:

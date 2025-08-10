@@ -1058,21 +1058,30 @@ class AzureDevopsClient(HTTPBaseClient):
         self, pipelines: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """Enrich pipelines with repository information."""
-        
+
         url_template = f"{self._organization_base_url}/{{project_id}}/{API_URL_PREFIX}/build/definitions/{{pipeline_id}}"
 
         tasks = [
             self.send_request(
                 "GET",
-                url_template.format(project_id=pipeline["project_id"], pipeline_id=pipeline["id"])
+                url_template.format(
+                    project_id=pipeline["__projectId"], pipeline_id=pipeline["id"]
+                ),
             )
             for pipeline in pipelines
         ]
-        definitions = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
+        definitions = []
+        for resp in results:
+            if resp is not None:
+                definitions.append(resp.json())
 
         enriched = []
         for pipeline, definition in zip(pipelines, definitions):
-            pipeline["__repository"] = {**definition["repository"], **definition["project"]}
+            pipeline["__repository"] = {
+                **definition["repository"],
+                "project": definition["project"],
+            }
             enriched.append(pipeline)
 
         return enriched
