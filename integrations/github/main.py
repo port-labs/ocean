@@ -38,7 +38,10 @@ from github.core.exporters.code_scanning_alert_exporter import (
     RestCodeScanningAlertExporter,
 )
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
-from github.core.exporters.folder_exporter import RestFolderExporter
+from github.core.exporters.folder_exporter import (
+    RestFolderExporter,
+    create_path_mapping,
+)
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 
 from github.core.options import (
@@ -56,7 +59,6 @@ from github.core.options import (
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
     ListCollaboratorOptions,
-    SingleRepositoryOptions,
 )
 from github.helpers.utils import ObjectKind, GithubClientType
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
@@ -458,7 +460,6 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     rest_client = create_github_client()
     folder_exporter = RestFolderExporter(rest_client)
-    repo_exporter = RestRepositoryExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
     if not selector.folders:
@@ -467,19 +468,11 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         return
 
-    for folder_config in selector.folders:
-        for repo in folder_config.repos:
-            logger.info(f"fetching folders for {repo.name}")
-            repo_options = SingleRepositoryOptions(name=repo.name)
-            repository = await repo_exporter.get_resource(repo_options)
+    repo_path_map = create_path_mapping(selector.folders)
+    folder_options = ListFolderOptions(repo_mapping=repo_path_map)
 
-            folder_options = ListFolderOptions(
-                repo=repository, path=folder_config.path, branch=repo.branch
-            )
-            async for folders in folder_exporter.get_paginated_resources(
-                folder_options
-            ):
-                yield folders
+    async for folders in folder_exporter.get_paginated_resources(folder_options):
+        yield folders
 
 
 @ocean.on_resync(ObjectKind.FILE)

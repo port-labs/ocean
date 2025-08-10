@@ -1,7 +1,7 @@
 import asyncio
 from itertools import chain
 import time
-from typing import Any, AsyncGenerator, AsyncIterator, cast
+from typing import Any, AsyncGenerator, AsyncIterator, Optional, cast
 from loguru import logger
 
 
@@ -121,7 +121,7 @@ class SentryClient:
     async def _get_paginated_resource(
         self, url: str, semaphore: asyncio.Semaphore | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params: dict[str, Any] = {"per_page": PAGE_SIZE}
+        params: Optional[dict[str, Any]] = {"per_page": PAGE_SIZE}
         logger.debug(f"Getting paginated resource from Sentry for URL: {url}")
 
         while url:
@@ -139,6 +139,7 @@ class SentryClient:
                 yield records
 
                 url = self.get_next_link(response.headers.get("link", ""))
+                params = None
 
             except httpx.HTTPStatusError as e:
                 logger.error(
