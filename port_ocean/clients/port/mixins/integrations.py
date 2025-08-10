@@ -293,14 +293,14 @@ class IntegrationClientMixin:
     async def post_integration_raw_data(
         self, raw_data: list[dict[Any, Any]], sync_id: str, kind: str
     ) -> None:
-        logger.debug("starting POST raw data request", raw_data=raw_data)
+        logger.info("starting POST raw data request", raw_data=raw_data)
         headers = await self.auth.headers()
         response = await self.client.post(
-            f"{self.auth.api_url}/lakehouse/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
+            f"{self.auth.ingest_url}/lakehouse/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
             headers=headers,
             json={
                 "items": raw_data,
             },
         )
         handle_port_status_code(response, should_log=False)
-        logger.debug("Finished POST raw data request")
+        logger.info("Finished POST raw data request")
