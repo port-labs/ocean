@@ -65,7 +65,7 @@ class LaunchDarklyRateLimiter:
         exc_type: Optional[Type[BaseException]],
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
-    ) -> Optional[bool]:
+    ) -> None:
         """
         Ensuring the semaphore is always released
         """
@@ -88,7 +88,7 @@ class LaunchDarklyRateLimiter:
                     self._limit = int(limit)
                     self._remaining = int(remaining)
                     self._reset_time = float(reset_ms) / 1000.0
-                    logger.info(
+                    logger.debug(
                         f"LaunchDarkly rate limit updated. "
                         f"Remaining: {self._remaining}. "
                         f"Limit: {self._limit}. "
