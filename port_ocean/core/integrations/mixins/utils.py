@@ -51,7 +51,7 @@ async def resync_function_wrapper(
 
 
 async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
     errors = []
@@ -63,10 +63,6 @@ async def resync_generator_wrapper(
                     if not ocean.config.yield_items_to_parse:
                         yield validate_result(result)
                     else:
-                        app_config = await ocean.integration.port_app_config_handler.get_port_app_config(
-                            use_cache=True
-                        )
-                        items_to_parse = [resource.port.items_to_parse for resource in app_config.resources if resource.kind == kind][0]
                         batch_size = ocean.config.yield_items_to_parse_batch_size
                         if items_to_parse:
                             for data in result:
