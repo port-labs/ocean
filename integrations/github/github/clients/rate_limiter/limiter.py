@@ -25,14 +25,14 @@ class GitHubRateLimiter:
     async def __aenter__(self) -> "GitHubRateLimiter":
         await self._semaphore.acquire()
 
-        if self._pause.is_active():
-            delay = self._pause.seconds_remaining()
-            logger.warning(
-                f"{self.api_type} requests paused for {delay:.1f}s due to earlier rate limit"
-            )
-            async with self._block_lock:
-                await asyncio.sleep(delay)
-
+        async with self._block_lock:
+            if self._pause.is_active():
+                delay = self._pause.seconds_remaining()
+                if delay > 0:
+                    logger.warning(
+                        f"{self.api_type} requests paused for {delay:.1f}s due to earlier rate limit"
+                    )
+                    await asyncio.sleep(delay)
         return self
 
     async def __aexit__(

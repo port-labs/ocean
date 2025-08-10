@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, PrivateAttr, Field
 from dateutil.parser import parse
 
-from port_ocean.utils import http_async_client
 import httpx
 
 
@@ -46,4 +45,4 @@ class AbstractGitHubAuthenticator(ABC):
 
     @property
     def client(self) -> httpx.AsyncClient:
-        return http_async_client
+        return httpx.AsyncClient()

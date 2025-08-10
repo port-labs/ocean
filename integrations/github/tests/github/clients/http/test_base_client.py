@@ -55,7 +55,7 @@ class TestAbstractGithubClient:
         mock_response.json.return_value = {"id": 1, "name": "test-repo"}
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "httpx.AsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             response = await client.send_api_request("repos/test-org/test-repo")
@@ -81,7 +81,7 @@ class TestAbstractGithubClient:
         url = "https://api.github.com/orgs/test-org/repos"
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "httpx.AsyncClient.request",
             AsyncMock(return_value=mock_response),
         ) as mock_request:
             await client.send_api_request(
@@ -116,7 +116,7 @@ class TestAbstractGithubClient:
         )
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "httpx.AsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             # Should return empty dict for 404 (ignored error)
@@ -142,7 +142,7 @@ class TestAbstractGithubClient:
         )
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "httpx.AsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             # Should return empty dict for 403 (ignored error)
@@ -168,7 +168,7 @@ class TestAbstractGithubClient:
         )
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "httpx.AsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             # Should return empty dict for 401 (ignored error)
@@ -195,7 +195,7 @@ class TestAbstractGithubClient:
         mock_response.raise_for_status.side_effect = http_error
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "httpx.AsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
@@ -224,7 +224,7 @@ class TestAbstractGithubClient:
         custom_ignored_errors = [IgnoredError(status=500, message="Custom 500 error")]
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "httpx.AsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             # Should return empty dict for 500 (custom ignored error)
@@ -247,7 +247,7 @@ class TestAbstractGithubClient:
         network_error = httpx.ConnectError("Connection failed")
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "httpx.AsyncClient.request",
             AsyncMock(side_effect=network_error),
         ):
             with pytest.raises(httpx.ConnectError):
@@ -269,7 +269,7 @@ class TestAbstractGithubClient:
         url = "https://api.github.com/repos/test-org/test-repo"
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "httpx.AsyncClient.request",
             AsyncMock(return_value=mock_response),
         ) as mock_request:
             # Test GET (default)
