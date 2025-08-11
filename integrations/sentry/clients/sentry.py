@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Any, AsyncGenerator, AsyncIterator, cast, Optional, List
+from typing import Any, AsyncGenerator, AsyncIterator, Optional, cast, Optional, List
 
 import httpx
 from integration import SentryResourceConfig
@@ -136,7 +136,7 @@ class SentryClient:
     async def _get_paginated_resource(
         self, url: str, ignored_errors: Optional[List[IgnoredError]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params: dict[str, Any] = {"per_page": PAGE_SIZE}
+        params: Optional[dict[str, Any]] = {"per_page": PAGE_SIZE}
         logger.debug(f"Getting paginated resource from Sentry for URL: {url}")
 
         while url:
@@ -154,9 +154,7 @@ class SentryClient:
                 yield records
 
                 url = self.get_next_link(response.headers.get("link", ""))
-            except httpx.HTTPStatusError:
-                logger.debug(f"Ignoring non-fatal error for paginated resource: {url}")
-                return
+                params = None
 
     async def _get_single_resource(self, url: str) -> list[dict[str, Any]]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")
