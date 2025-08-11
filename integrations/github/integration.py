@@ -187,25 +187,7 @@ class GithubHandlerMixin(HandlerMixin):
 
 
 class GithubLiveEventsProcessorManager(LiveEventsProcessorManager, GithubHandlerMixin):
-    def register_processor(
-        self, path: str, processor: Type[AbstractWebhookProcessor]
-    ) -> None:
-        """Register a webhook processor for a specific path with optional filter
-
-        Args:
-            path: The webhook path to register
-            processor: The processor class to register
-            kind: The resource kind to associate with this processor, or None to match any kind
-        """
-        if not issubclass(processor, AbstractWebhookProcessor):
-            raise ValueError("Processor must extend AbstractWebhookProcessor")
-
-        if path not in self._processors_classes:
-            self._processors_classes[path] = []
-            self._event_queues[path] = LocalQueue()
-            self._register_route(path)
-
-        self._processors_classes[path].append(processor)
+    pass
 
 
 class GithubLiveEventsGroupProcessorManager(
