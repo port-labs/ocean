@@ -17,7 +17,7 @@ class TokenAuthenticator(BaseCheckmarxAuthenticator):
         self,
         iam_url: str,
         tenant: str,
-        api_key: str,
+        api_key: str | None,
     ):
         """
         Initialize the token authenticator.

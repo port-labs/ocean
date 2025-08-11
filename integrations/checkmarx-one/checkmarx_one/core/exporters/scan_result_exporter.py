@@ -1,7 +1,7 @@
-from collections.abc import AsyncGenerator
 from typing import Any, Dict
 from loguru import logger
 
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
 from checkmarx_one.core.options import ListScanResultOptions, SingleScanResultOptions
@@ -17,7 +17,9 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         scan_result["__scan_id"] = scan_id
         return scan_result
 
-    async def get_resource(self, options: SingleScanResultOptions) -> dict[str, Any]:
+    async def get_resource[
+        SingleScanResultOptionsT: SingleScanResultOptions
+    ](self, options: SingleScanResultOptionsT) -> RAW_ITEM:
         """
         Get a specific scan result by ID.
 
@@ -43,10 +45,9 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         return self._enrich_scan_result_with_scan_id(response, options["scan_id"])
 
     @cache_iterator_result()
-    async def get_paginated_resources(
-        self,
-        options: ListScanResultOptions,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_paginated_resources[
+        ListScanResultOptionsT: ListScanResultOptions
+    ](self, options: ListScanResultOptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
         Get scan results from Checkmarx One.
 

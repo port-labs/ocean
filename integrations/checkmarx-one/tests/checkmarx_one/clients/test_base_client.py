@@ -4,7 +4,7 @@ import httpx
 from aiolimiter import AsyncLimiter
 
 from checkmarx_one.clients.base_client import CheckmarxOneClient
-from checkmarx_one.auths.auth import CheckmarxAuthenticator
+from checkmarx_one.auths.auth import CheckmarxClientAuthenticator
 
 
 class TestCheckmarxOneClient:
@@ -20,7 +20,7 @@ class TestCheckmarxOneClient:
     @pytest.fixture
     def mock_authenticator(self) -> AsyncMock:
         """Create a mock authenticator for testing."""
-        authenticator = AsyncMock(spec=CheckmarxAuthenticator)
+        authenticator = AsyncMock(spec=CheckmarxClientAuthenticator)
         authenticator.get_auth_headers.return_value = {
             "Authorization": "Bearer test_token",
             "Content-Type": "application/json",

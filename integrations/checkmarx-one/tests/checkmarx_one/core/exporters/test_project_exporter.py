@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import AsyncMock
-from typing import Any, List
+from typing import Any, List, AsyncIterator
 
 from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
 from checkmarx_one.clients.base_client import CheckmarxOneClient
-from checkmarx_one.core.options import ListProjectOptions
+from checkmarx_one.core.options import ListProjectOptions, SingleProjectOptions
 
 
 class TestCheckmarxProjectExporter:
@@ -17,9 +17,12 @@ class TestCheckmarxProjectExporter:
         mock_client._send_api_request = AsyncMock()
 
         # Create an async generator for _get_paginated_resources
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             # This will be set up in individual tests
-            pass
+            if False:  # ensure async generator type
+                yield []
 
         mock_client._get_paginated_resources = mock_paginated_resources
         return mock_client
@@ -68,7 +71,9 @@ class TestCheckmarxProjectExporter:
         """Test successful project retrieval by ID."""
         mock_client.send_api_request.return_value = sample_project
 
-        result = await project_exporter.get_resource({"project_id": "proj-123"})
+        result = await project_exporter.get_resource(
+            SingleProjectOptions(project_id="proj-123")
+        )
 
         mock_client.send_api_request.assert_called_once_with("/projects/proj-123")
         assert result == sample_project
@@ -82,7 +87,9 @@ class TestCheckmarxProjectExporter:
 
         for project_id in project_ids:
             mock_client.send_api_request.return_value = {"id": project_id}
-            result = await project_exporter.get_resource({"project_id": project_id})
+            result = await project_exporter.get_resource(
+                SingleProjectOptions(project_id=project_id)
+            )
 
             mock_client.send_api_request.assert_called_with(f"/projects/{project_id}")
             assert result["id"] == project_id
@@ -96,7 +103,9 @@ class TestCheckmarxProjectExporter:
     ) -> None:
         """Test getting projects without any parameters."""
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_projects_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
@@ -118,13 +127,15 @@ class TestCheckmarxProjectExporter:
     ) -> None:
         """Test getting projects with limit parameter."""
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_projects_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        list_options = ListProjectOptions(limit=50)
+        list_options = ListProjectOptions()
         async for batch in project_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
@@ -139,13 +150,15 @@ class TestCheckmarxProjectExporter:
     ) -> None:
         """Test getting projects with offset parameter."""
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_projects_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        list_options = ListProjectOptions(offset=100)
+        list_options = ListProjectOptions()
         async for batch in project_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
@@ -160,13 +173,15 @@ class TestCheckmarxProjectExporter:
     ) -> None:
         """Test getting projects with both limit and offset parameters."""
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_projects_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
 
         results = []
-        list_options = ListProjectOptions(limit=25, offset=50)
+        list_options = ListProjectOptions()
         async for batch in project_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
@@ -183,7 +198,9 @@ class TestCheckmarxProjectExporter:
         batch1 = sample_projects_batch[:1]
         batch2 = sample_projects_batch[1:]
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield batch1
             yield batch2
 
@@ -204,7 +221,9 @@ class TestCheckmarxProjectExporter:
     ) -> None:
         """Test getting projects with empty result."""
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             # Yield nothing - empty result
             if False:  # This ensures it's an async generator
                 yield []
@@ -226,7 +245,9 @@ class TestCheckmarxProjectExporter:
         mock_client.send_api_request.side_effect = Exception("API Error")
 
         with pytest.raises(Exception, match="API Error"):
-            await project_exporter.get_resource({"project_id": "proj-123"})
+            await project_exporter.get_resource(
+                SingleProjectOptions(project_id="proj-123")
+            )
 
     @pytest.mark.asyncio
     async def test_get_projects_exception_handling(
@@ -234,7 +255,9 @@ class TestCheckmarxProjectExporter:
     ) -> None:
         """Test exception handling in get_projects."""
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             if True:  # This ensures it's an async generator
                 raise Exception("Pagination Error")
             yield []

@@ -1,11 +1,12 @@
 import pytest
 from unittest.mock import AsyncMock
-from typing import Any, List
+from typing import Any, AsyncIterator, List
 
 from checkmarx_one.core.exporters.scan_result_exporter import (
     CheckmarxScanResultExporter,
 )
 from checkmarx_one.clients.base_client import CheckmarxOneClient
+from checkmarx_one.core.options import ListScanResultOptions, SingleScanResultOptions
 
 
 class TestCheckmarxScanResultExporter:
@@ -18,9 +19,12 @@ class TestCheckmarxScanResultExporter:
         mock_client.send_api_request = AsyncMock()
 
         # Create an async generator for send_paginated_request
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             # This will be set up in individual tests
-            pass
+            if False:  # ensure async generator type
+                yield []
 
         mock_client.send_paginated_request = mock_paginated_resources
         return mock_client
@@ -148,7 +152,9 @@ class TestCheckmarxScanResultExporter:
         """Test getting scan results without any parameters."""
         options = {"scan_id": "scan-123"}
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_scan_results_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
@@ -170,7 +176,9 @@ class TestCheckmarxScanResultExporter:
         """Test getting scan results with limit parameter."""
         options = {"scan_id": "scan-123", "limit": 50}
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_scan_results_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
@@ -191,7 +199,9 @@ class TestCheckmarxScanResultExporter:
         """Test getting scan results with offset parameter."""
         options = {"scan_id": "scan-123", "offset": 100}
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_scan_results_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
@@ -212,7 +222,9 @@ class TestCheckmarxScanResultExporter:
         """Test getting scan results with severity filter."""
         options = {"scan_id": "scan-123", "severity": ["HIGH", "CRITICAL"]}
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_scan_results_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
@@ -233,7 +245,9 @@ class TestCheckmarxScanResultExporter:
         """Test getting scan results with state filter."""
         options = {"scan_id": "scan-123", "state": ["TO_VERIFY", "CONFIRMED"]}
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_scan_results_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
@@ -254,7 +268,9 @@ class TestCheckmarxScanResultExporter:
         """Test getting scan results with status filter."""
         options = {"scan_id": "scan-123", "status": ["NEW", "RECURRENT"]}
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_scan_results_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
@@ -275,7 +291,9 @@ class TestCheckmarxScanResultExporter:
         """Test getting scan results with sort parameter."""
         options = {"scan_id": "scan-123", "sort": ["+severity", "-status"]}
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_scan_results_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
@@ -296,7 +314,9 @@ class TestCheckmarxScanResultExporter:
         """Test getting scan results with exclude_result_types parameter."""
         options = {"scan_id": "scan-123", "exclude_result_types": "DEV_AND_TEST"}
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_scan_results_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
@@ -326,7 +346,9 @@ class TestCheckmarxScanResultExporter:
             "exclude_result_types": "DEV_AND_TEST",
         }
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield sample_scan_results_batch
 
         mock_client.send_paginated_request = mock_paginated_resources
@@ -348,7 +370,9 @@ class TestCheckmarxScanResultExporter:
         batch1 = sample_scan_results_batch[:1]
         batch2 = sample_scan_results_batch[1:]
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             yield batch1
             yield batch2
 
@@ -370,7 +394,9 @@ class TestCheckmarxScanResultExporter:
         """Test getting scan results with empty result."""
         options = {"scan_id": "scan-123"}
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             # Yield nothing - empty result
             if False:  # This ensures it's an async generator
                 yield []
@@ -388,7 +414,7 @@ class TestCheckmarxScanResultExporter:
         self, scan_result_exporter: CheckmarxScanResultExporter
     ) -> None:
         """Test getting scan results without scan_id raises ValueError."""
-        options = {}
+        options = ListScanResultOptions(scan_id="")
 
         with pytest.raises(
             ValueError, match="scan_id is required for getting scan results"
@@ -414,7 +440,9 @@ class TestCheckmarxScanResultExporter:
         """Test exception handling in get_paginated_resources."""
         options = {"scan_id": "scan-123"}
 
-        async def mock_paginated_resources(*args, **kwargs):
+        async def mock_paginated_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[List[dict[str, Any]]]:
             if True:  # This ensures it's an async generator
                 raise Exception("Pagination Error")
             yield []
@@ -436,7 +464,7 @@ class TestCheckmarxScanResultExporter:
         mock_client.send_api_request.return_value = sample_scan_result
 
         result = await scan_result_exporter.get_resource(
-            {"scan_id": "scan-123", "result_id": "result-456"}
+            SingleScanResultOptions(scan_id="scan-123", result_id="result-456")
         )
 
         mock_client.send_api_request.assert_called_once_with(

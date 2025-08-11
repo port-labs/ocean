@@ -74,6 +74,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         CheckmarxOneScanResultResourcesConfig, event.resource_config
     ).selector
     options = ListScanResultOptions(
+        scan_id="",
         severity=selector.severity,
         state=selector.state,
         sort=selector.sort,
@@ -85,7 +86,8 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
         for scan_data in scan_data_list:
+            options.update({"scan_id": scan_data["id"]})
             async for results_batch in scan_result_exporter.get_paginated_resources(
-                {"scan_id": scan_data["id"], **options}
+                options
             ):
                 yield results_batch

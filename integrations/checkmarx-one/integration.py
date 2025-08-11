@@ -11,19 +11,19 @@ from pydantic import Field
 
 
 class CheckmarxOneResultSelector(Selector):
-    severity: Optional[str] = Field(
+    severity: Optional[list[str]] = Field(
         default=None,
         description="Filter scan results by severity level",
     )
-    state: Optional[str] = Field(
+    state: Optional[list[str]] = Field(
         default=None,
         description="Filter scan results by state",
     )
-    sort: Optional[str] = Field(
+    sort: Optional[list[str]] = Field(
         default=None,
         description="Sort order for scan results",
     )
-    status: Optional[str] = Field(
+    status: Optional[list[str]] = Field(
         default=None,
         description="Filter scan results by status",
     )

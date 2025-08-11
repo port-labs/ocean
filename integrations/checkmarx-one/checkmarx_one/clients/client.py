@@ -1,6 +1,6 @@
 from typing import Optional
 
-from checkmarx_one.auths.auth import CheckmarxAuthenticator
+from checkmarx_one.auths.auth import CheckmarxClientAuthenticator
 from checkmarx_one.clients.base_client import CheckmarxOneClient
 
 
@@ -34,7 +34,7 @@ class CheckmarxClient(CheckmarxOneClient):
             client_secret: OAuth client secret (required with client_id)
         """
         # Initialize authenticator
-        authenticator = CheckmarxAuthenticator(
+        authenticator = CheckmarxClientAuthenticator(
             iam_url=iam_url,
             tenant=tenant,
             api_key=api_key,

@@ -10,7 +10,7 @@ class TestInitializeClient:
     """Test cases for initialize_client module."""
 
     @pytest.fixture
-    def mock_ocean_config(self) -> dict:
+    def mock_ocean_config(self) -> dict[str, str]:
         """Create a mock Ocean configuration."""
         return {
             "checkmarx_base_url": "https://ast.checkmarx.net",
@@ -20,7 +20,7 @@ class TestInitializeClient:
         }
 
     @pytest.fixture
-    def mock_ocean_oauth_config(self) -> dict:
+    def mock_ocean_oauth_config(self) -> dict[str, str]:
         """Create a mock Ocean OAuth configuration."""
         return {
             "checkmarx_base_url": "https://ast.checkmarx.net",
@@ -45,7 +45,7 @@ class TestInitializeClient:
         self,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict,
+        mock_ocean_config: dict[str, str],
         mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test client initialization with API key authentication."""
@@ -70,7 +70,7 @@ class TestInitializeClient:
         self,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_oauth_config: dict,
+        mock_ocean_oauth_config: dict[str, str],
         mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test client initialization with OAuth authentication."""
@@ -211,7 +211,7 @@ class TestInitializeClient:
         self,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict,
+        mock_ocean_config: dict[str, str],
     ) -> None:
         """Test client initialization when authentication fails."""
         mock_ocean.integration_config = mock_ocean_config
@@ -228,7 +228,7 @@ class TestInitializeClient:
         self,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict,
+        mock_ocean_config: dict[str, str],
     ) -> None:
         """Test client initialization when general exception occurs."""
         mock_ocean.integration_config = mock_ocean_config
@@ -247,7 +247,7 @@ class TestInitializeClient:
         mock_logger: MagicMock,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict,
+        mock_ocean_config: dict[str, str],
         mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test that info message is logged during client initialization."""
@@ -268,7 +268,7 @@ class TestInitializeClient:
         mock_logger: MagicMock,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict,
+        mock_ocean_config: dict[str, str],
         mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test that API key authentication is logged."""
@@ -287,7 +287,7 @@ class TestInitializeClient:
         mock_logger: MagicMock,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_oauth_config: dict,
+        mock_ocean_oauth_config: dict[str, str],
         mock_checkmarx_client: MagicMock,
     ) -> None:
         """Test that OAuth authentication is logged."""
@@ -308,7 +308,7 @@ class TestInitializeClient:
         mock_logger: MagicMock,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict,
+        mock_ocean_config: dict[str, str],
     ) -> None:
         """Test that error is logged on authentication failure."""
         mock_ocean.integration_config = mock_ocean_config
@@ -329,7 +329,7 @@ class TestInitializeClient:
         mock_logger: MagicMock,
         mock_client_class: MagicMock,
         mock_ocean: MagicMock,
-        mock_ocean_config: dict,
+        mock_ocean_config: dict[str, str],
     ) -> None:
         """Test that error is logged on general failure."""
         mock_ocean.integration_config = mock_ocean_config

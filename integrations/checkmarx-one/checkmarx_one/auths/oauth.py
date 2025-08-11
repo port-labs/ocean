@@ -17,8 +17,8 @@ class OAuthAuthenticator(BaseCheckmarxAuthenticator):
         self,
         iam_url: str,
         tenant: str,
-        client_id: str,
-        client_secret: str,
+        client_id: str | None,
+        client_secret: str | None,
     ):
         """
         Initialize the OAuth authenticator.

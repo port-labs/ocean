@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import Any, Optional
 
 
 from checkmarx_one.auths.auth_factory import CheckmarxAuthenticatorFactory
 from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator
 
 
-class CheckmarxAuthenticator(BaseCheckmarxAuthenticator):
+class CheckmarxClientAuthenticator(BaseCheckmarxAuthenticator):
     """
     Handles authentication for Checkmarx One API.
     Supports both OAuth client and API key authentication methods.
@@ -46,10 +46,10 @@ class CheckmarxAuthenticator(BaseCheckmarxAuthenticator):
         self.__dict__.update(authenticator.__dict__)
         self._authenticator = authenticator
 
-    async def _authenticate(self):
+    async def _authenticate(self) -> dict[str, Any]:
         """Delegate to the underlying authenticator."""
         return await self._authenticator._authenticate()
 
-    async def get_auth_headers(self):
+    async def get_auth_headers(self) -> dict[str, str]:
         """Delegate to the underlying authenticator."""
         return await self._authenticator.get_auth_headers()

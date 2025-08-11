@@ -143,7 +143,9 @@ class TestBaseCheckmarxAuthenticator:
             assert authenticator._access_token == "test_access_token_123"
             # Should use default 1800 seconds (30 minutes)
             expected_expiry = time.time() + 1800
-            assert abs(authenticator._token_expires_at - expected_expiry) < 1
+            gotten = authenticator._token_expires_at or 0
+            result: float = gotten - expected_expiry
+            assert abs(result) < 1
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_authentication_error(

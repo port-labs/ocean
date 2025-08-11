@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any
 
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from checkmarx_one.clients.base_client import CheckmarxOneClient as BaseCheckmarxClient
 
 
@@ -11,11 +12,11 @@ class AbstractCheckmarxExporter(ABC):
         self.client = client
 
     @abstractmethod
-    async def get_paginated_resources(
-        self, options: Optional[Dict[str, Any]]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_paginated_resources[
+        AnyOption: Any
+    ](self, options: AnyOption) -> ASYNC_GENERATOR_RESYNC_TYPE:
         pass
 
     @abstractmethod
-    async def get_resource(self, options: Optional[Dict[str, Any]]) -> dict[str, Any]:
+    async def get_resource[AnyOption: Any](self, options: AnyOption) -> RAW_ITEM:
         pass

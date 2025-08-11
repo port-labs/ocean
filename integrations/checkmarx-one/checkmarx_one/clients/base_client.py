@@ -5,7 +5,7 @@ from loguru import logger
 from checkmarx_one.utils import IgnoredError
 from port_ocean.utils import http_async_client
 
-from checkmarx_one.auths.auth import CheckmarxAuthenticator
+from checkmarx_one.auths.auth import CheckmarxClientAuthenticator
 
 from urllib.parse import urljoin
 
@@ -39,7 +39,7 @@ class CheckmarxOneClient:
     def __init__(
         self,
         base_url: str,
-        authenticator: CheckmarxAuthenticator,
+        authenticator: CheckmarxClientAuthenticator,
     ):
         """
         Initialize the base client.

@@ -1,7 +1,8 @@
+from typing import Any
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from checkmarx_one.auths.auth import CheckmarxAuthenticator
+from checkmarx_one.auths.auth import CheckmarxClientAuthenticator
 from checkmarx_one.auths.token_auth import TokenAuthenticator
 from checkmarx_one.auths.oauth import OAuthAuthenticator
 from checkmarx_one.exceptions import CheckmarxAuthenticationError
@@ -11,20 +12,20 @@ class TestCheckmarxAuthenticator:
     """Test cases for CheckmarxAuthenticator class."""
 
     @pytest.fixture
-    def api_key_authenticator(self) -> CheckmarxAuthenticator:
+    def api_key_authenticator(self) -> CheckmarxClientAuthenticator:
         """Create a CheckmarxAuthenticator instance with API key."""
         with patch("port_ocean.utils.http_async_client", AsyncMock()):
-            return CheckmarxAuthenticator(
+            return CheckmarxClientAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
                 api_key="test-api-key",
             )
 
     @pytest.fixture
-    def oauth_authenticator(self) -> CheckmarxAuthenticator:
+    def oauth_authenticator(self) -> CheckmarxClientAuthenticator:
         """Create a CheckmarxAuthenticator instance with OAuth credentials."""
         with patch("port_ocean.utils.http_async_client", AsyncMock()):
-            return CheckmarxAuthenticator(
+            return CheckmarxClientAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
                 client_id="test-client-id",
@@ -32,7 +33,7 @@ class TestCheckmarxAuthenticator:
             )
 
     @pytest.fixture
-    def mock_token_response(self) -> dict:
+    def mock_token_response(self) -> dict[str, Any]:
         """Create a mock token response."""
         return {
             "access_token": "test-access-token",
@@ -42,31 +43,28 @@ class TestCheckmarxAuthenticator:
         }
 
     def test_init_with_api_key(
-        self, api_key_authenticator: CheckmarxAuthenticator
+        self, api_key_authenticator: CheckmarxClientAuthenticator
     ) -> None:
         """Test initialization with API key authentication."""
         assert api_key_authenticator.iam_url == "https://iam.checkmarx.net"
         assert api_key_authenticator.tenant == "test-tenant"
         assert api_key_authenticator.api_key == "test-api-key"
-        # These attributes are not copied from the underlying authenticator
-        # assert api_key_authenticator.client_id is None
-        # assert api_key_authenticator.client_secret is None
         assert isinstance(api_key_authenticator._authenticator, TokenAuthenticator)
 
-    def test_init_with_oauth(self, oauth_authenticator: CheckmarxAuthenticator) -> None:
+    def test_init_with_oauth(
+        self, oauth_authenticator: CheckmarxClientAuthenticator
+    ) -> None:
         """Test initialization with OAuth authentication."""
         assert oauth_authenticator.iam_url == "https://iam.checkmarx.net"
         assert oauth_authenticator.tenant == "test-tenant"
         assert oauth_authenticator.client_id == "test-client-id"
         assert oauth_authenticator.client_secret == "test-client-secret"
-        # This attribute is not copied from the underlying authenticator
-        # assert oauth_authenticator.api_key is None
         assert isinstance(oauth_authenticator._authenticator, OAuthAuthenticator)
 
     def test_init_with_both_credentials(self) -> None:
         """Test initialization with both API key and OAuth credentials."""
         with patch("port_ocean.utils.http_async_client", AsyncMock()):
-            authenticator = CheckmarxAuthenticator(
+            authenticator = CheckmarxClientAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
                 api_key="test-api-key",
@@ -81,7 +79,7 @@ class TestCheckmarxAuthenticator:
     def test_init_with_no_credentials(self) -> None:
         """Test initialization with no credentials raises error."""
         with pytest.raises(CheckmarxAuthenticationError) as exc_info:
-            CheckmarxAuthenticator(
+            CheckmarxClientAuthenticator(
                 iam_url="https://iam.checkmarx.net", tenant="test-tenant"
             )
 
@@ -92,7 +90,7 @@ class TestCheckmarxAuthenticator:
     def test_init_with_partial_oauth_credentials(self) -> None:
         """Test initialization with partial OAuth credentials raises error."""
         with pytest.raises(CheckmarxAuthenticationError) as exc_info:
-            CheckmarxAuthenticator(
+            CheckmarxClientAuthenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
                 client_id="test-client-id",
@@ -105,7 +103,9 @@ class TestCheckmarxAuthenticator:
 
     @pytest.mark.asyncio
     async def test_authenticate_with_api_key(
-        self, api_key_authenticator: CheckmarxAuthenticator, mock_token_response: dict
+        self,
+        api_key_authenticator: CheckmarxClientAuthenticator,
+        mock_token_response: dict,
     ) -> None:
         """Test authentication delegation with API key."""
         with patch.object(
@@ -116,11 +116,13 @@ class TestCheckmarxAuthenticator:
             result = await api_key_authenticator._authenticate()
 
             assert result == mock_token_response
-            api_key_authenticator._authenticator._authenticate.assert_called_once()
+            api_key_authenticator._authenticator._authenticate.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_authenticate_with_oauth(
-        self, oauth_authenticator: CheckmarxAuthenticator, mock_token_response: dict
+        self,
+        oauth_authenticator: CheckmarxClientAuthenticator,
+        mock_token_response: dict,
     ) -> None:
         """Test authentication delegation with OAuth."""
         with patch.object(
@@ -135,7 +137,7 @@ class TestCheckmarxAuthenticator:
 
     @pytest.mark.asyncio
     async def test_get_auth_headers_with_api_key(
-        self, api_key_authenticator: CheckmarxAuthenticator
+        self, api_key_authenticator: CheckmarxClientAuthenticator
     ) -> None:
         """Test get_auth_headers delegation with API key."""
         expected_headers = {
@@ -156,7 +158,7 @@ class TestCheckmarxAuthenticator:
 
     @pytest.mark.asyncio
     async def test_get_auth_headers_with_oauth(
-        self, oauth_authenticator: CheckmarxAuthenticator
+        self, oauth_authenticator: CheckmarxClientAuthenticator
     ) -> None:
         """Test get_auth_headers delegation with OAuth."""
         expected_headers = {
@@ -177,7 +179,7 @@ class TestCheckmarxAuthenticator:
 
     @pytest.mark.asyncio
     async def test_authenticate_propagates_exception(
-        self, api_key_authenticator: CheckmarxAuthenticator
+        self, api_key_authenticator: CheckmarxClientAuthenticator
     ) -> None:
         """Test that authentication exceptions are properly propagated."""
         with patch.object(
@@ -192,7 +194,7 @@ class TestCheckmarxAuthenticator:
 
     @pytest.mark.asyncio
     async def test_get_auth_headers_propagates_exception(
-        self, api_key_authenticator: CheckmarxAuthenticator
+        self, api_key_authenticator: CheckmarxClientAuthenticator
     ) -> None:
         """Test that get_auth_headers exceptions are properly propagated."""
         with patch.object(
@@ -206,7 +208,7 @@ class TestCheckmarxAuthenticator:
             assert "Headers failed" in str(exc_info.value)
 
     def test_attributes_copied_from_underlying_authenticator(
-        self, api_key_authenticator: CheckmarxAuthenticator
+        self, api_key_authenticator: CheckmarxClientAuthenticator
     ) -> None:
         """Test that attributes are properly copied from the underlying authenticator."""
         # The underlying authenticator should have the same core attributes
@@ -223,7 +225,7 @@ class TestCheckmarxAuthenticator:
         )
 
     def test_attributes_copied_from_oauth_authenticator(
-        self, oauth_authenticator: CheckmarxAuthenticator
+        self, oauth_authenticator: CheckmarxClientAuthenticator
     ) -> None:
         """Test that attributes are properly copied from the OAuth authenticator."""
         # The underlying authenticator should have the same core attributes

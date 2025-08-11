@@ -1,30 +1,27 @@
-from collections.abc import AsyncGenerator
 from typing import Any
 from loguru import logger
 
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
-from typing import Dict
 from checkmarx_one.core.options import SingleScanOptions, ListScanOptions
 
 
 class CheckmarxScanExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One scans."""
 
-    async def get_resource(
-        self,
-        options: SingleScanOptions,
-    ) -> Dict[str, Any]:
+    async def get_resource[
+        SingleScanOptionsT: SingleScanOptions
+    ](self, options: SingleScanOptionsT,) -> RAW_ITEM:
         """Get a specific scan by ID."""
         response = await self.client.send_api_request(f"/scans/{options['scan_id']}")
         logger.info(f"Fetched scan with ID: {options['scan_id']}")
         return response
 
     @cache_iterator_result()
-    async def get_paginated_resources(
-        self,
-        options: ListScanOptions,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_paginated_resources[
+        ListScanOptionsT: ListScanOptions
+    ](self, options: ListScanOptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
         Get scans from Checkmarx One.
 
@@ -37,7 +34,7 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
             Batches of scans
         """
         params: dict[str, Any] = {}
-        project_ids = options.get("project_ids")
+        project_ids: list[str] = options.get("project_ids", [])
         limit = options.get("limit")
         offset = options.get("offset")
 
