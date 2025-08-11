@@ -5,6 +5,7 @@ import click
 from port_ocean import __version__, __integration_version__
 from port_ocean.cli.commands.main import cli_start, print_logo, console
 from port_ocean.config.settings import LogLevelType
+from port_ocean.core.ocean_types import EventListenerType
 
 
 @cli_start.command()
@@ -35,7 +36,7 @@ from port_ocean.config.settings import LogLevelType
     "initialize_port_resources",
     type=bool,
     help="""Set to False to not create default resources on installation.
-            If not specified, will use the environment variable `OCEAN__INITIALIZE_PORT_RESOURCES` to determine whether 
+            If not specified, will use the environment variable `OCEAN__INITIALIZE_PORT_RESOURCES` to determine whether
             to initialize resources, and if not set, will default to True.""",
 )
 @click.option(
@@ -69,7 +70,7 @@ def sail(
     override = {}
     if once:
         console.print("Setting event listener to Once")
-        override["event_listener"] = {"type": "ONCE"}
+        override["event_listener"] = {"type": EventListenerType.ONCE}
 
     run(
         path,

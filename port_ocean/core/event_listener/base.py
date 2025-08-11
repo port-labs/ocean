@@ -89,8 +89,8 @@ class EventListenerSettings(BaseOceanModel, extra=Extra.allow):
 
         Returns:
             dict[str, Any]: The changelog destination configuration. For example:
-                - KAFKA returns {"type": "KAFKA"}
-                - WEBHOOK returns {"type": "WEBHOOK", "url": "https://example.com/resync"}
+                        - KAFKA returns {"type": "KAFKA"}
+        - POLLING returns {"type": "POLLING"}
                 - Other event listeners return {}
         """
         return {}

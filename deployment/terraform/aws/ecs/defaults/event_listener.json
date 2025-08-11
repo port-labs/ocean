@@ -15,14 +15,6 @@
     {
       "type": "object",
       "properties": {
-        "type": { "const": "WEBHOOK" },
-        "app_host": { "type":[ "string", "null"], "format": "uri" }
-      },
-      "required": ["type", "app_host"]
-    },
-    {
-      "type": "object",
-      "properties": {
         "type": { "const": "POLLING" },
         "resync_on_start": { "type": ["boolean", "null"] },
         "interval": { "type": ["integer", "null"] }

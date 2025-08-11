@@ -2,7 +2,7 @@ import asyncio
 import json
 import sys
 from asyncio import ensure_future, Task
-from typing import Any, Literal
+from typing import Any
 
 from confluent_kafka import Message  # type: ignore
 from loguru import logger
@@ -16,6 +16,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
+from port_ocean.core.ocean_types import EventListenerType
 
 
 class KafkaEventListenerSettings(EventListenerSettings):
@@ -24,7 +25,7 @@ class KafkaEventListenerSettings(EventListenerSettings):
     The `KafkaEventListenerSettings` specifically includes settings related to the Kafka event listener.
 
     Attributes:
-        type (Literal["KAFKA"]): A literal indicating the type of the event listener, which is set to "KAFKA" for this class.
+        type (EventListenerType): The type of the event listener, which is set to EventListenerType.KAFKA for this class.
         brokers (str): The comma-separated list of Kafka broker URLs to connect to.
         security_protocol (str): The security protocol used for communication with Kafka brokers.
                                  The default value is "SASL_SSL".
@@ -37,7 +38,7 @@ class KafkaEventListenerSettings(EventListenerSettings):
                                      The default value is 1 second.
     """
 
-    type: Literal["KAFKA"]
+    type: EventListenerType = EventListenerType.KAFKA
     brokers: str = (
         "b-1-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-2-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-3-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196"
     )
@@ -52,7 +53,7 @@ class KafkaEventListenerSettings(EventListenerSettings):
         For Kafka event listeners, this specifies that changelog events should be sent via Kafka.
 
         Returns:
-            dict[str, Any]: A dictionary with type "KAFKA" to indicate that changelog events
+            dict[str, Any]: A dictionary with type EventListenerType.KAFKA to indicate that changelog events
                            should be sent through the Kafka message bus.
         """
         return {
@@ -119,7 +120,10 @@ class KafkaEventListener(BaseEventListener):
             return False
 
         if "change.log" in topic:
-            return msg_value.get("changelogDestination", {}).get("type", "") == "KAFKA"
+            return (
+                msg_value.get("changelogDestination", {}).get("type", "")
+                == EventListenerType.KAFKA
+            )
 
         return False
 

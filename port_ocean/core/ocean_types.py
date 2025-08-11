@@ -7,6 +7,8 @@ from typing import (
     NamedTuple,
 )
 
+from enum import Enum
+
 from dataclasses import field
 from port_ocean.core.models import Entity
 
@@ -21,6 +23,19 @@ START_EVENT_LISTENER = Callable[[], Awaitable[None]]
 
 BEFORE_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
 AFTER_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
+
+
+class EventListenerType(str, Enum):
+    """Enumeration of supported event listener types.
+
+    This enum provides type safety and better IDE support for event listener types.
+    Since it extends str, it automatically accepts both enum values and string literals.
+    """
+
+    KAFKA = "KAFKA"
+    POLLING = "POLLING"
+    ONCE = "ONCE"
+    WEBHOOKS_ONLY = "WEBHOOKS_ONLY"
 
 
 class RawEntityDiff(TypedDict):
@@ -47,6 +62,9 @@ class CalculationResult(NamedTuple):
 
 class IntegrationEventsCallbacks(TypedDict):
     start: list[START_EVENT_LISTENER]
+    start_for_listener: dict[
+        str, list[START_EVENT_LISTENER]
+    ]  # New: event listener-specific start functions
     resync: dict[str | None, list[RESYNC_EVENT_LISTENER]]
     resync_start: list[BEFORE_RESYNC_EVENT_LISTENER]
     resync_complete: list[AFTER_RESYNC_EVENT_LISTENER]

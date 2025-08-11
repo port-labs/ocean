@@ -1,4 +1,4 @@
-from typing import Callable, TYPE_CHECKING, Any, Literal, Union
+from typing import Callable, TYPE_CHECKING, Any, Union
 
 from fastapi import APIRouter
 from port_ocean.helpers.metric.metric import Metrics
@@ -15,6 +15,7 @@ from port_ocean.core.ocean_types import (
     EntityDiff,
     BEFORE_RESYNC_EVENT_LISTENER,
     AFTER_RESYNC_EVENT_LISTENER,
+    EventListenerType,
 )
 from port_ocean.exceptions.context import (
     PortOceanContextNotFoundError,
@@ -75,7 +76,7 @@ class PortOceanContext:
     @property
     def event_listener_type(
         self,
-    ) -> Literal["WEBHOOK", "KAFKA", "POLLING", "ONCE", "WEBHOOKS_ONLY"]:
+    ) -> EventListenerType:
         return self.app.config.event_listener.type
 
     def on_resync(
@@ -94,11 +95,43 @@ class PortOceanContext:
 
         return wrapper
 
-    def on_start(self) -> Callable[[START_EVENT_LISTENER], START_EVENT_LISTENER]:
-        def wrapper(function: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
-            return self.integration.on_start(function)
+    def on_start(
+        self,
+        function: START_EVENT_LISTENER | None = None,
+        event_listener: EventListenerType | None = None,
+    ) -> START_EVENT_LISTENER | Callable[[START_EVENT_LISTENER], START_EVENT_LISTENER]:
+        """Register a function as a listener for the "start" event.
 
-        return wrapper
+        This allows integrations to define different startup behavior for different event listener types.
+        When both general and event listener-specific functions are defined, the event listener-specific
+        functions take precedence.
+
+        Args:
+            function: The function to register (when used directly)
+            event_listener: Optional event listener type for specific startup behavior.
+                          Accepts both EventListenerType enum values and string literals.
+
+        Returns:
+            The original function or a decorator function
+
+        Examples:
+            >>> # General startup (fallback for all event listener types)
+            >>> @ocean.on_start()
+            ... async def on_start() -> None:
+            ...     logger.info("General startup logic")
+            ...
+            >>> # Event listener-specific startup using enum (recommended)
+            >>> @ocean.on_start(event_listener=EventListenerType.ONCE)
+            ... async def on_start_once() -> None:
+            ...     logger.info("Starting in ONCE mode - skipping webhook setup")
+            ...
+            >>> # Event listener-specific startup using string (also works)
+            >>> @ocean.on_start(event_listener="ONCE")
+            ... async def on_start_webhook() -> None:
+            ...     logger.info("Starting in ONCE mode")
+            ...     await setup_webhooks()
+        """
+        return self.integration.on_start(function, event_listener)
 
     def on_resync_start(
         self,
