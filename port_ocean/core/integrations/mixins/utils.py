@@ -1,11 +1,13 @@
 from contextlib import contextmanager
-from typing import Awaitable, Generator, Callable
+from typing import Awaitable, Generator, Callable, cast
 
 from loguru import logger
 
 import asyncio
 import multiprocessing
 
+from port_ocean.core.handlers.entity_processor.jq_entity_processor import JQEntityProcessor
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -49,7 +51,7 @@ async def resync_function_wrapper(
 
 
 async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
     errors = []
@@ -58,7 +60,28 @@ async def resync_generator_wrapper(
             try:
                 with resync_error_handling():
                     result = await anext(generator)
-                    yield validate_result(result)
+                    if not ocean.config.yield_items_to_parse:
+                        yield validate_result(result)
+                    else:
+                        batch_size = ocean.config.yield_items_to_parse_batch_size
+                        if items_to_parse:
+                            for data in result:
+                                items = await cast(JQEntityProcessor, ocean.app.integration.entity_processor)._search(data, items_to_parse)
+                                if not isinstance(items, list):
+                                    logger.warning(
+                                        f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items)}."
+                                        f" Skipping..."
+                                    )
+                                    yield []
+                                raw_data = [{"item": item, **data} for item in items]
+                                while True:
+                                    raw_data_batch = raw_data[:batch_size]
+                                    yield raw_data_batch
+                                    raw_data = raw_data[batch_size:]
+                                    if len(raw_data) == 0:
+                                        break
+                        else:
+                            yield validate_result(result)
             except OceanAbortException as error:
                 errors.append(error)
                 ocean.metrics.inc_metric(
