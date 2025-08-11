@@ -880,7 +880,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added support for optional insecure connections to Argocd with SSL verification disabled when allow_insecure is set to True (0.1.95)
+- Added support for optional insecure connections to Argo CD with SSL verification disabled when allow_insecure is set to True (0.1.95)
 
 
 ## 0.1.94 (2024-10-14)
@@ -896,7 +896,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Updated the error handling mechanims by allowing users to specify how they want to handle ArgoCD server error using the `ignoreServerError` flag (0.1.93)
+- Updated the error handling mechanims by allowing users to specify how they want to handle Argo CD server error using the `ignoreServerError` flag (0.1.93)
 
 
 ## 0.1.92 (2024-10-09)
@@ -1359,7 +1359,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added support for ArgoCD kubernetes resources (PORT-6911)
+- Added support for Argo CD kubernetes resources (PORT-6911)
 
 
 ## 0.1.31 (2024-03-20)
@@ -1451,14 +1451,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added default page for ArgoCD (PORT-5959)
+- Added default page for Argo CD (PORT-5959)
 
 
 ## 0.1.18 (2024-01-12)
 
 ### Features
 
-- Added support for ArgoCD deployments history (#5704)
+- Added support for Argo CD deployments history (#5704)
 
 
 ## 0.1.17 (2024-01-11)
@@ -1528,7 +1528,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Updated ArgoCD application gitRepo property format from URL to string, allowing for various formats and resolving sync errors with private repositories (#8)
+- Updated Argo CD application gitRepo property format from URL to string, allowing for various formats and resolving sync errors with private repositories (#8)
 
 
 ## 0.1.7 (2023-12-04)
@@ -1585,4 +1585,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Implemented ArgoCD integration
+- Implemented Argo CD integration

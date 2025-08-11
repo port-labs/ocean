@@ -1,6 +1,6 @@
 ---
-title: ArgoCD Deployment
-sidebar_label: 🐙 ArgoCD
+title: Argo CD Deployment
+sidebar_label: 🐙 Argo CD
 sidebar_position: 4
 ---
 
@@ -10,9 +10,9 @@ import CheckInstallation from './\_check_installation.md';
 import Image from "@theme/IdealImage";
 import Credentials from "/static/img/credentials-modal.png"
 
-# ⚓️ ArgoCD Deployment
+# ⚓️ Argo CD Deployment
 
-This guide will walk you through deploying an integration of the Ocean framework using ArgoCD, utilizing it's [Helm Capabilities](https://argo-cd.readthedocs.io/en/stable/user-guide/helm/).
+This guide will walk you through deploying an integration of the Ocean framework using Argo CD, utilizing it's [Helm Capabilities](https://argo-cd.readthedocs.io/en/stable/user-guide/helm/).
 
 :::info
 - You can observe the Helm chart and the available parameters [here](https://github.com/port-labs/helm-charts/tree/main/charts/port-ocean).
@@ -26,7 +26,7 @@ This guide will walk you through deploying an integration of the Ocean framework
 - [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) must be installed to apply your installation manifest.
 - [Helm](https://helm.sh/docs/intro/install/) installed.
 - [Kubernetes](https://kubernetes.io/docs/tasks/tools/) cluster to deploy the integration to.
-- [ArgoCD](https://argoproj.github.io/cd/) must be installed in your Kubernetes cluster. Please refer to ArgoCD's [documentation](https://argo-cd.readthedocs.io/en/stable/getting_started/#1-install-argo-cd) for further details about the installation.
+- [Argo CD](https://argoproj.github.io/cd/) must be installed in your Kubernetes cluster. Please refer to Argo CD's [documentation](https://argo-cd.readthedocs.io/en/stable/getting_started/#1-install-argo-cd) for further details about the installation.
 - The integration's required configurations.
 - Your organization [Port credentials](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/api/#find-your-port-credentials).
 
@@ -45,7 +45,7 @@ To get your Port API credentials go to your [Port application](https://app.getpo
 :::
 
 :::warning
-This guide will install the ArgoCD Application using the current Kubernetes context. Make sure you have the correct context set before continuing.
+This guide will install the Argo CD Application using the current Kubernetes context. Make sure you have the correct context set before continuing.
 :::
 
 ## Deploying the integration
@@ -87,15 +87,15 @@ More information about the available event listener types and optional configura
 the [event listeners](../framework/features/event-listener.md) guide.
 :::
 
-4. Install the `my-ocean-integration` ArgoCD Application by creating the following `my-ocean-integration.yaml` manifest:
+4. Install the `my-ocean-integration` Argo CD Application by creating the following `my-ocean-integration.yaml` manifest:
 :::note
 Remember to replace the placeholders for `YOUR_PORT_CLIENT_ID` `YOUR_PORT_CLIENT_SECRET` and `YOUR_GIT_REPO_URL`.
 
-Multiple sources ArgoCD documentation can be found [here](https://argo-cd.readthedocs.io/en/stable/user-guide/multiple_sources/#helm-value-files-from-external-git-repository).
+Multiple sources Argo CD documentation can be found [here](https://argo-cd.readthedocs.io/en/stable/user-guide/multiple_sources/#helm-value-files-from-external-git-repository).
 :::
 
 <details>
-  <summary>ArgoCD Application</summary>
+  <summary>Argo CD Application</summary>
 
 ```yaml showLineNumbers
 apiVersion: argoproj.io/v1alpha1

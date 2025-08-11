@@ -3,7 +3,7 @@
 # Ocean framework
 /port_ocean/** @port-labs/ecosystem-team
 
-# argocd integration
+# argo cd integration
 /integrations/argocd/** @port-labs/ecosystem-team
 
 # aws integration

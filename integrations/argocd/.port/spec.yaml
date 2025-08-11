@@ -17,22 +17,22 @@ saas:
 configurations:
   - name: token
     required: true
-    description: ArgoCD API token. To create an API token, see the <a href="https://argoproj.github.io/argo-cd/getting_started/#4-create-an-api-access-token" target="_blank">ArgoCD documentation</a>.
+    description: Argo CD API token. To create an API token, see the <a href="https://argoproj.github.io/argo-cd/getting_started/#4-create-an-api-access-token" target="_blank">Argo CD documentation</a>.
     type: string
     sensitive: true
   - name: serverUrl
     type: string
     required: true
-    description: The URL of the ArgoCD server. For example, https://argocd.example.com. Found in the URL field of your browser when you launch your ArgoCD instance
+    description: The URL of the Argo CD server. For example, https://argocd.example.com. Found in the URL field of your browser when you launch your Argo CD instance
   - name: ignoreServerError
     type: boolean
     required: false
-    description: Whether to ignore server errors when fetching data from ArgoCD. If set to true, the exporter will continue to fetch data and ingest entities in Port without failing the resync event even if the ArgoCD server returns an error. If set to false, the exporter will stop fetching data and fail the resync event when the ArgoCD server returns an error. Default is false.
+    description: Whether to ignore server errors when fetching data from Argo CD. If set to true, the exporter will continue to fetch data and ingest entities in Port without failing the resync event even if the Argo CD server returns an error. If set to false, the exporter will stop fetching data and fail the resync event when the Argo CD server returns an error. Default is false.
     default: false
   - name: allowInsecure
     type: boolean
     required: false
-    description: Whether to allow insecure connections to the ArgoCD server. If set to true, the exporter will allow insecure connections to the ArgoCD server. If set to false, the exporter will only allow secure connections to the ArgoCD server. Default is false.
+    description: Whether to allow insecure connections to the Argo CD server. If set to true, the exporter will allow insecure connections to the Argo CD server. If set to false, the exporter will only allow secure connections to the Argo CD server. Default is false.
     default: false
 installationDocs:
   saas:
