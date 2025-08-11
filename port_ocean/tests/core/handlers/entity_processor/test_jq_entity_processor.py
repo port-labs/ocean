@@ -60,7 +60,7 @@ class TestJQEntityProcessor:
         raw_entity_mappings = {"foo": ".foo"}
         selector_query = '.foo == "bar"'
         result, errors = await mocked_processor._calculate_entity(
-            data, raw_entity_mappings, None, selector_query
+            data, raw_entity_mappings, None, None, selector_query
         )
         assert len(result) == 1
         assert result[0].entity == {"foo": "bar"}
