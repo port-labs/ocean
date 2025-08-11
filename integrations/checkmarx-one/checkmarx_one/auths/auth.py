@@ -43,8 +43,14 @@ class CheckmarxClientAuthenticator(BaseCheckmarxAuthenticator):
             client_secret=client_secret,
         )
 
+        # Copy relevant attributes for backward compatibility and mypy visibility
         self.__dict__.update(authenticator.__dict__)
-        self._authenticator = authenticator
+        self._authenticator: BaseCheckmarxAuthenticator = authenticator
+
+        # Ensure attributes exist on this wrapper instance for tests and typing
+        self.api_key = getattr(authenticator, "api_key", None)
+        self.client_id = getattr(authenticator, "client_id", None)
+        self.client_secret = getattr(authenticator, "client_secret", None)
 
     async def _authenticate(self) -> dict[str, Any]:
         """Delegate to the underlying authenticator."""

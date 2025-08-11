@@ -105,7 +105,7 @@ class TestCheckmarxOneClient:
     @pytest.mark.asyncio
     async def test_send_api_request_success(self, client: CheckmarxOneClient) -> None:
         """Test successful API request."""
-        mock_response = MagicMock()
+        mock_response: MagicMock = MagicMock()
         mock_response.json.return_value = {"data": "test_data"}
         mock_response.raise_for_status.return_value = None
 
@@ -323,7 +323,7 @@ class TestCheckmarxOneClient:
         self, client: CheckmarxOneClient
     ) -> None:
         """Test paginated resources with empty response."""
-        mock_response = {"data": []}
+        mock_response: dict[str, list[dict[str, str]]] = {"data": []}
 
         with patch(
             "checkmarx_one.clients.base_client.http_async_client"

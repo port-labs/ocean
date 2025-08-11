@@ -38,6 +38,12 @@ class BaseCheckmarxAuthenticator(ABC):
         self._refresh_token: Optional[str] = None
         self._token_expires_at: Optional[float] = None
         self._refresh_lock = asyncio.Lock()
+        # Optional attributes populated by concrete authenticators
+        self.api_key: Optional[str] = None
+        self.client_id: Optional[str] = None
+        self.client_secret: Optional[str] = None
+
+
 
     @property
     def auth_url(self) -> str:
@@ -69,7 +75,7 @@ class BaseCheckmarxAuthenticator(ABC):
             if cached_data and isinstance(cached_data, dict):
                 cached_time = cached_data.get("cached_at", 0)
                 cached_expires_at = (
-                    cached_data.get("expires_at", 0) / 60
+                    cached_data.get("expires_in", 1800) / 60
                 )  # Convert to minutes
                 current_time = time.time()
                 if current_time - cached_time < cached_expires_at - 1:
@@ -110,21 +116,21 @@ class BaseCheckmarxAuthenticator(ABC):
 
                 token_response = await self._authenticate()
 
-                self._access_token = token_response["access_token"]
-                self._refresh_token = token_response.get("refresh_token")
+            self._access_token = token_response["access_token"]
+            self._refresh_token = token_response["refresh_token"]
 
-                # Token expires in seconds, store absolute time
-                expires_in = token_response.get(
-                    "expires_in", 1800
-                )  # Default 30 minutes
-                self._token_expires_at = time.time() + expires_in
+            # Token expires in seconds, store absolute time
+            expires_in = token_response.get(
+                "expires_in", 1800
+            )  # Default 30 minutes
+            self._token_expires_at = time.time() + expires_in
 
-                # Cache the token data
-                await self._cache_token(token_response)
+            # Cache the token data
+            await self._cache_token(token_response)
 
-                logger.info(
-                    f"Successfully refreshed access token, expires in {expires_in} seconds"
-                )
+            logger.info(
+                f"Successfully refreshed access token, expires in {expires_in} seconds"
+            )
 
         except Exception as e:
             logger.error(f"Failed to refresh access token: {str(e)}")
@@ -136,7 +142,7 @@ class BaseCheckmarxAuthenticator(ABC):
         cached_token = await self._get_cached_token()
         if cached_token:
             self._access_token = cached_token["access_token"]
-            self._refresh_token = cached_token.get["refresh_token"]
+            self._refresh_token = cached_token["refresh_token"]
             expires_in = cached_token.get("expires_in", 1800)
             self._token_expires_at = time.time() + expires_in
             return self._access_token

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -105,7 +105,7 @@ class TestCheckmarxAuthenticator:
     async def test_authenticate_with_api_key(
         self,
         api_key_authenticator: CheckmarxClientAuthenticator,
-        mock_token_response: dict,
+        mock_token_response: dict[str, Any],
     ) -> None:
         """Test authentication delegation with API key."""
         with patch.object(
@@ -116,13 +116,14 @@ class TestCheckmarxAuthenticator:
             result = await api_key_authenticator._authenticate()
 
             assert result == mock_token_response
-            api_key_authenticator._authenticator._authenticate.assert_awaited_once()
+            mocked_auth = cast(Any, api_key_authenticator._authenticator._authenticate)
+            mocked_auth.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_authenticate_with_oauth(
         self,
         oauth_authenticator: CheckmarxClientAuthenticator,
-        mock_token_response: dict,
+        mock_token_response: dict[str, Any],
     ) -> None:
         """Test authentication delegation with OAuth."""
         with patch.object(
@@ -133,7 +134,8 @@ class TestCheckmarxAuthenticator:
             result = await oauth_authenticator._authenticate()
 
             assert result == mock_token_response
-            oauth_authenticator._authenticator._authenticate.assert_called_once()
+            mocked_auth = cast(Any, oauth_authenticator._authenticator._authenticate)
+            mocked_auth.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_auth_headers_with_api_key(
@@ -154,7 +156,10 @@ class TestCheckmarxAuthenticator:
             result = await api_key_authenticator.get_auth_headers()
 
             assert result == expected_headers
-            api_key_authenticator._authenticator.get_auth_headers.assert_called_once()
+            mocked_headers = cast(
+                Any, api_key_authenticator._authenticator.get_auth_headers
+            )
+            mocked_headers.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_auth_headers_with_oauth(
@@ -175,7 +180,10 @@ class TestCheckmarxAuthenticator:
             result = await oauth_authenticator.get_auth_headers()
 
             assert result == expected_headers
-            oauth_authenticator._authenticator.get_auth_headers.assert_called_once()
+            mocked_headers = cast(
+                Any, oauth_authenticator._authenticator.get_auth_headers
+            )
+            mocked_headers.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_authenticate_propagates_exception(

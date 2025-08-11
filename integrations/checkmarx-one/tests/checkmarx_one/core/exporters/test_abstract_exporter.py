@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Optional, Mapping
 
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from checkmarx_one.clients.base_client import CheckmarxOneClient
@@ -24,13 +24,13 @@ class TestAbstractCheckmarxExporter:
             """Concrete implementation for testing."""
 
             async def get_paginated_resources(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> AsyncGenerator[list[dict[str, Any]], None]:
                 """Mock implementation."""
                 yield []
 
             async def get_resource(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> dict[str, Any]:
                 """Mock implementation."""
                 return {}
@@ -43,12 +43,12 @@ class TestAbstractCheckmarxExporter:
         # Create a concrete implementation for testing
         class TestExporter(AbstractCheckmarxExporter):
             async def get_paginated_resources(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> AsyncGenerator[list[dict[str, Any]], None]:
                 yield []
 
             async def get_resource(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> dict[str, Any]:
                 return {}
 
@@ -73,12 +73,12 @@ class TestAbstractCheckmarxExporter:
         # The class is abstract and requires implementation of abstract methods
         class TestExporter(AbstractCheckmarxExporter):
             async def get_paginated_resources(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> AsyncGenerator[list[dict[str, Any]], None]:
                 yield []
 
             async def get_resource(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> dict[str, Any]:
                 return {}
 
@@ -93,12 +93,12 @@ class TestAbstractCheckmarxExporter:
             """Test implementation."""
 
             async def get_paginated_resources(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> AsyncGenerator[list[dict[str, Any]], None]:
                 yield []
 
             async def get_resource(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> dict[str, Any]:
                 return {}
 
@@ -113,6 +113,7 @@ class TestAbstractCheckmarxExporter:
         mock_base_client.some_method = MagicMock(return_value="test_result")
 
         # Access through exporter
+        assert concrete_exporter.client is not None
         result = concrete_exporter.client.some_method()
         assert result == "test_result"
         mock_base_client.some_method.assert_called_once()
@@ -124,12 +125,12 @@ class TestAbstractCheckmarxExporter:
             """Test implementation."""
 
             async def get_paginated_resources(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> AsyncGenerator[list[dict[str, Any]], None]:
                 yield []
 
             async def get_resource(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> dict[str, Any]:
                 return {}
 
@@ -165,12 +166,12 @@ class TestAbstractCheckmarxExporter:
             """Test implementation."""
 
             async def get_paginated_resources(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> AsyncGenerator[list[dict[str, Any]], None]:
                 yield []
 
             async def get_resource(
-                self, options: Optional[Dict[str, Any]]
+                self, options: Optional[Mapping[str, Any]]
             ) -> dict[str, Any]:
                 return {}
 

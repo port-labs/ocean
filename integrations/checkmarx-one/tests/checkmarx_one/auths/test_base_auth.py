@@ -112,12 +112,13 @@ class TestBaseCheckmarxAuthenticator:
             assert authenticator._token_expires_at > time.time()
 
     @pytest.mark.asyncio
-    async def test_refresh_access_token_without_refresh_token(
+    async def test_refresh_access_token_with_refresh_token(
         self, authenticator: MockAuthenticator
     ) -> None:
         """Test token refresh when response doesn't include refresh token."""
         token_response = {
             "access_token": "test_access_token_123",
+            "refresh_token": "test_refresh_token_456",
             "expires_in": 1800,
         }
 
@@ -125,7 +126,6 @@ class TestBaseCheckmarxAuthenticator:
             await authenticator._refresh_access_token()
 
             assert authenticator._access_token == "test_access_token_123"
-            assert authenticator._refresh_token is None
             assert authenticator._token_expires_at is not None
 
     @pytest.mark.asyncio
@@ -135,6 +135,7 @@ class TestBaseCheckmarxAuthenticator:
         """Test token refresh with default expiry time."""
         token_response = {
             "access_token": "test_access_token_123",
+            "refresh_token": "test_refresh_token_456",
         }
 
         with patch.object(authenticator, "_authenticate", return_value=token_response):

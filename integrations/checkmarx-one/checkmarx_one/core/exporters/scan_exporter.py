@@ -1,27 +1,29 @@
-from typing import Any
+from typing import Any, Optional, AsyncGenerator, Mapping
 from loguru import logger
 
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
-from checkmarx_one.core.options import SingleScanOptions, ListScanOptions
 
 
 class CheckmarxScanExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One scans."""
 
-    async def get_resource[
-        SingleScanOptionsT: SingleScanOptions
-    ](self, options: SingleScanOptionsT,) -> RAW_ITEM:
+    async def get_resource(
+        self,
+        options: Optional[Mapping[str, Any]],
+    ) -> RAW_ITEM:
         """Get a specific scan by ID."""
+        assert options is not None and "scan_id" in options
         response = await self.client.send_api_request(f"/scans/{options['scan_id']}")
         logger.info(f"Fetched scan with ID: {options['scan_id']}")
         return response
 
     @cache_iterator_result()
-    async def get_paginated_resources[
-        ListScanOptionsT: ListScanOptions
-    ](self, options: ListScanOptionsT,) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    def get_paginated_resources(
+        self,
+        options: Optional[Mapping[str, Any]],
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
         Get scans from Checkmarx One.
 
@@ -34,9 +36,9 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
             Batches of scans
         """
         params: dict[str, Any] = {}
-        project_ids: list[str] = options.get("project_ids", [])
-        limit = options.get("limit")
-        offset = options.get("offset")
+        project_ids: list[str] = (options or {}).get("project_ids", []) or []
+        limit = (options or {}).get("limit")
+        offset = (options or {}).get("offset")
 
         if project_ids and len(project_ids) > 0:
             params["project-ids"] = ",".join(project_ids)
@@ -45,8 +47,11 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
         if offset is not None:
             params["offset"] = offset
 
-        async for scans in self.client.send_paginated_request(
-            "/scans", "scans", params
-        ):
-            logger.info(f"Fetched batch of {len(scans)} scans")
-            yield scans
+        async def _gen() -> AsyncGenerator[list[dict[str, Any]], None]:
+            async for scans in self.client.send_paginated_request(
+                "/scans", "scans", params
+            ):
+                logger.info(f"Fetched batch of {len(scans)} scans")
+                yield scans
+
+        return _gen()
