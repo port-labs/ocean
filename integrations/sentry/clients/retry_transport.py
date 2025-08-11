@@ -1,6 +1,5 @@
 import asyncio
 import random
-import time
 from datetime import datetime
 from typing import Union, Mapping, Callable, Coroutine, Any
 
@@ -75,11 +74,7 @@ class SentryRetryTransport(RetryTransport):
         if self._respect_retry_after_header and retry_after_header:
             if self._respect_retry_after_header and retry_after_header:
                 if retry_after_header.isdigit():
-                    reset_timestamp = float(retry_after_header) / 1000
-                    seconds_until_reset = reset_timestamp - time.time()
-                    if seconds_until_reset < 0:
-                        seconds_until_reset = 0
-                    return seconds_until_reset
+                    return float(retry_after_header)
 
             try:
                 parsed_date = isoparse(
