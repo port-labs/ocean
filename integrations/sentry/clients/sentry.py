@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Any, AsyncGenerator, AsyncIterator, Optional, cast, Optional, List
+from typing import Any, AsyncGenerator, AsyncIterator, cast, Optional, List
 
 import httpx
 from integration import SentryResourceConfig
@@ -144,9 +144,6 @@ class SentryClient:
                 response = await self.send_api_request(
                     "GET", url, params=params, ignored_errors=ignored_errors
                 )
-                params["cursor"] = response.headers.get(
-                    "X-Sentry-Next-Cursor"
-                ) or response.headers.get("X-Sentry-Cursor")
                 records = response.json()
                 logger.debug(
                     f"Received {len(records)} records from Sentry for URL: {url}"
@@ -155,6 +152,15 @@ class SentryClient:
 
                 url = self.get_next_link(response.headers.get("link", ""))
                 params = None
+
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+                )
+                raise
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP occurred while fetching Sentry data: {e}")
+                raise
 
     async def _get_single_resource(self, url: str) -> list[dict[str, Any]]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")

@@ -103,7 +103,7 @@ class SentryRateLimiter:
                     self._limit = int(limit)
                     self._remaining = int(remaining)
                     self._reset_time = float(reset_seconds)
-                    logger.warning(
+                    logger.debug(
                         f"Sentry rate limit updated. "
                         f"Remaining: {self._remaining}. "
                         f"Limit: {self._limit}. "
