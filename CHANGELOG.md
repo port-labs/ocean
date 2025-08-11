@@ -6,7 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.27.2 (2025-08-07)
+
+### Bug Fixes
+
+- Move the items to parse logic to be yielded from the generator to support ocean's logic.
+
+## 0.27.1 (2025-08-10)
+
+### Bug Fixes
+
+- Ensure deletion metrics always being sent on reconceliation
+
 ## 0.27.0 (2025-08-03)
+
 ### Improvements
 
 - Enhanced webhook event processing with GroupQueue implementation
