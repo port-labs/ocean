@@ -242,7 +242,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
         items_to_parse: str | None,
-        items_to_parse_name: str | None,
+        items_to_parse_name: str,
         selector_query: str,
         parse_all: bool = False,
     ) -> tuple[list[MappedEntity], list[Exception]]:
