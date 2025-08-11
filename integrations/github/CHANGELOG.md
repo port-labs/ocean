@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.2.7-beta (2025-08-11)
+
+
+### Improvements
+
+- Enhanced pipeline resync logic to conditionally enrich with repository data based on selector configuration
+- Extended Azure DevOps resource configs to support pipeline-specific selectors
+
+
 ## 1.2.6-beta (2025-08-11)
 
 
