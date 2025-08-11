@@ -5,12 +5,13 @@ import httpx
 from integration import SentryResourceConfig
 from loguru import logger
 from port_ocean.context.event import event
-from port_ocean.utils import http_async_client
+from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
 
 from .exceptions import IgnoredError, ResourceNotFoundError
 from .rate_limiter import SentryRateLimiter
+from .retry_transport import SentryRetryTransport
 
 PAGE_SIZE = 100
 
@@ -41,7 +42,7 @@ class SentryClient:
         self.base_headers = {"Authorization": "Bearer " + f"{self.auth_token}"}
         self.api_url = f"{self.sentry_base_url}/api/0"
         self.organization = sentry_organization
-        self._client = http_async_client
+        self._client = OceanAsyncClient(transport_class=SentryRetryTransport)
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
         self._rate_limiter = SentryRateLimiter()
 
@@ -128,6 +129,9 @@ class SentryClient:
             except httpx.HTTPError:
                 # Re-raise non-HTTP status errors
                 raise
+            finally:
+                if "response" in locals() and response:
+                    await self._rate_limiter.update_from_headers(response.headers)
 
     async def _get_paginated_resource(
         self, url: str, ignored_errors: Optional[List[IgnoredError]] = None
