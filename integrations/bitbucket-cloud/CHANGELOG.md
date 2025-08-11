@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.57 (2025-08-06)
+## 0.1.59 (2025-08-11)
 
 
 ### Features
 
 - Added support for multi-token rotation, modified rate limiter class by adding `can_acquire()` method to check availability without consuming slots and updated client.py to use the token manager when applicable while maintaining backward compatibility and test coverage
+
+
+## 0.1.58 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 0.1.57 (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
 
 
 ## 0.1.56 (2025-08-05)
