@@ -242,6 +242,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
         items_to_parse: str | None,
+        items_to_parse_name: str,
         selector_query: str,
         parse_all: bool = False,
     ) -> tuple[list[MappedEntity], list[Exception]]:
@@ -255,7 +256,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                         f" Skipping..."
                     )
                     return [], []
-                raw_data = [{"item": item, **data} for item in items]
+                raw_data = [{items_to_parse_name: item, **data} for item in items]
 
         entities, errors = await gather_and_split_errors_from_results(
             [
@@ -304,6 +305,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                 self._calculate_entity,
                 raw_entity_mappings,
                 mapping.port.items_to_parse,
+                mapping.port.items_to_parse_name,
                 mapping.selector.query,
                 parse_all,
             )
