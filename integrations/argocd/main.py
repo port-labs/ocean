@@ -26,15 +26,17 @@ async def on_resources_resync(kind: str) -> RAW_RESULT:
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.DEPLOYMENT_HISTORY)
-async def on_history_resync(kind: str) -> RAW_RESULT:
+async def on_history_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
-    return await argocd_client.get_deployment_history()
+    async for history in argocd_client.get_deployment_history():
+        yield history
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.KUBERNETES_RESOURCE)
-async def on_managed_k8s_resources_resync(kind: str) -> RAW_RESULT:
+async def on_managed_k8s_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
-    return await argocd_client.get_kubernetes_resource()
+    async for resources in argocd_client.get_kubernetes_resource():
+        yield resources
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.MANAGED_RESOURCE)
@@ -50,13 +52,12 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     for application in applications:
         if application:
-            managed_resources = await argocd_client.get_managed_resources(
+            async for managed_resources in argocd_client.get_managed_resources(
                 application=application
-            )
-            logger.info(
-                f"Ingesting managed resources for application: {application.get('metadata', {}).get('name')}"
-            )
-            if managed_resources:
+            ):
+                logger.info(
+                    f"Ingesting managed resources for application: {application.get('metadata', {}).get('name')}"
+                )
                 yield managed_resources
 
 
