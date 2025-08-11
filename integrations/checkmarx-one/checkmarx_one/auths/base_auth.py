@@ -1,6 +1,7 @@
 import time
 from abc import ABC, abstractmethod
 from typing import Any, Optional
+import asyncio
 
 from loguru import logger
 from port_ocean.utils import http_async_client
@@ -36,6 +37,7 @@ class BaseCheckmarxAuthenticator(ABC):
         self._access_token: Optional[str] = None
         self._refresh_token: Optional[str] = None
         self._token_expires_at: Optional[float] = None
+        self._refresh_lock = asyncio.Lock()
 
     @property
     def auth_url(self) -> str:
@@ -96,21 +98,30 @@ class BaseCheckmarxAuthenticator(ABC):
     async def _refresh_access_token(self) -> None:
         """Refresh the access token using the appropriate method."""
         try:
-            token_response = await self._authenticate()
+            async with self._refresh_lock:
+                if self._access_token and not self.is_token_expired:
+                    logger.debug(
+                        "Another coroutine refreshed the token while waiting for lock"
+                    )
+                    return
 
-            self._access_token = token_response["access_token"]
-            self._refresh_token = token_response.get("refresh_token")
+                token_response = await self._authenticate()
 
-            # Token expires in seconds, store absolute time
-            expires_in = token_response.get("expires_in", 1800)  # Default 30 minutes
-            self._token_expires_at = time.time() + expires_in
+                self._access_token = token_response["access_token"]
+                self._refresh_token = token_response.get("refresh_token")
 
-            # Cache the token data
-            await self._cache_token(token_response)
+                # Token expires in seconds, store absolute time
+                expires_in = token_response.get(
+                    "expires_in", 1800
+                )  # Default 30 minutes
+                self._token_expires_at = time.time() + expires_in
 
-            logger.info(
-                f"Successfully refreshed access token, expires in {expires_in} seconds"
-            )
+                # Cache the token data
+                await self._cache_token(token_response)
+
+                logger.info(
+                    f"Successfully refreshed access token, expires in {expires_in} seconds"
+                )
 
         except Exception as e:
             logger.error(f"Failed to refresh access token: {str(e)}")
