@@ -7,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
-from port_ocean.core.handlers.queue import GroupQueue, LocalQueue
+from port_ocean.core.handlers.queue import GroupQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
