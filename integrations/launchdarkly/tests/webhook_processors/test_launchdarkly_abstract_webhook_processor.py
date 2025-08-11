@@ -113,6 +113,7 @@ class TestLaunchDarklyAbstractWebhookProcessor:
 
         mock_request = create_ld_mock_request(b"{}", {})
 
+        ocean.integration_config["webhook_secret"] = "test-secret"
         result = await ld_processor._verify_webhook_signature(mock_request)
         assert result is False
 
