@@ -43,8 +43,6 @@ class BaseCheckmarxAuthenticator(ABC):
         self.client_id: Optional[str] = None
         self.client_secret: Optional[str] = None
 
-
-
     @property
     def auth_url(self) -> str:
         """Get the authentication URL for the tenant."""
@@ -120,9 +118,7 @@ class BaseCheckmarxAuthenticator(ABC):
             self._refresh_token = token_response["refresh_token"]
 
             # Token expires in seconds, store absolute time
-            expires_in = token_response.get(
-                "expires_in", 1800
-            )  # Default 30 minutes
+            expires_in = token_response.get("expires_in", 1800)  # Default 30 minutes
             self._token_expires_at = time.time() + expires_in
 
             # Cache the token data
