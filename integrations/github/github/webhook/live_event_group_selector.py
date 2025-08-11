@@ -58,15 +58,4 @@ def get_primary_id(event: WebhookEvent) -> str | None:
             return f"{event_type}-{event_id}"
         except (KeyError, TypeError):
             pass
-
-    stack = [event]
-    while stack:
-        node = stack.pop()
-        if isinstance(node, dict):
-            for k, v in node.items():
-                if k in {"number", "id", "sha"} and isinstance(v, (int, str)):
-                    return f"{event_type}-{v}"
-                stack.append(v)
-        elif isinstance(node, list):
-            stack.extend(node)
     return None
