@@ -39,7 +39,7 @@ class CheckmarxAuthenticatorFactory:
             CheckmarxAuthenticationError: If no valid authentication method is provided
         """
         api_key_provided = bool(api_key)
-        oauth_provided = bool(client_id and client_secret)
+        oauth_provided = bool(client_id) and bool(client_secret)
 
         if not api_key_provided and not oauth_provided:
             raise CheckmarxAuthenticationError(
@@ -54,4 +54,9 @@ class CheckmarxAuthenticatorFactory:
         if api_key_provided:
             return TokenAuthenticator(iam_url, tenant, api_key)
         else:
-            return OAuthAuthenticator(iam_url, tenant, client_id, client_secret)
+            return OAuthAuthenticator(
+                iam_url,
+                tenant,
+                client_id if client_id is not None else "",
+                client_secret if client_secret is not None else "",
+            )
