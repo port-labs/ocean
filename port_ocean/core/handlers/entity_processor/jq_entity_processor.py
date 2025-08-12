@@ -242,19 +242,21 @@ class JQEntityProcessor(BaseEntityProcessor):
         data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
         items_to_parse: str | None,
+        items_to_parse_name: str,
         selector_query: str,
         parse_all: bool = False,
     ) -> tuple[list[MappedEntity], list[Exception]]:
         raw_data = [data.copy()]
-        if items_to_parse:
-            items = await self._search(data, items_to_parse)
-            if not isinstance(items, list):
-                logger.warning(
-                    f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items)}."
-                    f" Skipping..."
-                )
-                return [], []
-            raw_data = [{"item": item, **data} for item in items]
+        if not ocean.config.yield_items_to_parse:
+            if items_to_parse:
+                items = await self._search(data, items_to_parse)
+                if not isinstance(items, list):
+                    logger.warning(
+                        f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items)}."
+                        f" Skipping..."
+                    )
+                    return [], []
+                raw_data = [{items_to_parse_name: item, **data} for item in items]
 
         entities, errors = await gather_and_split_errors_from_results(
             [
@@ -303,6 +305,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                 self._calculate_entity,
                 raw_entity_mappings,
                 mapping.port.items_to_parse,
+                mapping.port.items_to_parse_name,
                 mapping.selector.query,
                 parse_all,
             )

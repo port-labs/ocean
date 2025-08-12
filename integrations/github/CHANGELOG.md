@@ -7,11 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.2.5-beta (2025-08-07)
+## 1.2.8-beta (2025-08-12)
 
-- Added closedPullRequests config option to include closed PRs in exports with a 60-day time filter
+
+### Improvements
+
+- Added maxResults config option to include closed PRs during export
 - Added Batch limiting (max 100 closed PRs) to prevent performance issues
-- Modified Webhook processor to update (not delete) closed PRs when flag is enabled
+- Modified Webhook processor to update (not delete) closed PRs when maxResults flag is enabled
+
+
+## 1.2.7-beta (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 1.2.6-beta (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
 
 
 ## 1.2.5-beta (2025-08-07)
