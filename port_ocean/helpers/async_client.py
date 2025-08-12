@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.helpers.retry import RetryTransport
-from port_ocean.helpers.srteam import Stream
+from port_ocean.helpers.stream import Stream
 
 
 class OceanAsyncClient(httpx.AsyncClient):

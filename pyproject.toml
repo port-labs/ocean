@@ -67,6 +67,7 @@ prometheus-client = "^0.21.1"
 pytest-cov = "^6.0.0"
 ijson = "^3.4.0"
 aiofiles = "^24.1.0"
+cryptography = "^44.0.1"
 
 [tool.poetry.extras]
 cli = ["click", "rich", "cookiecutter", "jinja2-time"]
