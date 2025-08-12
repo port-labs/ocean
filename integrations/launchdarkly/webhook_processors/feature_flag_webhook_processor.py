@@ -23,7 +23,7 @@ class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
         return event.payload.get("kind") == ObjectKind.FEATURE_FLAG
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.FEATURE_FLAG, ObjectKind.FEATURE_FLAG_STATUS]
+        return [ObjectKind.FEATURE_FLAG, ObjectKind.FEATURE_FLAG_STATUS, ObjectKind.FEATURE_FLAG_DEPENDENCIES]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -65,7 +65,11 @@ class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
 
         # Handle update events
         client = LaunchDarklyClient.create_from_ocean_configuration()
-        if resource_config_kind == ObjectKind.FEATURE_FLAG_STATUS:
+        if resource_config_kind == ObjectKind.FEATURE_FLAG_DEPENDENCIES:
+            # For flag dependencies, fetch and format the dependencies
+            dependencies = await client.get_feature_flag_dependencies(project_key, feature_flag_key)
+            data_to_update = dependencies
+        elif resource_config_kind == ObjectKind.FEATURE_FLAG_STATUS:
             response = await client.get_feature_flag_status(
                 project_key, feature_flag_key
             )
@@ -75,6 +79,7 @@ class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
                 for env_key, env_data in response["environments"].items()
             ]
         else:
+            # For regular feature flags
             data_to_update = [
                 await enrich_resource_with_project(endpoint, kind, client)
             ]

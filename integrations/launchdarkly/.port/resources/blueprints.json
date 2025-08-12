@@ -205,5 +205,72 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "launchDarklyFlagDependency",
+    "description": "This blueprint represents a dependency relationship between feature flags in LaunchDarkly.",
+    "title": "LaunchDarkly Flag Dependency",
+    "icon": "Launchdarkly",
+    "schema": {
+      "properties": {
+        "flagKey": {
+          "type": "string",
+          "title": "Flag Key",
+          "description": "The key of the source feature flag."
+        },
+        "dependentFlagKey": {
+          "type": "string",
+          "title": "Dependent Flag Key",
+          "description": "The key of the related feature flag."
+        },
+        "dependentFlagName": {
+          "type": "string",
+          "title": "Dependent Flag Name",
+          "description": "The name of the related feature flag."
+        },
+        "projectKey": {
+          "type": "string",
+          "title": "Project Key",
+          "description": "The key of the project containing the source flag."
+        },
+        "dependentProjectKey": {
+          "type": "string",
+          "title": "Dependent Project Key",
+          "description": "The key of the project containing the related flag."
+        },
+        "relationshipType": {
+          "type": "string",
+          "title": "Relationship Type",
+          "description": "The type of dependency relationship between the flags.",
+          "enum": ["depends_on", "is_depended_on_by"]
+        }
+      },
+      "required": [
+        "flagKey",
+        "dependentFlagKey",
+        "projectKey",
+        "dependentProjectKey",
+        "relationshipType"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "sourceFlag": {
+        "title": "Source Flag",
+        "target": "launchDarklyFeatureFlag",
+        "required": true,
+        "many": false,
+        "identifier": ".flagKey + ':' + .projectKey"
+      },
+      "relatedFlag": {
+        "title": "Related Flag",
+        "target": "launchDarklyFeatureFlag",
+        "required": true,
+        "many": false,
+        "identifier": ".dependentFlagKey + ':' + .dependentProjectKey"
+      }
+    }
   }
 ]

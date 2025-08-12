@@ -69,6 +69,27 @@ resources:
           blueprint: '"launchDarklyFFInEnvironment"'
           properties:
             status: .name
+            dependencyCount: .dependencyCount // 0
+            dependentCount: .dependentCount // 0
           relations:
             environment: .__environmentKey + "-" + .__projectKey
             featureFlag: . as $input | $input._links.self.href | split("/") | .[-1] + "-" + $input.__projectKey
+  - kind: flag-dependencies
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .flagKey + "-" + .dependentFlagKey + "-" + .relationshipType
+          title: .flagKey + " " + .relationshipType + " " + .dependentFlagKey
+          blueprint: '"launchDarklyFlagDependency"'
+          properties:
+            flagKey: .flagKey
+            dependentFlagKey: .dependentFlagKey
+            dependentFlagName: .dependentFlagName
+            projectKey: .projectKey
+            dependentProjectKey: .dependentProjectKey
+            relationshipType: .relationshipType
+          relations:
+            sourceFlag: .flagKey + "-" + .projectKey
+            relatedFlag: .dependentFlagKey + "-" + .dependentProjectKey
