@@ -51,6 +51,7 @@ class TestAbstractCheckmarxExporter:
                 self, options: Optional[Mapping[str, Any]]
             ) -> dict[str, Any]:
                 return {}
+                return {}
 
         exporter = TestExporter(mock_base_client)
         assert exporter.client == mock_base_client

@@ -77,7 +77,6 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         scan_id="",
         severity=selector.severity,
         state=selector.state,
-        sort=selector.sort,
         status=selector.status,
         exclude_result_types=selector.exclude_result_types,
     )

@@ -1,9 +1,10 @@
-from typing import Any, Dict, Optional, AsyncGenerator, Mapping
+from typing import Any, Dict, AsyncGenerator
 from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
+from checkmarx_one.core.options import SingleScanResultOptions, ListScanResultOptions
 
 
 class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
@@ -16,7 +17,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         scan_result["__scan_id"] = scan_id
         return scan_result
 
-    async def get_resource(self, options: Optional[Mapping[str, Any]]) -> RAW_ITEM:
+    async def get_resource(self, options: SingleScanResultOptions) -> RAW_ITEM:
         """
         Get a specific scan result by ID.
 
@@ -43,9 +44,9 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         return self._enrich_scan_result_with_scan_id(response, options["scan_id"])
 
     @cache_iterator_result()
-    def get_paginated_resources(
+    async def get_paginated_resources(
         self,
-        options: Optional[Mapping[str, Any]],
+        options: ListScanResultOptions,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
         Get scan results from Checkmarx One.
@@ -68,36 +69,35 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         if not options or not options.get("scan_id"):
             raise ValueError("scan_id is required for getting scan results")
 
+        params: dict[str, Any] = self._get_params(options)
+
+        async for results in self.client.send_paginated_request(
+            "/results", "results", params
+        ):
+            logger.info(
+                f"Fetched batch of {len(results)} scan results for scan {options['scan_id']}"
+            )
+            batch = [
+                self._enrich_scan_result_with_scan_id(
+                    result,
+                    options["scan_id"],
+                )
+                for result in results
+            ]
+            yield batch
+
+    def _get_params(self, options: ListScanResultOptions) -> dict[str, Any]:
         params: dict[str, Any] = {
             "scan-id": options["scan_id"],
         }
 
-        # Add optional parameters
-        if "severity" in options:
-            params["severity"] = options["severity"]
-        if "state" in options:
-            params["state"] = options["state"]
-        if "status" in options:
-            params["status"] = options["status"]
-        if "sort" in options:
-            params["sort"] = options["sort"]
-        if "exclude_result_types" in options:
-            params["exclude-result-types"] = options["exclude_result_types"]
+        if options.get("severity"):
+            params["severity"] = options.get("severity")
+        if options.get("state"):
+            params["state"] = options.get("state")
+        if options.get("status"):
+            params["status"] = options.get("status")
+        if options.get("exclude_result_types"):
+            params["exclude-result-types"] = options.get("exclude_result_types")
 
-        async def _gen() -> AsyncGenerator[list[dict[str, Any]], None]:
-            async for results in self.client.send_paginated_request(
-                "/results", "results", params
-            ):
-                logger.info(
-                    f"Fetched batch of {len(results)} scan results for scan {options['scan_id']}"
-                )
-                batch = [
-                    self._enrich_scan_result_with_scan_id(
-                        result,
-                        options["scan_id"],
-                    )
-                    for result in results
-                ]
-                yield batch
-
-        return _gen()
+        return params

@@ -38,25 +38,13 @@ class CheckmarxAuthenticatorFactory:
         Raises:
             CheckmarxAuthenticationError: If no valid authentication method is provided
         """
-        api_key_provided = bool(api_key)
-        oauth_provided = bool(client_id) and bool(client_secret)
 
-        if not api_key_provided and not oauth_provided:
-            raise CheckmarxAuthenticationError(
-                "Either provide api_key or both client_id and client_secret for authentication"
-            )
-
-        if api_key_provided and oauth_provided:
-            logger.warning(
-                "Both API key and OAuth credentials provided. Using API key authentication."
-            )
-
-        if api_key_provided:
+        if api_key:
+            logger.debug(f"Creating API key authenticator for tenant {tenant}")
             return TokenAuthenticator(iam_url, tenant, api_key)
-        else:
-            return OAuthAuthenticator(
-                iam_url,
-                tenant,
-                client_id if client_id is not None else "",
-                client_secret if client_secret is not None else "",
-            )
+
+        if client_id and client_secret:
+            logger.debug(f"Creating OAuth authenticator for tenant {tenant}")
+            return OAuthAuthenticator(iam_url, tenant, client_id, client_secret)
+
+        raise CheckmarxAuthenticationError("No valid authentication method provided")

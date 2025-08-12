@@ -1,4 +1,4 @@
-from typing import List, NotRequired, Optional, Required, TypedDict
+from typing import List, Literal, NotRequired, Optional, Required, TypedDict
 
 
 class ListProjectOptions(TypedDict):
@@ -29,11 +29,25 @@ class ListScanResultOptions(TypedDict):
     """Options for listing scan results."""
 
     scan_id: Required[str]
-    severity: NotRequired[Optional[List[str]]]
-    state: NotRequired[Optional[List[str]]]
-    status: NotRequired[Optional[List[str]]]
-    sort: NotRequired[Optional[List[str]]]
-    exclude_result_types: NotRequired[Optional[str]]
+    severity: NotRequired[
+        Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
+    ]
+    state: NotRequired[
+        Optional[
+            List[
+                Literal[
+                    "TO_VERIFY",
+                    "CONFIRMED",
+                    "URGENT",
+                    "NOT_EXPLOITABLE",
+                    "PROPOSED_NOT_EXPLOITABLE",
+                    "FALSE_POSITIVE",
+                ]
+            ]
+        ]
+    ]
+    status: NotRequired[Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]]]
+    exclude_result_types: NotRequired[Optional[List[Literal["DEV_AND_TEST", "NONE"]]]]
 
 
 class SingleScanResultOptions(TypedDict):

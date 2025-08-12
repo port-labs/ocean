@@ -1,10 +1,9 @@
-from typing import Any
-
 import httpx
 from loguru import logger
 
 from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator
 from checkmarx_one.exceptions import CheckmarxAuthenticationError
+from checkmarx_one.auths.base_auth import TokenResponse
 
 
 class OAuthAuthenticator(BaseCheckmarxAuthenticator):
@@ -17,8 +16,8 @@ class OAuthAuthenticator(BaseCheckmarxAuthenticator):
         self,
         iam_url: str,
         tenant: str,
-        client_id: str | None,
-        client_secret: str | None,
+        client_id: str,
+        client_secret: str,
     ):
         """
         Initialize the OAuth authenticator.
@@ -33,7 +32,7 @@ class OAuthAuthenticator(BaseCheckmarxAuthenticator):
         self.client_id = client_id
         self.client_secret = client_secret
 
-    async def _authenticate(self) -> dict[str, Any]:
+    async def _authenticate(self) -> TokenResponse:
         """Authenticate using OAuth client credentials."""
         logger.debug(f"Authenticating with OAuth client: {self.client_id}")
 
@@ -50,7 +49,11 @@ class OAuthAuthenticator(BaseCheckmarxAuthenticator):
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
             response.raise_for_status()
-            return response.json()
+            return TokenResponse(
+                access_token=response.json()["access_token"],
+                refresh_token=response.json()["refresh_token"],
+                expires_in=response.json()["expires_in"],
+            )
 
         except httpx.HTTPStatusError as e:
             logger.error(

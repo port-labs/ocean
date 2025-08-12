@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -11,25 +11,34 @@ from pydantic import Field
 
 
 class CheckmarxOneResultSelector(Selector):
-    severity: Optional[list[str]] = Field(
-        default=None,
-        description="Filter scan results by severity level",
+    severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]] = (
+        Field(
+            default=None,
+            description="Filter scan results by severity level",
+        )
     )
-    state: Optional[list[str]] = Field(
+    state: Optional[
+        List[
+            Literal[
+                "TO_VERIFY",
+                "CONFIRMED",
+                "URGENT",
+                "NOT_EXPLOITABLE",
+                "PROPOSED_NOT_EXPLOITABLE",
+                "FALSE_POSITIVE",
+            ]
+        ]
+    ] = Field(
         default=None,
         description="Filter scan results by state",
     )
-    sort: Optional[list[str]] = Field(
-        default=None,
-        description="Sort order for scan results",
-    )
-    status: Optional[list[str]] = Field(
+    status: Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]] = Field(
         default=None,
         description="Filter scan results by status",
     )
-    exclude_result_types: Optional[str] = Field(
-        default=None,
-        description="Exclude specific result types from the search",
+    exclude_result_types: Optional[List[Literal["DEV_AND_TEST", "NONE"]]] = Field(
+        default=["DEV_AND_TEST"],
+        description="Filter scan results by exclude result types",
     )
 
 
@@ -39,7 +48,7 @@ class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOneScanSelector(Selector):
-    project_ids: list[str] = Field(
+    project_ids: List[str] = Field(
         default_factory=list,
         alias="projectIds",
         description="Limit search to specific project IDs",
@@ -52,11 +61,11 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOnePortAppConfig(PortAppConfig):
-    resources: list[
+    resources: List[
         CheckmarxOneScanResultResourcesConfig
         | CheckmarxOneScanResourcesConfig
         | ResourceConfig
-    ]
+    ] = Field(default_factory=list)
 
 
 class CheckmarxOneIntegration(BaseIntegration):

@@ -13,12 +13,7 @@ class TokenAuthenticator(BaseCheckmarxAuthenticator):
     Uses refresh token flow with API key as the refresh token.
     """
 
-    def __init__(
-        self,
-        iam_url: str,
-        tenant: str,
-        api_key: str | None,
-    ):
+    def __init__(self, iam_url: str, tenant: str, api_key: str):
         """
         Initialize the token authenticator.
 

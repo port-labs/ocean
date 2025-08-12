@@ -9,6 +9,11 @@ from port_ocean.context.ocean import ocean
 from port_ocean.cache.errors import FailedToReadCacheError, FailedToWriteCacheError
 
 from checkmarx_one.exceptions import CheckmarxAuthenticationError
+from typing import TypedDict
+
+TokenResponse = TypedDict(
+    "TokenResponse", {"access_token": str, "refresh_token": str, "expires_in": int}
+)
 
 
 class BaseCheckmarxAuthenticator(ABC):
@@ -38,10 +43,6 @@ class BaseCheckmarxAuthenticator(ABC):
         self._refresh_token: Optional[str] = None
         self._token_expires_at: Optional[float] = None
         self._refresh_lock = asyncio.Lock()
-        # Optional attributes populated by concrete authenticators
-        self.api_key: Optional[str] = None
-        self.client_id: Optional[str] = None
-        self.client_secret: Optional[str] = None
 
     @property
     def auth_url(self) -> str:
@@ -70,11 +71,9 @@ class BaseCheckmarxAuthenticator(ABC):
             cache_key = self._get_cache_key()
             cached_data = await ocean.app.cache_provider.get(cache_key)
 
-            if cached_data and isinstance(cached_data, dict):
+            if cached_data:
                 cached_time = cached_data.get("cached_at", 0)
-                cached_expires_at = (
-                    cached_data.get("expires_in", 1800) / 60
-                )  # Convert to minutes
+                cached_expires_at = cached_data["expires_in"] / 60  # in minutes
                 current_time = time.time()
                 if current_time - cached_time < cached_expires_at - 1:
                     logger.info(f"Using cached token for tenant {self.tenant}")
@@ -87,7 +86,7 @@ class BaseCheckmarxAuthenticator(ABC):
             logger.warning(f"Failed to read cached token: {str(e)}")
             return None
 
-    async def _cache_token(self, token_data: dict[str, Any]) -> None:
+    async def _cache_token(self, token_data: TokenResponse) -> None:
         """Cache the token data with current timestamp."""
         try:
             cache_key = self._get_cache_key()
@@ -98,7 +97,7 @@ class BaseCheckmarxAuthenticator(ABC):
             logger.warning(f"Failed to cache token: {str(e)}")
 
     @abstractmethod
-    async def _authenticate(self) -> dict[str, Any]:
+    async def _authenticate(self) -> TokenResponse:
         """Authenticate and return token response. Must be implemented by subclasses."""
         pass
 
@@ -112,13 +111,13 @@ class BaseCheckmarxAuthenticator(ABC):
                     )
                     return
 
-                token_response = await self._authenticate()
+                token_response: TokenResponse = await self._authenticate()
 
             self._access_token = token_response["access_token"]
             self._refresh_token = token_response["refresh_token"]
 
             # Token expires in seconds, store absolute time
-            expires_in = token_response.get("expires_in", 1800)  # Default 30 minutes
+            expires_in = token_response["expires_in"]
             self._token_expires_at = time.time() + expires_in
 
             # Cache the token data
@@ -139,7 +138,7 @@ class BaseCheckmarxAuthenticator(ABC):
         if cached_token:
             self._access_token = cached_token["access_token"]
             self._refresh_token = cached_token["refresh_token"]
-            expires_in = cached_token.get("expires_in", 1800)
+            expires_in = cached_token["expires_in"]
             self._token_expires_at = time.time() + expires_in
             return self._access_token
 
