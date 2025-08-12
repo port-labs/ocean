@@ -271,18 +271,22 @@ class LaunchDarklyClient:
         """Helper method to fetch and format dependencies for a specific flag."""
         try:
             dependent_flags = await self.get_feature_flag_dependencies(projectKey, featureFlagKey)
-            return [
-            {
-                "flagKey": featureFlagKey,
-                "dependentFlagKey": dep["key"],
-                "dependentFlagName": dep.get("name", dep["key"]),
-                "projectKey": projectKey,
-                "dependentProjectKey": dep.get("projectKey", projectKey),
-                "relationshipType": "is_depended_on_by",
-                "__projectKey": projectKey,
-            }
-            for dep in dependent_flags
-        ]
+            formatted = []
+            for dep in dependent_flags or []:
+                dep_key = dep.get("key")
+                if not dep_key:
+                    logger.warning(f"Skipping dependency without key for {projectKey}/{featureFlagKey}: {dep}")
+                    continue
+                formatted.append({
+                    "flagKey": featureFlagKey,
+                    "dependentFlagKey": dep_key,
+                    "dependentFlagName": dep.get("name", dep_key),
+                    "projectKey": projectKey,
+                    "dependentProjectKey": dep.get("projectKey", projectKey),
+                    "relationshipType": "is_depended_on_by",
+                    "__projectKey": projectKey,
+                })
+            return formatted
         except Exception as e:
             logger.error(f"Error fetching dependencies for {projectKey}/{featureFlagKey}: {e}")
             return []

@@ -80,7 +80,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .flagKey + "-" + .dependentFlagKey + "-" + .relationshipType
+          identifier: .projectKey + "-" + .flagKey + "-" + .dependentProjectKey + "-" + .dependentFlagKey + "-" + .relationshipType
           title: .flagKey + " " + .relationshipType + " " + .dependentFlagKey
           blueprint: '"launchDarklyFlagDependency"'
           properties:
