@@ -1,6 +1,6 @@
 from port_ocean.utils import http_async_client
 import httpx
-from typing import Any, AsyncGenerator, Optional, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 from loguru import logger
 from enum import StrEnum
 import asyncio
@@ -18,7 +18,7 @@ class ObjectKind(StrEnum):
     FEATURE_FLAG = "flag"
     ENVIRONMENT = "environment"
     FEATURE_FLAG_STATUS = "flag-status"
-    FEATURE_FLAG_DEPENDENCIES = "flag-dependencies"
+    FEATURE_FLAG_DEPENDENCY = "flag-dependency"
 
 
 class LaunchDarklyClient:
@@ -98,6 +98,7 @@ class LaunchDarklyClient:
         method: str = "GET",
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[Union[dict[str, Any], list[Any]]] = None,
+        headers: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         try:
             endpoint = endpoint.replace("/api/v2/", "")
@@ -110,6 +111,7 @@ class LaunchDarklyClient:
                 url=url,
                 params=query_params,
                 json=json_data,
+                headers=headers,
             )
             response.raise_for_status()
 
@@ -234,63 +236,146 @@ class LaunchDarklyClient:
         self, projectKey: str, featureFlagKey: str
     ) -> list[dict[str, Any]]:
         endpoint = f"flags/{projectKey}/{featureFlagKey}/dependent-flags"
-        feature_flag_dependencies = await self.send_api_request(endpoint=endpoint)
+        logger.info(f"Fetching dependencies for {projectKey}/{featureFlagKey} from {endpoint}")
+        
+        #added beta header because the endpoint is not available in the stable version
+        feature_flag_dependencies = await self.send_api_request(endpoint=endpoint, headers={"LD-API-Version": "beta"})
+        logger.info(f"Received {len(feature_flag_dependencies)} dependencies for flag {featureFlagKey}")
+        return feature_flag_dependencies.get("items", [])
+
+    async def get_feature_flag_dependencies_by_environment(
+        self, projectKey: str, featureFlagKey: str, environmentKey: str
+    ) -> list[dict[str, Any]]:
+        endpoint = f"flags/{projectKey}/{environmentKey}/{featureFlagKey}/dependent-flags"
+        logger.info(f"Fetching dependencies for {projectKey}/{environmentKey}/{featureFlagKey} from {endpoint}")
+        
+        #added beta header because the endpoint is not available in the stable version
+        feature_flag_dependencies = await self.send_api_request(endpoint=endpoint, headers={"LD-API-Version": "beta"})
+        logger.info(f"Received {len(feature_flag_dependencies)} dependencies for flag {featureFlagKey}")
         return feature_flag_dependencies.get("items", [])
     
     @cache_iterator_result()
-    async def get_paginated_flag_dependencies(
+    async def get_paginated_feature_flag_dependencies(
         self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get dependencies for all feature flags across all projects."""
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """
+        Get dependencies for all feature flags across all projects and environments.
+        Optimized with controlled concurrency and batching.
+        """
+
+        # Added this based on LaunchDarkly's rate limit & your network
+        MAX_CONCURRENT_REQUESTS = 5
+        sem = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+
+        # Cache environments per project
+        env_cache: Dict[str, List[Dict[str, Any]]] = {}
+
+        async def fetch_env_dep(project_key: str, flag_key: str, env: Dict[str, Any]):
+            """Fetch dependencies for a single environment with semaphore limit."""
+            async with sem:
+                deps = await self.get_feature_flag_dependencies_by_environment(
+                    project_key, flag_key, env["key"]
+                )
+            enriched = []
+            for dep in deps:
+                if not dep.get("key"):
+                    logger.warning(
+                        f"Skipping dependency without key for {project_key}/{flag_key}/{env['key']}: {dep}"
+                    )
+                    continue
+                enriched_dep = {}
+                # Main flag info
+                enriched_dep["flagKey"] = flag_key
+                enriched_dep["projectKey"] = project_key
+
+                # Dependent flag info
+                enriched_dep["dependentFlagKey"] = dep["key"]
+                enriched_dep["dependentFlagName"] = dep.get("name", "")
+                enriched_dep["dependentProjectKey"] = project_key
+
+                # Context info
+                enriched_dep["environmentKey"] = env["key"]
+                enriched_dep["relationshipType"] = dep.get("relationshipType", "is_depended_on_by")
+                
+                enriched.append(enriched_dep)
+            return enriched
+
+        async def fetch_flag_env_deps(project_key: str, flag: Dict[str, Any], environments: List[Dict[str, Any]]):
+            """Fetch dependencies for all environments of a flag."""
+            flag_key = flag["key"]
+            results = await asyncio.gather(
+                *(fetch_env_dep(project_key, flag_key, env) for env in environments)
+            )
+            # Flatten results
+            return [dep for env_deps in results for dep in env_deps]
+
         async for projects in self.get_paginated_projects():
             for project in projects:
                 project_key = project["key"]
-                
-                # Get all feature flags for this project
-                async for flags_batch in self.get_paginated_resource(
-                    ObjectKind.FEATURE_FLAG, resource_path=project_key
-                ):
-                    # Skip empty batches
-                    if not flags_batch:
-                        continue
-                        
-                    # Process in batches to avoid too many concurrent requests
-                    batch_size = 10
-                    for i in range(0, len(flags_batch), batch_size):
-                        batch = flags_batch[i:i+batch_size]
-                        tasks = [
-                            self._format_flag_dependencies(project_key, flag["key"])
-                            for flag in batch
-                        ]
-                        # Use exception handling to prevent one failure from stopping the whole batch
-                        results = await asyncio.gather(*tasks, return_exceptions=True)
-                        formatted_deps = [dep for deps in results if deps for dep in deps]
-                        
-                        if formatted_deps:  # Only yield non-empty dependency lists
-                            yield formatted_deps
+
+                # Cache environments for this project
+                if project_key not in env_cache:
+                    env_cache[project_key] = await self.fetch_environments_for_project(project)
+
+                environments = env_cache[project_key]
+
+            # Get all feature flags for this project
+            async for flags_batch in self.get_paginated_resource(
+                ObjectKind.FEATURE_FLAG, resource_path=project_key
+            ):
+                if not flags_batch:
+                    continue
+
+                logger.info(f"Received {len(flags_batch)} feature flags for project {project_key}")
+
+                # Process in batches
+                batch_size = 10
+                for i in range(0, len(flags_batch), batch_size):
+                    batch = flags_batch[i:i + batch_size]
+
+                    # Fetch dependencies for all flags in batch concurrently
+                    deps_batches = await asyncio.gather(
+                        *(fetch_flag_env_deps(project_key, flag, environments) for flag in batch)
+                    )
+
+                    # Flatten and yield only non-empty results
+                    all_dependencies = [dep for deps in deps_batches for dep in deps if deps]
+                    if all_dependencies:
+                        yield all_dependencies
 
     
     async def _format_flag_dependencies(
         self, projectKey: str, featureFlagKey: str
     ) -> list[dict[str, Any]]:
-        """Helper method to fetch and format dependencies for a specific flag."""
+        """Helper method to fetch and format dependencies for a specific flag.
+        
+        Note: This method is kept for backward compatibility but is no longer used by
+        get_paginated_flag_dependencies, which now handles environment-specific dependencies.
+        """
         try:
+            logger.info(f"Fetching dependencies for flag {featureFlagKey}")
             dependent_flags = await self.get_feature_flag_dependencies(projectKey, featureFlagKey)
+            logger.info(f"Received {len(dependent_flags)} dependencies for flag {featureFlagKey}")
             formatted = []
-            for dep in dependent_flags or []:
+            # Handle the case where dependent_flags might be None
+            if dependent_flags is None:
+                return []
+                
+            # Now iterate through the iterable directly
+            for dep in dependent_flags:
                 dep_key = dep.get("key")
                 if not dep_key:
                     logger.warning(f"Skipping dependency without key for {projectKey}/{featureFlagKey}: {dep}")
                     continue
-                formatted.append({
-                    "flagKey": featureFlagKey,
-                    "dependentFlagKey": dep_key,
-                    "dependentFlagName": dep.get("name", dep_key),
-                    "projectKey": projectKey,
-                    "dependentProjectKey": dep.get("projectKey", projectKey),
-                    "relationshipType": "is_depended_on_by",
-                    "__projectKey": projectKey,
-                })
+                # Preserve original dependency data and only enrich with necessary fields
+                enriched_dep = dep.copy()
+                # Add required fields for entity identification
+                enriched_dep["flagKey"] = featureFlagKey
+                enriched_dep["__projectKey"] = projectKey
+                # Ensure we have a relationship type if not already present
+                if "relationshipType" not in enriched_dep:
+                    enriched_dep["relationshipType"] = "is_depended_on_by"
+                formatted.append(enriched_dep)
             return formatted
         except Exception as e:
             logger.error(f"Error fetching dependencies for {projectKey}/{featureFlagKey}: {e}")

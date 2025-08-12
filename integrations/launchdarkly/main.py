@@ -48,10 +48,10 @@ async def on_resync_feature_flag_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_T
         logger.info(f"Received {kind} batch with {len(feature_flag_status)} items")
         yield feature_flag_status
 
-@ocean.on_resync(kind=ObjectKind.FEATURE_FLAG_DEPENDENCIES)
+@ocean.on_resync(kind=ObjectKind.FEATURE_FLAG_DEPENDENCY)
 async def on_resync_flag_dependencies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LaunchDarklyClient.create_from_ocean_configuration()
-    async for flag_dependencies in client.get_paginated_flag_dependencies():
+    async for flag_dependencies in client.get_paginated_feature_flag_dependencies():
         logger.info(f"Received {kind} batch with {len(flag_dependencies)} items")
         yield flag_dependencies
 

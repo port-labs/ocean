@@ -74,7 +74,7 @@ resources:
           relations:
             environment: .__environmentKey + "-" + .__projectKey
             featureFlag: . as $input | $input._links.self.href | split("/") | .[-1] + "-" + $input.__projectKey
-  - kind: flag-dependencies
+  - kind: flag-dependency
     selector:
       query: 'true'
     port:

@@ -261,15 +261,13 @@
         "title": "Source Flag",
         "target": "launchDarklyFeatureFlag",
         "required": true,
-        "many": false,
-        "identifier": ".flagKey + ':' + .projectKey"
+        "many": false
       },
       "relatedFlag": {
         "title": "Related Flag",
         "target": "launchDarklyFeatureFlag",
         "required": true,
-        "many": false,
-        "identifier": ".dependentFlagKey + ':' + .dependentProjectKey"
+        "many": false
       }
     }
   }
