@@ -32,7 +32,8 @@ def resource_config() -> GithubPullRequestConfig:
     return GithubPullRequestConfig(
         kind="pull-request",
         selector=GithubPullRequestSelector(
-            query="true", state="open", closedPullRequests=False
+            query="true",
+            states=["open"],
         ),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -112,44 +113,36 @@ class TestPullRequestWebhookProcessor:
         assert await pull_request_webhook_processor._validate_payload(payload) is False
 
     @pytest.mark.parametrize(
-        "selector_state,action,expected_update,expected_delete",
+        "selector_states,action,expected_update,expected_delete",
         [
-            ("open", "opened", True, False),
-            ("open", "closed", False, True),
-            ("closed", "opened", True, False),
-            ("closed", "closed", True, False),
-            ("all", "opened", True, False),
-            ("all", "closed", True, False),
+            (["open"], "opened", True, False),  # open allowed
+            (["open"], "closed", False, True),  # closed not in states → delete
+            (["closed"], "opened", True, False),  # still update if opened
+            (["closed"], "closed", True, False),  # closed allowed → update
+            (["open", "closed"], "closed", True, False),  # both allowed → update
         ],
     )
-    async def test_handle_event_with_selector_state(
+    async def test_handle_event_with_selector_states(
         self,
-        selector_state: Literal["open", "closed", "all"],
+        selector_states: list[Literal["open", "closed"]],
         action: str,
         expected_update: bool,
         expected_delete: bool,
         resource_config: GithubPullRequestConfig,
         pull_request_webhook_processor: PullRequestWebhookProcessor,
     ) -> None:
-        # Configure resource_config with the specified selector state
-        resource_config.selector.state = selector_state
+        resource_config.selector.states = selector_states
 
-        # Test pull request data
         pr_data = {
             "id": 1,
             "number": 101,
             "title": "Test PR",
             "state": "open" if action == "opened" else "closed",
         }
-
         repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
-
         payload = {"action": action, "pull_request": pr_data, "repository": repo_data}
 
-        # Create updated PR data that would be returned by the exporter
         updated_pr_data = {**pr_data, "additional_data": "from_api"}
-
-        # Mock the exporter
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = updated_pr_data
 
@@ -161,7 +154,6 @@ class TestPullRequestWebhookProcessor:
                 payload, resource_config
             )
 
-            # Verify results based on expected behavior
             assert isinstance(result, WebhookEventRawResults)
 
             if expected_update:
@@ -173,186 +165,4 @@ class TestPullRequestWebhookProcessor:
             elif expected_delete:
                 assert result.updated_raw_results == []
                 assert result.deleted_raw_results == [pr_data]
-                # Should not call get_resource when deleting
                 mock_exporter.get_resource.assert_not_called()
-
-    @pytest.mark.parametrize(
-        "closed_pull_requests,action,expected_update,expected_delete",
-        [
-            (False, "closed", False, True),  # Default behavior - delete closed PRs
-            (True, "closed", True, False),  # New behavior - keep closed PRs
-        ],
-    )
-    async def test_handle_event_with_closed_pull_requests_flag(
-        self,
-        closed_pull_requests: bool,
-        action: str,
-        expected_update: bool,
-        expected_delete: bool,
-        pull_request_webhook_processor: PullRequestWebhookProcessor,
-        resource_config: GithubPullRequestConfig,
-    ) -> None:
-        # Create resource config with the specified closed_pull_requests setting
-        resource_config.selector.closed_pull_requests = closed_pull_requests
-
-        pr_data = {
-            "id": 1,
-            "number": 101,
-            "title": "Test PR",
-            "state": "closed",
-        }
-
-        repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
-
-        payload = {"action": action, "pull_request": pr_data, "repository": repo_data}
-
-        # Create updated PR data that would be returned by the exporter
-        updated_pr_data = {**pr_data, "additional_data": "from_api"}
-
-        # Mock the exporter
-        mock_exporter = AsyncMock()
-        mock_exporter.get_resource.return_value = updated_pr_data
-
-        with patch(
-            "github.webhook.webhook_processors.pull_request_webhook_processor.RestPullRequestExporter",
-            return_value=mock_exporter,
-        ):
-            result = await pull_request_webhook_processor.handle_event(
-                payload, resource_config
-            )
-
-            # Verify results based on expected behavior
-            assert isinstance(result, WebhookEventRawResults)
-
-            if expected_update:
-                assert result.updated_raw_results == [updated_pr_data]
-                assert result.deleted_raw_results == []
-                mock_exporter.get_resource.assert_called_once_with(
-                    SinglePullRequestOptions(repo_name="test-repo", pr_number=101)
-                )
-            elif expected_delete:
-                assert result.updated_raw_results == []
-                assert result.deleted_raw_results == [pr_data]
-                # Should not call get_resource when deleting
-                mock_exporter.get_resource.assert_not_called()
-
-    async def test_handle_event_closed_action_with_closed_prs_enabled(
-        self,
-        pull_request_webhook_processor: PullRequestWebhookProcessor,
-        resource_config: GithubPullRequestConfig,
-    ) -> None:
-        """Test that when closed_pull_requests=True, closed PRs are updated instead of deleted."""
-
-        pr_data = {
-            "id": 1,
-            "number": 101,
-            "title": "Test PR",
-            "state": "closed",
-        }
-
-        repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
-
-        payload = {"action": "closed", "pull_request": pr_data, "repository": repo_data}
-
-        # Create updated PR data that would be returned by the exporter
-        updated_pr_data = {**pr_data, "additional_data": "from_api"}
-
-        # Mock the exporter
-        mock_exporter = AsyncMock()
-        mock_exporter.get_resource.return_value = updated_pr_data
-
-        with patch(
-            "github.webhook.webhook_processors.pull_request_webhook_processor.RestPullRequestExporter",
-            return_value=mock_exporter,
-        ):
-            resource_config.selector.closed_pull_requests = True
-            result = await pull_request_webhook_processor.handle_event(
-                payload, resource_config
-            )
-
-            # Should update the PR instead of deleting it
-            assert result.updated_raw_results == [updated_pr_data]
-            # Should update the PR instead of deleting it
-            assert result.updated_raw_results == [updated_pr_data]
-            assert result.deleted_raw_results == []
-            mock_exporter.get_resource.assert_called_once_with(
-                SinglePullRequestOptions(repo_name="test-repo", pr_number=101)
-            )
-
-    async def test_handle_event_closed_action_with_closed_prs_disabled(
-        self,
-        resource_config: GithubPullRequestConfig,
-        pull_request_webhook_processor: PullRequestWebhookProcessor,
-    ) -> None:
-        """Test that when closed_pull_requests=False (default), closed PRs are deleted."""
-
-        pr_data = {
-            "id": 1,
-            "number": 101,
-            "title": "Test PR",
-            "state": "closed",
-        }
-
-        repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
-
-        payload = {"action": "closed", "pull_request": pr_data, "repository": repo_data}
-
-        # Mock the exporter
-        mock_exporter = AsyncMock()
-
-        with patch(
-            "github.webhook.webhook_processors.pull_request_webhook_processor.RestPullRequestExporter",
-            return_value=mock_exporter,
-        ):
-            result = await pull_request_webhook_processor.handle_event(
-                payload, resource_config
-            )
-
-            # Should delete the PR instead of updating it
-            assert result.updated_raw_results == []
-            assert result.deleted_raw_results == [pr_data]
-            # Should not call get_resource when deleting
-            mock_exporter.get_resource.assert_not_called()
-
-    async def test_handle_event_opened_action_unaffected_by_closed_prs_flag(
-        self,
-        pull_request_webhook_processor: PullRequestWebhookProcessor,
-        resource_config: GithubPullRequestConfig,
-    ) -> None:
-        """Test that opened actions are unaffected by the closed_pull_requests flag."""
-
-        pr_data = {
-            "id": 1,
-            "number": 101,
-            "title": "Test PR",
-            "state": "open",
-        }
-
-        repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
-
-        payload = {"action": "opened", "pull_request": pr_data, "repository": repo_data}
-
-        # Create updated PR data that would be returned by the exporter
-        updated_pr_data = {**pr_data, "additional_data": "from_api"}
-
-        # Mock the exporter
-        mock_exporter = AsyncMock()
-        mock_exporter.get_resource.return_value = updated_pr_data
-
-        with patch(
-            "github.webhook.webhook_processors.pull_request_webhook_processor.RestPullRequestExporter",
-            return_value=mock_exporter,
-        ):
-            resource_config.selector.closed_pull_requests = True
-            result = await pull_request_webhook_processor.handle_event(
-                payload, resource_config
-            )
-
-            # Should always update opened PRs regardless of closed_pull_requests flag
-            assert result.updated_raw_results == [updated_pr_data]
-            # Should always update opened PRs regardless of closed_pull_requests flag
-            assert result.updated_raw_results == [updated_pr_data]
-            assert result.deleted_raw_results == []
-            mock_exporter.get_resource.assert_called_once_with(
-                SinglePullRequestOptions(repo_name="test-repo", pr_number=101)
-            )

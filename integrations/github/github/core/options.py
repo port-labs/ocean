@@ -37,8 +37,8 @@ class SinglePullRequestOptions(RepositoryIdentifier):
 class ListPullRequestOptions(RepositoryIdentifier):
     """Options for listing pull requests."""
 
-    state: Required[str]
-    include_closed: NotRequired[Optional[bool]]
+    states: Required[list[str]]
+    max_results: NotRequired[Optional[int]]
 
 
 class SingleIssueOptions(RepositoryIdentifier):

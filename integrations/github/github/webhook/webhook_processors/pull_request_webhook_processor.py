@@ -42,11 +42,7 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
         logger.info(f"Processing pull request event: {action} for {repo_name}/{number}")
 
         config = cast(GithubPullRequestConfig, resource_config)
-        if (
-            action == "closed"
-            and config.selector.state == "open"
-            and not config.selector.closed_pull_requests
-        ):
+        if action == "closed" and "closed" not in config.selector.states:
             logger.info(
                 f"Pull request {repo_name}/{number} was closed and will be deleted"
             )

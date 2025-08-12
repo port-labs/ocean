@@ -61,14 +61,14 @@ class GithubFolderResourceConfig(ResourceConfig):
 
 
 class GithubPullRequestSelector(Selector):
-    state: Literal["open", "closed", "all"] = Field(
-        default="open",
-        description="Filter by pull request state (e.g., open, closed, all)",
+    states: list[Literal["open", "closed"]] = Field(
+        default=["open"],
+        description="Filter by pull request state (e.g., open, closed)",
     )
-    closed_pull_requests: bool = Field(
-        alias="closedPullRequests",
-        default=False,
-        description="Include closed pull requests in the export",
+    max_results: int = Field(
+        alias="maxResults",
+        default=100,
+        description="Limit the number of pull requests returned",
     )
 
 
