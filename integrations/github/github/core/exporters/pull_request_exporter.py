@@ -97,7 +97,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             batch_count = len(limited_batch)
 
             logger.info(
-                f"[Closed PRs] Fetched batch of {batch_count} from {repo_name} "
+                f"[Closed PRs] Fetched closed pull requests batch of {batch_count} from {repo_name} "
                 f"(total so far: {total_count + batch_count}/{max_results})"
             )
 

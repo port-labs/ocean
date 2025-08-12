@@ -32,7 +32,7 @@ resources:
             creator: ".user.login"
             assignees: "[.assignees[].login]"
             reviewers: "[.requested_reviewers[].login]"
-            status: ".state"
+            status: : if .merged_at != null then "merged" else .state end
             closedAt: ".closed_at"
             updatedAt: ".updated_at"
             mergedAt: ".merged_at"
