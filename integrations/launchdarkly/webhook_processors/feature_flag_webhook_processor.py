@@ -66,9 +66,9 @@ class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
         # Handle update events
         client = LaunchDarklyClient.create_from_ocean_configuration()
         if resource_config_kind == ObjectKind.FEATURE_FLAG_DEPENDENCIES:
-            # For flag dependencies, fetch and format the dependencies
-            dependencies = await client.get_feature_flag_dependencies(project_key, feature_flag_key)
-            data_to_update = dependencies
+            # For flag dependencies, fetch and format the dependencies using the same format as _format_flag_dependencies
+            formatted_dependencies = await client._format_flag_dependencies(project_key, feature_flag_key)
+            data_to_update = formatted_dependencies
         elif resource_config_kind == ObjectKind.FEATURE_FLAG_STATUS:
             response = await client.get_feature_flag_status(
                 project_key, feature_flag_key

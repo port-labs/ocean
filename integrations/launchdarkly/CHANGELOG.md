@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.164 (2025-08-12)
+
+
+### Features
+
+- Added feature flag dependency
+- Implemented flag dependency relationship mapping between flags
+- Added support for both direct and inverse dependency relationships
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 

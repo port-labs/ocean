@@ -250,7 +250,11 @@ class LaunchDarklyClient:
                 async for flags_batch in self.get_paginated_resource(
                     ObjectKind.FEATURE_FLAG, resource_path=project_key
                 ):
-                # Process in batches to avoid too many concurrent requests
+                    # Skip empty batches
+                    if not flags_batch:
+                        continue
+                        
+                    # Process in batches to avoid too many concurrent requests
                     batch_size = 10
                     for i in range(0, len(flags_batch), batch_size):
                         batch = flags_batch[i:i+batch_size]
@@ -258,7 +262,8 @@ class LaunchDarklyClient:
                             self._format_flag_dependencies(project_key, flag["key"])
                             for flag in batch
                         ]
-                        results = await asyncio.gather(*tasks)
+                        # Use exception handling to prevent one failure from stopping the whole batch
+                        results = await asyncio.gather(*tasks, return_exceptions=True)
                         formatted_deps = [dep for deps in results if deps for dep in deps]
                         
                         if formatted_deps:  # Only yield non-empty dependency lists
