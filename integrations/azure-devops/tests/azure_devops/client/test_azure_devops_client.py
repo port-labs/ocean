@@ -2,6 +2,7 @@ from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from httpx import Request, Response
 from port_ocean.context.event import EventContext, event_context
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -2250,3 +2251,75 @@ async def test_generate_files_with_folders_mixed_in() -> None:
     # Folders should be excluded
     assert not any(r["file"]["path"] == "src" for r in results)
     assert not any(r["file"]["path"] == "src/components" for r in results)
+
+
+@pytest.mark.asyncio
+async def test_enrich_pipelines_with_repository(
+    mock_azure_client: AzureDevopsClient, monkeypatch: MonkeyPatch
+) -> None:
+    """Test that pipelines are enriched with repository information."""
+    # Mock pipelines data
+    pipelines = [
+        {"id": "pipeline1", "name": "Build Pipeline 1", "__projectId": "project1"},
+        {"id": "pipeline2", "name": "Build Pipeline 2", "__projectId": "project2"},
+    ]
+
+    # Mock repository definitions that would be returned from Azure DevOps API
+    definitions = [
+        {
+            "repository": {"id": "repo1", "name": "Repository 1", "type": "Git"},
+            "project": {"id": "project1", "name": "Project 1"},
+        },
+        {
+            "repository": {"id": "repo2", "name": "Repository 2", "type": "Git"},
+            "project": {"id": "project2", "name": "Project 2"},
+        },
+    ]
+
+    # Mock the send_request method to return Response objects with json method
+    class MockResponse:
+        def __init__(self, data: Dict[str, Any]):
+            self._data = data
+
+        def json(self) -> Dict[str, Any]:
+            return self._data
+
+    async def mock_send_request(method: str, url: str, **kwargs: Any) -> MockResponse:
+        if "pipeline1" in url:
+            return MockResponse(definitions[0])
+        elif "pipeline2" in url:
+            return MockResponse(definitions[1])
+        return MockResponse({})
+
+    # Use monkeypatch to properly mock the method
+    monkeypatch.setattr(mock_azure_client, "send_request", mock_send_request)
+
+    # Call the method under test
+    enriched_pipelines = await mock_azure_client.enrich_pipelines_with_repository(
+        pipelines
+    )
+
+    # Verify the results
+    assert len(enriched_pipelines) == 2
+
+    # Check first pipeline
+    assert enriched_pipelines[0]["id"] == "pipeline1"
+    assert enriched_pipelines[0]["name"] == "Build Pipeline 1"
+    assert enriched_pipelines[0]["__projectId"] == "project1"
+    assert "__repository" in enriched_pipelines[0]
+    assert enriched_pipelines[0]["__repository"]["id"] == "repo1"
+    assert enriched_pipelines[0]["__repository"]["name"] == "Repository 1"
+    assert enriched_pipelines[0]["__repository"]["type"] == "Git"
+    assert enriched_pipelines[0]["__repository"]["project"]["id"] == "project1"
+    assert enriched_pipelines[0]["__repository"]["project"]["name"] == "Project 1"
+
+    # Check second pipeline
+    assert enriched_pipelines[1]["id"] == "pipeline2"
+    assert enriched_pipelines[1]["name"] == "Build Pipeline 2"
+    assert enriched_pipelines[1]["__projectId"] == "project2"
+    assert "__repository" in enriched_pipelines[1]
+    assert enriched_pipelines[1]["__repository"]["id"] == "repo2"
+    assert enriched_pipelines[1]["__repository"]["name"] == "Repository 2"
+    assert enriched_pipelines[1]["__repository"]["type"] == "Git"
+    assert enriched_pipelines[1]["__repository"]["project"]["id"] == "project2"
+    assert enriched_pipelines[1]["__repository"]["project"]["name"] == "Project 2"
