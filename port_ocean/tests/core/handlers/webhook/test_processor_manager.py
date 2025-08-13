@@ -1,32 +1,16 @@
-import pytest
-from port_ocean.core.handlers.webhook.processor_manager import (
-    LiveEventsProcessorManager,
-)
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-    AbstractWebhookProcessor,
-)
-from port_ocean.core.handlers.webhook.webhook_event import (
-    EventHeaders,
-    WebhookEvent,
-    WebhookEventRawResults,
-    EventPayload,
-)
-from fastapi import APIRouter
-from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from port_ocean.utils.signal import SignalHandler
-from typing import Dict, Any
 import asyncio
+from typing import Any, Dict
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
-from fastapi import FastAPI
-from port_ocean.context.ocean import PortOceanContext
-from unittest.mock import AsyncMock
-from port_ocean.context.event import EventContext, event_context, EventType
-from port_ocean.context.ocean import ocean
-from unittest.mock import MagicMock, patch
 from httpx import Response
-from port_ocean.clients.port.client import PortClient
+
 from port_ocean import Ocean
-from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.clients.port.client import PortClient
+from port_ocean.context.event import EventContext, EventType, event_context
+from port_ocean.context.ocean import PortOceanContext, ocean
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
@@ -35,13 +19,28 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.handlers.queue import LocalQueue
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+)
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
+from port_ocean.core.handlers.webhook.webhook_event import (
+    EventHeaders,
+    EventPayload,
+    WebhookEvent,
+    WebhookEventRawResults,
+)
+from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.models import Entity
 from port_ocean.exceptions.webhook_processor import (
     RetryableError,
     WebhookEventNotSupportedError,
 )
-from port_ocean.core.handlers.queue import LocalQueue
+from port_ocean.utils.signal import SignalHandler
 
 
 class MockProcessor(AbstractWebhookProcessor):
@@ -275,7 +274,13 @@ def mock_http_client() -> MagicMock:
 @pytest.fixture
 def mock_port_client(mock_http_client: MagicMock) -> PortClient:
     mock_port_client = PortClient(
-        MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
     )
     mock_port_client.auth = AsyncMock()
     mock_port_client.auth.headers = AsyncMock(

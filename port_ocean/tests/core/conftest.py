@@ -96,7 +96,13 @@ def mock_http_client() -> MagicMock:
 @pytest.fixture
 def mock_port_client(mock_http_client: MagicMock) -> PortClient:
     mock_port_client = PortClient(
-        MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
     )
     mock_port_client.auth = AsyncMock()
     mock_port_client.auth.headers = AsyncMock(

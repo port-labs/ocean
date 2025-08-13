@@ -477,6 +477,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             bool: True if lakehouse data is enabled, False otherwise
         """
         flags = await ocean.port_client.get_organization_feature_flags()
+        logger.info("lakehouse data enabled", flags=flags)
         if "LAKEHOUSE_ELIGIBLE" in flags and ocean.config.lakehouse_enabled:
             return True
         return False

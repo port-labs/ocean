@@ -1,7 +1,9 @@
 from typing import Any
-from httpx import Response
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from httpx import Response
+
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.ocean import PortOceanContext
@@ -11,8 +13,6 @@ from port_ocean.core.handlers.entities_state_applier.port.applier import (
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
-from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
@@ -21,6 +21,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
+from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import CalculationResult, EntitySelectorDiff
 from port_ocean.ocean import Ocean
@@ -253,7 +255,13 @@ def mock_port_app_config_handler(
 @pytest.fixture
 def mock_port_client(mock_http_client: MagicMock) -> PortClient:
     mock_port_client = PortClient(
-        MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
     )
     mock_port_client.auth = AsyncMock()
     mock_port_client.auth.headers = AsyncMock(
@@ -340,10 +348,11 @@ async def test_parse_raw_event_results_to_entities_creation(
         calculation_result
     )
 
-    entities_to_create, entities_to_delete = (
-        await mock_live_events_mixin._parse_raw_event_results_to_entities(
-            [one_webhook_event_raw_results_for_creation]
-        )
+    (
+        entities_to_create,
+        entities_to_delete,
+    ) = await mock_live_events_mixin._parse_raw_event_results_to_entities(
+        [one_webhook_event_raw_results_for_creation]
     )
 
     assert entities_to_create == [entity]
@@ -367,10 +376,11 @@ async def test_parse_raw_event_results_to_entities_deletion(
         calculation_result
     )
 
-    entities_to_create, entities_to_delete = (
-        await mock_live_events_mixin._parse_raw_event_results_to_entities(
-            [one_webhook_event_raw_results_for_deletion]
-        )
+    (
+        entities_to_create,
+        entities_to_delete,
+    ) = await mock_live_events_mixin._parse_raw_event_results_to_entities(
+        [one_webhook_event_raw_results_for_deletion]
     )
 
     assert entities_to_create == []
