@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.39-beta (2025-08-13)
+
+
+### Bug Fixes
+
+- Fixed pagination issue in bitbucket-server integration
+
+
 ## 0.1.38-beta (2025-08-13)
 
 
