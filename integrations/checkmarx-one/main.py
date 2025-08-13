@@ -21,17 +21,6 @@ from integration import (
 from checkmarx_one.utils import ObjectKind
 
 
-@ocean.on_start()
-async def on_start() -> None:
-    """Initialize the Checkmarx One integration."""
-    logger.info("Starting Checkmarx One integration")
-    try:
-        logger.info("Checkmarx One integration initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize Checkmarx One integration: {str(e)}")
-        raise
-
-
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync projects from Checkmarx One."""
