@@ -1,4 +1,3 @@
-from checkmarx_one.clients.client import CheckmarxOneClient
 from checkmarx_one.clients.initialize_client import get_checkmarx_client
 from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
 from checkmarx_one.core.exporters.scan_exporter import CheckmarxScanExporter

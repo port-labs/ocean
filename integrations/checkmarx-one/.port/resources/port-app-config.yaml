@@ -61,8 +61,8 @@ resources:
             state: .state
             confidenceLevel: .confidenceLevel
             description: .description
-            cweId: .vulnerabilityDetails.cweId
-            fileName: .data.nodes[0].fileName
-            line: .data.nodes[0].line
+            cweId: (.vulnerabilityDetails.cweId // empty)
+            fileName: (.data.nodes[0].fileName // empty)
+            line: (.data.nodes[0].line // empty)
         relations:
           scan: .__scan_id

@@ -13,9 +13,7 @@ class AbstractCheckmarxExporter(ABC):
         self.client = client
 
     @abstractmethod
-    async def get_paginated_resources(
-        self, options: Any
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    def get_paginated_resources(self, options: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
         pass
 
     @abstractmethod

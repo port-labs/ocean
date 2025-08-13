@@ -1,9 +1,7 @@
-from typing import Any
-
 import httpx
 from loguru import logger
 
-from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator
+from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator, TokenResponse
 from checkmarx_one.exceptions import CheckmarxAuthenticationError
 
 
@@ -25,7 +23,7 @@ class TokenAuthenticator(BaseCheckmarxAuthenticator):
         super().__init__(iam_url, tenant)
         self.api_key = api_key
 
-    async def _authenticate(self) -> dict[str, Any]:
+    async def _authenticate(self) -> TokenResponse:
         """Authenticate using API key (refresh token flow)."""
         logger.debug("Authenticating with API key")
 

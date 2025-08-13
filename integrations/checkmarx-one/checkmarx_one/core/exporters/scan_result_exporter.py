@@ -1,4 +1,4 @@
-from typing import Any, Dict, AsyncGenerator
+from typing import Any, Dict
 from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
